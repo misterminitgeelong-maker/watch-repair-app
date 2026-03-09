@@ -1,11 +1,7 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 
 export default function AppShell() {
-  const { token } = useAuth()
-  if (!token) return <Navigate to="/login" replace />
-
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--cafe-bg)' }}>
       <Sidebar />

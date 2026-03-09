@@ -9,13 +9,12 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Redirect to login on 401
+// Keep session state in sync on 401 (no forced redirect in test mode)
 api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
     }
     return Promise.reject(err)
   }

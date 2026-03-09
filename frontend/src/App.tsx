@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import AppShell from '@/components/AppShell'
-import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import CustomersPage from '@/pages/CustomersPage'
 import CustomerDetailPage from '@/pages/CustomerDetailPage'
@@ -24,11 +23,11 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
             {/* Public — no auth required */}
             <Route path="/approve/:token" element={<ApprovePage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
+              <Route path="login" element={<Navigate to="/" replace />} />
               <Route index element={<DashboardPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailPage />} />
