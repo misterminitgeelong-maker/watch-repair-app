@@ -113,23 +113,27 @@ def notify_job_status_changed(
 ) -> None:
     """Send a status-update SMS to the customer on milestone transitions."""
     message_map: dict[str, str] = {
-        "intake": (
+        "awaiting_go_ahead": (
             f"Hi {customer_name}, we've received your watch (job #{job_number}). "
             f"We'll be in touch once we've assessed it."
         ),
-        "awaiting_approval": (
-            f"Hi {customer_name}, your repair quote for job #{job_number} is ready. "
-            f"We'll send you a separate link shortly."
+        "go_ahead": (
+            f"Hi {customer_name}, your repair for job #{job_number} has been approved. "
+            f"We'll get started and keep you updated."
         ),
-        "in_repair": (
+        "working_on": (
             f"Hi {customer_name}, great news — we've started work on your watch (job #{job_number}). "
             f"We'll let you know when it's done."
         ),
-        "ready": (
+        "completed": (
             f"Hi {customer_name}, your watch (job #{job_number}) is ready for collection! "
             f"Please contact us to arrange pick-up."
         ),
-        "delivered": (
+        "awaiting_collection": (
+            f"Hi {customer_name}, your watch (job #{job_number}) is ready and waiting for collection! "
+            f"Please contact us to arrange pick-up."
+        ),
+        "collected": (
             f"Thank you {customer_name}! Your watch (job #{job_number}) has been collected. "
             f"We hope you enjoy it — don't hesitate to reach out if you need anything."
         ),

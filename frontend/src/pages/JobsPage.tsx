@@ -7,7 +7,7 @@ import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/componen
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
-const JOB_STATUSES: JobStatus[] = ['intake', 'diagnosis', 'awaiting_approval', 'in_repair', 'qc', 'ready', 'delivered', 'cancelled']
+const JOB_STATUSES: JobStatus[] = ['awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
 
 export default function JobsPage() {
   const [showAdd, setShowAdd] = useState(false)
@@ -18,7 +18,7 @@ export default function JobsPage() {
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
     const matchStatus = statusFilter === 'all' ? true :
-      statusFilter === 'active' ? !['delivered', 'cancelled'].includes(j.status) :
+      statusFilter === 'active' ? !['collected', 'no_go'].includes(j.status) :
       j.status === statusFilter
     return matchSearch && matchStatus
   })

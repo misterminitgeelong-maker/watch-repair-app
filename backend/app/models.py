@@ -5,14 +5,17 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel
 
 JobStatus = Literal[
-    "intake",
-    "diagnosis",
-    "awaiting_approval",
-    "in_repair",
-    "qc",
-    "ready",
-    "delivered",
-    "cancelled",
+    "awaiting_go_ahead",
+    "go_ahead",
+    "no_go",
+    "working_on",
+    "awaiting_parts",
+    "parts_to_order",
+    "sent_to_labanda",
+    "service",
+    "completed",
+    "awaiting_collection",
+    "collected",
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
@@ -70,7 +73,7 @@ class RepairJob(SQLModel, table=True):
     title: str
     description: Optional[str] = None
     priority: str = "normal"
-    status: str = "intake"
+    status: str = "awaiting_go_ahead"
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0

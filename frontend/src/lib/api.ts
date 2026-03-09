@@ -55,7 +55,7 @@ export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>
   api.post<Watch>('/watches', data)
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
-export type JobStatus = 'intake' | 'diagnosis' | 'awaiting_approval' | 'in_repair' | 'qc' | 'ready' | 'delivered' | 'cancelled'
+export type JobStatus = 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string
   job_number: string; title: string; description?: string; priority: string

@@ -89,7 +89,7 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
     onError: () => setError('Failed to create quote.'),
   })
 
-  const activeJobs = (jobs ?? []).filter(j => !['delivered', 'cancelled'].includes(j.status))
+  const activeJobs = (jobs ?? []).filter(j => !['collected', 'no_go'].includes(j.status))
 
   return (
     <Modal title="Create Quote" onClose={onClose}>

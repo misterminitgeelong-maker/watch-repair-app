@@ -13,14 +13,17 @@ import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, In
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
-  intake: 'diagnosis',
-  diagnosis: 'awaiting_approval',
-  awaiting_approval: 'in_repair',
-  in_repair: 'qc',
-  qc: 'ready',
-  ready: 'delivered',
-  delivered: null,
-  cancelled: null,
+  awaiting_go_ahead: 'go_ahead',
+  go_ahead: 'working_on',
+  no_go: null,
+  working_on: 'completed',
+  awaiting_parts: 'working_on',
+  parts_to_order: 'awaiting_parts',
+  sent_to_labanda: 'working_on',
+  service: 'completed',
+  completed: 'awaiting_collection',
+  awaiting_collection: 'collected',
+  collected: null,
 }
 
 // ── Status update modal ───────────────────────────────────────────────────────
@@ -37,7 +40,7 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
       onClose()
     },
   })
-  const statuses: JobStatus[] = ['intake', 'diagnosis', 'awaiting_approval', 'in_repair', 'qc', 'ready', 'delivered', 'cancelled']
+  const statuses: JobStatus[] = ['awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
 
   return (
     <Modal title="Update Status" onClose={onClose}>

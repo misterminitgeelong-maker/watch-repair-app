@@ -86,13 +86,24 @@ def _clean_name(raw: str) -> str | None:
 
 
 _STATUS_MAP = {
-    "delivered": "delivered",
-    "in_repair": "in_repair",
-    "in repair": "in_repair",
-    "ready": "ready",
-    "intake": "intake",
-    "approved": "awaiting_approval",
-    "cancelled": "cancelled",
+    "delivered": "collected",
+    "collected": "collected",
+    "in_repair": "working_on",
+    "in repair": "working_on",
+    "working on": "working_on",
+    "ready": "awaiting_collection",
+    "awaiting collection": "awaiting_collection",
+    "intake": "awaiting_go_ahead",
+    "awaiting go ahead": "awaiting_go_ahead",
+    "go ahead": "go_ahead",
+    "no go": "no_go",
+    "completed": "completed",
+    "awaiting parts": "awaiting_parts",
+    "parts to be ordered": "parts_to_order",
+    "sent to labanda": "sent_to_labanda",
+    "service": "service",
+    "cancelled": "no_go",
+    "approved": "go_ahead",
 }
 
 
@@ -144,7 +155,7 @@ async def import_csv(
 
         phone = _normalize_phone(phone_raw)
         date_in = _parse_date(date_in_raw)
-        status = _STATUS_MAP.get((status_raw or "").lower(), "delivered")
+        status = _STATUS_MAP.get((status_raw or "").lower(), "collected")
         quote_cents = _dollars_to_cents(quote_raw)
 
         # Customer dedup

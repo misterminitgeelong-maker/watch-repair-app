@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
   const { data: invoices } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then(r => r.data) })
 
-  const openJobs = jobs?.filter(j => !['delivered', 'cancelled'].includes(j.status)) ?? []
+  const openJobs = jobs?.filter(j => !['collected', 'no_go'].includes(j.status)) ?? []
   const pendingQuotes = quotes?.filter(q => q.status === 'sent') ?? []
   const unpaidInvoices = invoices?.filter(i => i.status === 'unpaid') ?? []
   const unpaidTotal = unpaidInvoices.reduce((s, i) => s + i.total_cents, 0)
