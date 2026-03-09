@@ -85,6 +85,15 @@ def _clean_name(raw: str) -> str | None:
     return name
 
 
+def _get_first(row: dict[str, str], keys: list[str]) -> str:
+    """Return the first non-empty value found in the provided column keys."""
+    for key in keys:
+        value = row.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
 _STATUS_MAP = {
     "delivered": "collected",
     "collected": "collected",
@@ -136,15 +145,15 @@ async def import_csv(
     job_seq = 0
 
     for row in rows:
-        original_job_id = (row.get("original_job_id") or "").strip()
-        team_member = (row.get("team_member") or "").strip()
-        customer_name_raw = (row.get("customer_name") or "").strip()
-        date_in_raw = (row.get("date_in") or "").strip()
-        brand_case = (row.get("brand_case_numbers") or "").strip()
-        phone_raw = (row.get("phone_number") or "").strip()
-        quote_raw = (row.get("quote_price") or "").strip()
-        status_raw = (row.get("status") or "").strip()
-        notes_raw = (row.get("repair_notes") or "").strip()
+        original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
+        team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
+        customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
+        date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
+        brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
+        phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone"])
+        quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
+        status_raw = _get_first(row, ["status", "job_status", "repair_status", "state"])
+        notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
 
         customer_name = _clean_name(customer_name_raw)
         if not customer_name:
@@ -155,7 +164,7 @@ async def import_csv(
 
         phone = _normalize_phone(phone_raw)
         date_in = _parse_date(date_in_raw)
-        status = _STATUS_MAP.get((status_raw or "").lower(), "collected")
+        status = _STATUS_MAP.get((status_raw or "").lower(), "awaiting_go_ahead")
         quote_cents = _dollars_to_cents(quote_raw)
 
         # Customer dedup
@@ -203,10 +212,11 @@ async def import_csv(
         session.flush()
 
         if quote_cents > 0:
+            quote_status = "approved" if status in {"completed", "awaiting_collection", "collected"} else "sent"
             session.add(Quote(
                 tenant_id=tenant_id,
                 repair_job_id=job.id,
-                status="approved" if status == "delivered" else "sent",
+                status=quote_status,
                 subtotal_cents=quote_cents,
                 tax_cents=0,
                 total_cents=quote_cents,
