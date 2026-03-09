@@ -407,6 +407,7 @@ class InvoiceRead(SQLModel):
     tax_cents: int
     total_cents: int
     currency: str
+    created_at: datetime
 
 
 class PaymentCreate(SQLModel):

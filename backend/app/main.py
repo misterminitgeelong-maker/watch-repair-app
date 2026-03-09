@@ -57,8 +57,12 @@ if _static and _static.is_dir():
     app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
 
     # SPA fallback — any non-API path serves index.html
-    @app.get("/{full_path:path}")
+    @app.api_route("/{full_path:path}", methods=["GET"], include_in_schema=False)
     async def spa_fallback(request: Request, full_path: str):
+        # Never intercept API or docs paths
+        if full_path.startswith("v1/") or full_path in ("docs", "openapi.json", "redoc"):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         file_path = _static / full_path
         if full_path and file_path.is_file():
             return FileResponse(str(file_path))

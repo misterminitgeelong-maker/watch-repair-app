@@ -24,6 +24,32 @@ def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
     return f"INV-{int(count) + 1:05d}"
 
 
+@router.get("", response_model=list[InvoiceRead])
+def list_invoices(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    invoices = session.exec(
+        select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
+    ).all()
+    return [
+        InvoiceRead(
+            id=inv.id,
+            tenant_id=inv.tenant_id,
+            repair_job_id=inv.repair_job_id,
+            quote_id=inv.quote_id,
+            invoice_number=inv.invoice_number,
+            status=inv.status,
+            subtotal_cents=inv.subtotal_cents,
+            tax_cents=inv.tax_cents,
+            total_cents=inv.total_cents,
+            currency=inv.currency,
+            created_at=inv.created_at,
+        )
+        for inv in invoices
+    ]
+
+
 @router.post("/from-quote/{quote_id}", response_model=InvoiceCreateFromQuoteResponse, status_code=201)
 def create_invoice_from_quote(
     quote_id: UUID,
@@ -60,6 +86,7 @@ def create_invoice_from_quote(
         tax_cents=invoice.tax_cents,
         total_cents=invoice.total_cents,
         currency=invoice.currency,
+        created_at=invoice.created_at,
     ))
 
 
@@ -89,6 +116,7 @@ def get_invoice(
             tax_cents=invoice.tax_cents,
             total_cents=invoice.total_cents,
             currency=invoice.currency,
+            created_at=invoice.created_at,
         ),
         payments=[
             PaymentRead(
