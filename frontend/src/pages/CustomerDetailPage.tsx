@@ -7,6 +7,9 @@ import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textare
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
+const COMPLETED_DIRECTORY_STATUSES = ['completed', 'awaiting_collection', 'collected']
+const NON_ACTIVE_STATUSES = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
+
 function AddWatchModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({ customer_id: customerId, brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '' })
@@ -49,12 +52,17 @@ export default function CustomerDetailPage() {
   const navigate = useNavigate()
   const [showAddWatch, setShowAddWatch] = useState(false)
   const [showNewJob, setShowNewJob] = useState(false)
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const { data: customer, isLoading } = useQuery({ queryKey: ['customer', id], queryFn: () => getCustomer(id!).then(r => r.data) })
   const { data: watches } = useQuery({ queryKey: ['watches', id], queryFn: () => listWatches(id).then(r => r.data) })
   const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
 
   const customerWatchIds = new Set((watches ?? []).map(w => w.id))
   const customerJobs = (jobs ?? []).filter(j => customerWatchIds.has(j.watch_id))
+  const activeJobs = customerJobs.filter(j => !NON_ACTIVE_STATUSES.includes(j.status))
+  const completedDirectoryJobs = customerJobs.filter(j => COMPLETED_DIRECTORY_STATUSES.includes(j.status))
+  const noGoJobs = customerJobs.filter(j => j.status === 'no_go')
+  const closedJobsCount = completedDirectoryJobs.length + noGoJobs.length
 
   if (isLoading) return <Spinner />
   if (!customer) return <p style={{ color: 'var(--cafe-text-muted)' }}>Customer not found.</p>
@@ -130,22 +138,110 @@ export default function CustomerDetailPage() {
             Repair Jobs ({customerJobs.length})
           </div>
           <div>
-            {customerJobs.map((job, i) => (
-              <Link
-                key={job.id}
-                to={`/jobs/${job.id}`}
-                className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                style={{ borderBottom: i < customerJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
-                </div>
-                <Badge status={job.status} />
-              </Link>
-            ))}
+            <div className="px-5 pt-4 pb-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+              <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                  style={{
+                    backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+                    color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  }}
+                  onClick={() => setJobDirectoryView('active')}
+                >
+                  Active ({activeJobs.length})
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                  style={{
+                    backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+                    color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  }}
+                  onClick={() => setJobDirectoryView('completed')}
+                >
+                  Completed ({closedJobsCount})
+                </button>
+              </div>
+            </div>
+
+            {jobDirectoryView === 'active' && (
+              <>
+                {activeJobs.map((job, i) => (
+                  <Link
+                    key={job.id}
+                    to={`/jobs/${job.id}`}
+                    className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                    style={{ borderBottom: i < activeJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                    </div>
+                    <Badge status={job.status} />
+                  </Link>
+                ))}
+                {activeJobs.length === 0 && (
+                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No active jobs.</p>
+                )}
+              </>
+            )}
+
+            {jobDirectoryView === 'completed' && (
+              <>
+                {completedDirectoryJobs.length > 0 && (
+                  <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                    Completed Directory ({completedDirectoryJobs.length})
+                  </div>
+                )}
+                {completedDirectoryJobs.map((job, i) => (
+                  <Link
+                    key={job.id}
+                    to={`/jobs/${job.id}`}
+                    className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                    style={{ borderBottom: i < completedDirectoryJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                    </div>
+                    <Badge status={job.status} />
+                  </Link>
+                ))}
+
+                {noGoJobs.length > 0 && (
+                  <>
+                    <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)', borderTop: completedDirectoryJobs.length > 0 ? '1px solid var(--cafe-border)' : 'none' }}>
+                      Closed - No Go ({noGoJobs.length})
+                    </div>
+                    {noGoJobs.map((job, i) => (
+                      <Link
+                        key={job.id}
+                        to={`/jobs/${job.id}`}
+                        className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                        style={{ borderBottom: i < noGoJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                        </div>
+                        <Badge status={job.status} />
+                      </Link>
+                    ))}
+                  </>
+                )}
+
+                {closedJobsCount === 0 && (
+                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No completed jobs.</p>
+                )}
+              </>
+            )}
             {customerJobs.length === 0 && (
               <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No jobs yet.</p>
             )}

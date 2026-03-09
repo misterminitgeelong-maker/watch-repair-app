@@ -9,8 +9,8 @@ export default function LoginPage() {
   const { token, login: setToken } = useAuth()
   const navigate = useNavigate()
   const [slug, setSlug] = useState('myshop')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@admin.com')
+  const [password, setPassword] = useState('Admin')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -91,7 +91,7 @@ export default function LoginPage() {
             <Input
               label="Email"
               type="email"
-              placeholder="admin@myshop.com"
+              placeholder="admin@admin.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

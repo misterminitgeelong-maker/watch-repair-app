@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
+from ..config import settings
 from ..database import get_session
 from ..models import (
     BootstrapResponse,
@@ -18,6 +19,9 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 @router.post("/bootstrap", response_model=BootstrapResponse)
 def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_session)):
+    if not settings.allow_public_bootstrap:
+        raise HTTPException(status_code=403, detail="Bootstrap is disabled")
+
     existing_tenant = session.exec(select(Tenant).where(Tenant.slug == payload.tenant_slug)).first()
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
@@ -60,7 +64,7 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
         select(User).where(User.tenant_id == tenant.id).where(User.email == payload.email)
     ).first()
 
-    if not user or not verify_password(payload.password, user.password_hash):
+    if not user or not user.is_active or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token_subject = f"{tenant.id}:{user.id}:{user.role}"

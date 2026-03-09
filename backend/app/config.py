@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
+    allow_public_bootstrap: bool = True
 
     # Twilio SMS — leave blank to disable SMS (dry-run / log-only mode)
     twilio_account_sid: str = ""

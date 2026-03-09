@@ -24,9 +24,9 @@ def upgrade() -> None:
     op.add_column('attachment', sa.Column('label', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
     op.create_table(
         'smslog',
-        sa.Column('id', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('tenant_id', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('repair_job_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column('id', sa.Uuid(), nullable=False),
+        sa.Column('tenant_id', sa.Uuid(), nullable=False),
+        sa.Column('repair_job_id', sa.Uuid(), nullable=True),
         sa.Column('to_phone', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('body', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('event', sqlmodel.sql.sqltypes.AutoString(), nullable=False),

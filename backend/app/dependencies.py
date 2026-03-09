@@ -4,8 +4,10 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel import Session, select
+from sqlmodel import Session
 
+from .database import get_session
+from .models import User
 from .security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=True)
@@ -29,6 +31,7 @@ class AuthContext:
 
 def get_auth_context(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    session: Session = Depends(get_session),
 ) -> AuthContext:
     if credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid auth scheme")
@@ -36,9 +39,14 @@ def get_auth_context(
     try:
         subject = decode_access_token(credentials.credentials)
         parts = subject.split(":", maxsplit=2)
-        tenant_id_str, user_id_str = parts[0], parts[1]
-        role = parts[2] if len(parts) > 2 else "owner"
-        return AuthContext(tenant_id=UUID(tenant_id_str), user_id=UUID(user_id_str), role=role)
+        tenant_id = UUID(parts[0])
+        user_id = UUID(parts[1])
+
+        user = session.get(User, user_id)
+        if not user or user.tenant_id != tenant_id or not user.is_active:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 

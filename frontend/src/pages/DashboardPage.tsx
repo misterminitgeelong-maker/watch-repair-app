@@ -5,6 +5,8 @@ import { Card, PageHeader, Badge, Spinner } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
+const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
+
 const STAT_STYLES = [
   { iconBg: '#F5E8CC', iconColor: '#9B7228', label: 'Open Jobs' },
   { iconBg: '#DFF0EC', iconColor: '#2A6B65', label: 'Customers' },
@@ -46,7 +48,7 @@ export default function DashboardPage() {
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
   const { data: invoices } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then(r => r.data) })
 
-  const openJobs = jobs?.filter(j => !['collected', 'no_go'].includes(j.status)) ?? []
+  const openJobs = jobs?.filter(j => !CLOSED_JOB_STATUSES.includes(j.status)) ?? []
   const pendingQuotes = quotes?.filter(q => q.status === 'sent') ?? []
   const unpaidInvoices = invoices?.filter(i => i.status === 'unpaid') ?? []
   const unpaidTotal = unpaidInvoices.reduce((s, i) => s + i.total_cents, 0)

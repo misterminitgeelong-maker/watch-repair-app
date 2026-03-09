@@ -8,25 +8,68 @@ import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
 const JOB_STATUSES: JobStatus[] = ['awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
+const COMPLETED_DIRECTORY_STATUSES: JobStatus[] = ['completed', 'awaiting_collection', 'collected']
+const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
+const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))
+const CLOSED_DIRECTORY_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 
 export default function JobsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('active')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const { data: jobs, isLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
+
+  const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
+  const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
+  const statusOptions = jobDirectoryView === 'active' ? ACTIVE_DIRECTORY_STATUSES : CLOSED_DIRECTORY_STATUSES
 
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
-    const matchStatus = statusFilter === 'all' ? true :
-      statusFilter === 'active' ? !['collected', 'no_go'].includes(j.status) :
-      j.status === statusFilter
-    return matchSearch && matchStatus
+    const inDirectory = jobDirectoryView === 'active'
+      ? !CLOSED_DIRECTORY_STATUSES.includes(j.status)
+      : CLOSED_DIRECTORY_STATUSES.includes(j.status)
+    const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
+    return matchSearch && inDirectory && matchStatus
   })
 
   return (
     <div>
       <PageHeader title="Repair Jobs" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>} />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
+
+      <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            onClick={() => {
+              setJobDirectoryView('active')
+              setStatusFilter('all')
+            }}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            onClick={() => {
+              setJobDirectoryView('completed')
+              setStatusFilter('all')
+            }}
+          >
+            Completed ({completedCount})
+          </button>
+        </div>
+      </div>
 
       <div className="flex gap-3 mb-5 flex-wrap">
         <div className="relative">
@@ -53,9 +96,8 @@ export default function JobsPage() {
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
         >
-          <option value="active">Active jobs</option>
-          <option value="all">All statuses</option>
-          {JOB_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
+          {statusOptions.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
         </select>
       </div>
 
