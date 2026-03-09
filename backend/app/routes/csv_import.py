@@ -75,7 +75,20 @@ def _dollars_to_cents(raw: str) -> int:
 def _clean_name(raw: str) -> str | None:
     if not raw or not raw.strip():
         return None
-    name = raw.strip()
+    name = re.sub(r"\s+", " ", raw.strip())
+    lower_name = name.lower()
+
+    # Common placeholders/comments that are not valid customer names.
+    invalid_name_fragments = [
+        "already collected",
+        "has been collected",
+        "picked up",
+        "cancelled",
+        "unknown",
+    ]
+    if any(fragment in lower_name for fragment in invalid_name_fragments):
+        return None
+
     if re.match(r"^\d+$", name):
         return None
     if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}", name):
@@ -159,8 +172,11 @@ async def import_csv(
         if not customer_name:
             customer_name = _clean_name(original_job_id)
             if not customer_name:
-                skipped += 1
-                continue
+                has_meaningful_data = any([brand_case, phone_raw, quote_raw, status_raw, notes_raw, original_job_id])
+                if not has_meaningful_data:
+                    skipped += 1
+                    continue
+                customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
 
         phone = _normalize_phone(phone_raw)
         date_in = _parse_date(date_in_raw)
