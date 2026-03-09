@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Local DB files
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+
+# Uploads (user data)
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db

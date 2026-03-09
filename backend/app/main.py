@@ -1,0 +1,65 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from .config import settings
+from .database import create_db_and_tables
+from .routes.auth import router as auth_router
+from .routes.customers import router as customer_router
+from .routes.repair_jobs import router as repair_job_router
+from .routes.quotes import router as quote_router
+from .routes.invoices import router as invoice_router
+from .routes.work_logs import router as work_log_router
+from .routes.attachments import router as attachment_router
+from .routes.csv_import import router as csv_import_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/v1/health")
+def health():
+    return {"status": "ok"}
+
+
+app.include_router(auth_router)
+app.include_router(customer_router)
+app.include_router(repair_job_router)
+app.include_router(quote_router)
+app.include_router(invoice_router)
+app.include_router(work_log_router)
+app.include_router(attachment_router)
+app.include_router(csv_import_router)
+
+# ---------- Serve the built React frontend ----------
+_static = Path(settings.static_dir) if settings.static_dir else None
+if _static and _static.is_dir():
+    # Serve JS/CSS/assets at /assets
+    app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
+
+    # SPA fallback — any non-API path serves index.html
+    @app.get("/{full_path:path}")
+    async def spa_fallback(request: Request, full_path: str):
+        file_path = _static / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_static / "index.html"))

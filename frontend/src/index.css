@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* ── Café design tokens ─────────────────────────────────────────────────── */
+:root {
+  --cafe-bg:          #F8F4EE;
+  --cafe-surface:     #FEFCF8;
+  --cafe-espresso:    #1C0D05;
+  --cafe-espresso-2:  #2E1810;
+  --cafe-espresso-3:  #3D2214;
+  --cafe-gold:        #C9A44A;
+  --cafe-gold-dark:   #9B7422;
+  --cafe-amber:       #A07028;
+  --cafe-border:      #E8DECE;
+  --cafe-border-2:    #D5C4A8;
+  --cafe-text:        #1E0F06;
+  --cafe-text-mid:    #6B4A32;
+  --cafe-text-muted:  #9B7860;
+  --cafe-sidebar-txt: #C8A882;
+  --cafe-link:        #9B6B28;
+}
+
+@layer base {
+  html, body {
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--cafe-bg);
+    color: var(--cafe-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Serif headings */
+  h1, h2, h3 {
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  }
+
+  /* Warm scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--cafe-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--cafe-border-2); border-radius: 3px; }
+}
