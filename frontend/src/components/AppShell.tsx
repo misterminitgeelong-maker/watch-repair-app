@@ -1,7 +1,26 @@
 import { Outlet } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 import Sidebar from './Sidebar'
 
 export default function AppShell() {
+  const { token, initializing } = useAuth()
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
+        Preparing test session...
+      </div>
+    )
+  }
+
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
+        Could not create a test session automatically. Check server auth settings and bootstrap state.
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--cafe-bg)' }}>
       <Sidebar />
