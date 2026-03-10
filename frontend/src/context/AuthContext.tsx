@@ -9,10 +9,6 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx | null>(null)
 
-const TEST_TENANT = 'myshop'
-const TEST_EMAIL = 'admin@admin.com'
-const TEST_PASSWORD = 'Admin'
-
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -35,49 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let canceled = false
 
     async function ensureTestSession() {
-      if (token) {
-        if (!canceled) setInitializing(false)
-        return
-      }
-
       try {
-        // Try login first in case tenant already exists.
-        const loginResp = await postJson<{ access_token: string }>('/v1/auth/login', {
-          tenant_slug: TEST_TENANT,
-          email: TEST_EMAIL,
-          password: TEST_PASSWORD,
-        })
+        // Dev helper endpoint selects the tenant with existing jobs and returns a valid token.
+        const loginResp = await postJson<{ access_token: string }>('/v1/auth/dev-auto-login', {})
         if (!canceled && loginResp.access_token) {
           localStorage.setItem('token', loginResp.access_token)
           setToken(loginResp.access_token)
         }
       } catch {
-        try {
-          // If login fails, attempt bootstrap once then login.
-          await postJson('/v1/auth/bootstrap', {
-            tenant_name: 'My Shop',
-            tenant_slug: TEST_TENANT,
-            owner_email: TEST_EMAIL,
-            owner_full_name: 'Admin',
-            owner_password: TEST_PASSWORD,
-          })
-        } catch {
-          // Ignore bootstrap conflicts/disabled state and try login regardless.
-        }
-
-        try {
-          const loginResp = await postJson<{ access_token: string }>('/v1/auth/login', {
-            tenant_slug: TEST_TENANT,
-            email: TEST_EMAIL,
-            password: TEST_PASSWORD,
-          })
-          if (!canceled && loginResp.access_token) {
-            localStorage.setItem('token', loginResp.access_token)
-            setToken(loginResp.access_token)
-          }
-        } catch {
-          // Leave unauthenticated if setup fails.
-        }
+        // Leave unauthenticated if setup fails.
+        localStorage.removeItem('token')
+        if (!canceled) setToken(null)
       } finally {
         if (!canceled) setInitializing(false)
       }
@@ -87,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       canceled = true
     }
-  }, [token])
+  }, [])
 
   function login(t: string) {
     localStorage.setItem('token', t)
