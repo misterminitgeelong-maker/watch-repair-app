@@ -66,10 +66,25 @@ def _normalize_phone(raw: str) -> str | None:
 def _dollars_to_cents(raw: str) -> int:
     if not raw or not raw.strip():
         return 0
-    try:
-        return int(round(float(raw.strip()) * 100))
-    except ValueError:
+    s = raw.strip().lower()
+    if any(token in s for token in ["n/c", "nc", "quote"]):
         return 0
+
+    # Handles values like "2x69.95" or "2 x $49.95 - 10%"
+    m = re.search(r"(\d+)\s*x\s*\$?\s*(\d+(?:\.\d+)?)", s)
+    if m:
+        qty = int(m.group(1))
+        unit = float(m.group(2))
+        total = qty * unit
+        discount = re.search(r"-\s*(\d+(?:\.\d+)?)\s*%", s)
+        if discount:
+            total *= 1 - (float(discount.group(1)) / 100)
+        return int(round(total * 100))
+
+    numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", s)]
+    if not numbers:
+        return 0
+    return int(round(numbers[0] * 100))
 
 
 def _clean_name(raw: str) -> str | None:
@@ -105,6 +120,23 @@ def _get_first(row: dict[str, str], keys: list[str]) -> str:
         if value is not None and str(value).strip():
             return str(value).strip()
     return ""
+
+
+def _normalize_key(key: str) -> str:
+    k = (key or "").strip().lower()
+    k = re.sub(r"[^a-z0-9]+", "_", k)
+    return k.strip("_")
+
+
+def _normalize_row_keys(row: dict[str, str]) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    for key, value in row.items():
+        normalized[_normalize_key(key)] = (value or "").strip()
+
+    # The true source file has a blank first header containing original job IDs.
+    if "original_job_id" not in normalized and row.get(""):
+        normalized["original_job_id"] = (row.get("") or "").strip()
+    return normalized
 
 
 _STATUS_MAP = {
@@ -174,15 +206,16 @@ async def import_csv(
     job_seq = 0
 
     for row in rows:
+        row = _normalize_row_keys(row)
         original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
         team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
         customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
         date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
         brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
-        phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone"])
+        phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone", "number"])
         quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
         cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
-        status_raw = _get_first(row, ["status", "job_status", "repair_status", "state"])
+        status_raw = _get_first(row, ["status", "job_status", "repair_status", "state", "ga_ng_collected"])
         notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
 
         customer_name = _clean_name(customer_name_raw)
