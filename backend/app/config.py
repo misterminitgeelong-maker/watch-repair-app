@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     allow_public_bootstrap: bool = True
 
+    # One-time startup data seeding (for single-shop bootstrap)
+    startup_seed_enabled: bool = True
+    startup_seed_csv_path: str = "seed/repairs_import.csv"
+    startup_seed_tenant_slug: str = "myshop"
+    startup_seed_tenant_name: str = "My Shop"
+    startup_seed_owner_email: str = "admin@admin.com"
+    startup_seed_owner_password: str = "Admin"
+
     # Twilio SMS — leave blank to disable SMS (dry-run / log-only mode)
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

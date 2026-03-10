@@ -5,9 +5,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
 from .config import settings
-from .database import create_db_and_tables
+from .database import create_db_and_tables, engine
 from .routes.auth import router as auth_router
 from .routes.customers import router as customer_router
 from .routes.repair_jobs import router as repair_job_router
@@ -16,11 +17,14 @@ from .routes.invoices import router as invoice_router
 from .routes.work_logs import router as work_log_router
 from .routes.attachments import router as attachment_router
 from .routes.csv_import import router as csv_import_router
+from .startup_seed import seed_from_csv_if_empty
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    with Session(engine) as session:
+        seed_from_csv_if_empty(session)
     yield
 
 
