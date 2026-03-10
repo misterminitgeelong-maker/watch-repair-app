@@ -8,6 +8,8 @@ from ..models import (
     LoginRequest,
     PublicUser,
     RepairJob,
+    TenantSignupRequest,
+    TenantSignupResponse,
     Tenant,
     TenantBootstrap,
     TokenResponse,
@@ -16,6 +18,31 @@ from ..models import (
 from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+
+
+def _normalize_email(value: str) -> str:
+    return value.strip().lower()
+
+
+def _normalize_slug(value: str) -> str:
+    return value.strip().lower()
+
+
+def _validate_password_strength(value: str) -> None:
+    password = value or ""
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+
+def _build_public_user(user: User) -> PublicUser:
+    return PublicUser(
+        id=user.id,
+        tenant_id=user.tenant_id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        is_active=user.is_active,
+    )
 
 
 def _create_default_owner(session: Session, tenant: Tenant) -> User:
@@ -33,23 +60,74 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
     return owner
 
 
-@router.post("/bootstrap", response_model=BootstrapResponse)
-def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_session)):
-    if not settings.allow_public_bootstrap:
-        raise HTTPException(status_code=403, detail="Bootstrap is disabled")
+@router.post("/signup", response_model=TenantSignupResponse)
+def signup(payload: TenantSignupRequest, session: Session = Depends(get_session)):
+    tenant_slug = _normalize_slug(payload.tenant_slug)
+    owner_email = _normalize_email(payload.email)
+    owner_name = payload.full_name.strip()
+    tenant_name = payload.tenant_name.strip()
 
-    existing_tenant = session.exec(select(Tenant).where(Tenant.slug == payload.tenant_slug)).first()
+    if not tenant_slug:
+        raise HTTPException(status_code=400, detail="Tenant slug is required")
+    if not tenant_name:
+        raise HTTPException(status_code=400, detail="Tenant name is required")
+    if not owner_name:
+        raise HTTPException(status_code=400, detail="Full name is required")
+    if not owner_email or "@" not in owner_email:
+        raise HTTPException(status_code=400, detail="A valid email is required")
+
+    _validate_password_strength(payload.password)
+
+    existing_tenant = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
 
-    tenant = Tenant(name=payload.tenant_name, slug=payload.tenant_slug)
+    tenant = Tenant(name=tenant_name, slug=tenant_slug)
     session.add(tenant)
     session.flush()
 
     owner = User(
         tenant_id=tenant.id,
-        email=payload.owner_email,
-        full_name=payload.owner_full_name,
+        email=owner_email,
+        full_name=owner_name,
+        role="owner",
+        password_hash=hash_password(payload.password),
+    )
+    session.add(owner)
+    session.commit()
+    session.refresh(owner)
+
+    token_subject = f"{tenant.id}:{owner.id}:{owner.role}"
+    token, expires = create_access_token(token_subject)
+    return TenantSignupResponse(
+        tenant_id=tenant.id,
+        user=_build_public_user(owner),
+        access_token=token,
+        expires_in_seconds=expires,
+    )
+
+
+@router.post("/bootstrap", response_model=BootstrapResponse)
+def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_session)):
+    if not settings.allow_public_bootstrap:
+        raise HTTPException(status_code=403, detail="Bootstrap is disabled")
+
+    tenant_slug = _normalize_slug(payload.tenant_slug)
+    owner_email = _normalize_email(payload.owner_email)
+    _validate_password_strength(payload.owner_password)
+
+    existing_tenant = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
+    if existing_tenant:
+        raise HTTPException(status_code=409, detail="Tenant slug already exists")
+
+    tenant = Tenant(name=payload.tenant_name.strip(), slug=tenant_slug)
+    session.add(tenant)
+    session.flush()
+
+    owner = User(
+        tenant_id=tenant.id,
+        email=owner_email,
+        full_name=payload.owner_full_name.strip(),
         role="owner",
         password_hash=hash_password(payload.owner_password),
     )
@@ -57,27 +135,17 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_se
     session.commit()
     session.refresh(owner)
 
-    return BootstrapResponse(
-        tenant_id=tenant.id,
-        owner_user=PublicUser(
-            id=owner.id,
-            tenant_id=owner.tenant_id,
-            email=owner.email,
-            full_name=owner.full_name,
-            role=owner.role,
-            is_active=owner.is_active,
-        ),
-    )
+    return BootstrapResponse(tenant_id=tenant.id, owner_user=_build_public_user(owner))
 
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, session: Session = Depends(get_session)):
-    tenant = session.exec(select(Tenant).where(Tenant.slug == payload.tenant_slug)).first()
+    tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     user = session.exec(
-        select(User).where(User.tenant_id == tenant.id).where(User.email == payload.email)
+        select(User).where(User.tenant_id == tenant.id).where(User.email == _normalize_email(payload.email))
     ).first()
 
     if not user or not user.is_active or not verify_password(payload.password, user.password_hash):
@@ -90,7 +158,7 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
 
 @router.post("/dev-auto-login", response_model=TokenResponse)
 def dev_auto_login(session: Session = Depends(get_session)):
-    if not settings.allow_public_bootstrap:
+    if settings.app_env.lower() == "production" or not settings.allow_dev_auto_login:
         raise HTTPException(status_code=403, detail="Dev auto-login is disabled")
 
     tenants = session.exec(select(Tenant)).all()

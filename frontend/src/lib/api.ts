@@ -27,6 +27,28 @@ export interface TokenResponse { access_token: string; token_type: string }
 export const login = (tenant_slug: string, email: string, password: string) =>
   api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
 
+export interface SignupResponse {
+  tenant_id: string
+  user: {
+    id: string
+    tenant_id: string
+    email: string
+    full_name: string
+    role: string
+    is_active: boolean
+  }
+  access_token: string
+  token_type: string
+  expires_in_seconds: number
+}
+export const signup = (data: {
+  tenant_name: string
+  tenant_slug: string
+  email: string
+  full_name: string
+  password: string
+}) => api.post<SignupResponse>('/auth/signup', data)
+
 export const bootstrap = (data: { tenant_name: string; tenant_slug: string; owner_email: string; owner_password: string; owner_full_name?: string }) =>
   api.post('/auth/bootstrap', data)
 
@@ -57,15 +79,43 @@ export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>
 export type JobStatus = 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string
-  job_number: string; title: string; description?: string; priority: string
-  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; cost_cents: number; created_at: string
+  job_number: string; status_token: string; title: string; description?: string; priority: string
+  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
 export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
-export const createJob = (data: Omit<RepairJob, 'id' | 'tenant_id' | 'job_number' | 'created_at'>) =>
+export interface RepairJobCreatePayload {
+  watch_id: string
+  assigned_user_id?: string
+  title: string
+  description?: string
+  priority: string
+  status: JobStatus
+  salesperson?: string
+  collection_date?: string
+  deposit_cents: number
+  pre_quote_cents: number
+  cost_cents: number
+}
+export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
+
+export const quickStatusAction = (id: string, status: JobStatus, note?: string) =>
+  api.post<RepairJob>(`/repair-jobs/${id}/quick-status`, { status, note })
+
+export interface IntakePayload {
+  intake_notes?: string
+  pre_quote_cents: number
+  has_scratches: boolean
+  has_dents: boolean
+  has_cracked_crystal: boolean
+  crown_missing: boolean
+  strap_damage: boolean
+}
+export const submitJobIntake = (id: string, payload: IntakePayload) =>
+  api.post<RepairJob>(`/repair-jobs/${id}/intake`, payload)
 
 // ── Quotes ────────────────────────────────────────────────────────────────────
 export type QuoteStatus = 'draft' | 'sent' | 'approved' | 'declined' | 'expired'
@@ -90,6 +140,32 @@ export const getPublicQuote = (token: string) =>
   axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(`/v1/public/quotes/${token}`)
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined') =>
   axios.post(`/v1/public/quotes/${token}/decision`, { decision })
+
+export interface PublicJobStatus {
+  job_number: string
+  status: string
+  title: string
+  description?: string
+  priority: string
+  pre_quote_cents: number
+  created_at: string
+  watch: {
+    brand?: string
+    model?: string
+    serial_number?: string
+  }
+  history: Array<{
+    old_status?: string
+    new_status: string
+    change_note?: string
+    created_at: string
+  }>
+}
+export const getPublicJobStatus = (token: string) =>
+  axios.get<PublicJobStatus>(`/v1/public/jobs/${token}`)
+
+export const getPublicJobQrUrl = (token: string) =>
+  `/v1/public/jobs/${token}/qr`
 
 // ── Work Logs ─────────────────────────────────────────────────────────────────
 export interface WorkLog {
@@ -142,7 +218,9 @@ export const recordPayment = (invoiceId: string, amount_cents: number) =>
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 export interface CsvImportResult {
+  import_id: string
   imported: number; skipped: number; customers_created: number; total_rows: number
+  skipped_reasons: Record<string, number>
 }
 export const importCsv = (file: File) => {
   const form = new FormData()

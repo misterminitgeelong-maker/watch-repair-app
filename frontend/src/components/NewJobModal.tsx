@@ -60,7 +60,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [createdWatchId, setCreatedWatchId] = useState('')
 
   // Step 3 – Job
-  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '' })
+  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
 
   // Step 4 – Watch Photos
   const [frontPhoto, setFrontPhoto] = useState<File | null>(null)
@@ -156,6 +156,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         salesperson: job.salesperson || undefined,
         collection_date: job.collection_date || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
+        pre_quote_cents: job.pre_quote_cents ? Math.round(parseFloat(job.pre_quote_cents) * 100) : 0,
         cost_cents: 0,
       })
       // Upload the two watch photos
@@ -313,6 +314,15 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             step="0.01"
             value={job.deposit_cents}
             onChange={setJ('deposit_cents')}
+            placeholder="0.00"
+          />
+          <Input
+            label="Pre-Quote ($)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={job.pre_quote_cents}
+            onChange={setJ('pre_quote_cents')}
             placeholder="0.00"
           />
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}

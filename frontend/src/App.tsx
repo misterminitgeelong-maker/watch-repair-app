@@ -13,6 +13,9 @@ import ApprovePage from '@/pages/ApprovePage'
 import PrintInvoicePage from '@/pages/PrintInvoicePage'
 import DatabasePage from '@/pages/DatabasePage'
 import ReportsPage from '@/pages/ReportsPage'
+import LoginPage from '@/pages/LoginPage'
+import SignupPage from '@/pages/SignupPage'
+import StatusPage from '@/pages/StatusPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -26,9 +29,11 @@ export default function App() {
           <Routes>
             {/* Public — no auth required */}
             <Route path="/approve/:token" element={<ApprovePage />} />
+            <Route path="/status/:token" element={<StatusPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
-              <Route path="login" element={<Navigate to="/" replace />} />
               <Route index element={<DashboardPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailPage />} />

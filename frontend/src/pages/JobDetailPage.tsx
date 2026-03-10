@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera } from 'lucide-react'
 import {
-  getJob, updateJobStatus, listQuotes,
+  getJob, quickStatusAction, updateJobStatus, listQuotes,
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
   getStatusHistory,
@@ -107,6 +107,14 @@ export default function JobDetailPage() {
   const [tab, setTab] = useState<Tab>('details')
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
+  const quickStatusMutation = useMutation({
+    mutationFn: ({ status, note }: { status: JobStatus; note?: string }) => quickStatusAction(id!, status, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job', id] })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      qc.invalidateQueries({ queryKey: ['history', id] })
+    },
+  })
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -174,8 +182,35 @@ export default function JobDetailPage() {
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
         <span style={{ color: 'var(--cafe-text-muted)' }}>Status: <Badge status={job.status} /></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Priority: <span className="font-medium capitalize" style={{ color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--cafe-text)' }}>{job.priority}</span></span>
+        <span style={{ color: 'var(--cafe-text-muted)' }}>Pre-quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Created: <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span></span>
       </div>
+
+      <Card className="p-4 mb-5">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => quickStatusMutation.mutate({ status: 'working_on', note: 'Quick action: started work' })}
+            disabled={quickStatusMutation.isPending}
+          >
+            Start Work
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_parts', note: 'Quick action: awaiting parts' })}
+            disabled={quickStatusMutation.isPending}
+          >
+            Awaiting Parts
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_collection', note: 'Quick action: ready for collection' })}
+            disabled={quickStatusMutation.isPending}
+          >
+            Ready for Collection
+          </Button>
+        </div>
+      </Card>
 
       {/* Tabs */}
       <div className="flex gap-0.5 mb-6" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
@@ -209,6 +244,7 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
+              {job.pre_quote_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Pre-Quote</span><span className="font-medium" style={{ color: '#9B7228' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></div>}
             </div>
 
             {/* Intake Photos */}

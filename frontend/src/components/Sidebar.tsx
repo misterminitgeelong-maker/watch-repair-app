@@ -38,13 +38,13 @@ export default function Sidebar() {
               className="text-[15px] font-semibold leading-tight tracking-tight"
               style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#F5E8CA' }}
             >
-              WatchRepair
+              Mainspring
             </p>
             <p
               className="text-[10px] tracking-[0.18em] uppercase mt-0.5"
               style={{ color: '#7A5038' }}
             >
-              Atelier
+              Repair OS
             </p>
           </div>
         </div>

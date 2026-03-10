@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { WatchIcon } from 'lucide-react'
 import { login } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -51,13 +51,13 @@ export default function LoginPage() {
               className="text-3xl font-semibold"
               style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
             >
-              WatchRepair
+              Mainspring
             </h1>
             <p
               className="text-xs tracking-[0.22em] uppercase mt-1"
               style={{ color: 'var(--cafe-text-muted)' }}
             >
-              Atelier
+              Repair OS
             </p>
           </div>
         </div>
@@ -111,6 +111,13 @@ export default function LoginPage() {
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
+
+          <p className="text-sm text-center" style={{ color: 'var(--cafe-text-mid)' }}>
+            New here?{' '}
+            <Link to="/signup" className="underline" style={{ color: 'var(--cafe-espresso)' }}>
+              Create your shop account
+            </Link>
+          </p>
         </div>
       </div>
     </div>

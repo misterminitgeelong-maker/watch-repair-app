@@ -7,14 +7,17 @@ import csv
 import io
 import re
 from datetime import date, datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
+import openpyxl
+import xlrd
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import Customer, Quote, RepairJob, Watch
+from ..models import Customer, ImportLog, ImportLogDetail, ImportSummaryResponse, Quote, RepairJob, Watch
 
 router = APIRouter(prefix="/v1/import", tags=["import"])
 
@@ -139,6 +142,66 @@ def _normalize_row_keys(row: dict[str, str]) -> dict[str, str]:
     return normalized
 
 
+def _to_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value).strip()
+
+
+def _load_csv_rows(raw_bytes: bytes) -> list[dict[str, str]]:
+    try:
+        text = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("latin-1")
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
+    workbook = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True)
+    sheet = workbook.active
+    all_rows = list(sheet.iter_rows(values_only=True))
+    if not all_rows:
+        return []
+
+    header = [_to_text(value) for value in all_rows[0]]
+    return [
+        {header[idx]: _to_text(value) for idx, value in enumerate(row)}
+        for row in all_rows[1:]
+        if any(_to_text(cell) for cell in row)
+    ]
+
+
+def _load_xls_rows(raw_bytes: bytes) -> list[dict[str, str]]:
+    workbook = xlrd.open_workbook(file_contents=raw_bytes)
+    sheet = workbook.sheet_by_index(0)
+    if sheet.nrows == 0:
+        return []
+
+    header = [_to_text(sheet.cell_value(0, col)) for col in range(sheet.ncols)]
+    output: list[dict[str, str]] = []
+    for row_idx in range(1, sheet.nrows):
+        row_values = [_to_text(sheet.cell_value(row_idx, col)) for col in range(sheet.ncols)]
+        if not any(row_values):
+            continue
+        output.append({header[idx]: value for idx, value in enumerate(row_values)})
+    return output
+
+
+def _load_rows(filename: str, raw_bytes: bytes) -> tuple[list[dict[str, str]], str]:
+    ext = Path(filename).suffix.lower()
+    if ext == ".csv":
+        return _load_csv_rows(raw_bytes), "csv"
+    if ext in {".xlsx", ".xlsm"}:
+        return _load_xlsx_rows(raw_bytes), "xlsx"
+    if ext == ".xls":
+        return _load_xls_rows(raw_bytes), "xls"
+    raise HTTPException(status_code=400, detail="Only .csv, .xlsx, and .xls files are accepted.")
+
+
 _STATUS_MAP = {
     "collected": "collected",
     "in_repair": "working_on",
@@ -179,126 +242,164 @@ def _infer_job_status(status_raw: str, notes_raw: str) -> str:
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
 
-@router.post("/csv")
+@router.post("/csv", response_model=ImportSummaryResponse)
 async def import_csv(
     file: UploadFile = File(...),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only .csv files are accepted.")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File name is required")
 
     raw_bytes = await file.read()
-    try:
-        text = raw_bytes.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw_bytes.decode("latin-1")
-
-    reader = csv.DictReader(io.StringIO(text))
-    rows = list(reader)
+    rows, file_type = _load_rows(file.filename, raw_bytes)
     if not rows:
-        raise HTTPException(status_code=400, detail="CSV file is empty.")
+        raise HTTPException(status_code=400, detail="Import file is empty.")
 
     tenant_id = auth.tenant_id
+    import_log = ImportLog(
+        tenant_id=tenant_id,
+        uploaded_by_user_id=auth.user_id,
+        file_name=file.filename,
+        file_type=file_type,
+        total_rows=len(rows),
+    )
+    session.add(import_log)
+    session.commit()
+    session.refresh(import_log)
+
     customer_cache: dict[tuple[str, str | None], Customer] = {}
     imported = 0
     skipped = 0
     job_seq = 0
+    skipped_reasons: dict[str, int] = {}
 
-    for row in rows:
-        row = _normalize_row_keys(row)
-        original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
-        team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
-        customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
-        date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
-        brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
-        phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone", "number"])
-        quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
-        cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
-        status_raw = _get_first(row, ["status", "job_status", "repair_status", "state", "ga_ng_collected"])
-        notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
+    def log_skip(row_number: int, reason: str) -> None:
+        nonlocal skipped
+        skipped += 1
+        skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
+        session.add(ImportLogDetail(import_log_id=import_log.id, row_number=row_number, skip_reason=reason))
 
-        customer_name = _clean_name(customer_name_raw)
-        if not customer_name:
-            customer_name = _clean_name(original_job_id)
+    try:
+        for idx, row in enumerate(rows, start=1):
+            row = _normalize_row_keys(row)
+            original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
+            team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
+            customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
+            date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
+            brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
+            phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone", "number"])
+            quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
+            cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
+            status_raw = _get_first(row, ["status", "job_status", "repair_status", "state", "ga_ng_collected"])
+            notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
+
+            customer_name = _clean_name(customer_name_raw)
             if not customer_name:
-                has_meaningful_data = any([brand_case, phone_raw, quote_raw, status_raw, notes_raw, original_job_id])
-                if not has_meaningful_data:
-                    skipped += 1
-                    continue
-                customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
+                customer_name = _clean_name(original_job_id)
+                if not customer_name:
+                    has_meaningful_data = any([brand_case, phone_raw, quote_raw, status_raw, notes_raw, original_job_id])
+                    if not has_meaningful_data:
+                        log_skip(idx, "empty_row")
+                        continue
+                    customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
 
-        phone = _normalize_phone(phone_raw)
-        date_in = _parse_date(date_in_raw)
-        status = _infer_job_status(status_raw, notes_raw)
-        quote_cents = _dollars_to_cents(quote_raw)
-        cost_cents = _dollars_to_cents(cost_raw)
+            phone = _normalize_phone(phone_raw)
+            date_in = _parse_date(date_in_raw)
+            status = _infer_job_status(status_raw, notes_raw)
+            quote_cents = _dollars_to_cents(quote_raw)
+            cost_cents = _dollars_to_cents(cost_raw)
 
-        # Customer dedup
-        cache_key = (customer_name.lower(), phone)
-        if cache_key in customer_cache:
-            customer = customer_cache[cache_key]
-        else:
-            customer = Customer(tenant_id=tenant_id, full_name=customer_name, phone=phone)
-            session.add(customer)
+            cache_key = (customer_name.lower(), phone)
+            created_customer_id = None
+            if cache_key in customer_cache:
+                customer = customer_cache[cache_key]
+            else:
+                customer = Customer(tenant_id=tenant_id, full_name=customer_name, phone=phone)
+                session.add(customer)
+                session.flush()
+                customer_cache[cache_key] = customer
+                created_customer_id = customer.id
+
+            watch = Watch(tenant_id=tenant_id, customer_id=customer.id, brand=brand_case or None)
+            session.add(watch)
             session.flush()
-            customer_cache[cache_key] = customer
 
-        # Watch
-        watch = Watch(tenant_id=tenant_id, customer_id=customer.id, brand=brand_case or None)
-        session.add(watch)
-        session.flush()
+            job_seq += 1
+            if original_job_id and re.match(r"^\d+", original_job_id):
+                job_number = f"IMP-{original_job_id}"
+            else:
+                job_number = f"IMP-{job_seq:05d}"
 
-        # Job
-        job_seq += 1
-        if original_job_id and re.match(r"^\d+", original_job_id):
-            job_number = f"IMP-{original_job_id}"
-        else:
-            job_number = f"IMP-{job_seq:05d}"
+            title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
+            created_at = (
+                datetime(date_in.year, date_in.month, date_in.day, tzinfo=timezone.utc)
+                if date_in
+                else datetime.now(timezone.utc)
+            )
 
-        title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
-        created_at = (
-            datetime(date_in.year, date_in.month, date_in.day, tzinfo=timezone.utc)
-            if date_in
-            else datetime.now(timezone.utc)
-        )
-
-        job = RepairJob(
-            tenant_id=tenant_id,
-            watch_id=watch.id,
-            job_number=job_number,
-            title=title,
-            description=notes_raw or None,
-            priority="normal",
-            status=status,
-            salesperson=team_member or None,
-            deposit_cents=0,
-            cost_cents=cost_cents,
-            created_at=created_at,
-        )
-        session.add(job)
-        session.flush()
-
-        if quote_cents > 0:
-            quote_status = "approved" if status in {"completed", "awaiting_collection", "collected"} else "sent"
-            session.add(Quote(
+            job = RepairJob(
                 tenant_id=tenant_id,
-                repair_job_id=job.id,
-                status=quote_status,
-                subtotal_cents=quote_cents,
-                tax_cents=0,
-                total_cents=quote_cents,
-                currency="AUD",
+                watch_id=watch.id,
+                job_number=job_number,
+                title=title,
+                description=notes_raw or None,
+                priority="normal",
+                status=status,
+                salesperson=team_member or None,
+                deposit_cents=0,
+                cost_cents=cost_cents,
                 created_at=created_at,
-            ))
+            )
+            session.add(job)
+            session.flush()
 
-        imported += 1
+            if quote_cents > 0:
+                quote_status = "approved" if status in {"completed", "awaiting_collection", "collected"} else "sent"
+                session.add(Quote(
+                    tenant_id=tenant_id,
+                    repair_job_id=job.id,
+                    status=quote_status,
+                    subtotal_cents=quote_cents,
+                    tax_cents=0,
+                    total_cents=quote_cents,
+                    currency="AUD",
+                    created_at=created_at,
+                ))
 
-    session.commit()
+            session.add(
+                ImportLogDetail(
+                    import_log_id=import_log.id,
+                    row_number=idx,
+                    created_repair_job_id=job.id,
+                    created_customer_id=created_customer_id,
+                )
+            )
 
-    return {
-        "imported": imported,
-        "skipped": skipped,
-        "customers_created": len(customer_cache),
-        "total_rows": len(rows),
-    }
+            imported += 1
+
+        import_log.imported_count = imported
+        import_log.skipped_count = skipped
+        import_log.customers_created_count = len(customer_cache)
+        import_log.status = "completed"
+        session.add(import_log)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        import_log.status = "failed"
+        import_log.error_message = str(exc)
+        import_log.imported_count = imported
+        import_log.skipped_count = skipped
+        import_log.customers_created_count = len(customer_cache)
+        session.add(import_log)
+        session.commit()
+        raise
+
+    return ImportSummaryResponse(
+        import_id=import_log.id,
+        imported=imported,
+        skipped=skipped,
+        customers_created=len(customer_cache),
+        total_rows=len(rows),
+        skipped_reasons=skipped_reasons,
+    )

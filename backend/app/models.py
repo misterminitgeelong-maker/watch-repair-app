@@ -70,6 +70,7 @@ class RepairJob(SQLModel, table=True):
     watch_id: UUID = Field(index=True, foreign_key="watch.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     job_number: str = Field(index=True)
+    status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     title: str
     description: Optional[str] = None
     priority: str = "normal"
@@ -77,6 +78,7 @@ class RepairJob(SQLModel, table=True):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
+    pre_quote_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -194,12 +196,45 @@ class SmsLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ImportLog(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    file_name: str
+    file_type: str
+    total_rows: int = 0
+    imported_count: int = 0
+    skipped_count: int = 0
+    customers_created_count: int = 0
+    status: str = "processing"  # "processing" | "completed" | "failed"
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ImportLogDetail(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    import_log_id: UUID = Field(index=True, foreign_key="importlog.id")
+    row_number: int
+    skip_reason: Optional[str] = None
+    created_repair_job_id: Optional[UUID] = Field(default=None, foreign_key="repairjob.id")
+    created_customer_id: Optional[UUID] = Field(default=None, foreign_key="customer.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class TenantBootstrap(SQLModel):
     tenant_name: str
     tenant_slug: str
     owner_email: str
     owner_full_name: str
     owner_password: str
+
+
+class TenantSignupRequest(SQLModel):
+    tenant_name: str
+    tenant_slug: str
+    email: str
+    full_name: str
+    password: str
 
 
 class LoginRequest(SQLModel):
@@ -226,6 +261,23 @@ class PublicUser(SQLModel):
 class BootstrapResponse(SQLModel):
     tenant_id: UUID
     owner_user: PublicUser
+
+
+class TenantSignupResponse(SQLModel):
+    tenant_id: UUID
+    user: PublicUser
+    access_token: str
+    token_type: str = "bearer"
+    expires_in_seconds: int
+
+
+class ImportSummaryResponse(SQLModel):
+    import_id: UUID
+    imported: int
+    skipped: int
+    customers_created: int
+    total_rows: int
+    skipped_reasons: dict[str, int] = Field(default_factory=dict)
 
 
 class CustomerCreate(SQLModel):
@@ -276,6 +328,7 @@ class RepairJobCreate(SQLModel):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
+    pre_quote_cents: int = 0
     cost_cents: int = 0
 
 
@@ -285,6 +338,7 @@ class RepairJobRead(SQLModel):
     watch_id: UUID
     assigned_user_id: Optional[UUID] = None
     job_number: str
+    status_token: str
     title: str
     description: Optional[str] = None
     priority: Literal["low", "normal", "high", "urgent"]
@@ -292,6 +346,7 @@ class RepairJobRead(SQLModel):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int
+    pre_quote_cents: int
     cost_cents: int
     created_at: datetime
 
@@ -299,6 +354,16 @@ class RepairJobRead(SQLModel):
 class RepairJobStatusUpdate(SQLModel):
     status: JobStatus
     note: Optional[str] = None
+
+
+class RepairJobIntakeUpdate(SQLModel):
+    intake_notes: Optional[str] = None
+    pre_quote_cents: int = 0
+    has_scratches: bool = False
+    has_dents: bool = False
+    has_cracked_crystal: bool = False
+    crown_missing: bool = False
+    strap_damage: bool = False
 
 
 class JobStatusHistoryRead(SQLModel):

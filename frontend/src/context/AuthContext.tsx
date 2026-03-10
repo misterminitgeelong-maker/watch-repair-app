@@ -28,11 +28,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
+    if (token) {
+      setInitializing(false)
+      return
+    }
+
+    const enableDevAutoLogin =
+      import.meta.env.DEV && String(import.meta.env.VITE_ENABLE_DEV_AUTO_LOGIN ?? 'false') === 'true'
+
+    if (!enableDevAutoLogin) {
+      setInitializing(false)
+      return
+    }
+
     let canceled = false
 
     async function ensureTestSession() {
       try {
-        // Dev helper endpoint selects the tenant with existing jobs and returns a valid token.
+        // Optional dev helper for local demos and seeded datasets.
         const loginResp = await postJson<{ access_token: string }>('/v1/auth/dev-auto-login', {})
         if (!canceled && loginResp.access_token) {
           localStorage.setItem('token', loginResp.access_token)
@@ -51,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       canceled = true
     }
-  }, [])
+  }, [token])
 
   function login(t: string) {
     localStorage.setItem('token', t)

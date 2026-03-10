@@ -108,6 +108,7 @@ def notify_job_status_changed(
     customer_name: str,
     to_phone: str,
     job_number: str,
+    status_token: str,
     new_status: str,
     shop_name: str = "your watch repair shop",
 ) -> None:
@@ -143,6 +144,8 @@ def notify_job_status_changed(
     if not body:
         # No notification for diagnosis, qc, cancelled, etc.
         return
+
+    body = f"{body} Track live status: {settings.public_base_url}/status/{status_token}"
 
     sid = _send_sms(to_phone, body)
     _persist(

@@ -11,8 +11,10 @@ from ..models import (
     JobStatusHistoryRead,
     RepairJob,
     RepairJobCreate,
+    RepairJobIntakeUpdate,
     RepairJobRead,
     RepairJobStatusUpdate,
+    WorkLog,
     Watch,
 )
 from .. import sms
@@ -118,7 +120,109 @@ def update_repair_job_status(
                 customer_name=customer.full_name,
                 to_phone=customer.phone,
                 job_number=job.job_number,
+                status_token=job.status_token,
                 new_status=job.status,
+            )
+
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+@router.post("/{job_id}/quick-status", response_model=RepairJobRead)
+def quick_status_action(
+    job_id: UUID,
+    payload: RepairJobStatusUpdate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    # Reuse the full status update behavior, including history and SMS.
+    return update_repair_job_status(job_id=job_id, payload=payload, auth=auth, session=session)
+
+
+@router.post("/{job_id}/intake", response_model=RepairJobRead)
+def submit_job_intake(
+    job_id: UUID,
+    payload: RepairJobIntakeUpdate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    job = session.get(RepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    checklist: list[str] = []
+    if payload.has_scratches:
+        checklist.append("scratches")
+    if payload.has_dents:
+        checklist.append("dents")
+    if payload.has_cracked_crystal:
+        checklist.append("cracked crystal")
+    if payload.crown_missing:
+        checklist.append("crown missing")
+    if payload.strap_damage:
+        checklist.append("strap damage")
+
+    note_parts: list[str] = ["Ticket-in completed"]
+    if checklist:
+        note_parts.append(f"Condition: {', '.join(checklist)}")
+    if payload.intake_notes and payload.intake_notes.strip():
+        note_parts.append(payload.intake_notes.strip())
+    if payload.pre_quote_cents > 0:
+        note_parts.append(f"Pre-quote: ${(payload.pre_quote_cents / 100):.2f}")
+    intake_note = " | ".join(note_parts)
+
+    previous_status = job.status
+    if job.status == "no_go":
+        raise HTTPException(status_code=400, detail="Cannot ticket-in a cancelled/no-go job")
+
+    if job.status == "awaiting_go_ahead":
+        next_status = "go_ahead"
+    else:
+        next_status = job.status
+
+    job.status = next_status
+    job.pre_quote_cents = max(payload.pre_quote_cents, 0)
+    if payload.intake_notes and payload.intake_notes.strip():
+        existing_description = (job.description or "").strip()
+        appended = f"Intake notes: {payload.intake_notes.strip()}"
+        job.description = f"{existing_description}\n\n{appended}" if existing_description else appended
+    session.add(job)
+
+    session.add(
+        JobStatusHistory(
+            tenant_id=auth.tenant_id,
+            repair_job_id=job.id,
+            old_status=previous_status,
+            new_status=job.status,
+            changed_by_user_id=auth.user_id,
+            change_note=intake_note,
+        )
+    )
+
+    session.add(
+        WorkLog(
+            tenant_id=auth.tenant_id,
+            repair_job_id=job.id,
+            user_id=auth.user_id,
+            note=intake_note,
+            minutes_spent=0,
+        )
+    )
+
+    watch = session.get(Watch, job.watch_id)
+    if watch:
+        customer = session.get(Customer, watch.customer_id)
+        if customer and customer.phone:
+            sms.notify_job_status_changed(
+                session,
+                tenant_id=auth.tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name,
+                to_phone=customer.phone,
+                job_number=job.job_number,
+                status_token=job.status_token,
+                new_status="awaiting_go_ahead",
             )
 
     session.commit()

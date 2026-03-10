@@ -31,10 +31,12 @@ RUN mkdir -p /app/uploads /app/data
 # Environment defaults (override at deploy time)
 ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
     STATIC_DIR="/app/static" \
+    APP_ENV="production" \
     JWT_SECRET="change-me-in-production" \
-    CORS_ORIGINS="*" \
-    PUBLIC_BASE_URL="https://your-domain.com"
+    ALLOW_DEV_AUTO_LOGIN="false" \
+    CORS_ORIGINS="https://mainspring.au,https://www.mainspring.au" \
+    PUBLIC_BASE_URL="https://mainspring.au"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["bash", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]

@@ -40,16 +40,16 @@ export default function DatabasePage() {
       <PageHeader title="Database" />
 
       <div className="max-w-2xl space-y-6">
-        {/* CSV Import Card */}
+        {/* File Import Card */}
         <Card className="p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#F5E8CC' }}>
               <FileSpreadsheet size={20} style={{ color: 'var(--cafe-gold-dark)' }} />
             </div>
             <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>Import CSV</h2>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>Import Data File</h2>
               <p className="text-sm mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                Upload a CSV file to bulk-import historical repair records. The file should include columns like{' '}
+                Upload a CSV or Excel file to bulk-import historical repair records. The file should include columns like{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer_name</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone_number</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_in</code>,{' '}
@@ -67,7 +67,7 @@ export default function DatabasePage() {
           </div>
 
           {/* Drop zone */}
-          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
           <button
             onClick={() => fileRef.current?.click()}
             className="w-full border-2 border-dashed rounded-lg p-8 transition-colors text-center"
@@ -84,7 +84,7 @@ export default function DatabasePage() {
             ) : (
               <div className="flex flex-col items-center gap-2" style={{ color: 'var(--cafe-text-muted)' }}>
                 <Upload size={32} />
-                <p className="text-sm font-medium">Click to select a CSV file</p>
+                <p className="text-sm font-medium">Click to select a CSV or Excel file</p>
                 <p className="text-xs">or drag and drop</p>
               </div>
             )}
@@ -94,7 +94,7 @@ export default function DatabasePage() {
           <div className="flex justify-end mt-4">
             <Button onClick={handleImport} disabled={!file || uploading}>
               <Upload size={15} />
-              {uploading ? 'Importing…' : 'Import CSV'}
+              {uploading ? 'Importing…' : 'Import file'}
             </Button>
           </div>
         </Card>
@@ -107,6 +107,8 @@ export default function DatabasePage() {
               <div>
                 <h3 className="text-sm font-semibold text-green-800">Import Complete</h3>
                 <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                  <span className="text-green-700">Import ID:</span>
+                  <span className="font-medium text-green-900 break-all">{result.import_id}</span>
                   <span className="text-green-700">Total rows:</span>
                   <span className="font-medium text-green-900">{result.total_rows}</span>
                   <span className="text-green-700">Imported:</span>
@@ -116,6 +118,16 @@ export default function DatabasePage() {
                   <span className="text-green-700">Customers created:</span>
                   <span className="font-medium text-green-900">{result.customers_created}</span>
                 </div>
+                {Object.keys(result.skipped_reasons ?? {}).length > 0 && (
+                  <div className="mt-3 text-sm">
+                    <p className="font-medium text-green-800">Skip reasons:</p>
+                    <ul className="mt-1 space-y-1 text-green-900">
+                      {Object.entries(result.skipped_reasons).map(([reason, count]) => (
+                        <li key={reason}>{reason}: {count}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </Card>

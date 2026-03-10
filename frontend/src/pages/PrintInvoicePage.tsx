@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, Printer } from 'lucide-react'
-import { getInvoice } from '@/lib/api'
+import { getInvoice, getJob, getPublicJobQrUrl } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 
@@ -11,6 +11,11 @@ export default function PrintInvoicePage() {
     queryKey: ['invoice', id],
     queryFn: () => getInvoice(id!).then(r => r.data),
     enabled: !!id,
+  })
+  const { data: job } = useQuery({
+    queryKey: ['job-for-invoice', invoice?.repair_job_id],
+    queryFn: () => getJob(invoice!.repair_job_id).then(r => r.data),
+    enabled: !!invoice?.repair_job_id,
   })
 
   if (isLoading) return (
@@ -53,7 +58,7 @@ export default function PrintInvoicePage() {
           {/* Shop header */}
           <div className="flex items-start justify-between mb-10">
             <div>
-              <h1 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>WatchRepair Atelier</h1>
+              <h1 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>Mainspring</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>Professional Watch Services</p>
             </div>
             <div className="text-right">
@@ -123,6 +128,27 @@ export default function PrintInvoicePage() {
           </div>
 
           {/* Footer */}
+          {job?.status_token && (
+            <div className="pt-6 mb-6" style={{ borderTop: '1px solid var(--cafe-border)' }}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                    Live repair updates
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                    Scan the QR code to view your repair status page.
+                  </p>
+                </div>
+                <img
+                  src={getPublicJobQrUrl(job.status_token)}
+                  alt="Repair status QR code"
+                  className="w-24 h-24"
+                  style={{ border: '1px solid var(--cafe-border)' }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="pt-6 text-center text-xs" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
             <p>Thank you for choosing our watch repair service.</p>
             <p className="mt-1">Please retain this invoice for your records.</p>

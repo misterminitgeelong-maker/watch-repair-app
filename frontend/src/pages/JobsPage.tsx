@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
-import { listJobs, type JobStatus, type RepairJob } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
+import { listJobs, submitJobIntake, type JobStatus, type RepairJob } from '@/lib/api'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Input, Textarea, Modal } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
@@ -13,8 +13,78 @@ const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUS
 const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))
 const CLOSED_DIRECTORY_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 
+function TicketInModal({ job, onClose }: { job: RepairJob; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [preQuote, setPreQuote] = useState(job.pre_quote_cents > 0 ? (job.pre_quote_cents / 100).toFixed(2) : '')
+  const [intakeNotes, setIntakeNotes] = useState('')
+  const [hasScratches, setHasScratches] = useState(false)
+  const [hasDents, setHasDents] = useState(false)
+  const [hasCrackedCrystal, setHasCrackedCrystal] = useState(false)
+  const [crownMissing, setCrownMissing] = useState(false)
+  const [strapDamage, setStrapDamage] = useState(false)
+
+  const mut = useMutation({
+    mutationFn: () =>
+      submitJobIntake(job.id, {
+        intake_notes: intakeNotes || undefined,
+        pre_quote_cents: preQuote ? Math.round(parseFloat(preQuote) * 100) : 0,
+        has_scratches: hasScratches,
+        has_dents: hasDents,
+        has_cracked_crystal: hasCrackedCrystal,
+        crown_missing: crownMissing,
+        strap_damage: strapDamage,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      qc.invalidateQueries({ queryKey: ['job', job.id] })
+      onClose()
+    },
+  })
+
+  return (
+    <Modal title={`Ticket In · #${job.job_number}`} onClose={onClose}>
+      <div className="space-y-4">
+        <Input
+          label="Pre-Quote ($)"
+          type="number"
+          min="0"
+          step="0.01"
+          value={preQuote}
+          onChange={(e) => setPreQuote(e.target.value)}
+          placeholder="0.00"
+        />
+
+        <div>
+          <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Condition checklist</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={hasScratches} onChange={(e) => setHasScratches(e.target.checked)} /> Scratches</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={hasDents} onChange={(e) => setHasDents(e.target.checked)} /> Dents</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={hasCrackedCrystal} onChange={(e) => setHasCrackedCrystal(e.target.checked)} /> Cracked crystal</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={crownMissing} onChange={(e) => setCrownMissing(e.target.checked)} /> Crown missing</label>
+            <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={strapDamage} onChange={(e) => setStrapDamage(e.target.checked)} /> Strap damage</label>
+          </div>
+        </div>
+
+        <Textarea
+          label="Intake notes"
+          rows={3}
+          value={intakeNotes}
+          onChange={(e) => setIntakeNotes(e.target.value)}
+          placeholder="Anything the team should know before quoting/repairing."
+        />
+
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>{mut.isPending ? 'Saving…' : 'Save ticket in'}</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function JobsPage() {
   const [showAdd, setShowAdd] = useState(false)
+  const [ticketInJob, setTicketInJob] = useState<RepairJob | null>(null)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -37,6 +107,7 @@ export default function JobsPage() {
     <div>
       <PageHeader title="Repair Jobs" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>} />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
+      {ticketInJob && <TicketInModal job={ticketInJob} onClose={() => setTicketInJob(null)} />}
 
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
@@ -104,10 +175,35 @@ export default function JobsPage() {
       {isLoading ? <Spinner /> : (
         <Card>
           {filtered.length === 0 ? <EmptyState message="No jobs found." /> : (
-            <table className="w-full text-sm">
+            <>
+            <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              {filtered.map((j) => (
+                <div key={j.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link to={`/jobs/${j.id}`} className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{j.title}</Link>
+                    <Badge status={j.status} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <span>#{j.job_number}</span>
+                    <span>{formatDate(j.created_at)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                    <span className="capitalize">Priority: {j.priority}</span>
+                    <span>Pre-quote: ${(j.pre_quote_cents / 100).toFixed(2)}</span>
+                  </div>
+                  {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
+                    <div className="pt-1">
+                      <Button className="w-full justify-center" variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <table className="w-full text-sm hidden md:table">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                  {['Job #', 'Title', 'Status', 'Priority', 'Created'].map(h => (
+                  {['Job #', 'Title', 'Status', 'Priority', 'Pre-Quote', 'Created', 'Actions'].map(h => (
                     <th
                       key={h}
                       className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase"
@@ -149,11 +245,18 @@ export default function JobsPage() {
                         {j.priority}
                       </span>
                     </td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>${(j.pre_quote_cents / 100).toFixed(2)}</td>
                     <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(j.created_at)}</td>
+                    <td className="px-5 py-3.5">
+                      {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
+                        <Button variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </Card>
       )}
