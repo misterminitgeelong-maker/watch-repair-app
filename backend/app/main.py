@@ -17,7 +17,7 @@ from .routes.invoices import router as invoice_router
 from .routes.work_logs import router as work_log_router
 from .routes.attachments import router as attachment_router
 from .routes.csv_import import router as csv_import_router
-from .startup_seed import seed_from_csv_if_empty
+from .startup_seed import get_seed_status, seed_from_csv_if_empty
 
 
 @asynccontextmanager
@@ -42,7 +42,12 @@ app.add_middleware(
 
 @app.get("/v1/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "startup_seed": get_seed_status()}
+
+
+@app.get("/v1/seed-status")
+def seed_status():
+    return get_seed_status()
 
 
 app.include_router(auth_router)

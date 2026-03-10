@@ -11,6 +11,23 @@ from .models import Customer, Quote, RepairJob, Tenant, User, Watch
 from .security import hash_password
 
 
+_seed_status: dict[str, object] = {
+    "enabled": settings.startup_seed_enabled,
+    "ran": False,
+    "seeded": False,
+    "reason": "not_started",
+    "csv_path": settings.startup_seed_csv_path,
+    "total_rows": 0,
+    "imported_rows": 0,
+    "skipped_rows": 0,
+    "finished_at": None,
+}
+
+
+def get_seed_status() -> dict[str, object]:
+    return dict(_seed_status)
+
+
 _STATUS_MAP = {
     "delivered": "collected",
     "collected": "collected",
@@ -139,21 +156,41 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
 
 
 def seed_from_csv_if_empty(session: Session) -> None:
+    _seed_status["enabled"] = settings.startup_seed_enabled
+    _seed_status["csv_path"] = settings.startup_seed_csv_path
+
     if not settings.startup_seed_enabled:
+        _seed_status["ran"] = True
+        _seed_status["seeded"] = False
+        _seed_status["reason"] = "disabled"
+        _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
         return
 
     existing_jobs = session.exec(select(func.count()).select_from(RepairJob)).one()
     if int(existing_jobs) > 0:
+        _seed_status["ran"] = True
+        _seed_status["seeded"] = False
+        _seed_status["reason"] = "database_not_empty"
+        _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
         return
 
     csv_path = Path(settings.startup_seed_csv_path)
     if not csv_path.is_file():
+        _seed_status["ran"] = True
+        _seed_status["seeded"] = False
+        _seed_status["reason"] = "csv_not_found"
+        _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
         return
 
     with csv_path.open(newline="", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
+    _seed_status["total_rows"] = len(rows)
 
     if not rows:
+        _seed_status["ran"] = True
+        _seed_status["seeded"] = False
+        _seed_status["reason"] = "csv_empty"
+        _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
         return
 
     tenant = _ensure_tenant_owner(session)
@@ -161,6 +198,8 @@ def seed_from_csv_if_empty(session: Session) -> None:
 
     customer_cache: dict[tuple[str, str | None], Customer] = {}
     job_seq = 0
+    imported = 0
+    skipped = 0
 
     for row in rows:
         original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
@@ -179,6 +218,7 @@ def seed_from_csv_if_empty(session: Session) -> None:
             if not customer_name:
                 has_meaningful_data = any([brand_case, phone_raw, quote_raw, status_raw, notes_raw, original_job_id])
                 if not has_meaningful_data:
+                    skipped += 1
                     continue
                 customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
 
@@ -241,4 +281,12 @@ def seed_from_csv_if_empty(session: Session) -> None:
                 created_at=created_at,
             ))
 
+        imported += 1
+
     session.commit()
+    _seed_status["ran"] = True
+    _seed_status["seeded"] = True
+    _seed_status["reason"] = "seed_completed"
+    _seed_status["imported_rows"] = imported
+    _seed_status["skipped_rows"] = skipped
+    _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
