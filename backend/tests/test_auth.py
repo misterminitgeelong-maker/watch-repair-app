@@ -1,9 +1,17 @@
+import os
+from pathlib import Path
 from uuid import uuid4
+
+# Use a fresh sqlite file for every test run so schema changes are always applied.
+_TEST_DB = Path(__file__).with_name(f"test_{uuid4().hex}.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 
 from fastapi.testclient import TestClient
 
+from app.database import create_db_and_tables
 from app.main import app
 
+create_db_and_tables()
 client = TestClient(app)
 
 
@@ -130,7 +138,7 @@ def test_repair_jobs_and_status_history_tenant_isolation():
     )
     assert create_job_res.status_code == 201
     job_id = create_job_res.json()["id"]
-    assert create_job_res.json()["status"] == "intake"
+    assert create_job_res.json()["status"] == "awaiting_go_ahead"
 
     list_a = client.get("/v1/repair-jobs", headers=headers_a)
     list_b = client.get("/v1/repair-jobs", headers=headers_b)
@@ -143,10 +151,10 @@ def test_repair_jobs_and_status_history_tenant_isolation():
     status_update = client.post(
         f"/v1/repair-jobs/{job_id}/status",
         headers=headers_a,
-        json={"status": "diagnosis", "note": "Opened caseback and inspected movement"},
+        json={"status": "working_on", "note": "Opened caseback and inspected movement"},
     )
     assert status_update.status_code == 200
-    assert status_update.json()["status"] == "diagnosis"
+    assert status_update.json()["status"] == "working_on"
 
     history = client.get(f"/v1/repair-jobs/{job_id}/status-history", headers=headers_a)
     assert history.status_code == 200
@@ -155,7 +163,7 @@ def test_repair_jobs_and_status_history_tenant_isolation():
     denied_status_change = client.post(
         f"/v1/repair-jobs/{job_id}/status",
         headers=headers_b,
-        json={"status": "qc", "note": "should fail"},
+        json={"status": "completed", "note": "should fail"},
     )
     assert denied_status_change.status_code == 404
 
@@ -324,19 +332,15 @@ def test_work_logs_and_attachments_tenant_isolation():
     assert list_logs_b.status_code == 404
 
     create_attachment = client.post(
-        "/v1/attachments",
+        f"/v1/attachments?repair_job_id={job_id}&label=intake-front",
         headers=headers_a,
-        json={
-            "repair_job_id": job_id,
-            "file_name": "intake-front.jpg",
-            "content_type": "image/jpeg",
-            "file_size_bytes": 204800,
-        },
+        files={"file": ("intake-front.jpg", b"fake-jpeg-bytes", "image/jpeg")},
     )
     assert create_attachment.status_code == 201
     attachment_body = create_attachment.json()
-    assert "upload" in attachment_body["upload_url"]
-    assert "download" in attachment_body["download_url"]
+    assert attachment_body["repair_job_id"] == job_id
+    assert attachment_body["file_name"] == "intake-front.jpg"
+    assert attachment_body["content_type"] == "image/jpeg"
 
     list_attachments_a = client.get(f"/v1/attachments?repair_job_id={job_id}", headers=headers_a)
     assert list_attachments_a.status_code == 200
