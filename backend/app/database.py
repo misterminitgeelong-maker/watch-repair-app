@@ -6,6 +6,8 @@ from .config import settings
 
 def _normalize_database_url(raw_url: str) -> str:
     # Force SQLAlchemy to use psycopg v3 for generic postgres URLs.
+    if raw_url.startswith("postgresql+psycopg2://"):
+        return raw_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
     if raw_url.startswith("postgres://"):
         return raw_url.replace("postgres://", "postgresql+psycopg://", 1)
     if raw_url.startswith("postgresql://") and "+" not in raw_url.split("://", 1)[0]:
