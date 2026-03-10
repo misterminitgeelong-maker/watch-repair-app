@@ -58,7 +58,7 @@ export type JobStatus = 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string
   job_number: string; title: string; description?: string; priority: string
-  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; created_at: string
+  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; cost_cents: number; created_at: string
 }
 export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
@@ -151,3 +151,28 @@ export const importCsv = (file: File) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+export interface ReportsSummary {
+  counts: {
+    jobs: number; customers: number; watches: number; quotes: number; invoices: number
+  }
+  jobs_by_status: Record<string, number>
+  quotes_by_status: Record<string, number>
+  sales_funnel: {
+    approved_quotes: number; sent_quotes: number; declined_quotes: number; approval_rate_percent: number
+  }
+  financials: {
+    billed_cents: number
+    revenue_cents: number
+    cost_cents: number
+    outstanding_cents: number
+    gross_profit_cents: number
+    gross_margin_percent: number
+  }
+  operations: {
+    work_minutes: number
+    avg_revenue_per_job_cents: number
+  }
+}
+export const getReportsSummary = () => api.get<ReportsSummary>('/reports/summary')

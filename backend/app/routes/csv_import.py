@@ -181,6 +181,7 @@ async def import_csv(
         brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
         phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone"])
         quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
+        cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
         status_raw = _get_first(row, ["status", "job_status", "repair_status", "state"])
         notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
 
@@ -198,6 +199,7 @@ async def import_csv(
         date_in = _parse_date(date_in_raw)
         status = _infer_job_status(status_raw, notes_raw)
         quote_cents = _dollars_to_cents(quote_raw)
+        cost_cents = _dollars_to_cents(cost_raw)
 
         # Customer dedup
         cache_key = (customer_name.lower(), phone)
@@ -238,6 +240,7 @@ async def import_csv(
             status=status,
             salesperson=team_member or None,
             deposit_cents=0,
+            cost_cents=cost_cents,
             created_at=created_at,
         )
         session.add(job)

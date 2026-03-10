@@ -77,6 +77,7 @@ class RepairJob(SQLModel, table=True):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
+    cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -275,6 +276,7 @@ class RepairJobCreate(SQLModel):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
+    cost_cents: int = 0
 
 
 class RepairJobRead(SQLModel):
@@ -290,6 +292,7 @@ class RepairJobRead(SQLModel):
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int
+    cost_cents: int
     created_at: datetime
 
 
