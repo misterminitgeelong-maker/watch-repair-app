@@ -20,7 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column("repairjob", sa.Column("cost_cents", sa.Integer(), nullable=False, server_default="0"))
-    op.alter_column("repairjob", "cost_cents", server_default=None)
+    if op.get_bind().dialect.name != "sqlite":
+        op.alter_column("repairjob", "cost_cents", server_default=None)
 
 
 def downgrade() -> None:

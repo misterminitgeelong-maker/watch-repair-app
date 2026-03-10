@@ -30,7 +30,11 @@ def upgrade() -> None:
             {"token": uuid4().hex, "id": row[0]},
         )
 
-    op.alter_column("repairjob", "status_token", nullable=False)
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("repairjob") as batch_op:
+            batch_op.alter_column("status_token", nullable=False)
+    else:
+        op.alter_column("repairjob", "status_token", nullable=False)
     op.create_index(op.f("ix_repairjob_status_token"), "repairjob", ["status_token"], unique=True)
 
 

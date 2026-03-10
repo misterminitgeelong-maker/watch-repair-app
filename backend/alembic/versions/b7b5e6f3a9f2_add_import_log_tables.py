@@ -55,11 +55,12 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_importlogdetail_import_log_id"), "importlogdetail", ["import_log_id"], unique=False)
 
-    op.alter_column("importlog", "total_rows", server_default=None)
-    op.alter_column("importlog", "imported_count", server_default=None)
-    op.alter_column("importlog", "skipped_count", server_default=None)
-    op.alter_column("importlog", "customers_created_count", server_default=None)
-    op.alter_column("importlog", "status", server_default=None)
+    if op.get_bind().dialect.name != "sqlite":
+        op.alter_column("importlog", "total_rows", server_default=None)
+        op.alter_column("importlog", "imported_count", server_default=None)
+        op.alter_column("importlog", "skipped_count", server_default=None)
+        op.alter_column("importlog", "customers_created_count", server_default=None)
+        op.alter_column("importlog", "status", server_default=None)
 
 
 def downgrade() -> None:
