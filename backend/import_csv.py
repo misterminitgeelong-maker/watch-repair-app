@@ -29,7 +29,6 @@ from app.security import hash_password
 
 
 STATUS_MAP = {
-    "delivered": "collected",
     "collected": "collected",
     "in_repair": "working_on",
     "in repair": "working_on",
@@ -48,6 +47,23 @@ STATUS_MAP = {
     "cancelled": "no_go",
     "approved": "go_ahead",
 }
+
+
+def _infer_job_status(status_raw: str, notes_raw: str) -> str:
+    status = (status_raw or "").strip().lower()
+    notes = (notes_raw or "").strip().lower()
+
+    if status in STATUS_MAP:
+        return STATUS_MAP[status]
+
+    if status == "delivered":
+        if any(token in notes for token in ["collected", "picked up", "has been collected", "watch collect"]):
+            return "collected"
+        if any(token in notes for token in ["awaiting collection", "ready for collection", "ready in drawer", "messaged for collection"]):
+            return "awaiting_collection"
+        return "completed"
+
+    return "awaiting_go_ahead"
 
 
 def parse_args() -> argparse.Namespace:
@@ -220,7 +236,7 @@ def run_import(args: argparse.Namespace) -> None:
 
             phone = _normalize_phone(phone_raw)
             date_in = _parse_date(date_in_raw)
-            status = STATUS_MAP.get((status_raw or "").lower(), "awaiting_go_ahead")
+            status = _infer_job_status(status_raw, notes_raw)
             quote_cents = _dollars_to_cents(quote_raw)
 
             cache_key = (customer_name.lower(), phone)
