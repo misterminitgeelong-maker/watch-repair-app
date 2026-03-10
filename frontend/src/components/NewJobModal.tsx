@@ -156,6 +156,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         salesperson: job.salesperson || undefined,
         collection_date: job.collection_date || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
+        cost_cents: 0,
       })
       // Upload the two watch photos
       await Promise.all([
