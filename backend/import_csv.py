@@ -1,16 +1,21 @@
 r"""
-Import historical repair records from repairs_import.csv into the database.
+Import historical repair records directly into the configured database.
 
 Usage:
     cd backend
     python import_csv.py "C:\Users\samme\Downloads\repairs_import.csv"
+
+Optional args:
+    python import_csv.py "<csv_path>" --tenant-slug myshop --tenant-name "My Shop"
 """
 
+import argparse
 import csv
 import re
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from sqlmodel import Session, select
@@ -19,88 +24,77 @@ from sqlmodel import Session, select
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.database import create_db_and_tables, engine
-from app.models import (
-    Customer,
-    Quote,
-    RepairJob,
-    Tenant,
-    Watch,
-)
+from app.models import Customer, Quote, RepairJob, Tenant, User, Watch
+from app.security import hash_password
 
 
-def parse_date(raw: str) -> date | None:
-    """Parse the messy date formats in the CSV. Returns None on failure."""
+STATUS_MAP = {
+    "delivered": "collected",
+    "collected": "collected",
+    "in_repair": "working_on",
+    "in repair": "working_on",
+    "working on": "working_on",
+    "ready": "awaiting_collection",
+    "awaiting collection": "awaiting_collection",
+    "intake": "awaiting_go_ahead",
+    "awaiting go ahead": "awaiting_go_ahead",
+    "go ahead": "go_ahead",
+    "no go": "no_go",
+    "completed": "completed",
+    "awaiting parts": "awaiting_parts",
+    "parts to be ordered": "parts_to_order",
+    "sent to labanda": "sent_to_labanda",
+    "service": "service",
+    "cancelled": "no_go",
+    "approved": "go_ahead",
+}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("csv_path", help="Path to CSV file")
+    parser.add_argument("--tenant-slug", default="myshop")
+    parser.add_argument("--tenant-name", default="My Shop")
+    parser.add_argument("--owner-email", default="admin@admin.com")
+    parser.add_argument("--owner-password", default="Admin")
+    return parser.parse_args()
+
+
+def _parse_date(raw: str) -> date | None:
     if not raw or not raw.strip():
         return None
     raw = raw.strip()
 
-    # DD/MM/YY  e.g. 14/11/23
-    m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{2})$", raw)
-    if m:
-        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        y += 2000
-        if 1 <= mo <= 12 and 1 <= d <= 31:
-            try:
-                return date(y, mo, d)
-            except ValueError:
-                return None
-
-    # DD/MM/YYYY
-    m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", raw)
-    if m:
-        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if 1 <= mo <= 12 and 1 <= d <= 31:
-            try:
-                return date(y, mo, d)
-            except ValueError:
-                return None
-
-    # YYYY-MM-DD  e.g. 2023-04-11
-    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", raw)
-    if m:
-        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if 1 <= mo <= 12 and 1 <= d <= 31:
-            try:
-                return date(y, mo, d)
-            except ValueError:
-                return None
-
-    # DD.MM.YY or DD.M.YY  e.g. 12.1.24
-    m = re.match(r"^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$", raw)
-    if m:
-        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    for pattern, groups in [
+        (r"^(\d{1,2})/(\d{1,2})/(\d{2})$", "dmy2"),
+        (r"^(\d{1,2})/(\d{1,2})/(\d{4})$", "dmy4"),
+        (r"^(\d{4})-(\d{1,2})-(\d{1,2})$", "ymd"),
+        (r"^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$", "dmy_dot"),
+        (r"^(\d{1,2})/+(\d{1,2})/+(\d{2,4})$", "dmy_slash"),
+    ]:
+        m = re.match(pattern, raw)
+        if not m:
+            continue
+        if groups == "ymd":
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        else:
+            d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
         if y < 100:
             y += 2000
         if 1 <= mo <= 12 and 1 <= d <= 31:
             try:
                 return date(y, mo, d)
             except ValueError:
-                return None
-
-    # DD/M/YY with extra slashes  e.g. "08//04/24"
-    m = re.match(r"^(\d{1,2})/+(\d{1,2})/+(\d{2,4})$", raw)
-    if m:
-        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if y < 100:
-            y += 2000
-        if 1 <= mo <= 12 and 1 <= d <= 31:
-            try:
-                return date(y, mo, d)
-            except ValueError:
-                return None
-
+                continue
     return None
 
 
-def normalize_phone(raw: str) -> str | None:
-    """Normalize Australian phone numbers."""
+def _normalize_phone(raw: str) -> str | None:
     if not raw or not raw.strip():
         return None
     digits = re.sub(r"\D", "", raw.strip())
-    # If multiple numbers concatenated (very long), take first 10 digits
     if len(digits) > 12:
         digits = digits[:10]
-    # Prefix with 0 if 9-digit mobile
     if len(digits) == 9 and digits[0] in ("4", "3"):
         digits = "0" + digits
     if len(digits) < 8:
@@ -108,8 +102,7 @@ def normalize_phone(raw: str) -> str | None:
     return digits
 
 
-def dollars_to_cents(raw: str) -> int:
-    """Parse a dollar amount string to integer cents."""
+def _dollars_to_cents(raw: str) -> int:
     if not raw or not raw.strip():
         return 0
     try:
@@ -118,15 +111,22 @@ def dollars_to_cents(raw: str) -> int:
         return 0
 
 
-def clean_name(raw: str) -> str | None:
-    """Return a cleaned customer name or None if garbage."""
+def _clean_name(raw: str) -> str | None:
     if not raw or not raw.strip():
         return None
-    name = raw.strip()
-    # Skip purely numeric or very short garbage entries
+    name = re.sub(r"\s+", " ", raw.strip())
+    lower_name = name.lower()
+    invalid_name_fragments = [
+        "already collected",
+        "has been collected",
+        "picked up",
+        "cancelled",
+        "unknown",
+    ]
+    if any(fragment in lower_name for fragment in invalid_name_fragments):
+        return None
     if re.match(r"^\d+$", name):
         return None
-    # Skip entries that look like dates
     if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}", name):
         return None
     if len(name) < 2:
@@ -134,108 +134,115 @@ def clean_name(raw: str) -> str | None:
     return name
 
 
-def map_status(raw: str) -> str:
-    """Map CSV status to our JobStatus literal."""
-    s = (raw or "").strip().lower()
-    mapping = {
-        "delivered": "delivered",
-        "in_repair": "in_repair",
-        "in repair": "in_repair",
-        "ready": "ready",
-        "intake": "intake",
-        "approved": "awaiting_approval",
-        "cancelled": "cancelled",
-    }
-    return mapping.get(s, "delivered")
+def _get_first(row: dict[str, Any], keys: list[str]) -> str:
+    for key in keys:
+        value = row.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
 
 
-def run_import(csv_path: str) -> None:
+def _ensure_tenant_and_owner(
+    session: Session,
+    tenant_slug: str,
+    tenant_name: str,
+    owner_email: str,
+    owner_password: str,
+) -> Tenant:
+    tenant = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
+    if tenant:
+        return tenant
+
+    tenant = Tenant(name=tenant_name, slug=tenant_slug)
+    session.add(tenant)
+    session.flush()
+
+    owner = User(
+        tenant_id=tenant.id,
+        email=owner_email,
+        full_name="Admin",
+        role="owner",
+        password_hash=hash_password(owner_password),
+        is_active=True,
+    )
+    session.add(owner)
+    session.commit()
+    session.refresh(tenant)
+    return tenant
+
+
+def run_import(args: argparse.Namespace) -> None:
     create_db_and_tables()
 
-    with Session(engine) as session:
-        # Find the tenant (must be bootstrapped first)
-        tenant = session.exec(select(Tenant).where(Tenant.slug == "myshop")).first()
-        if not tenant:
-            print("ERROR: Tenant 'myshop' not found. Bootstrap the app first:")
-            print('  curl -X POST http://localhost:8000/v1/auth/bootstrap -H "Content-Type: application/json" \\')
-            print('    -d \'{"tenant_name":"My Shop","tenant_slug":"myshop","owner_email":"admin@myshop.com","owner_full_name":"Admin","owner_password":"watchrepair123"}\'')
-            sys.exit(1)
+    with open(args.csv_path, newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
 
+    if not rows:
+        print("CSV file is empty")
+        return
+
+    with Session(engine) as session:
+        tenant = _ensure_tenant_and_owner(
+            session,
+            tenant_slug=args.tenant_slug,
+            tenant_name=args.tenant_name,
+            owner_email=args.owner_email,
+            owner_password=args.owner_password,
+        )
         tenant_id = tenant.id
 
-        # Customer dedup cache: (lower_name, phone) -> Customer
         customer_cache: dict[tuple[str, str | None], Customer] = {}
-
         imported = 0
         skipped = 0
-        job_seq = 0  # sequence counter for job numbers
-
-        with open(csv_path, newline="", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
+        job_seq = 0
 
         print(f"Read {len(rows)} rows from CSV")
+        for row in rows:
+            original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
+            team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
+            customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
+            date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
+            brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
+            phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone"])
+            quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
+            status_raw = _get_first(row, ["status", "job_status", "repair_status", "state"])
+            notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
 
-        for i, row in enumerate(rows, start=2):
-            original_job_id = (row.get("original_job_id") or "").strip()
-            team_member = (row.get("team_member") or "").strip()
-            customer_name_raw = (row.get("customer_name") or "").strip()
-            date_in_raw = (row.get("date_in") or "").strip()
-            brand_case = (row.get("brand_case_numbers") or "").strip()
-            phone_raw = (row.get("phone_number") or "").strip()
-            cost_raw = (row.get("cost_to_business") or "").strip()
-            quote_raw = (row.get("quote_price") or "").strip()
-            status_raw = (row.get("status") or "").strip()
-            notes_raw = (row.get("repair_notes") or "").strip()
-
-            # Clean the customer name
-            customer_name = clean_name(customer_name_raw)
+            customer_name = _clean_name(customer_name_raw)
             if not customer_name:
-                # Try to salvage from original_job_id field (some rows have data there)
-                customer_name = clean_name(original_job_id)
+                customer_name = _clean_name(original_job_id)
                 if not customer_name:
-                    skipped += 1
-                    continue
+                    has_meaningful_data = any([brand_case, phone_raw, quote_raw, status_raw, notes_raw, original_job_id])
+                    if not has_meaningful_data:
+                        skipped += 1
+                        continue
+                    customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
 
-            phone = normalize_phone(phone_raw)
-            date_in = parse_date(date_in_raw)
-            status = map_status(status_raw)
-            quote_cents = dollars_to_cents(quote_raw)
-            cost_cents = dollars_to_cents(cost_raw)
+            phone = _normalize_phone(phone_raw)
+            date_in = _parse_date(date_in_raw)
+            status = STATUS_MAP.get((status_raw or "").lower(), "awaiting_go_ahead")
+            quote_cents = _dollars_to_cents(quote_raw)
 
-            # --- Customer dedup ---
             cache_key = (customer_name.lower(), phone)
             if cache_key in customer_cache:
                 customer = customer_cache[cache_key]
             else:
-                customer = Customer(
-                    tenant_id=tenant_id,
-                    full_name=customer_name,
-                    phone=phone,
-                )
+                customer = Customer(tenant_id=tenant_id, full_name=customer_name, phone=phone)
                 session.add(customer)
                 session.flush()
                 customer_cache[cache_key] = customer
 
-            # --- Watch ---
-            watch = Watch(
-                tenant_id=tenant_id,
-                customer_id=customer.id,
-                brand=brand_case if brand_case else None,
-            )
+            watch = Watch(tenant_id=tenant_id, customer_id=customer.id, brand=brand_case or None)
             session.add(watch)
             session.flush()
 
-            # --- Repair Job ---
             job_seq += 1
-            # Use original ticket number if available, otherwise generate
             if original_job_id and re.match(r"^\d+", original_job_id):
                 job_number = f"IMP-{original_job_id}"
             else:
                 job_number = f"IMP-{job_seq:05d}"
 
             title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
-
             created_at = (
                 datetime(date_in.year, date_in.month, date_in.day, tzinfo=timezone.utc)
                 if date_in
@@ -247,41 +254,37 @@ def run_import(csv_path: str) -> None:
                 watch_id=watch.id,
                 job_number=job_number,
                 title=title,
-                description=notes_raw if notes_raw else None,
+                description=notes_raw or None,
                 priority="normal",
                 status=status,
-                salesperson=team_member if team_member else None,
+                salesperson=team_member or None,
                 deposit_cents=0,
                 created_at=created_at,
             )
             session.add(job)
             session.flush()
 
-            # --- Quote (if quote_price provided) ---
             if quote_cents > 0:
-                quote = Quote(
+                quote_status = "approved" if status in {"completed", "awaiting_collection", "collected"} else "sent"
+                session.add(Quote(
                     tenant_id=tenant_id,
                     repair_job_id=job.id,
-                    status="approved" if status == "delivered" else "sent",
+                    status=quote_status,
                     subtotal_cents=quote_cents,
                     tax_cents=0,
                     total_cents=quote_cents,
                     currency="AUD",
                     created_at=created_at,
-                )
-                session.add(quote)
+                ))
 
             imported += 1
             if imported % 100 == 0:
                 print(f"  ...imported {imported} records")
 
         session.commit()
-        print(f"\nDone! Imported {imported} records, skipped {skipped} rows.")
-        print(f"  Unique customers: {len(customer_cache)}")
+        print(f"\nDone! Imported {imported} rows, skipped {skipped} rows.")
+        print(f"Unique customers created in this run: {len(customer_cache)}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(f"Usage: python {sys.argv[0]} <path_to_csv>")
-        sys.exit(1)
-    run_import(sys.argv[1])
+    run_import(parse_args())
