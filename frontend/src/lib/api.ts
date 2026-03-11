@@ -100,6 +100,15 @@ export interface RepairJobCreatePayload {
 }
 export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
+export const updateJob = (id: string, data: {
+  cost_cents?: number
+  pre_quote_cents?: number
+  priority?: string
+  salesperson?: string
+  collection_date?: string
+  deposit_cents?: number
+  description?: string
+}) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
 

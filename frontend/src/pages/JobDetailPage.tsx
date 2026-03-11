@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera } from 'lucide-react'
+import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil } from 'lucide-react'
 import {
-  getJob, quickStatusAction, updateJobStatus, listQuotes,
+  getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
   getStatusHistory,
@@ -27,6 +27,19 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   awaiting_collection: 'collected',
   collected:           null,
 }
+
+const QUICK_ACTION_STATUSES: JobStatus[] = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
+  'awaiting_parts',
+  'working_on',
+  'completed',
+  'awaiting_collection',
+]
 
 // ── Status update modal ───────────────────────────────────────────────────────
 function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) {
@@ -109,6 +122,16 @@ export default function JobDetailPage() {
   const [tab, setTab] = useState<Tab>('details')
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
+    const [editingQuote, setEditingQuote] = useState(false)
+    const [quoteInput, setQuoteInput] = useState('')
+    const updateJobMutation = useMutation({
+      mutationFn: (cost_cents: number) => updateJob(id!, { cost_cents }),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['job', id] })
+        qc.invalidateQueries({ queryKey: ['jobs'] })
+        setEditingQuote(false)
+      },
+    })
   const quickStatusMutation = useMutation({
     mutationFn: ({ status, note }: { status: JobStatus; note?: string }) => quickStatusAction(id!, status, note),
     onSuccess: () => {
@@ -190,41 +213,16 @@ export default function JobDetailPage() {
 
       <Card className="p-4 mb-5">
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_quote', note: 'Quick action: awaiting quote' })}
-            disabled={quickStatusMutation.isPending}
-          >
-            Awaiting Quote
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => quickStatusMutation.mutate({ status: 'go_ahead', note: 'Quick action: go ahead given' })}
-            disabled={quickStatusMutation.isPending}
-          >
-            Go Ahead Given
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => quickStatusMutation.mutate({ status: 'working_on', note: 'Quick action: started work' })}
-            disabled={quickStatusMutation.isPending}
-          >
-            Started Work
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_parts', note: 'Quick action: awaiting parts' })}
-            disabled={quickStatusMutation.isPending}
-          >
-            Awaiting Parts
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_collection', note: 'Quick action: ready for collection' })}
-            disabled={quickStatusMutation.isPending}
-          >
-            Ready for Collection
-          </Button>
+          {QUICK_ACTION_STATUSES.map((status) => (
+            <Button
+              key={status}
+              variant="secondary"
+              onClick={() => quickStatusMutation.mutate({ status, note: `Quick action: ${STATUS_LABELS[status]}` })}
+              disabled={quickStatusMutation.isPending}
+            >
+              {STATUS_LABELS[status]}
+            </Button>
+          ))}
         </div>
       </Card>
 
@@ -260,12 +258,53 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
-              {(job.cost_cents > 0 || job.pre_quote_cents > 0) && (
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents > 0 ? '' : ' (est.)'}</span>
-                  <span className="font-medium" style={{ color: '#9B7228' }}>${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center">
+                <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents === 0 && job.pre_quote_cents > 0 ? ' (est.)' : ''}</span>
+                {editingQuote ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={quoteInput}
+                      onChange={e => setQuoteInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') updateJobMutation.mutate(Math.round(parseFloat(quoteInput || '0') * 100))
+                        if (e.key === 'Escape') setEditingQuote(false)
+                      }}
+                      autoFocus
+                      className="w-24 text-right text-sm rounded px-1.5 py-0.5"
+                      style={{ border: '1px solid var(--cafe-border)', background: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}
+                    />
+                    <button
+                      onClick={() => updateJobMutation.mutate(Math.round(parseFloat(quoteInput || '0') * 100))}
+                      disabled={updateJobMutation.isPending}
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
+                    >
+                      Save
+                    </button>
+                    <button onClick={() => setEditingQuote(false)} className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium" style={{ color: '#9B7228' }}>
+                      ${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setQuoteInput(((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2))
+                        setEditingQuote(true)
+                      }}
+                      className="opacity-50 hover:opacity-100 transition-opacity"
+                      title="Edit quote"
+                    >
+                      <Pencil size={12} style={{ color: 'var(--cafe-text-muted)' }} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Intake Photos */}

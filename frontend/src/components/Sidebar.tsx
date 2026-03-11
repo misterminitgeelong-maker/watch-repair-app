@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { WatchIcon, Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3 } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -34,28 +34,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
-            >
-              <WatchIcon size={17} strokeWidth={2.5} />
-            </div>
-            <div>
-              <p
-                className="text-[15px] font-semibold leading-tight tracking-tight"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#F5E8CA' }}
-              >
-                Mainspring
-              </p>
-              <p
-                className="text-[10px] tracking-[0.18em] uppercase mt-0.5"
-                style={{ color: '#7A5038' }}
-              >
-                Repair OS
-              </p>
-            </div>
-          </div>
+          <img src="/mainspring-logo.png" alt="Mainspring" className="h-9 w-auto rounded" style={{ maxWidth: '160px' }} />
 
           {mobile && onClose && (
             <button

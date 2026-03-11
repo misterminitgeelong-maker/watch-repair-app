@@ -368,6 +368,16 @@ class RepairJobIntakeUpdate(SQLModel):
     strap_damage: bool = False
 
 
+class RepairJobFieldUpdate(SQLModel):
+    cost_cents: Optional[int] = None
+    pre_quote_cents: Optional[int] = None
+    priority: Optional[str] = None
+    salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
+    deposit_cents: Optional[int] = None
+    description: Optional[str] = None
+
+
 class JobStatusHistoryRead(SQLModel):
     id: UUID
     repair_job_id: UUID

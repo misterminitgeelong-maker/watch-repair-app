@@ -11,6 +11,7 @@ from ..models import (
     JobStatusHistoryRead,
     RepairJob,
     RepairJobCreate,
+    RepairJobFieldUpdate,
     RepairJobIntakeUpdate,
     RepairJobRead,
     RepairJobStatusUpdate,
@@ -225,6 +226,38 @@ def submit_job_intake(
                 new_status="awaiting_go_ahead",
             )
 
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+@router.patch("/{job_id}", response_model=RepairJobRead)
+def update_repair_job_fields(
+    job_id: UUID,
+    payload: RepairJobFieldUpdate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    job = session.get(RepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    if payload.cost_cents is not None:
+        job.cost_cents = max(0, payload.cost_cents)
+    if payload.pre_quote_cents is not None:
+        job.pre_quote_cents = max(0, payload.pre_quote_cents)
+    if payload.priority is not None:
+        job.priority = payload.priority
+    if payload.salesperson is not None:
+        job.salesperson = payload.salesperson
+    if payload.collection_date is not None:
+        job.collection_date = payload.collection_date
+    if payload.deposit_cents is not None:
+        job.deposit_cents = max(0, payload.deposit_cents)
+    if payload.description is not None:
+        job.description = payload.description
+
+    session.add(job)
     session.commit()
     session.refresh(job)
     return job

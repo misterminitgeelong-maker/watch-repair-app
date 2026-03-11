@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
-import { WatchIcon } from 'lucide-react'
 import { login } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Input, Button } from '@/components/ui'
@@ -39,27 +38,8 @@ export default function LoginPage() {
       {/* Decorative grain overlay */}
       <div className="w-full max-w-sm">
         {/* Branding */}
-        <div className="flex flex-col items-center mb-10 gap-3">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"
-            style={{ backgroundColor: 'var(--cafe-espresso)' }}
-          >
-            <WatchIcon size={28} style={{ color: 'var(--cafe-gold)' }} />
-          </div>
-          <div className="text-center">
-            <h1
-              className="text-3xl font-semibold"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
-            >
-              Mainspring
-            </h1>
-            <p
-              className="text-xs tracking-[0.22em] uppercase mt-1"
-              style={{ color: 'var(--cafe-text-muted)' }}
-            >
-              Repair OS
-            </p>
-          </div>
+        <div className="flex flex-col items-center mb-10">
+          <img src="/mainspring-logo.png" alt="Mainspring" className="w-64 h-auto rounded-xl shadow-sm" />
         </div>
 
         {/* Card */}
