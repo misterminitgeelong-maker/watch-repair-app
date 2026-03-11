@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
-import { listJobs, listQuotes, submitJobIntake, type JobStatus, type RepairJob } from '@/lib/api'
+import { listJobs, listQuotes, submitJobIntake, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Input, Textarea, Modal } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
@@ -12,6 +12,21 @@ const COMPLETED_DIRECTORY_STATUSES: JobStatus[] = ['completed', 'awaiting_collec
 const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))
 const CLOSED_DIRECTORY_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
+const ALL_STATUS_OPTIONS: JobStatus[] = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
+  'awaiting_parts',
+  'working_on',
+  'service',
+  'completed',
+  'awaiting_collection',
+  'collected',
+  'no_go',
+]
 
 const STATUS_OPTION_LABELS: Record<JobStatus, string> = {
   awaiting_quote: 'Awaiting Quote',
@@ -99,8 +114,10 @@ function TicketInModal({ job, onClose }: { job: RepairJob; onClose: () => void }
 }
 
 export default function JobsPage() {
+  const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
   const [ticketInJob, setTicketInJob] = useState<RepairJob | null>(null)
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -124,6 +141,15 @@ export default function JobsPage() {
   const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const statusOptions = jobDirectoryView === 'active' ? ACTIVE_DIRECTORY_STATUSES : CLOSED_DIRECTORY_STATUSES
+
+  const statusMut = useMutation({
+    mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateJobStatus(jobId, status),
+    onMutate: ({ jobId }) => setUpdatingJobId(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+    },
+    onSettled: () => setUpdatingJobId(null),
+  })
 
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
@@ -255,6 +281,24 @@ export default function JobsPage() {
                             <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
                               <span className="capitalize">Priority: {j.priority}</span>
                               <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
+                            </div>
+
+                            <div className="mt-2">
+                              <select
+                                className="w-full rounded-md px-2.5 py-2 text-xs outline-none transition"
+                                style={{
+                                  backgroundColor: 'var(--cafe-surface)',
+                                  border: '1px solid var(--cafe-border-2)',
+                                  color: 'var(--cafe-text-mid)',
+                                }}
+                                value={j.status}
+                                onChange={(e) => statusMut.mutate({ jobId: j.id, status: e.target.value as JobStatus })}
+                                disabled={updatingJobId === j.id}
+                              >
+                                {ALL_STATUS_OPTIONS.map(s => (
+                                  <option key={s} value={s}>{STATUS_OPTION_LABELS[s]}</option>
+                                ))}
+                              </select>
                             </div>
 
                             {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
