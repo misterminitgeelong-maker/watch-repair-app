@@ -13,12 +13,20 @@ const nav = [
   { to: '/database', label: 'Database', icon: Database },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  className?: string
+  mobile?: boolean
+  onNavigate?: () => void
+  onClose?: () => void
+  closeIcon?: React.ReactNode
+}
+
+export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout } = useAuth()
 
   return (
     <aside
-      className="w-60 flex flex-col shrink-0"
+      className={cn('w-60 flex flex-col shrink-0', className)}
       style={{ backgroundColor: 'var(--cafe-espresso)', color: 'var(--cafe-sidebar-txt)' }}
     >
       {/* Branding */}
@@ -26,27 +34,40 @@ export default function Sidebar() {
         className="px-6 py-6"
         style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-            style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
-          >
-            <WatchIcon size={17} strokeWidth={2.5} />
-          </div>
-          <div>
-            <p
-              className="text-[15px] font-semibold leading-tight tracking-tight"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#F5E8CA' }}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
             >
-              Mainspring
-            </p>
-            <p
-              className="text-[10px] tracking-[0.18em] uppercase mt-0.5"
-              style={{ color: '#7A5038' }}
-            >
-              Repair OS
-            </p>
+              <WatchIcon size={17} strokeWidth={2.5} />
+            </div>
+            <div>
+              <p
+                className="text-[15px] font-semibold leading-tight tracking-tight"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#F5E8CA' }}
+              >
+                Mainspring
+              </p>
+              <p
+                className="text-[10px] tracking-[0.18em] uppercase mt-0.5"
+                style={{ color: '#7A5038' }}
+              >
+                Repair OS
+              </p>
+            </div>
           </div>
+
+          {mobile && onClose && (
+            <button
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
+              onClick={onClose}
+              style={{ color: '#C8A882' }}
+              aria-label="Close navigation"
+            >
+              {closeIcon}
+            </button>
+          )}
         </div>
       </div>
 
@@ -57,6 +78,7 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
@@ -85,7 +107,10 @@ export default function Sidebar() {
       <div className="px-3 pb-6">
         <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1rem' }}>
           <button
-            onClick={logout}
+            onClick={() => {
+              logout()
+              onNavigate?.()
+            }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[#F5E8CA]"
             style={{ color: '#7A5038' }}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--cafe-espresso-2)')}

@@ -21,10 +21,10 @@ export function Card({ className, children }: { className?: string; children: Re
 
 export function PageHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-end justify-between mb-7">
+    <div className="mb-6 flex flex-col gap-3 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1
-          className="text-3xl font-semibold leading-tight"
+          className="text-2xl font-semibold leading-tight sm:text-3xl"
           style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
         >
           {title}
