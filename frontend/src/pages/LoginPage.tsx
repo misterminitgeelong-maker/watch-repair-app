@@ -127,23 +127,23 @@ export default function LoginPage() {
                 onMouseLeave={() => setBtnHover(false)}
                 style={{
                   width: '100%',
-                  padding: '0.72rem',
-                  marginTop: '0.25rem',
-                  borderRadius: '10px',
+                  padding: '0.78rem',
+                  marginTop: '0.35rem',
+                  borderRadius: '11px',
                   border: 'none',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  backgroundColor: btnHover && !loading ? '#B8922A' : '#C9A248',
+                  backgroundColor: btnHover && !loading ? '#AE8522' : '#C9A248',
                   color: '#FFF8EC',
                   fontFamily: "'DM Sans', sans-serif",
                   fontWeight: 600,
                   fontSize: '0.9rem',
-                  letterSpacing: '0.04em',
+                  letterSpacing: '0.05em',
                   transform: btnHover && !loading ? 'translateY(-2px)' : 'translateY(0)',
                   boxShadow: btnHover && !loading
-                    ? '0 6px 18px rgba(180,130,40,0.38)'
-                    : '0 2px 6px rgba(180,130,40,0.22)',
-                  transition: 'background-color 0.17s ease, transform 0.17s ease, box-shadow 0.17s ease',
-                  opacity: loading ? 0.72 : 1,
+                    ? '0 4px 8px rgba(140,95,15,0.18), 0 8px 24px rgba(140,95,15,0.30)'
+                    : '0 1px 3px rgba(140,95,15,0.12), 0 3px 9px rgba(140,95,15,0.20)',
+                  transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease',
+                  opacity: loading ? 0.70 : 1,
                 }}
               >
                 {loading ? 'Signing in…' : 'Sign in'}
@@ -195,17 +195,19 @@ function LoginField({
         onBlur={() => setFocused(false)}
         style={{
           width: '100%',
-          padding: '0.62rem 0.9rem',
-          borderRadius: '9px',
-          border: focused ? '1.5px solid #C9A248' : '1.5px solid #DDD3C5',
-          backgroundColor: focused ? '#FFFCF6' : 'var(--cafe-bg)',
+          padding: '0.66rem 0.95rem',
+          borderRadius: '11px',
+          border: focused ? '1.5px solid #C9A248' : '1.5px solid #D8CBBA',
+          backgroundColor: focused ? '#FFFDF8' : 'var(--cafe-bg)',
           color: 'var(--cafe-text)',
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '0.9rem',
           outline: 'none',
           boxSizing: 'border-box',
-          boxShadow: focused ? '0 0 0 3px rgba(201,162,72,0.16)' : 'none',
-          transition: 'border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease',
+          boxShadow: focused
+            ? '0 0 0 3.5px rgba(201,162,72,0.18), 0 1px 4px rgba(140,95,15,0.10)'
+            : '0 1px 2px rgba(100,65,30,0.05)',
+          transition: 'border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease',
         }}
       />
     </label>
