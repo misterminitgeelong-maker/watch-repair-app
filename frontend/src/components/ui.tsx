@@ -2,7 +2,8 @@ import { cn, STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
 
 export function Badge({ status }: { status: string }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium tracking-wide', STATUS_COLORS[status] ?? 'bg-[#EEEBE5] text-[#7A6A5A]')}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide', STATUS_COLORS[status] ?? 'bg-[#EEEBE5] text-[#7A6A5A]')}>
+      <span style={{ fontSize: '0.5rem', lineHeight: 1, opacity: 0.85 }}>●</span>
       {STATUS_LABELS[status] ?? status}
     </span>
   )
