@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Wrench, Users, DollarSign, Clock } from 'lucide-react'
 import { listJobs, listCustomers } from '@/lib/api'
@@ -30,23 +31,57 @@ const STAT_STYLES = [
   { iconBg: '#E8F0E4', iconColor: '#3B6B42', label: 'Outstanding' },
 ]
 
+const KPI_ANIM_CSS = `
+@keyframes kpiRise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kpi-card { animation: kpiRise 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; }
+`
+
 function StatCard({
-  label, value, icon: Icon, iconBg, iconColor,
+  label, value, icon: Icon, iconBg, iconColor, index,
 }: {
-  label: string; value: number; icon: React.ElementType; iconBg: string; iconColor: string
+  label: string; value: number; icon: React.ElementType; iconBg: string; iconColor: string; index: number
 }) {
+  const [hovered, setHovered] = useState(false)
   return (
-    <Card className="p-6 flex items-center gap-5">
+    <div
+      className="kpi-card p-6 flex items-center gap-5"
+      style={{
+        backgroundColor: 'var(--cafe-surface)',
+        border: '1px solid var(--cafe-border)',
+        borderRadius: 20,
+        boxShadow: hovered
+          ? '0 4px 8px rgba(80,50,15,0.10), 0 14px 36px rgba(80,50,15,0.13)'
+          : '0 1px 3px rgba(80,50,15,0.06), 0 4px 18px rgba(80,50,15,0.09)',
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'transform 0.22s ease, box-shadow 0.22s ease',
+        animationDelay: `${index * 0.07}s`,
+        cursor: 'default',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: iconBg }}
+        style={{
+          backgroundColor: iconBg,
+          boxShadow: `inset 0 1px 2px rgba(255,255,255,0.55), 0 2px 6px ${iconBg}`,
+        }}
       >
         <Icon size={22} style={{ color: iconColor }} />
       </div>
       <div>
         <p
-          className="text-3xl font-semibold leading-none"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          className="leading-none"
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            color: 'var(--cafe-text)',
+            fontSize: '2.1rem',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+          }}
         >
           {value}
         </p>
@@ -54,7 +89,7 @@ function StatCard({
           {label}
         </p>
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -71,13 +106,14 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <style>{KPI_ANIM_CSS}</style>
       <PageHeader title="Overview" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label={STAT_STYLES[0].label} value={openJobs.length}              icon={Wrench}      iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} />
-        <StatCard label={STAT_STYLES[1].label} value={customers?.length ?? 0}       icon={Users}       iconBg={STAT_STYLES[1].iconBg} iconColor={STAT_STYLES[1].iconColor} />
-        <StatCard label={STAT_STYLES[2].label} value={awaitingGoAheadJobs.length}   icon={Clock}       iconBg={STAT_STYLES[2].iconBg} iconColor={STAT_STYLES[2].iconColor} />
-        <StatCard label={STAT_STYLES[3].label} value={goAheadJobs.length}           icon={DollarSign}  iconBg={STAT_STYLES[3].iconBg} iconColor={STAT_STYLES[3].iconColor} />
+        <StatCard label={STAT_STYLES[0].label} value={openJobs.length}              icon={Wrench}      iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} index={0} />
+        <StatCard label={STAT_STYLES[1].label} value={customers?.length ?? 0}       icon={Users}       iconBg={STAT_STYLES[1].iconBg} iconColor={STAT_STYLES[1].iconColor} index={1} />
+        <StatCard label={STAT_STYLES[2].label} value={awaitingGoAheadJobs.length}   icon={Clock}       iconBg={STAT_STYLES[2].iconBg} iconColor={STAT_STYLES[2].iconColor} index={2} />
+        <StatCard label={STAT_STYLES[3].label} value={goAheadJobs.length}           icon={DollarSign}  iconBg={STAT_STYLES[3].iconBg} iconColor={STAT_STYLES[3].iconColor} index={3} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
