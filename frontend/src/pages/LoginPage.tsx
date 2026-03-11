@@ -49,10 +49,10 @@ export default function LoginPage() {
         {/* Subtle warm radial glow */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(201,162,72,0.18) 0%, rgba(185,142,55,0.07) 42%, transparent 70%)',
+          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(201,162,72,0.11) 0%, rgba(185,142,55,0.04) 42%, transparent 70%)',
         }} />
 
-        <div className="w-full max-w-sm" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 1 }}>
 
           {/* Logo + tagline */}
           <div className="ms-logo flex flex-col items-center mb-10">
@@ -66,7 +66,7 @@ export default function LoginPage() {
               <img
                 src="/mainspring-logo.png"
                 alt="Mainspring"
-                style={{ width: '276px', height: 'auto', display: 'block', borderRadius: '10px' }}
+                style={{ width: '386px', height: 'auto', display: 'block', borderRadius: '10px', maxWidth: '100%' }}
               />
             </div>
             <p style={{
