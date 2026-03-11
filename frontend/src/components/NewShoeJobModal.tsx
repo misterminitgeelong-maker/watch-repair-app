@@ -3,10 +3,33 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import {
   listCustomers, createCustomer, createShoe, createShoeRepairJob,
+  addShoeToJob, appendShoeRepairJobItems,
   type Customer,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+
+type IntakeShoe = {
+  shoe_type: string
+  brand: string
+  color: string
+  description_notes: string
+  services: SelectedShoeService[]
+}
+
+function newIntakeShoe(): IntakeShoe {
+  return { shoe_type: '', brand: '', color: '', description_notes: '', services: [] }
+}
+
+function toItemPayload(services: SelectedShoeService[], pairIndex: number, pairCount: number) {
+  const withPrefix = pairCount > 1
+  return buildShoeRepairJobItemsPayload(services).map(item => ({
+    ...item,
+    notes: withPrefix
+      ? `Pair ${pairIndex + 1}${item.notes ? ` - ${item.notes}` : ''}`
+      : item.notes,
+  }))
+}
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 function Steps({ current }: { current: number }) {
@@ -49,12 +72,12 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [createdCustomerId, setCreatedCustomerId] = useState('')
 
-  // Step 2 – Shoe details
-  const [shoe, setShoe] = useState({ shoe_type: '', brand: '', color: '', description_notes: '' })
+  // Step 2 / 3 – Shoes + services
+  const [shoeCount, setShoeCount] = useState(1)
+  const [shoes, setShoes] = useState<IntakeShoe[]>([newIntakeShoe()])
 
-  // Step 3 – Job + catalogue items
+  // Step 3 – Job fields
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '' })
-  const [selectedItems, setSelectedItems] = useState<SelectedShoeService[]>([])
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -67,10 +90,21 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setNewCustomer(f => ({ ...f, [k]: e.target.value }))
-  const setS = (k: keyof typeof shoe) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setShoe(f => ({ ...f, [k]: e.target.value }))
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setJob(f => ({ ...f, [k]: e.target.value }))
+
+  function updateShoe(idx: number, patch: Partial<IntakeShoe>) {
+    setShoes(prev => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)))
+  }
+
+  function changeShoeCount(nextCount: number) {
+    setShoeCount(nextCount)
+    setShoes(prev => {
+      if (nextCount <= prev.length) return prev.slice(0, nextCount)
+      const added = Array.from({ length: nextCount - prev.length }, () => newIntakeShoe())
+      return [...prev, ...added]
+    })
+  }
 
   async function nextStep1() {
     setError('')
@@ -91,25 +125,53 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   async function submit() {
     setError('')
-    if (!job.title && selectedItems.length === 0) {
-      setError('Please add a job title or select at least one service.')
+    const anyServices = shoes.some(s => s.services.length > 0)
+    if (!job.title && !anyServices) {
+      setError('Please add a job title or select at least one service for a pair.')
       return
     }
     const custId = createdCustomerId || selectedCustomerId
     setLoading(true)
     try {
-      const { data: shoeData } = await createShoe({ customer_id: custId, ...shoe })
-      const autoTitle = job.title || selectedItems.map(s => s.item.name).join(', ')
+      const createdShoeIds: string[] = []
+      for (const intakeShoe of shoes) {
+        const { data } = await createShoe({
+          customer_id: custId,
+          shoe_type: intakeShoe.shoe_type || undefined,
+          brand: intakeShoe.brand || undefined,
+          color: intakeShoe.color || undefined,
+          description_notes: intakeShoe.description_notes || undefined,
+        })
+        createdShoeIds.push(data.id)
+      }
+
+      const autoTitle =
+        job.title ||
+        (() => {
+          const names = Array.from(new Set(shoes.flatMap(s => s.services.map(it => it.item.name))))
+          return names.length ? names.join(', ') : `Shoe repair (${shoes.length} pair${shoes.length === 1 ? '' : 's'})`
+        })()
+
+      const firstItems = toItemPayload(shoes[0].services, 0, shoes.length)
       const { data: jobData } = await createShoeRepairJob({
-        shoe_id: shoeData.id,
+        shoe_id: createdShoeIds[0],
         title: autoTitle,
         description: job.description || undefined,
         priority: job.priority,
         status: job.status,
         salesperson: job.salesperson || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
-        items: buildShoeRepairJobItemsPayload(selectedItems),
+        items: firstItems,
       })
+
+      for (let i = 1; i < createdShoeIds.length; i += 1) {
+        await addShoeToJob(jobData.id, createdShoeIds[i])
+        const itemsForPair = toItemPayload(shoes[i].services, i, shoes.length)
+        if (itemsForPair.length > 0) {
+          await appendShoeRepairJobItems(jobData.id, itemsForPair)
+        }
+      }
+
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       onSuccess?.(jobData.id)
       onClose()
@@ -176,26 +238,61 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
       {/* ── Step 2: Shoe Details ── */}
       {step === 2 && (
         <div className="space-y-4">
-          <Select label="Shoe Type" value={shoe.shoe_type} onChange={setS('shoe_type')}>
-            <option value="">Select type (optional)</option>
-            <option>Dress shoes</option>
-            <option>Boots</option>
-            <option>Sneakers</option>
-            <option>Sandals / Thongs</option>
-            <option>Heels / Stilettos</option>
-            <option>Work boots</option>
-            <option>Birkenstocks</option>
-            <option>Other</option>
+          <Select
+            label="How many pairs are being booked in?"
+            value={String(shoeCount)}
+            onChange={e => changeShoeCount(Number(e.target.value))}
+          >
+            {[1, 2, 3, 4, 5].map(n => (
+              <option key={n} value={n}>{n} pair{n === 1 ? '' : 's'}</option>
+            ))}
           </Select>
-          <Input label="Brand" value={shoe.brand} onChange={setS('brand')} placeholder="e.g. RM Williams" />
-          <Input label="Colour" value={shoe.color} onChange={setS('color')} placeholder="e.g. Tan" />
-          <Textarea
-            label="Description / Condition Notes"
-            value={shoe.description_notes}
-            onChange={setS('description_notes')}
-            placeholder="Describe the shoes and any damage…"
-            rows={3}
-          />
+
+          {shoes.map((shoe, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border p-3 space-y-3"
+              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                Pair {idx + 1}
+              </p>
+              <Select
+                label="Shoe Type"
+                value={shoe.shoe_type}
+                onChange={e => updateShoe(idx, { shoe_type: e.target.value })}
+              >
+                <option value="">Select type (optional)</option>
+                <option>Dress shoes</option>
+                <option>Boots</option>
+                <option>Sneakers</option>
+                <option>Sandals / Thongs</option>
+                <option>Heels / Stilettos</option>
+                <option>Work boots</option>
+                <option>Birkenstocks</option>
+                <option>Other</option>
+              </Select>
+              <Input
+                label="Brand"
+                value={shoe.brand}
+                onChange={e => updateShoe(idx, { brand: e.target.value })}
+                placeholder="e.g. RM Williams"
+              />
+              <Input
+                label="Colour"
+                value={shoe.color}
+                onChange={e => updateShoe(idx, { color: e.target.value })}
+                placeholder="e.g. Tan"
+              />
+              <Textarea
+                label="Description / Condition Notes"
+                value={shoe.description_notes}
+                onChange={e => updateShoe(idx, { description_notes: e.target.value })}
+                placeholder="Describe the shoes and any damage…"
+                rows={3}
+              />
+            </div>
+          ))}
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(1)} className="flex-1">Back</Button>
             <Button onClick={() => setStep(3)} className="flex-1">Continue</Button>
@@ -213,12 +310,21 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             placeholder="e.g. Heel & sole replacement"
           />
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
-              Services
-            </p>
-            <ShoeServicePicker selected={selectedItems} onChange={setSelectedItems} />
-          </div>
+          {shoes.map((shoe, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border p-3"
+              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                Services for Pair {idx + 1}
+              </p>
+              <ShoeServicePicker
+                selected={shoe.services}
+                onChange={services => updateShoe(idx, { services })}
+              />
+            </div>
+          ))}
 
           <Textarea
             label="Additional Notes"
