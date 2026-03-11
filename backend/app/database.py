@@ -31,12 +31,16 @@ def _ensure_runtime_columns() -> None:
     with engine.begin() as conn:
         if "repairjob" in table_names:
             repairjob_columns = {col["name"] for col in inspector.get_columns("repairjob")}
+            if "assigned_user_id" not in repairjob_columns:
+                conn.execute(text("ALTER TABLE repairjob ADD COLUMN assigned_user_id TEXT"))
             if "description" not in repairjob_columns:
                 conn.execute(text("ALTER TABLE repairjob ADD COLUMN description TEXT"))
             if "salesperson" not in repairjob_columns:
                 conn.execute(text("ALTER TABLE repairjob ADD COLUMN salesperson TEXT"))
             if "collection_date" not in repairjob_columns:
                 conn.execute(text("ALTER TABLE repairjob ADD COLUMN collection_date DATE"))
+            if "deposit_cents" not in repairjob_columns:
+                conn.execute(text("ALTER TABLE repairjob ADD COLUMN deposit_cents INTEGER NOT NULL DEFAULT 0"))
             if "cost_cents" not in repairjob_columns:
                 conn.execute(text("ALTER TABLE repairjob ADD COLUMN cost_cents INTEGER NOT NULL DEFAULT 0"))
             if "pre_quote_cents" not in repairjob_columns:
