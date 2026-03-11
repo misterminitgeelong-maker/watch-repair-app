@@ -301,3 +301,157 @@ export interface PlatformUser extends TenantUser {
 }
 
 export const listPlatformUsers = () => api.get<PlatformUser[]>('/platform-admin/users')
+
+// ── Shoe Catalogue ────────────────────────────────────────────────────────────
+export interface ShoeCatalogueGroup {
+  id: string
+  label: string
+}
+
+export type ShoePricingType =
+  | 'fixed' | 'from' | 'each' | 'pair' | 'pair_from' | 'each_from'
+  | 'per_cm' | 'from_per_boot' | 'from_per_strap' | 'per_elastic'
+  | 'single' | 'quoted_upon_inspection'
+
+export interface ShoeCatalogueItem {
+  key: string
+  name: string
+  price: number | null
+  price_cents: number | null
+  pricing_type: ShoePricingType
+  group_id: string
+  group_label: string
+  notes?: string
+  includes?: string[]
+}
+
+export interface ShoeCombo {
+  id: string
+  name: string
+  discount?: string
+  discounts?: string[]
+  rule: string
+}
+
+export const listShoeCatalogueGroups = () =>
+  api.get<ShoeCatalogueGroup[]>('/shoe-catalogue/groups')
+
+export const searchShoeCatalogueItems = (params?: { q?: string; group?: string }) =>
+  api.get<ShoeCatalogueItem[]>('/shoe-catalogue/items', { params })
+
+export const listShoeCombos = () =>
+  api.get<ShoeCombo[]>('/shoe-catalogue/combos')
+
+export const getShoeGuarantee = () =>
+  api.get<{ shoe_repairs: string }>('/shoe-catalogue/guarantee')
+
+// ── Shoes (items being repaired) ──────────────────────────────────────────────
+export interface Shoe {
+  id: string
+  tenant_id: string
+  customer_id: string
+  shoe_type?: string
+  brand?: string
+  color?: string
+  description_notes?: string
+  created_at: string
+}
+
+export const listShoes = (customerId?: string) =>
+  api.get<Shoe[]>('/shoe-repair-jobs/shoes', customerId ? { params: { customer_id: customerId } } : undefined)
+
+export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
+  api.post<Shoe>('/shoe-repair-jobs/shoes', data)
+
+// ── Shoe Repair Jobs ──────────────────────────────────────────────────────────
+export interface ShoeRepairJobItem {
+  id: string
+  shoe_repair_job_id: string
+  catalogue_key: string
+  catalogue_group: string
+  item_name: string
+  pricing_type: ShoePricingType
+  unit_price_cents: number | null
+  quantity: number
+  notes?: string
+  created_at: string
+}
+
+export interface ShoeRepairJob {
+  id: string
+  tenant_id: string
+  shoe_id: string
+  assigned_user_id?: string
+  job_number: string
+  status_token: string
+  title: string
+  description?: string
+  priority: string
+  status: string
+  salesperson?: string
+  collection_date?: string
+  deposit_cents: number
+  cost_cents: number
+  created_at: string
+  items: ShoeRepairJobItem[]
+}
+
+export interface ShoeRepairJobCreatePayload {
+  shoe_id: string
+  title: string
+  description?: string
+  priority?: string
+  status?: string
+  salesperson?: string
+  collection_date?: string
+  deposit_cents?: number
+  cost_cents?: number
+  items: Array<{
+    catalogue_key: string
+    catalogue_group: string
+    item_name: string
+    pricing_type: ShoePricingType
+    unit_price_cents: number | null
+    quantity?: number
+    notes?: string
+  }>
+}
+
+export const listShoeRepairJobs = (status?: string) =>
+  api.get<ShoeRepairJob[]>('/shoe-repair-jobs', status ? { params: { status } } : undefined)
+
+export const getShoeRepairJob = (id: string) =>
+  api.get<ShoeRepairJob>(`/shoe-repair-jobs/${id}`)
+
+export const createShoeRepairJob = (data: ShoeRepairJobCreatePayload) =>
+  api.post<ShoeRepairJob>('/shoe-repair-jobs', data)
+
+export const updateShoeRepairJob = (id: string, data: Partial<{
+  title: string; description: string; priority: string
+  salesperson: string; collection_date: string
+  deposit_cents: number; cost_cents: number
+}>) => api.patch<ShoeRepairJob>(`/shoe-repair-jobs/${id}`, data)
+
+export const updateShoeRepairJobStatus = (id: string, status: string, note?: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
+
+// Pricing type display helper (used by both modal and page)
+export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {
+  if (type === 'quoted_upon_inspection') return 'Quoted upon inspection'
+  if (priceCents == null) return 'Price on enquiry'
+  const dollars = (priceCents / 100).toFixed(2)
+  switch (type) {
+    case 'fixed':        return `$${dollars}`
+    case 'from':         return `From $${dollars}`
+    case 'each':         return `$${dollars} each`
+    case 'pair':         return `$${dollars} / pair`
+    case 'pair_from':    return `From $${dollars} / pair`
+    case 'each_from':    return `From $${dollars} each`
+    case 'per_cm':       return `$${dollars} per cm`
+    case 'from_per_boot':   return `From $${dollars} / boot`
+    case 'from_per_strap':  return `From $${dollars} / strap`
+    case 'per_elastic':     return `$${dollars} per elastic`
+    case 'single':          return `$${dollars} (single)`
+    default:             return `$${dollars}`
+  }
+}

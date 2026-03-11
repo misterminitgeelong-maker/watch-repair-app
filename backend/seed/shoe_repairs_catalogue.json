@@ -1,0 +1,552 @@
+{
+  "category": "shoe_repairs",
+  "source": "AU 2026-27 Price Book.pdf",
+  "currency": "AUD",
+  "combos": [
+    {
+      "id": "shoe_care_combo",
+      "name": "Shoe Care Combo",
+      "discount": "20% OFF",
+      "rule": "Shoe care range with any shoe or bag repair in the same transaction. Includes laces and shoe accessories."
+    },
+    {
+      "id": "heel_sole_combo",
+      "name": "Heel & Sole Combo",
+      "discount": "20% OFF",
+      "rule": "Any combination of heel and sole repair on the same pair of shoes."
+    },
+    {
+      "id": "volume_combo",
+      "name": "Volume Combo",
+      "discounts": [
+        "20% OFF second pair of shoes",
+        "30% OFF third pair of shoes"
+      ],
+      "rule": "Discount applies to the lowest quoted shoe repair in the same transaction."
+    }
+  ],
+  "groups": [
+    {
+      "id": "heels",
+      "label": "Heels",
+      "items": [
+        {
+          "key": "heels__all_pegged_pin_heels",
+          "name": "All Pegged / Pin Heels",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "heels__minit_heel",
+          "name": "Minit Heel",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "heels__premium_heel",
+          "name": "Premium Heel",
+          "price": 49.95,
+          "price_cents": 4995,
+          "pricing_type": "fixed",
+          "notes": "Materials: Safir, Casali, Tigra, Goodyear Detroit Heel, RM Style, JR Heel"
+        }
+      ]
+    },
+    {
+      "id": "half_soles",
+      "label": "Half Soles",
+      "items": [
+        {
+          "key": "half_soles__1_2_sole_minit",
+          "name": "1/2 Sole (Minit Sole)",
+          "price": 44.95,
+          "price_cents": 4495,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "half_soles__1_2_leather_sole",
+          "name": "1/2 Leather Sole",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "half_soles__1_2_mirror_casali_sole",
+          "name": "1/2 Mirror Casali Sole",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "half_soles__1_2_sole_microcell",
+          "name": "1/2 Sole (Microcell)",
+          "price": 39.95,
+          "price_cents": 3995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "half_soles__toe_piece_microcell",
+          "name": "Toe Piece (Microcell)",
+          "price": 24.95,
+          "price_cents": 2495,
+          "pricing_type": "from"
+        }
+      ]
+    },
+    {
+      "id": "full_soles",
+      "label": "Full Soles",
+      "items": [
+        {
+          "key": "full_soles__full_leather_sole_and_heel",
+          "name": "Full Leather Sole & Heel",
+          "price": 114.95,
+          "price_cents": 11495,
+          "pricing_type": "from"
+        },
+        {
+          "key": "full_soles__flexi_soft_sole",
+          "name": "Flexi Soft Sole",
+          "price": 79.95,
+          "price_cents": 7995,
+          "pricing_type": "fixed",
+          "notes": "All Sizes"
+        },
+        {
+          "key": "full_soles__vibram_lienz",
+          "name": "Vibram Lienz",
+          "price": 79.95,
+          "price_cents": 7995,
+          "pricing_type": "fixed",
+          "notes": "All Sizes"
+        },
+        {
+          "key": "full_soles__work_boot_full_sole",
+          "name": "Work Boot Full Sole",
+          "price": 79.95,
+          "price_cents": 7995,
+          "pricing_type": "fixed",
+          "notes": "All Sizes"
+        },
+        {
+          "key": "full_soles__dress_shoes_full_sole",
+          "name": "Dress Shoes Full Sole",
+          "price": 129.95,
+          "price_cents": 12995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "full_soles__boots_full_sole",
+          "name": "Boots Full Sole",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "full_soles__topy_rug_full_sole",
+          "name": "Topy Rug Full Sole",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "full_soles__casali_full_sole",
+          "name": "Casali Full Sole",
+          "price": 59.95,
+          "price_cents": 5995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "full_soles__rm_williams_rubber_full_sole",
+          "name": "RM Williams Rubber Full Sole",
+          "price": 109.95,
+          "price_cents": 10995,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "additional_repairs",
+      "label": "Additional Repairs",
+      "items": [
+        {
+          "key": "additional_repairs__stitching",
+          "name": "Stitching",
+          "price": 10.95,
+          "price_cents": 1095,
+          "pricing_type": "from"
+        },
+        {
+          "key": "additional_repairs__patching",
+          "name": "Patching",
+          "price": 14.95,
+          "price_cents": 1495,
+          "pricing_type": "from"
+        },
+        {
+          "key": "additional_repairs__gluing",
+          "name": "Gluing",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "additional_repairs__zippers",
+          "name": "Zippers",
+          "price": 2.95,
+          "price_cents": 295,
+          "pricing_type": "per_cm"
+        },
+        {
+          "key": "additional_repairs__stretching",
+          "name": "Stretching",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "pair_from"
+        }
+      ]
+    },
+    {
+      "id": "scratch_repair_and_polish",
+      "label": "Scratch Repair & Polish",
+      "items": [
+        {
+          "key": "scratch_repair_and_polish__minor_scratch_repair_and_polish",
+          "name": "Minor Scratch Repair & Polish Service",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "scratch_repair_and_polish__deep_scratch_repair_and_polish",
+          "name": "Deep Scratch Repair & Polish Service",
+          "price": 39.95,
+          "price_cents": 3995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "scratch_repair_and_polish__high_polish_spit_polish",
+          "name": "High Polish / Spit Polish Finish Shoe Shine Service",
+          "price": 49.95,
+          "price_cents": 4995,
+          "pricing_type": "from"
+        }
+      ]
+    },
+    {
+      "id": "shoe_revival",
+      "label": "Shoe Revival",
+      "items": [
+        {
+          "key": "shoe_revival__buff_and_polish",
+          "name": "Buff & Polish",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "shoe_revival__water_and_stain_protection",
+          "name": "Water & Stain Protection",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "each_from"
+        },
+        {
+          "key": "shoe_revival__clean_and_deodorise",
+          "name": "Clean & Deodorise",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "each_from"
+        },
+        {
+          "key": "shoe_revival__revival_package",
+          "name": "Revival Package",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "from"
+        }
+      ]
+    },
+    {
+      "id": "miscellaneous_repairs",
+      "label": "Miscellaneous Repairs",
+      "items": [
+        {
+          "key": "miscellaneous_repairs__heel_build_up",
+          "name": "Heel Build Up",
+          "price": 14.95,
+          "price_cents": 1495,
+          "pricing_type": "from_per_strap"
+        },
+        {
+          "key": "miscellaneous_repairs__elastic_replacement",
+          "name": "Elastic Replacement",
+          "price": 10.95,
+          "price_cents": 1095,
+          "pricing_type": "per_elastic"
+        },
+        {
+          "key": "miscellaneous_repairs__microcell_build_up",
+          "name": "Microcell Build Up",
+          "price": 14.95,
+          "price_cents": 1495,
+          "pricing_type": "pair_from"
+        },
+        {
+          "key": "miscellaneous_repairs__sole_stitching",
+          "name": "Sole Stitching",
+          "price": 12.95,
+          "price_cents": 1295,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__velcro_replacement",
+          "name": "Velcro Replacement (Hook & Loop)",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__stitch_back_of_shoe",
+          "name": "Stitch Back of Shoe",
+          "price": 12.95,
+          "price_cents": 1295,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__secure_reattach_heel",
+          "name": "Secure / Re-attach Heel",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "each"
+        },
+        {
+          "key": "miscellaneous_repairs__remove_sole_and_patch",
+          "name": "Remove Sole & Patch",
+          "price": 34.95,
+          "price_cents": 3495,
+          "pricing_type": "single"
+        },
+        {
+          "key": "miscellaneous_repairs__heel_block_replacement",
+          "name": "Heel Block Replacement",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__shoe_pair_bag_recolour",
+          "name": "Shoe (Pair) / Bag Recolour",
+          "price": 18.95,
+          "price_cents": 1895,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__stitch_back_with_lining_leather",
+          "name": "Stitch Back of Shoe with Lining Leather",
+          "price": 24.95,
+          "price_cents": 2495,
+          "pricing_type": "each"
+        },
+        {
+          "key": "miscellaneous_repairs__heel_block_covers",
+          "name": "Heel Block Covers",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "pair"
+        },
+        {
+          "key": "miscellaneous_repairs__belt_hole",
+          "name": "Belt Hole",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__new_shanks",
+          "name": "New Shanks",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__rapid_shanks",
+          "name": "Rapid Shanks",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__mid_sole_repair_joggers",
+          "name": "Mid-Sole Repair (Joggers) Using Microcell",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "pair_from"
+        },
+        {
+          "key": "miscellaneous_repairs__texon_board_replacement",
+          "name": "Texon Board Replacement",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "pair_from"
+        },
+        {
+          "key": "miscellaneous_repairs__attach_buckle",
+          "name": "Attach Buckle (with pieces)",
+          "price": 10.95,
+          "price_cents": 1095,
+          "pricing_type": "each"
+        },
+        {
+          "key": "miscellaneous_repairs__stitch_buckle",
+          "name": "Stitch Buckle",
+          "price": 15.95,
+          "price_cents": 1595,
+          "pricing_type": "pair"
+        },
+        {
+          "key": "miscellaneous_repairs__fit_taps_on_shoes",
+          "name": "Fit Taps on Shoes",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "each_from"
+        },
+        {
+          "key": "miscellaneous_repairs__leather_sole_lining",
+          "name": "Leather Sole Lining",
+          "price": 34.95,
+          "price_cents": 3495,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__gussets_in_1_2_boots",
+          "name": "Gussets in 1/2 Boots",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "miscellaneous_repairs__toe_cap_patch",
+          "name": "Toe Cap Patch",
+          "price": 49.95,
+          "price_cents": 4995,
+          "pricing_type": "from_per_boot"
+        }
+      ]
+    },
+    {
+      "id": "birkenstock",
+      "label": "Birkenstock",
+      "items": [
+        {
+          "key": "birkenstock__full_eva_sole_replacement",
+          "name": "Full EVA Sole Replacement",
+          "price": 79.95,
+          "price_cents": 7995,
+          "pricing_type": "fixed",
+          "notes": "Black, Brown & White"
+        },
+        {
+          "key": "birkenstock__full_super_sole_replacement",
+          "name": "Full Super Sole Replacement",
+          "price": 89.95,
+          "price_cents": 8995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "birkenstock__footbed_replacement_eva",
+          "name": "Footbed Replacement (includes EVA sole replacement)",
+          "price": 129.95,
+          "price_cents": 12995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "birkenstock__footbed_replacement_super_sole",
+          "name": "Footbed Replacement (includes Super Sole replacement)",
+          "price": 139.95,
+          "price_cents": 13995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "birkenstock__toe_build_up",
+          "name": "Toe Build Up",
+          "price": 24.95,
+          "price_cents": 2495,
+          "pricing_type": "from"
+        },
+        {
+          "key": "birkenstock__buckle_replacement",
+          "name": "Buckle Replacement",
+          "price": 20.00,
+          "price_cents": 2000,
+          "pricing_type": "each"
+        },
+        {
+          "key": "birkenstock__rivet_replacement",
+          "name": "Rivet Replacement",
+          "price": 20.00,
+          "price_cents": 2000,
+          "pricing_type": "each"
+        },
+        {
+          "key": "birkenstock__heel_build_up",
+          "name": "Heel Build Up",
+          "price": 24.95,
+          "price_cents": 2495,
+          "pricing_type": "each"
+        },
+        {
+          "key": "birkenstock__elastic_replacement",
+          "name": "Elastic Replacement",
+          "price": 39.00,
+          "price_cents": 3900,
+          "pricing_type": "each"
+        },
+        {
+          "key": "birkenstock__gluing",
+          "name": "Gluing",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "from"
+        },
+        {
+          "key": "birkenstock__cork_repair",
+          "name": "Cork Repair",
+          "price": 39.00,
+          "price_cents": 3900,
+          "pricing_type": "from"
+        },
+        {
+          "key": "birkenstock__other_repairs",
+          "name": "Other Repairs",
+          "price": null,
+          "price_cents": null,
+          "pricing_type": "quoted_upon_inspection"
+        }
+      ]
+    },
+    {
+      "id": "sneaker_cleaning",
+      "label": "Sneaker Cleaning",
+      "items": [
+        {
+          "key": "sneaker_cleaning__sneaker_doctor_cleaning",
+          "name": "SNEAKER DOCTOR Sneaker Cleaning",
+          "price": 40.00,
+          "price_cents": 4000,
+          "pricing_type": "from",
+          "includes": [
+            "Clean Upper, Middle & Undersole",
+            "Clean Laces, Innersole & Deodorise",
+            "Water & Stain Treatment"
+          ]
+        }
+      ]
+    }
+  ],
+  "guarantee": {
+    "shoe_repairs": "All shoe repair work is guaranteed for 6 months wear & workmanship."
+  }
+}

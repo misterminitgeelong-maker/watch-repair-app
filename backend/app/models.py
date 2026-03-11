@@ -541,3 +541,142 @@ class InvoiceWithPayments(SQLModel):
 
 class InvoiceCreateFromQuoteResponse(SQLModel):
     invoice: InvoiceRead
+
+
+# ── Shoe Repairs ──────────────────────────────────────────────────────────────
+
+class Shoe(SQLModel, table=True):
+    """A pair (or single) of shoes linked to a customer — parallel to Watch."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_id: UUID = Field(index=True, foreign_key="customer.id")
+    shoe_type: Optional[str] = None   # e.g. "boots", "sneakers", "dress", "sandals"
+    brand: Optional[str] = None
+    color: Optional[str] = None
+    description_notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ShoeRepairJob(SQLModel, table=True):
+    """A shoe repair job — parallel to RepairJob."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shoe_id: UUID = Field(index=True, foreign_key="shoe.id")
+    assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    job_number: str = Field(index=True)
+    status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    title: str
+    description: Optional[str] = None
+    priority: str = "normal"
+    status: str = "awaiting_go_ahead"
+    salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
+    deposit_cents: int = 0
+    cost_cents: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ShoeRepairJobItem(SQLModel, table=True):
+    """A catalogue line item selected for a shoe repair job."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
+    catalogue_key: str          # e.g. "heels__all_pegged_pin_heels"
+    catalogue_group: str        # e.g. "heels"
+    item_name: str
+    pricing_type: str           # e.g. "fixed", "from", "pair", …
+    unit_price_cents: Optional[int] = None  # null for quoted_upon_inspection
+    quantity: float = 1.0
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Shoe Repair — Pydantic schemas ────────────────────────────────────────────
+
+class ShoeCreate(SQLModel):
+    customer_id: UUID
+    shoe_type: Optional[str] = None
+    brand: Optional[str] = None
+    color: Optional[str] = None
+    description_notes: Optional[str] = None
+
+
+class ShoeRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    customer_id: UUID
+    shoe_type: Optional[str] = None
+    brand: Optional[str] = None
+    color: Optional[str] = None
+    description_notes: Optional[str] = None
+    created_at: datetime
+
+
+class ShoeRepairJobItemCreate(SQLModel):
+    catalogue_key: str
+    catalogue_group: str
+    item_name: str
+    pricing_type: str
+    unit_price_cents: Optional[int] = None
+    quantity: float = 1.0
+    notes: Optional[str] = None
+
+
+class ShoeRepairJobItemRead(SQLModel):
+    id: UUID
+    shoe_repair_job_id: UUID
+    catalogue_key: str
+    catalogue_group: str
+    item_name: str
+    pricing_type: str
+    unit_price_cents: Optional[int] = None
+    quantity: float
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+class ShoeRepairJobCreate(SQLModel):
+    shoe_id: UUID
+    title: str
+    description: Optional[str] = None
+    priority: str = "normal"
+    status: str = "awaiting_go_ahead"
+    salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
+    deposit_cents: int = 0
+    cost_cents: int = 0
+    items: list[ShoeRepairJobItemCreate] = []
+
+
+class ShoeRepairJobRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    shoe_id: UUID
+    assigned_user_id: Optional[UUID] = None
+    job_number: str
+    status_token: str
+    title: str
+    description: Optional[str] = None
+    priority: str
+    status: str
+    salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
+    deposit_cents: int
+    cost_cents: int
+    created_at: datetime
+    items: list[ShoeRepairJobItemRead] = []
+
+
+class ShoeRepairJobStatusUpdate(SQLModel):
+    status: str
+    note: Optional[str] = None
+
+
+class ShoeRepairJobFieldUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
+    deposit_cents: Optional[int] = None
+    cost_cents: Optional[int] = None

@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Users },
-  { to: '/jobs', label: 'Repair Jobs', icon: Wrench },
+  { to: '/jobs', label: 'Watch Repairs', icon: Wrench },
+  { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/database', label: 'Database', icon: Database },
