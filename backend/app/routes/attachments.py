@@ -1,8 +1,10 @@
+import io
 from pathlib import Path
 from uuid import UUID, uuid4
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from PIL import Image, UnidentifiedImageError
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session, select
@@ -52,9 +54,28 @@ async def upload_attachment(
             raise HTTPException(status_code=404, detail="Watch not found")
 
     safe_name = Path(file.filename or "file").name
+    raw = await file.read()
+    content_type = file.content_type or "application/octet-stream"
+
+    # Compress images on upload
+    if content_type.startswith("image/"):
+        try:
+            img = Image.open(io.BytesIO(raw))
+            img = img.convert("RGB")
+            max_dim = 2000
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85, optimize=True)
+            raw = buf.getvalue()
+            safe_name = Path(safe_name).stem + ".jpg"
+            content_type = "image/jpeg"
+        except UnidentifiedImageError:
+            pass  # not a recognised image, store as-is
+
     storage_key = f"{uuid4().hex}_{safe_name}"
     dest = UPLOAD_DIR / storage_key
-    dest.write_bytes(await file.read())
+    dest.write_bytes(raw)
 
     attachment = Attachment(
         tenant_id=auth.tenant_id,
@@ -63,7 +84,7 @@ async def upload_attachment(
         uploaded_by_user_id=auth.user_id,
         storage_key=storage_key,
         file_name=safe_name,
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type,
         file_size_bytes=dest.stat().st_size,
         label=label,
     )
