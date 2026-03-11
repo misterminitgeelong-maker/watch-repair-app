@@ -33,10 +33,20 @@ function Steps({ current }: { current: number }) {
 }
 
 // ── Catalogue picker ──────────────────────────────────────────────────────────
+const FROM_PRICING_TYPES: ShoePricingType[] = [
+  'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
+]
+
+function isPriceAdjustable(t: ShoePricingType) {
+  return FROM_PRICING_TYPES.includes(t)
+}
+
 interface SelectedItem {
   item: ShoeCatalogueItem
   quantity: number
   notes: string
+  /** Only set for 'from' / quoted_upon_inspection types — the agreed price in dollars as a string */
+  agreedPrice: string
 }
 
 function CataloguePicker({
@@ -65,7 +75,7 @@ function CataloguePicker({
 
   function addItem(item: ShoeCatalogueItem) {
     if (selectedKeys.has(item.key)) return
-    onChange([...selected, { item, quantity: 1, notes: item.notes ?? '' }])
+    onChange([...selected, { item, quantity: 1, notes: item.notes ?? '', agreedPrice: '' }])
   }
 
   function removeItem(key: string) {
@@ -154,7 +164,7 @@ function CataloguePicker({
             Selected services ({selected.length})
           </p>
           <div className="space-y-2">
-            {selected.map(({ item, notes }, idx) => (
+            {selected.map(({ item, notes, agreedPrice }, idx) => (
               <div
                 key={item.key}
                 className="flex items-start gap-2 rounded-lg px-3 py-2"
@@ -164,7 +174,15 @@ function CataloguePicker({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
                   <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                    {item.group_label} · {formatShoePricingType(item.pricing_type as ShoePricingType, item.price_cents)}
+                    {item.group_label}
+                    {isPriceAdjustable(item.pricing_type as ShoePricingType)
+                      ? <>
+                          {' · '}
+                          <span style={{ color: 'var(--cafe-amber)' }}>
+                            {formatShoePricingType(item.pricing_type as ShoePricingType, item.price_cents)}
+                          </span>
+                        </>
+                      : <> · {formatShoePricingType(item.pricing_type as ShoePricingType, item.price_cents)}</>}
                   </p>
                   {item.includes && item.includes.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
@@ -172,6 +190,35 @@ function CataloguePicker({
                         <li key={inc} className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>• {inc}</li>
                       ))}
                     </ul>
+                  )}
+                  {/* Adjustable price field for 'from' and quoted_upon_inspection types */}
+                  {isPriceAdjustable(item.pricing_type as ShoePricingType) && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>Agreed $</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder={item.pricing_type === 'quoted_upon_inspection' ? '0.00' : ((item.price_cents ?? 0) / 100).toFixed(2)}
+                        value={agreedPrice}
+                        onChange={e => {
+                          const updated = [...selected]
+                          updated[idx] = { ...updated[idx], agreedPrice: e.target.value }
+                          onChange(updated)
+                        }}
+                        className="w-24 h-7 rounded border px-2 text-xs outline-none focus:ring-1"
+                        style={{
+                          backgroundColor: 'var(--cafe-bg)',
+                          borderColor: agreedPrice ? 'var(--cafe-amber)' : 'var(--cafe-border-2)',
+                          color: 'var(--cafe-text)',
+                        }}
+                      />
+                      {agreedPrice && (
+                        <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                          = ${parseFloat(agreedPrice || '0').toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                   )}
                   <input
                     type="text"
@@ -283,15 +330,21 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         status: job.status,
         salesperson: job.salesperson || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
-        items: selectedItems.map(s => ({
-          catalogue_key: s.item.key,
-          catalogue_group: s.item.group_id,
-          item_name: s.item.name,
-          pricing_type: s.item.pricing_type,
-          unit_price_cents: s.item.price_cents,
-          quantity: s.quantity,
-          notes: s.notes || undefined,
-        })),
+        items: selectedItems.map(s => {
+          // For 'from' types, use the agreed price if entered; otherwise fall back to the catalogue minimum
+          const agreedCents = s.agreedPrice
+            ? Math.round(parseFloat(s.agreedPrice) * 100)
+            : s.item.price_cents
+          return {
+            catalogue_key: s.item.key,
+            catalogue_group: s.item.group_id,
+            item_name: s.item.name,
+            pricing_type: s.item.pricing_type,
+            unit_price_cents: agreedCents,
+            quantity: s.quantity,
+            notes: s.notes || undefined,
+          }
+        }),
       })
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       onSuccess?.(jobData.id)

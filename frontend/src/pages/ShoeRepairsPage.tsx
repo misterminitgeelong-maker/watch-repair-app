@@ -4,8 +4,22 @@ import { Plus, Search, ChevronDown, Shield, Tag } from 'lucide-react'
 import {
   listShoeRepairJobs, updateShoeRepairJobStatus, getShoeGuarantee, listShoeCombos,
   formatShoePricingType,
-  type ShoeRepairJob, type ShoePricingType
+  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
+
+const FROM_PRICING_TYPES: ShoePricingType[] = [
+  'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
+]
+
+function itemPriceDisplay(item: ShoeRepairJobItem): string {
+  const isPriceAdjustable = FROM_PRICING_TYPES.includes(item.pricing_type as ShoePricingType)
+  if (item.unit_price_cents == null) return 'Quoted'
+  if (isPriceAdjustable) {
+    // Show the actual agreed price — not "From $X"
+    return `$${(item.unit_price_cents / 100).toFixed(2)}`
+  }
+  return formatShoePricingType(item.pricing_type as ShoePricingType, item.unit_price_cents)
+}
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
@@ -117,7 +131,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                   </p>
                 </div>
                 <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>
-                  {formatShoePricingType(item.pricing_type as ShoePricingType, item.unit_price_cents)}
+                  {itemPriceDisplay(item)}
                 </p>
               </div>
             ))}
