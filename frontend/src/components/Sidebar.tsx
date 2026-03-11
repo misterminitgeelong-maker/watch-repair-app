@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
 const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/jobs', label: 'Repair Jobs', icon: Wrench },
   { to: '/invoices', label: 'Invoices', icon: Receipt },

@@ -17,7 +17,7 @@ export default function AppShell() {
   }
 
   if (!token) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   return (

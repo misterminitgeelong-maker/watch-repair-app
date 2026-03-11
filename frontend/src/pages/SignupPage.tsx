@@ -17,7 +17,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (token) return <Navigate to="/" replace />
+  if (token) return <Navigate to="/dashboard" replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,7 +44,7 @@ export default function SignupPage() {
         password,
       })
       setToken(data.access_token)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err: unknown) {
       const apiMessage =
         typeof err === 'object' &&

@@ -16,6 +16,7 @@ import ReportsPage from '@/pages/ReportsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import StatusPage from '@/pages/StatusPage'
+import LandingPage from '@/pages/LandingPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -28,13 +29,14 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             {/* Public — no auth required */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
-              <Route index element={<DashboardPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailPage />} />
               <Route path="jobs" element={<JobsPage />} />

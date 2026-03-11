@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [btnHover, setBtnHover] = useState(false)
 
-  if (token) return <Navigate to="/" replace />
+  if (token) return <Navigate to="/dashboard" replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       const { data } = await login(slug, email, password)
       setToken(data.access_token)
-      navigate('/')
+      navigate('/dashboard')
     } catch {
       setError('Invalid shop ID, email, or password.')
     } finally {
