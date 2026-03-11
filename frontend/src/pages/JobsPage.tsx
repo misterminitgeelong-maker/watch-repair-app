@@ -204,92 +204,75 @@ export default function JobsPage() {
       </div>
 
       {isLoading ? <Spinner /> : (
-        <Card>
-          {filtered.length === 0 ? <EmptyState message="No jobs found." /> : (
-            <>
-            <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
-              {filtered.map((j) => (
-                <div key={j.id} className="p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Link to={`/jobs/${j.id}`} className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{j.title}</Link>
-                    <Badge status={j.status} />
-                  </div>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                    <span>#{j.job_number}</span>
-                    <span>{formatDate(j.created_at)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
-                    <span className="capitalize">Priority: {j.priority}</span>
-                    <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
-                  </div>
-                  {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
-                    <div className="pt-1">
-                      <Button className="w-full justify-center" variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <table className="w-full text-sm hidden md:table">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                  {['Job #', 'Title', 'Status', 'Priority', 'Quote', 'Created', 'Actions'].map(h => (
-                    <th
-                      key={h}
-                      className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase"
-                      style={{ color: 'var(--cafe-text-muted)' }}
+        filtered.length === 0 ? (
+          <Card>
+            <EmptyState message="No jobs found." />
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {statusOptions
+              .filter(s => statusFilter === 'all' || s === statusFilter)
+              .map((status) => {
+                const jobsInStatus = filtered.filter(j => j.status === status)
+                return (
+                  <Card key={status} className="overflow-hidden">
+                    <div
+                      className="px-4 py-3.5 flex items-center justify-between"
+                      style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
                     >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((j: RepairJob, i) => (
-                  <tr
-                    key={j.id}
-                    style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <td className="px-5 py-3.5 font-mono text-xs" style={{ color: 'var(--cafe-text-muted)' }}>#{j.job_number}</td>
-                    <td className="px-5 py-3.5">
-                      <Link
-                        to={`/jobs/${j.id}`}
-                        className="font-medium hover:underline"
-                        style={{ color: 'var(--cafe-amber)' }}
-                      >
-                        {j.title}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3.5"><Badge status={j.status} /></td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className="text-xs font-medium capitalize"
-                        style={{
-                          color: j.priority === 'urgent' ? '#8B3A3A'
-                               : j.priority === 'high'   ? '#9B4E0F'
-                               : 'var(--cafe-text-mid)',
-                        }}
-                      >
-                        {j.priority}
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {STATUS_OPTION_LABELS[status]}
+                      </p>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                        {jobsInStatus.length}
                       </span>
-                    </td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>${(displayQuoteCents(j) / 100).toFixed(2)}</td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(j.created_at)}</td>
-                    <td className="px-5 py-3.5">
-                      {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
-                        <Button variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
+                    </div>
+
+                    <div>
+                      {jobsInStatus.length === 0 ? (
+                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+                          No jobs in this stage.
+                        </p>
+                      ) : (
+                        jobsInStatus.map((j, i) => (
+                          <div
+                            key={j.id}
+                            className="px-4 py-3"
+                            style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <Link to={`/jobs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                                  {j.title}
+                                </Link>
+                                <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                                  #{j.job_number} · {formatDate(j.created_at)}
+                                </p>
+                              </div>
+                              <Badge status={j.status} />
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                              <span className="capitalize">Priority: {j.priority}</span>
+                              <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
+                            </div>
+
+                            {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
+                              <div className="mt-2">
+                                <Button className="w-full justify-center" variant="secondary" onClick={() => setTicketInJob(j)}>
+                                  Ticket In
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </>
-          )}
-        </Card>
+                    </div>
+                  </Card>
+                )
+              })}
+          </div>
+        )
       )}
     </div>
   )
