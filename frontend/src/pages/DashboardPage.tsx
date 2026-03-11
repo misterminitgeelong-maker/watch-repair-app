@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Wrench, Users, DollarSign, Clock } from 'lucide-react'
 import { listJobs, listCustomers } from '@/lib/api'
 import { Card, PageHeader, Badge, Spinner } from '@/components/ui'
-import { formatCents, formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatCents, formatDate } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']

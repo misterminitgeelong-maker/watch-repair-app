@@ -183,7 +183,7 @@ export default function JobDetailPage() {
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
         <span style={{ color: 'var(--cafe-text-muted)' }}>Status: <Badge status={job.status} /></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Priority: <span className="font-medium capitalize" style={{ color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--cafe-text)' }}>{job.priority}</span></span>
-        <span style={{ color: 'var(--cafe-text-muted)' }}>Quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></span>
+        <span style={{ color: 'var(--cafe-text-muted)' }}>Quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}</span></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Created: <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span></span>
       </div>
 
@@ -259,7 +259,12 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
-              {job.pre_quote_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Quote</span><span className="font-medium" style={{ color: '#9B7228' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></div>}
+              {(job.cost_cents > 0 || job.pre_quote_cents > 0) && (
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents > 0 ? '' : ' (est.)'}</span>
+                  <span className="font-medium" style={{ color: '#9B7228' }}>${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}</span>
+                </div>
+              )}
             </div>
 
             {/* Intake Photos */}

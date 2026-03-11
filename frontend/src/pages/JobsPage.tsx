@@ -53,7 +53,7 @@ export default function JobsPage() {
     if (sortBy === 'job_number') cmp = a.job_number.localeCompare(b.job_number, undefined, { numeric: true })
     else if (sortBy === 'status') cmp = a.status.localeCompare(b.status)
     else if (sortBy === 'priority') cmp = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9)
-    else if (sortBy === 'pre_quote_cents') cmp = a.pre_quote_cents - b.pre_quote_cents
+    else if (sortBy === 'pre_quote_cents') cmp = (a.cost_cents > 0 ? a.cost_cents : a.pre_quote_cents) - (b.cost_cents > 0 ? b.cost_cents : b.pre_quote_cents)
     else if (sortBy === 'created_at') cmp = a.created_at.localeCompare(b.created_at)
     return sortDir === 'asc' ? cmp : -cmp
   })
@@ -140,7 +140,7 @@ export default function JobsPage() {
                   <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{j.title}</p>
                   <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                     <span>{formatDate(j.created_at)}</span>
-                    <span>Quote: ${(j.pre_quote_cents / 100).toFixed(2)}</span>
+                    <span>Quote: ${((j.cost_cents > 0 ? j.cost_cents : j.pre_quote_cents) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
                     <span className="capitalize">Priority: {j.priority}</span>
@@ -196,7 +196,7 @@ export default function JobsPage() {
                         {j.priority}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>${(j.pre_quote_cents / 100).toFixed(2)}</td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>${((j.cost_cents > 0 ? j.cost_cents : j.pre_quote_cents) / 100).toFixed(2)}</td>
                     <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(j.created_at)}</td>
                   </tr>
                 ))}
