@@ -579,6 +579,16 @@ class ShoeRepairJob(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ShoeRepairJobShoe(SQLModel, table=True):
+    """Additional shoe pairs linked to a ShoeRepairJob beyond the primary shoe_id."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
+    shoe_id: UUID = Field(foreign_key="shoe.id")
+    sort_order: int = Field(default=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class ShoeRepairJobItem(SQLModel, table=True):
     """A catalogue line item selected for a shoe repair job."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -638,6 +648,13 @@ class ShoeRepairJobItemRead(SQLModel):
     created_at: datetime
 
 
+class ShoeRepairJobShoeRead(SQLModel):
+    id: UUID
+    shoe_id: UUID
+    shoe: Optional['ShoeRead'] = None
+    sort_order: int
+
+
 class ShoeRepairJobCreate(SQLModel):
     shoe_id: UUID
     title: str
@@ -668,6 +685,8 @@ class ShoeRepairJobRead(SQLModel):
     cost_cents: int
     created_at: datetime
     items: list[ShoeRepairJobItemRead] = []
+    shoe: Optional[ShoeRead] = None
+    extra_shoes: list[ShoeRepairJobShoeRead] = []
 
 
 class ShoeRepairJobStatusUpdate(SQLModel):

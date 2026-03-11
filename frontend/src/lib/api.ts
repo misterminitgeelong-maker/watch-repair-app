@@ -389,10 +389,19 @@ export interface ShoeRepairJobItem {
   created_at: string
 }
 
+export interface ShoeRepairJobShoe {
+  id: string
+  shoe_id: string
+  shoe?: Shoe
+  sort_order: number
+}
+
 export interface ShoeRepairJob {
   id: string
   tenant_id: string
   shoe_id: string
+  shoe?: Shoe
+  extra_shoes: ShoeRepairJobShoe[]
   assigned_user_id?: string
   job_number: string
   status_token: string
@@ -446,6 +455,12 @@ export const updateShoeRepairJob = (id: string, data: Partial<{
 
 export const updateShoeRepairJobStatus = (id: string, status: string, note?: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
+
+export const addShoeToJob = (jobId: string, shoeId: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes`, { shoe_id: shoeId })
+
+export const removeShoeFromJob = (jobId: string, entryId: string) =>
+  api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes/${entryId}`)
 
 // Pricing type display helper (used by both modal and page)
 export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {

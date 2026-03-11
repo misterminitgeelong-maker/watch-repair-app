@@ -16,6 +16,8 @@ from ..models import (
     ShoeRepairJobItem,
     ShoeRepairJobItemRead,
     ShoeRepairJobRead,
+    ShoeRepairJobShoe,
+    ShoeRepairJobShoeRead,
     ShoeRepairJobStatusUpdate,
 )
 
@@ -39,6 +41,25 @@ def _load_items(session: Session, job_id: UUID) -> list[ShoeRepairJobItemRead]:
 def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
     data = job.model_dump()
     data["items"] = _load_items(session, job.id)
+    # Primary shoe details
+    primary_shoe = session.get(Shoe, job.shoe_id)
+    data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
+    # Extra shoes
+    extra_rows = session.exec(
+        select(ShoeRepairJobShoe)
+        .where(ShoeRepairJobShoe.shoe_repair_job_id == job.id)
+        .order_by(ShoeRepairJobShoe.sort_order)
+    ).all()
+    extra = []
+    for ej in extra_rows:
+        sh = session.get(Shoe, ej.shoe_id)
+        extra.append(ShoeRepairJobShoeRead(
+            id=ej.id,
+            shoe_id=ej.shoe_id,
+            shoe=ShoeRead.model_validate(sh) if sh else None,
+            sort_order=ej.sort_order,
+        ))
+    data["extra_shoes"] = extra
     return ShoeRepairJobRead(**data)
 
 
@@ -167,4 +188,60 @@ def update_shoe_repair_job(
     session.add(job)
     session.commit()
     session.refresh(job)
+    return _job_to_read(job, session)
+
+
+# ── Extra shoes on a job ──────────────────────────────────────────────────────
+
+from pydantic import BaseModel as _BM
+
+
+class _AddShoeBody(_BM):
+    shoe_id: str
+
+
+@router.post("/{job_id}/shoes", response_model=ShoeRepairJobRead, status_code=201)
+def add_shoe_to_job(
+    job_id: UUID,
+    payload: _AddShoeBody,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    shoe = session.get(Shoe, UUID(payload.shoe_id))
+    if not shoe or shoe.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe not found")
+    # Determine next sort_order
+    existing = session.exec(
+        select(ShoeRepairJobShoe).where(ShoeRepairJobShoe.shoe_repair_job_id == job_id)
+    ).all()
+    sort_order = len(existing) + 1
+    entry = ShoeRepairJobShoe(
+        tenant_id=auth.tenant_id,
+        shoe_repair_job_id=job_id,
+        shoe_id=shoe.id,
+        sort_order=sort_order,
+    )
+    session.add(entry)
+    session.commit()
+    return _job_to_read(job, session)
+
+
+@router.delete("/{job_id}/shoes/{entry_id}", response_model=ShoeRepairJobRead)
+def remove_shoe_from_job(
+    job_id: UUID,
+    entry_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    entry = session.get(ShoeRepairJobShoe, entry_id)
+    if not entry or entry.shoe_repair_job_id != job_id:
+        raise HTTPException(status_code=404, detail="Shoe entry not found")
+    session.delete(entry)
+    session.commit()
     return _job_to_read(job, session)
