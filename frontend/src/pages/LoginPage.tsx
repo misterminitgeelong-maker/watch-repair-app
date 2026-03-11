@@ -44,12 +44,12 @@ export default function LoginPage() {
       <style>{ANIM_CSS}</style>
       <div
         className="min-h-screen flex items-center justify-center px-4"
-        style={{ backgroundColor: 'var(--cafe-bg)', position: 'relative', overflow: 'hidden' }}
+        style={{ background: 'linear-gradient(180deg, #FBF6EE 0%, #F5ECD9 48%, #EDE2CE 100%)', position: 'relative', overflow: 'hidden' }}
       >
         {/* Subtle warm radial glow */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 720px 480px at 50% 46%, rgba(201,162,72,0.14) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(201,162,72,0.18) 0%, rgba(185,142,55,0.07) 42%, transparent 70%)',
         }} />
 
         <div className="w-full max-w-sm" style={{ position: 'relative', zIndex: 1 }}>
