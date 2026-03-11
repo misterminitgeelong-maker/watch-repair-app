@@ -78,14 +78,15 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
 
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-4">
-        <div
-          className="flex items-start justify-between gap-3 cursor-pointer"
-          onClick={() => navigate(`/shoe-repairs/${job.id}`)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && navigate(`/shoe-repairs/${job.id}`)}
-        >
+      {/* Clickable body — navigates to detail page */}
+      <div
+        className="px-5 py-4 cursor-pointer"
+        onClick={() => navigate(`/shoe-repairs/${job.id}`)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && navigate(`/shoe-repairs/${job.id}`)}
+      >
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span
@@ -132,7 +133,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
         {job.items.length > 0 && (
           <button
             type="button"
-            onClick={() => setShowItems(v => !v)}
+            onClick={e => { e.stopPropagation(); setShowItems(v => !v) }}
             className="flex items-center gap-1.5 mt-3 text-xs font-medium transition-colors"
             style={{ color: 'var(--cafe-text-muted)' }}
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
@@ -170,7 +171,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
         {/* Photos toggle */}
         <button
           type="button"
-          onClick={() => setShowPhotos(v => !v)}
+          onClick={e => { e.stopPropagation(); setShowPhotos(v => !v) }}
           className="flex items-center gap-1.5 mt-3 text-xs font-medium transition-colors"
           style={{ color: 'var(--cafe-text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
@@ -191,6 +192,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                     href={getAttachmentDownloadUrl(photo.storage_key)}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
                     className="block rounded-lg overflow-hidden"
                     style={{ border: '1px solid var(--cafe-border)', aspectRatio: '1' }}
                   >
@@ -214,7 +216,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             <button
               type="button"
               disabled={uploading}
-              onClick={() => photoInputRef.current?.click()}
+              onClick={e => { e.stopPropagation(); photoInputRef.current?.click() }}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
               style={{
                 backgroundColor: 'var(--cafe-surface)',
