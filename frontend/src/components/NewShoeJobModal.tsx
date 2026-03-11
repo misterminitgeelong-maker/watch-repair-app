@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react'
 import {
   listCustomers, createCustomer, createShoe, createShoeRepairJob,
   addShoeToJob, appendShoeRepairJobItems,
+  getApiErrorMessage,
   type Customer,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
@@ -81,6 +82,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null)
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -115,7 +117,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         const { data } = await createCustomer(newCustomer)
         setCreatedCustomerId(data.id)
         qc.invalidateQueries({ queryKey: ['customers'] })
-      } catch { setError('Failed to create customer.'); setLoading(false); return }
+      } catch (err) { setError(getApiErrorMessage(err, 'Failed to create customer.')); setLoading(false); return }
       setLoading(false)
     } else {
       if (!selectedCustomerId) { setError('Please select a customer.'); return }
@@ -172,14 +174,51 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         }
       }
 
-      window.open(`/shoe-repairs/${jobData.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
-      onSuccess?.(jobData.id)
-      onClose()
-    } catch {
-      setError('Failed to create job. Please try again.')
+      setCreatedJobId(jobData.id)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to create job. Please try again.'))
     }
     setLoading(false)
+  }
+
+  function finishCreate(jobId: string, shouldPrint: boolean) {
+    if (shouldPrint) {
+      window.open(`/shoe-repairs/${jobId}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
+    }
+    onSuccess?.(jobId)
+    onClose()
+  }
+
+  if (createdJobId) {
+    return (
+      <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
+        <div className="space-y-4">
+          <p className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>
+            Print job tickets now?
+          </p>
+          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+              Recommended at intake
+            </p>
+            <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+              Print both copies now: one for workshop, one for customer.
+            </p>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            This will open the browser print flow. You can also print later from the desktop job details page.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <Button variant="secondary" onClick={() => finishCreate(createdJobId, false)} className="flex-1">
+              Skip Printing
+            </Button>
+            <Button onClick={() => finishCreate(createdJobId, true)} className="flex-1 font-semibold">
+              Print Tickets Now
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )
   }
 
   return (

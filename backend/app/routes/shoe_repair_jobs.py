@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context
+from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..models import (
+    Attachment,
     Customer,
     Shoe,
     ShoeCreate,
@@ -274,3 +275,34 @@ def remove_shoe_from_job(
     session.delete(entry)
     session.commit()
     return _job_to_read(job, session)
+
+
+@router.delete("/{job_id}", status_code=204, response_class=Response)
+def delete_shoe_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+
+    session.exec(
+        delete(Attachment)
+        .where(Attachment.tenant_id == auth.tenant_id)
+        .where(Attachment.shoe_repair_job_id == job_id)
+    )
+    session.exec(
+        delete(ShoeRepairJobItem)
+        .where(ShoeRepairJobItem.tenant_id == auth.tenant_id)
+        .where(ShoeRepairJobItem.shoe_repair_job_id == job_id)
+    )
+    session.exec(
+        delete(ShoeRepairJobShoe)
+        .where(ShoeRepairJobShoe.tenant_id == auth.tenant_id)
+        .where(ShoeRepairJobShoe.shoe_repair_job_id == job_id)
+    )
+
+    session.delete(job)
+    session.commit()
+    return Response(status_code=204)

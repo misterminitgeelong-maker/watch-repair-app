@@ -23,6 +23,22 @@ api.interceptors.response.use(
 
 export default api
 
+export function getApiErrorMessage(error: unknown, fallback = 'Request failed.'): string {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail
+    if (typeof detail === 'string' && detail.trim()) return detail
+    if (Array.isArray(detail)) {
+      const first = detail[0]
+      if (typeof first === 'string' && first.trim()) return first
+      if (first && typeof first === 'object' && typeof first.msg === 'string' && first.msg.trim()) {
+        return first.msg
+      }
+    }
+    if (error.response?.status === 401) return 'Session expired. Please sign in again.'
+  }
+  return fallback
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export interface TokenResponse { access_token: string; token_type: string }
 export const login = (tenant_slug: string, email: string, password: string) =>
@@ -86,13 +102,14 @@ export interface RepairJob {
 }
 export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
+export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
 export interface RepairJobCreatePayload {
   watch_id: string
   assigned_user_id?: string
   title: string
   description?: string
   priority: string
-  status: JobStatus
+  status?: JobStatus
   salesperson?: string
   collection_date?: string
   deposit_cents: number
@@ -474,6 +491,9 @@ export const listShoeRepairJobs = (status?: string) =>
 
 export const getShoeRepairJob = (id: string) =>
   api.get<ShoeRepairJob>(`/shoe-repair-jobs/${id}`)
+
+export const deleteShoeRepairJob = (id: string) =>
+  api.delete(`/shoe-repair-jobs/${id}`)
 
 export const createShoeRepairJob = (data: ShoeRepairJobCreatePayload) =>
   api.post<ShoeRepairJob>('/shoe-repair-jobs', data)

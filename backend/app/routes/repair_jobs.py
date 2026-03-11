@@ -1,20 +1,27 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..models import (
+    Approval,
+    Attachment,
     Customer,
+    Invoice,
     JobStatusHistory,
     JobStatusHistoryRead,
+    Payment,
     RepairJob,
     RepairJobCreate,
     RepairJobFieldUpdate,
     RepairJobIntakeUpdate,
     RepairJobRead,
     RepairJobStatusUpdate,
+    Quote,
+    QuoteLineItem,
+    SmsLog,
     WorkLog,
     Watch,
 )
@@ -279,3 +286,79 @@ def get_repair_job_status_history(
         .where(JobStatusHistory.repair_job_id == job_id)
     ).all()
     return history
+
+
+@router.delete("/{job_id}", status_code=204, response_class=Response)
+def delete_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    job = session.get(RepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    quote_ids = session.exec(
+        select(Quote.id)
+        .where(Quote.tenant_id == auth.tenant_id)
+        .where(Quote.repair_job_id == job_id)
+    ).all()
+    invoice_ids = session.exec(
+        select(Invoice.id)
+        .where(Invoice.tenant_id == auth.tenant_id)
+        .where(Invoice.repair_job_id == job_id)
+    ).all()
+
+    session.exec(
+        delete(Attachment)
+        .where(Attachment.tenant_id == auth.tenant_id)
+        .where(Attachment.repair_job_id == job_id)
+    )
+    session.exec(
+        delete(JobStatusHistory)
+        .where(JobStatusHistory.tenant_id == auth.tenant_id)
+        .where(JobStatusHistory.repair_job_id == job_id)
+    )
+    session.exec(
+        delete(WorkLog)
+        .where(WorkLog.tenant_id == auth.tenant_id)
+        .where(WorkLog.repair_job_id == job_id)
+    )
+    session.exec(
+        delete(SmsLog)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+        .where(SmsLog.repair_job_id == job_id)
+    )
+
+    if quote_ids:
+        session.exec(
+            delete(Approval)
+            .where(Approval.tenant_id == auth.tenant_id)
+            .where(Approval.quote_id.in_(quote_ids))
+        )
+        session.exec(
+            delete(QuoteLineItem)
+            .where(QuoteLineItem.tenant_id == auth.tenant_id)
+            .where(QuoteLineItem.quote_id.in_(quote_ids))
+        )
+        session.exec(
+            delete(Quote)
+            .where(Quote.tenant_id == auth.tenant_id)
+            .where(Quote.id.in_(quote_ids))
+        )
+
+    if invoice_ids:
+        session.exec(
+            delete(Payment)
+            .where(Payment.tenant_id == auth.tenant_id)
+            .where(Payment.invoice_id.in_(invoice_ids))
+        )
+        session.exec(
+            delete(Invoice)
+            .where(Invoice.tenant_id == auth.tenant_id)
+            .where(Invoice.id.in_(invoice_ids))
+        )
+
+    session.delete(job)
+    session.commit()
+    return Response(status_code=204)

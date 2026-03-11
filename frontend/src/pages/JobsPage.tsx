@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
-import { listJobs, listQuotes, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
+import { Plus, Search, X } from 'lucide-react'
+import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
@@ -47,6 +47,8 @@ const STATUS_OPTION_LABELS: Record<JobStatus, string> = {
 export default function JobsPage() {
   const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
+  const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
@@ -81,6 +83,19 @@ export default function JobsPage() {
     onSettled: () => setUpdatingJobId(null),
   })
 
+  const deleteMut = useMutation({
+    mutationFn: (jobId: string) => deleteJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      qc.invalidateQueries({ queryKey: ['quotes'] })
+      setJobToDelete(null)
+      setDeleteError('')
+    },
+    onError: (err) => {
+      setDeleteError(getApiErrorMessage(err, 'Failed to delete job.'))
+    },
+  })
+
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
     const inDirectory = jobDirectoryView === 'active'
@@ -92,7 +107,17 @@ export default function JobsPage() {
 
   return (
     <div>
-      <PageHeader title="Repair Jobs" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>} />
+      <PageHeader
+        title="Repair Jobs"
+        action={
+          <div className="flex flex-col items-end gap-1">
+            <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
+            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              After create, you can print tickets from the desktop flow.
+            </span>
+          </div>
+        }
+      />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
 
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
@@ -204,7 +229,21 @@ export default function JobsPage() {
                                   #{j.job_number} · {formatDate(j.created_at)}
                                 </p>
                               </div>
-                              <Badge status={j.status} />
+                              <div className="flex items-center gap-2">
+                                <Badge status={j.status} />
+                                <button
+                                  type="button"
+                                  aria-label={`Delete job ${j.job_number}`}
+                                  onClick={() => {
+                                    setDeleteError('')
+                                    setJobToDelete(j)
+                                  }}
+                                  className="h-7 w-7 rounded-full flex items-center justify-center transition-colors"
+                                  style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
                             </div>
 
                             <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
@@ -238,6 +277,54 @@ export default function JobsPage() {
               })}
           </div>
         )
+      )}
+
+      {jobToDelete && (
+        <Modal
+          title="Delete Job"
+          onClose={() => {
+            if (!deleteMut.isPending) {
+              setJobToDelete(null)
+              setDeleteError('')
+            }
+          }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>
+              Are you sure you want to delete this job?
+            </p>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+                #{jobToDelete.job_number} · {jobToDelete.title}
+              </p>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              This action cannot be undone.
+            </p>
+            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setJobToDelete(null)
+                  setDeleteError('')
+                }}
+                className="flex-1"
+                disabled={deleteMut.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => deleteMut.mutate(jobToDelete.id)}
+                className="flex-1"
+                disabled={deleteMut.isPending}
+              >
+                {deleteMut.isPending ? 'Deleting…' : 'Delete Job'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

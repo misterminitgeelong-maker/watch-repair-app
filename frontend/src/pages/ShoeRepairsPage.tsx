@@ -1,13 +1,15 @@
 ﻿import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload } from 'lucide-react'
+import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X } from 'lucide-react'
 import {
+  deleteShoeRepairJob,
+  getApiErrorMessage,
   listShoeRepairJobs, updateShoeRepairJobStatus, getShoeGuarantee, listShoeCombos,
   formatShoePricingType, listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 
@@ -45,6 +47,8 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   const navigate = useNavigate()
   const [showItems, setShowItems] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [uploading, setUploading] = useState(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -53,6 +57,18 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateShoeRepairJobStatus(job.id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteShoeRepairJob(job.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      setShowDeleteConfirm(false)
+      setDeleteError('')
+    },
+    onError: (err) => {
+      setDeleteError(getApiErrorMessage(err, 'Failed to delete job.'))
+    },
   })
 
   const { data: photos } = useQuery({
@@ -78,7 +94,8 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
     sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0), 0)
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <>
+      <Card className="p-0 overflow-hidden">
       {/* Clickable body — navigates to detail page */}
       <div
         className="px-5 py-4 cursor-pointer"
@@ -117,6 +134,20 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>estimated</p>
             </div>
           )}
+
+          <button
+            type="button"
+            aria-label={`Delete job ${job.job_number}`}
+            onClick={e => {
+              e.stopPropagation()
+              setDeleteError('')
+              setShowDeleteConfirm(true)
+            }}
+            className="h-7 w-7 rounded-full flex items-center justify-center transition-colors shrink-0"
+            style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
+          >
+            <X size={14} />
+          </button>
         </div>
 
         <div className="flex items-center gap-3 mt-3 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -278,7 +309,55 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           ))}
         </select>
       </div>
-    </Card>
+      </Card>
+      {showDeleteConfirm && (
+        <Modal
+          title="Delete Job"
+          onClose={() => {
+            if (!deleteMutation.isPending) {
+              setShowDeleteConfirm(false)
+              setDeleteError('')
+            }
+          }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>
+              Are you sure you want to delete this job?
+            </p>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+                #{job.job_number} · {job.title}
+              </p>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              This action cannot be undone.
+            </p>
+            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setDeleteError('')
+                }}
+                className="flex-1"
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => deleteMutation.mutate()}
+                className="flex-1"
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete Job'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   )
 }
 
@@ -389,10 +468,15 @@ export default function ShoeRepairsPage() {
       <PageHeader
         title="Shoe Repairs"
         action={
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus size={16} />
-            New Job
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus size={16} />
+              New Job
+            </Button>
+            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              After create, you can print tickets from the desktop flow.
+            </span>
+          </div>
         }
       />
 
