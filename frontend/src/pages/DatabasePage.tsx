@@ -29,8 +29,13 @@ export default function DatabasePage() {
       setFile(null)
       if (fileRef.current) fileRef.current.value = ''
     } catch (err: unknown) {
-      const apiErr = err as { response?: { data?: { detail?: string } } }
-      setError(apiErr.response?.data?.detail || 'Import failed. Check the CSV format and try again.')
+      const apiErr = err as { response?: { status?: number; data?: { detail?: string } | string }; message?: string }
+      const detail =
+        typeof apiErr.response?.data === 'string'
+          ? apiErr.response.data
+          : apiErr.response?.data?.detail
+      const status = apiErr.response?.status
+      setError(detail || (status ? `Import failed (HTTP ${status}).` : apiErr.message || 'Import failed. Check the CSV format and try again.'))
     }
     setUploading(false)
   }

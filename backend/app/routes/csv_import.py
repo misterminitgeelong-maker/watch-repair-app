@@ -153,11 +153,28 @@ def _to_text(value: object) -> str:
 
 
 def _load_csv_rows(raw_bytes: bytes) -> list[dict[str, str]]:
+    text = ""
+    for encoding in ("utf-8-sig", "utf-16", "latin-1"):
+        try:
+            text = raw_bytes.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Unable to decode CSV file. Please export as UTF-8 CSV.")
+
+    sample = text[:8192]
     try:
-        text = raw_bytes.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw_bytes.decode("latin-1")
-    return list(csv.DictReader(io.StringIO(text)))
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    except csv.Error:
+        reader = csv.DictReader(io.StringIO(text))
+
+    rows = list(reader)
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV header row could not be read. Ensure the first row contains column names.")
+    return rows
 
 
 def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
@@ -406,7 +423,7 @@ async def import_csv(
         import_log.customers_created_count = len(customer_cache)
         session.add(import_log)
         session.commit()
-        raise
+        raise HTTPException(status_code=400, detail=f"Import failed: {exc}") from exc
 
     return ImportSummaryResponse(
         import_id=import_log.id,
