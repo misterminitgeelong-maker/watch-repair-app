@@ -389,6 +389,16 @@ export interface ShoeRepairJobItem {
   created_at: string
 }
 
+export interface ShoeRepairJobItemInput {
+  catalogue_key: string
+  catalogue_group: string
+  item_name: string
+  pricing_type: ShoePricingType
+  unit_price_cents: number | null
+  quantity?: number
+  notes?: string
+}
+
 export interface ShoeRepairJobShoe {
   id: string
   shoe_id: string
@@ -427,15 +437,7 @@ export interface ShoeRepairJobCreatePayload {
   collection_date?: string
   deposit_cents?: number
   cost_cents?: number
-  items: Array<{
-    catalogue_key: string
-    catalogue_group: string
-    item_name: string
-    pricing_type: ShoePricingType
-    unit_price_cents: number | null
-    quantity?: number
-    notes?: string
-  }>
+  items: ShoeRepairJobItemInput[]
 }
 
 export const listShoeRepairJobs = (status?: string) =>
@@ -458,6 +460,9 @@ export const updateShoeRepairJobStatus = (id: string, status: string, note?: str
 
 export const addShoeToJob = (jobId: string, shoeId: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes`, { shoe_id: shoeId })
+
+export const appendShoeRepairJobItems = (jobId: string, items: ShoeRepairJobItemInput[]) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/items`, { items })
 
 export const removeShoeFromJob = (jobId: string, entryId: string) =>
   api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes/${entryId}`)

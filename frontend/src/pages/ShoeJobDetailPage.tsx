@@ -6,10 +6,11 @@ import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
   listShoes, createShoe,
-  addShoeToJob, removeShoeFromJob,
+  addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob,
   formatShoePricingType,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe,
 } from '@/lib/api'
+import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
@@ -87,6 +88,7 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
   const qc = useQueryClient()
   const [mode, setMode] = useState<'existing' | 'new'>('existing')
   const [selectedShoeId, setSelectedShoeId] = useState('')
+  const [selectedItems, setSelectedItems] = useState<SelectedShoeService[]>([])
   // New shoe fields
   const [shoeType, setShoeType] = useState('')
   const [brand, setBrand] = useState('')
@@ -111,14 +113,20 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
 
   const addMut = useMutation({
     mutationFn: async () => {
+      let shoeId = selectedShoeId
       if (mode === 'new') {
         const res = await createShoe({ customer_id: customerId, shoe_type: shoeType || undefined, brand: brand || undefined, color: color || undefined, description_notes: notes || undefined })
-        return addShoeToJob(job.id, res.data.id)
+        shoeId = res.data.id
       }
-      return addShoeToJob(job.id, selectedShoeId)
+      await addShoeToJob(job.id, shoeId)
+      if (selectedItems.length > 0) {
+        return appendShoeRepairJobItems(job.id, buildShoeRepairJobItemsPayload(selectedItems))
+      }
+      return getShoeRepairJob(job.id)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shoe-repair-job', job.id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       onClose()
     },
   })
@@ -175,6 +183,13 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
           </div>
         )}
 
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+            Services For This Pair
+          </p>
+          <ShoeServicePicker selected={selectedItems} onChange={setSelectedItems} />
+        </div>
+
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => addMut.mutate()} disabled={!canSubmit || addMut.isPending}>
@@ -220,6 +235,7 @@ export default function ShoeJobDetailPage() {
   const [editingCost, setEditingCost] = useState(false)
   const [costInput, setCostInput] = useState('')
   const [uploading, setUploading] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const { data: job, isLoading } = useQuery({
@@ -259,7 +275,7 @@ export default function ShoeJobDetailPage() {
       qc.invalidateQueries({ queryKey: ['shoe-attachments', id] })
     } finally {
       setUploading(false)
-      if (photoInputRef.current) photoInputRef.current.value = ''
+      e.target.value = ''
     }
   }
 
@@ -508,6 +524,21 @@ export default function ShoeJobDetailPage() {
               <button
                 type="button"
                 disabled={uploading}
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: 'var(--cafe-amber)',
+                  border: '1px solid var(--cafe-amber)',
+                  color: '#fff',
+                  opacity: uploading ? 0.7 : 1,
+                }}
+              >
+                <Camera size={11} />
+                {uploading ? 'Uploading…' : 'Take photo'}
+              </button>
+              <button
+                type="button"
+                disabled={uploading}
                 onClick={() => photoInputRef.current?.click()}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 style={{
@@ -517,19 +548,21 @@ export default function ShoeJobDetailPage() {
                 }}
               >
                 <Upload size={11} />
-                {uploading ? 'Uploading…' : 'Add photos'}
+                Gallery upload
               </button>
-              <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
             </div>
+
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+            <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
 
             {photos.length === 0 ? (
               <div
                 className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
                 style={{ color: 'var(--cafe-text-muted)' }}
-                onClick={() => photoInputRef.current?.click()}
+                onClick={() => cameraInputRef.current?.click()}
               >
                 <Camera size={28} style={{ opacity: 0.3 }} />
-                <p className="text-sm italic" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>No photos yet — tap to add</p>
+                <p className="text-sm italic" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>No photos yet — tap to take one</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-4">

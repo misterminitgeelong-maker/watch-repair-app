@@ -47,6 +47,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   const [showPhotos, setShowPhotos] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const statusMutation = useMutation({
@@ -69,7 +70,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
       qc.invalidateQueries({ queryKey: ['shoe-attachments', job.id] })
     } finally {
       setUploading(false)
-      if (photoInputRef.current) photoInputRef.current.value = ''
+      e.target.value = ''
     }
   }
 
@@ -206,6 +207,14 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
               </div>
             )}
             <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+            <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
@@ -213,20 +222,37 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
               className="hidden"
               onChange={handlePhotoUpload}
             />
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={e => { e.stopPropagation(); photoInputRef.current?.click() }}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-              style={{
-                backgroundColor: 'var(--cafe-surface)',
-                border: '1px dashed var(--cafe-border-2)',
-                color: uploading ? 'var(--cafe-text-muted)' : 'var(--cafe-amber)',
-              }}
-            >
-              <Upload size={11} />
-              {uploading ? 'Uploading...' : 'Add photos'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={e => { e.stopPropagation(); cameraInputRef.current?.click() }}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: 'var(--cafe-amber)',
+                  border: '1px solid var(--cafe-amber)',
+                  color: '#fff',
+                  opacity: uploading ? 0.7 : 1,
+                }}
+              >
+                <Camera size={11} />
+                {uploading ? 'Uploading...' : 'Take photo'}
+              </button>
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={e => { e.stopPropagation(); photoInputRef.current?.click() }}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: 'var(--cafe-surface)',
+                  border: '1px dashed var(--cafe-border-2)',
+                  color: uploading ? 'var(--cafe-text-muted)' : 'var(--cafe-amber)',
+                }}
+              >
+                <Upload size={11} />
+                Gallery upload
+              </button>
+            </div>
           </div>
         )}
       </div>

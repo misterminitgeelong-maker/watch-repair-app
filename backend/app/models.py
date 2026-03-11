@@ -635,6 +635,10 @@ class ShoeRepairJobItemCreate(SQLModel):
     notes: Optional[str] = None
 
 
+class ShoeRepairJobItemsAppend(SQLModel):
+    items: list[ShoeRepairJobItemCreate] = []
+
+
 class ShoeRepairJobItemRead(SQLModel):
     id: UUID
     shoe_repair_job_id: UUID

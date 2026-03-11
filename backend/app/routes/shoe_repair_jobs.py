@@ -14,7 +14,9 @@ from ..models import (
     ShoeRepairJobCreate,
     ShoeRepairJobFieldUpdate,
     ShoeRepairJobItem,
+    ShoeRepairJobItemCreate,
     ShoeRepairJobItemRead,
+    ShoeRepairJobItemsAppend,
     ShoeRepairJobRead,
     ShoeRepairJobShoe,
     ShoeRepairJobShoeRead,
@@ -36,6 +38,23 @@ def _load_items(session: Session, job_id: UUID) -> list[ShoeRepairJobItemRead]:
         select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job_id)
     ).all()
     return [ShoeRepairJobItemRead.model_validate(r) for r in rows]
+
+
+def _create_job_items(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    job_id: UUID,
+    items: list[ShoeRepairJobItemCreate],
+) -> None:
+    for item in items:
+        session.add(
+            ShoeRepairJobItem(
+                tenant_id=tenant_id,
+                shoe_repair_job_id=job_id,
+                **item.model_dump(),
+            )
+        )
 
 
 def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
@@ -116,14 +135,7 @@ def create_shoe_repair_job(
     session.add(job)
     session.flush()
 
-    for item in items_data:
-        session.add(
-            ShoeRepairJobItem(
-                tenant_id=auth.tenant_id,
-                shoe_repair_job_id=job.id,
-                **item.model_dump(),
-            )
-        )
+    _create_job_items(session, tenant_id=auth.tenant_id, job_id=job.id, items=items_data)
 
     session.commit()
     session.refresh(job)
@@ -188,6 +200,23 @@ def update_shoe_repair_job(
     session.add(job)
     session.commit()
     session.refresh(job)
+    return _job_to_read(job, session)
+
+
+@router.post("/{job_id}/items", response_model=ShoeRepairJobRead, status_code=201)
+def append_shoe_repair_job_items(
+    job_id: UUID,
+    payload: ShoeRepairJobItemsAppend,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    if payload.items:
+        _create_job_items(session, tenant_id=auth.tenant_id, job_id=job.id, items=payload.items)
+        session.commit()
+        session.refresh(job)
     return _job_to_read(job, session)
 
 
