@@ -1,6 +1,7 @@
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from ..database import get_session
@@ -62,7 +63,11 @@ def create_watch(
 
 @router.get("/watches", response_model=list[WatchRead])
 def list_watches(
+    customer_id: Optional[UUID] = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    return session.exec(select(Watch).where(Watch.tenant_id == auth.tenant_id)).all()
+    q = select(Watch).where(Watch.tenant_id == auth.tenant_id)
+    if customer_id is not None:
+        q = q.where(Watch.customer_id == customer_id)
+    return session.exec(q).all()

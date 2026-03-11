@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { WatchIcon, Users, Wrench, FileText, Receipt, LayoutDashboard, LogOut, Database, BarChart3 } from 'lucide-react'
+import { WatchIcon, Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -7,7 +7,6 @@ const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/jobs', label: 'Repair Jobs', icon: Wrench },
-  { to: '/quotes', label: 'Quotes', icon: FileText },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/database', label: 'Database', icon: Database },

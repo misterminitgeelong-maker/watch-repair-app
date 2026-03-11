@@ -1,17 +1,33 @@
 import { useQuery } from '@tanstack/react-query'
-import { Wrench, Users, FileText, Receipt, Clock } from 'lucide-react'
-import { listJobs, listCustomers, listQuotes, listInvoices } from '@/lib/api'
+import { Wrench, Users, DollarSign, Clock } from 'lucide-react'
+import { listJobs, listCustomers } from '@/lib/api'
 import { Card, PageHeader, Badge, Spinner } from '@/components/ui'
-import { formatCents, formatDate } from '@/lib/utils'
+import { formatCents, formatDate, STATUS_LABELS } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
+// Jobs where customer gave the go-ahead — these represent outstanding revenue
+const GO_AHEAD_STATUSES = ['go_ahead', 'parts_to_order', 'awaiting_parts', 'working_on', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection']
+
+// Status breakdown order for "active" (non-closed, non-collected) jobs
+const BREAKDOWN_STATUSES = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'parts_to_order',
+  'awaiting_parts',
+  'working_on',
+  'sent_to_labanda',
+  'service',
+  'completed',
+  'awaiting_collection',
+] as const
 
 const STAT_STYLES = [
   { iconBg: '#F5E8CC', iconColor: '#9B7228', label: 'Open Jobs' },
   { iconBg: '#DFF0EC', iconColor: '#2A6B65', label: 'Customers' },
-  { iconBg: '#FDECD3', iconColor: '#9B4E0F', label: 'Pending Quotes' },
-  { iconBg: '#F5E8E8', iconColor: '#8B3A3A', label: 'Outstanding' },
+  { iconBg: '#F5E8E8', iconColor: '#8B3A3A', label: 'Awaiting Go-Ahead' },
+  { iconBg: '#E8F0E4', iconColor: '#3B6B42', label: 'Outstanding' },
 ]
 
 function StatCard({
@@ -45,13 +61,11 @@ function StatCard({
 export default function DashboardPage() {
   const { data: jobs, isLoading: jobsLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
   const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: () => listCustomers().then(r => r.data) })
-  const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
-  const { data: invoices } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then(r => r.data) })
 
   const openJobs = jobs?.filter(j => !CLOSED_JOB_STATUSES.includes(j.status)) ?? []
-  const pendingQuotes = quotes?.filter(q => q.status === 'sent') ?? []
-  const unpaidInvoices = invoices?.filter(i => i.status === 'unpaid') ?? []
-  const unpaidTotal = unpaidInvoices.reduce((s, i) => s + i.total_cents, 0)
+  const awaitingGoAheadJobs = jobs?.filter(j => j.status === 'awaiting_go_ahead') ?? []
+  const goAheadJobs = jobs?.filter(j => GO_AHEAD_STATUSES.includes(j.status)) ?? []
+  const outstandingTotal = goAheadJobs.reduce((s, j) => s + (j.cost_cents > 0 ? j.cost_cents : j.pre_quote_cents), 0)
 
   if (jobsLoading) return <Spinner />
 
@@ -60,10 +74,10 @@ export default function DashboardPage() {
       <PageHeader title="Overview" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label={STAT_STYLES[0].label} value={openJobs.length}          icon={Wrench}  iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} />
-        <StatCard label={STAT_STYLES[1].label} value={customers?.length ?? 0}  icon={Users}   iconBg={STAT_STYLES[1].iconBg} iconColor={STAT_STYLES[1].iconColor} />
-        <StatCard label={STAT_STYLES[2].label} value={pendingQuotes.length}     icon={FileText} iconBg={STAT_STYLES[2].iconBg} iconColor={STAT_STYLES[2].iconColor} />
-        <StatCard label={STAT_STYLES[3].label} value={unpaidInvoices.length}   icon={Receipt}  iconBg={STAT_STYLES[3].iconBg} iconColor={STAT_STYLES[3].iconColor} />
+        <StatCard label={STAT_STYLES[0].label} value={openJobs.length}              icon={Wrench}      iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} />
+        <StatCard label={STAT_STYLES[1].label} value={customers?.length ?? 0}       icon={Users}       iconBg={STAT_STYLES[1].iconBg} iconColor={STAT_STYLES[1].iconColor} />
+        <StatCard label={STAT_STYLES[2].label} value={awaitingGoAheadJobs.length}   icon={Clock}       iconBg={STAT_STYLES[2].iconBg} iconColor={STAT_STYLES[2].iconColor} />
+        <StatCard label={STAT_STYLES[3].label} value={goAheadJobs.length}           icon={DollarSign}  iconBg={STAT_STYLES[3].iconBg} iconColor={STAT_STYLES[3].iconColor} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -115,7 +129,7 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* Outstanding Invoices */}
+        {/* Status Breakdown */}
         <Card>
           <div
             className="flex items-center justify-between px-5 py-4"
@@ -125,11 +139,11 @@ export default function DashboardPage() {
               className="font-semibold flex items-center gap-2"
               style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
             >
-              <Receipt size={16} style={{ color: 'var(--cafe-gold-dark)' }} />
-              Outstanding Invoices
+              <DollarSign size={16} style={{ color: 'var(--cafe-gold-dark)' }} />
+              Jobs by Status
             </h2>
             <Link
-              to="/invoices"
+              to="/jobs"
               className="text-xs font-medium tracking-wide uppercase transition-colors"
               style={{ color: 'var(--cafe-amber)' }}
             >
@@ -137,37 +151,46 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div>
-            {unpaidInvoices.slice(0, 6).map((inv, i) => (
-              <Link
-                key={inv.id}
-                to={`/invoices/${inv.id}`}
-                className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                style={{
-                  borderBottom: i < Math.min(unpaidInvoices.length, 6) - 1 ? '1px solid var(--cafe-border)' : 'none',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>#{inv.invoice_number}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(inv.created_at)}</p>
-                </div>
-                <span className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</span>
-              </Link>
-            ))}
-            {unpaidInvoices.length === 0 && (
+            {BREAKDOWN_STATUSES.map((status, i) => {
+              const count = (jobs ?? []).filter(j => j.status === status).length
+              if (count === 0) return null
+              const isGoAhead = GO_AHEAD_STATUSES.includes(status)
+              return (
+                <Link
+                  key={status}
+                  to={`/jobs?status=${status}`}
+                  className="flex items-center justify-between px-5 py-3 transition-colors"
+                  style={{ borderBottom: i < BREAKDOWN_STATUSES.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge status={status} />
+                    {isGoAhead && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#E8F0E4', color: '#3B6B42' }}>
+                        outstanding
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{count}</span>
+                </Link>
+              )
+            })}
+            {(jobs ?? []).filter(j => !CLOSED_JOB_STATUSES.includes(j.status)).length === 0 && (
               <p className="px-5 py-8 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
-                No outstanding invoices
+                No active jobs
               </p>
             )}
           </div>
-          {unpaidTotal > 0 && (
+          {outstandingTotal > 0 && (
             <div
               className="px-5 py-3 flex justify-between items-center"
               style={{ borderTop: '1px solid var(--cafe-border)' }}
             >
-              <span className="text-xs font-medium tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>Total outstanding</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(unpaidTotal)}</span>
+              <span className="text-xs font-medium tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                Total outstanding ({goAheadJobs.length} jobs)
+              </span>
+              <span className="text-sm font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(outstandingTotal)}</span>
             </div>
           )}
         </Card>

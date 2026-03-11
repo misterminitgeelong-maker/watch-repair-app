@@ -60,7 +60,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [createdWatchId, setCreatedWatchId] = useState('')
 
   // Step 3 – Job
-  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
+  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
 
   // Step 4 – Watch Photos
   const [frontPhoto, setFrontPhoto] = useState<File | null>(null)
@@ -298,8 +298,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               <option value="urgent">🔴 Urgent</option>
             </Select>
             <Select label="Initial Status" value={job.status} onChange={setJ('status')}>
+              <option value="awaiting_quote">Awaiting Quote</option>
               <option value="awaiting_go_ahead">Awaiting Go Ahead</option>
-              <option value="go_ahead">Go Ahead</option>
+              <option value="go_ahead">Go Ahead Given</option>
               <option value="service">Service</option>
             </Select>
           </div>

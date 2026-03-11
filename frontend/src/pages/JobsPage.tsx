@@ -1,98 +1,45 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
-import { listJobs, submitJobIntake, type JobStatus, type RepairJob } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Input, Textarea, Modal } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { Plus, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { listJobs, type JobStatus, type RepairJob } from '@/lib/api'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
-const JOB_STATUSES: JobStatus[] = ['awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
+const JOB_STATUSES: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
 const COMPLETED_DIRECTORY_STATUSES: JobStatus[] = ['completed', 'awaiting_collection', 'collected']
 const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))
 const CLOSED_DIRECTORY_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 
-function TicketInModal({ job, onClose }: { job: RepairJob; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [preQuote, setPreQuote] = useState(job.pre_quote_cents > 0 ? (job.pre_quote_cents / 100).toFixed(2) : '')
-  const [intakeNotes, setIntakeNotes] = useState('')
-  const [hasScratches, setHasScratches] = useState(false)
-  const [hasDents, setHasDents] = useState(false)
-  const [hasCrackedCrystal, setHasCrackedCrystal] = useState(false)
-  const [crownMissing, setCrownMissing] = useState(false)
-  const [strapDamage, setStrapDamage] = useState(false)
+type SortKey = 'job_number' | 'status' | 'priority' | 'pre_quote_cents' | 'created_at'
+type SortDir = 'asc' | 'desc'
 
-  const mut = useMutation({
-    mutationFn: () =>
-      submitJobIntake(job.id, {
-        intake_notes: intakeNotes || undefined,
-        pre_quote_cents: preQuote ? Math.round(parseFloat(preQuote) * 100) : 0,
-        has_scratches: hasScratches,
-        has_dents: hasDents,
-        has_cracked_crystal: hasCrackedCrystal,
-        crown_missing: crownMissing,
-        strap_damage: strapDamage,
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['jobs'] })
-      qc.invalidateQueries({ queryKey: ['job', job.id] })
-      onClose()
-    },
-  })
+const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 }
 
-  return (
-    <Modal title={`Ticket In · #${job.job_number}`} onClose={onClose}>
-      <div className="space-y-4">
-        <Input
-          label="Pre-Quote ($)"
-          type="number"
-          min="0"
-          step="0.01"
-          value={preQuote}
-          onChange={(e) => setPreQuote(e.target.value)}
-          placeholder="0.00"
-        />
-
-        <div>
-          <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Condition checklist</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={hasScratches} onChange={(e) => setHasScratches(e.target.checked)} /> Scratches</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={hasDents} onChange={(e) => setHasDents(e.target.checked)} /> Dents</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={hasCrackedCrystal} onChange={(e) => setHasCrackedCrystal(e.target.checked)} /> Cracked crystal</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={crownMissing} onChange={(e) => setCrownMissing(e.target.checked)} /> Crown missing</label>
-            <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={strapDamage} onChange={(e) => setStrapDamage(e.target.checked)} /> Strap damage</label>
-          </div>
-        </div>
-
-        <Textarea
-          label="Intake notes"
-          rows={3}
-          value={intakeNotes}
-          onChange={(e) => setIntakeNotes(e.target.value)}
-          placeholder="Anything the team should know before quoting/repairing."
-        />
-
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>{mut.isPending ? 'Saving…' : 'Save ticket in'}</Button>
-        </div>
-      </div>
-    </Modal>
-  )
+function SortIcon({ col, sortBy, sortDir }: { col: SortKey; sortBy: SortKey; sortDir: SortDir }) {
+  if (sortBy !== col) return <ChevronsUpDown size={12} className="inline ml-1 opacity-40" />
+  return sortDir === 'asc' ? <ChevronUp size={12} className="inline ml-1" /> : <ChevronDown size={12} className="inline ml-1" />
 }
 
 export default function JobsPage() {
   const [showAdd, setShowAdd] = useState(false)
-  const [ticketInJob, setTicketInJob] = useState<RepairJob | null>(null)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<SortKey>('job_number')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { data: jobs, isLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
 
   const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const statusOptions = jobDirectoryView === 'active' ? ACTIVE_DIRECTORY_STATUSES : CLOSED_DIRECTORY_STATUSES
+
+  function handleSort(col: SortKey) {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
 
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
@@ -101,13 +48,20 @@ export default function JobsPage() {
       : CLOSED_DIRECTORY_STATUSES.includes(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     return matchSearch && inDirectory && matchStatus
+  }).sort((a, b) => {
+    let cmp = 0
+    if (sortBy === 'job_number') cmp = a.job_number.localeCompare(b.job_number, undefined, { numeric: true })
+    else if (sortBy === 'status') cmp = a.status.localeCompare(b.status)
+    else if (sortBy === 'priority') cmp = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9)
+    else if (sortBy === 'pre_quote_cents') cmp = a.pre_quote_cents - b.pre_quote_cents
+    else if (sortBy === 'created_at') cmp = a.created_at.localeCompare(b.created_at)
+    return sortDir === 'asc' ? cmp : -cmp
   })
 
   return (
     <div>
       <PageHeader title="Repair Jobs" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>} />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
-      {ticketInJob && <TicketInModal job={ticketInJob} onClose={() => setTicketInJob(null)} />}
 
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
@@ -168,7 +122,7 @@ export default function JobsPage() {
           onChange={e => setStatusFilter(e.target.value)}
         >
           <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
-          {statusOptions.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
         </select>
       </div>
 
@@ -180,22 +134,17 @@ export default function JobsPage() {
               {filtered.map((j) => (
                 <div key={j.id} className="p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <Link to={`/jobs/${j.id}`} className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{j.title}</Link>
+                    <Link to={`/jobs/${j.id}`} className="font-medium font-mono text-xs" style={{ color: 'var(--cafe-amber)' }}>#{j.job_number}</Link>
                     <Badge status={j.status} />
                   </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{j.title}</p>
                   <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                    <span>#{j.job_number}</span>
                     <span>{formatDate(j.created_at)}</span>
+                    <span>Quote: ${(j.pre_quote_cents / 100).toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                  <div className="flex items-center text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
                     <span className="capitalize">Priority: {j.priority}</span>
-                    <span>Pre-quote: ${(j.pre_quote_cents / 100).toFixed(2)}</span>
                   </div>
-                  {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
-                    <div className="pt-1">
-                      <Button className="w-full justify-center" variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -203,13 +152,21 @@ export default function JobsPage() {
             <table className="w-full text-sm hidden md:table">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                  {['Job #', 'Title', 'Status', 'Priority', 'Pre-Quote', 'Created', 'Actions'].map(h => (
+                  {([
+                    { key: 'job_number' as SortKey, label: 'Job #' },
+                    { key: null, label: 'Watch / Title' },
+                    { key: 'status' as SortKey, label: 'Status' },
+                    { key: 'priority' as SortKey, label: 'Priority' },
+                    { key: 'pre_quote_cents' as SortKey, label: 'Quote' },
+                    { key: 'created_at' as SortKey, label: 'Created' },
+                  ] as { key: SortKey | null; label: string }[]).map(({ key, label }) => (
                     <th
-                      key={h}
-                      className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase"
-                      style={{ color: 'var(--cafe-text-muted)' }}
+                      key={label}
+                      className={`px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase select-none${key ? ' cursor-pointer' : ''}`}
+                      style={{ color: key ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)' }}
+                      onClick={() => key && handleSort(key)}
                     >
-                      {h}
+                      {label}{key && <SortIcon col={key} sortBy={sortBy} sortDir={sortDir} />}
                     </th>
                   ))}
                 </tr>
@@ -222,16 +179,10 @@ export default function JobsPage() {
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
-                    <td className="px-5 py-3.5 font-mono text-xs" style={{ color: 'var(--cafe-text-muted)' }}>#{j.job_number}</td>
-                    <td className="px-5 py-3.5">
-                      <Link
-                        to={`/jobs/${j.id}`}
-                        className="font-medium hover:underline"
-                        style={{ color: 'var(--cafe-amber)' }}
-                      >
-                        {j.title}
-                      </Link>
+                    <td className="px-5 py-3.5 font-mono text-xs">
+                      <Link to={`/jobs/${j.id}`} className="font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>#{j.job_number}</Link>
                     </td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text)' }}>{j.title}</td>
                     <td className="px-5 py-3.5"><Badge status={j.status} /></td>
                     <td className="px-5 py-3.5">
                       <span
@@ -247,11 +198,6 @@ export default function JobsPage() {
                     </td>
                     <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>${(j.pre_quote_cents / 100).toFixed(2)}</td>
                     <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(j.created_at)}</td>
-                    <td className="px-5 py-3.5">
-                      {!CLOSED_DIRECTORY_STATUSES.includes(j.status) && (
-                        <Button variant="secondary" onClick={() => setTicketInJob(j)}>Ticket In</Button>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>

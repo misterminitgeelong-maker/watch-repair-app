@@ -13,17 +13,18 @@ import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, In
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
+  awaiting_quote:    'awaiting_go_ahead',
   awaiting_go_ahead: 'go_ahead',
-  go_ahead: 'working_on',
-  no_go: null,
-  working_on: 'completed',
-  awaiting_parts: 'working_on',
-  parts_to_order: 'awaiting_parts',
-  sent_to_labanda: 'working_on',
-  service: 'completed',
-  completed: 'awaiting_collection',
+  go_ahead:          'working_on',
+  no_go:             null,
+  working_on:        'completed',
+  awaiting_parts:    'working_on',
+  parts_to_order:    'awaiting_parts',
+  sent_to_labanda:   'working_on',
+  service:           'completed',
+  completed:         'awaiting_collection',
   awaiting_collection: 'collected',
-  collected: null,
+  collected:         null,
 }
 
 // ── Status update modal ───────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
       onClose()
     },
   })
-  const statuses: JobStatus[] = ['awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
+  const statuses: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'parts_to_order', 'awaiting_parts', 'working_on', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
 
   return (
     <Modal title="Update Status" onClose={onClose}>
@@ -182,7 +183,7 @@ export default function JobDetailPage() {
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
         <span style={{ color: 'var(--cafe-text-muted)' }}>Status: <Badge status={job.status} /></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Priority: <span className="font-medium capitalize" style={{ color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--cafe-text)' }}>{job.priority}</span></span>
-        <span style={{ color: 'var(--cafe-text-muted)' }}>Pre-quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></span>
+        <span style={{ color: 'var(--cafe-text-muted)' }}>Quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Created: <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span></span>
       </div>
 
@@ -190,10 +191,24 @@ export default function JobDetailPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
+            onClick={() => quickStatusMutation.mutate({ status: 'awaiting_quote', note: 'Quick action: awaiting quote' })}
+            disabled={quickStatusMutation.isPending}
+          >
+            Awaiting Quote
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => quickStatusMutation.mutate({ status: 'go_ahead', note: 'Quick action: go ahead given' })}
+            disabled={quickStatusMutation.isPending}
+          >
+            Go Ahead Given
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => quickStatusMutation.mutate({ status: 'working_on', note: 'Quick action: started work' })}
             disabled={quickStatusMutation.isPending}
           >
-            Start Work
+            Started Work
           </Button>
           <Button
             variant="secondary"
@@ -244,7 +259,7 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
-              {job.pre_quote_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Pre-Quote</span><span className="font-medium" style={{ color: '#9B7228' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></div>}
+              {job.pre_quote_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Quote</span><span className="font-medium" style={{ color: '#9B7228' }}>${(job.pre_quote_cents / 100).toFixed(2)}</span></div>}
             </div>
 
             {/* Intake Photos */}

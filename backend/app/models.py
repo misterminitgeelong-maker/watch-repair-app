@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel
 
 JobStatus = Literal[
+    "awaiting_quote",
     "awaiting_go_ahead",
     "go_ahead",
     "no_go",
