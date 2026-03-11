@@ -28,6 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
+    function syncTokenFromStorage() {
+      setToken(localStorage.getItem('token'))
+    }
+
+    window.addEventListener('storage', syncTokenFromStorage)
+    window.addEventListener('auth:token-cleared', syncTokenFromStorage)
+    return () => {
+      window.removeEventListener('storage', syncTokenFromStorage)
+      window.removeEventListener('auth:token-cleared', syncTokenFromStorage)
+    }
+  }, [])
+
+  useEffect(() => {
     if (token) {
       setInitializing(false)
       return

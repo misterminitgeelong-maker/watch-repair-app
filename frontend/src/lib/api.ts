@@ -15,6 +15,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
+      window.dispatchEvent(new Event('auth:token-cleared'))
     }
     return Promise.reject(err)
   }
