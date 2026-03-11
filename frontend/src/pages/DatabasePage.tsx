@@ -6,6 +6,7 @@ import { PageHeader, Card, Button } from '@/components/ui'
 export default function DatabasePage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [replaceExisting, setReplaceExisting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const [error, setError] = useState('')
@@ -24,7 +25,7 @@ export default function DatabasePage() {
     setError('')
     setResult(null)
     try {
-      const { data } = await importCsv(file)
+      const { data } = await importCsv(file, { replaceExisting })
       setResult(data)
       setFile(null)
       if (fileRef.current) fileRef.current.value = ''
@@ -102,7 +103,22 @@ export default function DatabasePage() {
           </button>
 
           {/* Import button */}
-          <div className="flex justify-end mt-4">
+          <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+              <input
+                type="checkbox"
+                checked={replaceExisting}
+                onChange={(e) => setReplaceExisting(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Replace existing data before import
+                <span className="block text-xs" style={{ color: '#9B5A4A' }}>
+                  This will remove current customers, watches, jobs, quotes, invoices, and related records.
+                </span>
+              </span>
+            </label>
+
             <Button onClick={handleImport} disabled={!file || uploading}>
               <Upload size={15} />
               {uploading ? 'Importing…' : 'Import file'}

@@ -11,13 +11,30 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, select
 import openpyxl
 import xlrd
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import Customer, ImportLog, ImportLogDetail, ImportSummaryResponse, Quote, RepairJob, Watch
+from ..models import (
+    Approval,
+    Attachment,
+    Customer,
+    ImportLog,
+    ImportLogDetail,
+    ImportSummaryResponse,
+    Invoice,
+    JobStatusHistory,
+    Payment,
+    Quote,
+    QuoteLineItem,
+    RepairJob,
+    SmsLog,
+    Watch,
+    WorkLog,
+)
 
 router = APIRouter(prefix="/v1/import", tags=["import"])
 
@@ -270,11 +287,34 @@ def _infer_job_status(status_raw: str, notes_raw: str) -> str:
     return "awaiting_go_ahead"
 
 
+def _clear_tenant_importable_data(session: Session, tenant_id) -> None:
+    """Delete tenant-scoped operational data before replacement import."""
+    import_log_ids = session.exec(select(ImportLog.id).where(ImportLog.tenant_id == tenant_id)).all()
+    if import_log_ids:
+        session.exec(sa_delete(ImportLogDetail).where(ImportLogDetail.import_log_id.in_(import_log_ids)))
+        session.exec(sa_delete(ImportLog).where(ImportLog.id.in_(import_log_ids)))
+
+    # Delete children first, then parents, to satisfy FK constraints.
+    session.exec(sa_delete(Attachment).where(Attachment.tenant_id == tenant_id))
+    session.exec(sa_delete(WorkLog).where(WorkLog.tenant_id == tenant_id))
+    session.exec(sa_delete(JobStatusHistory).where(JobStatusHistory.tenant_id == tenant_id))
+    session.exec(sa_delete(SmsLog).where(SmsLog.tenant_id == tenant_id))
+    session.exec(sa_delete(QuoteLineItem).where(QuoteLineItem.tenant_id == tenant_id))
+    session.exec(sa_delete(Approval).where(Approval.tenant_id == tenant_id))
+    session.exec(sa_delete(Payment).where(Payment.tenant_id == tenant_id))
+    session.exec(sa_delete(Invoice).where(Invoice.tenant_id == tenant_id))
+    session.exec(sa_delete(Quote).where(Quote.tenant_id == tenant_id))
+    session.exec(sa_delete(RepairJob).where(RepairJob.tenant_id == tenant_id))
+    session.exec(sa_delete(Watch).where(Watch.tenant_id == tenant_id))
+    session.exec(sa_delete(Customer).where(Customer.tenant_id == tenant_id))
+
+
 # ── Endpoint ───────────────────────────────────────────────────────────────────
 
 @router.post("/csv", response_model=ImportSummaryResponse)
 async def import_csv(
     file: UploadFile = File(...),
+    replace_existing: bool = False,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -287,6 +327,10 @@ async def import_csv(
         raise HTTPException(status_code=400, detail="Import file is empty.")
 
     tenant_id = auth.tenant_id
+    if replace_existing:
+        _clear_tenant_importable_data(session, tenant_id)
+        session.commit()
+
     import_log = ImportLog(
         tenant_id=tenant_id,
         uploaded_by_user_id=auth.user_id,

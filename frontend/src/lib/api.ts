@@ -232,10 +232,11 @@ export interface CsvImportResult {
   imported: number; skipped: number; customers_created: number; total_rows: number
   skipped_reasons: Record<string, number>
 }
-export const importCsv = (file: File) => {
+export const importCsv = (file: File, options?: { replaceExisting?: boolean }) => {
   const form = new FormData()
   form.append('file', file)
-  return api.post<CsvImportResult>('/import/csv', form, {
+  const params = options?.replaceExisting ? '?replace_existing=true' : ''
+  return api.post<CsvImportResult>(`/import/csv${params}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
