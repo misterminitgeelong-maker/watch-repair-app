@@ -2,8 +2,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session, select
 
 from ..config import settings
@@ -15,10 +16,14 @@ from ..models import (
     AttachmentRead,
     AttachmentUrlResponse,
     RepairJob,
+    User,
     Watch,
 )
+from ..security import decode_access_token
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
+
+optional_bearer = HTTPBearer(auto_error=False)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -71,13 +76,30 @@ async def upload_attachment(
 @router.get("/download/{storage_key:path}")
 def download_attachment(
     storage_key: str,
-    auth: AuthContext = Depends(get_auth_context),
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
+    access_token: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ):
+    token = credentials.credentials if credentials and credentials.scheme.lower() == "bearer" else access_token
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        subject = decode_access_token(token)
+        parts = subject.split(":", maxsplit=2)
+        tenant_id = UUID(parts[0])
+        user_id = UUID(parts[1])
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid token") from exc
+
+    user = session.get(User, user_id)
+    if not user or user.tenant_id != tenant_id or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     attachment = session.exec(
         select(Attachment)
         .where(Attachment.storage_key == storage_key)
-        .where(Attachment.tenant_id == auth.tenant_id)
+        .where(Attachment.tenant_id == tenant_id)
     ).first()
     if not attachment:
         raise HTTPException(status_code=404, detail="Not found")

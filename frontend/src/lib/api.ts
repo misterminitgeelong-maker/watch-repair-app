@@ -205,7 +205,7 @@ export const uploadAttachment = (file: File, repairJobId: string, label?: string
   })
 }
 export const getAttachmentDownloadUrl = (storageKey: string) =>
-  `/v1/attachments/download/${encodeURIComponent(storageKey)}`
+  `/v1/attachments/download/${encodeURIComponent(storageKey)}${localStorage.getItem('token') ? `?access_token=${encodeURIComponent(localStorage.getItem('token') as string)}` : ''}`
 
 // ── Status History ────────────────────────────────────────────────────────────
 export interface StatusHistoryEntry {
