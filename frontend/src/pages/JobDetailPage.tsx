@@ -141,6 +141,7 @@ export default function JobDetailPage() {
     },
   })
   const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
   const { data: job, isLoading } = useQuery({ queryKey: ['job', id], queryFn: () => getJob(id!).then(r => r.data) })
@@ -151,16 +152,34 @@ export default function JobDetailPage() {
 
   const nextStatus = job ? STATUS_FLOW[job.status] : null
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+  async function uploadFile(file: File, label?: string) {
     if (!file || !id) return
     setUploading(true)
     try {
-      await uploadAttachment(file, id)
+      await uploadAttachment(file, id, label)
       qc.invalidateQueries({ queryKey: ['attachments', id] })
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      await uploadFile(file)
+    } finally {
       if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function handleCameraCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      await uploadFile(file, 'extra_photo')
+    } finally {
+      if (cameraRef.current) cameraRef.current.value = ''
     }
   }
 
@@ -401,8 +420,12 @@ export default function JobDetailPage() {
         <div>
           <div className="flex justify-between items-center mb-4">
             <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>{(attachments ?? []).length} file{(attachments ?? []).length !== 1 ? 's' : ''}</p>
-            <div>
+            <div className="flex items-center gap-2">
               <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+              <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={uploading}>
+                <Camera size={15} />{uploading ? 'Uploading…' : 'Take Extra Photo'}
+              </Button>
               <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
                 <Upload size={15} />{uploading ? 'Uploading…' : 'Upload File'}
               </Button>
