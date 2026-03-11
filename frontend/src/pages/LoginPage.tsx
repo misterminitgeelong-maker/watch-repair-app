@@ -83,10 +83,16 @@ export default function LoginPage() {
           {/* Card */}
           <div className="ms-card" style={{
             backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid #E8DDD0',
-            borderRadius: '20px',
-            padding: '2.25rem 2.1rem',
-            boxShadow: '0 2px 4px rgba(100,65,30,0.05), 0 8px 28px rgba(100,65,30,0.10), inset 0 1px 0 rgba(255,255,255,0.55)',
+            border: '1px solid #EAE0D4',
+            borderRadius: '22px',
+            padding: '2.6rem 2.4rem',
+            boxShadow: [
+              '0 1px 2px rgba(100,65,30,0.04)',
+              '0 4px 10px rgba(100,65,30,0.07)',
+              '0 14px 36px rgba(100,65,30,0.10)',
+              '0 32px 56px rgba(100,65,30,0.06)',
+              'inset 0 1px 0 rgba(255,255,255,0.65)',
+            ].join(', '),
           }}>
             <p style={{
               textAlign: 'center',
@@ -94,12 +100,16 @@ export default function LoginPage() {
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
               color: 'var(--cafe-text-muted)',
-              marginBottom: '1.25rem',
+              marginBottom: '1.4rem',
             }}>
               Sign in to your account
             </p>
 
-            <div style={{ height: '1px', backgroundColor: '#EDE4D8', marginBottom: '1.5rem' }} />
+            <div style={{
+              height: '1px',
+              background: 'linear-gradient(to right, transparent, #DDD0BE 25%, #DDD0BE 75%, transparent)',
+              marginBottom: '1.6rem',
+            }} />
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
               <LoginField label="Shop ID"   value={slug}     onChange={setSlug}     placeholder="myshop"          autoFocus />
