@@ -224,6 +224,7 @@ def ensure_platform_admin_account(session: Session) -> None:
 
     user = session.exec(select(User).where(User.email == email)).first()
     if user:
+        user.tenant_id = tenant.id
         user.role = "platform_admin"
         user.is_active = True
         user.password_hash = hash_password(password)

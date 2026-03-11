@@ -1,5 +1,6 @@
 ﻿import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload } from 'lucide-react'
 import {
   listShoeRepairJobs, updateShoeRepairJobStatus, getShoeGuarantee, listShoeCombos,
@@ -41,6 +42,7 @@ const SHOE_STATUS_LABELS: Record<string, string> = {
 
 function JobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [showItems, setShowItems] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -77,7 +79,13 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
+        <div
+          className="flex items-start justify-between gap-3 cursor-pointer"
+          onClick={() => navigate(`/shoe-repairs/${job.id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && navigate(`/shoe-repairs/${job.id}`)}
+        >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span
