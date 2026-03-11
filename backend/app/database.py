@@ -27,18 +27,24 @@ engine = create_engine(database_url, echo=False, connect_args=_connect_args)
 def _ensure_runtime_columns() -> None:
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
-    if "repairjob" not in table_names:
-        return
 
-    columns = {col["name"] for col in inspector.get_columns("repairjob")}
     with engine.begin() as conn:
-        if "cost_cents" not in columns:
-            conn.execute(text("ALTER TABLE repairjob ADD COLUMN cost_cents INTEGER NOT NULL DEFAULT 0"))
-        if "pre_quote_cents" not in columns:
-            conn.execute(text("ALTER TABLE repairjob ADD COLUMN pre_quote_cents INTEGER NOT NULL DEFAULT 0"))
-        if "status_token" not in columns:
-            conn.execute(text("ALTER TABLE repairjob ADD COLUMN status_token TEXT"))
-            conn.execute(text("UPDATE repairjob SET status_token = id WHERE status_token IS NULL OR status_token = ''"))
+        if "repairjob" in table_names:
+            repairjob_columns = {col["name"] for col in inspector.get_columns("repairjob")}
+            if "cost_cents" not in repairjob_columns:
+                conn.execute(text("ALTER TABLE repairjob ADD COLUMN cost_cents INTEGER NOT NULL DEFAULT 0"))
+            if "pre_quote_cents" not in repairjob_columns:
+                conn.execute(text("ALTER TABLE repairjob ADD COLUMN pre_quote_cents INTEGER NOT NULL DEFAULT 0"))
+            if "status_token" not in repairjob_columns:
+                conn.execute(text("ALTER TABLE repairjob ADD COLUMN status_token TEXT"))
+                conn.execute(text("UPDATE repairjob SET status_token = id WHERE status_token IS NULL OR status_token = ''"))
+
+        if "customer" in table_names:
+            customer_columns = {col["name"] for col in inspector.get_columns("customer")}
+            if "address" not in customer_columns:
+                conn.execute(text("ALTER TABLE customer ADD COLUMN address TEXT"))
+            if "notes" not in customer_columns:
+                conn.execute(text("ALTER TABLE customer ADD COLUMN notes TEXT"))
 
 
 def create_db_and_tables() -> None:
