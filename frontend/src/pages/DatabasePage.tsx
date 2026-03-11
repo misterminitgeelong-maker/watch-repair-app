@@ -67,7 +67,13 @@ export default function DatabasePage() {
           </div>
 
           {/* Drop zone */}
-          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <button
             onClick={() => fileRef.current?.click()}
             className="w-full border-2 border-dashed rounded-lg p-8 transition-colors text-center"
@@ -84,7 +90,7 @@ export default function DatabasePage() {
             ) : (
               <div className="flex flex-col items-center gap-2" style={{ color: 'var(--cafe-text-muted)' }}>
                 <Upload size={32} />
-                <p className="text-sm font-medium">Click to select a CSV or Excel file</p>
+                <p className="text-sm font-medium">Click to select a CSV or Excel file (.csv, .xlsx, .xls, .xlsm)</p>
                 <p className="text-xs">or drag and drop</p>
               </div>
             )}

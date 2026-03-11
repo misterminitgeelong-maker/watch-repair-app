@@ -199,7 +199,20 @@ def _load_rows(filename: str, raw_bytes: bytes) -> tuple[list[dict[str, str]], s
         return _load_xlsx_rows(raw_bytes), "xlsx"
     if ext == ".xls":
         return _load_xls_rows(raw_bytes), "xls"
-    raise HTTPException(status_code=400, detail="Only .csv, .xlsx, and .xls files are accepted.")
+
+    # Be tolerant of renamed/missing extensions by sniffing common formats.
+    if raw_bytes.startswith(b"PK"):
+        return _load_xlsx_rows(raw_bytes), "xlsx"
+    if raw_bytes.startswith(b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
+        return _load_xls_rows(raw_bytes), "xls"
+
+    try:
+        return _load_csv_rows(raw_bytes), "csv"
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .csv, .xlsx, .xls, and .xlsm files are accepted. If this is CSV, re-save as UTF-8 CSV.",
+        ) from exc
 
 
 _STATUS_MAP = {
