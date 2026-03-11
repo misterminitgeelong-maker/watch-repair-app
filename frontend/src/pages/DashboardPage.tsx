@@ -37,6 +37,13 @@ const KPI_ANIM_CSS = `
   to   { opacity: 1; transform: translateY(0); }
 }
 .kpi-card { animation: kpiRise 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.panel-card {
+  box-shadow: 0 2px 6px rgba(80,50,15,0.06), 0 8px 28px rgba(80,50,15,0.08);
+  transition: box-shadow 0.2s ease;
+}
+.panel-card:hover {
+  box-shadow: 0 4px 10px rgba(80,50,15,0.09), 0 14px 40px rgba(80,50,15,0.11);
+}
 `
 
 function StatCard({
@@ -105,20 +112,35 @@ export default function DashboardPage() {
   if (jobsLoading) return <Spinner />
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       <style>{KPI_ANIM_CSS}</style>
+
+      {/* Radial glow behind KPI row */}
+      <div style={{
+        position: 'absolute',
+        top: 80,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 900,
+        height: 260,
+        pointerEvents: 'none',
+        background: 'radial-gradient(ellipse 700px 200px at 50% 50%, rgba(201,162,72,0.10) 0%, transparent 70%)',
+        zIndex: 0,
+      }} />
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
       <PageHeader title="Overview" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <StatCard label={STAT_STYLES[0].label} value={openJobs.length}              icon={Wrench}      iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} index={0} />
         <StatCard label={STAT_STYLES[1].label} value={customers?.length ?? 0}       icon={Users}       iconBg={STAT_STYLES[1].iconBg} iconColor={STAT_STYLES[1].iconColor} index={1} />
         <StatCard label={STAT_STYLES[2].label} value={awaitingGoAheadJobs.length}   icon={Clock}       iconBg={STAT_STYLES[2].iconBg} iconColor={STAT_STYLES[2].iconColor} index={2} />
         <StatCard label={STAT_STYLES[3].label} value={goAheadJobs.length}           icon={DollarSign}  iconBg={STAT_STYLES[3].iconBg} iconColor={STAT_STYLES[3].iconColor} index={3} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Active Jobs */}
-        <Card>
+        <Card className="panel-card">
           <div
             className="flex items-center justify-between px-5 py-4"
             style={{ borderBottom: '1px solid var(--cafe-border)' }}
@@ -166,7 +188,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Status Breakdown */}
-        <Card>
+        <Card className="panel-card">
           <div
             className="flex items-center justify-between px-5 py-4"
             style={{ borderBottom: '1px solid var(--cafe-border)' }}
@@ -230,6 +252,7 @@ export default function DashboardPage() {
             </div>
           )}
         </Card>
+      </div>
       </div>
     </div>
   )
