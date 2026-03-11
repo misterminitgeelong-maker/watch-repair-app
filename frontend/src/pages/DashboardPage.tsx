@@ -25,7 +25,7 @@ const BREAKDOWN_STATUSES = [
 ] as const
 
 const STAT_STYLES = [
-  { iconBg: '#F5E8CC', iconColor: '#9B7228', label: 'Open Jobs' },
+  { iconBg: '#EFE7DC', iconColor: '#8D6725', label: 'Open Jobs' },
   { iconBg: '#DFF0EC', iconColor: '#2A6B65', label: 'Customers' },
   { iconBg: '#F5E8E8', iconColor: '#8B3A3A', label: 'Awaiting Go-Ahead' },
   { iconBg: '#E8F0E4', iconColor: '#3B6B42', label: 'Outstanding' },

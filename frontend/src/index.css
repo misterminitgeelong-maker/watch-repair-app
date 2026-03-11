@@ -7,16 +7,16 @@
   --cafe-espresso:    #1C0D05;
   --cafe-espresso-2:  #2E1810;
   --cafe-espresso-3:  #3D2214;
-  --cafe-gold:        #C9A44A;
-  --cafe-gold-dark:   #9B7422;
+  --cafe-gold:        #C2A05A;
+  --cafe-gold-dark:   #8A6728;
   --cafe-amber:       #A07028;
   --cafe-border:      #E8DECE;
-  --cafe-border-2:    #D5C4A8;
+  --cafe-border-2:    #D8CCBD;
   --cafe-text:        #1E0F06;
   --cafe-text-mid:    #6B4A32;
   --cafe-text-muted:  #9B7860;
-  --cafe-sidebar-txt: #C8A882;
-  --cafe-link:        #9B6B28;
+  --cafe-sidebar-txt: #D7C7B3;
+  --cafe-link:        #7A5A3B;
 }
 
 @layer base {

@@ -71,7 +71,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             }
             style={({ isActive }) =>
               isActive
-                ? { backgroundColor: 'rgba(201,162,72,0.18)', color: '#F5E8CA' }
+                ? { backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0E7DD', border: '1px solid rgba(255,255,255,0.08)' }
                 : { color: 'var(--cafe-sidebar-txt)' }
             }
             onMouseEnter={e => {
@@ -98,7 +98,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                     }}
                   />
                 )}
-                <Icon size={16} style={{ color: isActive ? '#F5E8CA' : undefined, flexShrink: 0 }} />
+                <Icon size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
                 {label}
               </>
             )}

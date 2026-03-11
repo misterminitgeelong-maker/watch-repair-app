@@ -35,12 +35,12 @@ function HeroSection() {
       <div className="lp-reveal">
         <div
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5"
-          style={{ backgroundColor: '#F5E8CC', border: '1px solid #E5D4B5', color: 'var(--cafe-espresso)' }}
+          style={{ backgroundColor: '#F3ECE2', border: '1px solid #E2D7C8', color: 'var(--cafe-espresso)' }}
         >
           <span style={{ fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>
             Mainspring
           </span>
-          <span style={{ width: 4, height: 4, borderRadius: 99, backgroundColor: '#9B7228' }} />
+          <span style={{ width: 4, height: 4, borderRadius: 99, backgroundColor: 'var(--cafe-gold-dark)' }} />
           <span style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cafe-text-mid)' }}>
             Built by watchmakers
           </span>
@@ -91,7 +91,7 @@ function HeroSection() {
               style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', boxShadow: '0 2px 10px rgba(80,50,15,0.06)' }}
             >
               <div className="flex items-center gap-2.5" style={{ color: 'var(--cafe-text)' }}>
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#F5E8CC', color: '#8D6420' }}>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#EEE6DA', color: '#8D6420' }}>
                   <Icon size={16} />
                 </span>
                 <span className="text-sm font-semibold">{title}</span>
@@ -121,7 +121,7 @@ function ProductPreview() {
           <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }} className="text-xl font-semibold">
             Overview
           </h3>
-          <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: '#EFE4D3', color: '#7A5A34' }}>
+          <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: '#EFE9DF', color: '#6E5640' }}>
             Live workflow
           </span>
         </div>
@@ -133,14 +133,14 @@ function ProductPreview() {
             ['Awaiting Parts', '6'],
             ['Outstanding', '$12,840'],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-2xl p-3.5" style={{ backgroundColor: '#FBF6EE', border: '1px solid #EADFCF' }}>
+            <div key={label} className="rounded-2xl p-3.5" style={{ backgroundColor: '#FBF8F3', border: '1px solid #E7DDD0' }}>
               <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>{label}</p>
               <p className="mt-1 text-xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>{value}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-5 rounded-2xl p-4" style={{ backgroundColor: '#F8F1E6', border: '1px solid #E8DBCA' }}>
+        <div className="mt-5 rounded-2xl p-4" style={{ backgroundColor: '#F7F1E8', border: '1px solid #E5DACB' }}>
           <div className="flex items-center gap-2" style={{ color: 'var(--cafe-text)' }}>
             <ClipboardCheck size={16} style={{ color: '#8D6420' }} />
             <h4 className="text-sm font-semibold uppercase tracking-wide">Repair Pipeline</h4>
@@ -150,7 +150,7 @@ function ProductPreview() {
               <span
                 key={stage}
                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                style={{ backgroundColor: '#EFE4D3', color: '#6B4F2F', border: '1px solid #E5D6C0' }}
+                style={{ backgroundColor: '#EFE9DF', color: '#62503E', border: '1px solid #E2D7C8' }}
               >
                 <span style={{ fontSize: '0.52rem', marginRight: 6, opacity: 0.8 }}>●</span>
                 {stage}
@@ -196,7 +196,7 @@ function ValueProps() {
             className="lp-card rounded-3xl p-6"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', boxShadow: '0 2px 8px rgba(90,55,16,0.05)' }}
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#F4E7CD', color: '#8D6420' }}>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#EEE6DA', color: '#8D6420' }}>
               <Icon size={18} />
             </span>
             <h3 className="mt-4 text-xl" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
@@ -232,7 +232,7 @@ function WorkflowSteps() {
             className="lp-card rounded-3xl p-5"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', boxShadow: '0 2px 8px rgba(90,55,16,0.05)' }}
           >
-            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: '#F4E7CD', color: '#8D6420' }}>
+            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: '#EEE6DA', color: '#8D6420' }}>
               Step {i + 1}
             </span>
             <h3 className="mt-3 text-lg" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
@@ -314,7 +314,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
-            <Link to="/signup" className="rounded-lg px-3.5 py-2 text-sm font-semibold" style={{ backgroundColor: '#EFE0C8', color: '#6A4A25', border: '1px solid #E2D0B4' }}>
+            <Link to="/signup" className="rounded-lg px-3.5 py-2 text-sm font-semibold" style={{ backgroundColor: '#F3ECE2', color: '#5F4734', border: '1px solid #DFD2C2' }}>
               Start your shop
             </Link>
           </div>
