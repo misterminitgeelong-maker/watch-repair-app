@@ -19,6 +19,7 @@ from .routes.attachments import router as attachment_router
 from .routes.csv_import import router as csv_import_router
 from .routes.reports import router as report_router
 from .routes.public_jobs import router as public_jobs_router
+from .routes.users import router as users_router
 from .startup_seed import get_seed_status, seed_from_csv_if_empty
 
 
@@ -62,6 +63,7 @@ app.include_router(attachment_router)
 app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(public_jobs_router)
+app.include_router(users_router)
 
 # ---------- Serve the built React frontend ----------
 _static = Path(settings.static_dir) if settings.static_dir else None

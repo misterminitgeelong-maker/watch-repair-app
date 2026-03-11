@@ -265,3 +265,32 @@ export interface ReportsSummary {
   }
 }
 export const getReportsSummary = () => api.get<ReportsSummary>('/reports/summary')
+
+// ── Users (admin management) ────────────────────────────────────────────────
+export interface TenantUser {
+  id: string
+  tenant_id: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+}
+
+export const listUsers = () => api.get<TenantUser[]>('/users')
+
+export const createUser = (data: {
+  email: string
+  full_name: string
+  password: string
+  role?: 'owner' | 'manager' | 'tech' | 'intake'
+}) => api.post<TenantUser>('/users', data)
+
+export const updateUser = (
+  userId: string,
+  data: {
+    full_name?: string
+    role?: 'owner' | 'manager' | 'tech' | 'intake'
+    password?: string
+    is_active?: boolean
+  },
+) => api.patch<TenantUser>(`/users/${userId}`, data)

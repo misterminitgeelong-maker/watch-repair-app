@@ -273,6 +273,20 @@ class TenantSignupResponse(SQLModel):
     expires_in_seconds: int
 
 
+class UserCreateRequest(SQLModel):
+    email: str
+    full_name: str
+    password: str
+    role: str = "manager"
+
+
+class UserUpdateRequest(SQLModel):
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 class ImportSummaryResponse(SQLModel):
     import_id: UUID
     imported: int
