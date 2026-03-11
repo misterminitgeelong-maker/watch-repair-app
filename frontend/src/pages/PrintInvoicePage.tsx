@@ -62,7 +62,7 @@ export default function PrintInvoicePage() {
               <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>Professional Watch Services</p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-extrabold" style={{ color: 'var(--cafe-gold-dark)' }}>INVOICE</p>
+              <p className="text-3xl font-extrabold" style={{ color: 'var(--cafe-text)' }}>INVOICE</p>
               <p className="font-mono text-sm mt-1" style={{ color: 'var(--cafe-text-mid)' }}>#{invoice.invoice_number}</p>
             </div>
           </div>

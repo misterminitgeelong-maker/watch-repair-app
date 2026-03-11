@@ -281,7 +281,7 @@ export default function JobDetailPage() {
                       onClick={() => updateJobMutation.mutate(Math.round(parseFloat(quoteInput || '0') * 100))}
                       disabled={updateJobMutation.isPending}
                       className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
+                      style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text)' }}
                     >
                       Save
                     </button>
@@ -289,7 +289,7 @@ export default function JobDetailPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="font-medium" style={{ color: '#9B7228' }}>
+                    <span className="font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
                       ${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}
                     </span>
                     <button
@@ -383,7 +383,7 @@ export default function JobDetailPage() {
                   <div className="flex items-start justify-between gap-4">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1" style={{ color: 'var(--cafe-text-mid)' }}>{log.note}</p>
                     {log.minutes_spent && (
-                      <span className="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: '#F5E8CC', color: '#9B7228' }}>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
                         <Clock size={11} className="inline mr-0.5" />{log.minutes_spent} min
                       </span>
                     )}

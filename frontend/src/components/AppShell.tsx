@@ -41,7 +41,7 @@ export default function AppShell() {
           <div className="flex items-center gap-2">
             <div
               className="h-7 w-7 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }}
+              style={{ backgroundColor: 'var(--cafe-espresso-2)', color: 'var(--cafe-gold)' }}
             >
               <WatchIcon size={14} strokeWidth={2.5} />
             </div>

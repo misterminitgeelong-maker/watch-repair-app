@@ -57,8 +57,8 @@ export default function StatusPage() {
     <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: 'var(--cafe-gold)' }}>
-            <Wrench size={22} style={{ color: 'var(--cafe-espresso)' }} />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
+            <Wrench size={22} style={{ color: 'var(--cafe-gold-dark)' }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
             Live Repair Status

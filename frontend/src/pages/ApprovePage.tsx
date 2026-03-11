@@ -94,8 +94,8 @@ export default function ApprovePage() {
       <div className="max-w-xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: 'var(--cafe-gold)' }}>
-            <WrenchIcon size={22} style={{ color: 'var(--cafe-espresso)' }} />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: '#EEE6DA' }}>
+            <WrenchIcon size={22} style={{ color: 'var(--cafe-gold-dark)' }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>Your Repair Quote</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>Review the quote below and let us know your decision.</p>
