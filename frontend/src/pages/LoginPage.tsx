@@ -8,8 +8,8 @@ const ANIM_CSS = `
     from { opacity: 0; transform: translateY(20px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .ms-logo { animation: msSlideUp 0.55s cubic-bezier(.22,.68,0,1.1) both; }
-  .ms-card { animation: msSlideUp 0.65s cubic-bezier(.22,.68,0,1.1) 0.13s both; }
+  .ms-logo { animation: msSlideUp 0.68s cubic-bezier(.22,.68,0,1.0) both; }
+  .ms-card { animation: msSlideUp 0.82s cubic-bezier(.22,.68,0,1.0) 0.18s both; }
 `
 
 export default function LoginPage() {
