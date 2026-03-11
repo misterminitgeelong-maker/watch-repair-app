@@ -164,6 +164,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         uploadAttachment(frontPhoto, data.id, 'watch_front'),
         uploadAttachment(backPhoto, data.id, 'watch_back'),
       ])
+      window.open(`/jobs/${data.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
       qc.invalidateQueries({ queryKey: ['jobs'] })
       onSuccess?.(data.id)
       onClose()

@@ -172,6 +172,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         }
       }
 
+      window.open(`/shoe-repairs/${jobData.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       onSuccess?.(jobData.id)
       onClose()

@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from ..config import settings
 from ..database import get_session
-from ..models import JobStatusHistory, RepairJob, Watch
+from ..models import JobStatusHistory, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, Watch
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
 
@@ -57,6 +57,62 @@ def get_public_job_qr(status_token: str, session: Session = Depends(get_session)
         raise HTTPException(status_code=404, detail="Invalid or expired link")
 
     target_url = f"{settings.public_base_url}/status/{status_token}"
+    qrcode = importlib.import_module("qrcode")
+    image = qrcode.make(target_url)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return Response(content=buffer.getvalue(), media_type="image/png")
+
+
+@router.get("/shoe-jobs/{status_token}")
+def get_public_shoe_job_status(status_token: str, session: Session = Depends(get_session)):
+    job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == status_token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    shoe = session.get(Shoe, job.shoe_id)
+    items = session.exec(
+        select(ShoeRepairJobItem)
+        .where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
+        .order_by(ShoeRepairJobItem.created_at)
+    ).all()
+    estimated_total_cents = int(
+        sum((item.unit_price_cents or 0) * item.quantity for item in items if item.unit_price_cents is not None)
+    )
+
+    return {
+        "job_number": job.job_number,
+        "status": job.status,
+        "title": job.title,
+        "description": job.description,
+        "priority": job.priority,
+        "deposit_cents": job.deposit_cents,
+        "estimated_total_cents": estimated_total_cents,
+        "created_at": job.created_at,
+        "shoe": {
+            "shoe_type": shoe.shoe_type if shoe else None,
+            "brand": shoe.brand if shoe else None,
+            "color": shoe.color if shoe else None,
+        },
+        "items": [
+            {
+                "item_name": item.item_name,
+                "quantity": item.quantity,
+                "unit_price_cents": item.unit_price_cents,
+                "notes": item.notes,
+            }
+            for item in items
+        ],
+    }
+
+
+@router.get("/shoe-jobs/{status_token}/qr")
+def get_public_shoe_job_qr(status_token: str, session: Session = Depends(get_session)):
+    job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == status_token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    target_url = f"{settings.public_base_url}/shoe-status/{status_token}"
     qrcode = importlib.import_module("qrcode")
     image = qrcode.make(target_url)
     buffer = io.BytesIO()

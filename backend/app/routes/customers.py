@@ -71,3 +71,15 @@ def list_watches(
     if customer_id is not None:
         q = q.where(Watch.customer_id == customer_id)
     return session.exec(q).all()
+
+
+@router.get("/watches/{watch_id}", response_model=WatchRead)
+def get_watch(
+    watch_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    watch = session.get(Watch, watch_id)
+    if not watch or watch.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Watch not found")
+    return watch

@@ -73,6 +73,7 @@ export interface Watch {
 }
 export const listWatches = (customerId?: string) =>
   api.get<Watch[]>('/watches', { params: customerId ? { customer_id: customerId } : {} })
+export const getWatch = (id: string) => api.get<Watch>(`/watches/${id}`)
 export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Watch>('/watches', data)
 
@@ -176,6 +177,34 @@ export const getPublicJobStatus = (token: string) =>
 
 export const getPublicJobQrUrl = (token: string) =>
   `/v1/public/jobs/${token}/qr`
+
+export interface PublicShoeJobStatus {
+  job_number: string
+  status: string
+  title: string
+  description?: string
+  priority: string
+  deposit_cents: number
+  estimated_total_cents: number
+  created_at: string
+  shoe: {
+    shoe_type?: string
+    brand?: string
+    color?: string
+  }
+  items: Array<{
+    item_name: string
+    quantity: number
+    unit_price_cents: number | null
+    notes?: string
+  }>
+}
+
+export const getPublicShoeJobStatus = (token: string) =>
+  axios.get<PublicShoeJobStatus>(`/v1/public/shoe-jobs/${token}`)
+
+export const getPublicShoeJobQrUrl = (token: string) =>
+  `/v1/public/shoe-jobs/${token}/qr`
 
 // ── Work Logs ─────────────────────────────────────────────────────────────────
 export interface WorkLog {

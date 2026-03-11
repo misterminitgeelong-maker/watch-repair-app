@@ -16,11 +16,14 @@ import ReportsPage from '@/pages/ReportsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import StatusPage from '@/pages/StatusPage'
+import ShoeStatusPage from '@/pages/ShoeStatusPage'
 import LandingPage from '@/pages/LandingPage'
 import AccountsPage from '@/pages/AccountsPage'
 import PlatformAdminUsersPage from '@/pages/PlatformAdminUsersPage'
 import ShoeRepairsPage from '@/pages/ShoeRepairsPage'
 import ShoeJobDetailPage from '@/pages/ShoeJobDetailPage'
+import PrintWatchIntakeTicketsPage from '@/pages/PrintWatchIntakeTicketsPage'
+import PrintShoeIntakeTicketsPage from '@/pages/PrintShoeIntakeTicketsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -36,6 +39,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
+            <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             {/* Protected app shell */}
@@ -45,6 +49,7 @@ export default function App() {
               <Route path="customers/:id" element={<CustomerDetailPage />} />
               <Route path="jobs" element={<JobsPage />} />
               <Route path="jobs/:id" element={<JobDetailPage />} />
+              <Route path="jobs/:id/intake-print" element={<PrintWatchIntakeTicketsPage />} />
               <Route path="quotes" element={<QuotesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
@@ -55,6 +60,7 @@ export default function App() {
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
               <Route path="shoe-repairs" element={<ShoeRepairsPage />} />
               <Route path="shoe-repairs/:id" element={<ShoeJobDetailPage />} />
+              <Route path="shoe-repairs/:id/intake-print" element={<PrintShoeIntakeTicketsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

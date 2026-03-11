@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil } from 'lucide-react'
+import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer } from 'lucide-react'
 import {
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
   listWorkLogs, createWorkLog,
@@ -210,6 +210,9 @@ export default function JobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => window.open(`/jobs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
+              <Printer size={15} /> Print Intake Tickets
+            </Button>
             {nextStatus && (
               <Button variant="secondary" onClick={() => setShowStatus(true)}>
                 <ArrowRight size={15} /> Move to {STATUS_LABELS[nextStatus]}
