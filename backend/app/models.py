@@ -113,6 +113,7 @@ class Attachment(SQLModel, table=True):
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     watch_id: Optional[UUID] = Field(default=None, index=True, foreign_key="watch.id")
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
     uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     storage_key: str = Field(index=True, unique=True)
     file_name: Optional[str] = None
@@ -436,6 +437,7 @@ class WorkLogRead(SQLModel):
 class AttachmentCreate(SQLModel):
     repair_job_id: Optional[UUID] = None
     watch_id: Optional[UUID] = None
+    shoe_repair_job_id: Optional[UUID] = None
     file_name: str
     content_type: str
     file_size_bytes: int
@@ -446,6 +448,7 @@ class AttachmentRead(SQLModel):
     tenant_id: UUID
     repair_job_id: Optional[UUID] = None
     watch_id: Optional[UUID] = None
+    shoe_repair_job_id: Optional[UUID] = None
     storage_key: str
     file_name: Optional[str] = None
     content_type: Optional[str] = None

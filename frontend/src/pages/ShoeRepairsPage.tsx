@@ -1,11 +1,14 @@
-import { useState } from 'react'
+﻿import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, ChevronDown, Shield, Tag } from 'lucide-react'
+import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload } from 'lucide-react'
 import {
   listShoeRepairJobs, updateShoeRepairJobStatus, getShoeGuarantee, listShoeCombos,
-  formatShoePricingType,
+  formatShoePricingType, listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
+import { formatDate } from '@/lib/utils'
+import NewShoeJobModal from '@/components/NewShoeJobModal'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -15,14 +18,10 @@ function itemPriceDisplay(item: ShoeRepairJobItem): string {
   const isPriceAdjustable = FROM_PRICING_TYPES.includes(item.pricing_type as ShoePricingType)
   if (item.unit_price_cents == null) return 'Quoted'
   if (isPriceAdjustable) {
-    // Show the actual agreed price — not "From $X"
     return `$${(item.unit_price_cents / 100).toFixed(2)}`
   }
   return formatShoePricingType(item.pricing_type as ShoePricingType, item.unit_price_cents)
 }
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
-import NewShoeJobModal from '@/components/NewShoeJobModal'
 
 const SHOE_STATUSES = [
   'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on',
@@ -43,12 +42,34 @@ const SHOE_STATUS_LABELS: Record<string, string> = {
 function JobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
   const [showItems, setShowItems] = useState(false)
+  const [showPhotos, setShowPhotos] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateShoeRepairJobStatus(job.id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] }),
   })
+
+  const { data: photos } = useQuery({
+    queryKey: ['shoe-attachments', job.id],
+    queryFn: () => listShoeAttachments(job.id).then(r => r.data),
+    enabled: showPhotos,
+  })
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploading(true)
+    try {
+      await Promise.all(files.map(f => uploadShoeAttachment(f, job.id)))
+      qc.invalidateQueries({ queryKey: ['shoe-attachments', job.id] })
+    } finally {
+      setUploading(false)
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
 
   const total = job.items.reduce((sum, item) =>
     sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0), 0)
@@ -99,7 +120,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           )}
         </div>
 
-        {/* Items toggle */}
+        {/* Services toggle */}
         {job.items.length > 0 && (
           <button
             type="button"
@@ -137,6 +158,67 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             ))}
           </div>
         )}
+
+        {/* Photos toggle */}
+        <button
+          type="button"
+          onClick={() => setShowPhotos(v => !v)}
+          className="flex items-center gap-1.5 mt-3 text-xs font-medium transition-colors"
+          style={{ color: 'var(--cafe-text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+        >
+          <Camera size={12} />
+          Photos{photos ? ` (${photos.length})` : ''}
+          <ChevronDown size={12} className={`transition-transform ${showPhotos ? 'rotate-180' : ''}`} />
+        </button>
+
+        {showPhotos && (
+          <div className="mt-3">
+            {(photos ?? []).length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {(photos ?? []).map(photo => (
+                  <a
+                    key={photo.id}
+                    href={getAttachmentDownloadUrl(photo.storage_key)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-lg overflow-hidden"
+                    style={{ border: '1px solid var(--cafe-border)', aspectRatio: '1' }}
+                  >
+                    <img
+                      src={getAttachmentDownloadUrl(photo.storage_key)}
+                      alt={photo.file_name ?? 'photo'}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                backgroundColor: 'var(--cafe-surface)',
+                border: '1px dashed var(--cafe-border-2)',
+                color: uploading ? 'var(--cafe-text-muted)' : 'var(--cafe-amber)',
+              }}
+            >
+              <Upload size={11} />
+              {uploading ? 'Uploading...' : 'Add photos'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Status update footer */}
@@ -164,7 +246,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   )
 }
 
-// ── Combo info cards ──────────────────────────────────────────────────────────
+// -- Combo info cards ----------------------------------------------------------
 function ComboBanner() {
   const [expanded, setExpanded] = useState(false)
   const { data: combos } = useQuery({
@@ -241,7 +323,7 @@ function ComboBanner() {
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// -- Page ---------------------------------------------------------------------
 export default function ShoeRepairsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
@@ -286,7 +368,7 @@ export default function ShoeRepairsPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--cafe-text-muted)' }} />
           <input
             type="text"
-            placeholder="Search jobs or services…"
+            placeholder="Search jobs or services..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full h-10 rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2"
@@ -313,7 +395,7 @@ export default function ShoeRepairsPage() {
       {isLoading && <Spinner />}
 
       {!isLoading && filtered.length === 0 && (
-        <EmptyState message={jobs?.length === 0 ? 'No shoe repair jobs yet — create one to get started.' : 'No jobs match the current filters.'} />
+        <EmptyState message={jobs?.length === 0 ? 'No shoe repair jobs yet - create one to get started.' : 'No jobs match the current filters.'} />
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

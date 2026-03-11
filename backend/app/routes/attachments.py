@@ -18,6 +18,7 @@ from ..models import (
     AttachmentRead,
     AttachmentUrlResponse,
     RepairJob,
+    ShoeRepairJob,
     User,
     Watch,
 )
@@ -36,12 +37,13 @@ async def upload_attachment(
     file: UploadFile = File(...),
     repair_job_id: UUID | None = None,
     watch_id: UUID | None = None,
+    shoe_repair_job_id: UUID | None = None,
     label: str | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    if not repair_job_id and not watch_id:
-        raise HTTPException(status_code=400, detail="repair_job_id or watch_id is required")
+    if not repair_job_id and not watch_id and not shoe_repair_job_id:
+        raise HTTPException(status_code=400, detail="repair_job_id, watch_id, or shoe_repair_job_id is required")
 
     if repair_job_id:
         job = session.get(RepairJob, repair_job_id)
@@ -52,6 +54,11 @@ async def upload_attachment(
         watch = session.get(Watch, watch_id)
         if not watch or watch.tenant_id != auth.tenant_id:
             raise HTTPException(status_code=404, detail="Watch not found")
+
+    if shoe_repair_job_id:
+        shoe_job = session.get(ShoeRepairJob, shoe_repair_job_id)
+        if not shoe_job or shoe_job.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Shoe repair job not found")
 
     safe_name = Path(file.filename or "file").name
     raw = await file.read()
@@ -81,6 +88,7 @@ async def upload_attachment(
         tenant_id=auth.tenant_id,
         repair_job_id=repair_job_id,
         watch_id=watch_id,
+        shoe_repair_job_id=shoe_repair_job_id,
         uploaded_by_user_id=auth.user_id,
         storage_key=storage_key,
         file_name=safe_name,
@@ -134,6 +142,7 @@ def download_attachment(
 def list_attachments(
     repair_job_id: UUID | None = None,
     watch_id: UUID | None = None,
+    shoe_repair_job_id: UUID | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -142,6 +151,8 @@ def list_attachments(
         query = query.where(Attachment.repair_job_id == repair_job_id)
     if watch_id:
         query = query.where(Attachment.watch_id == watch_id)
+    if shoe_repair_job_id:
+        query = query.where(Attachment.shoe_repair_job_id == shoe_repair_job_id)
 
     rows = session.exec(query).all()
     return [AttachmentRead(**row.model_dump()) for row in rows]

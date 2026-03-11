@@ -190,6 +190,7 @@ export const createWorkLog = (data: { repair_job_id: string; note?: string; minu
 // ── Attachments ───────────────────────────────────────────────────────────────
 export interface Attachment {
   id: string; tenant_id: string; repair_job_id?: string; watch_id?: string
+  shoe_repair_job_id?: string
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
   label?: string; created_at: string
 }
@@ -199,6 +200,17 @@ export const uploadAttachment = (file: File, repairJobId: string, label?: string
   const form = new FormData()
   form.append('file', file)
   const params = new URLSearchParams({ repair_job_id: repairJobId })
+  if (label) params.append('label', label)
+  return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+export const listShoeAttachments = (shoeRepairJobId: string) =>
+  api.get<Attachment[]>('/attachments', { params: { shoe_repair_job_id: shoeRepairJobId } })
+export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?: string) => {
+  const form = new FormData()
+  form.append('file', file)
+  const params = new URLSearchParams({ shoe_repair_job_id: shoeRepairJobId })
   if (label) params.append('label', label)
   return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
