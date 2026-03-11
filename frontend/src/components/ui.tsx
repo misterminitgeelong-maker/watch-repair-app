@@ -42,7 +42,7 @@ export function Button({
   children: React.ReactNode; onClick?: () => void; type?: 'button' | 'submit' | 'reset'
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; disabled?: boolean; className?: string
 }) {
-  const base = 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none'
+  const base = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2'
   const variants = {
     primary:   'text-white focus:ring-[var(--cafe-gold)]',
     secondary: 'border focus:ring-[var(--cafe-gold)]',
@@ -92,7 +92,7 @@ export function Input({ label, error, ...props }: React.InputHTMLAttributes<HTML
       <input
         {...props}
         className={cn(
-          'rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2',
+          'h-11 rounded-lg border px-3 text-base outline-none transition focus:ring-2 sm:text-sm',
           props.className
         )}
         style={{
@@ -119,7 +119,7 @@ export function Select({ label, error, children, ...props }: React.SelectHTMLAtt
       <select
         {...props}
         className={cn(
-          'rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2',
+          'h-11 rounded-lg border px-3 text-base outline-none transition focus:ring-2 sm:text-sm',
           props.className
         )}
         style={{
@@ -158,8 +158,8 @@ export function EmptyState({ message }: { message: string }) {
 interface ModalProps { title: string; children: React.ReactNode; onClose: () => void }
 export function Modal({ title, children, onClose }: ModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(28,13,5,0.55)', backdropFilter: 'blur(4px)' }}>
-      <div className="rounded-2xl shadow-2xl w-full max-w-md mx-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ backgroundColor: 'rgba(28,13,5,0.55)', backdropFilter: 'blur(4px)' }}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl shadow-2xl mx-2 sm:mx-4 sm:rounded-2xl" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
         <div
           className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom: '1px solid var(--cafe-border)' }}
@@ -197,7 +197,7 @@ export function Textarea({ label, error, ...props }: React.TextareaHTMLAttribute
       <textarea
         {...props}
         className={cn(
-          'rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 resize-none',
+          'rounded-lg border px-3 py-2.5 text-base outline-none transition focus:ring-2 resize-none sm:text-sm',
           props.className
         )}
         style={{

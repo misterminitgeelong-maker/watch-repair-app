@@ -143,10 +143,10 @@ export default function JobsPage() {
       </div>
 
       <div className="flex gap-3 mb-5 flex-wrap">
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
           <input
-            className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none transition"
+            className="w-full sm:w-auto pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
             style={{
               backgroundColor: 'var(--cafe-surface)',
               border: '1px solid var(--cafe-border-2)',
@@ -158,7 +158,7 @@ export default function JobsPage() {
           />
         </div>
         <select
-          className="rounded-lg px-3 py-2 text-sm outline-none transition"
+          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
           style={{
             backgroundColor: 'var(--cafe-surface)',
             border: '1px solid var(--cafe-border-2)',

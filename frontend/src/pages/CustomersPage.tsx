@@ -53,10 +53,10 @@ export default function CustomersPage() {
       <PageHeader title="Customers" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Customer</Button>} />
       {showAdd && <AddCustomerModal onClose={() => setShowAdd(false)} />}
 
-      <div className="mb-5 relative max-w-xs">
+      <div className="mb-5 relative w-full max-w-md">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
         <input
-          className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none transition"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
           style={{
             backgroundColor: 'var(--cafe-surface)',
             border: '1px solid var(--cafe-border-2)',
@@ -71,7 +71,23 @@ export default function CustomersPage() {
       {isLoading ? <Spinner /> : (
         <Card>
           {filtered.length === 0 ? <EmptyState message="No customers found." /> : (
-            <table className="w-full text-sm">
+            <>
+            <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              {filtered.map((c: Customer) => (
+                <div key={c.id} className="p-4 space-y-2">
+                  <Link to={`/customers/${c.id}`} className="font-medium" style={{ color: 'var(--cafe-amber)' }}>
+                    {c.full_name}
+                  </Link>
+                  <div className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                    <p>{c.email ?? 'No email'}</p>
+                    <p>{c.phone ?? 'No phone'}</p>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Added {formatDate(c.created_at)}</p>
+                </div>
+              ))}
+            </div>
+
+            <table className="w-full text-sm hidden md:table">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
                   {['Name', 'Email', 'Phone', 'Added'].map(h => (
@@ -109,6 +125,7 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </Card>
       )}
