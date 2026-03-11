@@ -17,6 +17,7 @@ import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import StatusPage from '@/pages/StatusPage'
 import LandingPage from '@/pages/LandingPage'
+import AccountsPage from '@/pages/AccountsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="database" element={<DatabasePage />} />
+              <Route path="accounts" element={<AccountsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
