@@ -26,7 +26,11 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   return (
     <aside
       className={cn('w-60 flex flex-col shrink-0', className)}
-      style={{ backgroundColor: 'var(--cafe-espresso)', color: 'var(--cafe-sidebar-txt)' }}
+      style={{
+        backgroundColor: 'var(--cafe-espresso)',
+        color: 'var(--cafe-sidebar-txt)',
+        ...(!mobile ? { borderRight: '1px solid rgba(160,130,90,0.15)' } : {}),
+      }}
     >
       {/* Branding */}
       <div
@@ -50,7 +54,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-5 space-y-0.5">
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {nav.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -59,21 +63,42 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                'relative flex items-center gap-3 rounded-lg px-3.5 py-3 text-sm font-medium transition-all duration-150',
                 isActive
                   ? 'font-semibold'
-                  : 'hover:text-[#F5E8CA]'
+                  : ''
               )
             }
             style={({ isActive }) =>
               isActive
-                ? { backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)' }
+                ? { backgroundColor: 'rgba(201,162,72,0.18)', color: '#F5E8CA' }
                 : { color: 'var(--cafe-sidebar-txt)' }
             }
+            onMouseEnter={e => {
+              const el = e.currentTarget
+              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget
+              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'transparent'
+            }}
           >
             {({ isActive }) => (
               <>
-                <Icon size={16} style={isActive ? { color: 'var(--cafe-espresso)' } : {}} />
+                {isActive && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '20%',
+                      bottom: '20%',
+                      width: 3,
+                      borderRadius: 4,
+                      backgroundColor: 'var(--cafe-gold)',
+                    }}
+                  />
+                )}
+                <Icon size={16} style={{ color: isActive ? '#F5E8CA' : undefined, flexShrink: 0 }} />
                 {label}
               </>
             )}
@@ -83,7 +108,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
       {/* Sign out */}
       <div className="px-3 pb-6">
-        <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1rem' }}>
+        <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1.25rem' }}>
           <button
             onClick={() => {
               logout()
