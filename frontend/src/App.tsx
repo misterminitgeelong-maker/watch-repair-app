@@ -18,6 +18,7 @@ import SignupPage from '@/pages/SignupPage'
 import StatusPage from '@/pages/StatusPage'
 import LandingPage from '@/pages/LandingPage'
 import AccountsPage from '@/pages/AccountsPage'
+import PlatformAdminUsersPage from '@/pages/PlatformAdminUsersPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="database" element={<DatabasePage />} />
               <Route path="accounts" element={<AccountsPage />} />
+              <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

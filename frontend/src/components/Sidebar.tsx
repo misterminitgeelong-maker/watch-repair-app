@@ -22,7 +22,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
-  const { logout } = useAuth()
+  const { logout, role } = useAuth()
+
+  const navItems = role === 'platform_admin'
+    ? [...nav, { to: '/platform-admin/users', label: 'Platform Admin', icon: UserCog }]
+    : nav
 
   return (
     <aside
@@ -56,7 +60,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1">
-        {nav.map(({ to, label, icon: Icon }) => (
+        {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

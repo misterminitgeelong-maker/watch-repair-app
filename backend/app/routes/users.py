@@ -10,6 +10,8 @@ from ..security import hash_password
 
 router = APIRouter(prefix="/v1/users", tags=["users"])
 
+TENANT_MANAGED_ROLES = {"owner", "manager", "tech", "intake"}
+
 
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
@@ -28,8 +30,9 @@ def _to_public_user(user: User) -> PublicUser:
 
 def _validate_role(role: str) -> str:
     normalized = role.strip().lower()
-    if normalized not in ROLE_HIERARCHY:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Allowed: {', '.join(ROLE_HIERARCHY.keys())}")
+    if normalized not in ROLE_HIERARCHY or normalized not in TENANT_MANAGED_ROLES:
+        allowed = ", ".join(sorted(TENANT_MANAGED_ROLES))
+        raise HTTPException(status_code=400, detail=f"Invalid role. Allowed: {allowed}")
     return normalized
 
 

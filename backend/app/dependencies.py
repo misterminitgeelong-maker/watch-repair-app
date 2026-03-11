@@ -13,12 +13,13 @@ from .security import decode_access_token
 bearer_scheme = HTTPBearer(auto_error=True)
 
 # Roles ordered from least to most privileged for reference:
-# intake < tech < manager < owner
+# intake < tech < manager < owner < platform_admin
 ROLE_HIERARCHY: dict[str, int] = {
     "intake": 1,
     "tech": 2,
     "manager": 3,
     "owner": 4,
+    "platform_admin": 5,
 }
 
 
@@ -63,6 +64,7 @@ def require_roles(*allowed_roles: str) -> Callable[[AuthContext], AuthContext]:
 
 
 # Convenience aliases
-require_owner = require_roles("owner")
-require_manager_or_above = require_roles("owner", "manager")
-require_tech_or_above = require_roles("owner", "manager", "tech")
+require_owner = require_roles("owner", "platform_admin")
+require_manager_or_above = require_roles("owner", "manager", "platform_admin")
+require_tech_or_above = require_roles("owner", "manager", "tech", "platform_admin")
+require_platform_admin = require_roles("platform_admin")

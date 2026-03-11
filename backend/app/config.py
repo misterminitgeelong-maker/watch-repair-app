@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     startup_seed_owner_email: str = "admin@admin.com"
     startup_seed_owner_password: str = "Admin"
 
+    # Optional global platform admin account (cross-tenant visibility)
+    platform_admin_enabled: bool = False
+    platform_admin_email: str = ""
+    platform_admin_password: str = ""
+    platform_admin_full_name: str = "Platform Admin"
+    platform_admin_tenant_slug: str = "platform"
+    platform_admin_tenant_name: str = "Platform"
+
     # Twilio SMS — leave blank to disable SMS (dry-run / log-only mode)
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

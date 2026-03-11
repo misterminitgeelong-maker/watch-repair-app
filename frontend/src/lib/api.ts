@@ -294,3 +294,10 @@ export const updateUser = (
     is_active?: boolean
   },
 ) => api.patch<TenantUser>(`/users/${userId}`, data)
+
+export interface PlatformUser extends TenantUser {
+  tenant_slug: string
+  tenant_name: string
+}
+
+export const listPlatformUsers = () => api.get<PlatformUser[]>('/platform-admin/users')

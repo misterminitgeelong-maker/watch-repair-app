@@ -36,6 +36,12 @@ STARTUP_SEED_ENABLED=false
 TWILIO_ACCOUNT_SID=<twilio-sid>
 TWILIO_AUTH_TOKEN=<twilio-token>
 TWILIO_FROM_NUMBER=<twilio-number>
+PLATFORM_ADMIN_ENABLED=true
+PLATFORM_ADMIN_EMAIL=<global-admin-email>
+PLATFORM_ADMIN_PASSWORD=<strong-password>
+PLATFORM_ADMIN_FULL_NAME=Platform Admin
+PLATFORM_ADMIN_TENANT_SLUG=platform
+PLATFORM_ADMIN_TENANT_NAME=Platform
 ```
 
 - Ensure DATABASE_URL is present from the Railway PostgreSQL plugin.
@@ -69,6 +75,7 @@ curl -X POST https://mainspring.au/v1/auth/bootstrap \
 
 - After owner is created, set ALLOW_PUBLIC_BOOTSTRAP=false.
 - Redeploy to lock bootstrap.
+- Verify platform admin account can log in with tenant slug `platform`.
 
 ## Production Smoke Tests
 
@@ -117,6 +124,13 @@ curl -X POST https://mainspring.au/v1/auth/login \
   }'
 ```
 
+- Platform admin global users endpoint:
+
+```bash
+curl -X GET https://mainspring.au/v1/platform-admin/users \
+  -H "Authorization: Bearer <platform_admin_token>"
+```
+
 - Public status page with real token:
   - <https://mainspring.au/status/{status_token}>
 - QR endpoint with real token:
@@ -141,6 +155,7 @@ curl -X POST https://mainspring.au/v1/auth/login \
   - APP_ENV=production
   - ALLOW_DEV_AUTO_LOGIN=false
   - ALLOW_PUBLIC_BOOTSTRAP=false after first tenant
+  - PLATFORM_ADMIN_ENABLED=true only when admin email/password are set
 - Enable Railway PostgreSQL backups/snapshots.
 - Monitor:
   - GET /v1/health

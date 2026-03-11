@@ -20,13 +20,15 @@ from .routes.csv_import import router as csv_import_router
 from .routes.reports import router as report_router
 from .routes.public_jobs import router as public_jobs_router
 from .routes.users import router as users_router
-from .startup_seed import get_seed_status, seed_from_csv_if_empty
+from .routes.platform_admin import router as platform_admin_router
+from .startup_seed import ensure_platform_admin_account, get_seed_status, seed_from_csv_if_empty
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     with Session(engine) as session:
+        ensure_platform_admin_account(session)
         seed_from_csv_if_empty(session)
     yield
 
@@ -64,6 +66,7 @@ app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(public_jobs_router)
 app.include_router(users_router)
+app.include_router(platform_admin_router)
 
 # ---------- Serve the built React frontend ----------
 _static = Path(settings.static_dir) if settings.static_dir else None

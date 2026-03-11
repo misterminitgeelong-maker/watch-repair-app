@@ -260,6 +260,17 @@ class PublicUser(SQLModel):
     is_active: bool
 
 
+class PlatformUserRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+
+
 class BootstrapResponse(SQLModel):
     tenant_id: UUID
     owner_user: PublicUser

@@ -201,6 +201,49 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
     return tenant
 
 
+def ensure_platform_admin_account(session: Session) -> None:
+    if not settings.platform_admin_enabled:
+        return
+
+    email = (settings.platform_admin_email or "").strip().lower()
+    password = settings.platform_admin_password or ""
+    full_name = (settings.platform_admin_full_name or "Platform Admin").strip() or "Platform Admin"
+    tenant_slug = (settings.platform_admin_tenant_slug or "platform").strip().lower() or "platform"
+    tenant_name = (settings.platform_admin_tenant_name or "Platform").strip() or "Platform"
+
+    if not email or "@" not in email:
+        return
+    if len(password) < 8:
+        return
+
+    tenant = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
+    if not tenant:
+        tenant = Tenant(name=tenant_name, slug=tenant_slug)
+        session.add(tenant)
+        session.flush()
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if user:
+        user.role = "platform_admin"
+        user.is_active = True
+        user.password_hash = hash_password(password)
+        user.full_name = full_name
+        session.add(user)
+    else:
+        session.add(
+            User(
+                tenant_id=tenant.id,
+                email=email,
+                full_name=full_name,
+                role="platform_admin",
+                password_hash=hash_password(password),
+                is_active=True,
+            )
+        )
+
+    session.commit()
+
+
 def seed_from_csv_if_empty(session: Session) -> None:
     _seed_status["enabled"] = settings.startup_seed_enabled
     _seed_status["csv_path"] = settings.startup_seed_csv_path

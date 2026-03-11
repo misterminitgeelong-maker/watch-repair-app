@@ -2,12 +2,30 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 interface AuthCtx {
   token: string | null
+  role: string | null
   initializing: boolean
   login: (token: string) => void
   logout: () => void
 }
 
 const AuthContext = createContext<AuthCtx | null>(null)
+
+function parseRoleFromToken(token: string | null): string | null {
+  if (!token) return null
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payload = parts[1]
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+    const decoded = atob(padded)
+    const parsed = JSON.parse(decoded) as { sub?: string }
+    const subjectParts = (parsed.sub || '').split(':')
+    return subjectParts.length >= 3 ? subjectParts[2] : null
+  } catch {
+    return null
+  }
+}
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -25,11 +43,14 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
+  const [role, setRole] = useState<string | null>(() => parseRoleFromToken(localStorage.getItem('token')))
   const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
     function syncTokenFromStorage() {
-      setToken(localStorage.getItem('token'))
+      const nextToken = localStorage.getItem('token')
+      setToken(nextToken)
+      setRole(parseRoleFromToken(nextToken))
     }
 
     window.addEventListener('storage', syncTokenFromStorage)
@@ -63,11 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!canceled && loginResp.access_token) {
           localStorage.setItem('token', loginResp.access_token)
           setToken(loginResp.access_token)
+          setRole(parseRoleFromToken(loginResp.access_token))
         }
       } catch {
         // Leave unauthenticated if setup fails.
         localStorage.removeItem('token')
-        if (!canceled) setToken(null)
+        if (!canceled) {
+          setToken(null)
+          setRole(null)
+        }
       } finally {
         if (!canceled) setInitializing(false)
       }
@@ -82,14 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function login(t: string) {
     localStorage.setItem('token', t)
     setToken(t)
+    setRole(parseRoleFromToken(t))
   }
 
   function logout() {
     localStorage.removeItem('token')
     setToken(null)
+    setRole(null)
   }
 
-  return <AuthContext.Provider value={{ token, initializing, login, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ token, role, initializing, login, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
