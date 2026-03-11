@@ -2,21 +2,21 @@
 
 /* ── Café design tokens ─────────────────────────────────────────────────── */
 :root {
-  --cafe-bg:          #F8F4EE;
-  --cafe-surface:     #FEFCF8;
-  --cafe-espresso:    #1C0D05;
-  --cafe-espresso-2:  #2E1810;
-  --cafe-espresso-3:  #3D2214;
-  --cafe-gold:        #C2A05A;
-  --cafe-gold-dark:   #8A6728;
-  --cafe-amber:       #A07028;
-  --cafe-border:      #E8DECE;
-  --cafe-border-2:    #D8CCBD;
-  --cafe-text:        #1E0F06;
-  --cafe-text-mid:    #6B4A32;
-  --cafe-text-muted:  #9B7860;
-  --cafe-sidebar-txt: #D7C7B3;
-  --cafe-link:        #7A5A3B;
+  --cafe-bg:          #F6F2EB;
+  --cafe-surface:     #FCFAF6;
+  --cafe-espresso:    #1F1712;
+  --cafe-espresso-2:  #2D231C;
+  --cafe-espresso-3:  #3B2F27;
+  --cafe-gold:        #B89556;
+  --cafe-gold-dark:   #7A5D2E;
+  --cafe-amber:       #8F6A33;
+  --cafe-border:      #E3DACE;
+  --cafe-border-2:    #D3C8BA;
+  --cafe-text:        #201813;
+  --cafe-text-mid:    #5F4D3E;
+  --cafe-text-muted:  #8A7563;
+  --cafe-sidebar-txt: #D5C8BB;
+  --cafe-link:        #6F5843;
 }
 
 @layer base {

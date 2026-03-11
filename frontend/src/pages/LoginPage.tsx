@@ -44,12 +44,12 @@ export default function LoginPage() {
       <style>{ANIM_CSS}</style>
       <div
         className="min-h-screen flex items-center justify-center px-4"
-        style={{ background: 'linear-gradient(180deg, #FBF6EE 0%, #F5ECD9 48%, #EDE2CE 100%)', position: 'relative', overflow: 'hidden' }}
+        style={{ background: 'linear-gradient(180deg, #F9F6F0 0%, #F1EAE0 52%, #E8DED1 100%)', position: 'relative', overflow: 'hidden' }}
       >
         {/* Subtle warm radial glow */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(201,162,72,0.11) 0%, rgba(185,142,55,0.04) 42%, transparent 70%)',
+          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(184,149,86,0.09) 0%, rgba(122,93,46,0.03) 42%, transparent 70%)',
         }} />
 
         <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 1 }}>
@@ -57,7 +57,7 @@ export default function LoginPage() {
           {/* Logo + tagline */}
           <div className="ms-logo flex flex-col items-center mb-10">
             <div style={{
-              background: 'linear-gradient(150deg, #FDF8F0 0%, #F5EAD8 100%)',
+              background: 'linear-gradient(150deg, #FCF8F1 0%, #F0E7DA 100%)',
               borderRadius: '23px',
               padding: '14px 18px',
               boxShadow: '0 2px 6px rgba(120,80,20,0.08), 0 8px 24px rgba(120,80,20,0.13), 0 1px 0 rgba(255,255,255,0.7) inset',
@@ -107,7 +107,7 @@ export default function LoginPage() {
 
             <div style={{
               height: '1px',
-              background: 'linear-gradient(to right, transparent, #DDD0BE 25%, #DDD0BE 75%, transparent)',
+              background: 'linear-gradient(to right, transparent, #D8CCBE 25%, #D8CCBE 75%, transparent)',
               marginBottom: '1.6rem',
             }} />
 

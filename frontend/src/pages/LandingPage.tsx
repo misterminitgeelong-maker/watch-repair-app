@@ -251,8 +251,8 @@ function FinalCTA() {
       <div
         className="rounded-[28px] px-6 py-10 sm:px-10"
         style={{
-          background: 'linear-gradient(160deg, #3A271A 0%, #2E1F15 100%)',
-          border: '1px solid #5B402B',
+          background: 'linear-gradient(160deg, #332821 0%, #271F19 100%)',
+          border: '1px solid #4E3D32',
           boxShadow: '0 4px 16px rgba(0,0,0,0.16), 0 20px 40px rgba(0,0,0,0.20)',
         }}
       >
@@ -293,7 +293,7 @@ export default function LandingPage() {
     <div
       className="min-h-screen px-4 sm:px-6 lg:px-8"
       style={{
-        background: 'linear-gradient(180deg, #FBF6EE 0%, #F5ECD9 54%, #EDE2CE 100%)',
+        background: 'linear-gradient(180deg, #F9F5EF 0%, #F1E9DE 54%, #E8DDD0 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -304,7 +304,7 @@ export default function LandingPage() {
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 980px 520px at 50% 8%, rgba(201,162,72,0.10) 0%, rgba(185,142,55,0.04) 38%, transparent 70%)',
+        background: 'radial-gradient(ellipse 980px 520px at 50% 8%, rgba(184,149,86,0.08) 0%, rgba(122,93,46,0.03) 38%, transparent 70%)',
       }} />
 
       <div className="mx-auto w-full max-w-6xl" style={{ position: 'relative', zIndex: 1 }}>
