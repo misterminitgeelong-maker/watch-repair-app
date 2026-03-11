@@ -7,7 +7,7 @@ import { Card, PageHeader, Button, Spinner, EmptyState, Badge } from '@/componen
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
-const JOB_STATUSES: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'working_on', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
+const JOB_STATUSES: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts', 'working_on', 'completed', 'awaiting_collection', 'collected']
 const COMPLETED_DIRECTORY_STATUSES: JobStatus[] = ['completed', 'awaiting_collection', 'collected']
 const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
 const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))

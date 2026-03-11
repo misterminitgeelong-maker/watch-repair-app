@@ -13,6 +13,7 @@ JobStatus = Literal[
     "awaiting_parts",
     "parts_to_order",
     "sent_to_labanda",
+    "quoted_by_labanda",
     "service",
     "completed",
     "awaiting_collection",

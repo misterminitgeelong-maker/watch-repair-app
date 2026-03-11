@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
 // Jobs where customer gave the go-ahead — these represent outstanding revenue
-const GO_AHEAD_STATUSES = ['go_ahead', 'parts_to_order', 'awaiting_parts', 'working_on', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection']
+const GO_AHEAD_STATUSES = ['go_ahead', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts', 'working_on', 'service', 'completed', 'awaiting_collection']
 
 // Status breakdown order for "active" (non-closed, non-collected) jobs
 const BREAKDOWN_STATUSES = [
@@ -15,10 +15,10 @@ const BREAKDOWN_STATUSES = [
   'awaiting_go_ahead',
   'go_ahead',
   'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
   'awaiting_parts',
   'working_on',
-  'sent_to_labanda',
-  'service',
   'completed',
   'awaiting_collection',
 ] as const

@@ -13,18 +13,19 @@ import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, In
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
-  awaiting_quote:    'awaiting_go_ahead',
-  awaiting_go_ahead: 'go_ahead',
-  go_ahead:          'working_on',
-  no_go:             null,
-  working_on:        'completed',
-  awaiting_parts:    'working_on',
-  parts_to_order:    'awaiting_parts',
-  sent_to_labanda:   'working_on',
-  service:           'completed',
-  completed:         'awaiting_collection',
+  awaiting_quote:      'awaiting_go_ahead',
+  awaiting_go_ahead:   'go_ahead',
+  go_ahead:            'working_on',
+  no_go:               null,
+  working_on:          'completed',
+  awaiting_parts:      'working_on',
+  parts_to_order:      'sent_to_labanda',
+  sent_to_labanda:     'quoted_by_labanda',
+  quoted_by_labanda:   'awaiting_parts',
+  service:             'completed',
+  completed:           'awaiting_collection',
   awaiting_collection: 'collected',
-  collected:         null,
+  collected:           null,
 }
 
 // ── Status update modal ───────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
       onClose()
     },
   })
-  const statuses: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'parts_to_order', 'awaiting_parts', 'working_on', 'sent_to_labanda', 'service', 'completed', 'awaiting_collection', 'collected']
+  const statuses: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts', 'working_on', 'completed', 'awaiting_collection', 'collected']
 
   return (
     <Modal title="Update Status" onClose={onClose}>
