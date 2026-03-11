@@ -56,11 +56,19 @@ export default function LoginPage() {
 
           {/* Logo + tagline */}
           <div className="ms-logo flex flex-col items-center mb-10">
-            <img
-              src="/mainspring-logo.png"
-              alt="Mainspring"
-              style={{ width: '240px', height: 'auto', borderRadius: '12px' }}
-            />
+            <div style={{
+              background: 'linear-gradient(150deg, #FDF8F0 0%, #F5EAD8 100%)',
+              borderRadius: '23px',
+              padding: '14px 18px',
+              boxShadow: '0 2px 6px rgba(120,80,20,0.08), 0 8px 24px rgba(120,80,20,0.13), 0 1px 0 rgba(255,255,255,0.7) inset',
+              display: 'inline-block',
+            }}>
+              <img
+                src="/mainspring-logo.png"
+                alt="Mainspring"
+                style={{ width: '276px', height: 'auto', display: 'block', borderRadius: '10px' }}
+              />
+            </div>
             <p style={{
               marginTop: '0.85rem',
               fontSize: '0.7rem',
