@@ -228,6 +228,11 @@ export default function JobsPage() {
                                 <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
                                   #{j.job_number} · {formatDate(j.created_at)}
                                 </p>
+                                {j.customer_account_id && (
+                                  <p className="text-[11px] mt-1 inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
+                                    B2B
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge status={j.status} />

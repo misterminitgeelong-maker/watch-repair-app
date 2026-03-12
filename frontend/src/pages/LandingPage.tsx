@@ -77,6 +77,17 @@ function HeroSection() {
           >
             Log in
           </Link>
+          <Link
+            to="/login?demo=1"
+            className="lp-btn inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
+            style={{
+              backgroundColor: '#EFE5D7',
+              color: '#5A4632',
+              border: '1px solid #D7C7B2',
+            }}
+          >
+            Try demo account
+          </Link>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -278,6 +289,13 @@ function FinalCTA() {
           >
             Log in
           </Link>
+          <Link
+            to="/login?demo=1"
+            className="lp-btn inline-flex items-center rounded-xl px-5 py-3 text-sm font-semibold"
+            style={{ border: '1px solid #8E6A44', color: '#F2DEBC', backgroundColor: 'rgba(255,255,255,0.08)' }}
+          >
+            Try demo account
+          </Link>
         </div>
       </div>
     </section>
@@ -314,6 +332,9 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
+            <Link to="/login?demo=1" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}>
+              Demo login
+            </Link>
             <Link to="/signup" className="rounded-lg px-3.5 py-2 text-sm font-semibold" style={{ backgroundColor: '#F3ECE2', color: '#5F4734', border: '1px solid #DFD2C2' }}>
               Start your shop
             </Link>

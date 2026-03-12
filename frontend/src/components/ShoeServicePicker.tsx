@@ -42,9 +42,11 @@ export function buildShoeRepairJobItemsPayload(selected: SelectedShoeService[]):
 export default function ShoeServicePicker({
   selected,
   onChange,
+  contextLabel,
 }: {
   selected: SelectedShoeService[]
   onChange: (items: SelectedShoeService[]) => void
+  contextLabel?: string
 }) {
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -74,6 +76,15 @@ export default function ShoeServicePicker({
 
   return (
     <div>
+      {contextLabel && (
+        <div
+          className="mb-3 rounded-lg px-3 py-2 text-xs"
+          style={{ backgroundColor: '#F7F0E5', border: '1px solid #E4D7C3', color: 'var(--cafe-text-mid)' }}
+        >
+          Quoting for: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{contextLabel}</span>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--cafe-text-muted)' }} />

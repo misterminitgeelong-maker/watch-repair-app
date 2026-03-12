@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
+from ..dependencies import AuthContext, get_auth_context, enforce_plan_limit, require_feature, require_tech_or_above
 from ..models import (
     Approval,
     Attachment,
     Customer,
+    CustomerAccount,
+    CustomerAccountMembership,
     Invoice,
     JobStatusHistory,
     JobStatusHistoryRead,
@@ -27,7 +29,11 @@ from ..models import (
 )
 from .. import sms
 
-router = APIRouter(prefix="/v1/repair-jobs", tags=["repair-jobs"])
+router = APIRouter(
+    prefix="/v1/repair-jobs",
+    tags=["repair-jobs"],
+    dependencies=[Depends(require_feature("watch"))],
+)
 
 
 def _next_job_number(session: Session, tenant_id: UUID) -> str:
@@ -41,14 +47,36 @@ def create_repair_job(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    # Plan limit check
+    job_count = int(
+        session.exec(select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)).one()
+    )
+    enforce_plan_limit(auth, "repair_job", job_count)
+
     watch = session.get(Watch, payload.watch_id)
     if not watch or watch.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Watch not found")
 
+    customer_account_id = payload.customer_account_id
+    if customer_account_id:
+        account = session.get(CustomerAccount, customer_account_id)
+        if not account or account.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Customer account not found")
+    else:
+        inferred = session.exec(
+            select(CustomerAccountMembership)
+            .where(CustomerAccountMembership.tenant_id == auth.tenant_id)
+            .where(CustomerAccountMembership.customer_id == watch.customer_id)
+            .order_by(CustomerAccountMembership.created_at)
+        ).first()
+        customer_account_id = inferred.customer_account_id if inferred else None
+
+    data = payload.model_dump()
+    data["customer_account_id"] = customer_account_id
     job = RepairJob(
         tenant_id=auth.tenant_id,
         job_number=_next_job_number(session, auth.tenant_id),
-        **payload.model_dump(),
+        **data,
     )
     session.add(job)
     session.flush()
@@ -263,6 +291,12 @@ def update_repair_job_fields(
         job.deposit_cents = max(0, payload.deposit_cents)
     if payload.description is not None:
         job.description = payload.description
+    if "customer_account_id" in payload.model_fields_set:
+        if payload.customer_account_id is not None:
+            account = session.get(CustomerAccount, payload.customer_account_id)
+            if not account or account.tenant_id != auth.tenant_id:
+                raise HTTPException(status_code=404, detail="Customer account not found")
+        job.customer_account_id = payload.customer_account_id
 
     session.add(job)
     session.commit()

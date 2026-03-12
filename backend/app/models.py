@@ -22,6 +22,7 @@ JobStatus = Literal[
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
 QuoteItemType = Literal["labor", "part", "fee"]
+PlanCode = Literal["shoe", "watch", "auto_key", "enterprise"]
 
 
 class Tenant(SQLModel, table=True):
@@ -29,6 +30,9 @@ class Tenant(SQLModel, table=True):
     name: str
     slug: str = Field(index=True, unique=True)
     plan_tier: str = "starter"
+    plan_code: str = "enterprise"
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
+    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -40,6 +44,45 @@ class User(SQLModel, table=True):
     role: str = "owner"
     password_hash: str
     is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ParentAccount(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str
+    owner_email: str = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ParentAccountMembership(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    user_id: UUID = Field(index=True, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ParentAccountEventLog(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")
+    actor_user_id: Optional[UUID] = Field(default=None, index=True, foreign_key="user.id")
+    actor_email: Optional[str] = None
+    event_type: str = Field(index=True)
+    event_summary: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TenantEventLog(SQLModel, table=True):
+    """Per-tenant audit log for notable business and security events."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    actor_user_id: Optional[UUID] = Field(default=None, index=True, foreign_key="user.id")
+    actor_email: Optional[str] = None
+    entity_type: str = Field(index=True)  # "session", "user", "invoice", "tenant"
+    entity_id: Optional[UUID] = Field(default=None, index=True)
+    event_type: str = Field(index=True)  # "login", "user_created", "invoice_created", "plan_changed"
+    event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -71,6 +114,7 @@ class RepairJob(SQLModel, table=True):
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     watch_id: UUID = Field(index=True, foreign_key="watch.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
     job_number: str = Field(index=True)
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     title: str
@@ -230,6 +274,7 @@ class TenantBootstrap(SQLModel):
     owner_email: str
     owner_full_name: str
     owner_password: str
+    plan_code: Optional[PlanCode] = None
 
 
 class TenantSignupRequest(SQLModel):
@@ -238,10 +283,16 @@ class TenantSignupRequest(SQLModel):
     email: str
     full_name: str
     password: str
+    plan_code: Optional[PlanCode] = None
 
 
 class LoginRequest(SQLModel):
     tenant_slug: str
+    email: str
+    password: str
+
+
+class MultiSiteLoginRequest(SQLModel):
     email: str
     password: str
 
@@ -259,6 +310,125 @@ class PublicUser(SQLModel):
     full_name: str
     role: str
     is_active: bool
+
+
+class AuthSessionSiteOption(SQLModel):
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    user_id: UUID
+    role: str
+
+
+class AuthSessionResponse(SQLModel):
+    user: PublicUser
+    tenant_id: UUID
+    tenant_slug: str
+    plan_code: PlanCode
+    enabled_features: list[str]
+    active_site_tenant_id: UUID
+    available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
+
+
+class MultiSiteLoginResponse(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in_seconds: int
+    active_site_tenant_id: UUID
+    available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
+
+
+class ActiveSiteSwitchRequest(SQLModel):
+    tenant_id: UUID
+
+
+class ActiveSiteSwitchResponse(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in_seconds: int
+    active_site_tenant_id: UUID
+    available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
+
+
+class ParentAccountSiteRead(SQLModel):
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    owner_user_id: UUID
+    owner_email: str
+    owner_full_name: str
+
+
+class ParentAccountSummaryResponse(SQLModel):
+    parent_account_id: UUID
+    parent_account_name: str
+    owner_email: str
+    sites: list[ParentAccountSiteRead] = Field(default_factory=list)
+
+
+class ParentAccountEventLogRead(SQLModel):
+    id: UUID
+    parent_account_id: UUID
+    tenant_id: Optional[UUID] = None
+    actor_user_id: Optional[UUID] = None
+    actor_email: Optional[str] = None
+    event_type: str
+    event_summary: str
+    created_at: datetime
+
+
+class TenantEventLogRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    actor_user_id: Optional[UUID] = None
+    actor_email: Optional[str] = None
+    entity_type: str
+    entity_id: Optional[UUID] = None
+    event_type: str
+    event_summary: str
+    created_at: datetime
+
+
+class BillingPlanLimits(SQLModel):
+    max_users: int
+    max_repair_jobs: int
+    max_shoe_jobs: int
+    max_auto_key_jobs: int
+
+
+class BillingLimitsUsage(SQLModel):
+    users: int
+    repair_jobs: int
+    shoe_jobs: int
+    auto_key_jobs: int
+
+
+class BillingLimitsResponse(SQLModel):
+    plan_code: str
+    limits: BillingPlanLimits
+    usage: BillingLimitsUsage
+    stripe_configured: bool
+    stripe_subscription_id: Optional[str] = None
+    stripe_customer_id: Optional[str] = None
+
+
+class BillingCheckoutRequest(SQLModel):
+    price_id: str
+
+
+class ParentAccountLinkTenantRequest(SQLModel):
+    tenant_slug: str
+    owner_email: str
+
+
+class ParentAccountCreateTenantRequest(SQLModel):
+    tenant_name: str
+    tenant_slug: str
+    plan_code: Optional[PlanCode] = None
+
+
+class TenantPlanUpdateRequest(SQLModel):
+    plan_code: PlanCode
 
 
 class PlatformUserRead(SQLModel):
@@ -349,6 +519,7 @@ class WatchRead(SQLModel):
 
 class RepairJobCreate(SQLModel):
     watch_id: UUID
+    customer_account_id: Optional[UUID] = None
     title: str
     description: Optional[str] = None
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
@@ -365,6 +536,7 @@ class RepairJobRead(SQLModel):
     tenant_id: UUID
     watch_id: UUID
     assigned_user_id: Optional[UUID] = None
+    customer_account_id: Optional[UUID] = None
     job_number: str
     status_token: str
     title: str
@@ -395,6 +567,7 @@ class RepairJobIntakeUpdate(SQLModel):
 
 
 class RepairJobFieldUpdate(SQLModel):
+    customer_account_id: Optional[UUID] = None
     cost_cents: Optional[int] = None
     pre_quote_cents: Optional[int] = None
     priority: Optional[str] = None
@@ -566,6 +739,7 @@ class ShoeRepairJob(SQLModel, table=True):
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     shoe_id: UUID = Field(index=True, foreign_key="shoe.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
     job_number: str = Field(index=True)
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     title: str
@@ -661,6 +835,7 @@ class ShoeRepairJobShoeRead(SQLModel):
 
 class ShoeRepairJobCreate(SQLModel):
     shoe_id: UUID
+    customer_account_id: Optional[UUID] = None
     title: str
     description: Optional[str] = None
     priority: str = "normal"
@@ -677,6 +852,7 @@ class ShoeRepairJobRead(SQLModel):
     tenant_id: UUID
     shoe_id: UUID
     assigned_user_id: Optional[UUID] = None
+    customer_account_id: Optional[UUID] = None
     job_number: str
     status_token: str
     title: str
@@ -699,6 +875,7 @@ class ShoeRepairJobStatusUpdate(SQLModel):
 
 
 class ShoeRepairJobFieldUpdate(SQLModel):
+    customer_account_id: Optional[UUID] = None
     title: Optional[str] = None
     description: Optional[str] = None
     priority: Optional[str] = None
@@ -706,3 +883,325 @@ class ShoeRepairJobFieldUpdate(SQLModel):
     collection_date: Optional[date] = None
     deposit_cents: Optional[int] = None
     cost_cents: Optional[int] = None
+
+
+# ── Auto Key Jobs ────────────────────────────────────────────────────────────
+
+AutoKeyProgrammingStatus = Literal["pending", "in_progress", "programmed", "failed", "not_required"]
+
+
+class AutoKeyJob(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_id: UUID = Field(index=True, foreign_key="customer.id")
+    assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
+    job_number: str = Field(index=True)
+    status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    title: str
+    description: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    registration_plate: Optional[str] = None
+    vin: Optional[str] = None
+    key_type: Optional[str] = None
+    key_quantity: int = 1
+    programming_status: str = "pending"
+    priority: str = "normal"
+    status: str = "awaiting_quote"
+    salesperson: Optional[str] = None
+    deposit_cents: int = 0
+    cost_cents: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyJobCreate(SQLModel):
+    customer_id: UUID
+    customer_account_id: Optional[UUID] = None
+    assigned_user_id: Optional[UUID] = None
+    title: str
+    description: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    registration_plate: Optional[str] = None
+    vin: Optional[str] = None
+    key_type: Optional[str] = None
+    key_quantity: int = 1
+    programming_status: AutoKeyProgrammingStatus = "pending"
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    status: JobStatus = "awaiting_quote"
+    salesperson: Optional[str] = None
+    deposit_cents: int = 0
+    cost_cents: int = 0
+
+
+class AutoKeyJobRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    customer_id: UUID
+    assigned_user_id: Optional[UUID] = None
+    customer_account_id: Optional[UUID] = None
+    job_number: str
+    status_token: str
+    title: str
+    description: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    registration_plate: Optional[str] = None
+    vin: Optional[str] = None
+    key_type: Optional[str] = None
+    key_quantity: int
+    programming_status: AutoKeyProgrammingStatus
+    priority: Literal["low", "normal", "high", "urgent"]
+    status: JobStatus
+    salesperson: Optional[str] = None
+    deposit_cents: int
+    cost_cents: int
+    created_at: datetime
+
+
+class AutoKeyJobStatusUpdate(SQLModel):
+    status: JobStatus
+    note: Optional[str] = None
+
+
+class AutoKeyJobFieldUpdate(SQLModel):
+    customer_account_id: Optional[UUID] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assigned_user_id: Optional[UUID] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    registration_plate: Optional[str] = None
+    vin: Optional[str] = None
+    key_type: Optional[str] = None
+    key_quantity: Optional[int] = None
+    programming_status: Optional[AutoKeyProgrammingStatus] = None
+    priority: Optional[Literal["low", "normal", "high", "urgent"]] = None
+    salesperson: Optional[str] = None
+    deposit_cents: Optional[int] = None
+    cost_cents: Optional[int] = None
+
+
+class AutoKeyQuote(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
+    status: str = "draft"
+    subtotal_cents: int = 0
+    tax_cents: int = 0
+    total_cents: int = 0
+    currency: str = "AUD"
+    sent_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyQuoteLineItem(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    auto_key_quote_id: UUID = Field(index=True, foreign_key="autokeyquote.id")
+    description: str
+    quantity: float = 1
+    unit_price_cents: int
+    total_price_cents: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyInvoice(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
+    auto_key_quote_id: Optional[UUID] = Field(default=None, foreign_key="autokeyquote.id")
+    invoice_number: str = Field(index=True)
+    status: str = "unpaid"
+    subtotal_cents: int = 0
+    tax_cents: int = 0
+    total_cents: int = 0
+    currency: str = "AUD"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyQuoteLineItemCreate(SQLModel):
+    description: str
+    quantity: float = 1
+    unit_price_cents: int
+
+
+class AutoKeyQuoteCreate(SQLModel):
+    line_items: list[AutoKeyQuoteLineItemCreate]
+    tax_cents: int = 0
+
+
+class AutoKeyQuoteLineItemRead(SQLModel):
+    id: UUID
+    auto_key_quote_id: UUID
+    description: str
+    quantity: float
+    unit_price_cents: int
+    total_price_cents: int
+
+
+class AutoKeyQuoteRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    auto_key_job_id: UUID
+    status: str
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    currency: str
+    sent_at: Optional[datetime] = None
+    created_at: datetime
+    line_items: list[AutoKeyQuoteLineItemRead] = []
+
+
+class AutoKeyInvoiceRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    auto_key_job_id: UUID
+    auto_key_quote_id: Optional[UUID] = None
+    invoice_number: str
+    status: str
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    currency: str
+    created_at: datetime
+
+
+class CustomerAccount(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    name: str
+    account_code: Optional[str] = Field(default=None, index=True)
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    payment_terms_days: int = 30
+    notes: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomerAccountMembership(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_account_id: UUID = Field(index=True, foreign_key="customeraccount.id")
+    customer_id: UUID = Field(index=True, foreign_key="customer.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomerAccountCreate(SQLModel):
+    name: str
+    account_code: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    payment_terms_days: int = 30
+    notes: Optional[str] = None
+
+
+class CustomerAccountUpdate(SQLModel):
+    name: Optional[str] = None
+    account_code: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    payment_terms_days: Optional[int] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CustomerAccountRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    name: str
+    account_code: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    payment_terms_days: int
+    notes: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    customer_ids: list[UUID] = []
+
+
+class CustomerAccountMemberAdd(SQLModel):
+    customer_id: UUID
+
+
+CustomerAccountSourceType = Literal["watch", "shoe", "auto_key"]
+
+
+class CustomerAccountInvoice(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_account_id: UUID = Field(index=True, foreign_key="customeraccount.id")
+    invoice_number: str = Field(index=True)
+    period_year: int
+    period_month: int
+    status: str = "unpaid"
+    subtotal_cents: int = 0
+    tax_cents: int = 0
+    total_cents: int = 0
+    currency: str = "AUD"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomerAccountInvoiceLine(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_account_invoice_id: UUID = Field(index=True, foreign_key="customeraccountinvoice.id")
+    source_type: str
+    source_job_id: UUID = Field(index=True)
+    job_number: str
+    description: str
+    amount_cents: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomerAccountStatementLine(SQLModel):
+    source_type: CustomerAccountSourceType
+    source_job_id: UUID
+    job_number: str
+    description: str
+    amount_cents: int
+
+
+class CustomerAccountStatementResponse(SQLModel):
+    customer_account_id: UUID
+    period_year: int
+    period_month: int
+    lines: list[CustomerAccountStatementLine] = []
+    subtotal_cents: int = 0
+
+
+class CustomerAccountMonthlyInvoiceCreate(SQLModel):
+    period_year: int
+    period_month: int
+    tax_cents: int = 0
+
+
+class CustomerAccountInvoiceRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    customer_account_id: UUID
+    invoice_number: str
+    period_year: int
+    period_month: int
+    status: str
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    currency: str
+    created_at: datetime
+    lines: list[CustomerAccountStatementLine] = []

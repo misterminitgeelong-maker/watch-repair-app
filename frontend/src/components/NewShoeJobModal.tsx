@@ -4,8 +4,10 @@ import { ChevronRight } from 'lucide-react'
 import {
   listCustomers, createCustomer, createShoe, createShoeRepairJob,
   addShoeToJob, appendShoeRepairJobItems,
+  listCustomerAccounts,
   getApiErrorMessage,
   type Customer,
+  type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
@@ -30,6 +32,11 @@ function toItemPayload(services: SelectedShoeService[], pairIndex: number, pairC
       ? `Pair ${pairIndex + 1}${item.notes ? ` - ${item.notes}` : ''}`
       : item.notes,
   }))
+}
+
+function buildShoeContextLabel(shoe: IntakeShoe, idx: number) {
+  const bits = [shoe.shoe_type, shoe.brand, shoe.color].map(v => v.trim()).filter(Boolean)
+  return bits.length > 0 ? bits.join(' - ') : `Pair ${idx + 1}`
 }
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -79,6 +86,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   // Step 3 – Job fields
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '' })
+  const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -89,6 +97,15 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     queryFn: () => listCustomers().then(r => r.data),
     enabled: !preselectedCustomer,
   })
+
+  const activeCustomerId = createdCustomerId || selectedCustomerId
+  const { data: customerAccounts = [] } = useQuery({
+    queryKey: ['customer-accounts'],
+    queryFn: () => listCustomerAccounts().then(r => r.data),
+  })
+  const matchingAccounts = activeCustomerId
+    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(activeCustomerId))
+    : customerAccounts
 
   const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setNewCustomer(f => ({ ...f, [k]: e.target.value }))
@@ -157,6 +174,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
       const firstItems = toItemPayload(shoes[0].services, 0, shoes.length)
       const { data: jobData } = await createShoeRepairJob({
         shoe_id: createdShoeIds[0],
+        customer_account_id: selectedCustomerAccountId || undefined,
         title: autoTitle,
         description: job.description || undefined,
         priority: job.priority,
@@ -283,7 +301,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             value={String(shoeCount)}
             onChange={e => changeShoeCount(Number(e.target.value))}
           >
-            {[1, 2, 3, 4, 5].map(n => (
+            {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
               <option key={n} value={n}>{n} pair{n === 1 ? '' : 's'}</option>
             ))}
           </Select>
@@ -362,6 +380,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
               <ShoeServicePicker
                 selected={shoe.services}
                 onChange={services => updateShoe(idx, { services })}
+                contextLabel={buildShoeContextLabel(shoe, idx)}
               />
             </div>
           ))}
@@ -390,6 +409,18 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Name" />
             <Input label="Deposit ($)" type="number" step="0.01" value={job.deposit_cents} onChange={setJ('deposit_cents')} placeholder="0.00" />
           </div>
+          <Select
+            label="Customer Account (optional)"
+            value={selectedCustomerAccountId}
+            onChange={e => setSelectedCustomerAccountId(e.target.value)}
+          >
+            <option value="">No B2B account</option>
+            {matchingAccounts.map((account: CustomerAccount) => (
+              <option key={account.id} value={account.id}>
+                {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+              </option>
+            ))}
+          </Select>
 
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(2)} className="flex-1">Back</Button>

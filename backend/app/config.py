@@ -43,5 +43,13 @@ class Settings(BaseSettings):
     # Path to the built frontend (set by Dockerfile / deploy)
     static_dir: str = ""
 
+    # Stripe — leave blank to disable Stripe billing integration
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_watch: str = ""
+    stripe_price_shoe: str = ""
+    stripe_price_auto_key: str = ""
+    stripe_price_enterprise: str = ""
+
 
 settings = Settings()

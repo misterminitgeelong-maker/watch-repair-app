@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, DollarSign, Scale, Wallet } from 'lucide-react'
-import { getReportsSummary } from '@/lib/api'
+import { getReportsSummary, getReportsTrends, getTenantActivity } from '@/lib/api'
 import { Card, PageHeader, Spinner } from '@/components/ui'
 import { formatCents } from '@/lib/utils'
 
@@ -32,9 +32,14 @@ function MetricCard({
 
 export default function ReportsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
+  const { data: trends } = useQuery({ queryKey: ['reports-trends'], queryFn: () => getReportsTrends(6).then(r => r.data) })
+  const { data: activity } = useQuery({ queryKey: ['reports-activity'], queryFn: () => getTenantActivity(50).then(r => r.data) })
 
   if (isLoading) return <Spinner />
   if (!data) return <p style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p>
+
+  const maxJobs = Math.max(...(trends?.months.map(m => m.jobs_opened) ?? [1]), 1)
+  const maxRevenue = Math.max(...(trends?.months.map(m => m.revenue_cents) ?? [1]), 1)
 
   return (
     <div>
@@ -99,7 +104,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card className="p-5">
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Job Status Distribution</h2>
           <div className="space-y-2 text-sm">
@@ -122,6 +127,76 @@ export default function ReportsPage() {
           </div>
         </Card>
       </div>
+
+      {trends && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--cafe-text)' }}>Jobs Opened — Last 6 Months</h2>
+            <div className="space-y-2">
+              {trends.months.map(m => (
+                <div key={m.month} className="flex items-center gap-3 text-xs">
+                  <span className="w-16 shrink-0 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>{m.month}</span>
+                  <div className="flex-1 h-5 rounded overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+                    <div
+                      className="h-full rounded transition-all"
+                      style={{
+                        width: `${Math.round((m.jobs_opened / maxJobs) * 100)}%`,
+                        backgroundColor: '#8D6725',
+                        minWidth: m.jobs_opened > 0 ? 4 : 0,
+                      }}
+                    />
+                  </div>
+                  <span className="w-8 text-right font-semibold shrink-0" style={{ color: 'var(--cafe-text)' }}>{m.jobs_opened}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--cafe-text)' }}>Revenue — Last 6 Months</h2>
+            <div className="space-y-2">
+              {trends.months.map(m => (
+                <div key={m.month} className="flex items-center gap-3 text-xs">
+                  <span className="w-16 shrink-0 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>{m.month}</span>
+                  <div className="flex-1 h-5 rounded overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+                    <div
+                      className="h-full rounded transition-all"
+                      style={{
+                        width: `${Math.round((m.revenue_cents / maxRevenue) * 100)}%`,
+                        backgroundColor: '#1F6D4C',
+                        minWidth: m.revenue_cents > 0 ? 4 : 0,
+                      }}
+                    />
+                  </div>
+                  <span className="w-20 text-right font-semibold shrink-0" style={{ color: 'var(--cafe-text)' }}>{formatCents(m.revenue_cents)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activity && activity.length > 0 && (
+        <Card className="p-5 mb-6">
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Audit Log</h2>
+          <div className="space-y-1 text-xs max-h-72 overflow-y-auto">
+            {activity.map(ev => (
+              <div key={ev.id} className="flex items-start gap-3 py-1.5 border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+                <span
+                  className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0 uppercase tracking-wide"
+                  style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}
+                >
+                  {ev.event_type.replace(/_/g, ' ')}
+                </span>
+                <span className="flex-1" style={{ color: 'var(--cafe-text-mid)' }}>{ev.event_summary}</span>
+                <span className="shrink-0" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {new Date(ev.created_at).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

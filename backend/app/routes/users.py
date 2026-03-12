@@ -1,11 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, ROLE_HIERARCHY, get_auth_context, require_owner
-from ..models import PublicUser, User, UserCreateRequest, UserUpdateRequest
+from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, require_owner
+from ..models import PublicUser, TenantEventLog, User, UserCreateRequest, UserUpdateRequest
 from ..security import hash_password
 
 router = APIRouter(prefix="/v1/users", tags=["users"])
@@ -76,6 +76,12 @@ def create_user(
     if existing:
         raise HTTPException(status_code=409, detail="User with this email already exists")
 
+    # Plan limit check
+    user_count = int(
+        session.exec(select(func.count()).select_from(User).where(User.tenant_id == auth.tenant_id)).one()
+    )
+    enforce_plan_limit(auth, "user", user_count)
+
     user = User(
         tenant_id=auth.tenant_id,
         email=email,
@@ -85,6 +91,18 @@ def create_user(
         is_active=True,
     )
     session.add(user)
+    session.flush()
+
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            entity_type="user",
+            entity_id=user.id,
+            event_type="user_created",
+            event_summary=f"User '{email}' created with role '{role}'",
+        )
+    )
     session.commit()
     session.refresh(user)
     return _to_public_user(user)

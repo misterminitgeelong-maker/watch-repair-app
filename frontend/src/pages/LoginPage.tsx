@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate, Navigate, Link } from 'react-router-dom'
-import { login } from '@/lib/api'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
+import { login, multiSiteLogin } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 
 const ANIM_CSS = `
@@ -15,12 +15,28 @@ const ANIM_CSS = `
 export default function LoginPage() {
   const { token, login: setToken } = useAuth()
   const navigate = useNavigate()
-  const [slug, setSlug] = useState('myshop')
-  const [email, setEmail] = useState('admin@admin.com')
-  const [password, setPassword] = useState('Admin')
+  const [searchParams] = useSearchParams()
+
+  const demoCreds = useMemo(() => ({
+    slug: String(import.meta.env.VITE_DEMO_TENANT_SLUG ?? 'myshop'),
+    email: String(import.meta.env.VITE_DEMO_EMAIL ?? 'admin@admin.com'),
+    password: String(import.meta.env.VITE_DEMO_PASSWORD ?? 'Admin'),
+  }), [])
+
+  const [slug, setSlug] = useState(demoCreds.slug)
+  const [email, setEmail] = useState(demoCreds.email)
+  const [password, setPassword] = useState(demoCreds.password)
+  const [mode, setMode] = useState<'single' | 'multi'>('single')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [btnHover, setBtnHover] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('demo') !== '1') return
+    setSlug(demoCreds.slug)
+    setEmail(demoCreds.email)
+    setPassword(demoCreds.password)
+  }, [demoCreds.email, demoCreds.password, demoCreds.slug, searchParams])
 
   if (token) return <Navigate to="/dashboard" replace />
 
@@ -29,11 +45,13 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const { data } = await login(slug, email, password)
+      const { data } = mode === 'multi'
+        ? await multiSiteLogin(email, password)
+        : await login(slug, email, password)
       setToken(data.access_token)
       navigate('/dashboard')
     } catch {
-      setError('Invalid shop ID, email, or password.')
+      setError(mode === 'multi' ? 'Invalid email or password for multi-site login.' : 'Invalid shop ID, email, or password.')
     } finally {
       setLoading(false)
     }
@@ -112,7 +130,78 @@ export default function LoginPage() {
             }} />
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-              <LoginField label="Shop ID"   value={slug}     onChange={setSlug}     placeholder="myshop"          autoFocus />
+              <div className="flex gap-2" style={{ marginBottom: '0.2rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setMode('single')}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem',
+                    borderRadius: '10px',
+                    border: mode === 'single' ? '1px solid #C9A248' : '1px solid #D8CBBA',
+                    backgroundColor: mode === 'single' ? '#F6EFE5' : 'var(--cafe-bg)',
+                    color: mode === 'single' ? '#6B513A' : 'var(--cafe-text-muted)',
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Shop Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('multi')}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem',
+                    borderRadius: '10px',
+                    border: mode === 'multi' ? '1px solid #C9A248' : '1px solid #D8CBBA',
+                    backgroundColor: mode === 'multi' ? '#F6EFE5' : 'var(--cafe-bg)',
+                    color: mode === 'multi' ? '#6B513A' : 'var(--cafe-text-muted)',
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Multi-Site
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('single')
+                  setSlug(demoCreds.slug)
+                  setEmail(demoCreds.email)
+                  setPassword(demoCreds.password)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.62rem',
+                  borderRadius: '10px',
+                  border: '1px solid #D8CBBA',
+                  backgroundColor: '#F6EFE5',
+                  color: '#6B513A',
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.07em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Use demo account details
+              </button>
+
+              {mode === 'single' && (
+                <LoginField label="Shop ID"   value={slug}     onChange={setSlug}     placeholder="myshop"          autoFocus />
+              )}
               <LoginField label="Email"     value={email}    onChange={setEmail}    placeholder="you@example.com"  type="email" />
               <LoginField label="Password"  value={password} onChange={setPassword} placeholder="••••••••"         type="password" />
 

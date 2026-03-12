@@ -7,7 +7,8 @@ import {
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
   getStatusHistory,
-  type JobStatus, type RepairJob,
+  listCustomerAccounts, getWatch,
+  type JobStatus, type RepairJob, type CustomerAccount,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
@@ -145,6 +146,27 @@ export default function JobDetailPage() {
   const [uploading, setUploading] = useState(false)
 
   const { data: job, isLoading } = useQuery({ queryKey: ['job', id], queryFn: () => getJob(id!).then(r => r.data) })
+  const { data: watch } = useQuery({
+    queryKey: ['watch', job?.watch_id],
+    queryFn: () => getWatch(job!.watch_id).then(r => r.data),
+    enabled: !!job?.watch_id,
+  })
+  const { data: customerAccounts = [] } = useQuery({
+    queryKey: ['customer-accounts'],
+    queryFn: () => listCustomerAccounts().then(r => r.data),
+  })
+  const matchingAccounts = watch?.customer_id
+    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(watch.customer_id))
+    : customerAccounts
+
+  const updateAccountMutation = useMutation({
+    mutationFn: (customer_account_id: string | null) => updateJob(id!, { customer_account_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job', id] })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
+
   const { data: quotes } = useQuery({ queryKey: ['quotes', id], queryFn: () => listQuotes(id).then(r => r.data) })
   const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: tab === 'worklogs' })
   const { data: attachments } = useQuery({ queryKey: ['attachments', id], queryFn: () => listAttachments(id!).then(r => r.data) })
@@ -280,6 +302,21 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
+              <div className="space-y-1">
+                <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Customer Account</span>
+                <Select
+                  value={job.customer_account_id ?? ''}
+                  onChange={e => updateAccountMutation.mutate(e.target.value || null)}
+                  disabled={updateAccountMutation.isPending}
+                >
+                  <option value="">No B2B account</option>
+                  {matchingAccounts.map((account: CustomerAccount) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+                    </option>
+                  ))}
+                </Select>
+              </div>
               <div className="flex justify-between items-center">
                 <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents === 0 && job.pre_quote_cents > 0 ? ' (est.)' : ''}</span>
                 {editingQuote ? (

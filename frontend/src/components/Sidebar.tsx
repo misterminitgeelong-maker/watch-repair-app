@@ -1,13 +1,17 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
+import type { FeatureKey } from '@/lib/api'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Users },
-  { to: '/jobs', label: 'Watch Repairs', icon: Wrench },
-  { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors },
+  { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' as FeatureKey },
+  { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' as FeatureKey },
+  { to: '/auto-key', label: 'Auto Key', icon: KeyRound, feature: 'auto_key' as FeatureKey },
+  { to: '/customer-accounts', label: 'Customer Accounts', icon: Building2, feature: 'customer_accounts' as FeatureKey },
+  { to: '/parent-account', label: 'Parent Account', icon: Building2, feature: 'multi_site' as FeatureKey },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/database', label: 'Database', icon: Database },
@@ -23,11 +27,13 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
-  const { logout, role } = useAuth()
+  const { logout, role, hasFeature } = useAuth()
+
+  const filteredNav = nav.filter(item => !item.feature || hasFeature(item.feature))
 
   const navItems = role === 'platform_admin'
-    ? [...nav, { to: '/platform-admin/users', label: 'Platform Admin', icon: UserCog }]
-    : nav
+    ? [...filteredNav, { to: '/platform-admin/users', label: 'Platform Admin', icon: UserCog }]
+    : filteredNav
 
   return (
     <aside

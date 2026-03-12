@@ -114,6 +114,11 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                 #{job.job_number}
               </span>
               <Badge status={job.status} />
+              {job.customer_account_id && (
+                <span className="text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
+                  B2B
+                </span>
+              )}
               {job.priority === 'urgent' && (
                 <span className="text-xs font-semibold rounded-full px-2 py-0.5 bg-red-100 text-red-700">Urgent</span>
               )}

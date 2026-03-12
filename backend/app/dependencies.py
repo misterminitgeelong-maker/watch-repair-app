@@ -7,8 +7,30 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from .database import get_session
-from .models import User
+from .models import Tenant, User
 from .security import decode_access_token
+
+# ── Plan limits (0 = unlimited) ───────────────────────────────────────────────
+PLAN_LIMITS: dict[str, dict[str, int]] = {
+    "watch":      {"max_users": 5, "max_repair_jobs": 2000, "max_shoe_jobs": 0,    "max_auto_key_jobs": 0},
+    "shoe":       {"max_users": 5, "max_repair_jobs": 0,    "max_shoe_jobs": 2000,  "max_auto_key_jobs": 0},
+    "auto_key":   {"max_users": 5, "max_repair_jobs": 0,    "max_shoe_jobs": 0,    "max_auto_key_jobs": 1000},
+    "enterprise": {"max_users": 0, "max_repair_jobs": 0,    "max_shoe_jobs": 0,    "max_auto_key_jobs": 0},
+}
+
+_PLAN_LIMIT_LABELS: dict[str, str] = {
+    "max_users":        "team accounts",
+    "max_repair_jobs":  "watch repair jobs",
+    "max_shoe_jobs":    "shoe repair jobs",
+    "max_auto_key_jobs": "auto key jobs",
+}
+
+_RESOURCE_TO_LIMIT_KEY: dict[str, str] = {
+    "user":         "max_users",
+    "repair_job":   "max_repair_jobs",
+    "shoe_job":     "max_shoe_jobs",
+    "auto_key_job": "max_auto_key_jobs",
+}
 
 bearer_scheme = HTTPBearer(auto_error=True)
 
@@ -22,12 +44,28 @@ ROLE_HIERARCHY: dict[str, int] = {
     "platform_admin": 5,
 }
 
+ALL_PLAN_FEATURES = {
+    "watch",
+    "shoe",
+    "auto_key",
+    "customer_accounts",
+    "multi_site",
+}
+
+PLAN_FEATURES: dict[str, set[str]] = {
+    "watch": {"watch"},
+    "shoe": {"shoe"},
+    "auto_key": {"auto_key"},
+    "enterprise": set(ALL_PLAN_FEATURES),
+}
+
 
 @dataclass
 class AuthContext:
     tenant_id: UUID
     user_id: UUID
     role: str = "owner"
+    plan_code: str = "enterprise"
 
 
 def get_auth_context(
@@ -47,7 +85,15 @@ def get_auth_context(
         if not user or user.tenant_id != tenant_id or not user.is_active:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role)
+        tenant = session.get(Tenant, tenant_id)
+        if not tenant:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        plan_code = (tenant.plan_code or "enterprise").strip().lower()
+        if plan_code not in PLAN_FEATURES:
+            plan_code = "enterprise"
+
+        return AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role, plan_code=plan_code)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 
@@ -63,8 +109,52 @@ def require_roles(*allowed_roles: str) -> Callable[[AuthContext], AuthContext]:
     return _check
 
 
+def enforce_plan_limit(auth: "AuthContext", resource: str, current_count: int) -> None:
+    """Raise HTTP 402 if *current_count* is at or above the per-plan maximum.
+
+    Pass the count *before* the new record is created.
+    0 means unlimited — no check is performed.
+    """
+    if auth.role == "platform_admin":
+        return
+    limit_key = _RESOURCE_TO_LIMIT_KEY.get(resource)
+    if not limit_key:
+        return
+    plan_limits = PLAN_LIMITS.get(auth.plan_code, PLAN_LIMITS["enterprise"])
+    max_allowed = plan_limits.get(limit_key, 0)
+    if max_allowed == 0:
+        return  # unlimited
+    if current_count >= max_allowed:
+        label = _PLAN_LIMIT_LABELS.get(limit_key, resource)
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Plan limit reached: your '{auth.plan_code}' plan allows up to {max_allowed} {label}. "
+                "Upgrade to the Enterprise plan for unlimited access."
+            ),
+        )
+
+
 # Convenience aliases
 require_owner = require_roles("owner", "platform_admin")
 require_manager_or_above = require_roles("owner", "manager", "platform_admin")
 require_tech_or_above = require_roles("owner", "manager", "tech", "platform_admin")
 require_platform_admin = require_roles("platform_admin")
+
+
+def require_feature(feature_key: str) -> Callable[[AuthContext], AuthContext]:
+    """Return a FastAPI dependency that enforces tenant plan feature access."""
+
+    def _check(auth: AuthContext = Depends(get_auth_context)) -> AuthContext:
+        if auth.role == "platform_admin":
+            return auth
+
+        enabled = PLAN_FEATURES.get(auth.plan_code, PLAN_FEATURES["enterprise"])
+        if feature_key not in enabled:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Current plan '{auth.plan_code}' does not include '{feature_key}'",
+            )
+        return auth
+
+    return _check

@@ -5,10 +5,11 @@ import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer 
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
+  listCustomerAccounts,
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob,
   formatShoePricingType,
-  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe,
+  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
@@ -248,6 +249,21 @@ export default function ShoeJobDetailPage() {
     queryFn: () => listShoeAttachments(id!).then(r => r.data),
     enabled: !!id,
   })
+  const { data: customerAccounts = [] } = useQuery({
+    queryKey: ['customer-accounts'],
+    queryFn: () => listCustomerAccounts().then(r => r.data),
+  })
+  const matchingAccounts = job?.shoe?.customer_id
+    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.shoe!.customer_id))
+    : customerAccounts
+
+  const updateAccountMutation = useMutation({
+    mutationFn: (customer_account_id: string | null) => updateShoeRepairJob(id!, { customer_account_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-job', id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+    },
+  })
 
   const updateCostMutation = useMutation({
     mutationFn: (cost_cents: number) => updateShoeRepairJob(id!, { cost_cents }),
@@ -464,6 +480,21 @@ export default function ShoeJobDetailPage() {
                   <span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span>
                 </div>
               )}
+              <div className="space-y-1">
+                <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Customer Account</span>
+                <Select
+                  value={job.customer_account_id ?? ''}
+                  onChange={e => updateAccountMutation.mutate(e.target.value || null)}
+                  disabled={updateAccountMutation.isPending}
+                >
+                  <option value="">No B2B account</option>
+                  {matchingAccounts.map((account: CustomerAccount) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+                    </option>
+                  ))}
+                </Select>
+              </div>
               {/* Cost — editable */}
               <div className="flex justify-between items-center">
                 <span style={{ color: 'var(--cafe-text-muted)' }}>Cost</span>

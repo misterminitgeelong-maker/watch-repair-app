@@ -14,6 +14,7 @@ from ..models import (
     PaymentCreate,
     PaymentRead,
     Quote,
+    TenantEventLog,
 )
 
 router = APIRouter(prefix="/v1/invoices", tags=["invoices", "payments"])
@@ -73,6 +74,18 @@ def create_invoice_from_quote(
         currency=quote.currency,
     )
     session.add(invoice)
+    session.flush()
+
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            entity_type="invoice",
+            entity_id=invoice.id,
+            event_type="invoice_created",
+            event_summary=f"Invoice {invoice.invoice_number} created ({invoice.currency} {invoice.total_cents / 100:.2f})",
+        )
+    )
     session.commit()
     session.refresh(invoice)
     return InvoiceCreateFromQuoteResponse(invoice=InvoiceRead(

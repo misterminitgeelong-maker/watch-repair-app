@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Wrench, Users, DollarSign, Clock } from 'lucide-react'
-import { listJobs, listCustomers } from '@/lib/api'
+import { listJobs, listCustomers, listQuotes, listInvoices } from '@/lib/api'
 import { Card, PageHeader, Badge, Spinner } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
+import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
 // Jobs where customer gave the go-ahead — these represent outstanding revenue
@@ -101,13 +103,27 @@ function StatCard({
 }
 
 export default function DashboardPage() {
+  const { tenantId } = useAuth()
+  const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const { data: jobs, isLoading: jobsLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
   const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: () => listCustomers().then(r => r.data) })
+  const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
+  const { data: invoices } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then(r => r.data) })
+
+  useEffect(() => {
+    setChecklistDismissedState(isChecklistDismissed(tenantId))
+  }, [tenantId])
 
   const openJobs = jobs?.filter(j => !CLOSED_JOB_STATUSES.includes(j.status)) ?? []
   const awaitingGoAheadJobs = jobs?.filter(j => j.status === 'awaiting_go_ahead') ?? []
   const goAheadJobs = jobs?.filter(j => GO_AHEAD_STATUSES.includes(j.status)) ?? []
   const outstandingTotal = goAheadJobs.reduce((s, j) => s + (j.cost_cents > 0 ? j.cost_cents : j.pre_quote_cents), 0)
+  const checklist = [
+    { key: 'job', label: 'Create first job', done: (jobs?.length ?? 0) > 0, to: '/jobs' },
+    { key: 'quote', label: 'Send first quote', done: (quotes?.length ?? 0) > 0, to: '/quotes' },
+    { key: 'invoice', label: 'Create first invoice', done: (invoices?.length ?? 0) > 0, to: '/invoices' },
+  ]
+  const checklistDone = checklist.filter(i => i.done).length
 
   if (jobsLoading) return <Spinner />
 
@@ -130,6 +146,43 @@ export default function DashboardPage() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
       <PageHeader title="Overview" />
+
+      {!checklistDismissed && (
+        <Card className="mb-6 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>Getting Started Checklist</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                Progress {checklistDone}/3 completed
+              </p>
+            </div>
+            <button
+              type="button"
+              className="text-xs font-semibold"
+              style={{ color: 'var(--cafe-amber)' }}
+              onClick={() => {
+                setChecklistDismissed(tenantId, true)
+                setChecklistDismissedState(true)
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            {checklist.map(item => (
+              <Link
+                key={item.key}
+                to={item.to}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: 'var(--cafe-border)', backgroundColor: item.done ? '#EAF4EA' : 'var(--cafe-bg)', color: 'var(--cafe-text)' }}
+              >
+                <span className="font-semibold">{item.done ? 'Done' : 'Next'}</span> · {item.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <StatCard label={STAT_STYLES[0].label} value={openJobs.length}              icon={Wrench}      iconBg={STAT_STYLES[0].iconBg} iconColor={STAT_STYLES[0].iconColor} index={0} />

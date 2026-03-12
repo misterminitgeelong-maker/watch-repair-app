@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, X } from 'lucide-react'
 import {
   listCustomers, createCustomer, listWatches, createWatch, createJob,
+  listCustomerAccounts,
   uploadAttachment,
   getApiErrorMessage,
-  type JobStatus, type Customer, type Watch,
+  type JobStatus, type Customer, type Watch, type CustomerAccount,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 
@@ -62,6 +63,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   // Step 3 – Job
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
+  const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
   // Step 4 – Watch Photos
   const [frontPhoto, setFrontPhoto] = useState<File | null>(null)
@@ -82,6 +84,15 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   })
 
   const activeCustomerId = createdCustomerId || selectedCustomerId
+  const { data: customerAccounts = [] } = useQuery({
+    queryKey: ['customer-accounts'],
+    queryFn: () => listCustomerAccounts().then(r => r.data),
+  })
+
+  const matchingAccounts = activeCustomerId
+    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(activeCustomerId))
+    : customerAccounts
+
   const { data: watches } = useQuery({
     queryKey: ['watches', activeCustomerId],
     queryFn: () => listWatches(activeCustomerId).then(r => r.data),
@@ -151,6 +162,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     try {
       const { data } = await createJob({
         watch_id: watchId,
+        customer_account_id: selectedCustomerAccountId || undefined,
         title: job.title,
         description: job.description,
         priority: job.priority,
@@ -347,6 +359,18 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Your initials or name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>
+          <Select
+            label="Customer Account (optional)"
+            value={selectedCustomerAccountId}
+            onChange={e => setSelectedCustomerAccountId(e.target.value)}
+          >
+            <option value="">No B2B account</option>
+            {matchingAccounts.map((account: CustomerAccount) => (
+              <option key={account.id} value={account.id}>
+                {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+              </option>
+            ))}
+          </Select>
           <Input
             label="Deposit ($)"
             type="number"

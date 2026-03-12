@@ -43,6 +43,56 @@ export function getApiErrorMessage(error: unknown, fallback = 'Request failed.')
 export interface TokenResponse { access_token: string; token_type: string }
 export const login = (tenant_slug: string, email: string, password: string) =>
   api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
+export interface MultiSiteLoginResponse {
+  access_token: string
+  token_type: string
+  expires_in_seconds: number
+  active_site_tenant_id: string
+  available_sites: SiteOption[]
+}
+export const multiSiteLogin = (email: string, password: string) =>
+  api.post<MultiSiteLoginResponse>('/auth/multi-site-login', { email, password })
+
+export type PlanCode = 'shoe' | 'watch' | 'auto_key' | 'enterprise'
+export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site'
+
+export interface SiteOption {
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  user_id: string
+  role: string
+}
+
+export interface AuthSession {
+  user: {
+    id: string
+    tenant_id: string
+    email: string
+    full_name: string
+    role: string
+    is_active: boolean
+  }
+  tenant_id: string
+  tenant_slug: string
+  plan_code: PlanCode
+  enabled_features: FeatureKey[]
+  active_site_tenant_id: string
+  available_sites: SiteOption[]
+}
+
+export const getAuthSession = () => api.get<AuthSession>('/auth/session')
+export const updateTenantPlan = (plan_code: PlanCode) =>
+  api.patch<AuthSession>('/auth/session/plan', { plan_code })
+export interface ActiveSiteSwitchResponse {
+  access_token: string
+  token_type: string
+  expires_in_seconds: number
+  active_site_tenant_id: string
+  available_sites: SiteOption[]
+}
+export const switchActiveSite = (tenant_id: string) =>
+  api.patch<ActiveSiteSwitchResponse>('/auth/session/site', { tenant_id })
 
 export interface SignupResponse {
   tenant_id: string
@@ -68,6 +118,43 @@ export const signup = (data: {
 
 export const bootstrap = (data: { tenant_name: string; tenant_slug: string; owner_email: string; owner_password: string; owner_full_name?: string }) =>
   api.post('/auth/bootstrap', data)
+
+export interface ParentAccountSite {
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  owner_user_id: string
+  owner_email: string
+  owner_full_name: string
+}
+
+export interface ParentAccountSummary {
+  parent_account_id: string
+  parent_account_name: string
+  owner_email: string
+  sites: ParentAccountSite[]
+}
+
+export interface ParentAccountActivityEvent {
+  id: string
+  parent_account_id: string
+  tenant_id?: string
+  actor_user_id?: string
+  actor_email?: string
+  event_type: string
+  event_summary: string
+  created_at: string
+}
+
+export const getMyParentAccount = () => api.get<ParentAccountSummary>('/parent-accounts/me')
+export const listParentAccountActivity = (limit = 50) =>
+  api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit } })
+export const linkTenantToParentAccount = (payload: { tenant_slug: string; owner_email: string }) =>
+  api.post<ParentAccountSummary>('/parent-accounts/me/link-tenant', payload)
+export const createTenantFromParentAccount = (payload: { tenant_name: string; tenant_slug: string; plan_code?: PlanCode }) =>
+  api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
+export const unlinkTenantFromParentAccount = (tenant_id: string) =>
+  api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 export interface Customer {
@@ -96,7 +183,7 @@ export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
 export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
 export interface RepairJob {
-  id: string; tenant_id: string; watch_id: string; assigned_user_id?: string
+  id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
@@ -106,6 +193,7 @@ export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
 export interface RepairJobCreatePayload {
   watch_id: string
   assigned_user_id?: string
+  customer_account_id?: string
   title: string
   description?: string
   priority: string
@@ -119,6 +207,7 @@ export interface RepairJobCreatePayload {
 export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJob = (id: string, data: {
+  customer_account_id?: string | null
   cost_cents?: number
   pre_quote_cents?: number
   priority?: string
@@ -333,8 +422,58 @@ export interface TenantUser {
   role: string
   is_active: boolean
 }
+// ── Reports Trends ────────────────────────────────────────────────────────────
+export interface ReportsTrendMonth {
+  month: string
+  jobs_opened: number
+  revenue_cents: number
+}
+export interface ReportsTrends {
+  months: ReportsTrendMonth[]
+}
+export const getReportsTrends = (months = 6) =>
+  api.get<ReportsTrends>('/reports/trends', { params: { months } })
 
+// ── Tenant Activity ───────────────────────────────────────────────────────────
+export interface TenantActivityEvent {
+  id: string
+  tenant_id: string
+  actor_user_id?: string | null
+  actor_email?: string | null
+  entity_type: string
+  entity_id?: string | null
+  event_type: string
+  event_summary: string
+  created_at: string
+}
+export const getTenantActivity = (limit = 50) =>
+  api.get<TenantActivityEvent[]>('/reports/activity', { params: { limit } })
 export const listUsers = () => api.get<TenantUser[]>('/users')
+// ── Billing ───────────────────────────────────────────────────────────────────
+export interface BillingPlanLimits {
+  max_users: number
+  max_repair_jobs: number
+  max_shoe_jobs: number
+  max_auto_key_jobs: number
+}
+export interface BillingLimitsUsage {
+  users: number
+  repair_jobs: number
+  shoe_jobs: number
+  auto_key_jobs: number
+}
+export interface BillingLimitsResponse {
+  plan_code: string
+  limits: BillingPlanLimits
+  usage: BillingLimitsUsage
+  stripe_configured: boolean
+  stripe_subscription_id?: string | null
+  stripe_customer_id?: string | null
+}
+export const getBillingLimits = () => api.get<BillingLimitsResponse>('/billing/limits')
+export const getBillingPortalUrl = () => api.get<{ url: string }>('/billing/portal-url')
+export const createBillingCheckout = (price_id: string) =>
+  api.post<{ checkout_url: string }>('/billing/checkout', { price_id })
 
 export const createUser = (data: {
   email: string
@@ -418,6 +557,121 @@ export interface Shoe {
 export const listShoes = (customerId?: string) =>
   api.get<Shoe[]>('/shoe-repair-jobs/shoes', customerId ? { params: { customer_id: customerId } } : undefined)
 
+// ── Auto Key Jobs ────────────────────────────────────────────────────────────
+export type AutoKeyProgrammingStatus = 'pending' | 'in_progress' | 'programmed' | 'failed' | 'not_required'
+
+export interface AutoKeyJob {
+  id: string
+  tenant_id: string
+  customer_id: string
+  assigned_user_id?: string
+  customer_account_id?: string
+  job_number: string
+  status_token: string
+  title: string
+  description?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  vin?: string
+  key_type?: string
+  key_quantity: number
+  programming_status: AutoKeyProgrammingStatus
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  status: JobStatus
+  salesperson?: string
+  deposit_cents: number
+  cost_cents: number
+  created_at: string
+}
+
+export interface AutoKeyJobCreatePayload {
+  customer_id: string
+  customer_account_id?: string
+  title: string
+  description?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  vin?: string
+  key_type?: string
+  key_quantity: number
+  programming_status: AutoKeyProgrammingStatus
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  status: JobStatus
+  salesperson?: string
+  deposit_cents: number
+  cost_cents: number
+}
+
+export const listAutoKeyJobs = () => api.get<AutoKeyJob[]>('/auto-key-jobs')
+export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
+export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
+export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
+  customer_account_id?: string | null
+}
+export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
+  api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)
+export const updateAutoKeyJobStatus = (id: string, status: JobStatus, note?: string) =>
+  api.post<AutoKeyJob>(`/auto-key-jobs/${id}/status`, { status, note })
+export const deleteAutoKeyJob = (id: string) => api.delete(`/auto-key-jobs/${id}`)
+
+export interface AutoKeyQuoteLineItem {
+  id: string
+  auto_key_quote_id: string
+  description: string
+  quantity: number
+  unit_price_cents: number
+  total_price_cents: number
+}
+
+export interface AutoKeyQuote {
+  id: string
+  tenant_id: string
+  auto_key_job_id: string
+  status: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  currency: string
+  sent_at?: string
+  created_at: string
+  line_items: AutoKeyQuoteLineItem[]
+}
+
+export interface AutoKeyInvoice {
+  id: string
+  tenant_id: string
+  auto_key_job_id: string
+  auto_key_quote_id?: string
+  invoice_number: string
+  status: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  currency: string
+  created_at: string
+}
+
+export interface AutoKeyQuoteCreatePayload {
+  line_items: Array<{
+    description: string
+    quantity: number
+    unit_price_cents: number
+  }>
+  tax_cents: number
+}
+
+export const listAutoKeyQuotes = (jobId: string) => api.get<AutoKeyQuote[]>(`/auto-key-jobs/${jobId}/quotes`)
+export const createAutoKeyQuote = (jobId: string, payload: AutoKeyQuoteCreatePayload) =>
+  api.post<AutoKeyQuote>(`/auto-key-jobs/${jobId}/quotes`, payload)
+export const sendAutoKeyQuote = (quoteId: string) => api.post<AutoKeyQuote>(`/auto-key-jobs/quotes/${quoteId}/send`)
+export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
+export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
+  api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
+
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Shoe>('/shoe-repair-jobs/shoes', data)
 
@@ -456,6 +710,7 @@ export interface ShoeRepairJob {
   id: string
   tenant_id: string
   shoe_id: string
+  customer_account_id?: string
   shoe?: Shoe
   extra_shoes: ShoeRepairJobShoe[]
   assigned_user_id?: string
@@ -475,6 +730,7 @@ export interface ShoeRepairJob {
 
 export interface ShoeRepairJobCreatePayload {
   shoe_id: string
+  customer_account_id?: string
   title: string
   description?: string
   priority?: string
@@ -499,6 +755,7 @@ export const createShoeRepairJob = (data: ShoeRepairJobCreatePayload) =>
   api.post<ShoeRepairJob>('/shoe-repair-jobs', data)
 
 export const updateShoeRepairJob = (id: string, data: Partial<{
+  customer_account_id: string | null
   title: string; description: string; priority: string
   salesperson: string; collection_date: string
   deposit_cents: number; cost_cents: number
@@ -536,3 +793,85 @@ export function formatShoePricingType(type: ShoePricingType, priceCents: number 
     default:             return `$${dollars}`
   }
 }
+
+// ── Customer Accounts (B2B) ──────────────────────────────────────────────────
+export interface CustomerAccount {
+  id: string
+  tenant_id: string
+  name: string
+  account_code?: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  billing_address?: string
+  payment_terms_days: number
+  notes?: string
+  is_active: boolean
+  created_at: string
+  customer_ids: string[]
+}
+
+export interface CustomerAccountCreatePayload {
+  name: string
+  account_code?: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  billing_address?: string
+  payment_terms_days?: number
+  notes?: string
+}
+
+export interface CustomerAccountStatementLine {
+  source_type: 'watch' | 'shoe' | 'auto_key'
+  source_job_id: string
+  job_number: string
+  description: string
+  amount_cents: number
+}
+
+export interface CustomerAccountStatement {
+  customer_account_id: string
+  period_year: number
+  period_month: number
+  lines: CustomerAccountStatementLine[]
+  subtotal_cents: number
+}
+
+export interface CustomerAccountInvoice {
+  id: string
+  tenant_id: string
+  customer_account_id: string
+  invoice_number: string
+  period_year: number
+  period_month: number
+  status: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  currency: string
+  created_at: string
+  lines: CustomerAccountStatementLine[]
+}
+
+export interface CustomerAccountMonthlyInvoicePayload {
+  period_year: number
+  period_month: number
+  tax_cents?: number
+}
+
+export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
+export const createCustomerAccount = (payload: CustomerAccountCreatePayload) =>
+  api.post<CustomerAccount>('/customer-accounts', payload)
+export const addCustomerToAccount = (accountId: string, customerId: string) =>
+  api.post<CustomerAccount>(`/customer-accounts/${accountId}/customers`, { customer_id: customerId })
+export const removeCustomerFromAccount = (accountId: string, customerId: string) =>
+  api.delete(`/customer-accounts/${accountId}/customers/${customerId}`)
+export const getCustomerAccountStatement = (accountId: string, period_year: number, period_month: number) =>
+  api.get<CustomerAccountStatement>(`/customer-accounts/${accountId}/statement`, { params: { period_year, period_month } })
+export const listCustomerAccountInvoices = (accountId: string) =>
+  api.get<CustomerAccountInvoice[]>(`/customer-accounts/${accountId}/invoices`)
+export const generateCustomerAccountMonthlyInvoice = (
+  accountId: string,
+  payload: CustomerAccountMonthlyInvoicePayload,
+) => api.post<CustomerAccountInvoice>(`/customer-accounts/${accountId}/invoices/monthly`, payload)

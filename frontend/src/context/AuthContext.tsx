@@ -1,11 +1,20 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { getAuthSession, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
 interface AuthCtx {
   token: string | null
   role: string | null
+  tenantId: string | null
+  activeSiteTenantId: string | null
+  availableSites: SiteOption[]
+  planCode: PlanCode
+  enabledFeatures: FeatureKey[]
   initializing: boolean
   login: (token: string) => void
   logout: () => void
+  hasFeature: (feature: FeatureKey) => boolean
+  refreshSession: () => Promise<void>
+  switchSite: (tenantId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthCtx | null>(null)
@@ -42,15 +51,47 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site']
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
   const [role, setRole] = useState<string | null>(() => parseRoleFromToken(localStorage.getItem('token')))
+  const [tenantId, setTenantId] = useState<string | null>(null)
+  const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
+  const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
+  const [planCode, setPlanCode] = useState<PlanCode>('enterprise')
+  const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
   const [initializing, setInitializing] = useState(true)
+
+  async function refreshSession() {
+    if (!localStorage.getItem('token')) {
+      setRole(null)
+      setTenantId(null)
+      setActiveSiteTenantId(null)
+      setAvailableSites([])
+      setPlanCode('enterprise')
+      setEnabledFeatures(defaultFeatures)
+      return
+    }
+    const { data } = await getAuthSession()
+    setRole(data.user.role)
+    setTenantId(data.tenant_id)
+    setActiveSiteTenantId(data.active_site_tenant_id)
+    setAvailableSites(data.available_sites ?? [])
+    setPlanCode(data.plan_code)
+    setEnabledFeatures(data.enabled_features)
+  }
 
   useEffect(() => {
     function syncTokenFromStorage() {
       const nextToken = localStorage.getItem('token')
       setToken(nextToken)
       setRole(parseRoleFromToken(nextToken))
+      if (!nextToken) {
+        setTenantId(null)
+        setActiveSiteTenantId(null)
+        setAvailableSites([])
+        setPlanCode('enterprise')
+        setEnabledFeatures(defaultFeatures)
+      }
     }
 
     window.addEventListener('storage', syncTokenFromStorage)
@@ -63,8 +104,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (token) {
-      setInitializing(false)
-      return
+      let canceled = false
+
+      async function loadSession() {
+        try {
+          await refreshSession()
+          if (canceled) return
+        } catch {
+          localStorage.removeItem('token')
+          if (!canceled) {
+            setToken(null)
+            setRole(null)
+            setTenantId(null)
+            setActiveSiteTenantId(null)
+            setAvailableSites([])
+            setPlanCode('enterprise')
+            setEnabledFeatures(defaultFeatures)
+          }
+        } finally {
+          if (!canceled) setInitializing(false)
+        }
+      }
+
+      loadSession()
+      return () => {
+        canceled = true
+      }
     }
 
     const enableDevAutoLogin =
@@ -92,6 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!canceled) {
           setToken(null)
           setRole(null)
+          setTenantId(null)
+          setActiveSiteTenantId(null)
+          setAvailableSites([])
+          setPlanCode('enterprise')
+          setEnabledFeatures(defaultFeatures)
         }
       } finally {
         if (!canceled) setInitializing(false)
@@ -114,9 +184,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token')
     setToken(null)
     setRole(null)
+    setTenantId(null)
+    setActiveSiteTenantId(null)
+    setAvailableSites([])
+    setPlanCode('enterprise')
+    setEnabledFeatures(defaultFeatures)
   }
 
-  return <AuthContext.Provider value={{ token, role, initializing, login, logout }}>{children}</AuthContext.Provider>
+  async function switchSite(nextTenantId: string) {
+    const { data } = await switchActiveSite(nextTenantId)
+    localStorage.setItem('token', data.access_token)
+    setToken(data.access_token)
+    setRole(parseRoleFromToken(data.access_token))
+    await refreshSession()
+  }
+
+  function hasFeature(feature: FeatureKey) {
+    if (role === 'platform_admin') return true
+    return enabledFeatures.includes(feature)
+  }
+
+  return <AuthContext.Provider value={{ token, role, tenantId, activeSiteTenantId, availableSites, planCode, enabledFeatures, initializing, login, logout, hasFeature, refreshSession, switchSite }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

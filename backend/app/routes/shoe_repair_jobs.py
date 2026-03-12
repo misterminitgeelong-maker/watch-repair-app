@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
+from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
     Attachment,
     Customer,
+    CustomerAccount,
+    CustomerAccountMembership,
     Shoe,
     ShoeCreate,
     ShoeRead,
@@ -24,7 +26,11 @@ from ..models import (
     ShoeRepairJobStatusUpdate,
 )
 
-router = APIRouter(prefix="/v1/shoe-repair-jobs", tags=["shoe-repair-jobs"])
+router = APIRouter(
+    prefix="/v1/shoe-repair-jobs",
+    tags=["shoe-repair-jobs"],
+    dependencies=[Depends(require_feature("shoe"))],
+)
 
 
 def _next_shoe_job_number(session: Session, tenant_id: UUID) -> str:
@@ -121,12 +127,35 @@ def create_shoe_repair_job(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    # Plan limit check
+    shoe_job_count = int(
+        session.exec(
+            select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
+        ).one()
+    )
+    enforce_plan_limit(auth, "shoe_job", shoe_job_count)
+
     shoe = session.get(Shoe, payload.shoe_id)
     if not shoe or shoe.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe not found")
 
+    customer_account_id = payload.customer_account_id
+    if customer_account_id:
+        account = session.get(CustomerAccount, customer_account_id)
+        if not account or account.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Customer account not found")
+    else:
+        inferred = session.exec(
+            select(CustomerAccountMembership)
+            .where(CustomerAccountMembership.tenant_id == auth.tenant_id)
+            .where(CustomerAccountMembership.customer_id == shoe.customer_id)
+            .order_by(CustomerAccountMembership.created_at)
+        ).first()
+        customer_account_id = inferred.customer_account_id if inferred else None
+
     items_data = payload.items
     job_data = payload.model_dump(exclude={"items"})
+    job_data["customer_account_id"] = customer_account_id
 
     job = ShoeRepairJob(
         tenant_id=auth.tenant_id,
@@ -196,6 +225,10 @@ def update_shoe_repair_job(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
     update_data = payload.model_dump(exclude_unset=True)
+    if "customer_account_id" in update_data and update_data["customer_account_id"] is not None:
+        account = session.get(CustomerAccount, update_data["customer_account_id"])
+        if not account or account.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Customer account not found")
     for field, value in update_data.items():
         setattr(job, field, value)
     session.add(job)

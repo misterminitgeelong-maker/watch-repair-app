@@ -349,3 +349,206 @@ def test_work_logs_and_attachments_tenant_isolation():
     list_attachments_b = client.get(f"/v1/attachments?repair_job_id={job_id}", headers=headers_b)
     assert list_attachments_b.status_code == 200
     assert len(list_attachments_b.json()) == 0
+
+
+def test_multi_site_login_and_site_switch():
+    suffix = uuid4().hex[:8]
+    owner_email = f"owner-{suffix}@multisite.test"
+    owner_password = "pass123456"
+
+    # Bootstrap two sites with the same owner identity.
+    for site_slug in (f"site-a-{suffix}", f"site-b-{suffix}"):
+        bootstrap_res = client.post(
+            "/v1/auth/bootstrap",
+            json={
+                "tenant_name": f"Tenant {site_slug}",
+                "tenant_slug": site_slug,
+                "owner_email": owner_email,
+                "owner_full_name": "Multi Site Owner",
+                "owner_password": owner_password,
+            },
+        )
+        assert bootstrap_res.status_code == 200
+
+    multi_login_res = client.post(
+        "/v1/auth/multi-site-login",
+        json={"email": owner_email, "password": owner_password},
+    )
+    assert multi_login_res.status_code == 200
+    login_body = multi_login_res.json()
+    assert login_body["access_token"]
+    assert len(login_body["available_sites"]) == 2
+
+    token = login_body["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    session_res = client.get("/v1/auth/session", headers=headers)
+    assert session_res.status_code == 200
+    session_body = session_res.json()
+    assert len(session_body["available_sites"]) == 2
+
+    current_tenant = session_body["tenant_id"]
+    target = next(site for site in session_body["available_sites"] if site["tenant_id"] != current_tenant)
+
+    switch_res = client.patch(
+        "/v1/auth/session/site",
+        headers=headers,
+        json={"tenant_id": target["tenant_id"]},
+    )
+    assert switch_res.status_code == 200
+    switch_body = switch_res.json()
+    assert switch_body["active_site_tenant_id"] == target["tenant_id"]
+
+    switched_headers = {"Authorization": f"Bearer {switch_body['access_token']}"}
+    switched_session_res = client.get("/v1/auth/session", headers=switched_headers)
+    assert switched_session_res.status_code == 200
+    switched_session = switched_session_res.json()
+    assert switched_session["tenant_id"] == target["tenant_id"]
+    assert len(switched_session["available_sites"]) == 2
+
+
+def test_parent_account_summary_and_link_tenant():
+    suffix = uuid4().hex[:8]
+    owner_email = f"owner-{suffix}@parent.test"
+    owner_password = "pass123456"
+
+    bootstrap_a = client.post(
+        "/v1/auth/bootstrap",
+        json={
+            "tenant_name": f"Tenant A {suffix}",
+            "tenant_slug": f"parent-a-{suffix}",
+            "owner_email": owner_email,
+            "owner_full_name": "Parent Owner",
+            "owner_password": owner_password,
+            "plan_code": "enterprise",
+        },
+    )
+    assert bootstrap_a.status_code == 200
+
+    bootstrap_b = client.post(
+        "/v1/auth/bootstrap",
+        json={
+            "tenant_name": f"Tenant B {suffix}",
+            "tenant_slug": f"parent-b-{suffix}",
+            "owner_email": f"other-{suffix}@parent.test",
+            "owner_full_name": "Other Owner",
+            "owner_password": owner_password,
+            "plan_code": "enterprise",
+        },
+    )
+    assert bootstrap_b.status_code == 200
+
+    login_res = client.post(
+        "/v1/auth/login",
+        json={
+            "tenant_slug": f"parent-a-{suffix}",
+            "email": owner_email,
+            "password": owner_password,
+        },
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    summary_before = client.get("/v1/parent-accounts/me", headers=headers)
+    assert summary_before.status_code == 200
+    assert len(summary_before.json()["sites"]) == 1
+
+    link_res = client.post(
+        "/v1/parent-accounts/me/link-tenant",
+        headers=headers,
+        json={
+            "tenant_slug": f"parent-b-{suffix}",
+            "owner_email": f"other-{suffix}@parent.test",
+        },
+    )
+    assert link_res.status_code == 200
+    assert len(link_res.json()["sites"]) == 2
+
+    # Prevent unlinking currently active site.
+    remove_active_res = client.delete(
+        f"/v1/parent-accounts/me/sites/{bootstrap_a.json()['tenant_id']}",
+        headers=headers,
+    )
+    assert remove_active_res.status_code == 400
+
+    # Unlink the secondary linked site.
+    remove_linked_res = client.delete(
+        f"/v1/parent-accounts/me/sites/{bootstrap_b.json()['tenant_id']}",
+        headers=headers,
+    )
+    assert remove_linked_res.status_code == 200
+    assert len(remove_linked_res.json()["sites"]) == 1
+
+    activity_res = client.get("/v1/parent-accounts/me/activity", headers=headers)
+    assert activity_res.status_code == 200
+    event_types = [event["event_type"] for event in activity_res.json()]
+    assert "link_tenant" in event_types
+    assert "unlink_tenant" in event_types
+
+
+def test_parent_account_create_tenant_and_link():
+    suffix = uuid4().hex[:8]
+    owner_email = f"owner-{suffix}@parent-create.test"
+    owner_password = "pass123456"
+
+    bootstrap_res = client.post(
+        "/v1/auth/bootstrap",
+        json={
+            "tenant_name": f"Tenant A {suffix}",
+            "tenant_slug": f"parent-create-a-{suffix}",
+            "owner_email": owner_email,
+            "owner_full_name": "Parent Create Owner",
+            "owner_password": owner_password,
+            "plan_code": "enterprise",
+        },
+    )
+    assert bootstrap_res.status_code == 200
+
+    login_res = client.post(
+        "/v1/auth/login",
+        json={
+            "tenant_slug": f"parent-create-a-{suffix}",
+            "email": owner_email,
+            "password": owner_password,
+        },
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_site_res = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers=headers,
+        json={
+            "tenant_name": f"Tenant B {suffix}",
+            "tenant_slug": f"parent-create-b-{suffix}",
+            "plan_code": "watch",
+        },
+    )
+    assert create_site_res.status_code == 200
+    body = create_site_res.json()
+    assert len(body["sites"]) == 2
+    created_site = next(site for site in body["sites"] if site["tenant_slug"] == f"parent-create-b-{suffix}")
+
+    login_new_site_res = client.post(
+        "/v1/auth/login",
+        json={
+            "tenant_slug": f"parent-create-b-{suffix}",
+            "email": owner_email,
+            "password": owner_password,
+        },
+    )
+    assert login_new_site_res.status_code == 200
+
+    switch_into_new_site = client.patch(
+        "/v1/auth/session/site",
+        headers=headers,
+        json={"tenant_id": created_site["tenant_id"]},
+    )
+    assert switch_into_new_site.status_code == 200
+
+    activity_res = client.get("/v1/parent-accounts/me/activity", headers=headers)
+    assert activity_res.status_code == 200
+    event_types = [event["event_type"] for event in activity_res.json()]
+    assert "create_tenant" in event_types
+    assert "switch_site" in event_types

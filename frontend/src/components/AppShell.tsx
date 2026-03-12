@@ -1,12 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { Menu, WatchIcon, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import Sidebar from './Sidebar'
+import { Button, Modal } from '@/components/ui'
+
+const TUTORIAL_KEY = 'mainspring_tutorial_seen_v1'
 
 export default function AppShell() {
-  const { token, initializing } = useAuth()
+  const { token, initializing, activeSiteTenantId, availableSites, switchSite } = useAuth()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [switchingSite, setSwitchingSite] = useState(false)
+
+  useEffect(() => {
+    if (!token) return
+    if (localStorage.getItem(TUTORIAL_KEY) === 'true') return
+    setShowTutorial(true)
+  }, [token])
+
+  function dismissTutorial() {
+    localStorage.setItem(TUTORIAL_KEY, 'true')
+    setShowTutorial(false)
+  }
 
   if (initializing) {
     return (
@@ -54,6 +70,37 @@ export default function AppShell() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
+          {availableSites.length > 1 && (
+            <div className="mb-4 flex items-center justify-end gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                Active site
+              </span>
+              <select
+                value={activeSiteTenantId ?? ''}
+                disabled={switchingSite}
+                onChange={async (e) => {
+                  const nextTenantId = e.target.value
+                  if (!nextTenantId || nextTenantId === activeSiteTenantId) return
+                  setSwitchingSite(true)
+                  try {
+                    await switchSite(nextTenantId)
+                  } finally {
+                    setSwitchingSite(false)
+                  }
+                }}
+                className="rounded-lg px-2.5 py-2 text-xs"
+                style={{
+                  backgroundColor: 'var(--cafe-surface)',
+                  border: '1px solid var(--cafe-border-2)',
+                  color: 'var(--cafe-text)',
+                }}
+              >
+                {availableSites.map(site => (
+                  <option key={site.tenant_id} value={site.tenant_id}>{site.tenant_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>
@@ -77,6 +124,39 @@ export default function AppShell() {
             />
           </div>
         </div>
+      )}
+
+      {showTutorial && (
+        <Modal title="Quick Tour" onClose={dismissTutorial}>
+          <div className="space-y-3 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p style={{ color: 'var(--cafe-text)' }}>
+              Welcome to Mainspring. Here is a quick guide to each section.
+            </p>
+            <p>
+              Dashboard: live repair workload, open jobs, and status counts.
+            </p>
+            <p>
+              Customers: customer history and linked repairs.
+            </p>
+            <p>
+              Watch Repairs / Shoe Repairs: create jobs, quote work, and track progress.
+            </p>
+            <p>
+              Invoices: payment tracking and printable invoices.
+            </p>
+            <p>
+              Accounts: team access and roles.
+            </p>
+            <p>
+              Reports / Database: export and operational visibility.
+            </p>
+
+            <div className="pt-1 flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={dismissTutorial}>Skip</Button>
+              <Button className="flex-1" onClick={dismissTutorial}>Start using app</Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )
