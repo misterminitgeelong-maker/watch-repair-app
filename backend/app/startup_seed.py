@@ -178,6 +178,11 @@ def _normalize_row_keys(row: dict[str, str]) -> dict[str, str]:
     return normalized
 
 
+def ensure_demo_tenant(session: Session) -> Tenant:
+    """Always-on: creates the demo/bootstrap tenant + owner user if absent."""
+    return _ensure_tenant_owner(session)
+
+
 def _ensure_tenant_owner(session: Session) -> Tenant:
     tenant = session.exec(select(Tenant).where(Tenant.slug == settings.startup_seed_tenant_slug)).first()
     if tenant:

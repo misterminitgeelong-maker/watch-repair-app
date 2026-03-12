@@ -30,13 +30,14 @@ from .routes.auto_key_jobs import router as auto_key_jobs_router
 from .routes.customer_accounts import router as customer_accounts_router
 from .routes.parent_accounts import router as parent_accounts_router
 from .routes.billing import router as billing_router
-from .startup_seed import ensure_platform_admin_account, get_seed_status, seed_from_csv_if_empty
+from .startup_seed import ensure_demo_tenant, ensure_platform_admin_account, get_seed_status, seed_from_csv_if_empty
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     with Session(engine) as session:
+        ensure_demo_tenant(session)
         ensure_platform_admin_account(session)
         seed_from_csv_if_empty(session)
     yield
