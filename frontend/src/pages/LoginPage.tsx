@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
 import { login, multiSiteLogin, seedDemoData } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { enableDemoMode, resetAllPageTutorials } from '@/lib/onboarding'
+import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
 const ANIM_CSS = `
   @keyframes msSlideUp {
@@ -71,6 +71,7 @@ export default function LoginPage() {
       } catch {
         // Non-fatal for login: demo can still proceed even if records already exist.
       }
+      resetDemoTour()
       resetAllPageTutorials()
       navigate('/dashboard')
     } catch {

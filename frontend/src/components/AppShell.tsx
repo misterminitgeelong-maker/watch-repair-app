@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, WatchIcon, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import Sidebar from './Sidebar'
 import { Button, Modal } from '@/components/ui'
-import { hasSeenPageTutorial, isDemoModeEnabled, setPageTutorialSeen } from '@/lib/onboarding'
+import { getDemoTourMode, getDemoTourStep, hasSeenPageTutorial, isDemoModeEnabled, setDemoTourMode, setDemoTourStep, setPageTutorialSeen } from '@/lib/onboarding'
 
 type PageTutorial = {
   key: string
@@ -227,28 +227,74 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
   return null
 }
 
+const GUIDED_TOUR_PATHS = [
+  '/dashboard',
+  '/customers',
+  '/jobs',
+  '/shoe-repairs',
+  '/auto-key',
+  '/quotes',
+  '/invoices',
+  '/reports',
+  '/accounts',
+]
+
+const GUIDED_TOUR_LABELS: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/customers': 'Customers',
+  '/jobs': 'Watch Repairs',
+  '/shoe-repairs': 'Shoe Repairs',
+  '/auto-key': 'Auto Key',
+  '/quotes': 'Quotes',
+  '/invoices': 'Invoices',
+  '/reports': 'Reports',
+  '/accounts': 'Accounts',
+}
+
 export default function AppShell() {
   const { token, initializing, activeSiteTenantId, availableSites, switchSite } = useAuth()
   const location = useLocation()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [switchingSite, setSwitchingSite] = useState(false)
+  const navigate = useNavigate()
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [tourMode, setTourMode] = useState<'self' | 'guided' | null>(() =>
+    isDemoModeEnabled() ? getDemoTourMode() : null
+  )
+  const [guidedStep, setGuidedStep] = useState(() =>
+    isDemoModeEnabled() ? getDemoTourStep() : 0
+  )
 
   useEffect(() => {
     if (!token) return
     if (!isDemoModeEnabled()) return
 
+    const currentMode = getDemoTourMode()
+
+    // No mode chosen yet — show welcome modal on first dashboard visit
+    if (currentMode === null) {
+      if (location.pathname === '/dashboard') setShowWelcomeModal(true)
+      return
+    }
+
+    // Guided tour — keep step in sync with current path
+    if (currentMode === 'guided') {
+      const stepIndex = GUIDED_TOUR_PATHS.indexOf(location.pathname)
+      if (stepIndex !== -1) {
+        setGuidedStep(stepIndex)
+        setDemoTourStep(stepIndex)
+      }
+      setTourMode('guided')
+      setActiveTutorial(null)
+      return
+    }
+
+    // Self-guided — show page tutorial popup
+    setTourMode('self')
     const tutorial = getTutorialForPath(location.pathname)
-    if (!tutorial) {
-      setActiveTutorial(null)
-      return
-    }
-
-    if (hasSeenPageTutorial(activeSiteTenantId, tutorial.key)) {
-      setActiveTutorial(null)
-      return
-    }
-
+    if (!tutorial) { setActiveTutorial(null); return }
+    if (hasSeenPageTutorial(activeSiteTenantId, tutorial.key)) { setActiveTutorial(null); return }
     setActiveTutorial(tutorial)
   }, [activeSiteTenantId, location.pathname, token])
 
@@ -257,6 +303,42 @@ export default function AppShell() {
       setPageTutorialSeen(activeSiteTenantId, activeTutorial.key, true)
     }
     setActiveTutorial(null)
+  }
+
+  function chooseMode(mode: 'self' | 'guided') {
+    setDemoTourMode(mode)
+    setTourMode(mode)
+    setShowWelcomeModal(false)
+    if (mode === 'guided') {
+      setGuidedStep(0)
+      setDemoTourStep(0)
+      navigate('/dashboard')
+    }
+  }
+
+  function advanceGuidedTour() {
+    const next = guidedStep + 1
+    if (next >= GUIDED_TOUR_PATHS.length) {
+      setDemoTourMode(null)
+      setTourMode(null)
+      return
+    }
+    setGuidedStep(next)
+    setDemoTourStep(next)
+    navigate(GUIDED_TOUR_PATHS[next])
+  }
+
+  function retreatGuidedTour() {
+    const prev = guidedStep - 1
+    if (prev < 0) return
+    setGuidedStep(prev)
+    setDemoTourStep(prev)
+    navigate(GUIDED_TOUR_PATHS[prev])
+  }
+
+  function exitGuidedTour() {
+    setDemoTourMode(null)
+    setTourMode(null)
   }
 
   if (initializing) {
@@ -270,6 +352,12 @@ export default function AppShell() {
   if (!token) {
     return <Navigate to="/" replace />
   }
+
+  const guidedCurrentTutorial = tourMode === 'guided'
+    ? getTutorialForPath(GUIDED_TOUR_PATHS[guidedStep] ?? '')
+    : null
+  const guidedIsLast = guidedStep >= GUIDED_TOUR_PATHS.length - 1
+  const guidedNextLabel = !guidedIsLast ? GUIDED_TOUR_LABELS[GUIDED_TOUR_PATHS[guidedStep + 1]] : null
 
   return (
     <div className="h-screen md:flex" style={{ backgroundColor: 'var(--cafe-bg)' }}>
@@ -304,7 +392,7 @@ export default function AppShell() {
           <span className="w-9" />
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
+        <main className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
           {availableSites.length > 1 && (
             <div className="mb-4 flex items-center justify-end gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -361,6 +449,43 @@ export default function AppShell() {
         </div>
       )}
 
+      {/* Welcome modal — choose between self-guided and in-depth tour */}
+      {showWelcomeModal && (
+        <Modal title="👋 Welcome to the Mainspring Demo!" onClose={() => chooseMode('self')}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+              Your demo workspace is ready — real jobs, customers, and records are pre-loaded.
+              How would you like to explore?
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => chooseMode('self')}
+                className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: 'var(--cafe-surface)', border: '2px solid var(--cafe-border-2)' }}
+              >
+                <div className="text-2xl mb-2">🧭</div>
+                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-text)' }}>Self-Guided</div>
+                <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Explore freely at your own pace. A tip pop-up explains each page as you navigate to it.
+                </div>
+              </button>
+              <button
+                onClick={() => chooseMode('guided')}
+                className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '2px solid var(--cafe-gold)' }}
+              >
+                <div className="text-2xl mb-2">🎯</div>
+                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-gold)' }}>In-Depth Tour</div>
+                <div className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                  We walk you through every feature in sequence. Click Next to advance through all 9 sections.
+                </div>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Self-guided page tutorial popup */}
       {activeTutorial && (
         <Modal title={activeTutorial.title} onClose={dismissTutorial}>
           <div className="space-y-3 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
@@ -374,13 +499,86 @@ export default function AppShell() {
             <p style={{ color: 'var(--cafe-text)' }}>
               <span className="font-semibold">Suggested next step:</span> {activeTutorial.nextStep}
             </p>
-
             <div className="pt-1 flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={dismissTutorial}>Got it</Button>
-              <Button className="flex-1" onClick={dismissTutorial}>Continue tour</Button>
+              <Button className="flex-1" onClick={dismissTutorial}>Continue</Button>
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* In-depth guided tour bar — fixed at bottom */}
+      {tourMode === 'guided' && !showWelcomeModal && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50"
+          style={{
+            backgroundColor: 'var(--cafe-espresso-2)',
+            borderTop: '2px solid var(--cafe-gold)',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
+          }}
+        >
+          {/* Progress bar */}
+          <div className="h-1" style={{ backgroundColor: 'var(--cafe-border)' }}>
+            <div
+              className="h-1 transition-all duration-300"
+              style={{
+                backgroundColor: 'var(--cafe-gold)',
+                width: `${((guidedStep + 1) / GUIDED_TOUR_PATHS.length) * 100}%`,
+              }}
+            />
+          </div>
+          <div className="px-4 py-3 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--cafe-gold)' }}>
+                    Step {guidedStep + 1} of {GUIDED_TOUR_PATHS.length}
+                  </span>
+                  <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
+                    — {GUIDED_TOUR_LABELS[GUIDED_TOUR_PATHS[guidedStep]]}
+                  </span>
+                </div>
+                {guidedCurrentTutorial && (
+                  <p className="text-sm line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                    {guidedCurrentTutorial.intro}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {guidedStep > 0 && (
+                  <button
+                    onClick={retreatGuidedTour}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium"
+                    style={{
+                      backgroundColor: 'var(--cafe-surface)',
+                      color: 'var(--cafe-text-mid)',
+                      border: '1px solid var(--cafe-border-2)',
+                    }}
+                  >
+                    ← Back
+                  </button>
+                )}
+                <button
+                  onClick={exitGuidedTour}
+                  className="px-3 py-1.5 rounded-lg text-sm"
+                  style={{ color: 'var(--cafe-text-muted)' }}
+                >
+                  Exit Tour
+                </button>
+                <button
+                  onClick={advanceGuidedTour}
+                  className="px-4 py-1.5 rounded-lg text-sm font-bold"
+                  style={{
+                    backgroundColor: 'var(--cafe-gold)',
+                    color: 'var(--cafe-espresso-1)',
+                  }}
+                >
+                  {guidedIsLast ? '🎉 Finish Tour' : `Next: ${guidedNextLabel} →`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

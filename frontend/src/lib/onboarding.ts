@@ -67,3 +67,36 @@ export function resetAllPageTutorials(): void {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Demo tour mode — tracks whether user chose self-guided or in-depth guided
+// ---------------------------------------------------------------------------
+const DEMO_TOUR_MODE_KEY = 'mainspring_demo_tour_mode'
+const DEMO_TOUR_STEP_KEY = 'mainspring_demo_tour_step'
+
+export function setDemoTourMode(mode: 'self' | 'guided' | null): void {
+  if (mode === null) {
+    localStorage.removeItem(DEMO_TOUR_MODE_KEY)
+  } else {
+    localStorage.setItem(DEMO_TOUR_MODE_KEY, mode)
+  }
+}
+
+export function getDemoTourMode(): 'self' | 'guided' | null {
+  const v = localStorage.getItem(DEMO_TOUR_MODE_KEY)
+  if (v === 'self' || v === 'guided') return v
+  return null
+}
+
+export function setDemoTourStep(step: number): void {
+  localStorage.setItem(DEMO_TOUR_STEP_KEY, String(step))
+}
+
+export function getDemoTourStep(): number {
+  return parseInt(localStorage.getItem(DEMO_TOUR_STEP_KEY) ?? '0', 10) || 0
+}
+
+export function resetDemoTour(): void {
+  localStorage.removeItem(DEMO_TOUR_MODE_KEY)
+  localStorage.removeItem(DEMO_TOUR_STEP_KEY)
+}
