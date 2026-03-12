@@ -1,10 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, WatchIcon, X } from 'lucide-react'
+import {
+  listAutoKeyJobs,
+  listCustomers,
+  listInvoices,
+  listJobs,
+  listQuotes,
+  listShoeRepairJobs,
+} from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import Sidebar from './Sidebar'
 import { Button, Modal } from '@/components/ui'
-import { getDemoTourMode, getDemoTourStep, hasSeenPageTutorial, isDemoModeEnabled, setDemoTourMode, setDemoTourStep, setPageTutorialSeen } from '@/lib/onboarding'
+import {
+  getDemoTourMode,
+  getDemoTourStep,
+  hasSeenPageTutorial,
+  isDemoModeEnabled,
+  setDemoTourMode,
+  setDemoTourStep,
+  setPageTutorialSeen,
+} from '@/lib/onboarding'
 
 type PageTutorial = {
   key: string
@@ -12,6 +29,19 @@ type PageTutorial = {
   intro: string
   features: string[]
   nextStep: string
+}
+
+type GuidedTourStep = {
+  key: string
+  title: string
+  label: string
+  routePath: string
+  matcher: (pathname: string) => boolean
+  intro: string
+  task: string
+  highlights: string[]
+  actionLabel?: string
+  actionPath?: string
 }
 
 function getTutorialForPath(pathname: string): PageTutorial | null {
@@ -158,6 +188,19 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
       nextStep: 'Open an invoice and record a payment to close the loop.',
     }
   }
+  if (/^\/invoices\/[^/]+$/.test(pathname)) {
+    return {
+      key: 'invoice-detail',
+      title: 'Invoice Detail',
+      intro: 'This is the financial handoff page for a completed or approved piece of work.',
+      features: [
+        'Review the invoice status and totals in one place',
+        'Record payment directly from the invoice',
+        'Print a clean customer-facing invoice or PDF',
+      ],
+      nextStep: 'Record a payment here when the customer settles up.',
+    }
+  }
   if (pathname === '/reports') {
     return {
       key: 'reports',
@@ -227,76 +270,337 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
   return null
 }
 
-const GUIDED_TOUR_PATHS = [
-  '/dashboard',
-  '/customers',
-  '/jobs',
-  '/shoe-repairs',
-  '/auto-key',
-  '/quotes',
-  '/invoices',
-  '/reports',
-  '/accounts',
-]
-
-const GUIDED_TOUR_LABELS: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/customers': 'Customers',
-  '/jobs': 'Watch Repairs',
-  '/shoe-repairs': 'Shoe Repairs',
-  '/auto-key': 'Auto Key',
-  '/quotes': 'Quotes',
-  '/invoices': 'Invoices',
-  '/reports': 'Reports',
-  '/accounts': 'Accounts',
+function exactMatcher(path: string) {
+  return (pathname: string) => pathname === path
 }
 
 export default function AppShell() {
-  const { token, initializing, activeSiteTenantId, availableSites, switchSite } = useAuth()
+  const { token, initializing, activeSiteTenantId, availableSites, switchSite, hasFeature } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+  const demoModeEnabled = isDemoModeEnabled()
+
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [switchingSite, setSwitchingSite] = useState(false)
-  const navigate = useNavigate()
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [showGuidedModal, setShowGuidedModal] = useState(false)
+  const [lastGuidedModalKey, setLastGuidedModalKey] = useState<string | null>(null)
   const [tourMode, setTourMode] = useState<'self' | 'guided' | null>(() =>
-    isDemoModeEnabled() ? getDemoTourMode() : null
+    demoModeEnabled ? getDemoTourMode() : null,
   )
   const [guidedStep, setGuidedStep] = useState(() =>
-    isDemoModeEnabled() ? getDemoTourStep() : 0
+    demoModeEnabled ? getDemoTourStep() : 0,
   )
+
+  const { data: customers } = useQuery({
+    queryKey: ['customers', 'guided-tour'],
+    queryFn: () => listCustomers().then((r) => r.data),
+    enabled: demoModeEnabled,
+  })
+  const { data: jobs } = useQuery({
+    queryKey: ['jobs', 'guided-tour'],
+    queryFn: () => listJobs().then((r) => r.data),
+    enabled: demoModeEnabled,
+  })
+  const { data: shoeJobs } = useQuery({
+    queryKey: ['shoe-repair-jobs', 'guided-tour'],
+    queryFn: () => listShoeRepairJobs().then((r) => r.data),
+    enabled: demoModeEnabled && hasFeature('shoe'),
+  })
+  const { data: autoKeyJobs } = useQuery({
+    queryKey: ['auto-key-jobs', 'guided-tour'],
+    queryFn: () => listAutoKeyJobs().then((r) => r.data),
+    enabled: demoModeEnabled && hasFeature('auto_key'),
+  })
+  const { data: quotes } = useQuery({
+    queryKey: ['quotes', 'guided-tour'],
+    queryFn: () => listQuotes().then((r) => r.data),
+    enabled: demoModeEnabled,
+  })
+  const { data: invoices } = useQuery({
+    queryKey: ['invoices', 'guided-tour'],
+    queryFn: () => listInvoices().then((r) => r.data),
+    enabled: demoModeEnabled,
+  })
+
+  const guidedTourSteps = useMemo<GuidedTourStep[]>(() => {
+    const firstCustomer = customers?.[0]
+    const firstWatchJob = jobs?.[0]
+    const firstShoeJob = shoeJobs?.[0]
+    const firstAutoKeyJob = autoKeyJobs?.[0]
+    const firstInvoice = invoices?.[0]
+    const firstQuote = quotes?.[0]
+
+    const customerDetailPath = firstCustomer ? `/customers/${firstCustomer.id}` : '/customers'
+    const watchJobDetailPath = firstWatchJob ? `/jobs/${firstWatchJob.id}` : '/jobs'
+    const shoeJobDetailPath = firstShoeJob ? `/shoe-repairs/${firstShoeJob.id}` : '/shoe-repairs'
+    const autoKeyDetailPath = firstAutoKeyJob ? `/auto-key/${firstAutoKeyJob.id}` : '/auto-key'
+    const invoiceDetailPath = firstInvoice ? `/invoices/${firstInvoice.id}` : '/invoices'
+
+    const shoeItemsPreview = firstShoeJob?.items.slice(0, 2).map((item) => item.item_name).join(' and ')
+    const watchJobLabel = firstWatchJob ? `Open watch job #${firstWatchJob.job_number}` : 'Open a watch repair'
+    const shoeJobLabel = firstShoeJob ? `Open shoe job #${firstShoeJob.job_number}` : 'Open a shoe repair'
+    const autoKeyLabel = firstAutoKeyJob ? `Open key job #${firstAutoKeyJob.job_number}` : 'Open an auto key job'
+    const quoteLabel = firstQuote ? 'Go to quotes in progress' : 'Go to quotes'
+    const invoiceLabel = firstInvoice ? `Open invoice #${firstInvoice.invoice_number}` : 'Go to invoices'
+
+    const steps: GuidedTourStep[] = [
+      {
+        key: 'guided-dashboard',
+        title: 'Start on the live dashboard',
+        label: 'Dashboard',
+        routePath: '/dashboard',
+        matcher: exactMatcher('/dashboard'),
+        intro: 'This is the best opening view for a demo because it shows the health of the whole workshop at once.',
+        task: 'Take a quick look at the KPI row, then jump into a real customer record.',
+        highlights: [
+          'The dashboard pulls together customers, jobs, quotes, invoices, billing, and reports.',
+          'This is where an owner or manager sees pressure points before drilling into detail.',
+        ],
+        actionLabel: 'Take me to customers',
+        actionPath: '/customers',
+      },
+      {
+        key: 'guided-customers-list',
+        title: 'Customers are the hub of the workflow',
+        label: 'Customers',
+        routePath: '/customers',
+        matcher: exactMatcher('/customers'),
+        intro: 'Every repair starts with the customer. This list is the CRM layer for the business.',
+        task: 'Open a demo customer so you can see how repairs stay connected to the person.',
+        highlights: [
+          'You can search the entire customer book quickly during intake.',
+          'Each profile becomes the anchor for watch, shoe, and key work.',
+        ],
+        actionLabel: firstCustomer ? `Open ${firstCustomer.full_name}` : 'Open a demo customer',
+        actionPath: customerDetailPath,
+      },
+      {
+        key: 'guided-customer-detail',
+        title: 'A customer profile brings the history together',
+        label: 'Customer profile',
+        routePath: customerDetailPath,
+        matcher: (pathname: string) => /^\/customers\/[^/]+$/.test(pathname),
+        intro: 'This is where staff see prior work, contact context, and what is currently live for that customer.',
+        task: 'Jump into a real watch repair from here so the demo feels connected rather than abstract.',
+        highlights: [
+          'The customer profile reduces duplicate records and keeps job history easy to follow.',
+          'In a real intake flow, this is where a returning client gets recognized instantly.',
+        ],
+        actionLabel: watchJobLabel,
+        actionPath: watchJobDetailPath,
+      },
+      {
+        key: 'guided-watch-list',
+        title: 'The watch repair board is the main operational queue',
+        label: 'Watch repairs',
+        routePath: '/jobs',
+        matcher: exactMatcher('/jobs'),
+        intro: 'This board lets the team filter, process, and prioritize bench work throughout the day.',
+        task: 'Open one real job so you can see the actual repair workflow screen.',
+        highlights: [
+          'Statuses map to the real bench lifecycle: quote, approval, parts, service, completion, collection.',
+          'This is the page most techs and intake staff live in during the day.',
+        ],
+        actionLabel: watchJobLabel,
+        actionPath: watchJobDetailPath,
+      },
+      {
+        key: 'guided-watch-detail',
+        title: 'This job detail page is where the work actually happens',
+        label: 'Watch repair detail',
+        routePath: watchJobDetailPath,
+        matcher: (pathname: string) => /^\/jobs\/[^/]+$/.test(pathname),
+        intro: 'On a real repair, this screen drives the customer-facing timeline and the workshop actions.',
+        task: 'Notice the status controls, notes, attachments, and quote flow. Then switch to shoe repairs for a different service type.',
+        highlights: [
+          'This page supports quote creation, status changes, and intake evidence in one place.',
+          'It is designed to avoid fragmented tools or off-system notes.',
+        ],
+        actionLabel: 'Show me shoe repairs',
+        actionPath: '/shoe-repairs',
+      },
+      {
+        key: 'guided-shoe-list',
+        title: 'Shoe repairs feel different because the workflow is catalogue-based',
+        label: 'Shoe repairs',
+        routePath: '/shoe-repairs',
+        matcher: exactMatcher('/shoe-repairs'),
+        intro: 'This area is tuned for shoe work rather than watch service, so the demo should show that difference clearly.',
+        task: 'Open one shoe repair and look at the selected service items instead of just a generic repair title.',
+        highlights: [
+          'The catalogue keeps pricing and naming consistent across repeated shoe services.',
+          'This makes quoting faster at the counter and cleaner for the customer.',
+        ],
+        actionLabel: shoeJobLabel,
+        actionPath: shoeJobDetailPath,
+      },
+      {
+        key: 'guided-shoe-detail',
+        title: 'This shoe repair shows the service-item workflow',
+        label: 'Shoe repair detail',
+        routePath: shoeJobDetailPath,
+        matcher: (pathname: string) => /^\/shoe-repairs\/[^/]+$/.test(pathname),
+        intro: 'Instead of a vague job note, shoe repairs can carry a structured list of service items and costs.',
+        task: `Look at the service items${shoeItemsPreview ? ` like ${shoeItemsPreview}` : ''} and imagine how easy it is to explain the work to a customer at pickup.`,
+        highlights: [
+          'This gives the demo a tactile feel because the service mix is visible, not hidden.',
+          'It is a strong differentiator when showing the app to repair businesses with multiple service types.',
+        ],
+        actionLabel: 'Take me to auto key jobs',
+        actionPath: '/auto-key',
+      },
+      {
+        key: 'guided-auto-list',
+        title: 'Auto key work has its own technical flow',
+        label: 'Auto key',
+        routePath: '/auto-key',
+        matcher: exactMatcher('/auto-key'),
+        intro: 'Vehicle jobs need a different data model, so this queue is tailored to key programming and vehicle details.',
+        task: 'Open one of the demo key jobs to see the technical fields and programming state.',
+        highlights: [
+          'The programming status sits alongside the commercial job status.',
+          'That split makes the workflow clearer for technicians and front-desk staff.',
+        ],
+        actionLabel: autoKeyLabel,
+        actionPath: autoKeyDetailPath,
+      },
+      {
+        key: 'guided-auto-detail',
+        title: 'The auto key detail page shows why this is not just another repair template',
+        label: 'Auto key detail',
+        routePath: autoKeyDetailPath,
+        matcher: (pathname: string) => /^\/auto-key\/[^/]+$/.test(pathname),
+        intro: 'VINs, plates, key type, and programming steps matter here, so the app gives that work its own structure.',
+        task: 'Take note of the vehicle-specific fields, then move into the commercial side of the process with quotes.',
+        highlights: [
+          'This step helps prospects see the app covers more than one repair vertical well.',
+          'The same customer and billing system still wraps around the technical workflow.',
+        ],
+        actionLabel: quoteLabel,
+        actionPath: '/quotes',
+      },
+      {
+        key: 'guided-quotes',
+        title: 'Quotes convert diagnostics into approvals',
+        label: 'Quotes',
+        routePath: '/quotes',
+        matcher: exactMatcher('/quotes'),
+        intro: 'This workspace is where quoted work becomes an approved commercial job instead of just a note in the system.',
+        task: 'Look at how quotes link back to the job, then open an invoice to see the handoff after approval.',
+        highlights: [
+          'Quotes can be created from active jobs and sent for customer approval.',
+          'The approval flow is what connects workshop diagnostics to cash flow.',
+        ],
+        actionLabel: invoiceLabel,
+        actionPath: invoiceDetailPath,
+      },
+      {
+        key: 'guided-invoice-detail',
+        title: 'Invoices close the loop from approved work to payment',
+        label: 'Invoice detail',
+        routePath: invoiceDetailPath,
+        matcher: (pathname: string) => /^\/invoices\/[^/]+$/.test(pathname),
+        intro: 'This is the handoff point where approved work becomes a payable customer record.',
+        task: 'Look at the totals and payment action, then jump to reports to see the bigger commercial picture.',
+        highlights: [
+          'The invoice is customer-facing but still linked back to the operational work.',
+          'This is the clearest place to explain how the app helps with both workshop flow and revenue collection.',
+        ],
+        actionLabel: 'Show me the reports',
+        actionPath: '/reports',
+      },
+      {
+        key: 'guided-reports',
+        title: 'Reports turn the day-to-day workflow into business insight',
+        label: 'Reports',
+        routePath: '/reports',
+        matcher: exactMatcher('/reports'),
+        intro: 'This page proves the app is not only an operations tool; it also gives the owner visibility into performance.',
+        task: 'Scan the KPIs and trend blocks, then finish in Accounts where permissions and plan usage are managed.',
+        highlights: [
+          'Reports show revenue, margin, approval rates, and activity history.',
+          'That makes the product feel like a business system, not only a job tracker.',
+        ],
+        actionLabel: 'Finish in Accounts',
+        actionPath: '/accounts',
+      },
+      {
+        key: 'guided-accounts',
+        title: 'Accounts is the control room for access and plan usage',
+        label: 'Accounts',
+        routePath: '/accounts',
+        matcher: exactMatcher('/accounts'),
+        intro: 'This final stop shows how the product scales beyond one user or one bench.',
+        task: 'Review users, plan bundles, and billing usage. This is the end of the guided demo.',
+        highlights: [
+          'You can show team setup, roles, and billing limits without leaving the app.',
+          'That closes the story: intake, production, approval, payment, reporting, and account control.',
+        ],
+      },
+    ]
+
+    return steps.filter((step) => {
+      if (step.label === 'Shoe repairs' || step.label === 'Shoe repair detail') return hasFeature('shoe')
+      if (step.label === 'Auto key' || step.label === 'Auto key detail') return hasFeature('auto_key')
+      return true
+    })
+  }, [autoKeyJobs, customers, hasFeature, invoices, jobs, quotes, shoeJobs])
+
+  const currentGuidedStepIndex = useMemo(
+    () => guidedTourSteps.findIndex((step) => step.matcher(location.pathname)),
+    [guidedTourSteps, location.pathname],
+  )
+
+  const currentGuidedStep = currentGuidedStepIndex >= 0
+    ? guidedTourSteps[currentGuidedStepIndex]
+    : guidedTourSteps[guidedStep] ?? null
 
   useEffect(() => {
     if (!token) return
-    if (!isDemoModeEnabled()) return
+    if (!demoModeEnabled) return
 
     const currentMode = getDemoTourMode()
 
-    // No mode chosen yet — show welcome modal on first dashboard visit
     if (currentMode === null) {
       if (location.pathname === '/dashboard') setShowWelcomeModal(true)
       return
     }
 
-    // Guided tour — keep step in sync with current path
     if (currentMode === 'guided') {
-      const stepIndex = GUIDED_TOUR_PATHS.indexOf(location.pathname)
-      if (stepIndex !== -1) {
-        setGuidedStep(stepIndex)
-        setDemoTourStep(stepIndex)
+      if (currentGuidedStepIndex !== -1) {
+        setGuidedStep(currentGuidedStepIndex)
+        setDemoTourStep(currentGuidedStepIndex)
       }
       setTourMode('guided')
       setActiveTutorial(null)
       return
     }
 
-    // Self-guided — show page tutorial popup
     setTourMode('self')
     const tutorial = getTutorialForPath(location.pathname)
-    if (!tutorial) { setActiveTutorial(null); return }
-    if (hasSeenPageTutorial(activeSiteTenantId, tutorial.key)) { setActiveTutorial(null); return }
+    if (!tutorial) {
+      setActiveTutorial(null)
+      return
+    }
+    if (hasSeenPageTutorial(activeSiteTenantId, tutorial.key)) {
+      setActiveTutorial(null)
+      return
+    }
     setActiveTutorial(tutorial)
-  }, [activeSiteTenantId, location.pathname, token])
+  }, [activeSiteTenantId, currentGuidedStepIndex, demoModeEnabled, location.pathname, token])
+
+  useEffect(() => {
+    if (tourMode !== 'guided' || !currentGuidedStep) {
+      setShowGuidedModal(false)
+      return
+    }
+    if (currentGuidedStep.key !== lastGuidedModalKey) {
+      setShowGuidedModal(true)
+      setLastGuidedModalKey(currentGuidedStep.key)
+    }
+  }, [currentGuidedStep, lastGuidedModalKey, tourMode])
 
   function dismissTutorial() {
     if (activeTutorial) {
@@ -309,36 +613,43 @@ export default function AppShell() {
     setDemoTourMode(mode)
     setTourMode(mode)
     setShowWelcomeModal(false)
+    setLastGuidedModalKey(null)
     if (mode === 'guided') {
       setGuidedStep(0)
       setDemoTourStep(0)
-      navigate('/dashboard')
+      navigate(guidedTourSteps[0]?.routePath ?? '/dashboard')
     }
+  }
+
+  function goToGuidedStep(index: number) {
+    const step = guidedTourSteps[index]
+    if (!step) return
+    setGuidedStep(index)
+    setDemoTourStep(index)
+    navigate(step.routePath)
   }
 
   function advanceGuidedTour() {
     const next = guidedStep + 1
-    if (next >= GUIDED_TOUR_PATHS.length) {
+    if (next >= guidedTourSteps.length) {
       setDemoTourMode(null)
       setTourMode(null)
+      setShowGuidedModal(false)
       return
     }
-    setGuidedStep(next)
-    setDemoTourStep(next)
-    navigate(GUIDED_TOUR_PATHS[next])
+    goToGuidedStep(next)
   }
 
   function retreatGuidedTour() {
     const prev = guidedStep - 1
     if (prev < 0) return
-    setGuidedStep(prev)
-    setDemoTourStep(prev)
-    navigate(GUIDED_TOUR_PATHS[prev])
+    goToGuidedStep(prev)
   }
 
   function exitGuidedTour() {
     setDemoTourMode(null)
     setTourMode(null)
+    setShowGuidedModal(false)
   }
 
   if (initializing) {
@@ -353,11 +664,8 @@ export default function AppShell() {
     return <Navigate to="/" replace />
   }
 
-  const guidedCurrentTutorial = tourMode === 'guided'
-    ? getTutorialForPath(GUIDED_TOUR_PATHS[guidedStep] ?? '')
-    : null
-  const guidedIsLast = guidedStep >= GUIDED_TOUR_PATHS.length - 1
-  const guidedNextLabel = !guidedIsLast ? GUIDED_TOUR_LABELS[GUIDED_TOUR_PATHS[guidedStep + 1]] : null
+  const guidedIsLast = guidedStep >= guidedTourSteps.length - 1
+  const guidedNextLabel = !guidedIsLast ? guidedTourSteps[guidedStep + 1]?.label : null
 
   return (
     <div className="h-screen md:flex" style={{ backgroundColor: 'var(--cafe-bg)' }}>
@@ -418,7 +726,7 @@ export default function AppShell() {
                   color: 'var(--cafe-text)',
                 }}
               >
-                {availableSites.map(site => (
+                {availableSites.map((site) => (
                   <option key={site.tenant_id} value={site.tenant_id}>{site.tenant_name}</option>
                 ))}
               </select>
@@ -449,13 +757,11 @@ export default function AppShell() {
         </div>
       )}
 
-      {/* Welcome modal — choose between self-guided and in-depth tour */}
       {showWelcomeModal && (
-        <Modal title="👋 Welcome to the Mainspring Demo!" onClose={() => chooseMode('self')}>
+        <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-              Your demo workspace is ready — real jobs, customers, and records are pre-loaded.
-              How would you like to explore?
+              Your demo workspace is ready with real sample records. Choose whether you want to explore freely or be walked through the product with live demo jobs and customer records.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
@@ -463,7 +769,6 @@ export default function AppShell() {
                 className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: 'var(--cafe-surface)', border: '2px solid var(--cafe-border-2)' }}
               >
-                <div className="text-2xl mb-2">🧭</div>
                 <div className="font-semibold mb-1" style={{ color: 'var(--cafe-text)' }}>Self-Guided</div>
                 <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
                   Explore freely at your own pace. A tip pop-up explains each page as you navigate to it.
@@ -474,10 +779,9 @@ export default function AppShell() {
                 className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '2px solid var(--cafe-gold)' }}
               >
-                <div className="text-2xl mb-2">🎯</div>
-                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-gold)' }}>In-Depth Tour</div>
+                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-gold)' }}>In-Depth Guided Tour</div>
                 <div className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-                  We walk you through every feature in sequence. Click Next to advance through all 9 sections.
+                  Follow a structured demo with real customer, watch, shoe, key, quote, and invoice records.
                 </div>
               </button>
             </div>
@@ -485,14 +789,13 @@ export default function AppShell() {
         </Modal>
       )}
 
-      {/* Self-guided page tutorial popup */}
       {activeTutorial && (
         <Modal title={activeTutorial.title} onClose={dismissTutorial}>
           <div className="space-y-3 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
             <p style={{ color: 'var(--cafe-text)' }}>{activeTutorial.intro}</p>
             <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>This page lets you:</p>
             <ul className="list-disc pl-5 space-y-1">
-              {activeTutorial.features.map(item => (
+              {activeTutorial.features.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
@@ -507,8 +810,55 @@ export default function AppShell() {
         </Modal>
       )}
 
-      {/* In-depth guided tour bar — fixed at bottom */}
-      {tourMode === 'guided' && !showWelcomeModal && (
+      {tourMode === 'guided' && showGuidedModal && currentGuidedStep && (
+        <Modal title={currentGuidedStep.title} onClose={() => setShowGuidedModal(false)}>
+          <div className="space-y-4 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p style={{ color: 'var(--cafe-text)' }}>{currentGuidedStep.intro}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                Try this now
+              </p>
+              <p className="mt-1" style={{ color: 'var(--cafe-text)' }}>{currentGuidedStep.task}</p>
+            </div>
+            <div>
+              <p className="font-semibold mb-2" style={{ color: 'var(--cafe-text)' }}>What to notice</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {currentGuidedStep.highlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowGuidedModal(false)}>
+                I will look around first
+              </Button>
+              {currentGuidedStep.actionPath ? (
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setShowGuidedModal(false)
+                    navigate(currentGuidedStep.actionPath!)
+                  }}
+                >
+                  {currentGuidedStep.actionLabel ?? 'Do it'}
+                </Button>
+              ) : (
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setShowGuidedModal(false)
+                    exitGuidedTour()
+                  }}
+                >
+                  Finish guided tour
+                </Button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {tourMode === 'guided' && !showWelcomeModal && currentGuidedStep && (
         <div
           className="fixed bottom-0 left-0 right-0 z-50"
           style={{
@@ -517,13 +867,12 @@ export default function AppShell() {
             boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
           }}
         >
-          {/* Progress bar */}
           <div className="h-1" style={{ backgroundColor: 'var(--cafe-border)' }}>
             <div
               className="h-1 transition-all duration-300"
               style={{
                 backgroundColor: 'var(--cafe-gold)',
-                width: `${((guidedStep + 1) / GUIDED_TOUR_PATHS.length) * 100}%`,
+                width: `${((guidedStep + 1) / guidedTourSteps.length) * 100}%`,
               }}
             />
           </div>
@@ -532,19 +881,24 @@ export default function AppShell() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--cafe-gold)' }}>
-                    Step {guidedStep + 1} of {GUIDED_TOUR_PATHS.length}
+                    Step {guidedStep + 1} of {guidedTourSteps.length}
                   </span>
                   <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
-                    — {GUIDED_TOUR_LABELS[GUIDED_TOUR_PATHS[guidedStep]]}
+                    - {currentGuidedStep.label}
                   </span>
                 </div>
-                {guidedCurrentTutorial && (
-                  <p className="text-sm line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>
-                    {guidedCurrentTutorial.intro}
-                  </p>
-                )}
+                <p className="text-sm line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {currentGuidedStep.task}
+                </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowGuidedModal(true)}
+                  className="px-3 py-1.5 rounded-lg text-sm"
+                  style={{ color: 'var(--cafe-text-muted)' }}
+                >
+                  Show tip
+                </button>
                 {guidedStep > 0 && (
                   <button
                     onClick={retreatGuidedTour}
@@ -555,7 +909,7 @@ export default function AppShell() {
                       border: '1px solid var(--cafe-border-2)',
                     }}
                   >
-                    ← Back
+                    Back
                   </button>
                 )}
                 <button
@@ -573,7 +927,7 @@ export default function AppShell() {
                     color: 'var(--cafe-espresso-1)',
                   }}
                 >
-                  {guidedIsLast ? '🎉 Finish Tour' : `Next: ${guidedNextLabel} →`}
+                  {guidedIsLast ? 'Finish Tour' : `Next: ${guidedNextLabel} ->`}
                 </button>
               </div>
             </div>
