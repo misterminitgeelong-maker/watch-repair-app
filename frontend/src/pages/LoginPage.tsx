@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
-import { login, multiSiteLogin } from '@/lib/api'
+import { login, multiSiteLogin, seedDemoData } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { enableDemoMode, resetAllPageTutorials } from '@/lib/onboarding'
 
 const ANIM_CSS = `
   @keyframes msSlideUp {
@@ -23,9 +24,9 @@ export default function LoginPage() {
     password: String(import.meta.env.VITE_DEMO_PASSWORD ?? 'Admin'),
   }), [])
 
-  const [slug, setSlug] = useState(demoCreds.slug)
-  const [email, setEmail] = useState(demoCreds.email)
-  const [password, setPassword] = useState(demoCreds.password)
+  const [slug, setSlug] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'single' | 'multi'>('single')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -48,10 +49,32 @@ export default function LoginPage() {
       const { data } = mode === 'multi'
         ? await multiSiteLogin(email, password)
         : await login(slug, email, password)
+      enableDemoMode(false)
       setToken(data.access_token)
       navigate('/dashboard')
     } catch {
       setError(mode === 'multi' ? 'Invalid email or password for multi-site login.' : 'Invalid shop ID, email, or password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDemoLogin() {
+    setError('')
+    setLoading(true)
+    try {
+      const { data } = await login(demoCreds.slug, demoCreds.email, demoCreds.password)
+      enableDemoMode(true)
+      setToken(data.access_token)
+      try {
+        await seedDemoData()
+      } catch {
+        // Non-fatal for login: demo can still proceed even if records already exist.
+      }
+      resetAllPageTutorials()
+      navigate('/dashboard')
+    } catch {
+      setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {
       setLoading(false)
     }
@@ -175,12 +198,8 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setMode('single')
-                  setSlug(demoCreds.slug)
-                  setEmail(demoCreds.email)
-                  setPassword(demoCreds.password)
-                }}
+                disabled={loading}
+                onClick={handleDemoLogin}
                 style={{
                   width: '100%',
                   padding: '0.62rem',
@@ -193,17 +212,39 @@ export default function LoginPage() {
                   fontWeight: 600,
                   letterSpacing: '0.07em',
                   textTransform: 'uppercase',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.75 : 1,
                 }}
               >
-                Use demo account details
+                {loading ? 'Preparing Demo…' : 'Launch Interactive Demo'}
               </button>
 
               {mode === 'single' && (
-                <LoginField label="Shop ID"   value={slug}     onChange={setSlug}     placeholder="myshop"          autoFocus />
+                <LoginField
+                  label="Shop ID"
+                  value={slug}
+                  onChange={setSlug}
+                  placeholder="myshop"
+                  autoComplete="organization"
+                  autoFocus
+                />
               )}
-              <LoginField label="Email"     value={email}    onChange={setEmail}    placeholder="you@example.com"  type="email" />
-              <LoginField label="Password"  value={password} onChange={setPassword} placeholder="••••••••"         type="password" />
+              <LoginField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                placeholder="you@example.com"
+                autoComplete="email"
+                type="email"
+              />
+              <LoginField
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                type="password"
+              />
 
               {error && (
                 <p style={{ fontSize: '0.85rem', color: '#C96A5A', margin: 0 }}>{error}</p>
@@ -254,10 +295,10 @@ export default function LoginPage() {
 
 // ── Styled input used only on the login page ──────────────────────────────────
 function LoginField({
-  label, value, onChange, type = 'text', placeholder = '', autoFocus = false,
+  label, value, onChange, type = 'text', placeholder = '', autoComplete, autoFocus = false,
 }: {
   label: string; value: string; onChange: (v: string) => void
-  type?: string; placeholder?: string; autoFocus?: boolean
+  type?: string; placeholder?: string; autoComplete?: string; autoFocus?: boolean
 }) {
   const [focused, setFocused] = useState(false)
   return (
@@ -277,6 +318,7 @@ function LoginField({
         type={type}
         value={value}
         placeholder={placeholder}
+        autoComplete={autoComplete}
         autoFocus={autoFocus}
         required
         onChange={e => onChange(e.target.value)}

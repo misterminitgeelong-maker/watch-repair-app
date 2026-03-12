@@ -1,3 +1,7 @@
+from datetime import datetime, timedelta, timezone
+from random import randint
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, func, select
 
@@ -10,7 +14,9 @@ from ..models import (
     AuthSessionSiteOption,
     ActiveSiteSwitchRequest,
     ActiveSiteSwitchResponse,
+    AutoKeyJob,
     BootstrapResponse,
+    Customer,
     LoginRequest,
     MultiSiteLoginRequest,
     MultiSiteLoginResponse,
@@ -19,6 +25,8 @@ from ..models import (
     ParentAccountMembership,
     PublicUser,
     RepairJob,
+    Shoe,
+    ShoeRepairJob,
     TenantEventLog,
     TenantSignupRequest,
     TenantPlanUpdateRequest,
@@ -27,6 +35,7 @@ from ..models import (
     TenantBootstrap,
     TokenResponse,
     User,
+    Watch,
 )
 from ..security import create_access_token, hash_password, verify_password
 
@@ -173,6 +182,247 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         active_site_tenant_id=tenant.id,
         available_sites=available_sites,
     )
+
+
+def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) -> dict[str, int]:
+    customer_count = int(
+        session.exec(
+            select(func.count()).select_from(Customer).where(Customer.tenant_id == tenant.id)
+        ).one()
+    )
+
+    created_customers = 0
+    if customer_count < 8:
+        names = [
+            "Olivia Carter",
+            "Ethan Brooks",
+            "Mia Nguyen",
+            "Noah Patel",
+            "Ava Thompson",
+            "Liam O'Connor",
+            "Zoe Campbell",
+            "Lucas Rivera",
+        ]
+        for idx in range(customer_count, 8):
+            name = names[idx % len(names)]
+            customer = Customer(
+                tenant_id=tenant.id,
+                full_name=name,
+                email=f"{name.lower().replace(' ', '.').replace("'", '')}@example.com",
+                phone=f"+61400{idx:04d}",
+                notes="Seeded demo customer",
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(15, 160)),
+            )
+            session.add(customer)
+            created_customers += 1
+
+    session.flush()
+
+    customers = session.exec(
+        select(Customer).where(Customer.tenant_id == tenant.id).order_by(Customer.created_at)
+    ).all()
+
+    watches = session.exec(
+        select(Watch).where(Watch.tenant_id == tenant.id).order_by(Watch.created_at)
+    ).all()
+    created_watches = 0
+    if len(watches) < 8 and customers:
+        watch_specs = [
+            ("Omega", "Seamaster", "automatic"),
+            ("Rolex", "Datejust", "automatic"),
+            ("Seiko", "Prospex", "automatic"),
+            ("Longines", "HydroConquest", "automatic"),
+            ("Tissot", "PRX", "quartz"),
+            ("Hamilton", "Khaki", "automatic"),
+            ("Citizen", "Eco-Drive", "solar"),
+            ("TAG Heuer", "Carrera", "automatic"),
+        ]
+        for idx in range(len(watches), 8):
+            brand, model, movement = watch_specs[idx % len(watch_specs)]
+            customer = customers[idx % len(customers)]
+            watch = Watch(
+                tenant_id=tenant.id,
+                customer_id=customer.id,
+                brand=brand,
+                model=model,
+                movement_type=movement,
+                serial_number=f"DEMO-W-{idx + 1000}",
+                condition_notes="General service requested",
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(10, 140)),
+            )
+            session.add(watch)
+            created_watches += 1
+
+    session.flush()
+
+    watches = session.exec(
+        select(Watch).where(Watch.tenant_id == tenant.id).order_by(Watch.created_at)
+    ).all()
+
+    repair_job_count = int(
+        session.exec(
+            select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant.id)
+        ).one()
+    )
+    created_repair_jobs = 0
+    if repair_job_count < 10 and watches:
+        statuses = [
+            "awaiting_quote",
+            "awaiting_go_ahead",
+            "working_on",
+            "awaiting_parts",
+            "completed",
+            "awaiting_collection",
+        ]
+        priorities = ["low", "normal", "high", "urgent"]
+        for idx in range(repair_job_count, 10):
+            watch = watches[idx % len(watches)]
+            job = RepairJob(
+                tenant_id=tenant.id,
+                watch_id=watch.id,
+                assigned_user_id=actor.id,
+                job_number=f"W-{idx + 1001:04d}",
+                title=f"{watch.brand or 'Watch'} service and regulation",
+                description="Amplitude check, gasket refresh, and pressure test.",
+                priority=priorities[idx % len(priorities)],
+                status=statuses[idx % len(statuses)],
+                salesperson=actor.full_name,
+                deposit_cents=2500 + (idx * 500),
+                pre_quote_cents=9000 + (idx * 1300),
+                cost_cents=3500 + (idx * 600),
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 120)),
+            )
+            session.add(job)
+            created_repair_jobs += 1
+
+    shoes = session.exec(
+        select(Shoe).where(Shoe.tenant_id == tenant.id).order_by(Shoe.created_at)
+    ).all()
+    created_shoes = 0
+    if len(shoes) < 6 and customers:
+        shoe_specs = [
+            ("boots", "RM Williams", "chestnut"),
+            ("sneakers", "Nike", "white"),
+            ("dress", "Loake", "black"),
+            ("heels", "Nine West", "tan"),
+            ("sandals", "Birkenstock", "brown"),
+            ("work", "Blundstone", "black"),
+        ]
+        for idx in range(len(shoes), 6):
+            shoe_type, brand, color = shoe_specs[idx % len(shoe_specs)]
+            customer = customers[idx % len(customers)]
+            shoe = Shoe(
+                tenant_id=tenant.id,
+                customer_id=customer.id,
+                shoe_type=shoe_type,
+                brand=brand,
+                color=color,
+                description_notes="General wear and heel replacement needed",
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(5, 90)),
+            )
+            session.add(shoe)
+            created_shoes += 1
+
+    session.flush()
+
+    shoes = session.exec(
+        select(Shoe).where(Shoe.tenant_id == tenant.id).order_by(Shoe.created_at)
+    ).all()
+
+    shoe_job_count = int(
+        session.exec(
+            select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant.id)
+        ).one()
+    )
+    created_shoe_jobs = 0
+    if shoe_job_count < 6 and shoes:
+        shoe_statuses = ["awaiting_quote", "working_on", "completed", "awaiting_collection"]
+        for idx in range(shoe_job_count, 6):
+            shoe = shoes[idx % len(shoes)]
+            job = ShoeRepairJob(
+                tenant_id=tenant.id,
+                shoe_id=shoe.id,
+                assigned_user_id=actor.id,
+                job_number=f"S-{idx + 1001:04d}",
+                title=f"{shoe.brand or 'Shoe'} restoration",
+                description="Sole edge clean, polish, and heel/sole repair.",
+                priority="normal",
+                status=shoe_statuses[idx % len(shoe_statuses)],
+                salesperson=actor.full_name,
+                deposit_cents=1500 + (idx * 300),
+                cost_cents=1800 + (idx * 250),
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 80)),
+            )
+            session.add(job)
+            created_shoe_jobs += 1
+
+    auto_key_count = int(
+        session.exec(
+            select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant.id)
+        ).one()
+    )
+    created_auto_key_jobs = 0
+    if auto_key_count < 5 and customers:
+        vehicle_specs = [
+            ("Toyota", "Hilux", "TRX-001"),
+            ("Ford", "Ranger", "FRD-202"),
+            ("Mazda", "CX-5", "MZD-303"),
+            ("Hyundai", "i30", "HYU-404"),
+            ("Kia", "Sportage", "KIA-505"),
+        ]
+        programming = ["pending", "in_progress", "programmed"]
+        for idx in range(auto_key_count, 5):
+            make, model, plate = vehicle_specs[idx % len(vehicle_specs)]
+            customer = customers[idx % len(customers)]
+            job = AutoKeyJob(
+                tenant_id=tenant.id,
+                customer_id=customer.id,
+                assigned_user_id=actor.id,
+                job_number=f"K-{idx + 1001:04d}",
+                title=f"{make} {model} key replacement",
+                description="Program spare key and verify immobilizer sync.",
+                vehicle_make=make,
+                vehicle_model=model,
+                vehicle_year=2018 + (idx % 7),
+                registration_plate=plate,
+                key_type="transponder",
+                key_quantity=1 + (idx % 2),
+                programming_status=programming[idx % len(programming)],
+                status="working_on" if idx % 2 else "awaiting_quote",
+                priority="normal",
+                salesperson=actor.full_name,
+                deposit_cents=2000 + (idx * 450),
+                cost_cents=2500 + (idx * 500),
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 70)),
+            )
+            session.add(job)
+            created_auto_key_jobs += 1
+
+    if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs]):
+        session.add(
+            TenantEventLog(
+                tenant_id=tenant.id,
+                actor_user_id=actor.id,
+                actor_email=actor.email,
+                entity_type="tenant",
+                event_type="demo_seeded",
+                event_summary=(
+                    f"Demo data seeded by {actor.email}: "
+                    f"customers={created_customers}, watches={created_watches}, "
+                    f"watch_jobs={created_repair_jobs}, shoe_jobs={created_shoe_jobs}, auto_key_jobs={created_auto_key_jobs}"
+                ),
+            )
+        )
+
+    session.commit()
+
+    return {
+        "customers": created_customers,
+        "watches": created_watches,
+        "repair_jobs": created_repair_jobs,
+        "shoe_jobs": created_shoe_jobs,
+        "auto_key_jobs": created_auto_key_jobs,
+    }
 
 
 @router.post("/signup", response_model=TenantSignupResponse)
@@ -338,6 +588,23 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         active_site_tenant_id=selected.tenant_id,
         available_sites=valid_sites,
     )
+
+
+@router.post("/demo-seed")
+def seed_demo_data(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, auth.tenant_id)
+    user = session.get(User, auth.user_id)
+    if not tenant or not user or user.tenant_id != tenant.id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if settings.app_env.lower() == "production" and tenant.slug != _normalize_slug(settings.startup_seed_tenant_slug):
+        raise HTTPException(status_code=403, detail="Demo seeding is only available for the configured demo tenant")
+
+    created = _seed_demo_data_for_tenant(session, tenant, user)
+    return {"ok": True, "created": created}
 
 
 @router.post("/dev-auto-login", response_model=TokenResponse)

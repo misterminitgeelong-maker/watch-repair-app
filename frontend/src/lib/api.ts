@@ -53,6 +53,8 @@ export interface MultiSiteLoginResponse {
 export const multiSiteLogin = (email: string, password: string) =>
   api.post<MultiSiteLoginResponse>('/auth/multi-site-login', { email, password })
 
+export const seedDemoData = () => api.post<{ ok: boolean; created: Record<string, number> }>('/auth/demo-seed', {})
+
 export type PlanCode = 'shoe' | 'watch' | 'auto_key' | 'enterprise'
 export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site'
 
