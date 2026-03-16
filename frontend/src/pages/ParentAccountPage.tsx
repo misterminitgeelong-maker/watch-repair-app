@@ -13,7 +13,7 @@ export default function ParentAccountPage() {
   const [ownerEmail, setOwnerEmail] = useState('')
   const [newTenantName, setNewTenantName] = useState('')
   const [newTenantSlug, setNewTenantSlug] = useState('')
-  const [newTenantPlanCode, setNewTenantPlanCode] = useState<PlanCode>('enterprise')
+  const [newTenantPlanCode, setNewTenantPlanCode] = useState<PlanCode>('basic_watch')
   const [error, setError] = useState('')
   const [switchingTenantId, setSwitchingTenantId] = useState('')
   const [removingTenantId, setRemovingTenantId] = useState('')
@@ -47,7 +47,7 @@ export default function ParentAccountPage() {
       setError('')
       setNewTenantName('')
       setNewTenantSlug('')
-      setNewTenantPlanCode('enterprise')
+      setNewTenantPlanCode('basic_watch')
       void refreshSession()
       qc.invalidateQueries({ queryKey: ['parent-account-me'] })
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
@@ -132,10 +132,14 @@ export default function ParentAccountPage() {
           <Input label='Site name' value={newTenantName} onChange={e => setNewTenantName(e.target.value)} placeholder='Mainspring North' />
           <Input label='Site slug' value={newTenantSlug} onChange={e => setNewTenantSlug(e.target.value)} placeholder='mainspring-north' />
           <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
-            <option value='enterprise'>Enterprise</option>
-            <option value='watch'>Watch</option>
-            <option value='shoe'>Shoe</option>
-            <option value='auto_key'>Auto Key</option>
+            <option value='basic_watch'>Basic - Watch ($25/mo)</option>
+            <option value='basic_shoe'>Basic - Shoe ($25/mo)</option>
+            <option value='basic_auto_key'>Basic - Auto Key ($25/mo)</option>
+            <option value='basic_watch_shoe'>Basic +1 Tab (Watch + Shoe) ($35/mo)</option>
+            <option value='basic_watch_auto_key'>Basic +1 Tab (Watch + Auto Key) ($35/mo)</option>
+            <option value='basic_shoe_auto_key'>Basic +1 Tab (Shoe + Auto Key) ($35/mo)</option>
+            <option value='basic_all_tabs'>Basic +2 Tabs (All Service Tabs) ($45/mo)</option>
+            <option value='pro'>Pro ($50/mo)</option>
           </Select>
         </div>
         <div className='mt-3 flex justify-end'>

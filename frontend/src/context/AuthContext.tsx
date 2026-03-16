@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
-  const [planCode, setPlanCode] = useState<PlanCode>('enterprise')
+  const [planCode, setPlanCode] = useState<PlanCode>('pro')
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
   const [initializing, setInitializing] = useState(true)
 
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTenantId(null)
       setActiveSiteTenantId(null)
       setAvailableSites([])
-      setPlanCode('enterprise')
+      setPlanCode('pro')
       setEnabledFeatures(defaultFeatures)
       return
     }
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTenantId(null)
         setActiveSiteTenantId(null)
         setAvailableSites([])
-        setPlanCode('enterprise')
+        setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
       }
     }
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setTenantId(null)
             setActiveSiteTenantId(null)
             setAvailableSites([])
-            setPlanCode('enterprise')
+            setPlanCode('pro')
             setEnabledFeatures(defaultFeatures)
           }
         } finally {
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTenantId(null)
           setActiveSiteTenantId(null)
           setAvailableSites([])
-          setPlanCode('enterprise')
+          setPlanCode('pro')
           setEnabledFeatures(defaultFeatures)
         }
       } finally {
@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTenantId(null)
     setActiveSiteTenantId(null)
     setAvailableSites([])
-    setPlanCode('enterprise')
+    setPlanCode('pro')
     setEnabledFeatures(defaultFeatures)
   }
 

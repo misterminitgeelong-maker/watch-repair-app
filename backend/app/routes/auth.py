@@ -7,7 +7,14 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..database import get_session
-from ..dependencies import AuthContext, PLAN_FEATURES, get_auth_context, require_owner
+from ..dependencies import (
+    AuthContext,
+    PLAN_FEATURES,
+    VALID_PLAN_CODES,
+    get_auth_context,
+    normalize_plan_code,
+    require_owner,
+)
 from ..limiter import limiter
 from ..models import (
     AuthSessionResponse,
@@ -41,9 +48,6 @@ from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
-VALID_PLAN_CODES = {"shoe", "watch", "auto_key", "enterprise"}
-
-
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
 
@@ -54,8 +58,8 @@ def _normalize_slug(value: str) -> str:
 
 def _normalize_plan_code(value: str | None) -> str:
     if value is None:
-        return "enterprise"
-    plan_code = value.strip().lower()
+        return "pro"
+    plan_code = normalize_plan_code(value, default_if_empty="")
     if plan_code not in VALID_PLAN_CODES:
         raise HTTPException(status_code=400, detail=f"Unsupported plan code '{value}'")
     return plan_code
@@ -161,7 +165,7 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
 
 def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -> AuthSessionResponse:
     normalized_plan = _normalize_plan_code(tenant.plan_code)
-    enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["enterprise"]))
+    enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["pro"]))
     available_sites = _build_available_sites_for_email(session, user.email)
     if not available_sites:
         available_sites = [

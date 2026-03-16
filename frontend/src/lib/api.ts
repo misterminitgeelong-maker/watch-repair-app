@@ -55,7 +55,15 @@ export const multiSiteLogin = (email: string, password: string) =>
 
 export const seedDemoData = () => api.post<{ ok: boolean; created: Record<string, number> }>('/auth/demo-seed', {})
 
-export type PlanCode = 'shoe' | 'watch' | 'auto_key' | 'enterprise'
+export type PlanCode =
+  | 'basic_watch'
+  | 'basic_shoe'
+  | 'basic_auto_key'
+  | 'basic_watch_shoe'
+  | 'basic_watch_auto_key'
+  | 'basic_shoe_auto_key'
+  | 'basic_all_tabs'
+  | 'pro'
 export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site'
 
 export interface SiteOption {
@@ -476,6 +484,8 @@ export const getBillingLimits = () => api.get<BillingLimitsResponse>('/billing/l
 export const getBillingPortalUrl = () => api.get<{ url: string }>('/billing/portal-url')
 export const createBillingCheckout = (price_id: string) =>
   api.post<{ checkout_url: string }>('/billing/checkout', { price_id })
+export const createBillingCheckoutForPlan = (plan_code: PlanCode) =>
+  api.post<{ checkout_url: string }>('/billing/checkout/plan', { plan_code })
 
 export const createUser = (data: {
   email: string

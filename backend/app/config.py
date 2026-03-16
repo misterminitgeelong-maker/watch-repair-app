@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
+    stripe_price_basic_base: str = ""
+    stripe_price_basic_addon_tab: str = ""
+    stripe_price_pro: str = ""
+    # Legacy one-price-per-plan IDs (kept for backward compatibility)
     stripe_price_watch: str = ""
     stripe_price_shoe: str = ""
     stripe_price_auto_key: str = ""

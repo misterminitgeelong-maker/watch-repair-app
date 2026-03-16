@@ -9,9 +9,10 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..database import get_session
-from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, require_owner
+from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
 from ..models import (
     AutoKeyJob,
+    BillingCheckoutPlanRequest,
     BillingCheckoutRequest,
     BillingLimitsResponse,
     BillingPlanLimits,
@@ -44,14 +45,67 @@ def _get_stripe():
 def _plan_code_from_price_id(price_id: str) -> Optional[str]:
     price_map: dict[str, str] = {}
     if settings.stripe_price_watch:
-        price_map[settings.stripe_price_watch] = "watch"
+        price_map[settings.stripe_price_watch] = "basic_watch"
     if settings.stripe_price_shoe:
-        price_map[settings.stripe_price_shoe] = "shoe"
+        price_map[settings.stripe_price_shoe] = "basic_shoe"
     if settings.stripe_price_auto_key:
-        price_map[settings.stripe_price_auto_key] = "auto_key"
+        price_map[settings.stripe_price_auto_key] = "basic_auto_key"
     if settings.stripe_price_enterprise:
-        price_map[settings.stripe_price_enterprise] = "enterprise"
+        price_map[settings.stripe_price_enterprise] = "pro"
+    if settings.stripe_price_pro:
+        price_map[settings.stripe_price_pro] = "pro"
     return price_map.get(price_id)
+
+
+def _tabs_count_for_plan(plan_code: str) -> int:
+    mapping = {
+        "basic_watch": 1,
+        "basic_shoe": 1,
+        "basic_auto_key": 1,
+        "basic_watch_shoe": 2,
+        "basic_watch_auto_key": 2,
+        "basic_shoe_auto_key": 2,
+        "basic_all_tabs": 3,
+    }
+    return mapping.get(plan_code, 0)
+
+
+def _line_items_for_plan(plan_code: str) -> list[dict[str, int | str]]:
+    if plan_code == "pro":
+        pro_price = settings.stripe_price_pro or settings.stripe_price_enterprise
+        if not pro_price:
+            raise HTTPException(status_code=503, detail="Stripe Pro price is not configured")
+        return [{"price": pro_price, "quantity": 1}]
+
+    tabs_count = _tabs_count_for_plan(plan_code)
+    if tabs_count <= 0:
+        raise HTTPException(status_code=400, detail=f"Unsupported plan code '{plan_code}'")
+
+    if not settings.stripe_price_basic_base:
+        raise HTTPException(status_code=503, detail="Stripe Basic base price is not configured")
+
+    items: list[dict[str, int | str]] = [{"price": settings.stripe_price_basic_base, "quantity": 1}]
+    addon_count = max(0, tabs_count - 1)
+    if addon_count > 0:
+        if not settings.stripe_price_basic_addon_tab:
+            raise HTTPException(status_code=503, detail="Stripe Basic add-on tab price is not configured")
+        items.append({"price": settings.stripe_price_basic_addon_tab, "quantity": addon_count})
+
+    return items
+
+
+def _extract_plan_code_from_subscription(obj: dict) -> Optional[str]:
+    metadata_plan = obj.get("metadata", {}).get("target_plan_code")
+    if metadata_plan:
+        return normalize_plan_code(metadata_plan, default_if_empty="") or None
+
+    items = obj.get("items", {}).get("data", [])
+    for item in items:
+        price_id = item.get("price", {}).get("id", "")
+        plan_code = _plan_code_from_price_id(price_id)
+        if plan_code:
+            return plan_code
+    return None
 
 
 # ── Limits (no Stripe required) ───────────────────────────────────────────────
@@ -62,7 +116,7 @@ def get_billing_limits(
     session: Session = Depends(get_session),
 ):
     plan_code = auth.plan_code
-    limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS["enterprise"])
+    limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS["pro"])
 
     user_count = int(
         session.exec(
@@ -150,7 +204,57 @@ def create_checkout_session(
         success_url=f"{return_url}?billing=success",
         cancel_url=f"{return_url}?billing=cancelled",
         subscription_data={
-            "metadata": {"tenant_id": str(tenant.id), "tenant_slug": tenant.slug}
+            "metadata": {
+                "tenant_id": str(tenant.id),
+                "tenant_slug": tenant.slug,
+                "target_plan_code": plan_code,
+            }
+        },
+    )
+    return {"checkout_url": checkout_session.url}
+
+
+@router.post("/checkout/plan")
+def create_checkout_session_for_plan(
+    payload: BillingCheckoutPlanRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    stripe = _get_stripe()
+    plan_code = normalize_plan_code(payload.plan_code, default_if_empty="")
+    if not plan_code:
+        raise HTTPException(status_code=400, detail="Invalid plan code")
+
+    tenant = session.get(Tenant, auth.tenant_id)
+    user = session.get(User, auth.user_id)
+    if not tenant or not user:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if not tenant.stripe_customer_id:
+        customer = stripe.Customer.create(
+            email=user.email,
+            name=tenant.name,
+            metadata={"tenant_id": str(tenant.id), "tenant_slug": tenant.slug},
+        )
+        tenant.stripe_customer_id = customer.id
+        session.add(tenant)
+        session.commit()
+        session.refresh(tenant)
+
+    line_items = _line_items_for_plan(plan_code)
+    return_url = f"{settings.public_base_url}/accounts"
+    checkout_session = stripe.checkout.Session.create(
+        customer=tenant.stripe_customer_id,
+        mode="subscription",
+        line_items=line_items,
+        success_url=f"{return_url}?billing=success",
+        cancel_url=f"{return_url}?billing=cancelled",
+        subscription_data={
+            "metadata": {
+                "tenant_id": str(tenant.id),
+                "tenant_slug": tenant.slug,
+                "target_plan_code": plan_code,
+            }
         },
     )
     return {"checkout_url": checkout_session.url}
@@ -213,24 +317,21 @@ async def stripe_webhook(
                 return {"status": "ignored"}
             tenant = session.get(Tenant, tenant_id)
             if tenant:
-                items = obj.get("items", {}).get("data", [])
-                if items:
-                    price_id = items[0].get("price", {}).get("id", "")
-                    plan_code = _plan_code_from_price_id(price_id)
-                    if plan_code:
-                        old_plan = tenant.plan_code
-                        tenant.plan_code = plan_code
-                        if plan_code != old_plan:
-                            session.add(
-                                TenantEventLog(
-                                    tenant_id=tenant.id,
-                                    entity_type="tenant",
-                                    event_type="plan_changed",
-                                    event_summary=(
-                                        f"Plan changed from '{old_plan}' to '{plan_code}' via Stripe"
-                                    ),
-                                )
+                plan_code = _extract_plan_code_from_subscription(obj)
+                if plan_code:
+                    old_plan = tenant.plan_code
+                    tenant.plan_code = plan_code
+                    if plan_code != old_plan:
+                        session.add(
+                            TenantEventLog(
+                                tenant_id=tenant.id,
+                                entity_type="tenant",
+                                event_type="plan_changed",
+                                event_summary=(
+                                    f"Plan changed from '{old_plan}' to '{plan_code}' via Stripe"
+                                ),
                             )
+                        )
                 tenant.stripe_subscription_id = obj.get("id")
                 tenant.stripe_customer_id = obj.get("customer")
                 session.add(tenant)

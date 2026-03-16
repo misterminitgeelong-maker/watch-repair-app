@@ -22,7 +22,20 @@ JobStatus = Literal[
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
 QuoteItemType = Literal["labor", "part", "fee"]
-PlanCode = Literal["shoe", "watch", "auto_key", "enterprise"]
+PlanCode = Literal[
+    "watch",
+    "shoe",
+    "auto_key",
+    "enterprise",
+    "basic_watch",
+    "basic_shoe",
+    "basic_auto_key",
+    "basic_watch_shoe",
+    "basic_watch_auto_key",
+    "basic_shoe_auto_key",
+    "basic_all_tabs",
+    "pro",
+]
 
 
 class Tenant(SQLModel, table=True):
@@ -30,7 +43,7 @@ class Tenant(SQLModel, table=True):
     name: str
     slug: str = Field(index=True, unique=True)
     plan_tier: str = "starter"
-    plan_code: str = "enterprise"
+    plan_code: str = "pro"
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -414,6 +427,10 @@ class BillingLimitsResponse(SQLModel):
 
 class BillingCheckoutRequest(SQLModel):
     price_id: str
+
+
+class BillingCheckoutPlanRequest(SQLModel):
+    plan_code: PlanCode
 
 
 class ParentAccountLinkTenantRequest(SQLModel):

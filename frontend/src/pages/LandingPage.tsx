@@ -256,6 +256,65 @@ function WorkflowSteps() {
   )
 }
 
+function PricingSection() {
+  const plans = [
+    {
+      title: 'Basic',
+      price: '$25/mo',
+      note: 'Includes one service tab + reports',
+      bullets: [
+        'Choose one tab: Watch Repairs, Shoe Repairs, or Auto Key',
+        'Add each extra service tab for $10/month',
+        'Customers and invoicing included',
+      ],
+    },
+    {
+      title: 'Pro',
+      price: '$50/mo',
+      note: 'Full app access',
+      bullets: [
+        'All service tabs unlocked',
+        'Reports, customer accounts, and multi-site features',
+        'Best for growing workshops and teams',
+      ],
+    },
+  ]
+
+  return (
+    <section id="pricing" className="lp-reveal lp-reveal-delay-2 mt-16 sm:mt-20">
+      <div className="text-center">
+        <h2 className="text-3xl" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          Clear pricing with no surprises
+        </h2>
+        <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--cafe-text-mid)' }}>
+          Start with Basic at $25/month, add service tabs at $10/month each, or move to Pro at $50/month for full access.
+        </p>
+      </div>
+
+      <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {plans.map((plan) => (
+          <article
+            key={plan.title}
+            className="lp-card rounded-3xl p-6"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', boxShadow: '0 2px 8px rgba(90,55,16,0.05)' }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#8D6420' }}>{plan.title}</p>
+            <p className="mt-2 text-3xl" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>{plan.price}</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>{plan.note}</p>
+            <ul className="mt-4 space-y-2">
+              {plan.bullets.map((bullet) => (
+                <li key={bullet} className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                  • {bullet}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function FinalCTA() {
   return (
     <section className="lp-reveal lp-reveal-delay-3 mt-16 sm:mt-20 mb-12">
@@ -331,6 +390,7 @@ export default function LandingPage() {
             <img src="/mainspring-logo.png" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <a href="#pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Pricing</a>
             <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
             <Link to="/login?demo=1" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}>
               Demo login
@@ -344,6 +404,7 @@ export default function LandingPage() {
         <HeroSection />
         <ValueProps />
         <WorkflowSteps />
+        <PricingSection />
         <FinalCTA />
       </div>
     </div>

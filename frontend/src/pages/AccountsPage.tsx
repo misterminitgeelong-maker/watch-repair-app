@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
-import { createUser, getBillingLimits, getBillingPortalUrl, listUsers, type PlanCode, type TenantUser, updateTenantPlan, updateUser } from '@/lib/api'
+import {
+  createBillingCheckoutForPlan,
+  createUser,
+  getBillingLimits,
+  getBillingPortalUrl,
+  listUsers,
+  type PlanCode,
+  type TenantUser,
+  updateTenantPlan,
+  updateUser,
+} from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
@@ -10,11 +20,71 @@ type UserRole = 'owner' | 'manager' | 'tech' | 'intake'
 
 const ROLE_OPTIONS: UserRole[] = ['owner', 'manager', 'tech', 'intake']
 
-const PLAN_BUNDLES = [
-  { code: 'shoe' as PlanCode, name: 'Shoe', modules: ['Shoe repairs', 'Customers', 'Invoices'] },
-  { code: 'watch' as PlanCode, name: 'Watch', modules: ['Watch repairs', 'Customers', 'Invoices'] },
-  { code: 'auto_key' as PlanCode, name: 'Auto Key', modules: ['Auto key jobs', 'Customers', 'Invoices'] },
-  { code: 'enterprise' as PlanCode, name: 'Enterprise', modules: ['Watch repairs', 'Shoe repairs', 'Auto key jobs', 'Reports', 'Multi-site'] },
+type PlanBundle = {
+  code: PlanCode
+  name: string
+  monthlyLabel: string
+  modules: string[]
+  summary: string
+}
+
+const PLAN_BUNDLES: PlanBundle[] = [
+  {
+    code: 'basic_watch',
+    name: 'Basic - Watch',
+    monthlyLabel: '$25/mo',
+    modules: ['Watch repairs', 'Reports', 'Customers', 'Invoices'],
+    summary: '1 service tab included',
+  },
+  {
+    code: 'basic_shoe',
+    name: 'Basic - Shoe',
+    monthlyLabel: '$25/mo',
+    modules: ['Shoe repairs', 'Reports', 'Customers', 'Invoices'],
+    summary: '1 service tab included',
+  },
+  {
+    code: 'basic_auto_key',
+    name: 'Basic - Auto Key',
+    monthlyLabel: '$25/mo',
+    modules: ['Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    summary: '1 service tab included',
+  },
+  {
+    code: 'basic_watch_shoe',
+    name: 'Basic +1 Tab (Watch + Shoe)',
+    monthlyLabel: '$35/mo',
+    modules: ['Watch repairs', 'Shoe repairs', 'Reports', 'Customers', 'Invoices'],
+    summary: '2 service tabs',
+  },
+  {
+    code: 'basic_watch_auto_key',
+    name: 'Basic +1 Tab (Watch + Auto Key)',
+    monthlyLabel: '$35/mo',
+    modules: ['Watch repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    summary: '2 service tabs',
+  },
+  {
+    code: 'basic_shoe_auto_key',
+    name: 'Basic +1 Tab (Shoe + Auto Key)',
+    monthlyLabel: '$35/mo',
+    modules: ['Shoe repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    summary: '2 service tabs',
+  },
+  {
+    code: 'basic_all_tabs',
+    name: 'Basic +2 Tabs (All Service Tabs)',
+    monthlyLabel: '$45/mo',
+    modules: ['Watch repairs', 'Shoe repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    summary: '3 service tabs',
+  },
+  {
+    code: 'pro',
+    name: 'Pro',
+    monthlyLabel: '$50/mo',
+    modules: ['All service tabs', 'Reports', 'Customer accounts', 'Multi-site', 'Priority access'],
+    summary: 'Full app access',
+  },
 ]
 
 function AddUserModal({ onClose }: { onClose: () => void }) {
@@ -104,6 +174,11 @@ export default function AccountsPage() {
     queryFn: () => listUsers().then((r) => r.data),
   })
 
+  const { data: billing } = useQuery({
+    queryKey: ['billing-limits'],
+    queryFn: () => getBillingLimits().then(r => r.data),
+  })
+
   const mut = useMutation({
     mutationFn: ({ userId, payload }: { userId: string; payload: { role?: UserRole; is_active?: boolean } }) =>
       updateUser(userId, payload),
@@ -135,6 +210,21 @@ export default function AccountsPage() {
     },
   })
 
+  const stripePlanCheckoutMut = useMutation({
+    mutationFn: (nextPlan: PlanCode) => createBillingCheckoutForPlan(nextPlan),
+    onSuccess: ({ data }) => {
+      setError('')
+      window.open(data.checkout_url, '_blank', 'noopener')
+    },
+    onError: (err: unknown) => {
+      const msg =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(msg || 'Could not open Stripe checkout. Confirm Stripe price IDs are configured.')
+    },
+  })
+
   const filtered = (users ?? []).filter((u) =>
     [u.full_name, u.email, u.role].join(' ').toLowerCase().includes(search.toLowerCase())
   )
@@ -160,6 +250,8 @@ export default function AccountsPage() {
     mut.mutate({ userId: u.id, payload })
   }
 
+  const stripeConfigured = Boolean(billing?.stripe_configured)
+
   return (
     <div>
       <PageHeader title="Team Accounts" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Account</Button>} />
@@ -167,36 +259,50 @@ export default function AccountsPage() {
 
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-          Plan bundles
+          Pricing and plan access
         </p>
         <div className="mt-3 rounded-xl border p-3 sm:flex sm:items-center sm:justify-between sm:gap-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)' }}>
           <div>
             <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
-              Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode}
+              Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode} ({PLAN_BUNDLES.find(p => p.code === planCode)?.monthlyLabel ?? 'Custom'})
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-              Change this to switch enabled modules for your tenant.
+              Basic starts at $25/month with one service tab and reports. Each extra service tab adds $10/month. Pro is $50/month for full access.
             </p>
           </div>
           <div className="mt-3 flex gap-2 sm:mt-0 sm:w-[360px]">
             <Select
               value={selectedPlanCode}
               onChange={e => setSelectedPlanCode(e.target.value as PlanCode)}
-              disabled={!canManagePlan || planMut.isPending}
+              disabled={!canManagePlan || planMut.isPending || stripePlanCheckoutMut.isPending}
               className="flex-1"
             >
               {PLAN_BUNDLES.map(bundle => (
                 <option key={bundle.code} value={bundle.code}>{bundle.name}</option>
               ))}
             </Select>
-            <Button
-              onClick={() => planMut.mutate(selectedPlanCode)}
-              disabled={!canManagePlan || selectedPlanCode === planCode || planMut.isPending}
-            >
-              {planMut.isPending ? 'Saving…' : 'Save Plan'}
-            </Button>
+            {stripeConfigured ? (
+              <Button
+                onClick={() => stripePlanCheckoutMut.mutate(selectedPlanCode)}
+                disabled={!canManagePlan || selectedPlanCode === planCode || stripePlanCheckoutMut.isPending}
+              >
+                {stripePlanCheckoutMut.isPending ? 'Opening…' : 'Checkout'}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => planMut.mutate(selectedPlanCode)}
+                disabled={!canManagePlan || selectedPlanCode === planCode || planMut.isPending}
+              >
+                {planMut.isPending ? 'Saving…' : 'Save Plan'}
+              </Button>
+            )}
           </div>
         </div>
+        {stripeConfigured && (
+          <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+            Stripe is active. Use Checkout to subscribe or change plan; access updates after Stripe confirms payment.
+          </p>
+        )}
         {!canManagePlan && (
           <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
             Only owner accounts can change plans.
@@ -210,7 +316,9 @@ export default function AccountsPage() {
               style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
             >
               <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{bundle.name}</p>
-              <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.modules.join(' · ')}</p>
+              <p className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--cafe-text-mid)' }}>{bundle.monthlyLabel}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.summary}</p>
+              <p className="mt-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.modules.join(' · ')}</p>
             </div>
           ))}
         </div>

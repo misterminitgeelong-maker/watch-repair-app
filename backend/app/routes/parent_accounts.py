@@ -4,7 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..dependencies import get_auth_context, require_feature, require_owner, AuthContext
+from ..dependencies import (
+    AuthContext,
+    VALID_PLAN_CODES,
+    get_auth_context,
+    normalize_plan_code,
+    require_feature,
+    require_owner,
+)
 from ..models import (
     ParentAccount,
     ParentAccountCreateTenantRequest,
@@ -72,9 +79,9 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
 
 def _normalize_plan_code(value: str | None) -> str:
     if value is None:
-        return "enterprise"
-    normalized = value.strip().lower()
-    if normalized not in {"shoe", "watch", "auto_key", "enterprise"}:
+        return "pro"
+    normalized = normalize_plan_code(value, default_if_empty="")
+    if normalized not in VALID_PLAN_CODES:
         raise HTTPException(status_code=400, detail=f"Unsupported plan code '{value}'")
     return normalized
 

@@ -94,10 +94,14 @@ type RecentItem = {
 }
 
 function formatPlanName(planCode: string) {
-  if (planCode === 'auto_key') return 'Auto Key'
-  if (planCode === 'enterprise') return 'Enterprise'
-  if (planCode === 'watch') return 'Watch'
-  if (planCode === 'shoe') return 'Shoe'
+  if (planCode === 'pro') return 'Pro'
+  if (planCode === 'basic_watch') return 'Basic - Watch'
+  if (planCode === 'basic_shoe') return 'Basic - Shoe'
+  if (planCode === 'basic_auto_key') return 'Basic - Auto Key'
+  if (planCode === 'basic_watch_shoe') return 'Basic +1 Tab (Watch + Shoe)'
+  if (planCode === 'basic_watch_auto_key') return 'Basic +1 Tab (Watch + Auto Key)'
+  if (planCode === 'basic_shoe_auto_key') return 'Basic +1 Tab (Shoe + Auto Key)'
+  if (planCode === 'basic_all_tabs') return 'Basic +2 Tabs (All Service Tabs)'
   return planCode
 }
 
