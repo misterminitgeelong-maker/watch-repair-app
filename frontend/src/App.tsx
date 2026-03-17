@@ -30,6 +30,9 @@ import AutoKeyJobsPage from '@/pages/AutoKeyJobsPage'
 import AutoKeyJobDetailPage from '@/pages/AutoKeyJobDetailPage'
 import CustomerAccountsPage from '@/pages/CustomerAccountsPage'
 import ParentAccountPage from '@/pages/ParentAccountPage'
+import StocktakesPage from '@/pages/StocktakesPage'
+import StocktakeWorkspacePage from '@/pages/StocktakeWorkspacePage'
+import StocktakeSummaryPage from '@/pages/StocktakeSummaryPage'
 import type { FeatureKey } from '@/lib/api'
 
 const qc = new QueryClient({
@@ -69,6 +72,9 @@ export default function App() {
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="stocktakes" element={<StocktakesPage />} />
+              <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
+              <Route path="stocktakes/:id/summary" element={<StocktakeSummaryPage />} />
               <Route path="database" element={<DatabasePage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route path="auto-key" element={<FeatureGate feature="auto_key"><AutoKeyJobsPage /></FeatureGate>} />

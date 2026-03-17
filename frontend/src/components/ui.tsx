@@ -1,3 +1,5 @@
+import React from 'react'
+
 import { cn, STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
 
 export function Badge({ status }: { status: string }) {
@@ -9,11 +11,12 @@ export function Badge({ status }: { status: string }) {
   )
 }
 
-export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Card({ className, children, style, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
+      {...props}
       className={cn('rounded-2xl border shadow-sm', className)}
-      style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}
+      style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', ...style }}
     >
       {children}
     </div>
@@ -82,32 +85,35 @@ export function Button({
   )
 }
 
-export function Input({ label, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {label && (
-        <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-          {label}
-        </label>
-      )}
-      <input
-        {...props}
-        className={cn(
-          'h-11 rounded-lg border px-3 text-base outline-none transition focus:ring-2 sm:text-sm',
-          props.className
+export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }>(
+  function Input({ label, error, ...props }, ref) {
+    return (
+      <div className="flex flex-col gap-1">
+        {label && (
+          <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+            {label}
+          </label>
         )}
-        style={{
-          backgroundColor: 'var(--cafe-surface)',
-          borderColor: error ? '#C96A5A' : 'var(--cafe-border-2)',
-          color: 'var(--cafe-text)',
-          // @ts-ignore
-          '--tw-ring-color': 'var(--cafe-gold)',
-        }}
-      />
-      {error && <p className="text-xs" style={{ color: '#C96A5A' }}>{error}</p>}
-    </div>
-  )
-}
+        <input
+          ref={ref}
+          {...props}
+          className={cn(
+            'h-11 rounded-lg border px-3 text-base outline-none transition focus:ring-2 sm:text-sm',
+            props.className
+          )}
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            borderColor: error ? '#C96A5A' : 'var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+            // @ts-ignore
+            '--tw-ring-color': 'var(--cafe-gold)',
+          }}
+        />
+        {error && <p className="text-xs" style={{ color: '#C96A5A' }}>{error}</p>}
+      </div>
+    )
+  }
+)
 
 export function Select({ label, error, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string; error?: string }) {
   return (

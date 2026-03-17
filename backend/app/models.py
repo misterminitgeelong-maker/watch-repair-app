@@ -1222,3 +1222,195 @@ class CustomerAccountInvoiceRead(SQLModel):
     currency: str
     created_at: datetime
     lines: list[CustomerAccountStatementLine] = []
+
+
+# ── Stocktake ────────────────────────────────────────────────────────────────
+
+StocktakeStatus = Literal["draft", "in_progress", "completed", "approved"]
+
+
+class StockItem(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    item_code: str = Field(index=True)
+    group_code: str = Field(default="", index=True)
+    group_name: Optional[str] = None
+    item_description: Optional[str] = None
+    description2: Optional[str] = None
+    description3: Optional[str] = None
+    full_description: Optional[str] = None
+    unit_description: Optional[str] = None
+    pack_description: Optional[str] = None
+    pack_qty: float = 0
+    cost_price_cents: int = 0
+    retail_price_cents: int = 0
+    system_stock_qty: float = 0
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StocktakeSession(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    name: str
+    status: str = Field(default="draft", index=True)
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    completed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    group_code_filter: Optional[str] = None
+    group_name_filter: Optional[str] = None
+    search_filter: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+
+
+class StocktakeLine(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    stocktake_session_id: UUID = Field(index=True, foreign_key="stocktakesession.id")
+    stock_item_id: UUID = Field(index=True, foreign_key="stockitem.id")
+    expected_qty: float = 0
+    counted_qty: Optional[float] = None
+    variance_qty: Optional[float] = None
+    variance_value_cents: Optional[int] = None
+    counted_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    counted_at: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockAdjustment(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    stock_item_id: UUID = Field(index=True, foreign_key="stockitem.id")
+    stocktake_session_id: UUID = Field(index=True, foreign_key="stocktakesession.id")
+    old_qty: float = 0
+    new_qty: float = 0
+    variance_qty: float = 0
+    variance_value_cents: int = 0
+    reason: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockItemRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    item_code: str
+    group_code: str
+    group_name: Optional[str] = None
+    item_description: Optional[str] = None
+    description2: Optional[str] = None
+    description3: Optional[str] = None
+    full_description: Optional[str] = None
+    unit_description: Optional[str] = None
+    pack_description: Optional[str] = None
+    pack_qty: float
+    cost_price_cents: int
+    retail_price_cents: int
+    system_stock_qty: float
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class StockImportSummaryResponse(SQLModel):
+    imported: int
+    created: int
+    updated: int
+    sources: dict[str, int] = Field(default_factory=dict)
+    sheet_names: list[str] = Field(default_factory=list)
+
+
+class StocktakeSessionCreate(SQLModel):
+    name: str
+    group_code: Optional[str] = None
+    group_name: Optional[str] = None
+    search: Optional[str] = None
+    hide_zero_stock: bool = False
+    notes: Optional[str] = None
+
+
+class StocktakeLineInput(SQLModel):
+    stock_item_id: UUID
+    counted_qty: float
+    notes: Optional[str] = None
+    allow_negative: bool = False
+
+
+class StocktakeLineBulkUpsertRequest(SQLModel):
+    lines: list[StocktakeLineInput]
+
+
+class StocktakeLineUpdate(SQLModel):
+    counted_qty: Optional[float] = None
+    notes: Optional[str] = None
+    allow_negative: bool = False
+
+
+class StocktakeLineRead(SQLModel):
+    id: UUID
+    stocktake_session_id: UUID
+    stock_item_id: UUID
+    expected_qty: float
+    counted_qty: Optional[float] = None
+    variance_qty: Optional[float] = None
+    variance_value_cents: Optional[int] = None
+    counted_by_user_id: Optional[UUID] = None
+    counted_at: Optional[datetime] = None
+    notes: Optional[str] = None
+    item_code: str
+    group_code: str
+    group_name: Optional[str] = None
+    item_description: Optional[str] = None
+    full_description: Optional[str] = None
+    system_stock_qty: float
+    cost_price_cents: int
+    retail_price_cents: int
+
+
+class StocktakeProgressRead(SQLModel):
+    counted_items: int = 0
+    total_items: int = 0
+
+
+class StocktakeSessionRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    name: str
+    status: StocktakeStatus
+    created_by_user_id: Optional[UUID] = None
+    completed_by_user_id: Optional[UUID] = None
+    group_code_filter: Optional[str] = None
+    group_name_filter: Optional[str] = None
+    search_filter: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    progress: StocktakeProgressRead = Field(default_factory=StocktakeProgressRead)
+
+
+class StocktakeSessionDetailRead(StocktakeSessionRead):
+    lines: list[StocktakeLineRead] = Field(default_factory=list)
+
+
+class StocktakeGroupSummaryRead(SQLModel):
+    group_code: str
+    group_name: Optional[str] = None
+    item_count: int = 0
+    counted_count: int = 0
+    variance_count: int = 0
+    total_variance_qty: float = 0
+    total_variance_value_cents: int = 0
+
+
+class StocktakeReportRead(SQLModel):
+    session: StocktakeSessionRead
+    matched_item_count: int = 0
+    missing_item_count: int = 0
+    over_count_item_count: int = 0
+    total_variance_qty: float = 0
+    total_variance_value_cents: int = 0
+    groups: list[StocktakeGroupSummaryRead] = Field(default_factory=list)
+

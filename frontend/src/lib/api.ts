@@ -320,6 +320,146 @@ export interface PublicShoeJobStatus {
 export const getPublicShoeJobStatus = (token: string) =>
   axios.get<PublicShoeJobStatus>(`/v1/public/shoe-jobs/${token}`)
 
+// ── Stocktake ────────────────────────────────────────────────────────────────
+export interface StockItem {
+  id: string
+  tenant_id: string
+  item_code: string
+  group_code: string
+  group_name?: string
+  item_description?: string
+  description2?: string
+  description3?: string
+  full_description?: string
+  unit_description?: string
+  pack_description?: string
+  pack_qty: number
+  cost_price_cents: number
+  retail_price_cents: number
+  system_stock_qty: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface StockImportSummaryResponse {
+  imported: number
+  created: number
+  updated: number
+  sources: Record<string, number>
+  sheet_names: string[]
+}
+
+export interface StocktakeProgress {
+  counted_items: number
+  total_items: number
+}
+
+export type StocktakeStatus = 'draft' | 'in_progress' | 'completed' | 'approved'
+
+export interface StocktakeSession {
+  id: string
+  tenant_id: string
+  name: string
+  status: StocktakeStatus
+  created_by_user_id?: string
+  completed_by_user_id?: string
+  group_code_filter?: string
+  group_name_filter?: string
+  search_filter?: string
+  notes?: string
+  created_at: string
+  completed_at?: string
+  progress: StocktakeProgress
+}
+
+export interface StocktakeLine {
+  id: string
+  stocktake_session_id: string
+  stock_item_id: string
+  expected_qty: number
+  counted_qty?: number | null
+  variance_qty?: number | null
+  variance_value_cents?: number | null
+  counted_by_user_id?: string
+  counted_at?: string
+  notes?: string
+  item_code: string
+  group_code: string
+  group_name?: string
+  item_description?: string
+  full_description?: string
+  system_stock_qty: number
+  cost_price_cents: number
+  retail_price_cents: number
+}
+
+export interface StocktakeSessionDetail extends StocktakeSession {
+  lines: StocktakeLine[]
+}
+
+export interface StocktakeGroupSummary {
+  group_code: string
+  group_name?: string
+  item_count: number
+  counted_count: number
+  variance_count: number
+  total_variance_qty: number
+  total_variance_value_cents: number
+}
+
+export interface StocktakeReport {
+  session: StocktakeSession
+  matched_item_count: number
+  missing_item_count: number
+  over_count_item_count: number
+  total_variance_qty: number
+  total_variance_value_cents: number
+  groups: StocktakeGroupSummary[]
+}
+
+export const importStockFile = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post<StockImportSummaryResponse>('/stock/import', formData)
+}
+
+export const listStockItems = (params?: { search?: string; group_code?: string; group_name?: string; hide_zero_stock?: boolean }) =>
+  api.get<StockItem[]>('/stock/items', { params })
+
+export const getStockItem = (id: string) => api.get<StockItem>(`/stock/items/${id}`)
+
+export const createStocktake = (payload: {
+  name: string
+  group_code?: string
+  group_name?: string
+  search?: string
+  hide_zero_stock?: boolean
+  notes?: string
+}) => api.post<StocktakeSession>('/stocktakes', payload)
+
+export const listStocktakes = (status?: StocktakeStatus) =>
+  api.get<StocktakeSession[]>('/stocktakes', { params: status ? { status } : undefined })
+
+export const getStocktake = (id: string, params?: {
+  search?: string
+  group_code?: string
+  group_name?: string
+  hide_zero_stock?: boolean
+  hide_counted?: boolean
+}) => api.get<StocktakeSessionDetail>(`/stocktakes/${id}`, { params })
+
+export const saveStocktakeLines = (id: string, lines: Array<{ stock_item_id: string; counted_qty: number; notes?: string; allow_negative?: boolean }>) =>
+  api.post<StocktakeLine[]>(`/stocktakes/${id}/lines`, { lines })
+
+export const updateStocktakeLine = (id: string, lineId: string, payload: { counted_qty?: number; notes?: string; allow_negative?: boolean }) =>
+  api.patch<StocktakeLine>(`/stocktakes/${id}/lines/${lineId}`, payload)
+
+export const completeStocktake = (id: string) => api.post<StocktakeReport>(`/stocktakes/${id}/complete`)
+export const getStocktakeReport = (id: string) => api.get<StocktakeReport>(`/stocktakes/${id}/report`)
+export const exportStocktake = (id: string, format: 'csv' | 'xlsx') =>
+  api.get<Blob>(`/stocktakes/${id}/export`, { params: { format }, responseType: 'blob' })
+
 export const getPublicShoeJobQrUrl = (token: string) =>
   `/v1/public/shoe-jobs/${token}/qr`
 

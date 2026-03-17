@@ -14,13 +14,14 @@ create_db_and_tables()
 client = TestClient(app)
 
 
-def _bootstrap_and_login(tenant_slug: str, email: str, password: str) -> str:
+def _bootstrap_and_login(tenant_slug: str, email: str, password: str, plan_code: str = "enterprise") -> str:
     bootstrap_payload = {
         "tenant_name": f"Tenant {tenant_slug}",
         "tenant_slug": tenant_slug,
         "owner_email": email,
         "owner_full_name": "Owner",
         "owner_password": password,
+        "plan_code": plan_code,
     }
     bootstrap_res = client.post("/v1/auth/bootstrap", json=bootstrap_payload)
     assert bootstrap_res.status_code == 200

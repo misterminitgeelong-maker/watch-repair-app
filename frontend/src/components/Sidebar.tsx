@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2 } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2, ClipboardList } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
@@ -14,6 +14,7 @@ const nav = [
   { to: '/parent-account', label: 'Parent Account', icon: Building2, feature: 'multi_site' as FeatureKey },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/stocktakes', label: 'Stocktake', icon: ClipboardList },
   { to: '/database', label: 'Database', icon: Database },
   { to: '/accounts', label: 'Accounts', icon: UserCog },
 ]
