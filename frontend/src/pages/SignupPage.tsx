@@ -83,8 +83,6 @@ export default function SignupPage() {
     })
   }
 
-  if (token) return <Navigate to="/dashboard" replace />
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
