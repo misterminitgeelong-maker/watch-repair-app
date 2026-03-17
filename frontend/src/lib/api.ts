@@ -124,6 +124,7 @@ export const signup = (data: {
   email: string
   full_name: string
   password: string
+  plan_code?: PlanCode
 }) => api.post<SignupResponse>('/auth/signup', data)
 
 export const bootstrap = (data: { tenant_name: string; tenant_slug: string; owner_email: string; owner_password: string; owner_full_name?: string }) =>

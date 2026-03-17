@@ -56,10 +56,8 @@ def _normalize_slug(value: str) -> str:
     return value.strip().lower()
 
 
-def _normalize_plan_code(value: str | None) -> str:
-    if value is None:
-        return "pro"
-    plan_code = normalize_plan_code(value, default_if_empty="")
+def _normalize_plan_code(value: str | None, default_if_empty: str = "pro") -> str:
+    plan_code = normalize_plan_code(value, default_if_empty=default_if_empty)
     if plan_code not in VALID_PLAN_CODES:
         raise HTTPException(status_code=400, detail=f"Unsupported plan code '{value}'")
     return plan_code
@@ -451,7 +449,7 @@ def signup(payload: TenantSignupRequest, session: Session = Depends(get_session)
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
 
-    plan_code = _normalize_plan_code(payload.plan_code)
+    plan_code = _normalize_plan_code(payload.plan_code, default_if_empty="basic_watch")
 
     tenant = Tenant(name=tenant_name, slug=tenant_slug, plan_code=plan_code)
     session.add(tenant)
@@ -495,7 +493,7 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_se
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
 
-    plan_code = _normalize_plan_code(payload.plan_code)
+    plan_code = _normalize_plan_code(payload.plan_code, default_if_empty="basic_watch")
 
     tenant = Tenant(name=payload.tenant_name.strip(), slug=tenant_slug, plan_code=plan_code)
     session.add(tenant)

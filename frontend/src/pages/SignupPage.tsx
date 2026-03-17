@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { WatchIcon } from 'lucide-react'
+import { Check, WatchIcon } from 'lucide-react'
 import { signup } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Input } from '@/components/ui'
+
+const PLAN_OPTIONS = [
+  { id: 'basic_watch', name: 'Basic - Watch Repairs', price: 'A$25/month', description: 'Watch repairs, customers, invoicing' },
+  { id: 'basic_shoe', name: 'Basic - Shoe Repairs', price: 'A$25/month', description: 'Shoe repairs, customers, invoicing' },
+  { id: 'basic_auto_key', name: 'Basic - Auto Key', price: 'A$25/month', description: 'Auto key jobs, customers, invoicing' },
+  { id: 'pro', name: 'Pro - Full Access', price: 'A$50/month', description: 'All tabs + multi-site + full features' },
+] as const
 
 export default function SignupPage() {
   const navigate = useNavigate()
@@ -14,6 +21,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [selectedPlan, setSelectedPlan] = useState<(typeof PLAN_OPTIONS)[number]['id']>('basic_watch')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -42,6 +50,7 @@ export default function SignupPage() {
         full_name: fullName,
         email,
         password,
+        plan_code: selectedPlan,
       })
       setToken(data.access_token)
       navigate('/dashboard')
@@ -125,6 +134,38 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+
+            <div className="pt-2">
+              <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                Choose your plan
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {PLAN_OPTIONS.map((plan) => {
+                  const active = selectedPlan === plan.id
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(plan.id)}
+                      className="rounded-xl p-3 text-left"
+                      style={{
+                        border: active ? '2px solid #B0812A' : '1px solid var(--cafe-border)',
+                        backgroundColor: active ? '#F6EFE3' : 'var(--cafe-surface)',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{plan.name}</p>
+                          <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{plan.description}</p>
+                          <p className="mt-2 text-xs font-semibold" style={{ color: '#8D6420' }}>{plan.price}</p>
+                        </div>
+                        {active ? <Check size={16} style={{ color: '#8D6420' }} /> : null}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
 

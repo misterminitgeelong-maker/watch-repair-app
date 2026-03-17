@@ -260,7 +260,7 @@ function PricingSection() {
   const plans = [
     {
       title: 'Basic',
-      price: '$25/mo',
+      price: 'A$25/mo',
       note: 'Includes one service tab + reports',
       bullets: [
         'Choose one tab: Watch Repairs, Shoe Repairs, or Auto Key',
@@ -270,7 +270,7 @@ function PricingSection() {
     },
     {
       title: 'Pro',
-      price: '$50/mo',
+      price: 'A$50/mo',
       note: 'Full app access',
       bullets: [
         'All service tabs unlocked',
@@ -287,7 +287,7 @@ function PricingSection() {
           Clear pricing with no surprises
         </h2>
         <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--cafe-text-mid)' }}>
-          Start with Basic at $25/month, add service tabs at $10/month each, or move to Pro at $50/month for full access.
+          Start with Basic at A$25/month, add service tabs at A$10/month each, or move to Pro at A$50/month for full access.
         </p>
       </div>
 
@@ -310,6 +310,16 @@ function PricingSection() {
             </ul>
           </article>
         ))}
+      </div>
+
+      <div className="mt-6 rounded-3xl p-5" style={{ backgroundColor: '#FBF8F3', border: '1px solid #E7DDD0' }}>
+        <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>Full monthly breakdown (AUD)</p>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2" style={{ color: 'var(--cafe-text-mid)' }}>
+          <p>Basic 1 tab: A$25/month</p>
+          <p>Basic 2 tabs: A$35/month</p>
+          <p>Basic 3 tabs: A$45/month</p>
+          <p>Pro all features: A$50/month</p>
+        </div>
       </div>
     </section>
   )
