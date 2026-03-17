@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Check, WatchIcon } from 'lucide-react'
-import { seedDemoData, signup } from '@/lib/api'
+import { signup, createBillingCheckoutForPlan } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Input } from '@/components/ui'
-import { enableDemoMode, resetAllPageTutorials, resetDemoTour, setDemoTourMode } from '@/lib/onboarding'
 
 type PlanId =
   | 'basic_watch'
@@ -60,7 +59,6 @@ function recommendPlan(uses: UseCaseId[]): PlanId {
 }
 
 export default function SignupPage() {
-  const navigate = useNavigate()
   const { token, login: setToken } = useAuth()
 
   const [tenantName, setTenantName] = useState('')
@@ -72,8 +70,7 @@ export default function SignupPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('basic_watch')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [awaitingDemoChoice, setAwaitingDemoChoice] = useState(false)
-  const [finishingSetup, setFinishingSetup] = useState(false)
+  const [redirectingToPayment, setRedirectingToPayment] = useState(false)
 
   const recommendedPlan = useMemo(() => recommendPlan(selectedUses), [selectedUses])
 
@@ -84,31 +81,7 @@ export default function SignupPage() {
     })
   }
 
-  async function handleDemoChoice(wantsDemo: boolean) {
-    setError('')
-    setFinishingSetup(true)
-    try {
-      if (wantsDemo) {
-        enableDemoMode(true)
-        setDemoTourMode('guided')
-        try {
-          await seedDemoData()
-        } catch {
-          // If demo data already exists, continue normally.
-        }
-        resetDemoTour()
-        resetAllPageTutorials()
-      } else {
-        enableDemoMode(false)
-        setDemoTourMode(null)
-      }
-      navigate('/dashboard')
-    } finally {
-      setFinishingSetup(false)
-    }
-  }
-
-  if (token && !awaitingDemoChoice) return <Navigate to="/dashboard" replace />
+  if (token) return <Navigate to="/dashboard" replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -136,7 +109,11 @@ export default function SignupPage() {
         plan_code: selectedPlan,
       })
       setToken(data.access_token)
-      setAwaitingDemoChoice(true)
+      
+      // Redirect to Stripe checkout
+      setRedirectingToPayment(true)
+      const checkoutData = await createBillingCheckoutForPlan(selectedPlan)
+      window.location.href = checkoutData.data.checkout_url
     } catch (err: unknown) {
       const apiMessage =
         typeof err === 'object' &&
@@ -146,6 +123,7 @@ export default function SignupPage() {
           ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
           : undefined
       setError(typeof apiMessage === 'string' ? apiMessage : 'Could not create account. Please try again.')
+      setRedirectingToPayment(false)
     } finally {
       setLoading(false)
     }
@@ -154,7 +132,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
       <div className="w-full max-w-3xl">
-        {awaitingDemoChoice ? (
+        {redirectingToPayment ? (
           <div
             className="rounded-2xl shadow-sm p-8 space-y-5"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
@@ -163,31 +141,11 @@ export default function SignupPage() {
               className="text-2xl font-semibold text-center"
               style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
             >
-              Account created. Run the interactive demo?
+              Redirecting to payment…
             </h1>
             <p className="text-sm text-center" style={{ color: 'var(--cafe-text-mid)' }}>
-              Yes will preload sample jobs and guide you through the workflow. No will keep demo mode disabled.
+              Setting up your plan with Stripe. This window will redirect automatically.
             </p>
-            {error && <p className="text-sm text-center" style={{ color: '#C96A5A' }}>{error}</p>}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Button
-                type="button"
-                className="w-full justify-center py-2.5"
-                disabled={finishingSetup}
-                onClick={() => handleDemoChoice(true)}
-              >
-                {finishingSetup ? 'Preparing demo…' : 'Yes, start demo'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full justify-center py-2.5"
-                disabled={finishingSetup}
-                onClick={() => handleDemoChoice(false)}
-              >
-                Continue without demo
-              </Button>
-            </div>
           </div>
         ) : (
           <>
@@ -327,8 +285,8 @@ export default function SignupPage() {
 
                 {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
 
-                <Button type="submit" className="w-full justify-center py-2.5" disabled={loading}>
-                  {loading ? 'Creating account…' : 'Create account'}
+                <Button type="submit" className="w-full justify-center py-2.5" disabled={loading || redirectingToPayment}>
+                  {redirectingToPayment ? 'Setting up payment…' : loading ? 'Creating account…' : 'Create account & continue to payment'}
                 </Button>
               </form>
 
