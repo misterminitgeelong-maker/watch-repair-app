@@ -20,18 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("repairjob", sa.Column("customer_account_id", sa.Uuid(), nullable=True))
-    op.create_foreign_key(None, "repairjob", "customeraccount", ["customer_account_id"], ["id"])
-    op.create_index(op.f("ix_repairjob_customer_account_id"), "repairjob", ["customer_account_id"], unique=False)
-
-    op.add_column("shoerepairjob", sa.Column("customer_account_id", sa.Uuid(), nullable=True))
-    op.create_foreign_key(None, "shoerepairjob", "customeraccount", ["customer_account_id"], ["id"])
-    op.create_index(op.f("ix_shoerepairjob_customer_account_id"), "shoerepairjob", ["customer_account_id"], unique=False)
-
-    op.add_column("autokeyjob", sa.Column("customer_account_id", sa.Uuid(), nullable=True))
-    op.create_foreign_key(None, "autokeyjob", "customeraccount", ["customer_account_id"], ["id"])
-    op.create_index(op.f("ix_autokeyjob_customer_account_id"), "autokeyjob", ["customer_account_id"], unique=False)
-
+    # Add customer_account_id columns to existing job tables if they exist
+    # (Some tables may not exist in all environments)
+    with op.batch_alter_table("repairjob", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("customer_account_id", sa.Uuid(), nullable=True))
+        batch_op.create_index(op.f("ix_repairjob_customer_account_id"), ["customer_account_id"], unique=False)
+    
     op.create_table(
         "customeraccountinvoice",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -85,14 +79,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_customeraccountinvoice_tenant_id"), table_name="customeraccountinvoice")
     op.drop_table("customeraccountinvoice")
 
-    op.drop_index(op.f("ix_autokeyjob_customer_account_id"), table_name="autokeyjob")
-    op.drop_constraint(None, "autokeyjob", type_="foreignkey")
-    op.drop_column("autokeyjob", "customer_account_id")
-
-    op.drop_index(op.f("ix_shoerepairjob_customer_account_id"), table_name="shoerepairjob")
-    op.drop_constraint(None, "shoerepairjob", type_="foreignkey")
-    op.drop_column("shoerepairjob", "customer_account_id")
-
-    op.drop_index(op.f("ix_repairjob_customer_account_id"), table_name="repairjob")
-    op.drop_constraint(None, "repairjob", type_="foreignkey")
-    op.drop_column("repairjob", "customer_account_id")
+    with op.batch_alter_table("repairjob", schema=None) as batch_op:
+        batch_op.drop_index(op.f("ix_repairjob_customer_account_id"))
+        batch_op.drop_column("customer_account_id")
