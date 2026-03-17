@@ -611,29 +611,6 @@ export default function ShoeJobDetailPage() {
               </div>
             )}
           </Card>
-                <p className="text-sm italic" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>No photos yet — tap to take one</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-4">
-                {photos.map(photo => (
-                  <a
-                    key={photo.id}
-                    href={getAttachmentDownloadUrl(photo.storage_key)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-lg overflow-hidden"
-                    style={{ border: '1px solid var(--cafe-border)', aspectRatio: '1' }}
-                  >
-                    <img
-                      src={getAttachmentDownloadUrl(photo.storage_key)}
-                      alt={photo.file_name ?? 'photo'}
-                      className="w-full h-full object-cover"
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
-          </Card>
 
           {/* ── Services ──────────────────────────────────────────── */}
           {job.items.length > 0 && (
