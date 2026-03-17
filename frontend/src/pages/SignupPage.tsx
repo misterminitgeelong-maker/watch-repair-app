@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { Check, WatchIcon } from 'lucide-react'
-import { signup, createBillingCheckoutForPlan } from '@/lib/api'
+import { signup } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Input } from '@/components/ui'
 
@@ -108,12 +108,9 @@ export default function SignupPage() {
         password,
         plan_code: selectedPlan,
       })
-      setToken(data.access_token)
-      
-      // Redirect to Stripe checkout
       setRedirectingToPayment(true)
-      const checkoutData = await createBillingCheckoutForPlan(selectedPlan)
-      window.location.href = checkoutData.data.checkout_url
+      setToken(data.access_token)
+      window.location.assign(`/signup/checkout?plan=${encodeURIComponent(selectedPlan)}`)
     } catch (err: unknown) {
       const apiMessage =
         typeof err === 'object' &&

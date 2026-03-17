@@ -16,6 +16,7 @@ import DatabasePage from '@/pages/DatabasePage'
 import ReportsPage from '@/pages/ReportsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
+import SignupCheckoutPage from '@/pages/SignupCheckoutPage'
 import StatusPage from '@/pages/StatusPage'
 import ShoeStatusPage from '@/pages/ShoeStatusPage'
 import LandingPage from '@/pages/LandingPage'
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/signup/checkout" element={<SignupCheckoutPage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
               <Route path="dashboard" element={<DashboardPage />} />
