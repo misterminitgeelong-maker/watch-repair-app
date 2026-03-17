@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { FileSpreadsheet, PlayCircle, RefreshCw, Search, Upload } from 'lucide-react'
+import { FileSpreadsheet, PlayCircle, RefreshCw, Search, Trash2, Upload } from 'lucide-react'
 import {
   createStocktake,
+  deleteStocktake,
   getApiErrorMessage,
   importStockFile,
   listStockItems,
@@ -74,6 +75,15 @@ export default function StocktakesPage() {
       qc.invalidateQueries({ queryKey: ['stocktakes'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to create stocktake.')),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteStocktake(id),
+    onSuccess: () => {
+      setError('')
+      qc.invalidateQueries({ queryKey: ['stocktakes'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to delete stocktake.')),
   })
 
   if (isLoading) return <Spinner />
@@ -236,6 +246,17 @@ export default function StocktakesPage() {
                   <Link to={`/stocktakes/${session.id}/summary`}>
                     <Button>Summary</Button>
                   </Link>
+                  <Button
+                    variant="danger"
+                    disabled={deleteMut.isPending}
+                    onClick={() => {
+                      const confirmed = window.confirm(`Delete stocktake \"${session.name}\"? This cannot be undone.`)
+                      if (!confirmed) return
+                      deleteMut.mutate(session.id)
+                    }}
+                  >
+                    <Trash2 size={15} /> Delete
+                  </Button>
                 </div>
               </div>
             ))}

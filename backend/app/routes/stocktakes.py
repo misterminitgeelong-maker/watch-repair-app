@@ -7,7 +7,7 @@ import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
-from sqlmodel import Session, func, select
+from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
@@ -479,6 +479,24 @@ def list_stocktake_sessions(
         query = query.where(StocktakeSession.status == status)
     sessions = session_db.exec(query.order_by(StocktakeSession.created_at.desc())).all()
     return [_serialize_stocktake_session(session_db, stocktake_session) for stocktake_session in sessions]
+
+
+@router.delete("/stocktakes/{stocktake_session_id}", status_code=204)
+def delete_stocktake_session(
+    stocktake_session_id: UUID,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session_db: Session = Depends(get_session),
+):
+    stocktake_session = _get_session_or_404(session_db, auth, stocktake_session_id)
+
+    session_db.exec(
+        delete(StockAdjustment).where(StockAdjustment.stocktake_session_id == stocktake_session_id)
+    )
+    session_db.exec(
+        delete(StocktakeLine).where(StocktakeLine.stocktake_session_id == stocktake_session_id)
+    )
+    session_db.delete(stocktake_session)
+    session_db.commit()
 
 
 @router.get("/stocktakes/{stocktake_session_id}", response_model=StocktakeSessionDetailRead)

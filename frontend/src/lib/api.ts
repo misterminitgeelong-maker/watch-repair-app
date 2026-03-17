@@ -441,6 +441,8 @@ export const createStocktake = (payload: {
 export const listStocktakes = (status?: StocktakeStatus) =>
   api.get<StocktakeSession[]>('/stocktakes', { params: status ? { status } : undefined })
 
+export const deleteStocktake = (id: string) => api.delete(`/stocktakes/${id}`)
+
 export const getStocktake = (id: string, params?: {
   search?: string
   group_code?: string

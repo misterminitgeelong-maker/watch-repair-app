@@ -182,3 +182,48 @@ def test_stocktake_workflow_filters_counts_completion_and_export():
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert export_xlsx_res.content[:2] == b"PK"
+
+
+def test_stocktake_can_be_deleted_with_lines_and_adjustments():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"stocktake-delete-{suffix}",
+        email=f"owner-{suffix}@stocktake-delete.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    import_res = _import_stock(headers)
+    assert import_res.status_code == 200
+
+    create_res = client.post(
+        "/v1/stocktakes",
+        headers=headers,
+        json={"name": "Delete me", "group_code": "DA"},
+    )
+    assert create_res.status_code == 201
+    session_id = create_res.json()["id"]
+
+    detail_res = client.get(f"/v1/stocktakes/{session_id}", headers=headers)
+    assert detail_res.status_code == 200
+    line = detail_res.json()["lines"][0]
+
+    save_res = client.post(
+        f"/v1/stocktakes/{session_id}/lines",
+        headers=headers,
+        json={"lines": [{"stock_item_id": line["stock_item_id"], "counted_qty": 9}]},
+    )
+    assert save_res.status_code == 200
+
+    complete_res = client.post(f"/v1/stocktakes/{session_id}/complete", headers=headers)
+    assert complete_res.status_code == 200
+
+    delete_res = client.delete(f"/v1/stocktakes/{session_id}", headers=headers)
+    assert delete_res.status_code == 204
+
+    get_deleted_res = client.get(f"/v1/stocktakes/{session_id}", headers=headers)
+    assert get_deleted_res.status_code == 404
+
+    list_res = client.get("/v1/stocktakes", headers=headers)
+    assert list_res.status_code == 200
+    assert all(item["id"] != session_id for item in list_res.json())

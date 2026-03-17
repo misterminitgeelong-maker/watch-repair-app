@@ -26,18 +26,21 @@ export default function StocktakeWorkspacePage() {
   const [search, setSearch] = useState('')
   const [groupCode, setGroupCode] = useState('')
   const [hideZeroStock, setHideZeroStock] = useState(false)
-  const [hideCounted, setHideCounted] = useState(false)
+  const [hideCounted, setHideCounted] = useState(true)
+  const [countQueueMode, setCountQueueMode] = useState(true)
   const [draftEntries, setDraftEntries] = useState<Record<string, DraftEntry>>({})
   const [saveStatus, setSaveStatus] = useState('')
   const rowInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
+  const effectiveHideCounted = hideCounted || countQueueMode
+
   const { data: stocktake, isLoading } = useQuery({
-    queryKey: ['stocktake', id, search, groupCode, hideZeroStock, hideCounted],
+    queryKey: ['stocktake', id, search, groupCode, hideZeroStock, effectiveHideCounted],
     queryFn: () => getStocktake(id!, {
       search: search.trim() || undefined,
       group_code: groupCode || undefined,
       hide_zero_stock: hideZeroStock,
-      hide_counted: hideCounted,
+      hide_counted: effectiveHideCounted,
     }).then(r => r.data),
     enabled: !!id,
   })
@@ -84,12 +87,14 @@ export default function StocktakeWorkspacePage() {
 
   const progress = stocktake?.progress ?? { counted_items: 0, total_items: 0 }
 
-  const visibleLines = useMemo(() => stocktake?.lines ?? [], [stocktake])
-
   function lineCountedValue(line: StocktakeLine) {
     const pending = draftEntries[line.stock_item_id]
     if (pending) return pending.counted_qty
     return line.counted_qty == null ? '' : String(line.counted_qty)
+  }
+
+  function isLineCounted(line: StocktakeLine) {
+    return lineCountedValue(line).trim() !== ''
   }
 
   function lineVariance(line: StocktakeLine) {
@@ -100,20 +105,58 @@ export default function StocktakeWorkspacePage() {
     return counted - line.expected_qty
   }
 
+  const visibleLines = useMemo(() => {
+    const lines = [...(stocktake?.lines ?? [])]
+    if (!countQueueMode) return lines
+    return lines.sort((left, right) => {
+      const leftCounted = isLineCounted(left)
+      const rightCounted = isLineCounted(right)
+      if (leftCounted !== rightCounted) return leftCounted ? 1 : -1
+      return left.item_code.localeCompare(right.item_code)
+    })
+  }, [countQueueMode, draftEntries, stocktake])
+
+  const remainingLines = useMemo(
+    () => visibleLines.filter(line => !isLineCounted(line)),
+    [visibleLines, draftEntries]
+  )
+
+  const varianceLines = useMemo(
+    () => visibleLines.filter(line => {
+      const variance = lineVariance(line)
+      return variance != null && variance !== 0
+    }),
+    [visibleLines, draftEntries]
+  )
+
   function focusNext(currentIndex: number) {
-    const nextLine = visibleLines[currentIndex + 1]
+    const remainingAfterCurrent = visibleLines.slice(currentIndex + 1).find(line => !isLineCounted(line))
+    const nextLine = remainingAfterCurrent ?? visibleLines[currentIndex + 1] ?? remainingLines[0]
     if (!nextLine) return
-    rowInputRefs.current[nextLine.id]?.focus()
-    rowInputRefs.current[nextLine.id]?.select()
+    window.requestAnimationFrame(() => {
+      rowInputRefs.current[nextLine.id]?.focus()
+      rowInputRefs.current[nextLine.id]?.select()
+    })
   }
 
-  function focusBarcodeMatch() {
+  function focusSearchMatch() {
     const token = search.trim().toLowerCase()
     if (!token) return
-    const match = visibleLines.find(line => line.item_code.toLowerCase() === token)
+    const exactCodeMatch = visibleLines.find(line => line.item_code.toLowerCase() === token)
+    const match = exactCodeMatch ?? visibleLines.find(line => {
+      const haystack = `${line.item_code} ${line.full_description ?? ''} ${line.item_description ?? ''}`.toLowerCase()
+      return haystack.includes(token)
+    })
     if (!match) return
     rowInputRefs.current[match.id]?.focus()
     rowInputRefs.current[match.id]?.select()
+  }
+
+  function focusNextRemaining() {
+    const nextLine = remainingLines[0] ?? visibleLines[0]
+    if (!nextLine) return
+    rowInputRefs.current[nextLine.id]?.focus()
+    rowInputRefs.current[nextLine.id]?.select()
   }
 
   if (isLoading) return <Spinner />
@@ -147,36 +190,63 @@ export default function StocktakeWorkspacePage() {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <Card className="p-4 xl:col-span-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-            <div className="xl:col-span-2">
-              <Input
-                label="Search or scan"
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    focusBarcodeMatch()
-                  }
-                }}
-                placeholder="Barcode, item code, or description"
-              />
-            </div>
-            <Select label="Group" value={groupCode} onChange={event => setGroupCode(event.target.value)}>
+        <div className="sticky top-0 z-30 bg-[var(--cafe-surface)] p-3 rounded-2xl shadow-sm xl:col-span-3 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
+            <Select
+              label="Group"
+              value={groupCode}
+              onChange={event => setGroupCode(event.target.value)}
+              style={{ minWidth: 120, maxWidth: 220 }}
+            >
               <option value="">All groups</option>
               {Array.from(new Set((stocktake.lines ?? []).map(line => line.group_code).filter(Boolean))).sort().map(code => (
                 <option key={code} value={code}>{code} / {stocktake.lines.find(line => line.group_code === code)?.group_name ?? code}</option>
               ))}
             </Select>
-            <label className="flex items-center gap-2 text-sm mt-6" style={{ color: 'var(--cafe-text-mid)' }}>
+            <Button variant="ghost" onClick={() => setGroupCode('')} disabled={!groupCode}>
+              All groups
+            </Button>
+            <Input
+              label="Search item"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  focusSearchMatch()
+                }
+              }}
+              placeholder="Item code or description"
+              style={{ minWidth: 120, maxWidth: 220 }}
+            />
+            <Button variant="ghost" onClick={() => setSearch('')} disabled={!search.trim()}>
+              Clear search
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center mt-2">
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
               <input type="checkbox" checked={hideZeroStock} onChange={event => setHideZeroStock(event.target.checked)} /> Hide zero-stock
             </label>
-            <label className="flex items-center gap-2 text-sm mt-6" style={{ color: 'var(--cafe-text-mid)' }}>
-              <input type="checkbox" checked={hideCounted} onChange={event => setHideCounted(event.target.checked)} /> Hide counted
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+              <input
+                type="checkbox"
+                checked={countQueueMode}
+                onChange={event => setCountQueueMode(event.target.checked)}
+              /> Count queue mode
             </label>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+              <input
+                type="checkbox"
+                checked={hideCounted}
+                disabled={countQueueMode}
+                onChange={event => setHideCounted(event.target.checked)}
+              /> Hide counted {countQueueMode ? '(on automatically in queue mode)' : ''}
+            </label>
+            <Button variant="secondary" onClick={focusNextRemaining} disabled={visibleLines.length === 0}>
+              Jump to next needing count
+            </Button>
           </div>
-        </Card>
+        </div>
 
         <Card className="p-4">
           <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>Progress</div>
@@ -192,8 +262,13 @@ export default function StocktakeWorkspacePage() {
               }}
             />
           </div>
-          <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-            <ScanLine size={15} /> Enter accepts scanner input and jumps to the matched item when the item code is exact.
+          <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            <div className="flex items-center gap-2">
+              <ScanLine size={15} /> Queue mode keeps the list focused on items still needing a count.
+            </div>
+            <div>{remainingLines.length} remaining to count</div>
+            <div>{varianceLines.length} counted lines currently showing a variance</div>
+            <div>Enter saves and jumps forward. Shift+Enter keeps focus on the same line.</div>
           </div>
         </Card>
       </div>
@@ -201,7 +276,7 @@ export default function StocktakeWorkspacePage() {
       {visibleLines.length === 0 ? (
         <EmptyState message="No lines match the current filters." />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {visibleLines.map((line, index) => {
             const currentValue = lineCountedValue(line)
             const variance = lineVariance(line)
@@ -209,13 +284,13 @@ export default function StocktakeWorkspacePage() {
             return (
               <Card
                 key={line.id}
-                className="p-4"
+                className="p-2 sm:p-3 md:p-4"
                 style={{ borderColor: tone.border, backgroundColor: tone.background }}
               >
-                <div className="grid grid-cols-1 lg:grid-cols-[1.4fr,0.7fr,0.7fr,0.9fr] gap-3 items-center">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 items-center">
+                  <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.item_code}</span>
+                      <span className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.item_code}</span>
                       <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#F5EDE0', color: 'var(--cafe-text-mid)' }}>
                         {line.group_code}{line.group_name ? ` / ${line.group_name}` : ''}
                       </span>
@@ -224,12 +299,12 @@ export default function StocktakeWorkspacePage() {
                     <div className="mt-1 text-sm" style={{ color: 'var(--cafe-text)' }}>{line.full_description || line.item_description || 'No description'}</div>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1">
                     <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>System qty</div>
-                    <div className="mt-1 text-lg font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.expected_qty}</div>
+                    <div className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.expected_qty}</div>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1">
                     <Input
                       label="Counted qty"
                       type="number"
@@ -252,15 +327,17 @@ export default function StocktakeWorkspacePage() {
                       onKeyDown={event => {
                         if (event.key === 'Enter') {
                           event.preventDefault()
+                          if (event.shiftKey) return
                           focusNext(index)
                         }
                       }}
+                      style={{ fontSize: '1.25rem', height: '3.2rem', padding: '0.5rem 1rem' }}
                     />
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1">
                     <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>Variance</div>
-                    <div className="mt-1 text-lg font-semibold" style={{ color: tone.text }}>
+                    <div className="mt-1 text-xl font-semibold" style={{ color: tone.text }}>
                       {variance == null ? 'Pending' : `${variance > 0 ? '+' : ''}${variance}`}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
