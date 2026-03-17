@@ -74,6 +74,8 @@ export default function SignupPage() {
 
   const recommendedPlan = useMemo(() => recommendPlan(selectedUses), [selectedUses])
 
+  if (token && !redirectingToPayment) return <Navigate to="/dashboard" replace />
+
   function toggleUseCase(id: UseCaseId) {
     setSelectedUses((prev) => {
       if (prev.includes(id)) return prev.filter((item) => item !== id)
