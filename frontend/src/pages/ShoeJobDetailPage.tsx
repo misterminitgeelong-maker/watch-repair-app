@@ -598,6 +598,19 @@ export default function ShoeJobDetailPage() {
                 onClick={() => cameraInputRef.current?.click()}
               >
                 <Camera size={28} style={{ opacity: 0.3 }} />
+                <p className="text-xs mt-2">No photos yet. Tap to add intake or gallery photos.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-5">
+                {photos.map(photo => (
+                  <a key={photo.id} href={getAttachmentDownloadUrl(photo.storage_key)} target="_blank" rel="noopener noreferrer" className="group">
+                    <img src={getAttachmentDownloadUrl(photo.storage_key)} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
+                    <p className="text-[10px] text-center mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{photo.label || 'Photo'}</p>
+                  </a>
+                ))}
+              </div>
+            )}
+          </Card>
                 <p className="text-sm italic" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>No photos yet — tap to take one</p>
               </div>
             ) : (

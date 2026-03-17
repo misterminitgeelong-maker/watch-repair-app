@@ -351,6 +351,18 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
               />
             </div>
           ))}
+
+          {/* Photo upload widget */}
+          <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+              Intake Photos (optional)
+            </p>
+            <input type="file" accept="image/*" multiple className="block" style={{ marginBottom: 8 }} />
+            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              You can upload photos of shoes at intake. Photos will be attached to the job after creation.
+            </p>
+          </div>
+
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(1)} className="flex-1">Back</Button>
             <Button onClick={() => setStep(3)} className="flex-1">Continue</Button>
@@ -381,6 +393,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 selected={shoe.services}
                 onChange={services => updateShoe(idx, { services })}
                 contextLabel={buildShoeContextLabel(shoe, idx)}
+                shoeType={shoe.shoe_type}
               />
             </div>
           ))}

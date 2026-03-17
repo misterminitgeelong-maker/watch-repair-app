@@ -39,14 +39,28 @@ export function buildShoeRepairJobItemsPayload(selected: SelectedShoeService[]):
   }))
 }
 
+// Mapping shoe types to relevant group IDs
+const SHOE_TYPE_GROUPS: Record<string, string[]> = {
+  'Boots': ['full_soles', 'miscellaneous_repairs', 'additional_repairs', 'shoe_revival'],
+  'Dress shoes': ['heels', 'half_soles', 'full_soles', 'scratch_repair_and_polish', 'shoe_revival'],
+  'Sneakers': ['half_soles', 'full_soles', 'miscellaneous_repairs', 'shoe_revival'],
+  'Sandals / Thongs': ['miscellaneous_repairs', 'additional_repairs', 'shoe_revival'],
+  'Heels / Stilettos': ['heels', 'half_soles', 'scratch_repair_and_polish', 'shoe_revival'],
+  'Work boots': ['full_soles', 'miscellaneous_repairs', 'additional_repairs', 'shoe_revival'],
+  'Birkenstocks': ['full_soles', 'miscellaneous_repairs', 'shoe_revival'],
+  'Other': ['heels', 'half_soles', 'full_soles', 'miscellaneous_repairs', 'additional_repairs', 'shoe_revival', 'scratch_repair_and_polish'],
+}
+
 export default function ShoeServicePicker({
   selected,
   onChange,
   contextLabel,
+  shoeType,
 }: {
   selected: SelectedShoeService[]
   onChange: (items: SelectedShoeService[]) => void
   contextLabel?: string
+  shoeType?: string
 }) {
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -62,6 +76,12 @@ export default function ShoeServicePicker({
     queryFn: () => searchShoeCatalogueItems({ q: search || undefined, group: groupFilter || undefined }).then(r => r.data),
     staleTime: 30_000,
   })
+
+  // Filter items by shoe type
+  let filteredItems = items
+  if (shoeType && SHOE_TYPE_GROUPS[shoeType]) {
+    filteredItems = items.filter(item => SHOE_TYPE_GROUPS[shoeType].includes(item.group_id))
+  }
 
   const selectedKeys = new Set(selected.map(s => s.item.key))
 
@@ -118,10 +138,10 @@ export default function ShoeServicePicker({
         className="rounded-xl border overflow-y-auto mb-4"
         style={{ maxHeight: '220px', borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
       >
-        {items.length === 0 ? (
-          <p className="text-center py-6 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No services found</p>
+        {filteredItems.length === 0 ? (
+          <p className="text-center py-6 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No services found for this shoe type</p>
         ) : (
-          items.map(item => {
+          filteredItems.map(item => {
             const alreadyAdded = selectedKeys.has(item.key)
             const priceLabel = formatShoePricingType(item.pricing_type as ShoePricingType, item.price_cents)
             return (
