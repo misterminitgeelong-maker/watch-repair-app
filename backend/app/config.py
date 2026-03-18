@@ -9,9 +9,15 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
+    jwt_refresh_expire_days: int = 7
     app_env: str = "production"
     allow_public_bootstrap: bool = True
     allow_dev_auto_login: bool = False
+
+    # Password policy (optional stricter rules)
+    password_min_length: int = 8
+    password_require_number: bool = False
+    password_require_special: bool = False
 
     # One-time startup data seeding (for single-shop bootstrap)
     startup_seed_enabled: bool = False
@@ -43,6 +49,18 @@ class Settings(BaseSettings):
     # Path to the built frontend (set by Dockerfile / deploy)
     static_dir: str = ""
 
+    # Feature flags (env: ENABLE_* = true/false)
+    enable_new_invoice_ui: bool = True
+    enable_customer_portal: bool = True
+    enable_email_notifications: bool = False
+
+    # Email (when enable_email_notifications is True)
+    sendgrid_api_key: str = ""
+    postmark_api_key: str = ""
+
+    # Sentry (leave blank to disable)
+    sentry_dsn: str = ""
+
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
@@ -57,3 +75,24 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Production safety: reject default JWT secret and optional bootstrap default
+def _validate_production_config() -> None:
+    if settings.app_env.strip().lower() != "production":
+        return
+    if not settings.jwt_secret or settings.jwt_secret.strip() == "change-me-in-production":
+        raise ValueError(
+            "JWT_SECRET must be set to a secure value in production. "
+            "Run: openssl rand -hex 32"
+        )
+    if settings.allow_public_bootstrap:
+        # Allow but warn; operator can set ALLOW_PUBLIC_BOOTSTRAP=false after first tenant
+        import warnings
+        warnings.warn(
+            "ALLOW_PUBLIC_BOOTSTRAP is True in production. Set ALLOW_PUBLIC_BOOTSTRAP=false after bootstrapping your first tenant.",
+            UserWarning,
+            stacklevel=0,
+        )
+
+
+_validate_production_config()

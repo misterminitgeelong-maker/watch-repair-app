@@ -35,14 +35,16 @@
           "name": "All Pegged / Pin Heels",
           "price": 29.95,
           "price_cents": 2995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "applicable_shoe_types": ["Dress shoes", "Heels / Stilettos", "Boots"]
         },
         {
           "key": "heels__minit_heel",
           "name": "Minit Heel",
           "price": 29.95,
           "price_cents": 2995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "applicable_shoe_types": ["Dress shoes", "Heels / Stilettos", "Boots"]
         },
         {
           "key": "heels__premium_heel",
@@ -50,7 +52,8 @@
           "price": 49.95,
           "price_cents": 4995,
           "pricing_type": "fixed",
-          "notes": "Materials: Safir, Casali, Tigra, Goodyear Detroit Heel, RM Style, JR Heel"
+          "notes": "Materials: Safir, Casali, Tigra, Goodyear Detroit Heel, RM Style, JR Heel",
+          "applicable_shoe_types": ["Dress shoes", "Heels / Stilettos", "Boots"]
         }
       ]
     },
@@ -63,36 +66,120 @@
           "name": "1/2 Sole (Minit Sole)",
           "price": 44.95,
           "price_cents": 4495,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
         },
         {
           "key": "half_soles__1_2_leather_sole",
           "name": "1/2 Leather Sole",
           "price": 69.95,
           "price_cents": 6995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
         },
         {
           "key": "half_soles__1_2_mirror_casali_sole",
           "name": "1/2 Mirror Casali Sole",
           "price": 69.95,
           "price_cents": 6995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
         },
         {
           "key": "half_soles__1_2_sole_microcell",
           "name": "1/2 Sole (Microcell)",
           "price": 39.95,
           "price_cents": 3995,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
         },
         {
           "key": "half_soles__toe_piece_microcell",
           "name": "Toe Piece (Microcell)",
           "price": 24.95,
           "price_cents": 2495,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
         }
+              {
+                "key": "full_soles__work_boot_full_sole",
+                "name": "Work Boot Full Sole",
+                "price": 79.95,
+                "price_cents": 7995,
+                "pricing_type": "fixed",
+                "notes": "All Sizes",
+                "applicable_shoe_types": ["Work boots"]
+              },
+              {
+                "key": "full_soles__dress_shoes_full_sole",
+                "name": "Dress Shoes Full Sole",
+                "price": 129.95,
+                "price_cents": 12995,
+                "pricing_type": "from",
+                "applicable_shoe_types": ["Dress shoes"]
+              },
+              {
+                "key": "full_soles__boots_full_sole",
+                "name": "Boots Full Sole",
+                "price": 69.95,
+                "price_cents": 6995,
+                "pricing_type": "from",
+                "applicable_shoe_types": ["Boots"]
+              },
+              {
+                "key": "full_soles__rm_williams_rubber_full_sole",
+                "name": "RM Williams Rubber Full Sole",
+                "price": 109.95,
+                "price_cents": 10995,
+                "pricing_type": "fixed",
+                "applicable_shoe_types": ["Boots", "Work boots"]
+              },
+              {
+                "key": "full_soles__full_leather_sole_and_heel",
+                "name": "Full Leather Sole & Heel",
+                "price": 114.95,
+                "price_cents": 11495,
+                "pricing_type": "from",
+                "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots"]
+              },
+              {
+                "key": "full_soles__flexi_soft_sole",
+                "name": "Flexi Soft Sole",
+                "price": 79.95,
+                "price_cents": 7995,
+                "pricing_type": "fixed",
+                "notes": "All Sizes",
+                "applicable_shoe_types": ["Dress shoes", "Boots", "Sandals / Thongs"]
+              },
+              {
+                "key": "full_soles__vibram_lienz",
+                "name": "Vibram Lienz",
+                "price": 79.95,
+                "price_cents": 7995,
+                "pricing_type": "fixed",
+                "notes": "All Sizes",
+                "applicable_shoe_types": ["Boots", "Work boots"]
+              },
+              {
+                "key": "full_soles__topy_rug_full_sole",
+                "name": "Topy Rug Full Sole",
+                "price": 69.95,
+                "price_cents": 6995,
+                "pricing_type": "fixed",
+                "applicable_shoe_types": ["Dress shoes", "Boots"]
+              },
+              {
+                "key": "full_soles__casali_full_sole",
+                "name": "Casali Full Sole",
+                "price": 59.95,
+                "price_cents": 5995,
+                "pricing_type": "fixed",
+                "applicable_shoe_types": ["Dress shoes", "Boots", "Heels / Stilettos"]
+              }
+        // Birkenstock category
+        // All services in this category: ["Birkenstocks"]
+        // Sneaker Cleaning category
+        // All services in this category: ["Sneakers"]
       ]
     },
     {

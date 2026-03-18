@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import AppShell from '@/components/AppShell'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import DashboardPage from '@/pages/DashboardPage'
 import CustomersPage from '@/pages/CustomersPage'
 import CustomerDetailPage from '@/pages/CustomerDetailPage'
@@ -20,6 +21,7 @@ import SignupCheckoutPage from '@/pages/SignupCheckoutPage'
 import StatusPage from '@/pages/StatusPage'
 import ShoeStatusPage from '@/pages/ShoeStatusPage'
 import LandingPage from '@/pages/LandingPage'
+import PricingPage from '@/pages/PricingPage'
 import AccountsPage from '@/pages/AccountsPage'
 import PlatformAdminUsersPage from '@/pages/PlatformAdminUsersPage'
 import ShoeRepairsPage from '@/pages/ShoeRepairsPage'
@@ -49,10 +51,12 @@ export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <Routes>
             {/* Public — no auth required */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
@@ -87,8 +91,9 @@ export default function App() {
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   )

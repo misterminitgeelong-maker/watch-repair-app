@@ -9,8 +9,11 @@ import {
   type Customer,
   type CustomerAccount,
 } from '@/lib/api'
-import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
+import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService, SHOE_TYPE_GROUPS } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import { STATUS_LABELS } from '@/lib/utils'
+
+const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 
 type IntakeShoe = {
   shoe_type: string
@@ -85,7 +88,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const [shoes, setShoes] = useState<IntakeShoe[]>([newIntakeShoe()])
 
   // Step 3 – Job fields
-  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '' })
+  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '', collection_date: '' })
   const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
   const [error, setError] = useState('')
@@ -112,8 +115,28 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setJob(f => ({ ...f, [k]: e.target.value }))
 
+
   function updateShoe(idx: number, patch: Partial<IntakeShoe>) {
-    setShoes(prev => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)))
+    setShoes(prev => prev.map((row, i) => {
+      if (i !== idx) return row
+      // If shoe_type is being changed, filter out invalid services
+      if (patch.shoe_type !== undefined && patch.shoe_type !== row.shoe_type) {
+        const newType = patch.shoe_type
+        let filteredServices = row.services
+        if (newType) {
+          filteredServices = row.services.filter(svc => {
+            const types = svc.item.applicable_shoe_types
+            if (Array.isArray(types)) {
+              return types.includes(newType)
+            }
+            // fallback to group filter for legacy items
+            return SHOE_TYPE_GROUPS[newType]?.includes(svc.item.group_id)
+          })
+        }
+        return { ...row, ...patch, services: filteredServices }
+      }
+      return { ...row, ...patch }
+    }))
   }
 
   function changeShoeCount(nextCount: number) {
@@ -181,6 +204,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         status: job.status,
         salesperson: job.salesperson || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
+        collection_date: job.collection_date || undefined,
         items: firstItems,
       })
 
@@ -412,16 +436,16 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
               <option value="low">Low</option>
             </Select>
             <Select label="Status" value={job.status} onChange={setJ('status')}>
-              <option value="awaiting_quote">Awaiting Quote</option>
-              <option value="awaiting_go_ahead">Awaiting Go Ahead</option>
-              <option value="go_ahead">Go Ahead Given</option>
-              <option value="working_on">Working On</option>
+              {SHOE_INITIAL_STATUS_OPTIONS.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Name" />
-            <Input label="Deposit ($)" type="number" step="0.01" value={job.deposit_cents} onChange={setJ('deposit_cents')} placeholder="0.00" />
+            <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>
+          <Input label="Deposit ($)" type="number" step="0.01" value={job.deposit_cents} onChange={setJ('deposit_cents')} placeholder="0.00" />
           <Select
             label="Customer Account (optional)"
             value={selectedCustomerAccountId}

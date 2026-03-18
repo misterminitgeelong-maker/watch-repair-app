@@ -528,16 +528,18 @@ export default function AppShell() {
       },
       {
         key: 'guided-accounts',
-        title: 'Accounts is the control room for access and plan usage',
+        title: "You've seen the full workflow",
         label: 'Accounts',
         routePath: '/accounts',
         matcher: exactMatcher('/accounts'),
-        intro: 'This final stop shows how the product scales beyond one user or one bench.',
-        task: 'Review users, plan bundles, and billing usage. This is the end of the guided demo.',
+        intro: "You've seen the full workflow — from intake and quotes to invoices, reports, and account control.",
+        task: 'Review users, plan bundles, and billing usage here, or start your own shop to use Mainspring for real.',
         highlights: [
           'You can show team setup, roles, and billing limits without leaving the app.',
           'That closes the story: intake, production, approval, payment, reporting, and account control.',
         ],
+        actionLabel: 'Start your shop →',
+        actionPath: '/signup',
       },
     ]
 

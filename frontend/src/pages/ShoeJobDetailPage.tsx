@@ -13,7 +13,7 @@ import {
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -39,17 +39,6 @@ const SHOE_STATUSES = [
   'completed', 'awaiting_collection', 'collected', 'no_go',
 ]
 
-const SHOE_STATUS_LABELS: Record<string, string> = {
-  awaiting_quote: 'Awaiting Quote',
-  awaiting_go_ahead: 'Awaiting Go Ahead',
-  go_ahead: 'Go Ahead Given',
-  working_on: 'Working On',
-  completed: 'Work Completed',
-  awaiting_collection: 'Ready for Collection',
-  collected: 'Collected',
-  no_go: 'No Go',
-}
-
 // ── Status modal ───────────────────────────────────────────────────────────────
 function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void }) {
   const qc = useQueryClient()
@@ -69,7 +58,7 @@ function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void
       <div className="space-y-3">
         <Select label="New Status" value={status} onChange={e => setStatus(e.target.value)}>
           {SHOE_STATUSES.map(s => (
-            <option key={s} value={s}>{SHOE_STATUS_LABELS[s] ?? s}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </Select>
         <Input label="Note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Ready for collection, waiting on parts…" />

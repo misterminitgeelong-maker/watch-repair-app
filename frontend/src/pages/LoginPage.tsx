@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
-import { login, multiSiteLogin, seedDemoData } from '@/lib/api'
+import { getRememberMe, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'single' | 'multi'>('single')
+  const [rememberMe, setRememberMeChecked] = useState(getRememberMe)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [btnHover, setBtnHover] = useState(false)
@@ -46,11 +47,12 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
+      setRememberMe(rememberMe)
       const { data } = mode === 'multi'
         ? await multiSiteLogin(email, password)
         : await login(slug, email, password)
       enableDemoMode(false)
-      setToken(data.access_token)
+      setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       navigate('/dashboard')
     } catch {
       setError(mode === 'multi' ? 'Invalid email or password for multi-site login.' : 'Invalid shop ID, email, or password.')
@@ -63,9 +65,10 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
+      setRememberMe(true)
       const { data } = await login(demoCreds.slug, demoCreds.email, demoCreds.password)
       enableDemoMode(true)
-      setToken(data.access_token)
+      setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       try {
         await seedDemoData()
       } catch {
@@ -118,7 +121,7 @@ export default function LoginPage() {
               textTransform: 'uppercase',
               color: 'var(--cafe-text-muted)',
             }}>
-              Repair OS for modern watchmakers
+              Repair OS
             </p>
           </div>
 
@@ -246,6 +249,14 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 type="password"
               />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--cafe-text-mid)' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMeChecked(e.target.checked)}
+                />
+                Remember this device
+              </label>
 
               {error && (
                 <p style={{ fontSize: '0.85rem', color: '#C96A5A', margin: 0 }}>{error}</p>

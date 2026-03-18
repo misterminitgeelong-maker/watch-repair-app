@@ -18,6 +18,7 @@ import {
 import {
   getBillingLimits,
   getReportsSummary,
+  getReportsWidgets,
   listAutoKeyJobs,
   listCustomerAccounts,
   listCustomers,
@@ -210,6 +211,10 @@ export default function DashboardPage() {
     queryFn: () => getBillingLimits().then((r) => r.data),
     enabled: canViewAccountMetrics,
   })
+  const { data: widgets } = useQuery({
+    queryKey: ['reports-widgets'],
+    queryFn: () => getReportsWidgets().then((r) => r.data),
+  })
 
   useEffect(() => {
     setChecklistDismissedState(isChecklistDismissed(tenantId))
@@ -279,6 +284,8 @@ export default function DashboardPage() {
   if (jobsLoading || customersLoading || quotesLoading || invoicesLoading || reportsLoading) {
     return <Spinner />
   }
+
+  const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
 
   const statCards = [
     {
@@ -499,9 +506,6 @@ export default function DashboardPage() {
                 <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
                   {availableSites.length} {availableSites.length === 1 ? 'site' : 'sites'} linked
                 </span>
-                <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
-                  {reports?.operations.work_minutes ?? 0} tracked work minutes
-                </span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
@@ -571,6 +575,31 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
+          </Card>
+        )}
+
+        {actionCount > 0 && (
+          <Card className="mb-6 p-4 flex flex-wrap items-center gap-4" style={{ backgroundColor: '#FFFBEB', borderColor: '#FCD34D' }}>
+            <span className="font-semibold" style={{ color: '#92400E' }}>Action needed</span>
+            {widgets && (
+              <div className="flex flex-wrap gap-4 text-sm">
+                {(widgets.overdue_jobs_count ?? 0) > 0 && (
+                  <Link to="/jobs?status=awaiting_go_ahead" className="underline" style={{ color: '#B45309' }}>
+                    {widgets.overdue_jobs_count} job(s) awaiting go-ahead 14+ days
+                  </Link>
+                )}
+                {(widgets.quotes_pending_7d_count ?? 0) > 0 && (
+                  <Link to="/quotes" className="underline" style={{ color: '#B45309' }}>
+                    {widgets.quotes_pending_7d_count} quote(s) sent 7+ days, no response
+                  </Link>
+                )}
+                {(widgets.overdue_invoices_count ?? 0) > 0 && (
+                  <Link to="/invoices" className="underline" style={{ color: '#B45309' }}>
+                    {widgets.overdue_invoices_count} unpaid invoice(s)
+                  </Link>
+                )}
+              </div>
+            )}
           </Card>
         )}
 

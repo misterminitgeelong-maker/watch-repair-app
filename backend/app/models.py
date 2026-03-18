@@ -1,6 +1,11 @@
+
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
+
+FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Corporate Fleet", "Other"]
+FleetBillingCycle = Literal["Monthly", "Fortnightly", "Weekly"]
+SubscriptionPlan = Literal["starter", "pro", "fleet", "none"]
 
 from sqlmodel import Field, SQLModel
 
@@ -310,10 +315,16 @@ class MultiSiteLoginRequest(SQLModel):
     password: str
 
 
+class RefreshRequest(SQLModel):
+    refresh_token: str
+
+
 class TokenResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"
     expires_in_seconds: int
+    refresh_token: Optional[str] = None
+    refresh_expires_in_seconds: Optional[int] = None
 
 
 class PublicUser(SQLModel):
@@ -347,6 +358,8 @@ class MultiSiteLoginResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"
     expires_in_seconds: int
+    refresh_token: Optional[str] = None
+    refresh_expires_in_seconds: Optional[int] = None
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
 
@@ -359,6 +372,8 @@ class ActiveSiteSwitchResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"
     expires_in_seconds: int
+    refresh_token: Optional[str] = None
+    refresh_expires_in_seconds: Optional[int] = None
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
 
@@ -470,6 +485,8 @@ class TenantSignupResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"
     expires_in_seconds: int
+    refresh_token: Optional[str] = None
+    refresh_expires_in_seconds: Optional[int] = None
 
 
 class UserCreateRequest(SQLModel):
@@ -928,6 +945,7 @@ class AutoKeyJob(SQLModel, table=True):
     priority: str = "normal"
     status: str = "awaiting_quote"
     salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -950,6 +968,7 @@ class AutoKeyJobCreate(SQLModel):
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
     status: JobStatus = "awaiting_quote"
     salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
     deposit_cents: int = 0
     cost_cents: int = 0
 
@@ -975,6 +994,7 @@ class AutoKeyJobRead(SQLModel):
     priority: Literal["low", "normal", "high", "urgent"]
     status: JobStatus
     salesperson: Optional[str] = None
+    collection_date: Optional[date] = None
     deposit_cents: int
     cost_cents: int
     created_at: datetime
@@ -998,6 +1018,7 @@ class AutoKeyJobFieldUpdate(SQLModel):
     key_type: Optional[str] = None
     key_quantity: Optional[int] = None
     programming_status: Optional[AutoKeyProgrammingStatus] = None
+    collection_date: Optional[date] = None
     priority: Optional[Literal["low", "normal", "high", "urgent"]] = None
     salesperson: Optional[str] = None
     deposit_cents: Optional[int] = None
@@ -1091,6 +1112,9 @@ class AutoKeyInvoiceRead(SQLModel):
 
 
 class CustomerAccount(SQLModel, table=True):
+    subscription_plan: str = "none"  # "starter", "pro", "fleet", "none"
+    subscription_active: bool = False
+    subscription_start_date: Optional[date] = None
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     name: str
@@ -1103,6 +1127,14 @@ class CustomerAccount(SQLModel, table=True):
     notes: Optional[str] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Fleet/Dealer fields
+    account_type: Optional[str] = Field(default=None, index=True)
+    fleet_size: Optional[int] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+    billing_cycle: Optional[str] = Field(default=None, index=True)
+    credit_limit: Optional[int] = None
+    account_notes: Optional[str] = None
 
 
 class CustomerAccountMembership(SQLModel, table=True):
@@ -1114,6 +1146,9 @@ class CustomerAccountMembership(SQLModel, table=True):
 
 
 class CustomerAccountCreate(SQLModel):
+    subscription_plan: Optional[SubscriptionPlan] = None
+    subscription_active: Optional[bool] = None
+    subscription_start_date: Optional[date] = None
     name: str
     account_code: Optional[str] = None
     contact_name: Optional[str] = None
@@ -1122,9 +1157,20 @@ class CustomerAccountCreate(SQLModel):
     billing_address: Optional[str] = None
     payment_terms_days: int = 30
     notes: Optional[str] = None
+    # Fleet/Dealer fields
+    account_type: Optional[FleetAccountType] = None
+    fleet_size: Optional[int] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+    billing_cycle: Optional[FleetBillingCycle] = None
+    credit_limit: Optional[int] = None
+    account_notes: Optional[str] = None
 
 
 class CustomerAccountUpdate(SQLModel):
+    subscription_plan: Optional[SubscriptionPlan] = None
+    subscription_active: Optional[bool] = None
+    subscription_start_date: Optional[date] = None
     name: Optional[str] = None
     account_code: Optional[str] = None
     contact_name: Optional[str] = None
@@ -1134,9 +1180,20 @@ class CustomerAccountUpdate(SQLModel):
     payment_terms_days: Optional[int] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None
+    # Fleet/Dealer fields
+    account_type: Optional[FleetAccountType] = None
+    fleet_size: Optional[int] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+    billing_cycle: Optional[FleetBillingCycle] = None
+    credit_limit: Optional[int] = None
+    account_notes: Optional[str] = None
 
 
 class CustomerAccountRead(SQLModel):
+    subscription_plan: Optional[SubscriptionPlan] = None
+    subscription_active: Optional[bool] = None
+    subscription_start_date: Optional[date] = None
     id: UUID
     tenant_id: UUID
     name: str
@@ -1150,6 +1207,14 @@ class CustomerAccountRead(SQLModel):
     is_active: bool
     created_at: datetime
     customer_ids: list[UUID] = []
+    # Fleet/Dealer fields
+    account_type: Optional[FleetAccountType] = None
+    fleet_size: Optional[int] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+    billing_cycle: Optional[FleetBillingCycle] = None
+    credit_limit: Optional[int] = None
+    account_notes: Optional[str] = None
 
 
 class CustomerAccountMemberAdd(SQLModel):

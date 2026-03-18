@@ -5,7 +5,8 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import RepairJob, WorkLog, WorkLogCreate, WorkLogRead
+from ..models import WorkLog, WorkLogCreate, WorkLogRead
+from ..tenant_helpers import get_tenant_repair_job
 
 router = APIRouter(prefix="/v1/work-logs", tags=["work-logs"])
 
@@ -16,8 +17,8 @@ def create_work_log(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, payload.repair_job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, payload.repair_job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     work_log = WorkLog(
@@ -37,8 +38,8 @@ def list_work_logs(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, repair_job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, repair_job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     logs = session.exec(

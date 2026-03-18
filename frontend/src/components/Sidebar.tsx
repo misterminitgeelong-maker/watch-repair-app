@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2, ClipboardList } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2, ClipboardList, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
 
@@ -29,6 +31,7 @@ interface SidebarProps {
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature } = useAuth()
+  const [showChangelog, setShowChangelog] = useState(false)
 
   const filteredNav = nav.filter(item => !item.feature || hasFeature(item.feature))
 
@@ -119,9 +122,19 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         ))}
       </nav>
 
-      {/* Sign out */}
+      {/* What's new + Sign out */}
       <div className="px-3 pb-6">
         <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1.25rem' }}>
+          <button
+            onClick={() => { setShowChangelog(true); onNavigate?.() }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[#F5E8CA]"
+            style={{ color: '#7A5038' }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--cafe-espresso-2)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <Sparkles size={16} />
+            What&apos;s new
+          </button>
           <button
             onClick={() => {
               logout()
@@ -137,6 +150,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
           </button>
         </div>
       </div>
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
     </aside>
   )
 }

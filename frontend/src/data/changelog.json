@@ -1,0 +1,32 @@
+[
+  {
+    "version": "1.1.0",
+    "date": "2026-03-17",
+    "title": "Improvements and new features",
+    "items": [
+      "Proactive token refresh so you stay signed in longer",
+      "Remember this device option on login (session-only when unchecked)",
+      "Plan usage and limits shown on Team Accounts; upgrade CTA when at limit",
+      "Audit log restricted to owners and managers",
+      "Request ID on API responses for support and debugging",
+      "Stricter password policy options (configurable)",
+      "Export and data portability (CSV and export my data)",
+      "Dashboard widgets: overdue jobs, quotes pending, overdue invoices",
+      "Customer self-service portal link",
+      "Error tracking (Sentry) and nightly backup check script"
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-03-01",
+    "title": "Initial release",
+    "items": [
+      "Watch, shoe, and auto-key repair job tracking",
+      "Quotes and customer approval flow",
+      "Invoicing and manual payment capture",
+      "Multi-tenant team accounts and plans",
+      "Reports and analytics",
+      "B2B customer accounts and statements"
+    ]
+  }
+]

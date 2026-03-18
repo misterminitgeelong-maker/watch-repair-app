@@ -1,11 +1,14 @@
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context
+from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, TenantEventLog, TenantEventLogRead, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
@@ -210,10 +213,54 @@ def get_reports_trends(
     }
 
 
-@router.get("/activity", response_model=list[TenantEventLogRead])
+@router.get("/widgets", summary="Dashboard action widgets")
+def get_dashboard_widgets(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Counts for overdue jobs, quotes sent 7+ days not approved, and unpaid invoices."""
+    tenant_id = auth.tenant_id
+    now = datetime.now(timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
+
+    # Jobs in awaiting_go_ahead or awaiting_parts for 14+ days
+    overdue_jobs = session.exec(
+        select(func.count())
+        .select_from(RepairJob)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(RepairJob.status.in_(["awaiting_go_ahead", "awaiting_parts"]))
+        .where(RepairJob.created_at <= fourteen_days_ago)
+    ).one()
+    overdue_jobs_count = int(overdue_jobs)
+
+    # Quotes sent 7+ days ago still in 'sent' (not approved/declined)
+    quotes_pending = session.exec(
+        select(func.count())
+        .select_from(Quote)
+        .where(Quote.tenant_id == tenant_id)
+        .where(Quote.status == "sent")
+        .where(Quote.sent_at <= seven_days_ago)
+    ).one()
+    quotes_pending_7d_count = int(quotes_pending)
+
+    # Unpaid invoices (overdue for follow-up)
+    overdue_invoices = session.exec(
+        select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant_id).where(Invoice.status == "unpaid")
+    ).one()
+    overdue_invoices_count = int(overdue_invoices)
+
+    return {
+        "overdue_jobs_count": overdue_jobs_count,
+        "quotes_pending_7d_count": quotes_pending_7d_count,
+        "overdue_invoices_count": overdue_invoices_count,
+    }
+
+
+@router.get("/activity", response_model=list[TenantEventLogRead], summary="Audit log (owner/manager)")
 def get_tenant_activity(
     limit: int = Query(default=50, ge=1, le=200),
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     rows = session.exec(
@@ -223,3 +270,66 @@ def get_tenant_activity(
         .limit(limit)
     ).all()
     return rows
+
+
+@router.get("/export/jobs", summary="Export jobs as CSV")
+def export_jobs_csv(
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(
+        select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id).order_by(RepairJob.created_at.desc())
+    ).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "job_number", "title", "status", "priority", "created_at"])
+    for r in rows:
+        w.writerow([str(r.id), r.job_number, r.title or "", r.status, r.priority, r.created_at.isoformat() if r.created_at else ""])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=jobs.csv"},
+    )
+
+
+@router.get("/export/customers", summary="Export customers as CSV")
+def export_customers_csv(
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(
+        select(Customer).where(Customer.tenant_id == auth.tenant_id).order_by(Customer.created_at.desc())
+    ).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "full_name", "email", "phone", "address", "created_at"])
+    for r in rows:
+        w.writerow([str(r.id), r.full_name or "", r.email or "", r.phone or "", r.address or "", r.created_at.isoformat() if r.created_at else ""])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=customers.csv"},
+    )
+
+
+@router.get("/export/invoices", summary="Export invoices as CSV")
+def export_invoices_csv(
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(
+        select(Invoice).where(Invoice.tenant_id == auth.tenant_id).order_by(Invoice.created_at.desc())
+    ).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "invoice_number", "status", "total_cents", "created_at"])
+    for r in rows:
+        w.writerow([str(r.id), r.invoice_number or "", r.status, r.total_cents, r.created_at.isoformat() if r.created_at else ""])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=invoices.csv"},
+    )

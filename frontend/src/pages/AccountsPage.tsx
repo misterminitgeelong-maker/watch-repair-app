@@ -4,6 +4,7 @@ import { Plus, Search } from 'lucide-react'
 import {
   createBillingCheckoutForPlan,
   createUser,
+  getApiErrorMessage,
   getBillingLimits,
   getBillingPortalUrl,
   listUsers,
@@ -99,11 +100,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
       onClose()
     },
     onError: (err: unknown) => {
-      const msg =
-        typeof err === 'object' && err !== null && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined
-      setError(msg || 'Could not create account. Only owner accounts can create users.')
+      setError(getApiErrorMessage(err, 'Could not create account. Only owner accounts can create users.'))
     },
   })
 
@@ -251,11 +248,63 @@ export default function AccountsPage() {
   }
 
   const stripeConfigured = Boolean(billing?.stripe_configured)
+  const usage = billing?.usage
+  const limits = billing?.limits
+  const atOrNearLimit = limits && usage && (
+    (limits.max_users > 0 && usage.users >= limits.max_users) ||
+    (limits.max_repair_jobs > 0 && usage.repair_jobs >= limits.max_repair_jobs) ||
+    (limits.max_shoe_jobs > 0 && usage.shoe_jobs >= limits.max_shoe_jobs) ||
+    (limits.max_auto_key_jobs > 0 && usage.auto_key_jobs >= limits.max_auto_key_jobs)
+  )
 
   return (
     <div>
       <PageHeader title="Team Accounts" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Account</Button>} />
       {showAdd && <AddUserModal onClose={() => setShowAdd(false)} />}
+
+      {atOrNearLimit && (
+        <Card className="mb-4 p-4 border-amber-200" style={{ borderWidth: 1, backgroundColor: '#FFFBEB' }}>
+          <p className="text-sm font-medium" style={{ color: '#92400E' }}>Plan limit reached</p>
+          <p className="text-xs mt-1" style={{ color: '#B45309' }}>Upgrade to Pro for unlimited users and jobs, or add more capacity on your current plan.</p>
+          {canManagePlan && stripeConfigured && (
+            <Button className="mt-3" onClick={() => stripePlanCheckoutMut.mutate('pro')} disabled={stripePlanCheckoutMut.isPending}>
+              {stripePlanCheckoutMut.isPending ? 'Opening…' : 'Upgrade to Pro'}
+            </Button>
+          )}
+        </Card>
+      )}
+
+      {billing && (limits?.max_users > 0 || limits?.max_repair_jobs > 0 || limits?.max_shoe_jobs > 0 || limits?.max_auto_key_jobs > 0) && (
+        <Card className="mb-4 p-4">
+          <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>Usage</p>
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            {limits.max_users > 0 && (
+              <div>
+                <span style={{ color: 'var(--cafe-text-mid)' }}>Team accounts</span>
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.users ?? 0} / {limits.max_users}</p>
+              </div>
+            )}
+            {limits.max_repair_jobs > 0 && (
+              <div>
+                <span style={{ color: 'var(--cafe-text-mid)' }}>Watch jobs</span>
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.repair_jobs ?? 0} / {limits.max_repair_jobs}</p>
+              </div>
+            )}
+            {limits.max_shoe_jobs > 0 && (
+              <div>
+                <span style={{ color: 'var(--cafe-text-mid)' }}>Shoe jobs</span>
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.shoe_jobs ?? 0} / {limits.max_shoe_jobs}</p>
+              </div>
+            )}
+            {limits.max_auto_key_jobs > 0 && (
+              <div>
+                <span style={{ color: 'var(--cafe-text-mid)' }}>Auto key jobs</span>
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.auto_key_jobs ?? 0} / {limits.max_auto_key_jobs}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>

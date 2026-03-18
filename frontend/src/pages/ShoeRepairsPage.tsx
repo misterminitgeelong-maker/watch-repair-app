@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X } from 'lucide-react'
@@ -10,7 +10,7 @@ import {
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
@@ -30,17 +30,6 @@ const SHOE_STATUSES = [
   'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on',
   'completed', 'awaiting_collection', 'collected', 'no_go',
 ]
-
-const SHOE_STATUS_LABELS: Record<string, string> = {
-  awaiting_quote: 'Awaiting Quote',
-  awaiting_go_ahead: 'Awaiting Go Ahead',
-  go_ahead: 'Go Ahead Given',
-  working_on: 'Working On',
-  completed: 'Work Completed',
-  awaiting_collection: 'Ready for Collection',
-  collected: 'Collected',
-  no_go: 'No Go',
-}
 
 function JobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
@@ -310,7 +299,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
         >
           {SHOE_STATUSES.map(s => (
-            <option key={s} value={s}>{SHOE_STATUS_LABELS[s] ?? s}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </select>
       </div>
@@ -512,7 +501,7 @@ export default function ShoeRepairsPage() {
         >
           <option value="all">All statuses</option>
           {SHOE_STATUSES.map(s => (
-            <option key={s} value={s}>{SHOE_STATUS_LABELS[s]}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
       </div>

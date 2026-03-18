@@ -20,19 +20,9 @@ import {
   type JobStatus,
 } from '@/lib/api'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
-const STATUSES: JobStatus[] = [
-  'awaiting_quote',
-  'awaiting_go_ahead',
-  'go_ahead',
-  'working_on',
-  'awaiting_parts',
-  'completed',
-  'awaiting_collection',
-  'collected',
-  'no_go',
-]
+const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
 
 const PROGRAMMING_STATUSES: AutoKeyProgrammingStatus[] = ['pending', 'in_progress', 'programmed', 'failed', 'not_required']
 
@@ -59,6 +49,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     status: 'awaiting_quote' as JobStatus,
     salesperson: '',
+    collection_date: '',
     deposit: '',
     cost: '',
   })
@@ -97,6 +88,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         priority: form.priority,
         status: form.status,
         salesperson: form.salesperson.trim() || undefined,
+        collection_date: form.collection_date.trim() || undefined,
         deposit_cents: form.deposit ? Math.round(parseFloat(form.deposit) * 100) : 0,
         cost_cents: form.cost ? Math.round(parseFloat(form.cost) * 100) : 0,
       })
@@ -153,13 +145,14 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <option value="urgent">Urgent</option>
           </Select>
           <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))}>
-            {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
           <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
         </div>
+        <Input label="Collection Date" type="date" value={form.collection_date} onChange={e => setForm(f => ({ ...f, collection_date: e.target.value }))} />
         <Input label="Salesperson" value={form.salesperson} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
 
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
@@ -315,7 +308,7 @@ function AutoKeyJobCard({ job }: { job: { id: string; job_number: string; title:
             onChange={e => statusMut.mutate(e.target.value as JobStatus)}
             disabled={statusMut.isPending}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
           </Select>
           <div className="mt-2">
             <Select

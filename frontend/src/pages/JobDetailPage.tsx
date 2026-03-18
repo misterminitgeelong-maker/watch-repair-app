@@ -11,7 +11,7 @@ import {
   type JobStatus, type RepairJob, type CustomerAccount,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   awaiting_quote:      'awaiting_go_ahead',
@@ -56,7 +56,7 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
       onClose()
     },
   })
-  const statuses: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'no_go', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts', 'working_on', 'completed', 'awaiting_collection', 'collected']
+  const statuses: JobStatus[] = [...JOB_STATUS_ORDER]
 
   return (
     <Modal title="Update Status" onClose={onClose}>
@@ -232,6 +232,17 @@ export default function JobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/status/${job.status_token}`
+                void navigator.clipboard.writeText(url).then(() => { /* optional toast */ })
+              }}
+              title="Copy customer status link"
+            >
+              Copy status link
+            </Button>
             <Button variant="secondary" onClick={() => window.open(`/jobs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
               <Printer size={15} /> Print Intake Tickets
             </Button>

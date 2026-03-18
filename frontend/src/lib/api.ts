@@ -4,17 +4,53 @@ const api = axios.create({ baseURL: '/v1' })
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = getStoredAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Keep session state in sync on 401 (no forced redirect in test mode)
+// On 401: try refresh once, retry request; otherwise clear tokens
+let refreshPromise: Promise<string | null> | null = null
+function doRefresh(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise
+  const rt = getStoredRefreshToken()
+  if (!rt) {
+    clearStoredTokens()
+    window.dispatchEvent(new Event('auth:token-cleared'))
+    return Promise.resolve(null)
+  }
+  refreshPromise = refreshAuth(rt)
+    .then((res) => {
+      const access = res.data.access_token
+      const refresh = res.data.refresh_token ?? null
+      setStoredTokens(access, refresh)
+      return access
+    })
+    .catch(() => {
+      clearStoredTokens()
+      window.dispatchEvent(new Event('auth:token-cleared'))
+      return null
+    })
+    .finally(() => {
+      refreshPromise = null
+    })
+  return refreshPromise
+}
+
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
+  async (err) => {
+    const status = err.response?.status
+    const config = err.config
+    if (status === 401 && config && !config._retried) {
+      config._retried = true
+      const newToken = await doRefresh()
+      if (newToken) {
+        config.headers.Authorization = `Bearer ${newToken}`
+        return api.request(config)
+      }
+    } else if (status === 401) {
+      clearStoredTokens()
       window.dispatchEvent(new Event('auth:token-cleared'))
     }
     return Promise.reject(err)
@@ -35,18 +71,88 @@ export function getApiErrorMessage(error: unknown, fallback = 'Request failed.')
       }
     }
     if (error.response?.status === 401) return 'Session expired. Please sign in again.'
+    if (error.response?.status === 402) return typeof detail === 'string' && detail.trim() ? detail : 'Plan limit reached. Upgrade for more capacity.'
   }
   return fallback
 }
 
+/** True if the error is a 402 plan limit (show upgrade CTA). */
+export function isPlanLimitError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 402
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
-export interface TokenResponse { access_token: string; token_type: string }
+const REFRESH_TOKEN_KEY = 'refresh_token'
+const REMEMBER_ME_KEY = 'remember_me'
+
+export function getRememberMe(): boolean {
+  try {
+    return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
+  } catch {
+    // Ignore storage errors, default to true
+    return true
+  }
+}
+
+export function setRememberMe(value: boolean) {
+  try {
+    if (value) localStorage.setItem(REMEMBER_ME_KEY, 'true')
+    else localStorage.removeItem(REMEMBER_ME_KEY)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function getTokenStorage(): Storage {
+  return getRememberMe() ? localStorage : sessionStorage
+}
+
+export function getStoredAccessToken(): string | null {
+  return getTokenStorage().getItem('token') ?? localStorage.getItem('token') ?? sessionStorage.getItem('token')
+}
+
+export function getStoredRefreshToken(): string | null {
+  return getTokenStorage().getItem(REFRESH_TOKEN_KEY) ?? localStorage.getItem(REFRESH_TOKEN_KEY) ?? sessionStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export function setStoredTokens(accessToken: string, refreshToken: string | null) {
+  const storage = getTokenStorage()
+  storage.setItem('token', accessToken)
+  if (refreshToken != null) storage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  else storage.removeItem(REFRESH_TOKEN_KEY)
+  if (storage === localStorage) {
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  } else {
+    localStorage.removeItem('token')
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+  }
+}
+
+export function clearStoredTokens() {
+  localStorage.removeItem('token')
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+  expires_in_seconds?: number
+  refresh_token?: string
+  refresh_expires_in_seconds?: number
+}
 export const login = (tenant_slug: string, email: string, password: string) =>
   api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
+export const refreshAuth = (refresh_token: string) =>
+  api.post<TokenResponse>('/auth/refresh', { refresh_token })
 export interface MultiSiteLoginResponse {
   access_token: string
   token_type: string
   expires_in_seconds: number
+  refresh_token?: string
+  refresh_expires_in_seconds?: number
   active_site_tenant_id: string
   available_sites: SiteOption[]
 }
@@ -98,6 +204,8 @@ export interface ActiveSiteSwitchResponse {
   access_token: string
   token_type: string
   expires_in_seconds: number
+  refresh_token?: string
+  refresh_expires_in_seconds?: number
   active_site_tenant_id: string
   available_sites: SiteOption[]
 }
@@ -117,6 +225,8 @@ export interface SignupResponse {
   access_token: string
   token_type: string
   expires_in_seconds: number
+  refresh_token?: string
+  refresh_expires_in_seconds?: number
 }
 export const signup = (data: {
   tenant_name: string
@@ -172,6 +282,57 @@ export interface Customer {
   id: string; tenant_id: string; full_name: string
   email?: string; phone?: string; address?: string; notes?: string; created_at: string
 }
+
+// ── Customer Accounts (Fleet/B2B) ─────────────────────────────────────────────
+export type FleetAccountType = 'Dealership' | 'Rental Fleet' | 'Government Fleet' | 'Corporate Fleet' | 'Other'
+export type FleetBillingCycle = 'Monthly' | 'Fortnightly' | 'Weekly'
+
+export interface CustomerAccount {
+  id: string
+  tenant_id: string
+  name: string
+  account_code?: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  billing_address?: string
+  payment_terms_days: number
+  notes?: string
+  is_active: boolean
+  created_at: string
+  customer_ids: string[]
+  // Fleet/Dealer fields
+  account_type?: FleetAccountType
+  fleet_size?: number
+  primary_contact_name?: string
+  primary_contact_phone?: string
+  billing_cycle?: FleetBillingCycle
+  credit_limit?: number
+  account_notes?: string
+}
+
+export interface CustomerAccountCreate {
+  name: string
+  account_code?: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  billing_address?: string
+  payment_terms_days?: number
+  notes?: string
+  // Fleet/Dealer fields
+  account_type?: FleetAccountType
+  fleet_size?: number
+  primary_contact_name?: string
+  primary_contact_phone?: string
+  billing_cycle?: FleetBillingCycle
+  credit_limit?: number
+  account_notes?: string
+}
+
+export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
+export const createCustomerAccount = (data: CustomerAccountCreate) => api.post<CustomerAccount>('/customer-accounts', data)
+export const updateCustomerAccount = (id: string, data: Partial<CustomerAccountCreate>) => api.patch<CustomerAccount>(`/customer-accounts/${id}`, data)
 export const listCustomers = () => api.get<Customer[]>('/customers')
 export const getCustomer = (id: string) => api.get<Customer>(`/customers/${id}`)
 export const createCustomer = (data: Omit<Customer, 'id' | 'tenant_id' | 'created_at'>) =>
@@ -587,6 +748,20 @@ export interface ReportsTrends {
 export const getReportsTrends = (months = 6) =>
   api.get<ReportsTrends>('/reports/trends', { params: { months } })
 
+export interface ReportsWidgets {
+  overdue_jobs_count: number
+  quotes_pending_7d_count: number
+  overdue_invoices_count: number
+}
+export const getReportsWidgets = () => api.get<ReportsWidgets>('/reports/widgets')
+
+// Export CSV (returns blob)
+export const getExportJobsCsv = () => api.get<Blob>('/reports/export/jobs', { responseType: 'blob' })
+export const getExportCustomersCsv = () => api.get<Blob>('/reports/export/customers', { responseType: 'blob' })
+export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoices', { responseType: 'blob' })
+
+export const getExportMyData = () => api.get<Record<string, unknown>>('/auth/export-my-data')
+
 // ── Tenant Activity ───────────────────────────────────────────────────────────
 export interface TenantActivityEvent {
   id: string
@@ -675,6 +850,7 @@ export interface ShoeCatalogueItem {
   group_label: string
   notes?: string
   includes?: string[]
+  applicable_shoe_types?: string[]
 }
 
 export interface ShoeCombo {
@@ -736,6 +912,7 @@ export interface AutoKeyJob {
   priority: 'low' | 'normal' | 'high' | 'urgent'
   status: JobStatus
   salesperson?: string
+  collection_date?: string
   deposit_cents: number
   cost_cents: number
   created_at: string
@@ -757,6 +934,7 @@ export interface AutoKeyJobCreatePayload {
   priority: 'low' | 'normal' | 'high' | 'urgent'
   status: JobStatus
   salesperson?: string
+  collection_date?: string
   deposit_cents: number
   cost_cents: number
 }

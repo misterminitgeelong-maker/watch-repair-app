@@ -40,7 +40,7 @@ export function buildShoeRepairJobItemsPayload(selected: SelectedShoeService[]):
 }
 
 // Mapping shoe types to relevant group IDs
-const SHOE_TYPE_GROUPS: Record<string, string[]> = {
+export const SHOE_TYPE_GROUPS: Record<string, string[]> = {
   'Boots': ['full_soles', 'miscellaneous_repairs', 'additional_repairs', 'shoe_revival'],
   'Dress shoes': ['heels', 'half_soles', 'full_soles', 'scratch_repair_and_polish', 'shoe_revival'],
   'Sneakers': ['half_soles', 'full_soles', 'miscellaneous_repairs', 'shoe_revival'],
@@ -77,10 +77,21 @@ export default function ShoeServicePicker({
     staleTime: 30_000,
   })
 
-  // Filter items by shoe type
+  // Filter items by applicable_shoe_types if present, else fallback to group filter
   let filteredItems = items
-  if (shoeType && SHOE_TYPE_GROUPS[shoeType]) {
-    filteredItems = items.filter(item => SHOE_TYPE_GROUPS[shoeType].includes(item.group_id))
+  let hiddenCount = 0
+  if (shoeType) {
+    filteredItems = items.filter(item => {
+      if (Array.isArray(item.applicable_shoe_types)) {
+        const match = item.applicable_shoe_types.includes(shoeType)
+        if (!match) hiddenCount++
+        return match
+      }
+      // fallback to group filter for legacy items
+      const groupMatch = SHOE_TYPE_GROUPS[shoeType]?.includes(item.group_id)
+      if (!groupMatch) hiddenCount++
+      return groupMatch
+    })
   }
 
   const selectedKeys = new Set(selected.map(s => s.item.key))
@@ -175,6 +186,11 @@ export default function ShoeServicePicker({
           })
         )}
       </div>
+      {hiddenCount > 0 && (
+        <div className="text-xs italic text-center mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          {hiddenCount} service{hiddenCount > 1 ? 's are' : ' is'} hidden for this shoe type
+        </div>
+      )}
 
       {selected.length > 0 && (
         <div>

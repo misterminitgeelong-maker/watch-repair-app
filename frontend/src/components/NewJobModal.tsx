@@ -9,6 +9,9 @@ import {
   type JobStatus, type Customer, type Watch, type CustomerAccount,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import { STATUS_LABELS } from '@/lib/utils'
+
+const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 function Steps({ current }: { current: number }) {
@@ -54,6 +57,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [selectedCustomerId, setSelectedCustomerId] = useState(preselectedCustomer?.id ?? '')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [createdCustomerId, setCreatedCustomerId] = useState('')
+  const [phoneMatch, setPhoneMatch] = useState<Customer | null>(null)
 
   // Step 2 – Watch
   const [watchMode, setWatchMode] = useState<'existing' | 'new'>('existing')
@@ -99,8 +103,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     enabled: !!activeCustomerId,
   })
 
-  const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setNewCustomer(f => ({ ...f, [k]: e.target.value }))
+  const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = e.target.value
+    setNewCustomer(f => ({ ...f, [k]: value }))
+    if (k === 'phone' && customers) {
+      const match = customers.find((c: Customer) => c.phone && value && c.phone.replace(/\D/g, '') === value.replace(/\D/g, ''))
+      setPhoneMatch(match || null)
+    }
+    if (k === 'phone' && !value) {
+      setPhoneMatch(null)
+    }
+  }
   const setW = (k: keyof typeof newWatch) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setNewWatch(f => ({ ...f, [k]: e.target.value }))
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -267,6 +280,13 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                 <Input label="Phone" value={newCustomer.phone} onChange={setC('phone')} placeholder="0412 345 678" />
                 <Input label="Email" type="email" value={newCustomer.email} onChange={setC('email')} placeholder="jane@example.com" />
               </div>
+              {phoneMatch && (
+                <div className="rounded bg-yellow-100 border border-yellow-300 px-3 py-2 text-sm mt-2 flex items-center gap-2">
+                  <span>Existing customer found with this phone:</span>
+                  <span className="font-semibold">{phoneMatch.full_name}</span>
+                  <Button variant="secondary" onClick={() => { setCustomerMode('existing'); setSelectedCustomerId(phoneMatch.id); setPhoneMatch(null); }}>Use</Button>
+                </div>
+              )}
               <Input label="Address" value={newCustomer.address} onChange={setC('address')} placeholder="Unit 5/36 Grange Rd, Toorak 3142" />
               <Textarea label="Notes" value={newCustomer.notes} onChange={setC('notes')} rows={2} placeholder="VIP, allergic to…" />
             </>
@@ -349,10 +369,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               <option value="urgent">🔴 Urgent</option>
             </Select>
             <Select label="Initial Status" value={job.status} onChange={setJ('status')}>
-              <option value="awaiting_quote">Awaiting Quote</option>
-              <option value="awaiting_go_ahead">Awaiting Go Ahead</option>
-              <option value="go_ahead">Go Ahead Given</option>
-              <option value="service">Service</option>
+              {INITIAL_STATUS_OPTIONS.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">

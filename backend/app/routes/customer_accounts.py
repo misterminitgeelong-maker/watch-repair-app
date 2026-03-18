@@ -54,6 +54,14 @@ def _to_read(session: Session, account: CustomerAccount) -> CustomerAccountRead:
         is_active=account.is_active,
         created_at=account.created_at,
         customer_ids=customer_ids,
+        # Fleet/Dealer fields
+        account_type=account.account_type,
+        fleet_size=account.fleet_size,
+        primary_contact_name=account.primary_contact_name,
+        primary_contact_phone=account.primary_contact_phone,
+        billing_cycle=account.billing_cycle,
+        credit_limit=account.credit_limit,
+        account_notes=account.account_notes,
     )
 
 
@@ -274,6 +282,14 @@ def create_customer_account(
         billing_address=(payload.billing_address or '').strip() or None,
         payment_terms_days=max(0, payload.payment_terms_days),
         notes=(payload.notes or '').strip() or None,
+        # Fleet/Dealer fields
+        account_type=(payload.account_type or '').strip() or None,
+        fleet_size=payload.fleet_size,
+        primary_contact_name=(payload.primary_contact_name or '').strip() or None,
+        primary_contact_phone=(payload.primary_contact_phone or '').strip() or None,
+        billing_cycle=(payload.billing_cycle or '').strip() or None,
+        credit_limit=payload.credit_limit,
+        account_notes=(payload.account_notes or '').strip() or None,
     )
     session.add(account)
     session.commit()

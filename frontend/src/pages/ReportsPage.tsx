@@ -1,7 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Scale, Wallet } from 'lucide-react'
-import { getReportsSummary, getReportsTrends, getTenantActivity } from '@/lib/api'
-import { Card, PageHeader, Spinner } from '@/components/ui'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { BarChart3, DollarSign, Scale, Wallet, Download } from 'lucide-react'
+import {
+  getExportCustomersCsv,
+  getExportInvoicesCsv,
+  getExportJobsCsv,
+  getExportMyData,
+  getReportsSummary,
+  getReportsTrends,
+  getTenantActivity,
+} from '@/lib/api'
+import { Button, Card, PageHeader, Spinner } from '@/components/ui'
 import { formatCents } from '@/lib/utils'
 
 function MetricCard({
@@ -30,10 +38,29 @@ function MetricCard({
   )
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function ReportsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
   const { data: trends } = useQuery({ queryKey: ['reports-trends'], queryFn: () => getReportsTrends(6).then(r => r.data) })
   const { data: activity } = useQuery({ queryKey: ['reports-activity'], queryFn: () => getTenantActivity(50).then(r => r.data) })
+  const exportJobsMut = useMutation({ mutationFn: () => getExportJobsCsv().then(r => { downloadBlob(r.data, 'jobs.csv'); return r }) })
+  const exportCustomersMut = useMutation({ mutationFn: () => getExportCustomersCsv().then(r => { downloadBlob(r.data, 'customers.csv'); return r }) })
+  const exportInvoicesMut = useMutation({ mutationFn: () => getExportInvoicesCsv().then(r => { downloadBlob(r.data, 'invoices.csv'); return r }) })
+  const exportMyDataMut = useMutation({
+    mutationFn: async () => {
+      const { data: json } = await getExportMyData()
+      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
+      downloadBlob(blob, 'my-data.json')
+    },
+  })
 
   if (isLoading) return <Spinner />
   if (!data) return <p style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p>
@@ -43,7 +70,25 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports" />
+      <PageHeader
+        title="Reports"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={() => exportJobsMut.mutate()} disabled={exportJobsMut.isPending}>
+              <Download size={14} className="mr-1" /> Jobs CSV
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => exportCustomersMut.mutate()} disabled={exportCustomersMut.isPending}>
+              <Download size={14} className="mr-1" /> Customers CSV
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => exportInvoicesMut.mutate()} disabled={exportInvoicesMut.isPending}>
+              <Download size={14} className="mr-1" /> Invoices CSV
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => exportMyDataMut.mutate()} disabled={exportMyDataMut.isPending}>
+              <Download size={14} className="mr-1" /> Export my data
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <MetricCard

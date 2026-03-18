@@ -4,45 +4,10 @@ import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
 import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
-const JOB_STATUSES: JobStatus[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts', 'working_on', 'completed', 'awaiting_collection']
-const COMPLETED_DIRECTORY_STATUSES: JobStatus[] = ['completed', 'awaiting_collection', 'collected']
-const NON_ACTIVE_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
-const ACTIVE_DIRECTORY_STATUSES: JobStatus[] = JOB_STATUSES.filter(s => !NON_ACTIVE_STATUSES.includes(s))
-const CLOSED_DIRECTORY_STATUSES: JobStatus[] = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
-const ALL_STATUS_OPTIONS: JobStatus[] = [
-  'awaiting_quote',
-  'awaiting_go_ahead',
-  'go_ahead',
-  'parts_to_order',
-  'sent_to_labanda',
-  'quoted_by_labanda',
-  'awaiting_parts',
-  'working_on',
-  'service',
-  'completed',
-  'awaiting_collection',
-  'collected',
-  'no_go',
-]
-
-const STATUS_OPTION_LABELS: Record<JobStatus, string> = {
-  awaiting_quote: 'Awaiting Quote',
-  awaiting_go_ahead: 'Awaiting Go Ahead',
-  go_ahead: 'Go Ahead Given',
-  no_go: 'No Go',
-  working_on: 'Started Work',
-  awaiting_parts: 'Awaiting Parts',
-  parts_to_order: 'Parts Ordered',
-  sent_to_labanda: 'Sent to Labanda',
-  quoted_by_labanda: 'Quoted by Labanda',
-  service: 'Service',
-  completed: 'Work Completed',
-  awaiting_collection: 'Ready for Collection',
-  collected: 'Collected',
-}
+const ALL_STATUS_OPTIONS: JobStatus[] = [...JOB_STATUS_ORDER]
 
 export default function JobsPage() {
   const qc = useQueryClient()
@@ -72,7 +37,7 @@ export default function JobsPage() {
 
   const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
-  const statusOptions = jobDirectoryView === 'active' ? ACTIVE_DIRECTORY_STATUSES : CLOSED_DIRECTORY_STATUSES
+  const statusOptions = jobDirectoryView === 'active' ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateJobStatus(jobId, status),
@@ -179,7 +144,7 @@ export default function JobsPage() {
           onChange={e => setStatusFilter(e.target.value)}
         >
           <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
-          {statusOptions.map(s => <option key={s} value={s}>{STATUS_OPTION_LABELS[s]}</option>)}
+          {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
       </div>
 
@@ -201,7 +166,7 @@ export default function JobsPage() {
                       style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
                     >
                       <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-                        {STATUS_OPTION_LABELS[status]}
+                        {STATUS_LABELS[status]}
                       </p>
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
                         {jobsInStatus.length}
@@ -269,7 +234,7 @@ export default function JobsPage() {
                                 disabled={updatingJobId === j.id}
                               >
                                 {ALL_STATUS_OPTIONS.map(s => (
-                                  <option key={s} value={s}>{STATUS_OPTION_LABELS[s]}</option>
+                                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                                 ))}
                               </select>
                             </div>

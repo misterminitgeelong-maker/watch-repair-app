@@ -1,3 +1,6 @@
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -34,6 +37,16 @@ from .routes.stocktakes import router as stocktake_router
 from .startup_seed import ensure_demo_tenant, ensure_platform_admin_account, get_seed_status, seed_from_csv_if_empty
 
 
+if getattr(settings, "sentry_dsn", "").strip():
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn.strip(),
+        traces_sample_rate=0.1,
+        profiles_sample_rate=0.0,
+        environment=getattr(settings, "app_env", "production"),
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
@@ -44,10 +57,37 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    description="Multi-tenant API for watch, shoe, and auto-key repair shops. Handles customers, jobs, quotes, approvals, invoices, and billing.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Request ID and logging (method, path, status, duration, request_id)
+logger = logging.getLogger("mainspring.requests")
+REQUEST_ID_HEADER = "X-Request-ID"
+
+
+@app.middleware("http")
+async def request_id_and_log(request: Request, call_next):
+    request_id = request.headers.get(REQUEST_ID_HEADER) or str(uuid.uuid4())
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers[REQUEST_ID_HEADER] = request_id
+    logger.info(
+        "%s %s %s %.2fms request_id=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+        request_id,
+    )
+    return response
 
 # CORS
 app.add_middleware(
@@ -62,6 +102,22 @@ app.add_middleware(
 @app.get("/v1/health")
 def health():
     return {"status": "ok", "startup_seed": get_seed_status()}
+
+
+@app.get("/v1/ready")
+def ready():
+    """Readiness: checks DB connectivity. Returns 503 if DB is unreachable."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={"status": "unhealthy", "detail": "Database unreachable"},
+            status_code=503,
+        )
+    return {"status": "healthy"}
 
 
 @app.get("/v1/seed-status")

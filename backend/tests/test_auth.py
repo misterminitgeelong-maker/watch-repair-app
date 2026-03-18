@@ -5,6 +5,8 @@ from uuid import uuid4
 # Use a fresh sqlite file for every test run so schema changes are always applied.
 _TEST_DB = Path(__file__).with_name(f"test_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient
 
@@ -168,6 +170,48 @@ def test_repair_jobs_and_status_history_tenant_isolation():
     assert denied_status_change.status_code == 404
 
 
+def test_quotes_tenant_isolation():
+    suffix_a = uuid4().hex[:8]
+    suffix_b = uuid4().hex[:8]
+    token_a = _bootstrap_and_login(
+        tenant_slug=f"quote-a-{suffix_a}",
+        email=f"owner-{suffix_a}@a.test",
+        password="pass123456",
+    )
+    token_b = _bootstrap_and_login(
+        tenant_slug=f"quote-b-{suffix_b}",
+        email=f"owner-{suffix_b}@b.test",
+        password="pass123456",
+    )
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+    customer_id = _create_customer(headers_a)
+    watch_id = _create_watch(headers_a, customer_id)
+    job_res = client.post(
+        "/v1/repair-jobs",
+        headers=headers_a,
+        json={"watch_id": watch_id, "title": "Quote isolation", "priority": "normal"},
+    )
+    assert job_res.status_code == 201
+    job_id = job_res.json()["id"]
+    quote_res = client.post(
+        "/v1/quotes",
+        headers=headers_a,
+        json={
+            "repair_job_id": job_id,
+            "tax_cents": 0,
+            "line_items": [{"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}],
+        },
+    )
+    assert quote_res.status_code == 201
+    quote_id = quote_res.json()["id"]
+    list_b = client.get("/v1/quotes", headers=headers_b)
+    assert list_b.status_code == 200
+    assert len(list_b.json()) == 0
+    get_b = client.get(f"/v1/quotes/{quote_id}/line-items", headers=headers_b)
+    assert get_b.status_code == 404
+
+
 def test_quote_totals_and_public_decision_flow():
     suffix = uuid4().hex[:8]
     token = _bootstrap_and_login(
@@ -221,6 +265,59 @@ def test_quote_totals_and_public_decision_flow():
         json={"decision": "declined"},
     )
     assert replay_res.status_code == 409
+
+
+def test_invoices_tenant_isolation():
+    suffix_a = uuid4().hex[:8]
+    suffix_b = uuid4().hex[:8]
+    token_a = _bootstrap_and_login(
+        tenant_slug=f"inv-a-{suffix_a}",
+        email=f"owner-{suffix_a}@a.test",
+        password="pass123456",
+    )
+    token_b = _bootstrap_and_login(
+        tenant_slug=f"inv-b-{suffix_b}",
+        email=f"owner-{suffix_b}@b.test",
+        password="pass123456",
+    )
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+    customer_id = _create_customer(headers_a)
+    watch_id = _create_watch(headers_a, customer_id)
+    job_res = client.post(
+        "/v1/repair-jobs",
+        headers=headers_a,
+        json={"watch_id": watch_id, "title": "Invoice isolation", "priority": "normal"},
+    )
+    assert job_res.status_code == 201
+    job_id = job_res.json()["id"]
+    quote_res = client.post(
+        "/v1/quotes",
+        headers=headers_a,
+        json={
+            "repair_job_id": job_id,
+            "tax_cents": 0,
+            "line_items": [{"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}],
+        },
+    )
+    assert quote_res.status_code == 201
+    quote_id = quote_res.json()["id"]
+    send_res = client.post(f"/v1/quotes/{quote_id}/send", headers=headers_a)
+    assert send_res.status_code == 200
+    approval_token = send_res.json()["approval_token"]
+    decision_res = client.post(
+        f"/v1/public/quotes/{approval_token}/decision",
+        json={"decision": "approved"},
+    )
+    assert decision_res.status_code == 200
+    inv_res = client.post(
+        f"/v1/invoices/from-quote/{quote_id}",
+        headers=headers_a,
+    )
+    assert inv_res.status_code == 201
+    invoice_id = inv_res.json()["invoice"]["id"]
+    get_b = client.get(f"/v1/invoices/{invoice_id}", headers=headers_b)
+    assert get_b.status_code == 404
 
 
 def test_invoice_from_approved_quote_and_payment_flow():

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+// TEMP: Assume all users are admin/manager for demo
+const isManagerOrAdmin = true;
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
@@ -31,40 +33,165 @@ function CreateCustomerAccountModal({ onClose }: { onClose: () => void }) {
     billing_address: '',
     payment_terms_days: '30',
     notes: '',
-  })
+    // Fleet/Dealer fields
+    account_type: '',
+    fleet_size: '',
+    primary_contact_name: '',
+    primary_contact_phone: '',
+    billing_cycle: '',
+    return (
+      <div>
+        <PageHeader title="Customer Accounts (B2B)" action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />Create Account</Button>} />
 
-  const createMut = useMutation({
-    mutationFn: () =>
-      createCustomerAccount({
-        name: form.name.trim(),
-        account_code: form.account_code.trim() || undefined,
-        contact_name: form.contact_name.trim() || undefined,
-        contact_email: form.contact_email.trim() || undefined,
-        contact_phone: form.contact_phone.trim() || undefined,
-        billing_address: form.billing_address.trim() || undefined,
-        payment_terms_days: Math.max(0, Number(form.payment_terms_days || '30')),
-        notes: form.notes.trim() || undefined,
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['customer-accounts'] })
-      onClose()
-    },
-    onError: (err) => setError(getApiErrorMessage(err, 'Failed to create customer account.')),
-  })
+        {showCreate && <CreateCustomerAccountModal onClose={() => setShowCreate(false)} />}
 
-  return (
-    <Modal title="Create Customer Account" onClose={onClose}>
-      <div className="space-y-3">
-        <Input label="Account name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-        <Input label="Account code" value={form.account_code} onChange={e => setForm(f => ({ ...f, account_code: e.target.value }))} />
+        {isLoading ? <Spinner /> : (
+          <div className="space-y-3">
+            {accounts.length === 0 ? <EmptyState message="No customer accounts yet." /> : accounts.map(account => {
+              const selectedCustomer = selectedCustomerByAccount[account.id] ?? ''
+              const periodValue = periodValueFor(account.id)
+              const { year, month } = parsePeriod(periodValue)
+              const statement = statementByAccount[account.id]
+              const latestInvoice = latestInvoiceByAccount[account.id]
+              const history = invoiceListByAccount[account.id] ?? []
+              const available = customers.filter(c => !account.customer_ids.includes(c.id))
+              // Inline edit state for admin controls
+              const [editFields, setEditFields] = useState<{ [k: string]: boolean }>({})
+              const [editValues, setEditValues] = useState<{ [k: string]: any }>({})
+              const [editError, setEditError] = useState('')
+              const updateMut = useMutation({
+                mutationFn: (fields: any) => updateCustomerAccount(account.id, fields),
+                onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer-accounts'] }); setEditFields({}); setEditError(''); },
+                onError: (err) => setEditError(getApiErrorMessage(err, 'Failed to update account.')),
+              })
+              function startEdit(field: string, value: any) {
+                setEditFields(f => ({ ...f, [field]: true }))
+                setEditValues(v => ({ ...v, [field]: value }))
+              }
+              function cancelEdit(field: string) {
+                setEditFields(f => ({ ...f, [field]: false }))
+                setEditError('')
+              }
+              function saveEdit(field: string) {
+                updateMut.mutate({ [field]: editValues[field] })
+              }
+              // ...existing code...
+              return (
+                <Card key={account.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {account.account_code ? `Code ${account.account_code} · ` : ''}
+                        Terms {account.payment_terms_days} days
+                        {account.contact_email ? ` · ${account.contact_email}` : ''}
+                      </p>
+                      {/* Fleet/Dealer fields summary with admin inline edit */}
+                      <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {/* Account Type */}
+                        {account.account_type && (
+                          <div>
+                            Type: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.account_type}</span>
+                            {isManagerOrAdmin && !editFields.account_type && (
+                              <button className="ml-2 text-xs underline" onClick={() => startEdit('account_type', account.account_type)}>Edit</button>
+                            )}
+                            {isManagerOrAdmin && editFields.account_type && (
+                              <span className="ml-2">
+                                <select value={editValues.account_type} onChange={e => setEditValues(v => ({ ...v, account_type: e.target.value }))}>
+                                  <option value="Dealership">Dealership</option>
+                                  <option value="Rental Fleet">Rental Fleet</option>
+                                  <option value="Government Fleet">Government Fleet</option>
+                                  <option value="Corporate Fleet">Corporate Fleet</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <button className="ml-1 text-xs" onClick={() => saveEdit('account_type')}>Save</button>
+                                <button className="ml-1 text-xs" onClick={() => cancelEdit('account_type')}>Cancel</button>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Billing Cycle */}
+                        {account.billing_cycle && (
+                          <div>
+                            Billing cycle: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.billing_cycle}</span>
+                            {isManagerOrAdmin && !editFields.billing_cycle && (
+                              <button className="ml-2 text-xs underline" onClick={() => startEdit('billing_cycle', account.billing_cycle)}>Edit</button>
+                            )}
+                            {isManagerOrAdmin && editFields.billing_cycle && (
+                              <span className="ml-2">
+                                <select value={editValues.billing_cycle} onChange={e => setEditValues(v => ({ ...v, billing_cycle: e.target.value }))}>
+                                  <option value="Monthly">Monthly</option>
+                                  <option value="Fortnightly">Fortnightly</option>
+                                  <option value="Weekly">Weekly</option>
+                                </select>
+                                <button className="ml-1 text-xs" onClick={() => saveEdit('billing_cycle')}>Save</button>
+                                <button className="ml-1 text-xs" onClick={() => cancelEdit('billing_cycle')}>Cancel</button>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Credit Limit */}
+                        {account.credit_limit !== undefined && account.credit_limit !== null && (
+                          <div>
+                            Credit limit: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>${account.credit_limit}</span>
+                            {isManagerOrAdmin && !editFields.credit_limit && (
+                              <button className="ml-2 text-xs underline" onClick={() => startEdit('credit_limit', account.credit_limit)}>Edit</button>
+                            )}
+                            {isManagerOrAdmin && editFields.credit_limit && (
+                              <span className="ml-2">
+                                <input type="number" min={0} value={editValues.credit_limit} onChange={e => setEditValues(v => ({ ...v, credit_limit: e.target.value }))} style={{ width: 80 }} />
+                                <button className="ml-1 text-xs" onClick={() => saveEdit('credit_limit')}>Save</button>
+                                <button className="ml-1 text-xs" onClick={() => cancelEdit('credit_limit')}>Cancel</button>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Account Notes */}
+                        {account.account_notes && (
+                          <div>
+                            Notes: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.account_notes}</span>
+                            {isManagerOrAdmin && !editFields.account_notes && (
+                              <button className="ml-2 text-xs underline" onClick={() => startEdit('account_notes', account.account_notes)}>Edit</button>
+                            )}
+                            {isManagerOrAdmin && editFields.account_notes && (
+                              <span className="ml-2">
+                                <input type="text" value={editValues.account_notes} onChange={e => setEditValues(v => ({ ...v, account_notes: e.target.value }))} style={{ width: 120 }} />
+                                <button className="ml-1 text-xs" onClick={() => saveEdit('account_notes')}>Save</button>
+                                <button className="ml-1 text-xs" onClick={() => cancelEdit('account_notes')}>Cancel</button>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {editError && <p className="text-xs mt-1" style={{ color: '#C96A5A' }}>{editError}</p>}
+                      {/* ...existing code... */}
+        <Input label="Contact email" type="email" value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} maxLength={64} />
+        <Textarea label="Billing address" value={form.billing_address} onChange={e => setForm(f => ({ ...f, billing_address: e.target.value }))} rows={2} maxLength={256} />
+        <Input label="Payment terms (days)" type="number" min="0" value={form.payment_terms_days} onChange={e => setForm(f => ({ ...f, payment_terms_days: e.target.value }))} help="Number of days before payment is due." />
+        <Textarea label="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} maxLength={256} />
+
+        {/* Fleet/Dealer/Subscription fields */}
+        <Select label="Account type" value={form.account_type} onChange={e => setForm(f => ({ ...f, account_type: e.target.value }))} help="Type of fleet or dealer account.">
+          <option value="">Select type</option>
+          <option value="Dealership">Dealership</option>
+          <option value="Rental Fleet">Rental Fleet</option>
+          <option value="Government Fleet">Government Fleet</option>
+          <option value="Corporate Fleet">Corporate Fleet</option>
+          <option value="Other">Other</option>
+        </Select>
+        <Input label="Fleet size (vehicles)" type="number" min="0" value={form.fleet_size} onChange={e => setForm(f => ({ ...f, fleet_size: e.target.value }))} help="Number of vehicles in the fleet (if applicable)." />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Contact name" value={form.contact_name} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} />
-          <Input label="Contact phone" value={form.contact_phone} onChange={e => setForm(f => ({ ...f, contact_phone: e.target.value }))} />
+          <Input label="Primary contact name" value={form.primary_contact_name} onChange={e => setForm(f => ({ ...f, primary_contact_name: e.target.value }))} maxLength={64} />
+          <Input label="Primary contact phone" value={form.primary_contact_phone} onChange={e => setForm(f => ({ ...f, primary_contact_phone: e.target.value }))} maxLength={32} />
         </div>
-        <Input label="Contact email" type="email" value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} />
-        <Textarea label="Billing address" value={form.billing_address} onChange={e => setForm(f => ({ ...f, billing_address: e.target.value }))} rows={2} />
-        <Input label="Payment terms (days)" type="number" min="0" value={form.payment_terms_days} onChange={e => setForm(f => ({ ...f, payment_terms_days: e.target.value }))} />
-        <Textarea label="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+        <Select label="Billing cycle" value={form.billing_cycle} onChange={e => setForm(f => ({ ...f, billing_cycle: e.target.value }))} help="How often invoices are generated for this account.">
+          <option value="">Select cycle</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Fortnightly">Fortnightly</option>
+          <option value="Weekly">Weekly</option>
+        </Select>
+        <Input label="Credit limit ($)" type="number" min="0" value={form.credit_limit} onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))} help="Maximum allowed outstanding balance for this account." />
+        <Textarea label="Account notes" value={form.account_notes} onChange={e => setForm(f => ({ ...f, account_notes: e.target.value }))} rows={2} maxLength={256} help="Internal notes about this account." />
 
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
 
@@ -76,6 +203,7 @@ function CreateCustomerAccountModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </Modal>
+  )
   )
 }
 
@@ -269,9 +397,39 @@ export default function CustomerAccountsPage() {
     return `/jobs/${jobId}`
   }
 
+  // Dashboard summary calculations
+  const fleetAccounts = accounts.filter(a => a.account_type)
+  const totalFleet = fleetAccounts.length
+  const totalCreditLimit = fleetAccounts.reduce((sum, a) => sum + (a.credit_limit || 0), 0)
+  const billingCycleCounts = fleetAccounts.reduce((acc, a) => {
+    if (a.billing_cycle) acc[a.billing_cycle] = (acc[a.billing_cycle] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
   return (
     <div>
       <PageHeader title="Customer Accounts (B2B)" action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />Create Account</Button>} />
+
+      {/* Dashboard summary */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Active Fleet/Dealer Accounts</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{totalFleet}</div>
+        </div>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Credit Limit</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>${totalCreditLimit.toLocaleString()}</div>
+        </div>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Billing Cycle Distribution</div>
+          <ul className="text-sm mt-1">
+            {Object.entries(billingCycleCounts).length === 0 && <li style={{ color: 'var(--cafe-text-muted)' }}>None</li>}
+            {Object.entries(billingCycleCounts).map(([cycle, count]) => (
+              <li key={cycle}><span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{cycle}</span>: {count}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
       {showCreate && <CreateCustomerAccountModal onClose={() => setShowCreate(false)} />}
 
@@ -295,8 +453,24 @@ export default function CustomerAccountsPage() {
                       Terms {account.payment_terms_days} days
                       {account.contact_email ? ` · ${account.contact_email}` : ''}
                     </p>
+                    {/* Fleet/Dealer fields summary */}
+                    <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                      {account.account_type && <div>Type: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.account_type}</span></div>}
+                      {account.fleet_size !== undefined && account.fleet_size !== null && <div>Fleet size: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.fleet_size}</span></div>}
+                      {account.primary_contact_name && <div>Primary contact: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.primary_contact_name}</span></div>}
+                      {account.primary_contact_phone && <div>Contact phone: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.primary_contact_phone}</span></div>}
+                      {account.billing_cycle && <div>Billing cycle: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.billing_cycle}</span></div>}
+                      {account.credit_limit !== undefined && account.credit_limit !== null && <div>Credit limit: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>${account.credit_limit}</span></div>}
+                    </div>
+                    {account.account_notes && <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{account.account_notes}</p>}
                     {account.notes && <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{account.notes}</p>}
                   </div>
+                </div>
+                {/* Summary row placeholder (to be implemented with real data) */}
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <div>Total jobs this month: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>–</span></div>
+                  <div>Total invoiced this month: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>–</span></div>
+                  <div>Outstanding balance: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>–</span></div>
                 </div>
 
                 <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>

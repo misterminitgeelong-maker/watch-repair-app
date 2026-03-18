@@ -157,7 +157,7 @@ function ProductPreview() {
             <h4 className="text-sm font-semibold uppercase tracking-wide">Repair Pipeline</h4>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {['Received', 'Diagnosing', 'Awaiting Go Ahead', 'Awaiting Parts', 'Repairing', 'Quality Check', 'Ready', 'Collected'].map((stage) => (
+            {['Awaiting Quote', 'Awaiting Go Ahead', 'Awaiting Parts', 'Started Work', 'Ready', 'Collected'].map((stage) => (
               <span
                 key={stage}
                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
@@ -342,6 +342,9 @@ function FinalCTA() {
         <p className="mt-3 max-w-2xl text-sm sm:text-base" style={{ color: '#D8C2A8', lineHeight: 1.75 }}>
           Give your workshop a proper repair pipeline and operations view so every watch, customer, and decision stays on track.
         </p>
+        <p className="mt-2 text-sm opacity-70" style={{ color: '#D8C2A8' }}>
+          Designed by a working Mister Minit franchisee who runs this pipeline every day.
+        </p>
 
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link
@@ -400,7 +403,7 @@ export default function LandingPage() {
             <img src="/mainspring-logo.png" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <a href="#pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Pricing</a>
+            <Link to="/pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Pricing</Link>
             <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
             <Link to="/login?demo=1" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}>
               Demo login

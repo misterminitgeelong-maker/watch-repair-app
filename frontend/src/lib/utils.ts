@@ -13,6 +13,30 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// Single source of truth for job status order (watch repair directory views)
+export const JOB_STATUS_ORDER = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'no_go',
+  'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
+  'awaiting_parts',
+  'working_on',
+  'service',
+  'completed',
+  'awaiting_collection',
+  'collected',
+] as const
+
+export const ACTIVE_DIRECTORY_STATUSES = [
+  'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'parts_to_order', 'sent_to_labanda',
+  'quoted_by_labanda', 'awaiting_parts', 'working_on', 'service',
+] as const
+
+export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
+
 export const STATUS_LABELS: Record<string, string> = {
   awaiting_quote:      'Awaiting Quote',
   awaiting_go_ahead:   'Awaiting Go Ahead',

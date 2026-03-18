@@ -5,6 +5,7 @@ from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, enforce_plan_limit, require_feature, require_tech_or_above
+from ..tenant_helpers import get_tenant_repair_job
 from ..models import (
     Approval,
     Attachment,
@@ -113,8 +114,8 @@ def get_repair_job(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
     return job
 
@@ -126,8 +127,8 @@ def update_repair_job_status(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     previous_status = job.status
@@ -159,6 +160,14 @@ def update_repair_job_status(
                 status_token=job.status_token,
                 new_status=job.status,
             )
+        if customer and customer.email and job.status in ("completed", "awaiting_collection"):
+            from ..email_client import send_job_ready_email
+            send_job_ready_email(
+                to_email=customer.email,
+                customer_name=customer.full_name,
+                job_number=job.job_number,
+                status_token=job.status_token,
+            )
 
     session.commit()
     session.refresh(job)
@@ -183,8 +192,8 @@ def submit_job_intake(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     checklist: list[str] = []
@@ -273,8 +282,8 @@ def update_repair_job_fields(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     if payload.cost_cents is not None:
@@ -310,8 +319,8 @@ def get_repair_job_status_history(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     history = session.exec(
@@ -328,8 +337,8 @@ def delete_repair_job(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     quote_ids = session.exec(

@@ -24,10 +24,12 @@ from ..models import (
     AutoKeyJob,
     BootstrapResponse,
     Customer,
+    Invoice,
     LoginRequest,
     MultiSiteLoginRequest,
     MultiSiteLoginResponse,
     ParentAccount,
+    RefreshRequest,
     ParentAccountEventLog,
     ParentAccountMembership,
     PublicUser,
@@ -44,7 +46,7 @@ from ..models import (
     User,
     Watch,
 )
-from ..security import create_access_token, hash_password, verify_password
+from ..security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -65,8 +67,24 @@ def _normalize_plan_code(value: str | None, default_if_empty: str = "pro") -> st
 
 def _validate_password_strength(value: str) -> None:
     password = value or ""
-    if len(password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    min_len = settings.password_min_length
+    if len(password) < min_len:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must be at least {min_len} characters",
+        )
+    if settings.password_require_number and not any(c.isdigit() for c in password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least one number",
+        )
+    if settings.password_require_special:
+        special = set("!@#$%^&*()_+-=[]{}|;':\",./<>?")
+        if not any(c in special for c in password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one special character (!@#$%^&* etc.)",
+            )
 
 
 def _build_public_user(user: User) -> PublicUser:
@@ -297,6 +315,61 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             session.add(job)
             created_repair_jobs += 1
 
+    # Add demo WorkLog entries for each demo watch RepairJob
+    session.flush()
+    demo_jobs = session.exec(
+        select(RepairJob).where(RepairJob.tenant_id == tenant.id).order_by(RepairJob.created_at)
+    ).all()
+    from ..models import WorkLog
+    for job in demo_jobs:
+        # Only add if not already present (guard for idempotency)
+        existing_logs = session.exec(
+            select(WorkLog).where(WorkLog.tenant_id == tenant.id, WorkLog.repair_job_id == job.id)
+        ).all()
+        if len(existing_logs) == 0:
+            now = datetime.now(timezone.utc)
+            wl1 = WorkLog(
+                tenant_id=tenant.id,
+                repair_job_id=job.id,
+                user_id=actor.id,
+                note="Initial assessment and intake.",
+                minutes_spent=15,
+                started_at=job.created_at + timedelta(hours=1),
+                ended_at=job.created_at + timedelta(hours=1, minutes=15),
+                created_at=job.created_at + timedelta(hours=1, minutes=15),
+            )
+            wl2 = WorkLog(
+                tenant_id=tenant.id,
+                repair_job_id=job.id,
+                user_id=actor.id,
+                note="Movement disassembly and cleaning.",
+                minutes_spent=45,
+                started_at=job.created_at + timedelta(hours=2),
+                ended_at=job.created_at + timedelta(hours=2, minutes=45),
+                created_at=job.created_at + timedelta(hours=2, minutes=45),
+            )
+            session.add(wl1)
+            session.add(wl2)
+
+    # Add demo JobStatusHistory entries for each demo watch RepairJob
+    from ..models import JobStatusHistory
+    for job in demo_jobs:
+        # Only add if not already present (guard for idempotency)
+        existing_status = session.exec(
+            select(JobStatusHistory).where(JobStatusHistory.tenant_id == tenant.id, JobStatusHistory.repair_job_id == job.id)
+        ).all()
+        if len(existing_status) == 0:
+            history = JobStatusHistory(
+                tenant_id=tenant.id,
+                repair_job_id=job.id,
+                old_status=None,
+                new_status=job.status,
+                changed_by_user_id=actor.id,
+                change_note="Job created (demo seed)",
+                created_at=job.created_at,
+            )
+            session.add(history)
+
     shoes = session.exec(
         select(Shoe).where(Shoe.tenant_id == tenant.id).order_by(Shoe.created_at)
     ).all()
@@ -400,7 +473,37 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             session.add(job)
             created_auto_key_jobs += 1
 
-    if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs]):
+    # Seed up to 3 paid invoices linked to demo watch repair jobs (for guided tour step 10+)
+    existing_invoice_count = int(
+        session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant.id)).one()
+    )
+    created_invoices = 0
+    if existing_invoice_count < 3:
+        repair_jobs_for_invoices = session.exec(
+            select(RepairJob).where(RepairJob.tenant_id == tenant.id).order_by(RepairJob.job_number).limit(3)
+        ).all()
+        to_create = 3 - existing_invoice_count
+        for i in range(to_create):
+            if i >= len(repair_jobs_for_invoices):
+                break
+            job = repair_jobs_for_invoices[i]
+            total_cents = job.cost_cents or job.pre_quote_cents or 9999
+            inv = Invoice(
+                tenant_id=tenant.id,
+                repair_job_id=job.id,
+                quote_id=None,
+                invoice_number=f"INV-{existing_invoice_count + i + 1:05d}",
+                status="paid",
+                subtotal_cents=total_cents,
+                tax_cents=0,
+                total_cents=total_cents,
+                currency="AUD",
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 60)),
+            )
+            session.add(inv)
+            created_invoices += 1
+
+    if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs, created_invoices]):
         session.add(
             TenantEventLog(
                 tenant_id=tenant.id,
@@ -411,7 +514,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 event_summary=(
                     f"Demo data seeded by {actor.email}: "
                     f"customers={created_customers}, watches={created_watches}, "
-                    f"watch_jobs={created_repair_jobs}, shoe_jobs={created_shoe_jobs}, auto_key_jobs={created_auto_key_jobs}"
+                    f"watch_jobs={created_repair_jobs}, shoe_jobs={created_shoe_jobs}, auto_key_jobs={created_auto_key_jobs}, invoices={created_invoices}"
                 ),
             )
         )
@@ -424,11 +527,13 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         "repair_jobs": created_repair_jobs,
         "shoe_jobs": created_shoe_jobs,
         "auto_key_jobs": created_auto_key_jobs,
+        "invoices": created_invoices,
     }
 
 
 @router.post("/signup", response_model=TenantSignupResponse)
-def signup(payload: TenantSignupRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def signup(request: Request, payload: TenantSignupRequest, session: Session = Depends(get_session)):
     tenant_slug = _normalize_slug(payload.tenant_slug)
     owner_email = _normalize_email(payload.email)
     owner_name = payload.full_name.strip()
@@ -472,11 +577,14 @@ def signup(payload: TenantSignupRequest, session: Session = Depends(get_session)
 
     token_subject = f"{tenant.id}:{owner.id}:{owner.role}"
     token, expires = create_access_token(token_subject)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
     return TenantSignupResponse(
         tenant_id=tenant.id,
         user=_build_public_user(owner),
         access_token=token,
         expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
     )
 
 
@@ -517,9 +625,17 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_se
     return BootstrapResponse(tenant_id=tenant.id, owner_user=_build_public_user(owner))
 
 
+
+# Dynamically set rate limit based on environment
+def get_login_rate_limit():
+    return "1000/minute" if settings.app_env == "test" else "20/minute"
+
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("20/minute")
+@limiter.limit(get_login_rate_limit)
 def login(request: Request, payload: LoginRequest, session: Session = Depends(get_session)):
+    return _login_impl(request, payload, session)
+
+def _login_impl(request: Request, payload: LoginRequest, session: Session = Depends(get_session)):
     tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -545,7 +661,13 @@ def login(request: Request, payload: LoginRequest, session: Session = Depends(ge
 
     token_subject = f"{tenant.id}:{user.id}:{user.role}"
     token, expires = create_access_token(token_subject)
-    return TokenResponse(access_token=token, expires_in_seconds=expires)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    return TokenResponse(
+        access_token=token,
+        expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
+    )
 
 
 @router.post("/multi-site-login", response_model=MultiSiteLoginResponse)
@@ -584,9 +706,12 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
 
     token_subject = f"{selected.tenant_id}:{selected.user_id}:{selected.role}"
     token, expires = create_access_token(token_subject)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
     return MultiSiteLoginResponse(
         access_token=token,
         expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=selected.tenant_id,
         available_sites=valid_sites,
     )
@@ -622,7 +747,13 @@ def dev_auto_login(session: Session = Depends(get_session)):
         user = _create_default_owner(session, tenant)
         token_subject = f"{tenant.id}:{user.id}:{user.role}"
         token, expires = create_access_token(token_subject)
-        return TokenResponse(access_token=token, expires_in_seconds=expires)
+        refresh_token, refresh_expires = create_refresh_token(token_subject)
+        return TokenResponse(
+            access_token=token,
+            expires_in_seconds=expires,
+            refresh_token=refresh_token,
+            refresh_expires_in_seconds=refresh_expires,
+        )
 
     selected_tenant = tenants[0]
     selected_count = -1
@@ -655,7 +786,67 @@ def dev_auto_login(session: Session = Depends(get_session)):
 
     token_subject = f"{selected_tenant.id}:{user.id}:{user.role}"
     token, expires = create_access_token(token_subject)
-    return TokenResponse(access_token=token, expires_in_seconds=expires)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    return TokenResponse(
+        access_token=token,
+        expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_session)):
+    try:
+        subject = decode_refresh_token(payload.refresh_token)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    parts = subject.split(":", maxsplit=2)
+    if len(parts) < 2:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    tenant_id = UUID(parts[0])
+    user_id = UUID(parts[1])
+
+    user = session.get(User, user_id)
+    if not user or user.tenant_id != tenant_id or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    token_subject = f"{tenant_id}:{user_id}:{user.role}"
+    token, expires = create_access_token(token_subject)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    return TokenResponse(
+        access_token=token,
+        expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
+    )
+
+
+@router.get("/export-my-data", summary="Export tenant data for portability (GDPR-style)")
+def export_my_data(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability."""
+    customers = session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
+    watches = session.exec(select(Watch).where(Watch.tenant_id == auth.tenant_id)).all()
+    jobs = session.exec(select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)).all()
+    from ..models import Quote, Invoice
+    quotes = session.exec(select(Quote).where(Quote.tenant_id == auth.tenant_id)).all()
+    invoices = session.exec(select(Invoice).where(Invoice.tenant_id == auth.tenant_id)).all()
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "customers": [{"id": str(c.id), "full_name": c.full_name, "email": c.email, "phone": c.phone, "created_at": c.created_at.isoformat() if c.created_at else None} for c in customers],
+        "watches": [{"id": str(w.id), "customer_id": str(w.customer_id), "brand": w.brand, "model": w.model, "created_at": w.created_at.isoformat() if w.created_at else None} for w in watches],
+        "repair_jobs": [{"id": str(j.id), "job_number": j.job_number, "watch_id": str(j.watch_id), "title": j.title, "status": j.status, "created_at": j.created_at.isoformat() if j.created_at else None} for j in jobs],
+        "quotes": [{"id": str(q.id), "repair_job_id": str(q.repair_job_id), "status": q.status, "total_cents": q.total_cents, "created_at": q.created_at.isoformat() if q.created_at else None} for q in quotes],
+        "invoices": [{"id": str(i.id), "invoice_number": i.invoice_number, "status": i.status, "total_cents": i.total_cents, "created_at": i.created_at.isoformat() if i.created_at else None} for i in invoices],
+    }
 
 
 @router.get("/session", response_model=AuthSessionResponse)
@@ -669,6 +860,18 @@ def get_session_info(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     return _build_auth_session_response(session, tenant, user)
+
+
+@router.get("/sessions", summary="List active sessions (stub: returns empty until refresh tokens are stored)")
+def list_sessions(auth: AuthContext = Depends(get_auth_context)):
+    """Return list of sessions for the current user. Currently a stub; returns empty until refresh tokens are persisted."""
+    return {"sessions": []}
+
+
+@router.post("/sessions/revoke-others", summary="Revoke all other sessions (stub: no-op until refresh tokens are stored)")
+def revoke_other_sessions(auth: AuthContext = Depends(get_auth_context)):
+    """Revoke every session except the current one. Currently a stub; no-op until refresh tokens are persisted."""
+    return {"revoked": 0}
 
 
 @router.patch("/session/site", response_model=ActiveSiteSwitchResponse)
@@ -708,9 +911,12 @@ def switch_active_site(
 
     token_subject = f"{target.tenant_id}:{target.user_id}:{target.role}"
     token, expires = create_access_token(token_subject)
+    refresh_token, refresh_expires = create_refresh_token(token_subject)
     return ActiveSiteSwitchResponse(
         access_token=token,
         expires_in_seconds=expires,
+        refresh_token=refresh_token,
+        refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=target.tenant_id,
         available_sites=sites,
     )

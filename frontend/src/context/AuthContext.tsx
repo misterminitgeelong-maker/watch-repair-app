@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getAuthSession, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
 interface AuthCtx {
   token: string | null
@@ -10,7 +10,7 @@ interface AuthCtx {
   planCode: PlanCode
   enabledFeatures: FeatureKey[]
   initializing: boolean
-  login: (token: string) => void
+  login: (accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) => void
   logout: () => void
   hasFeature: (feature: FeatureKey) => boolean
   refreshSession: () => Promise<void>
@@ -19,6 +19,7 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx | null>(null)
 
+/** Parses role from JWT for optional optimistic UI before /auth/session loads. Session data is the source of truth for role and permissions. */
 function parseRoleFromToken(token: string | null): string | null {
   if (!token) return null
   try {
@@ -52,8 +53,15 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site']
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
-  const [role, setRole] = useState<string | null>(() => parseRoleFromToken(localStorage.getItem('token')))
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      return getStoredAccessToken()
+    } catch {
+      return null
+    }
+  })
+  const [role, setRole] = useState<string | null>(() => parseRoleFromToken(getStoredAccessToken()))
+  const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
@@ -61,14 +69,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
   const [initializing, setInitializing] = useState(true)
 
+  function scheduleProactiveRefresh(expiresInSeconds: number) {
+    if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
+    const ms = Math.max(60_000, Math.floor(expiresInSeconds * 0.9 * 1000))
+    proactiveRefreshTimer.current = setTimeout(() => {
+      proactiveRefreshTimer.current = null
+      const rt = getStoredRefreshToken()
+      if (!rt) return
+      refreshAuth(rt)
+        .then((res) => {
+          setStoredTokens(res.data.access_token, res.data.refresh_token ?? null)
+          setToken(res.data.access_token)
+          setRole(parseRoleFromToken(res.data.access_token))
+          const next = res.data.expires_in_seconds ?? 480 * 60
+          scheduleProactiveRefresh(next)
+        })
+        .catch(() => {
+          clearStoredTokens()
+          window.dispatchEvent(new Event('auth:token-cleared'))
+        })
+    }, ms)
+  }
+
   async function refreshSession() {
-    if (!localStorage.getItem('token')) {
+    const stored = getStoredAccessToken()
+    if (!stored) {
       setRole(null)
       setTenantId(null)
       setActiveSiteTenantId(null)
       setAvailableSites([])
       setPlanCode('pro')
       setEnabledFeatures(defaultFeatures)
+      clearStoredTokens()
       return
     }
     const { data } = await getAuthSession()
@@ -82,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function syncTokenFromStorage() {
-      const nextToken = localStorage.getItem('token')
+      const nextToken = getStoredAccessToken()
       setToken(nextToken)
       setRole(parseRoleFromToken(nextToken))
       if (!nextToken) {
@@ -111,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await refreshSession()
           if (canceled) return
         } catch {
-          localStorage.removeItem('token')
+          clearStoredTokens()
           if (!canceled) {
             setToken(null)
             setRole(null)
@@ -145,15 +177,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function ensureTestSession() {
       try {
         // Optional dev helper for local demos and seeded datasets.
-        const loginResp = await postJson<{ access_token: string }>('/v1/auth/dev-auto-login', {})
+        const loginResp = await postJson<{ access_token: string; refresh_token?: string }>('/v1/auth/dev-auto-login', {})
         if (!canceled && loginResp.access_token) {
-          localStorage.setItem('token', loginResp.access_token)
+          setStoredTokens(loginResp.access_token, loginResp.refresh_token ?? null)
           setToken(loginResp.access_token)
           setRole(parseRoleFromToken(loginResp.access_token))
         }
       } catch {
         // Leave unauthenticated if setup fails.
-        localStorage.removeItem('token')
+        clearStoredTokens()
         if (!canceled) {
           setToken(null)
           setRole(null)
@@ -174,14 +206,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token])
 
-  function login(t: string) {
-    localStorage.setItem('token', t)
-    setToken(t)
-    setRole(parseRoleFromToken(t))
+  function login(accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) {
+    setStoredTokens(accessToken, refreshToken ?? null)
+    setToken(accessToken)
+    setRole(parseRoleFromToken(accessToken))
+    if (typeof expiresInSeconds === 'number' && expiresInSeconds > 0) scheduleProactiveRefresh(expiresInSeconds)
   }
 
   function logout() {
-    localStorage.removeItem('token')
+    if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
+    proactiveRefreshTimer.current = null
+    clearStoredTokens()
     setToken(null)
     setRole(null)
     setTenantId(null)
@@ -193,9 +228,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function switchSite(nextTenantId: string) {
     const { data } = await switchActiveSite(nextTenantId)
-    localStorage.setItem('token', data.access_token)
+    setStoredTokens(data.access_token, data.refresh_token ?? null)
     setToken(data.access_token)
     setRole(parseRoleFromToken(data.access_token))
+    const exp = data.expires_in_seconds ?? 480 * 60
+    if (exp > 0) scheduleProactiveRefresh(exp)
     await refreshSession()
   }
 

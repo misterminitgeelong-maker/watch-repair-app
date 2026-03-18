@@ -16,9 +16,10 @@ from ..models import (
     QuoteLineItem,
     QuoteRead,
     QuoteSendResponse,
-    RepairJob,
     Watch,
 )
+from ..limiter import limiter
+from ..tenant_helpers import get_tenant_quote, get_tenant_repair_job
 from .. import sms
 
 router = APIRouter(prefix="/v1", tags=["quotes"])
@@ -42,8 +43,8 @@ def get_quote_line_items(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    quote = session.get(Quote, quote_id)
-    if not quote or quote.tenant_id != auth.tenant_id:
+    quote = get_tenant_quote(session, quote_id, auth.tenant_id)
+    if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
     items = session.exec(select(QuoteLineItem).where(QuoteLineItem.quote_id == quote_id)).all()
     return items
@@ -55,8 +56,8 @@ def create_quote(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    job = session.get(RepairJob, payload.repair_job_id)
-    if not job or job.tenant_id != auth.tenant_id:
+    job = get_tenant_repair_job(session, payload.repair_job_id, auth.tenant_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
     subtotal = 0
@@ -101,8 +102,8 @@ def send_quote(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    quote = session.get(Quote, quote_id)
-    if not quote or quote.tenant_id != auth.tenant_id:
+    quote = get_tenant_quote(session, quote_id, auth.tenant_id)
+    if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
     quote.status = "sent"
@@ -110,7 +111,7 @@ def send_quote(
     session.add(quote)
 
     # Send SMS to customer if they have a phone number
-    job = session.get(RepairJob, quote.repair_job_id)
+    job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)
     if job:
         watch = session.get(Watch, job.watch_id)
         if watch:
@@ -125,6 +126,15 @@ def send_quote(
                     total_cents=quote.total_cents,
                     approval_token=quote.approval_token,
                 )
+            if customer and customer.email:
+                from ..email_client import send_quote_sent_email
+                send_quote_sent_email(
+                    to_email=customer.email,
+                    customer_name=customer.full_name,
+                    total_cents=quote.total_cents,
+                    approval_token=quote.approval_token,
+                    job_number=job.job_number,
+                )
 
     session.commit()
     session.refresh(quote)
@@ -138,10 +148,11 @@ def send_quote(
 
 
 @router.post("/public/quotes/{token}/decision", response_model=QuoteDecisionResponse)
+@limiter.limit("20/minute")
 def quote_decision(
+    request: Request,
     token: str,
     payload: QuoteDecisionRequest,
-    request: Request,
     session: Session = Depends(get_session),
 ):
     quote = session.exec(select(Quote).where(Quote.approval_token == token)).first()
@@ -173,7 +184,8 @@ def quote_decision(
 
 
 @router.get("/public/quotes/{token}")
-def get_public_quote(token: str, session: Session = Depends(get_session)):
+@limiter.limit("30/minute")
+def get_public_quote(request: Request, token: str, session: Session = Depends(get_session)):
     quote = session.exec(select(Quote).where(Quote.approval_token == token)).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Invalid or expired link")

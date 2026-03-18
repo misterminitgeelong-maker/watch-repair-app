@@ -109,7 +109,7 @@ export default function SignupPage() {
         plan_code: selectedPlan,
       })
       setRedirectingToPayment(true)
-      setToken(data.access_token)
+      setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       window.location.assign(`/signup/checkout?plan=${encodeURIComponent(selectedPlan)}`)
     } catch (err: unknown) {
       const apiMessage =
