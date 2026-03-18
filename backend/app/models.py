@@ -1,4 +1,3 @@
-
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
