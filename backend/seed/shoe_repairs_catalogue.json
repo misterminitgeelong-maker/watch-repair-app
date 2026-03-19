@@ -100,7 +100,7 @@
           "price_cents": 2495,
           "pricing_type": "from",
           "applicable_shoe_types": ["Dress shoes", "Boots", "Work boots", "Heels / Stilettos"]
-        }
+        },
               {
                 "key": "full_soles__work_boot_full_sole",
                 "name": "Work Boot Full Sole",
@@ -176,10 +176,6 @@
                 "pricing_type": "fixed",
                 "applicable_shoe_types": ["Dress shoes", "Boots", "Heels / Stilettos"]
               }
-        // Birkenstock category
-        // All services in this category: ["Birkenstocks"]
-        // Sneaker Cleaning category
-        // All services in this category: ["Sneakers"]
       ]
     },
     {
