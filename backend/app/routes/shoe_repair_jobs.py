@@ -175,13 +175,15 @@ def create_shoe_repair_job(
 @router.get("", response_model=list[ShoeRepairJobRead])
 def list_shoe_repair_jobs(
     status: str | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(ShoeRepairJob.status == status)
-    jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc())).all()
+    jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc()).offset(skip).limit(limit)).all()
     return [_job_to_read(j, session) for j in jobs]
 
 

@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
+const DEFAULT_FEATURES: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site']
+
 interface AuthCtx {
   token: string | null
   role: string | null
@@ -52,7 +54,6 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site']
   const [token, setToken] = useState<string | null>(() => {
     try {
       return getStoredAccessToken()
@@ -66,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
-  const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
+  const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(DEFAULT_FEATURES)
   const [initializing, setInitializing] = useState(true)
 
   function scheduleProactiveRefresh(expiresInSeconds: number) {
@@ -99,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveSiteTenantId(null)
       setAvailableSites([])
       setPlanCode('pro')
-      setEnabledFeatures(defaultFeatures)
+      setEnabledFeatures(DEFAULT_FEATURES)
       clearStoredTokens()
       return
     }
@@ -122,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveSiteTenantId(null)
         setAvailableSites([])
         setPlanCode('pro')
-        setEnabledFeatures(defaultFeatures)
+        setEnabledFeatures(DEFAULT_FEATURES)
       }
     }
 
@@ -151,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setActiveSiteTenantId(null)
             setAvailableSites([])
             setPlanCode('pro')
-            setEnabledFeatures(defaultFeatures)
+            setEnabledFeatures(DEFAULT_FEATURES)
           }
         } finally {
           if (!canceled) setInitializing(false)
@@ -193,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setActiveSiteTenantId(null)
           setAvailableSites([])
           setPlanCode('pro')
-          setEnabledFeatures(defaultFeatures)
+          setEnabledFeatures(DEFAULT_FEATURES)
         }
       } finally {
         if (!canceled) setInitializing(false)
@@ -223,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveSiteTenantId(null)
     setAvailableSites([])
     setPlanCode('pro')
-    setEnabledFeatures(defaultFeatures)
+    setEnabledFeatures(DEFAULT_FEATURES)
   }
 
   async function switchSite(nextTenantId: string) {

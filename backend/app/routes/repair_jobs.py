@@ -38,8 +38,18 @@ router = APIRouter(
 
 
 def _next_job_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant_id)).one()
-    return f"JOB-{int(count) + 1:05d}"
+    # Use MAX to avoid duplicates when jobs are deleted (COUNT would re-issue numbers).
+    max_num = session.exec(
+        select(func.max(RepairJob.job_number)).where(RepairJob.tenant_id == tenant_id)
+    ).one()
+    if max_num and max_num.startswith("JOB-"):
+        try:
+            next_n = int(max_num[4:]) + 1
+        except ValueError:
+            next_n = 1
+    else:
+        next_n = 1
+    return f"JOB-{next_n:05d}"
 
 
 @router.post("", response_model=RepairJobRead, status_code=201)
@@ -99,13 +109,15 @@ def create_repair_job(
 @router.get("", response_model=list[RepairJobRead])
 def list_repair_jobs(
     status: str | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(RepairJob.status == status)
-    return session.exec(query).all()
+    return session.exec(query.order_by(RepairJob.created_at.desc()).offset(skip).limit(limit)).all()
 
 
 @router.get("/{job_id}", response_model=RepairJobRead)
@@ -173,16 +185,6 @@ def update_repair_job_status(
     session.refresh(job)
     return job
 
-
-@router.post("/{job_id}/quick-status", response_model=RepairJobRead)
-def quick_status_action(
-    job_id: UUID,
-    payload: RepairJobStatusUpdate,
-    auth: AuthContext = Depends(require_tech_or_above),
-    session: Session = Depends(get_session),
-):
-    # Reuse the full status update behavior, including history and SMS.
-    return update_repair_job_status(job_id=job_id, payload=payload, auth=auth, session=session)
 
 
 @router.post("/{job_id}/intake", response_model=RepairJobRead)

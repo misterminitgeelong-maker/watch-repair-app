@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer } from 'lucide-react'
 import {
-  getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
+  getJob, updateJobStatus, updateJob, listQuotes,
   listWorkLogs, createWorkLog,
-  listAttachments, uploadAttachment, getAttachmentDownloadUrl,
+  listAttachments, uploadAttachment, getAttachmentDownloadUrl, downloadAttachment,
   getStatusHistory,
   listCustomerAccounts, getWatch,
   type JobStatus, type RepairJob, type CustomerAccount,
@@ -134,7 +134,7 @@ export default function JobDetailPage() {
       },
     })
   const quickStatusMutation = useMutation({
-    mutationFn: ({ status, note }: { status: JobStatus; note?: string }) => quickStatusAction(id!, status, note),
+    mutationFn: ({ status, note }: { status: JobStatus; note?: string }) => updateJobStatus(id!, status, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['job', id] })
       qc.invalidateQueries({ queryKey: ['jobs'] })
@@ -491,16 +491,15 @@ export default function JobDetailPage() {
                     <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{att.file_name}</p>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{att.content_type} · {att.file_size_bytes ? `${(att.file_size_bytes / 1024).toFixed(1)} KB` : ''}</p>
                   </div>
-                  <a
-                    href={getAttachmentDownloadUrl(att.storage_key)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => downloadAttachment(att.storage_key, att.file_name)}
                     className="shrink-0 transition-colors"
                     style={{ color: 'var(--cafe-amber)' }}
                     title="Download"
+                    type="button"
                   >
                     <Download size={15} />
-                  </a>
+                  </button>
                 </Card>
               ))}
             </div>

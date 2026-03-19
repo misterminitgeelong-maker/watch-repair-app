@@ -391,8 +391,6 @@ export const updateJob = (id: string, data: {
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
 
-export const quickStatusAction = (id: string, status: JobStatus, note?: string) =>
-  api.post<RepairJob>(`/repair-jobs/${id}/quick-status`, { status, note })
 
 export interface IntakePayload {
   intake_notes?: string
@@ -665,8 +663,29 @@ export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
-export const getAttachmentDownloadUrl = (storageKey: string) =>
-  `/v1/attachments/download/${encodeURIComponent(storageKey)}${localStorage.getItem('token') ? `?access_token=${encodeURIComponent(localStorage.getItem('token') as string)}` : ''}`
+/**
+ * Returns a URL with the access token in the query string.
+ * This is only suitable for use in <img src> tags where the browser cannot
+ * send an Authorization header. For programmatic downloads, use downloadAttachment().
+ */
+export const getAttachmentDownloadUrl = (storageKey: string) => {
+  const token = getStoredAccessToken()
+  const base = `/v1/attachments/download/${encodeURIComponent(storageKey)}`
+  return token ? `${base}?access_token=${encodeURIComponent(token)}` : base
+}
+
+/** Downloads an attachment using Authorization header (no token in URL). */
+export async function downloadAttachment(storageKey: string, fileName?: string): Promise<void> {
+  const response = await api.get<Blob>(`/attachments/download/${encodeURIComponent(storageKey)}`, {
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(response.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName || storageKey
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // ── Status History ────────────────────────────────────────────────────────────
 export interface StatusHistoryEntry {
@@ -1127,34 +1146,7 @@ export function formatShoePricingType(type: ShoePricingType, priceCents: number 
   }
 }
 
-// ── Customer Accounts (B2B) ──────────────────────────────────────────────────
-export interface CustomerAccount {
-  id: string
-  tenant_id: string
-  name: string
-  account_code?: string
-  contact_name?: string
-  contact_email?: string
-  contact_phone?: string
-  billing_address?: string
-  payment_terms_days: number
-  notes?: string
-  is_active: boolean
-  created_at: string
-  customer_ids: string[]
-}
-
-export interface CustomerAccountCreatePayload {
-  name: string
-  account_code?: string
-  contact_name?: string
-  contact_email?: string
-  contact_phone?: string
-  billing_address?: string
-  payment_terms_days?: number
-  notes?: string
-}
-
+// ── Customer Account Statement / Invoices ────────────────────────────────────
 export interface CustomerAccountStatementLine {
   source_type: 'watch' | 'shoe' | 'auto_key'
   source_job_id: string
@@ -1193,9 +1185,6 @@ export interface CustomerAccountMonthlyInvoicePayload {
   tax_cents?: number
 }
 
-export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
-export const createCustomerAccount = (payload: CustomerAccountCreatePayload) =>
-  api.post<CustomerAccount>('/customer-accounts', payload)
 export const addCustomerToAccount = (accountId: string, customerId: string) =>
   api.post<CustomerAccount>(`/customer-accounts/${accountId}/customers`, { customer_id: customerId })
 export const removeCustomerFromAccount = (accountId: string, customerId: string) =>

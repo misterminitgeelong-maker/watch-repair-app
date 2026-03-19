@@ -96,3 +96,29 @@ def _validate_production_config() -> None:
 
 
 _validate_production_config()
+
+
+def _warn_weak_defaults() -> None:
+    """Warn at startup when insecure default credentials are still set."""
+    import warnings
+
+    if settings.startup_seed_enabled and settings.startup_seed_owner_password.strip().lower() in (
+        "admin", "password", "123456", ""
+    ):
+        warnings.warn(
+            "STARTUP_SEED_OWNER_PASSWORD is set to a trivially guessable value. "
+            "Set STARTUP_SEED_OWNER_PASSWORD to a strong password before deploying.",
+            UserWarning,
+            stacklevel=0,
+        )
+
+    if settings.platform_admin_enabled and settings.platform_admin_password.strip().lower() in ("admin", "password", ""):
+        warnings.warn(
+            "PLATFORM_ADMIN_PASSWORD is set to a weak or empty value. "
+            "Set PLATFORM_ADMIN_PASSWORD to a strong password before deploying.",
+            UserWarning,
+            stacklevel=0,
+        )
+
+
+_warn_weak_defaults()
