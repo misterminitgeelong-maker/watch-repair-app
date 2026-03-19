@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""
 
+    # Google Places API (for Prospects search; leave blank to disable)
+    google_places_api_key: str = ""
+
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

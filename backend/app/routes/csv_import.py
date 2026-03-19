@@ -21,6 +21,10 @@ from ..dependencies import AuthContext, get_auth_context
 from ..models import (
     Approval,
     Attachment,
+    AutoKeyInvoice,
+    AutoKeyJob,
+    AutoKeyQuote,
+    AutoKeyQuoteLineItem,
     Customer,
     ImportLog,
     ImportLogDetail,
@@ -34,6 +38,10 @@ from ..models import (
     SmsLog,
     Watch,
     WorkLog,
+    Shoe,
+    ShoeRepairJob,
+    ShoeRepairJobItem,
+    ShoeRepairJobShoe,
 )
 
 router = APIRouter(prefix="/v1/import", tags=["import"])
@@ -287,34 +295,52 @@ def _infer_job_status(status_raw: str, notes_raw: str) -> str:
     return "awaiting_go_ahead"
 
 
-def _clear_tenant_importable_data(session: Session, tenant_id) -> None:
-    """Delete tenant-scoped operational data before replacement import."""
+def _clear_tenant_importable_data(session: Session, tenant_id, clear_tabs: list[str]) -> None:
+    """Delete tenant-scoped operational data before replacement import, for selected tabs."""
     import_log_ids = session.exec(select(ImportLog.id).where(ImportLog.tenant_id == tenant_id)).all()
     if import_log_ids:
         session.exec(sa_delete(ImportLogDetail).where(ImportLogDetail.import_log_id.in_(import_log_ids)))
         session.exec(sa_delete(ImportLog).where(ImportLog.id.in_(import_log_ids)))
 
-    # Delete children first, then parents, to satisfy FK constraints.
-    session.exec(sa_delete(Attachment).where(Attachment.tenant_id == tenant_id))
-    session.exec(sa_delete(WorkLog).where(WorkLog.tenant_id == tenant_id))
-    session.exec(sa_delete(JobStatusHistory).where(JobStatusHistory.tenant_id == tenant_id))
-    session.exec(sa_delete(SmsLog).where(SmsLog.tenant_id == tenant_id))
-    session.exec(sa_delete(QuoteLineItem).where(QuoteLineItem.tenant_id == tenant_id))
-    session.exec(sa_delete(Approval).where(Approval.tenant_id == tenant_id))
-    session.exec(sa_delete(Payment).where(Payment.tenant_id == tenant_id))
-    session.exec(sa_delete(Invoice).where(Invoice.tenant_id == tenant_id))
-    session.exec(sa_delete(Quote).where(Quote.tenant_id == tenant_id))
-    session.exec(sa_delete(RepairJob).where(RepairJob.tenant_id == tenant_id))
-    session.exec(sa_delete(Watch).where(Watch.tenant_id == tenant_id))
-    session.exec(sa_delete(Customer).where(Customer.tenant_id == tenant_id))
+    # --- SHOE REPAIR TABLES ---
+    if "shoe" in clear_tabs:
+        session.exec(sa_delete(ShoeRepairJobItem).where(ShoeRepairJobItem.tenant_id == tenant_id))
+        session.exec(sa_delete(ShoeRepairJobShoe).where(ShoeRepairJobShoe.tenant_id == tenant_id))
+        session.exec(sa_delete(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id))
+        session.exec(sa_delete(Shoe).where(Shoe.tenant_id == tenant_id))
+
+    # --- WATCH REPAIR TABLES ---
+    if "watch" in clear_tabs:
+        session.exec(sa_delete(Attachment).where(Attachment.tenant_id == tenant_id))
+        session.exec(sa_delete(WorkLog).where(WorkLog.tenant_id == tenant_id))
+        session.exec(sa_delete(JobStatusHistory).where(JobStatusHistory.tenant_id == tenant_id))
+        session.exec(sa_delete(SmsLog).where(SmsLog.tenant_id == tenant_id))
+        session.exec(sa_delete(QuoteLineItem).where(QuoteLineItem.tenant_id == tenant_id))
+        session.exec(sa_delete(Approval).where(Approval.tenant_id == tenant_id))
+        session.exec(sa_delete(Payment).where(Payment.tenant_id == tenant_id))
+        session.exec(sa_delete(Invoice).where(Invoice.tenant_id == tenant_id))
+        session.exec(sa_delete(Quote).where(Quote.tenant_id == tenant_id))
+        session.exec(sa_delete(RepairJob).where(RepairJob.tenant_id == tenant_id))
+        session.exec(sa_delete(Watch).where(Watch.tenant_id == tenant_id))
+        session.exec(sa_delete(Customer).where(Customer.tenant_id == tenant_id))
+
+    # --- AUTO KEY TABLES ---
+    if "auto_key" in clear_tabs:
+        session.exec(sa_delete(AutoKeyInvoice).where(AutoKeyInvoice.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyQuoteLineItem).where(AutoKeyQuoteLineItem.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyQuote).where(AutoKeyQuote.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id))
 
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
+
+from fastapi import Query
 
 @router.post("/csv", response_model=ImportSummaryResponse)
 async def import_csv(
     file: UploadFile = File(...),
     replace_existing: bool = False,
+    clear_tabs: list[str] = Query(["watch", "shoe", "auto_key"], description="Tabs to clear: watch, shoe, auto_key"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -328,7 +354,7 @@ async def import_csv(
 
     tenant_id = auth.tenant_id
     if replace_existing:
-        _clear_tenant_importable_data(session, tenant_id)
+        _clear_tenant_importable_data(session, tenant_id, clear_tabs)
         session.commit()
 
     import_log = ImportLog(

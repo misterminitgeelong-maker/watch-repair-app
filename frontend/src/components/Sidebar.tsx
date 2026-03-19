@@ -9,6 +9,7 @@ import type { FeatureKey } from '@/lib/api'
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Users },
+  { to: '/prospects', label: 'Prospects', icon: ClipboardList },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' as FeatureKey },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' as FeatureKey },
   { to: '/auto-key', label: 'Auto Key', icon: KeyRound, feature: 'auto_key' as FeatureKey },

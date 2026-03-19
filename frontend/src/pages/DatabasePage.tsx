@@ -10,6 +10,7 @@ export default function DatabasePage() {
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const [error, setError] = useState('')
+  const [clearTabs, setClearTabs] = useState<string[]>(['watch', 'shoe', 'auto_key'])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -25,7 +26,7 @@ export default function DatabasePage() {
     setError('')
     setResult(null)
     try {
-      const { data } = await importCsv(file, { replaceExisting })
+      const { data } = await importCsv(file, { replaceExisting, clearTabs })
       setResult(data)
       setFile(null)
       if (fileRef.current) fileRef.current.value = ''
@@ -102,9 +103,9 @@ export default function DatabasePage() {
             )}
           </button>
 
-          {/* Import button */}
-          <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+          {/* Replace options */}
+          <div className="mt-4 space-y-3">
+            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={replaceExisting}
@@ -114,11 +115,35 @@ export default function DatabasePage() {
               <span>
                 Replace existing data before import
                 <span className="block text-xs" style={{ color: '#9B5A4A' }}>
-                  This will remove current customers, watches, jobs, quotes, invoices, and related records.
+                  When enabled, selected tabs below will be cleared before importing.
                 </span>
               </span>
             </label>
+            {replaceExisting && (
+              <div className="pl-6 space-y-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>Clear these tabs:</p>
+                {[
+                  { key: 'watch', label: 'Watch (customers, watches, jobs, quotes, invoices)' },
+                  { key: 'shoe', label: 'Shoe (shoes, shoe repair jobs)' },
+                  { key: 'auto_key', label: 'Auto key (auto key jobs, quotes, invoices)' },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={clearTabs.includes(key)}
+                      onChange={(e) => {
+                        if (e.target.checked) setClearTabs((t) => [...t, key])
+                        else setClearTabs((t) => t.filter((x) => x !== key))
+                      }}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
 
+          <div className="mt-4 flex justify-end">
             <Button onClick={handleImport} disabled={!file || uploading}>
               <Upload size={15} />
               {uploading ? 'Importing…' : 'Import file'}

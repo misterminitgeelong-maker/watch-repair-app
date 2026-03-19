@@ -352,6 +352,27 @@ export const getWatch = (id: string) => api.get<Watch>(`/watches/${id}`)
 export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Watch>('/watches', data)
 
+// ── Prospects (Google Places) ───────────────────────────────────────────────
+export interface Prospect {
+  name: string
+  address: string
+  phone?: string
+  website?: string
+  rating?: number
+  review_count?: number
+  category: string
+  place_id: string
+}
+
+export interface ProspectSearchResponse {
+  results: Prospect[]
+  total: number
+  category: string
+}
+
+export const listProspectCategories = () => api.get<{ categories: { key: string; label: string }[] }>('/prospects/categories')
+export const searchProspects = (category: string) => api.get<ProspectSearchResponse>('/prospects/search', { params: { category } })
+
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
 export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
 export interface RepairJob {
@@ -693,11 +714,19 @@ export interface CsvImportResult {
   imported: number; skipped: number; customers_created: number; total_rows: number
   skipped_reasons: Record<string, number>
 }
-export const importCsv = (file: File, options?: { replaceExisting?: boolean }) => {
+export const importCsv = (
+  file: File,
+  options?: { replaceExisting?: boolean; clearTabs?: string[] }
+) => {
   const form = new FormData()
   form.append('file', file)
-  const params = options?.replaceExisting ? '?replace_existing=true' : ''
-  return api.post<CsvImportResult>(`/import/csv${params}`, form, {
+  const params = []
+  if (options?.replaceExisting) params.push('replace_existing=true')
+  if (options?.clearTabs && options.clearTabs.length > 0) {
+    for (const tab of options.clearTabs) params.push(`clear_tabs=${encodeURIComponent(tab)}`)
+  }
+  const query = params.length ? `?${params.join('&')}` : ''
+  return api.post<CsvImportResult>(`/import/csv${query}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
