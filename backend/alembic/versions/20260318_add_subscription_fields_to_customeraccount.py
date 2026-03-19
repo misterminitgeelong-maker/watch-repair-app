@@ -1,14 +1,14 @@
 """
 Add subscription fields to CustomerAccount
 
-Revision ID: 20260318_add_subscription_fields_to_customeraccount
-Revises: 20260318_add_fleet_fields_to_customeraccount
+Revision ID: 20260318_subscription_cust
+Revises: 20260318_fleet_customeraccount
 Create Date: 2026-03-18
 """
 
-# revision identifiers, used by Alembic.
-revision = '20260318_add_subscription_fields_to_customeraccount'
-down_revision = '20260318_add_fleet_fields_to_customeraccount'
+# revision identifiers, used by Alembic. (Keep <= 32 chars for alembic_version.version_num)
+revision = '20260318_subscription_cust'
+down_revision = '20260318_fleet_customeraccount'
 branch_labels = None
 depends_on = None
 from alembic import op

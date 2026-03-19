@@ -1,13 +1,13 @@
 """
 Add fleet/dealer fields to CustomerAccount
 
-Revision ID: 20260318_add_fleet_fields_to_customeraccount
+Revision ID: 20260318_fleet_customeraccount
 Revises: b1c4d6e8f9a2
 Create Date: 2026-03-18
 """
 
-# revision identifiers, used by Alembic.
-revision = '20260318_add_fleet_fields_to_customeraccount'
+# revision identifiers, used by Alembic. (Keep <= 32 chars for alembic_version.version_num)
+revision = '20260318_fleet_customeraccount'
 down_revision = 'b1c4d6e8f9a2'
 branch_labels = None
 depends_on = None
