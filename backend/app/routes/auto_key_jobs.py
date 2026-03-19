@@ -126,13 +126,15 @@ def create_auto_key_job(
 @router.get("", response_model=list[AutoKeyJobRead])
 def list_auto_key_jobs(
     status: str | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(AutoKeyJob.status == status)
-    return session.exec(query.order_by(AutoKeyJob.created_at.desc())).all()
+    return session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
 
 
 @router.get("/{job_id}", response_model=AutoKeyJobRead)

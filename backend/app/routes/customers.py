@@ -26,10 +26,14 @@ def create_customer(
 
 @router.get("/customers", response_model=list[CustomerRead])
 def list_customers(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=2000, ge=1, le=5000),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    return session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
+    return session.exec(
+        select(Customer).where(Customer.tenant_id == auth.tenant_id).offset(skip).limit(limit)
+    ).all()
 
 
 @router.get("/customers/{customer_id}", response_model=CustomerRead)

@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 from .config import settings
 
@@ -41,7 +42,7 @@ def decode_access_token(token: str) -> str:
         if not isinstance(subject, str) or subject.count(":") < 1:
             raise ValueError("Invalid token subject")
         return subject
-    except (JWTError, ValueError) as exc:
+    except (InvalidTokenError, ValueError) as exc:
         raise ValueError("Invalid token") from exc
 
 
@@ -54,5 +55,5 @@ def decode_refresh_token(token: str) -> str:
         if not isinstance(subject, str) or subject.count(":") < 1:
             raise ValueError("Invalid token subject")
         return subject
-    except (JWTError, ValueError) as exc:
+    except (InvalidTokenError, ValueError) as exc:
         raise ValueError("Invalid refresh token") from exc
