@@ -74,16 +74,16 @@ export default function ReportsPage() {
         title="Reports"
         action={
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={() => exportJobsMut.mutate()} disabled={exportJobsMut.isPending}>
+            <Button variant="secondary" className="text-sm" onClick={() => exportJobsMut.mutate()} disabled={exportJobsMut.isPending}>
               <Download size={14} className="mr-1" /> Jobs CSV
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => exportCustomersMut.mutate()} disabled={exportCustomersMut.isPending}>
+            <Button variant="secondary" className="text-sm" onClick={() => exportCustomersMut.mutate()} disabled={exportCustomersMut.isPending}>
               <Download size={14} className="mr-1" /> Customers CSV
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => exportInvoicesMut.mutate()} disabled={exportInvoicesMut.isPending}>
+            <Button variant="secondary" className="text-sm" onClick={() => exportInvoicesMut.mutate()} disabled={exportInvoicesMut.isPending}>
               <Download size={14} className="mr-1" /> Invoices CSV
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => exportMyDataMut.mutate()} disabled={exportMyDataMut.isPending}>
+            <Button variant="ghost" className="text-sm" onClick={() => exportMyDataMut.mutate()} disabled={exportMyDataMut.isPending}>
               <Download size={14} className="mr-1" /> Export my data
             </Button>
           </div>

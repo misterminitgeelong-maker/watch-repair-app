@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import axios from 'axios'
+import type { AxiosError } from 'axios'
 import { getApiErrorMessage } from './api'
 
 describe('getApiErrorMessage', () => {
   it('returns detail string when response has detail string', () => {
     const err = Object.assign(new Error('Request failed'), {
       response: { status: 400, data: { detail: 'Tenant slug already exists' } },
-    }) as unknown as axios.AxiosError
+    }) as unknown as AxiosError
     expect(getApiErrorMessage(err)).toBe('Tenant slug already exists')
   })
 
@@ -21,14 +21,14 @@ describe('getApiErrorMessage', () => {
           ],
         },
       },
-    }) as unknown as axios.AxiosError
+    }) as unknown as AxiosError
     expect(getApiErrorMessage(err)).toBe('Field required')
   })
 
   it('returns session expired message for 401', () => {
     const err = Object.assign(new Error('Request failed'), {
       response: { status: 401, data: {} },
-    }) as unknown as axios.AxiosError
+    }) as unknown as AxiosError
     expect(getApiErrorMessage(err)).toBe('Session expired. Please sign in again.')
   })
 
@@ -39,7 +39,7 @@ describe('getApiErrorMessage', () => {
   it('returns default fallback when no detail', () => {
     const err = Object.assign(new Error('Request failed'), {
       response: { status: 500, data: {} },
-    }) as unknown as axios.AxiosError
+    }) as unknown as AxiosError
     expect(getApiErrorMessage(err)).toBe('Request failed.')
   })
 })

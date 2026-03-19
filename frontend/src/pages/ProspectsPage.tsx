@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listProspectCategories, searchProspects, Prospect } from '@/lib/api'
-import { Select, Button, Input } from '@/components/ui'
+import { listProspectCategories, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
+import { Select, Button } from '@/components/ui'
 
 export default function ProspectsPage() {
-  const { data: catData } = useQuery(['prospect-categories'], () => listProspectCategories().then(r => r.data))
+  const { data: catData } = useQuery<{ categories: { key: string; label: string }[] }>({
+    queryKey: ['prospect-categories'],
+    queryFn: () => listProspectCategories().then(r => r.data),
+  })
   const [category, setCategory] = useState<string | null>(null)
 
-  const { data: searchData, refetch, isFetching } = useQuery(
-    ['prospects', category],
-    () => searchProspects(category || '').then(r => r.data),
-    { enabled: false }
-  )
+  const { data: searchData, refetch, isFetching } = useQuery<ProspectSearchResponse>({
+    queryKey: ['prospects', category],
+    queryFn: () => searchProspects(category || '').then(r => r.data),
+    enabled: false,
+  })
 
   return (
     <div className="p-6">
@@ -24,7 +27,7 @@ export default function ProspectsPage() {
           onChange={(e) => setCategory(e.target.value || null)}
         >
           <option value="">Select category</option>
-          {catData?.categories?.map((c: { key: string; label: string }) => (
+          {catData?.categories?.map((c) => (
             <option key={c.key} value={c.key}>{c.label}</option>
           ))}
         </Select>

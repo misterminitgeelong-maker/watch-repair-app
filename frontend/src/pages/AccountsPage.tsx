@@ -274,7 +274,7 @@ export default function AccountsPage() {
         </Card>
       )}
 
-      {billing && (limits?.max_users > 0 || limits?.max_repair_jobs > 0 || limits?.max_shoe_jobs > 0 || limits?.max_auto_key_jobs > 0) && (
+      {billing && limits && (limits.max_users > 0 || limits.max_repair_jobs > 0 || limits.max_shoe_jobs > 0 || limits.max_auto_key_jobs > 0) && (
         <Card className="mb-4 p-4">
           <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>Usage</p>
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">

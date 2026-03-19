@@ -35,8 +35,8 @@ export default function JobsPage() {
     return latestQuoteByJob.get(job.id) ?? 0
   }
 
-  const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
-  const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
+  const activeCount = (jobs ?? []).filter(j => !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)).length
+  const completedCount = (jobs ?? []).filter(j => (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)).length
   const statusOptions = jobDirectoryView === 'active' ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
 
   const statusMut = useMutation({
@@ -64,8 +64,8 @@ export default function JobsPage() {
   const filtered = (jobs ?? []).filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
     const inDirectory = jobDirectoryView === 'active'
-      ? !CLOSED_DIRECTORY_STATUSES.includes(j.status)
-      : CLOSED_DIRECTORY_STATUSES.includes(j.status)
+      ? !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
+      : (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     return matchSearch && inDirectory && matchStatus
   })

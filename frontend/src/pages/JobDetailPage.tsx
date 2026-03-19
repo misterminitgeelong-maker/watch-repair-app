@@ -234,12 +234,11 @@ export default function JobDetailPage() {
           <div className="flex gap-2">
             <Button
               variant="ghost"
-              size="sm"
+              className="text-sm"
               onClick={() => {
                 const url = `${window.location.origin}/status/${job.status_token}`
                 void navigator.clipboard.writeText(url).then(() => { /* optional toast */ })
               }}
-              title="Copy customer status link"
             >
               Copy status link
             </Button>

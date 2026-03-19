@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
 import { Modal } from '@/components/ui'
 import changelogData from '@/data/changelog.json'
 

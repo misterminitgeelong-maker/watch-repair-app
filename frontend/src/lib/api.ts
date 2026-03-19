@@ -1222,9 +1222,6 @@ export interface CustomerAccountMonthlyInvoicePayload {
   tax_cents?: number
 }
 
-export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
-export const createCustomerAccount = (payload: CustomerAccountCreatePayload) =>
-  api.post<CustomerAccount>('/customer-accounts', payload)
 export const addCustomerToAccount = (accountId: string, customerId: string) =>
   api.post<CustomerAccount>(`/customer-accounts/${accountId}/customers`, { customer_id: customerId })
 export const removeCustomerFromAccount = (accountId: string, customerId: string) =>

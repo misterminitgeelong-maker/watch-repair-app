@@ -1,9 +1,10 @@
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import type { UserConfigExport } from 'vite'
 import { defineConfig } from 'vite'
 
-export default defineConfig({
+const config: UserConfigExport & { test?: { environment: string; include: string[] } } = {
   plugins: [react(), tailwindcss()],
   test: {
     environment: 'node',
@@ -19,4 +20,5 @@ export default defineConfig({
       '/v1': 'http://127.0.0.1:8000',
     },
   },
-})
+}
+export default defineConfig(config as UserConfigExport)
