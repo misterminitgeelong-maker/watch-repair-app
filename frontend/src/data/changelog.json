@@ -1,5 +1,22 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-03-21",
+    "title": "Movement pricing, combos, and import fixes",
+    "items": [
+      "Movement catalogue: show cost and RRP side-by-side when choosing movements",
+      "New RRP formula for all movements: max($80 floor, cost × 2.75)",
+      "New repair services: Bracelet resize ($20), Spring bar ($9.95), Back gasket ($14.95), Case polishing Light/Full ($60/$110), Full Service — quoted",
+      "Combo pricing: Battery + Pressure Test $49.95 total; Battery + Band 20% off the band",
+      "Quoted services (e.g. Full Service) force job to Awaiting quote for workshop review before sending",
+      "Lazy-load movement list so job pages load faster",
+      "Faster auth redirect: 5s max wait on refresh, redirect to landing page",
+      "Excel import: fixed row/header mismatch, Excel date serials, cost overflow clamp, clearer errors",
+      "Import: ticket/job number now preserved from source (e.g. Ticket #, Ref, Job No) instead of auto-assigning; strips Excel .0 suffix",
+      "Import: handles varied spreadsheet layouts — unnamed first column as ticket, Number→phone, GA/NG/Collected→status, being done→notes"
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-03-17",
     "title": "Improvements and new features",

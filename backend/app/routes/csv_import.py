@@ -175,9 +175,16 @@ def _normalize_row_keys(row: dict[str, str]) -> dict[str, str]:
     for key, value in row.items():
         normalized[_normalize_key(key)] = (value or "").strip()
 
-    # The true source file has a blank first header containing original job IDs.
-    if "original_job_id" not in normalized and row.get(""):
-        normalized["original_job_id"] = (row.get("") or "").strip()
+    # First column with no header (Excel: _col0→col0, CSV: "") often contains ticket/job numbers.
+    for blank_key in ("", "_col0", "col0"):
+        val = (row.get(blank_key) or "").strip()
+        if val and "original_job_id" not in normalized:
+            try:
+                if re.match(r"^[\d.]+$", val):
+                    normalized["original_job_id"] = val
+                    break
+            except Exception:
+                pass
     return normalized
 
 
@@ -294,6 +301,8 @@ def _load_rows(filename: str, raw_bytes: bytes) -> tuple[list[dict[str, str]], s
 
 _STATUS_MAP = {
     "collected": "collected",
+    "ga": "completed",  # Good as New
+    "ng": "no_go",     # No Good
     "in_repair": "working_on",
     "in repair": "working_on",
     "working on": "working_on",
@@ -418,7 +427,11 @@ async def import_csv(
     try:
         for idx, row in enumerate(rows, start=1):
             row = _normalize_row_keys(row)
-            original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
+            # Ticket: check unnamed first col (col0/_col0) first, then common headers. Omit "number" (often phone).
+            original_job_id = _get_first(row, [
+                "col0", "_col0", "original_job_id", "job_id", "ticket", "ticket_number", "job_number",
+                "ticket_", "job_", "ref", "job_no", "ticket_no", "case_no", "no",
+            ])
             team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
             customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
             date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
@@ -427,7 +440,7 @@ async def import_csv(
             quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
             cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
             status_raw = _get_first(row, ["status", "job_status", "repair_status", "state", "ga_ng_collected"])
-            notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes"])
+            notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes", "being_done"])
 
             customer_name = _clean_name(customer_name_raw)
             if not customer_name:
@@ -461,8 +474,15 @@ async def import_csv(
             session.flush()
 
             job_seq += 1
-            if original_job_id and re.match(r"^\d+", original_job_id):
-                job_number = f"IMP-{original_job_id}"
+            # Use ticket from file when present; strip Excel .0 suffix from numeric cells
+            if original_job_id:
+                ticket = original_job_id.strip()
+                if re.match(r"^[\d.]+$", ticket) and ticket.endswith(".0"):
+                    ticket = ticket[:-2]  # "29120.0" -> "29120"
+                if ticket:
+                    job_number = f"IMP-{ticket}"
+                else:
+                    job_number = f"IMP-{job_seq:05d}"
             else:
                 job_number = f"IMP-{job_seq:05d}"
 
