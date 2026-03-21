@@ -1,31 +1,28 @@
 {
   "currency": "AUD",
-  "default_margin_percent": 100,
-  "description": "Mechanical movement pricing. Use fixed_price_cents for flat-fit price, or purchase_cost_cents + margin_percent for cost-plus. Per-movement margin_percent overrides default.",
+  "default_margin_percent": 175,
+  "minimum_rrp_cents": 7995,
+  "description": "RRP = max(floor, cost × 2.75). One formula for all movements.",
   "movements": [
     {
       "key": "miyota_2025",
       "name": "Miyota 2025",
-      "purchase_cost_cents": 700,
-      "fixed_price_cents": 7995
+      "purchase_cost_cents": 700
     },
     {
       "key": "eta_2824_2",
       "name": "ETA 2824-2",
-      "purchase_cost_cents": 12000,
-      "fixed_price_cents": 45000
+      "purchase_cost_cents": 12000
     },
     {
       "key": "eta_2892",
       "name": "ETA 2892",
-      "purchase_cost_cents": 14000,
-      "margin_percent": 200
+      "purchase_cost_cents": 14000
     },
     {
       "key": "eta_7750",
       "name": "ETA 7750 (Chronograph)",
-      "purchase_cost_cents": 20000,
-      "margin_percent": 175
+      "purchase_cost_cents": 20000
     },
     {
       "key": "sellita_sw200",
@@ -40,26 +37,22 @@
     {
       "key": "sellita_sw500",
       "name": "Sellita SW500 (Chronograph)",
-      "purchase_cost_cents": 19000,
-      "margin_percent": 150
+      "purchase_cost_cents": 19000
     },
     {
       "key": "miyota_9015",
       "name": "Miyota 9015",
-      "purchase_cost_cents": 9000,
-      "fixed_price_cents": 7995
+      "purchase_cost_cents": 9000
     },
     {
       "key": "miyota_8215",
       "name": "Miyota 8215",
-      "purchase_cost_cents": 6000,
-      "fixed_price_cents": 7995
+      "purchase_cost_cents": 6000
     },
     {
       "key": "seiko_nh35",
       "name": "Seiko NH35",
-      "purchase_cost_cents": 5500,
-      "fixed_price_cents": 7995
+      "purchase_cost_cents": 5500
     },
     {
       "key": "seiko_6r15",
@@ -69,8 +62,7 @@
     {
       "key": "seiko_7s26",
       "name": "Seiko 7S26",
-      "purchase_cost_cents": 6500,
-      "fixed_price_cents": 7995
+      "purchase_cost_cents": 6500
     },
     {
       "key": "generic_3hand",

@@ -14,6 +14,7 @@ import { InvoicesPage, InvoiceDetailPage } from '@/pages/InvoicesPage'
 import ApprovePage from '@/pages/ApprovePage'
 import PrintInvoicePage from '@/pages/PrintInvoicePage'
 import DatabasePage from '@/pages/DatabasePage'
+import CataloguePage from '@/pages/CataloguePage'
 import ReportsPage from '@/pages/ReportsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="jobs" element={<FeatureGate feature="watch"><JobsPage /></FeatureGate>} />
               <Route path="jobs/:id" element={<FeatureGate feature="watch"><JobDetailPage /></FeatureGate>} />
               <Route path="jobs/:id/intake-print" element={<FeatureGate feature="watch"><PrintWatchIntakeTicketsPage /></FeatureGate>} />
+              <Route path="catalogue" element={<FeatureGate feature="watch"><CataloguePage /></FeatureGate>} />
               <Route path="quotes" element={<QuotesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />

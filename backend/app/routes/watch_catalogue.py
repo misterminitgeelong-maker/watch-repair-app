@@ -30,12 +30,12 @@ _MOVEMENT_INDEX = {m["key"]: m for m in _MOVEMENTS["movements"]}
 
 
 def _movement_quote(m: dict) -> int:
-    """Compute quote_cents for a movement."""
-    if "fixed_price_cents" in m and m["fixed_price_cents"] is not None:
-        return m["fixed_price_cents"]
+    """Compute quote_cents: RRP = max(minimum_rrp_cents, cost × 2.75)."""
     cost = m.get("purchase_cost_cents", 0)
-    margin_pct = m.get("margin_percent", _MOVEMENTS.get("default_margin_percent", 100))
-    return int(cost * (1 + margin_pct / 100))
+    margin_pct = _MOVEMENTS.get("default_margin_percent", 175)
+    min_rrp = _MOVEMENTS.get("minimum_rrp_cents", 0)
+    quoted = int(cost * (1 + margin_pct / 100))
+    return max(min_rrp, quoted)
 
 
 @router.get("/groups")
@@ -85,7 +85,7 @@ def list_movements():
 
 @router.get("/movements/{key}/quote")
 def get_movement_quote(key: str):
-    """Return quoted price in cents. Uses fixed_price_cents if set, else cost * (1 + margin/100)."""
+    """Return quoted price in cents. RRP = max(minimum_rrp_cents, cost * (1 + margin/100))."""
     from fastapi import HTTPException
     m = _MOVEMENT_INDEX.get(key)
     if not m:

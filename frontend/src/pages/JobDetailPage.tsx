@@ -8,10 +8,11 @@ import {
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
   getStatusHistory,
   listCustomerAccounts, getWatch,
-  listWatchMovements, getWatchMovementQuote,
+  getWatchMovementQuote,
   type JobStatus, type RepairJob, type CustomerAccount,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
+import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
@@ -128,11 +129,6 @@ export default function JobDetailPage() {
   const [editingQuote, setEditingQuote] = useState(false)
   const [quoteInput, setQuoteInput] = useState('')
   const [movementApplying, setMovementApplying] = useState(false)
-  const { data: watchMovements } = useQuery({
-    queryKey: ['watch-movements'],
-    queryFn: () => listWatchMovements().then(r => r.data),
-    staleTime: 60_000,
-  })
   const updateJobMutation = useMutation({
       mutationFn: (cost_cents: number) => updateJob(id!, { cost_cents }),
       onSuccess: () => {
@@ -349,29 +345,14 @@ export default function JobDetailPage() {
                   ))}
                 </Select>
               </div>
-              {watchMovements && watchMovements.movements.length > 0 && (
-                <div className="space-y-1 mb-2">
-                  <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Set quote from movement</span>
-                  <select
-                    value=""
-                    onChange={e => {
-                      const key = e.target.value
-                      if (key) applyMovementQuote(key)
-                      e.target.value = ''
-                    }}
-                    disabled={movementApplying}
-                    className="w-full text-sm rounded border px-2 py-1"
-                    style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
-                  >
-                    <option value="">— Select movement —</option>
-                    {watchMovements.movements.map(m => (
-                      <option key={m.key} value={m.key}>
-                        {m.name} — ${((m.quote_cents ?? m.purchase_cost_cents) / 100).toFixed(2)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="space-y-1 mb-2">
+                <MovementAutocomplete
+                  label="Set quote from movement"
+                  placeholder="Search ETA, Miyota, Ronda…"
+                  onSelect={key => applyMovementQuote(key)}
+                  disabled={movementApplying}
+                />
+              </div>
               <div className="flex justify-between items-center">
                 <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents === 0 && job.pre_quote_cents > 0 ? ' (est.)' : ''}</span>
                 {editingQuote ? (
