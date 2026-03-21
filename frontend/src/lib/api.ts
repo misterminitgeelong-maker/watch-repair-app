@@ -941,6 +941,13 @@ export const listWatchCatalogueGroups = () =>
 export const searchWatchCatalogueItems = (params?: { q?: string; group?: string }) =>
   api.get<WatchCatalogueItem[]>('/watch-catalogue/items', { params })
 
+export interface WatchRepairsConfig {
+  combos: Array<{ keys?: string[]; total_cents?: number; battery_key?: string; band_keys?: string[]; band_discount_percent?: number }>
+  currency: string
+}
+export const getWatchRepairsConfig = () =>
+  api.get<WatchRepairsConfig>('/watch-catalogue/repairs-config')
+
 export const listWatchMovements = () =>
   api.get<WatchMovementsResponse>('/watch-catalogue/movements')
 

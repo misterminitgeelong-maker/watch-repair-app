@@ -72,7 +72,7 @@ def create_repair_job(
         ).first()
         customer_account_id = inferred.customer_account_id if inferred else None
 
-    data = payload.model_dump()
+    data = payload.model_dump(exclude_none=True)
     data["customer_account_id"] = customer_account_id
     job = RepairJob(
         tenant_id=auth.tenant_id,

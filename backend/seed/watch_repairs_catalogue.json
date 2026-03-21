@@ -1,6 +1,19 @@
 {
   "category": "watch_repairs",
   "currency": "AUD",
+  "combos": [
+    {
+      "keys": ["battery__standard_quartz", "waterproofing__pressure_test"],
+      "total_cents": 4995,
+      "description": "Battery + Pressure Test"
+    },
+    {
+      "battery_key": "battery__standard_quartz",
+      "band_keys": ["straps__orange", "straps__red", "straps__light_blue", "straps__purple", "straps__dark_blue", "straps__green"],
+      "band_discount_percent": 20,
+      "description": "Battery + Band: 20% off band"
+    }
+  ],
   "groups": [
     {
       "id": "battery",
@@ -24,8 +37,22 @@
     },
     {
       "id": "straps",
-      "label": "Band Replacements",
+      "label": "Bands & Bracelets",
       "items": [
+        {
+          "key": "straps__bracelet_resize",
+          "name": "Bracelet Resize",
+          "price": 20.00,
+          "price_cents": 2000,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__spring_bar",
+          "name": "Spring Bar Replacement",
+          "price": 9.95,
+          "price_cents": 995,
+          "pricing_type": "fixed"
+        },
         {
           "key": "straps__orange",
           "name": "Band Replacement (Orange)",
@@ -66,6 +93,26 @@
           "name": "Band Replacement (Green)",
           "price": 44.95,
           "price_cents": 4495,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "case",
+      "label": "Case & Polishing",
+      "items": [
+        {
+          "key": "case__polishing_light",
+          "name": "Case Polishing (Light)",
+          "price": 60.00,
+          "price_cents": 6000,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "case__polishing_full",
+          "name": "Case Polishing (Full)",
+          "price": 110.00,
+          "price_cents": 11000,
           "pricing_type": "fixed"
         }
       ]
@@ -114,13 +161,27 @@
           "price": 39.95,
           "price_cents": 3995,
           "pricing_type": "fixed"
+        },
+        {
+          "key": "waterproofing__back_gasket",
+          "name": "Back Gasket Replacement",
+          "price": 14.95,
+          "price_cents": 1495,
+          "pricing_type": "fixed"
         }
       ]
     },
     {
       "id": "mechanical",
-      "label": "Hands, Crown & Other",
+      "label": "Hands, Crown & Mechanical",
       "items": [
+        {
+          "key": "mechanical__full_service",
+          "name": "Full Service (Mechanical) — quoted",
+          "price": 0,
+          "price_cents": 0,
+          "pricing_type": "quote"
+        },
         {
           "key": "mechanical__hand_refit",
           "name": "Hand Refit",

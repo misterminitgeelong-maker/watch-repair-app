@@ -17,9 +17,10 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
   const [highlight, setHighlight] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { data: movementsData } = useQuery({
+  const { data: movementsData, isLoading: movementsLoading } = useQuery({
     queryKey: ['watch-movements'],
     queryFn: () => listWatchMovements().then(r => r.data),
+    enabled: open,
   })
 
   const movements = movementsData?.movements ?? []
@@ -90,7 +91,7 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
         placeholder={placeholder}
         disabled={disabled}
       />
-      {open && suggestions.length > 0 && (
+      {open && (
         <ul
           className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-64"
           style={{
@@ -98,7 +99,12 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
             borderColor: 'var(--cafe-border-2)',
           }}
         >
-          {suggestions.slice(0, 30).map((m, i) => (
+          {movementsLoading ? (
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>Loading movements…</li>
+          ) : suggestions.length === 0 ? (
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>No movements found</li>
+          ) : (
+          suggestions.slice(0, 30).map((m, i) => (
             <li key={m.key}>
               <button
                 type="button"
@@ -125,7 +131,8 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
                 </span>
               </button>
             </li>
-          ))}
+          ))
+          )}
         </ul>
       )}
     </div>

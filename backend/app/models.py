@@ -556,6 +556,7 @@ class RepairJobCreate(SQLModel):
     title: str
     description: Optional[str] = None
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    status: Optional[str] = None  # If omitted, uses model default (awaiting_go_ahead)
     assigned_user_id: Optional[UUID] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None

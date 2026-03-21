@@ -7,7 +7,9 @@ import {
   listCustomerAccounts,
   uploadAttachment,
   getApiErrorMessage,
+  getWatchRepairsConfig,
   type JobStatus, type Customer, type Watch, type CustomerAccount,
+  type WatchCatalogueItem,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
@@ -15,6 +17,42 @@ import WatchServicePicker, { type SelectedWatchService } from '@/components/Watc
 import { STATUS_LABELS } from '@/lib/utils'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
+
+function calculateRepairsTotal(
+  items: { item: WatchCatalogueItem }[],
+  combos: Array<{ keys?: string[]; total_cents?: number; battery_key?: string; band_keys?: string[]; band_discount_percent?: number }> = []
+): number {
+  if (items.length === 0) return 0
+  const keys = new Set(items.map(i => i.item.key))
+  let total = 0
+  const appliedKeys = new Set<string>()
+
+  for (const combo of combos) {
+    if (combo.keys && combo.total_cents != null) {
+      const match = combo.keys.every(k => keys.has(k))
+      if (match) {
+        total += combo.total_cents
+        combo.keys.forEach(k => appliedKeys.add(k))
+        break
+      }
+    }
+  }
+
+  const batteryCombo = combos.find(c => c.battery_key && c.band_keys)
+  const hasBattery = batteryCombo && keys.has(batteryCombo.battery_key!)
+  const bandSet = batteryCombo ? new Set(batteryCombo.band_keys ?? []) : new Set<string>()
+  const bandDiscount = (batteryCombo?.band_discount_percent ?? 0) / 100
+
+  for (const { item } of items) {
+    if (appliedKeys.has(item.key)) continue
+    let cents = item.price_cents
+    if (hasBattery && bandSet.has(item.key) && bandDiscount > 0) {
+      cents = Math.round(cents * (1 - bandDiscount))
+    }
+    total += cents
+  }
+  return total
+}
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 function Steps({ current }: { current: number }) {
@@ -90,6 +128,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
     enabled: !preselectedCustomer,
+  })
+
+  const { data: repairsConfig } = useQuery({
+    queryKey: ['watch-repairs-config'],
+    queryFn: () => getWatchRepairsConfig().then(r => r.data),
   })
 
   const activeCustomerId = createdCustomerId || selectedCustomerId
@@ -184,6 +227,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         title: job.title,
         description: job.description,
         priority: job.priority,
+        status: job.status,
         salesperson: job.salesperson || undefined,
         collection_date: job.collection_date || undefined,
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
@@ -371,11 +415,13 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               onChange={items => {
                 setSelectedRepairs(items)
                 const names = items.map(i => i.item.name)
-                const sumCents = items.reduce((s, i) => s + i.item.price_cents, 0)
+                const sumCents = calculateRepairsTotal(items, repairsConfig?.combos ?? [])
+                const hasQuotedService = items.some(i => i.item.pricing_type === 'quote')
                 setJob(prev => ({
                   ...prev,
                   title: names.length ? names.join(', ') : prev.title,
                   pre_quote_cents: names.length ? (sumCents / 100).toFixed(2) : prev.pre_quote_cents,
+                  status: hasQuotedService ? 'awaiting_quote' : prev.status,
                 }))
               }}
             />
@@ -389,12 +435,22 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               <option value="high">High</option>
               <option value="urgent">🔴 Urgent</option>
             </Select>
-            <Select label="Initial Status" value={job.status} onChange={setJ('status')}>
+            <Select
+              label="Initial Status"
+              value={job.status}
+              onChange={setJ('status')}
+              disabled={selectedRepairs.some(i => i.item.pricing_type === 'quote')}
+            >
               {INITIAL_STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </Select>
           </div>
+          {selectedRepairs.some(i => i.item.pricing_type === 'quote') && (
+            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              Quoted service selected → job will go to Awaiting quote for workshop review
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Your initials or name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />

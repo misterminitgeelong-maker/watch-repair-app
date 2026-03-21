@@ -44,6 +44,15 @@ def list_groups():
     return [{"id": g["id"], "label": g["label"]} for g in _CATALOGUE["groups"]]
 
 
+@router.get("/repairs-config")
+def get_repairs_config():
+    """Catalogue config including combos for price calculation."""
+    return {
+        "combos": _CATALOGUE.get("combos", []),
+        "currency": _CATALOGUE.get("currency", "AUD"),
+    }
+
+
 @router.get("/items")
 def search_items(
     q: Optional[str] = Query(default=None, description="Search name (case-insensitive)"),
