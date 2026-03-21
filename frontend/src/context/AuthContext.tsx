@@ -18,6 +18,7 @@ interface AuthCtx {
 }
 
 const AuthContext = createContext<AuthCtx | null>(null)
+const SESSION_INIT_TIMEOUT_MS = 15_000
 
 /** Parses role from JWT for optional optimistic UI before /auth/session loads. Session data is the source of truth for role and permissions. */
 function parseRoleFromToken(token: string | null): string | null {
@@ -137,14 +138,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (token) {
       let canceled = false
+      let timedOut = false
+
+      const timeoutId = setTimeout(() => {
+        timedOut = true
+        if (!canceled) {
+          clearStoredTokens()
+          setToken(null)
+          setRole(null)
+          setTenantId(null)
+          setActiveSiteTenantId(null)
+          setAvailableSites([])
+          setPlanCode('pro')
+          setEnabledFeatures(defaultFeatures)
+          setInitializing(false)
+        }
+      }, SESSION_INIT_TIMEOUT_MS)
 
       async function loadSession() {
         try {
           await refreshSession()
-          if (canceled) return
+          if (canceled || timedOut) return
         } catch {
-          clearStoredTokens()
-          if (!canceled) {
+          if (!canceled && !timedOut) {
+            clearStoredTokens()
             setToken(null)
             setRole(null)
             setTenantId(null)
@@ -154,13 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setEnabledFeatures(defaultFeatures)
           }
         } finally {
-          if (!canceled) setInitializing(false)
+          clearTimeout(timeoutId)
+          if (!canceled && !timedOut) setInitializing(false)
         }
       }
 
       loadSession()
       return () => {
         canceled = true
+        clearTimeout(timeoutId)
       }
     }
 
@@ -173,20 +192,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let canceled = false
+    let timedOut = false
+
+    const timeoutId = setTimeout(() => {
+      timedOut = true
+      if (!canceled) {
+        clearStoredTokens()
+        setToken(null)
+        setRole(null)
+        setTenantId(null)
+        setActiveSiteTenantId(null)
+        setAvailableSites([])
+        setPlanCode('pro')
+        setEnabledFeatures(defaultFeatures)
+        setInitializing(false)
+      }
+    }, SESSION_INIT_TIMEOUT_MS)
 
     async function ensureTestSession() {
       try {
         // Optional dev helper for local demos and seeded datasets.
         const loginResp = await postJson<{ access_token: string; refresh_token?: string }>('/v1/auth/dev-auto-login', {})
-        if (!canceled && loginResp.access_token) {
+        if (!canceled && !timedOut && loginResp.access_token) {
           setStoredTokens(loginResp.access_token, loginResp.refresh_token ?? null)
           setToken(loginResp.access_token)
           setRole(parseRoleFromToken(loginResp.access_token))
         }
       } catch {
-        // Leave unauthenticated if setup fails.
-        clearStoredTokens()
-        if (!canceled) {
+        if (!canceled && !timedOut) {
+          clearStoredTokens()
           setToken(null)
           setRole(null)
           setTenantId(null)
@@ -196,13 +230,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setEnabledFeatures(defaultFeatures)
         }
       } finally {
-        if (!canceled) setInitializing(false)
+        clearTimeout(timeoutId)
+        if (!canceled && !timedOut) setInitializing(false)
       }
     }
 
     ensureTestSession()
     return () => {
       canceled = true
+      clearTimeout(timeoutId)
     }
   }, [token])
 

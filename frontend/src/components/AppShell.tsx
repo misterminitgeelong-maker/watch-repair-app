@@ -657,7 +657,7 @@ export default function AppShell() {
   if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
-        Preparing test session...
+        Loading...
       </div>
     )
   }
