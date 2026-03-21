@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { listWatchBrands } from '@/lib/api'
-import { useAuth } from '@/context/AuthContext'
+import { WATCH_BRANDS } from '@/lib/watchBrands'
 import { Input } from '@/components/ui'
 
 interface Props {
@@ -14,21 +12,14 @@ interface Props {
 }
 
 export default function BrandAutocomplete({ label, value, onChange, placeholder = 'Rolex, Omega…', autoFocus, className }: Props) {
-  const { token, activeSiteTenantId } = useAuth()
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { data: brands = [] } = useQuery({
-    queryKey: ['watch-brands', activeSiteTenantId ?? 'none'],
-    queryFn: () => listWatchBrands().then(r => r.data),
-    enabled: !!token,
-  })
-
   const q = value.trim().toLowerCase()
   const suggestions = q.length
-    ? brands.filter(b => b.toLowerCase().includes(q))
-    : brands
+    ? WATCH_BRANDS.filter(b => b.toLowerCase().includes(q))
+    : WATCH_BRANDS
 
   useEffect(() => {
     setHighlight(0)
@@ -79,7 +70,11 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={e => {
+          const next = e.relatedTarget as Node | null
+          if (containerRef.current?.contains(next)) return
+          setTimeout(() => setOpen(false), 150)
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoFocus={autoFocus}

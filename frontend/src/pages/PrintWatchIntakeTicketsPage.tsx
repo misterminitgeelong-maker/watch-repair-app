@@ -114,6 +114,12 @@ export default function PrintWatchIntakeTicketsPage() {
               <p><strong>Condition Notes:</strong> {watch?.condition_notes || '—'}</p>
             </div>
 
+            {job.title && (
+              <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+                <p className="font-semibold mb-1">Selected Services</p>
+                <p className="whitespace-pre-wrap">{job.title}</p>
+              </div>
+            )}
             <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
               <p className="font-semibold mb-1">Fault / Intake Notes</p>
               <p className="whitespace-pre-wrap">{job.description || '—'}</p>
@@ -143,6 +149,13 @@ export default function PrintWatchIntakeTicketsPage() {
               <div><strong>Item:</strong> {watchTitle}</div>
               <div><strong>Collection:</strong> {job.collection_date || 'TBC'}</div>
             </div>
+
+            {job.title && (
+              <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+                <p className="font-semibold mb-1">Services</p>
+                <p>{job.title}</p>
+              </div>
+            )}
 
             <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
               <p className="font-semibold mb-2">Price Breakdown</p>
