@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, X } from 'lucide-react'
 import {
@@ -9,6 +10,7 @@ import {
   type JobStatus, type Customer, type Watch, type CustomerAccount,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
@@ -47,6 +49,7 @@ interface Props {
 }
 
 export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }: Props) {
+  const navigate = useNavigate()
   const qc = useQueryClient()
 
   // Start at step 2 if customer is already known
@@ -67,6 +70,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   // Step 3 – Job
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
+  const [selectedRepairs, setSelectedRepairs] = useState<SelectedWatchService[]>([])
   const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
   // Step 4 – Watch Photos
@@ -198,7 +202,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   function finishCreate(jobId: string, shouldPrint: boolean) {
     if (shouldPrint) {
-      window.open(`/jobs/${jobId}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
+      navigate(`/jobs/${jobId}/intake-print?autoprint=1`)
     }
     onSuccess?.(jobId)
     onClose()
@@ -359,7 +363,23 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {/* ── Step 3: Job Details ── */}
       {step === 3 && (
         <div className="space-y-3">
-          <Input label="Job Title *" value={job.title} onChange={setJ('title')} placeholder="Full movement service & overhaul" autoFocus />
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Select repairs (optional)</label>
+            <WatchServicePicker
+              selected={selectedRepairs}
+              onChange={items => {
+                setSelectedRepairs(items)
+                const names = items.map(i => i.item.name)
+                const sumCents = items.reduce((s, i) => s + i.item.price_cents, 0)
+                setJob(prev => ({
+                  ...prev,
+                  title: names.length ? names.join(', ') : prev.title,
+                  pre_quote_cents: names.length ? (sumCents / 100).toFixed(2) : prev.pre_quote_cents,
+                }))
+              }}
+            />
+          </div>
+          <Input label="Job Title *" value={job.title} onChange={setJ('title')} placeholder="e.g. Battery replacement, Band (Orange) — or type custom" autoFocus />
           <Textarea label="Instructions / Fault Description" value={job.description} onChange={setJ('description')} rows={3} placeholder="Quick service / overhaul. Watch losing 5 min per day, crown feels loose…" />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Priority" value={job.priority} onChange={setJ('priority')}>

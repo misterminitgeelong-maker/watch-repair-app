@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import {
@@ -74,6 +75,7 @@ interface Props {
 }
 
 export default function NewShoeJobModal({ onClose, preselectedCustomer, onSuccess }: Props) {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
@@ -226,7 +228,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   function finishCreate(jobId: string, shouldPrint: boolean) {
     if (shouldPrint) {
-      window.open(`/shoe-repairs/${jobId}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')
+      navigate(`/shoe-repairs/${jobId}/intake-print?autoprint=1`)
     }
     onSuccess?.(jobId)
     onClose()

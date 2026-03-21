@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer } from 'lucide-react'
 import {
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
@@ -8,6 +8,7 @@ import {
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
   getStatusHistory,
   listCustomerAccounts, getWatch,
+  listWatchMovements, getWatchMovementQuote,
   type JobStatus, type RepairJob, type CustomerAccount,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
@@ -119,13 +120,20 @@ type Tab = 'details' | 'worklogs' | 'attachments' | 'history'
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('details')
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
-    const [editingQuote, setEditingQuote] = useState(false)
-    const [quoteInput, setQuoteInput] = useState('')
-    const updateJobMutation = useMutation({
+  const [editingQuote, setEditingQuote] = useState(false)
+  const [quoteInput, setQuoteInput] = useState('')
+  const [movementApplying, setMovementApplying] = useState(false)
+  const { data: watchMovements } = useQuery({
+    queryKey: ['watch-movements'],
+    queryFn: () => listWatchMovements().then(r => r.data),
+    staleTime: 60_000,
+  })
+  const updateJobMutation = useMutation({
       mutationFn: (cost_cents: number) => updateJob(id!, { cost_cents }),
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: ['job', id] })
@@ -159,6 +167,20 @@ export default function JobDetailPage() {
     ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(watch.customer_id))
     : customerAccounts
 
+  async function applyMovementQuote(movementKey: string) {
+    if (!id || !movementKey) return
+    setMovementApplying(true)
+    try {
+      const { data } = await getWatchMovementQuote(movementKey)
+      await updateJob(id, { cost_cents: data.quote_cents, pre_quote_cents: data.quote_cents })
+      qc.invalidateQueries({ queryKey: ['job', id] })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      setQuoteInput((data.quote_cents / 100).toFixed(2))
+      setEditingQuote(false)
+    } finally {
+      setMovementApplying(false)
+    }
+  }
   const updateAccountMutation = useMutation({
     mutationFn: (customer_account_id: string | null) => updateJob(id!, { customer_account_id }),
     onSuccess: () => {
@@ -242,7 +264,7 @@ export default function JobDetailPage() {
             >
               Copy status link
             </Button>
-            <Button variant="secondary" onClick={() => window.open(`/jobs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
+            <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/intake-print`)}>
               <Printer size={15} /> Print Intake Tickets
             </Button>
             {nextStatus && (
@@ -327,6 +349,29 @@ export default function JobDetailPage() {
                   ))}
                 </Select>
               </div>
+              {watchMovements && watchMovements.movements.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Set quote from movement</span>
+                  <select
+                    value=""
+                    onChange={e => {
+                      const key = e.target.value
+                      if (key) applyMovementQuote(key)
+                      e.target.value = ''
+                    }}
+                    disabled={movementApplying}
+                    className="w-full text-sm rounded border px-2 py-1"
+                    style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+                  >
+                    <option value="">— Select movement —</option>
+                    {watchMovements.movements.map(m => (
+                      <option key={m.key} value={m.key}>
+                        {m.name} — ${((m.quote_cents ?? m.purchase_cost_cents) / 100).toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span style={{ color: 'var(--cafe-text-muted)' }}>Quote{job.cost_cents === 0 && job.pre_quote_cents > 0 ? ' (est.)' : ''}</span>
                 {editingQuote ? (

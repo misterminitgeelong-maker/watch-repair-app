@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
@@ -218,6 +218,7 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function ShoeJobDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [showStatus, setShowStatus] = useState(false)
   const [showAddPair, setShowAddPair] = useState(false)
@@ -319,7 +320,7 @@ export default function ShoeJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
+            <Button variant="secondary" onClick={() => navigate(`/shoe-repairs/${job.id}/intake-print`)}>
               <Printer size={15} /> Print Intake Tickets
             </Button>
             <Button variant="ghost" onClick={() => setShowStatus(true)}>Change Status</Button>

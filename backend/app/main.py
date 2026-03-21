@@ -28,6 +28,7 @@ from .routes.public_jobs import router as public_jobs_router
 from .routes.users import router as users_router
 from .routes.platform_admin import router as platform_admin_router
 from .routes.shoe_catalogue import router as shoe_catalogue_router
+from .routes.watch_catalogue import router as watch_catalogue_router
 from .routes.shoe_repair_jobs import router as shoe_repair_jobs_router
 from .routes.auto_key_jobs import router as auto_key_jobs_router
 from .routes.customer_accounts import router as customer_accounts_router
@@ -139,6 +140,7 @@ app.include_router(public_jobs_router)
 app.include_router(users_router)
 app.include_router(platform_admin_router)
 app.include_router(shoe_catalogue_router)
+app.include_router(watch_catalogue_router)
 app.include_router(shoe_repair_jobs_router)
 app.include_router(auto_key_jobs_router)
 app.include_router(customer_accounts_router)

@@ -902,6 +902,50 @@ export const listShoeCombos = () =>
 export const getShoeGuarantee = () =>
   api.get<{ shoe_repairs: string }>('/shoe-catalogue/guarantee')
 
+// ── Watch Catalogue ───────────────────────────────────────────────────────────
+export interface WatchCatalogueItem {
+  key: string
+  name: string
+  price: number
+  price_cents: number
+  pricing_type: string
+  group_id?: string
+  group_label?: string
+  notes?: string
+}
+
+export interface WatchCatalogueGroup {
+  id: string
+  label: string
+}
+
+export interface WatchMovement {
+  key: string
+  name: string
+  purchase_cost_cents: number
+  fixed_price_cents?: number
+  margin_percent?: number
+  quote_cents?: number
+}
+
+export interface WatchMovementsResponse {
+  currency: string
+  default_margin_percent: number
+  movements: WatchMovement[]
+}
+
+export const listWatchCatalogueGroups = () =>
+  api.get<WatchCatalogueGroup[]>('/watch-catalogue/groups')
+
+export const searchWatchCatalogueItems = (params?: { q?: string; group?: string }) =>
+  api.get<WatchCatalogueItem[]>('/watch-catalogue/items', { params })
+
+export const listWatchMovements = () =>
+  api.get<WatchMovementsResponse>('/watch-catalogue/movements')
+
+export const getWatchMovementQuote = (key: string) =>
+  api.get<{ key: string; name: string; quote_cents: number }>(`/watch-catalogue/movements/${key}/quote`)
+
 // ── Shoes (items being repaired) ──────────────────────────────────────────────
 export interface Shoe {
   id: string
