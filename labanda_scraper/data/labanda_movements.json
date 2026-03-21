@@ -1,0 +1,5565 @@
+{
+  "source": "labanda.com.au",
+  "movements": [
+    {
+      "brand": "ETA",
+      "model": "E210.001",
+      "size": "9 L (20.00mm)",
+      "height": "0.98mm",
+      "power": "SR716SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.242-RD4 *(Phase Out)*",
+      "size": "13\u00bc L (30.00 x 5mm)",
+      "height": "4.80mm",
+      "power": "SR936W",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.264-RD4 *(Special Order)*",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "5.00mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.265 *(Phased Out)*",
+      "size": "13\u00bc",
+      "height": "7.46mm",
+      "power": "394",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.272-RD4",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "4.60mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.274-RD4",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "4.60mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.474-RD4 *(Phase Out)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.70mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E256.041",
+      "size": "8\u00bc",
+      "height": "1.95mm",
+      "power": "321",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E280.002",
+      "size": "3\u00be x 6\u00be L (9.00 x 15.15mm)",
+      "height": "1.80mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E282.001",
+      "size": "5\u00bd x 8 L",
+      "height": "1.25mm",
+      "power": "346",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E282.002 *(Disc)*",
+      "size": "5\u00bd x 8 L (13.00 x 17.80mm)",
+      "height": "1.20mm",
+      "power": "SR712SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2824-2",
+      "size": "11\u00bd L",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2836/2",
+      "size": "11\u00bd L",
+      "height": "5.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2893/2 *(Special Order)*",
+      "size": "11\u00bd L (25.6mm)",
+      "height": "4.10mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E6497-1",
+      "size": "16\u00bd L (37.00mm)",
+      "height": "4.5mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E7750",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "7.90mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E7753",
+      "size": "13\u00bc",
+      "height": "7.90mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E801.104 *(Phase Out)*",
+      "size": "5\u00bd x 6\u00be",
+      "height": "2.50mm",
+      "power": "379",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E802.002",
+      "size": "6\u00be x 8",
+      "height": "2.95mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E802.102",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.95mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.112-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.114-D6",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.124",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.112-D3",
+      "size": "10\u00bd",
+      "height": "3.40mm",
+      "power": "397",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.114-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.114-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.124 *(Phase Out)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.112-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.112-D6 *(Phased Out)*",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.114-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.124-DD3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.161 D3",
+      "size": "11\u00bd L",
+      "height": "\u2014",
+      "power": "397",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E901.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E901.005 *(Disc)*",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.002",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.35mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.005",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.35mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.101",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.35mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.505 *(Phase Out)*",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.90mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D3-2H *(Phase Out)*",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D6 *(Disc)*",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.122 *(Disc)*",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.132 *(Phased Out)*",
+      "size": "11\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D3 *(Disc)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D3-2H *(Phase Out)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D6 *(Disc)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.422 *(Disc)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.424",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D3 *(Disc)*",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D3-2H *(Disc)*",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D6 *(Disc)*",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.122",
+      "size": "7\u00be L (17.20mm)",
+      "height": "3.00mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D3 *(Disc)*",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D3-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D6 *(Disc)*",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.612-D3 *(Disc)*",
+      "size": "8\u00be L (19.40mm)",
+      "height": "4.50mm",
+      "power": "CR1616",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E976.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "1.95mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.106",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.108 *(Disc)*",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.153",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.163",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE01.001",
+      "size": "4\u215e L (11mm)",
+      "height": "2.50mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE03.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "1.35mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.041",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "1.95mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.041-D6",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "1.95mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.111-D3AO",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "1.95mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.041",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "1.95mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.111-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "1.95mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.111-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "1.95mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE64.111-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "1.95mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE64.111-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "1.95mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D3",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D3V1",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D6",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.115-D3",
+      "size": "7\u00be",
+      "height": "2.50mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.115-D6",
+      "size": "7\u00be",
+      "height": "2.50mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.11A-D3",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.111-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.111-D6",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.115-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.115-D6",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.11A-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.111-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.111-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.115-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.115-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.11A-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D3A0",
+      "size": "11\u00bd L (25.00mm)",
+      "height": "\u2014",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D3-2H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.161-D3",
+      "size": "11\u00bd",
+      "height": "3.60mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF07.111-D3",
+      "size": "13\u00bc",
+      "height": "\u2014",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF07.115-D3",
+      "size": "13\u00bc",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-D3",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-D6",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-HD4",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-RD4",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.712-HD4",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.62mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.712-RD4",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.62mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.211-D6",
+      "size": "10\u00bd",
+      "height": "5.25mm",
+      "power": "394",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.211-HD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.212-RD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.261-HD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.562BE",
+      "size": "10\u00bd",
+      "height": "5.25mm",
+      "power": "394",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "P7001",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.50mm",
+      "power": "Mechanical",
+      "source": "labanda"
+    },
+    {
+      "brand": "ETA",
+      "model": "SW200-1",
+      "size": "11\u00bd (25.6mm)",
+      "height": "4.6mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE5820PLATE",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "0.35mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE6120 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.55mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE6130",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.55mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7021",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7022",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.55mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7122",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.43mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7221",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.20mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1E20",
+      "size": "4\u00bc L (9.00 x 9.40mm)",
+      "height": "2.70mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1F20",
+      "size": "4\u00bc x 5\u00bd L (10.00 x 12.50mm)",
+      "height": "1.80mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1F21",
+      "size": "4\u00be L",
+      "height": "2.40mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1N00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "1.90mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1N01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.30mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H6N22",
+      "size": "6\u00be x 8 L (15.15 x 18.2mm)",
+      "height": "2.79mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N00",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.10mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N01",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.10mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N32-D3",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N32-D6",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N33",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.78mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N39-D3",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N42",
+      "size": "11\u00bd L (21.90 x 23.50mm)",
+      "height": "2.78mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N43",
+      "size": "11\u00bd L (21.90 x 23.50mm)",
+      "height": "2.78mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N82",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.60mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N83-D3D3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.60mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N89",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.60mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7T62 *(Disc)*",
+      "size": "24.1 x 27.6mm",
+      "height": "3.3mm (plate)",
+      "power": "395/399",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7T82",
+      "size": "\u00d827.6mm",
+      "height": "3.3mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL20 *(Disc)*",
+      "size": "6\u00be x 8",
+      "height": "\u2014",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL21F1",
+      "size": "6\u00be x 8 L",
+      "height": "3.00mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL32",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL33 *(Disc)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL35E *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL55 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL82",
+      "size": "6 x 8 L (15.30 x 17.80mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL83",
+      "size": "6 x 8 L (15.30 x 17.80mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAS32A-D3",
+      "size": "10 L",
+      "height": "4.61mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAX32A-D3",
+      "size": "10\u00bd",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAX33",
+      "size": "10\u00bd",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH15 *(Disc)*",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "6.01mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH35",
+      "size": "12",
+      "height": "5.32mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH70A",
+      "size": "12 L (\u00d827.4mm)",
+      "height": "5.32mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH71A",
+      "size": "12 (\u00d827.4mm)",
+      "height": "5.32mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC10A",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "3.15mm",
+      "power": "SR527SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC11",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "3.15mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC20-S",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC21AF *(Disc)*",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC21J",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC22A",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC22A-D6",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC23",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC29M",
+      "size": "6\u00be x 8",
+      "height": "4.15mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC32",
+      "size": "10\u00bd L (22.00 x 22.60mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC32A-D6",
+      "size": "10\u00bd L (22.00 x 22.60mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC33",
+      "size": "10\u00bd L (22.00 x 22.60mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC39",
+      "size": "10\u00bd",
+      "height": "4.15mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV021",
+      "size": "13\u00bc L (29.00mm)",
+      "height": "4.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV041 25",
+      "size": "10\u00bd L",
+      "height": "3.9mm",
+      "power": "396",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV172",
+      "size": "12 (27.6mm)",
+      "height": "4.4mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV501 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV532-24",
+      "size": "10\u00bd L",
+      "height": "3.22mm",
+      "power": "SR927SW/395",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV657-20 *(Disc)*",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.70mm",
+      "power": "SR920W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV810-10",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60mm)",
+      "height": "3.00mm",
+      "power": "SR527SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV810-20",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60mm)",
+      "height": "3.00mm",
+      "power": "SR527SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV811",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60mm)",
+      "height": "3.00mm",
+      "power": "SR527SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVB20B *(Disc)*",
+      "size": "3\u00be x 6\u00be L (8.45 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC10F2",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC10G2",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC11F",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD31",
+      "size": "12\u00be",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD32",
+      "size": "12\u00be L (29.5mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD34",
+      "size": "12\u00be",
+      "height": "\u2014",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD35",
+      "size": "12\u00be",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD51C",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD52",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53B *(Disc)*",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53CD4",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53CD6",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD54C",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD55",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD56",
+      "size": "12\u00be",
+      "height": "3.10mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD57C",
+      "size": "12\u00be",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD75A",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD76",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD77",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD78 *(Phased Out)*",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD79",
+      "size": "10\u00bd L (22.60mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD85",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD86A *(Special Order)*",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD87",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVE00",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "1.99mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH63",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH64",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH67",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "5.86mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ12",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ12-D6",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ20C",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ21C",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ22 *(Special Order)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ22B-D6",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ23B-D3D3",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ32",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ32-D6",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ33B",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ34",
+      "size": "10\u00bd L (22.6mm)",
+      "height": "2.55mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ42-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.71mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ42B-D3",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ43B",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ45",
+      "size": "11\u00bd",
+      "height": "3.05mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ52",
+      "size": "12\u00bd L (23.50 x 26.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ53B",
+      "size": "12\u00bd",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ76A",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "3.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK63A",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK64AD6",
+      "size": "13\u00bd",
+      "height": "5.10mm",
+      "power": "SR936SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK67A-D3",
+      "size": "13\u00bd",
+      "height": "5.10mm",
+      "power": "394",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVL58A",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "3.97mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR32A",
+      "size": "13\u00bd L (30.60mm)",
+      "height": "6.20mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR32B-D4",
+      "size": "13\u00bd L (30.60mm)",
+      "height": "6.20mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR33A",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR33B",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR3GB",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR42A",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.52mm",
+      "power": "Solar",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR42B",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.52mm",
+      "power": "Solar",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS32A",
+      "size": "10\u00bd L (21.30mm)",
+      "height": "2.98mm",
+      "power": "3023-24Y",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS37M",
+      "size": "10\u00bd (21.30 x 24.00mm)",
+      "height": "2.98mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS43",
+      "size": "11\u00bd L",
+      "height": "3.09mm",
+      "power": "3023-24Y",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "1.90mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.30mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX01-B2",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.30mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX10",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.19mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX11B",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.49mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX12",
+      "size": "8\u00be L (18.00 x 20.00mm)",
+      "height": "2.60mm",
+      "power": "SR716SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX13",
+      "size": "8\u00be",
+      "height": "2.92mm",
+      "power": "315",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX18",
+      "size": "8\u00be L (18.00 x 20.00mm)",
+      "height": "3.35mm",
+      "power": "SR716SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX19M *(Phased Out)*",
+      "size": "8\u00be L (18.00 x 20.00mm)",
+      "height": "2.60mm",
+      "power": "SR716SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX32E-D3",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX32E-D6",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX33E-D3D3",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.98mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX36",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "3.05mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX38",
+      "size": "10\u00bd",
+      "height": "3.35mm",
+      "power": "373",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3FA",
+      "size": "10\u00bd",
+      "height": "3.05mm",
+      "power": "373",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3GA",
+      "size": "10\u00bd",
+      "height": "3.05mm",
+      "power": "373",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3HA",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3J",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3K-D3",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3K-D6",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3KE",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3L",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3M",
+      "size": "10\u00bd",
+      "height": "3.05mm",
+      "power": "373",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3N",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3P",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3R",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.05mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3S",
+      "size": "10\u00bd L (21.50 x 24.00mm)",
+      "height": "3.86mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3TE",
+      "size": "10\u00bd",
+      "height": "3.86mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42-D6",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42A2",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.62mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42E-D3V1",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42E1",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX43E-D3D3V1",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.92mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX44",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.98mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX46",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "3.49mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX50",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.16mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX51-E3",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX51E",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX62E",
+      "size": "13\u00bd",
+      "height": "3.63mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX63E",
+      "size": "13\u00bd",
+      "height": "3.63mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7JE",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7N",
+      "size": "12\u00be",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7PE",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "\u2014",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX82-D6",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX82E-D3",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX83",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "3.11mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX83-E3",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "3.11mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX89-D6",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX89E-D3",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9JE",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9NE",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9PE",
+      "size": "12\u00be L (26.00 x 29.50mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY120F1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121 FR",
+      "size": "6\u00be x 8",
+      "height": "2.99mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F2",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F4",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F5",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F6",
+      "size": "6\u00be x 8 L",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121G",
+      "size": "6\u00be x 8 ligne",
+      "height": "4.5mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY799",
+      "size": "6\u00be x 8 L (22.70 x 24.20mm)",
+      "height": "3.52mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYL50",
+      "size": "4\u00bc L (9.00 x 9.40mm)",
+      "height": "2.70mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYL61",
+      "size": "4\u00be x 5\u00be L (10.80 x 13.50mm)",
+      "height": "2.39mm",
+      "power": "SR421SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM26",
+      "size": "12",
+      "height": "3.70mm",
+      "power": "399",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM62",
+      "size": "12 L (27.60mm)",
+      "height": "3.11mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM82",
+      "size": "12",
+      "height": "3.70mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM92",
+      "size": "12 L (24.00 x 27.60mm)",
+      "height": "3.70mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYR67",
+      "size": "10\u00bd",
+      "height": "3.05mm",
+      "power": "395",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 2320.103",
+      "size": "10\u00bd",
+      "height": "2.95mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 2331/103 *(Phased Out)*",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.70mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 307.104 D6",
+      "size": "10\u00bd",
+      "height": "3.60mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 307.40 DD6",
+      "size": "10\u00bd",
+      "height": "3.60mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 336/101",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "377/376",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 389/101",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.80mm",
+      "power": "SR726SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 389/103",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.50mm",
+      "power": "SR726SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 638/101",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8154/201-D6",
+      "size": "11\u00bd",
+      "height": "4.60mm",
+      "power": "395",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8162-D6",
+      "size": "11\u00bd",
+      "height": "4.20mm",
+      "power": "395",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8172/220",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.20mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8174/201",
+      "size": "11\u00bd",
+      "height": "4.60mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8174/220",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.60mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8272",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.60mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 9238/1970",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.13mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA K83/103",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.85mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M0T45",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1102",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L02 *(Disc)*",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L12 *(Disc)*",
+      "size": "6\u00be x 8",
+      "height": "2.71mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L12-D6 *(Disc)*",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L15",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L22 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.15mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L26 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.15mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L32 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L40",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.93mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L45",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.93mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M02 *(Disc)*",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M12 *(Disc)*",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M12-D6 *(Disc)*",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M15",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M50",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1N12-D3 *(Phased Out)*",
+      "size": "8\u00be L (20.00mm)",
+      "height": "2.58mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1N12-D6 *(Disc)*",
+      "size": "8\u00be L (20.00mm)",
+      "height": "2.58mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S02 *(Phased Out)*",
+      "size": "11\u00bd L (26.40mm)",
+      "height": "3.07mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S12 *(Disc)*",
+      "size": "11\u00bd L (26.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S13",
+      "size": "11\u00bd L (23.50 x 21.90mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S13-D6",
+      "size": "11\u00bd L (23.50 x 21.90mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2005",
+      "size": "6\u00be x 8 L (16.30 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2015",
+      "size": "6\u00be x 8 L (16.30 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2015-D6",
+      "size": "6\u00be x 8 L (16.30 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2025",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2033",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2034",
+      "size": "6\u00be x 8",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2035",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2036",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2039",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2105",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2115-D3",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2115-D6",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M213D",
+      "size": "10\u00bd",
+      "height": "\u2014",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2305-D3D3",
+      "size": "11\u00bd L (23.5 x 23.5mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2315",
+      "size": "11\u00bd L (23.50 x 23.50mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2315-D6",
+      "size": "11\u00bd (23.50 x 23.50mm)",
+      "height": "4.15mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2405-D3D3",
+      "size": "11\u00bd L (23.5 x 23.5mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2415",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.35mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2417",
+      "size": "13\u00bd",
+      "height": "4.35mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2500",
+      "size": "10\u00bd (21.5 x 23.7mm)",
+      "height": "2.90mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2510",
+      "size": "10\u00bd L (21.5 x 23.7mm)",
+      "height": "2.70mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2F00 *(Disc)*",
+      "size": "10\u00bd L (21.50 x 23.70mm)",
+      "height": "2.70mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2F10 *(Disc)*",
+      "size": "10\u00bd L (21.50 x 23.70mm)",
+      "height": "2.70mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2S60",
+      "size": "10\u00bd",
+      "height": "3.99mm",
+      "power": "CR2012",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M3S10",
+      "size": "13\u00bd",
+      "height": "4.20mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M3T30",
+      "size": "6\u00be x 8",
+      "height": "2.30mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5500",
+      "size": "10\u00bd",
+      "height": "\u2014",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5920",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5930",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R21",
+      "size": "3\u00be x 6 L (9.00 x 13.20mm)",
+      "height": "1.90mm",
+      "power": "SR416SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R22",
+      "size": "3\u00be x 6 L (9.00 x 13.20mm)",
+      "height": "1.90mm",
+      "power": "SR416SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R32",
+      "size": "3\u00be x 6 L (9.00 x 13.20mm)",
+      "height": "2.00mm",
+      "power": "SR416SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5Y20",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5Y30",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L02 *(Disc)*",
+      "size": "6\u00be x 8 L (17.10 x 18.20mm)",
+      "height": "3.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L12 *(Disc)*",
+      "size": "6\u00be x 8",
+      "height": "3.07mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L40",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.20mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L90",
+      "size": "6\u00be x 8",
+      "height": "3.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M02 *(Disc)*",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M12 *(Disc)*",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M12-D6 *(Phased Out)*",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M17",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M55",
+      "size": "13\u00bd",
+      "height": "3.85mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M85",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M90",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P00",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P05",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P09",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P20",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P21",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P23",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P25",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P26",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P27",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P29",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P73",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P79",
+      "size": "10\u00bd",
+      "height": "3.45mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P80",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.85mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P89",
+      "size": "10\u00bd",
+      "height": "3.85mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P90",
+      "size": "10\u00bd",
+      "height": "3.85mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6S20-RD4",
+      "size": "15 L (34.60mm)",
+      "height": "4.90mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6S21",
+      "size": "15",
+      "height": "4.90mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6T28",
+      "size": "8\u00be L",
+      "height": "5.23mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M7871 *(Disc)*",
+      "size": "11\u00bd",
+      "height": "\u2014",
+      "power": "295-40",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M7T35",
+      "size": "6\u00be x 8 ligne",
+      "height": "3.20mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8205-D3D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "5.67mm",
+      "power": "Automatic (21J)",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8215",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "5.67mm",
+      "power": "Automatic (21J)",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N24",
+      "size": "11\u00bd L (\u00d825.6mm)",
+      "height": "5.67mm",
+      "power": "Automatic (21J)",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N24G",
+      "size": "11\u00bd L",
+      "height": "5.55mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N33/G",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.47mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T13-D6",
+      "size": "6\u00be x 8 L (16.10 x 17.80mm)",
+      "height": "2.33mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T15",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.33mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T22",
+      "size": "6\u00be x 8 L (15.40 x 18.20mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T33",
+      "size": "6\u00be x 8 L (15.80 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U13",
+      "size": "10\u00bd",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U13 D6",
+      "size": "10\u00bd (21.50 x 23.70mm)",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U15",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U15 D6",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB023",
+      "size": "16 x 14.9mm",
+      "height": "2.50mm",
+      "power": "295-76",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB033 *(Disc)*",
+      "size": "16 x 14.9mm",
+      "height": "2.50mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB035",
+      "size": "16 x 14.9mm",
+      "height": "2.50mm",
+      "power": "295-76",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME001",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "3.50mm",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME011",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "3.30mm",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME013",
+      "size": "8\u00bc",
+      "height": "3.30mm",
+      "power": "MT621",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME031",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "2.83mm",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME101",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.50mm",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME111",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.30mm",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME650",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "295-69",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME860 *(Phased Out)*",
+      "size": "11\u00bd (25.60mm)",
+      "height": "4.60mm",
+      "power": "295-56",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME870 *(Phased Out)*",
+      "size": "13\u00bc L (29.7mm)",
+      "height": "4.20mm",
+      "power": "295-56",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS00-4",
+      "size": "10\u00bd L (23.70 x 22.00mm)",
+      "height": "4.13mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS00-6",
+      "size": "10\u00bd L (23.70 x 22.00mm)",
+      "height": "4.13mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS01",
+      "size": "10\u00bd L (23.70 x 22.00mm)",
+      "height": "4.28mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS10",
+      "size": "10\u00bd",
+      "height": "5.10mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS13",
+      "size": "10\u00bd",
+      "height": "5.10mm",
+      "power": "377",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS20",
+      "size": "10\u00bd L (23.70 x 22.00mm)",
+      "height": "5.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS21",
+      "size": "10\u00bd L (23.70 x 22.00mm)",
+      "height": "5.25mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS60",
+      "size": "10\u00bd L (23.7 x 22mm)",
+      "height": "5.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG012",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "Quartz",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG111",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG112",
+      "size": "6\u00be x 8",
+      "height": "2.71mm",
+      "power": "379",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG620",
+      "size": "3\u00be x 6 L (9.0 x 13.5mm)",
+      "height": "2.17mm",
+      "power": "295-67",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL00",
+      "size": "6\u00be x 8 L (16.10 x 18.20mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL02",
+      "size": "6\u00be x 8",
+      "height": "2.70mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL10 *(Disc)*",
+      "size": "6\u00be x 8 L (16.10 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL10D6",
+      "size": "6\u00be x 8 L (16.10 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL12",
+      "size": "6\u00be x 8",
+      "height": "2.70mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL12-D6",
+      "size": "6\u00be x 8",
+      "height": "2.70mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL14 D3",
+      "size": "6\u00be x 8",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL15",
+      "size": "6\u00be x 8",
+      "height": "\u2014",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL17 *(Disc)*",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL20",
+      "size": "6\u00be x 8 L (16.10 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL22",
+      "size": "6\u00be x 8 L (16.10 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL24",
+      "size": "6\u00be x 8 (15.3 x 18.2mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL26",
+      "size": "6\u00be x 8",
+      "height": "3.85mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL30 *(Disc)*",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL32",
+      "size": "6\u00be x 8",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL34",
+      "size": "6\u00be x 8",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL36 *(Phased Out)*",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM00-DD3 *(Disc)*",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM00-DD6 *(Phased Out)*",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM02-DD3",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM02-DD6",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-D3 *(Disc)*",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-D6 *(Disc)*",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-HD4 *(Disc)*",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-RD4",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-D3",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-HD4",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-RD4",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM13",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM14-D3",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM15-D3",
+      "size": "10\u00bd (23.7 x 22.6mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM15-D6",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM17",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM17-D6",
+      "size": "10\u00bd",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN10 *(Disc)*",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN12",
+      "size": "8\u00be (19.73mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN15 *(Disc)*",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN17",
+      "size": "8\u00be L (20.00 x 18.00mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP00 *(Ltd Stock)*",
+      "size": "12\u00bd",
+      "height": "4.40mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP01",
+      "size": "12\u00bd",
+      "height": "4.40mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP10",
+      "size": "12 L (27.00mm)",
+      "height": "4.40mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP11",
+      "size": "12 L (27.00mm)",
+      "height": "4.40mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGR02-D3D3",
+      "size": "11\u00bd",
+      "height": "3.07mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MH504",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJ800",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "295-51 (Eco-Drive)",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJ810",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "295-51",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJP15",
+      "size": "12\u00bd",
+      "height": "4.30mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJR10",
+      "size": "12\u00bd L (28.20mm)",
+      "height": "4.18mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS00",
+      "size": "12\u00bd",
+      "height": "4.18mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS10",
+      "size": "12\u00bd",
+      "height": "4.18mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS15-D3",
+      "size": "12\u00bd L (28.20 x 26.00mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS15-D3-White",
+      "size": "12\u00bd L (28.20mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS16",
+      "size": "12\u00bd",
+      "height": "6.70mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS20",
+      "size": "12\u00bd",
+      "height": "4.18mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS25-D6",
+      "size": "12\u00bd L (28.20mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS25-RD4",
+      "size": "12\u00bd L (28.20mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS26-RD4",
+      "size": "12\u00bd L (28.20mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS00",
+      "size": "13\u00bd",
+      "height": "5.10mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS10",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS11",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS1A *(Disc/Special Order)*",
+      "size": "13\u00bd",
+      "height": "4.13mm",
+      "power": "399",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS20",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS20M",
+      "size": "13\u00bd",
+      "height": "5.10mm",
+      "power": "399",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS21-D6",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS21-RD4.5",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS2A",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927W",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS30",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS60",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS62",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS80",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.68mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS90",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOU30",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOW50",
+      "size": "13\u00bd L (30.50mm)",
+      "height": "5.10mm",
+      "power": "295-29",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT206",
+      "size": "12\u00bd",
+      "height": "3.16mm",
+      "power": "399",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT241",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.91mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT270",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.91mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1005",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1006",
+      "size": "10\u00bd L (23.90mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1016",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1019",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-0",
+      "size": "3\u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-1",
+      "size": "3\u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-2",
+      "size": "3\u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-3",
+      "size": "3\u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1042",
+      "size": "4\u00bc L (15.30 x 17.80mm)",
+      "height": "2.90mm",
+      "power": "SR512SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1062",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1063",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1064",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1069",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R3540D",
+      "size": "10\u00bd x 11\u00bd",
+      "height": "4.90mm",
+      "power": "392",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4003B",
+      "size": "12\u00bd (\u00d828.6mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4120BM",
+      "size": "12\u00bd L",
+      "height": "4.43mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4220BD6",
+      "size": "12\u00bd L (28.00mm)",
+      "height": "4.40mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4310D",
+      "size": "12\u00bd L (28.00mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5010B",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5021D",
+      "size": "12\u00bd L (28.60mm)",
+      "height": "4.40mm",
+      "power": "395",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5030D",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5030D/D6 *(Disc)*",
+      "size": "12\u00bd Round",
+      "height": "\u2014",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040-BD12",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040B-SA",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040D",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040D-SA",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG1",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG2",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG6",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG1",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG2",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG6",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG1",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG2",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG6",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D6-3H A1G1",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D6-3H AIG2",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5050B",
+      "size": "12\u00bd L (28.60mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R507-DD3-3H",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R507/2",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R509",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R512",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R513",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5130D",
+      "size": "12\u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R515-D3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R515-D6-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R517-DD3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R517/2",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R519",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R519-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R585-D3-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.00mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R585-D6-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.00mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6003B",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.30mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6003D",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6004B D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.30mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6004D-D3",
+      "size": "11\u00bd L (26.20mm)",
+      "height": "2.50mm",
+      "power": "SR916SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R702",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R704-D3-2H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R704-D6-2H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R705-D3-3H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R705-D6-3H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706.1",
+      "size": "10\u00bd",
+      "height": "4.40mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706.3",
+      "size": "10\u00bd",
+      "height": "3.00mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706B",
+      "size": "10\u00bd",
+      "height": "3.70mm",
+      "power": "\u2014",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R712",
+      "size": "11\u00bd L",
+      "height": "2.55mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R713",
+      "size": "11\u00bd",
+      "height": "2.50mm",
+      "power": "371",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-2H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-3H-H2",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D6-3HV1",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R732",
+      "size": "3\u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751E",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751E 3",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753-2",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753-3",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762-3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762-SA",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-4",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-5",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-SA",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R772",
+      "size": "7\u00be L",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R773",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R774-D3-2H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R774-D6-2H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D3-3H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D3-3H-SA",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW (1J)",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D6-3H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R778",
+      "size": "7\u00be",
+      "height": "3.00mm",
+      "power": "364",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R782",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R783",
+      "size": "8\u00be",
+      "height": "2.50mm",
+      "power": "362",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D3-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D3-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D6-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D6-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R788",
+      "size": "8\u00be",
+      "height": "2.98mm",
+      "power": "362",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R8040N-SA",
+      "size": "15 L (33.80mm)",
+      "height": "5.60mm",
+      "power": "SR927SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Ronda",
+      "model": "RZ60",
+      "size": "13\u00bc (30.60mm)",
+      "height": "4.60mm",
+      "power": "395",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB308-31",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.15mm",
+      "power": "SR721SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB310-31",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB311-31",
+      "size": "11\u00bd L (25.9 x 3.1mm)",
+      "height": "3.10mm",
+      "power": "SR920SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB682-01",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.00mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB688-01",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "Swiss",
+      "model": "SB688-11",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2650G",
+      "size": "27.00mm",
+      "height": "4.30mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L27",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L31",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L43-1",
+      "size": "30.40mm",
+      "height": "7.20mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L55",
+      "size": "30.40mm",
+      "height": "7.10mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 7750",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "7.90mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 8824",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN 8836",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2803",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.76mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2812",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.45mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2813",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.45mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2816",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2833",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "3.90mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3612",
+      "size": "36.80mm",
+      "height": "4.55mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3804 *(Disc)*",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.97mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806-12D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.65mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806B",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806EB-3D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806PB",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3809",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3809A-3D",
+      "size": "34.00mm",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3814",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "6.42mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836-4D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.22mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836-6D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.22mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3847B",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.02mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3857",
+      "size": "34.00mm",
+      "height": "6.15mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3886",
+      "size": "13\u00bc L (29.40mm)",
+      "height": "6.27mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG4813",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN F3211",
+      "size": "29.70mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN F8131",
+      "size": "28.80mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN HZ2189G",
+      "size": "12 L (27.40mm)",
+      "height": "4.74mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN LB06",
+      "size": "30.40mm",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN M3113",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN M3191",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN ML6102",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.56mm",
+      "power": "Manual",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN ML7102",
+      "size": "27.50mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN R15",
+      "size": "28.00mm",
+      "height": "6.55mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN R16-1",
+      "size": "28.00mm",
+      "height": "6.55mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN R19",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.10mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN R30",
+      "size": "30.40mm",
+      "height": "6.90mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN R44",
+      "size": "30.40mm",
+      "height": "7.20mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN SL68",
+      "size": "6\u00be x 8 L",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN SP09",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN SP16",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN SPS24",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN SPS51",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN ST6D1",
+      "size": "8\u00be L (19.80mm)",
+      "height": "6.20mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2530",
+      "size": "30.40mm",
+      "height": "7.40mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2555",
+      "size": "30.40mm",
+      "height": "7.40mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2706",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.65mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2707",
+      "size": "29.00mm",
+      "height": "5.95mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2708",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.25mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2712",
+      "size": "29.30mm",
+      "height": "6.73mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2714",
+      "size": "28.00mm",
+      "height": "6.44mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2807",
+      "size": "12 L (28.00mm)",
+      "height": "5.18mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2866",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2867",
+      "size": "12 L (28.00mm)",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2869",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.45mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2871-S",
+      "size": "12 L (28.00mm)",
+      "height": "6.57mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2876",
+      "size": "28.00mm",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY601",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "7.03mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY603K",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.75mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "CN Z2033",
+      "size": "33.60mm",
+      "height": "6.00mm",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "RLX3135",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "Automatic",
+      "source": "labanda"
+    },
+    {
+      "brand": "China",
+      "model": "RLX3186",
+      "size": "\u2014",
+      "height": "\u2014",
+      "power": "Automatic",
+      "source": "labanda"
+    }
+  ]
+}

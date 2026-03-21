@@ -1,0 +1,141 @@
+{
+  "category": "watch_repairs",
+  "currency": "AUD",
+  "groups": [
+    {
+      "id": "battery",
+      "label": "Battery & Basic Services",
+      "items": [
+        {
+          "key": "battery__standard_quartz",
+          "name": "Battery Replacement (Standard Quartz)",
+          "price": 33.00,
+          "price_cents": 3300,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "battery__solar_capacitor",
+          "name": "Solar Capacitor Replacement",
+          "price": 120.00,
+          "price_cents": 12000,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "straps",
+      "label": "Band Replacements",
+      "items": [
+        {
+          "key": "straps__orange",
+          "name": "Band Replacement (Orange)",
+          "price": 19.95,
+          "price_cents": 1995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__red",
+          "name": "Band Replacement (Red)",
+          "price": 24.95,
+          "price_cents": 2495,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__light_blue",
+          "name": "Band Replacement (Light Blue)",
+          "price": 29.95,
+          "price_cents": 2995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__purple",
+          "name": "Band Replacement (Purple)",
+          "price": 34.95,
+          "price_cents": 3495,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__dark_blue",
+          "name": "Band Replacement (Dark Blue)",
+          "price": 39.95,
+          "price_cents": 3995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "straps__green",
+          "name": "Band Replacement (Green)",
+          "price": 44.95,
+          "price_cents": 4495,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "crystal",
+      "label": "Crystal / Glass",
+      "items": [
+        {
+          "key": "crystal__acrylic",
+          "name": "Crystal Replacement (Acrylic)",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "crystal__mineral",
+          "name": "Crystal Replacement (Mineral Glass)",
+          "price": 69.95,
+          "price_cents": 6995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "crystal__sapphire",
+          "name": "Crystal Replacement (Sapphire)",
+          "price": 139.95,
+          "price_cents": 13995,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "waterproofing",
+      "label": "Waterproofing & Pressure Test",
+      "items": [
+        {
+          "key": "waterproofing__service",
+          "name": "Waterproofing Service",
+          "price": 110.00,
+          "price_cents": 11000,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "waterproofing__pressure_test",
+          "name": "Water Pressure Test",
+          "price": 39.95,
+          "price_cents": 3995,
+          "pricing_type": "fixed"
+        }
+      ]
+    },
+    {
+      "id": "mechanical",
+      "label": "Hands, Crown & Other",
+      "items": [
+        {
+          "key": "mechanical__hand_refit",
+          "name": "Hand Refit",
+          "price": 39.95,
+          "price_cents": 3995,
+          "pricing_type": "fixed"
+        },
+        {
+          "key": "mechanical__crown_replacement",
+          "name": "Crown Replacement with Tap",
+          "price": 59.95,
+          "price_cents": 5995,
+          "pricing_type": "fixed"
+        }
+      ]
+    }
+  ]
+}

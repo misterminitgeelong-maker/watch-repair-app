@@ -1,0 +1,6955 @@
+{
+  "source": "labanda_html",
+  "movements": [
+    {
+      "brand": "China",
+      "model": "CN 2650G",
+      "size": "27.00mm",
+      "height": "4.30mm",
+      "power": "Manual",
+      "notes": "",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L27",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L31",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L43-1",
+      "size": "30.40mm",
+      "height": "7.20mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 2L55",
+      "size": "30.40mm",
+      "height": "7.10mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 7750",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "7.90mm",
+      "power": "Automatic",
+      "notes": "SUB FOR ETA 7750",
+      "purchase_cost_cents": 48050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 8824",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "notes": "SUB FOR ETA 2824",
+      "purchase_cost_cents": 17500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN 8836",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.05mm",
+      "power": "Automatic",
+      "notes": "SUB FOR ETA 2836",
+      "purchase_cost_cents": 18500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2803",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.76mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 2700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2812",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.45mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 9850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2813",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.45mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2816",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 2700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG2833",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "3.90mm",
+      "power": "Manual",
+      "notes": "",
+      "purchase_cost_cents": 6550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3612",
+      "size": "36.80mm",
+      "height": "4.55mm",
+      "power": "Manual",
+      "notes": "",
+      "purchase_cost_cents": 5700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3804",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.97mm",
+      "power": "Automatic",
+      "notes": "DISCONTINUED",
+      "purchase_cost_cents": 10200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806-12D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.65mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806B",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806EB-3D",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3806PB",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.87mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 2300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3809",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3809A-3D",
+      "size": "34.00mm",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3814",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "6.42mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.12mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836-4D",
+      "size": "11\u00bd L (26.00 mm)",
+      "height": "6.22mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3836-6D",
+      "size": "11\u00bd L (26.00 mm)",
+      "height": "6.22mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 8050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3847B",
+      "size": "11\u00bd L (26.00 mm)",
+      "height": "6.02mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3857",
+      "size": "34.00mm",
+      "height": "6.15mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG3886",
+      "size": "13\u00bc L (29.40mm)",
+      "height": "6.27mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN DG4813",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN F3211",
+      "size": "29.70mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN F8131",
+      "size": "28.80mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN HZ2189G",
+      "size": "12 L (27.40mm)",
+      "height": "4.74mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 9500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN LB06",
+      "size": "30.40mm",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN M3113",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN M3191",
+      "size": "30.40mm",
+      "height": "6.80mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN ML6102",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.56mm",
+      "power": "Manual",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN ML7102",
+      "size": "27.50mm",
+      "height": "5.75mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 1850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN R15",
+      "size": "28.00mm",
+      "height": "6.55mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN R16-1",
+      "size": "28.00mm",
+      "height": "6.55mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN R19",
+      "size": "11\u00bd L (26.00 mm)",
+      "height": "6.10mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN R30",
+      "size": "30.40mm",
+      "height": "6.90mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN R44",
+      "size": "30.40mm",
+      "height": "7.20mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 8550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN SL68",
+      "size": "6\u00be x 8 L",
+      "height": "3.15 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN SP09",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN SP16",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 4200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN SPS24",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN SPS51",
+      "size": "27.40mm",
+      "height": "6.05mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN ST6D1",
+      "size": "8\u00be L (19.80mm)",
+      "height": "6.20mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 8050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2530",
+      "size": "30.40mm",
+      "height": "7.40mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2555",
+      "size": "30.40mm",
+      "height": "7.40mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 11750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2706",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "4.65mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 6550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2707",
+      "size": "29.00mm",
+      "height": "5.95mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2708",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "5.25mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2712",
+      "size": "29.30mm",
+      "height": "6.73mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2714",
+      "size": "28.00mm",
+      "height": "6.44mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2807",
+      "size": "12 L (28.00mm)",
+      "height": "5.18mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2866",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2867",
+      "size": "12 L (28.00mm)",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2869",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "6.45mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2871-S",
+      "size": "12 L (28.00mm)",
+      "height": "6.57mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY2876",
+      "size": "28.00mm",
+      "height": "6.48mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY601",
+      "size": "11\u00bd L (26.00mm)",
+      "height": "7.03mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN TY603K",
+      "size": "11\u00bd L (26.00 mm)",
+      "height": "6.75mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 7350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "CN Z2033",
+      "size": "33.60mm",
+      "height": "6.00mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "RLX3135",
+      "size": "",
+      "height": "",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 39900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "China",
+      "model": "RLX3186",
+      "size": "",
+      "height": "",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 35000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M0T45",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.13 mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 1550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1102",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Citizen Movement (= Miyota 1M12)",
+      "purchase_cost_cents": 2500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L02 (Disc) - Use GL02",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "Discontinued - Use GL02",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L12 (Disc) -  Use GL10D3",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Discontinued - Use GL10D3",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L12-D6 (Disc) -  Use GL10D6",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Discontinued - Use GL10D6",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L15",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)SUB FOR MIYOTA 6L15",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L22 (Disc) - Use GL22",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.15mm",
+      "power": "SR616SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)SUB FOR MIYOTA GL22",
+      "purchase_cost_cents": 630,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L26 (Disc) - Use GL24",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.15mm",
+      "power": "SR616SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Use GL24",
+      "purchase_cost_cents": 1400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L32 (Disc) - Use GL32",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Use GL32",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L40",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.93mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1L45",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.93mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)SUB FOR MIYOTA 6L45",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M02 (Disc) - Use GM02",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Use GM02",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M12 (Disc) - Use GM12-D3",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)SUB FOR MIYOTA GM12-D3",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M12-D6 (Disc) - Use GM12-D6",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)SUB FOR MIYOTA GM12-D6 / 6M12-D6",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M15",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1M50",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1N12-D3  - Phased Out",
+      "size": "8\u00be L (20.00mm)",
+      "height": "2.58mm",
+      "power": "SR616SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Phased Out",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1N12-D6 (Disc)",
+      "size": "8\u00be L (20.00mm)",
+      "height": "2.58mm",
+      "power": "SR616SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S02 (Phased out) -  Use GR02",
+      "size": "11 \u00bd L (26.40mm)",
+      "height": "3.07mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Phased Out - Use GR02",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S12 (Disc) - Use 1S13",
+      "size": "11\u00bd L (26.40 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)Discontinued - Use 1S13",
+      "purchase_cost_cents": 765,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S13",
+      "size": "11\u00bd L (23.50 x 21.90mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M1S13-D6",
+      "size": "11\u00bd L (23.50 x 21.90mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-506 (21mm)065-508 (24mm)",
+      "purchase_cost_cents": 1550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2005",
+      "size": "6\u00be x 8 L (16.30 x 18.20 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2015",
+      "size": "6\u00be x 8 L (16.30 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 780,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2015-D6",
+      "size": "6\u00be x 8 L (16.30 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 780,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2025",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 430,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2033",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2034",
+      "size": "6 3/4 x 8",
+      "height": "3.15",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 560,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2035",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2036",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "3.15 mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 484,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2039",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "3.15 mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2105",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2115-D3",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 670,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2115-D6",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 695,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M213D",
+      "size": "10 1/2",
+      "height": "",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 1400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2305-D3D3",
+      "size": "11\u00bd L (23.5 x 23.5 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2315",
+      "size": "11\u00bd L (23.50 x 23.50mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2315-D6",
+      "size": "11\u00bd (23.50 x 23.50mm)",
+      "height": "4.15mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2405-D3D3",
+      "size": "11\u00bd L (23.5 x 23.5mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 955,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2415",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "4.35mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-371 (21mm)065-511 (24mm)065-994 (33.7mm)",
+      "purchase_cost_cents": 770,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2417",
+      "size": "13 1/2\u2019\u2019\u2019",
+      "height": "4.35mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2500 Citizen",
+      "size": "10 1/2 (21.5mm x 23.7mm)",
+      "height": "2.9mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 3950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2510",
+      "size": "10\u00bd L (21.5 x 23.7mm)",
+      "height": "2.7mm",
+      "power": "SR920SW",
+      "notes": "XL Stem: 065-507 T0.90mmN.B STEM NOT INCLUDED",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2F00 (Disc) - Use Citizen 2500",
+      "size": "10\u00bd L (21.50 x 23.70mm)",
+      "height": "2.70mm",
+      "power": "SR920SW",
+      "notes": "XL Stem: 065-507 T0.90mmSUB FOR CITIZEN 2500N.B STEM NOT INCLUDED",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2F10 (Disc) - Use Citizen 2510",
+      "size": "10\u00bd L (21.50 x 23.70mm)",
+      "height": "2.70mm",
+      "power": "SR920SW",
+      "notes": "XL Stem: 065-507 T0.90mmSUB FOR CITIZEN 2510N.B STEM NOT INCLUDED",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M2S60",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "3.99mm",
+      "power": "CR2012",
+      "notes": "",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M3S10",
+      "size": "13 1/2",
+      "height": "4.20 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 6800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M3T30",
+      "size": "6 3/4x8",
+      "height": "2.30mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5500",
+      "size": "10 1/2",
+      "height": "",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 4800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5920 - Use M5Y20",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW (379)",
+      "notes": "(Subs for =5Y20)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5930",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "notes": "Subs for (=Miyota 5Y30)",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R21",
+      "size": "3\u00be x 6 L (9.00 x 13.20mm)",
+      "height": "1.90mm",
+      "power": "SR416SW",
+      "notes": "XL Stems: 065-427(15.32mm)065-462 (18.82mm)",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R22",
+      "size": "3\u00be x 6 L (9.00 x 13.20 mm)",
+      "height": "1.90mm",
+      "power": "SR416SW",
+      "notes": "XL Stems: 065-427(15.32mm)065-462 (18.82mm)",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5R32",
+      "size": "3\u00be x 6 L (9.00 x 13.20mm)",
+      "height": "2.00mm",
+      "power": "SR416SW",
+      "notes": "XL Stems: 065-427(15.32mm)065-462 (18.82mm)",
+      "purchase_cost_cents": 3900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5Y20",
+      "size": "5 \u00bd x 6 \u00be L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M5Y30",
+      "size": "5 \u00bd x 6 \u00be  L (13.00 x 15.75mm)",
+      "height": "2.54mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L02 (Disc) - Use GL02",
+      "size": "6\u00be x 8 L (17.10 x 18.20 mm)",
+      "height": "3.30mm",
+      "power": "SR621SW",
+      "notes": "Discontinued - Use GL02",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L12 (Disc) - Use GL12",
+      "size": "6\u00be x 8",
+      "height": "3.07mm",
+      "power": "364",
+      "notes": "Discontinued - Use GL12",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L40",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.20mm",
+      "power": "SR621SW",
+      "notes": "5.10mm Between PinionsSUB = MIYOTA 1L40",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6L90",
+      "size": "6\u00be x 8",
+      "height": "3.30mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M02 (Disc) - Use GM00",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "notes": "Discontinued - Use GM00",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M12 (Disc) - Use GM12",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "notes": "Discontinued - Use GM12",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M12-D6 (Phased Out) - Use GM12D6",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "",
+      "notes": "Phased Out - Use GM12D6",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M17",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.30mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M55",
+      "size": "13 1/2",
+      "height": "3.85 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 5100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M85",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6M90",
+      "size": "10\u00bd",
+      "height": "3.30mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P00",
+      "size": "10 1/2",
+      "height": "3.45 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P05",
+      "size": "10 1/2",
+      "height": "3.45 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 3300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P09",
+      "size": "10 1/2",
+      "height": "3.45 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 3300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P20",
+      "size": "10\u00bd L (23.70mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P21",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "3.45mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P23",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P25",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P26",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P27",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P29",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P73",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.45mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P79",
+      "size": "10 1/2",
+      "height": "3.45mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P80",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.85mm",
+      "power": "SR621SW",
+      "notes": "XL Stems: 065-407 (20.99mm)065-426 (23.99mm)",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P89",
+      "size": "10\u00bd",
+      "height": "3.85mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6P90",
+      "size": "10 1/2",
+      "height": "3.85mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6S20-RD4",
+      "size": "15 L (34.60 mm)",
+      "height": "4.90mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 3750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6S21",
+      "size": "15\u2019\u2019\u2019",
+      "height": "4.90mm",
+      "power": "SR927W (395/399)",
+      "notes": "",
+      "purchase_cost_cents": 4300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M6T28",
+      "size": "8 \u00be\u2019\u2019\u2019 L",
+      "height": "5.23 mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 5800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M7871 (Disc)",
+      "size": "11 1/2",
+      "height": "",
+      "power": "295-40",
+      "notes": "Subs for (= Miyota 7W71)",
+      "purchase_cost_cents": 4900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M7T35",
+      "size": "6 3/4 x 8 Ligne",
+      "height": "3.20mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8205-D3D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "5.67mm",
+      "power": "Automatic 21 Jewel",
+      "notes": "XL Stem: 065-A06 (24mm)",
+      "purchase_cost_cents": 6100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8215",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "5.67mm",
+      "power": "Automatic 21 Jewel",
+      "notes": "XL Stem: 065-A06 (24mm)",
+      "purchase_cost_cents": 6100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N24",
+      "size": "11\u00bd L (Diameter 25.6mm)",
+      "height": "5.67mm Thickness",
+      "power": "",
+      "notes": "Sweep Second, 21 Jewels",
+      "purchase_cost_cents": 8350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N24G",
+      "size": "11\u00bd L",
+      "height": "5.55 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 9550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M8N33/G",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "4.47mm",
+      "power": "Manual",
+      "notes": "XL Stem: 065-A06 (24mm)",
+      "purchase_cost_cents": 6550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T13-D6",
+      "size": "6\u00be x 8 L (16.10 x 17.80 mm)",
+      "height": "2.33mm",
+      "power": "SR616SW",
+      "notes": "XL Stem: 065-551 (21mm)",
+      "purchase_cost_cents": 1490,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T15",
+      "size": "6\u00be x 8 L (17.40 x 18.20mm)",
+      "height": "2.33mm",
+      "power": "SR616SW",
+      "notes": "XL Stem: 065-551 (21mm)",
+      "purchase_cost_cents": 1660,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T22",
+      "size": "6\u00be x 8 L (15.40 x 18.20 mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "notes": "XL Stem: 065-551 (21mm)",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9T33",
+      "size": "6\u00be x 8 L (15.80 x 17.80 mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "notes": "XL Stem: 065-551 (21mm)",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U13",
+      "size": "10 1/2",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U13 D6",
+      "size": "10 1/2 ( 21.50 x 23.70mm )",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "notes": "(sub for =4U13)",
+      "purchase_cost_cents": 1550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U15",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "notes": "XL Stem: 065-551 (21mm)",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "M9U15 D6",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "2.33mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB023 Citizen",
+      "size": "16mm x 14.9mm",
+      "height": "2.50mm",
+      "power": "295-76",
+      "notes": "",
+      "purchase_cost_cents": 7900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB033 Citizen (Disc) - Use B035 Citizen",
+      "size": "16 mm x 14.9 mm",
+      "height": "2.50mm",
+      "power": "",
+      "notes": "Discontinued - Use MB035",
+      "purchase_cost_cents": 6200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MB035",
+      "size": "16 mm x 14.9 mm",
+      "height": "2.50mm",
+      "power": "295-76",
+      "notes": "SUB FOR CITIZEN B033",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME001 Citizen = E000 Citizen",
+      "size": "8\u00bc L (18.20 mm)",
+      "height": "3.5mm",
+      "power": "295-51",
+      "notes": "SUB FOR CITIZEN E000",
+      "purchase_cost_cents": 4150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME011 Citizen = Citizen E010",
+      "size": "8\u00bc L (18.20 mm)",
+      "height": "3.30mm",
+      "power": "295-51",
+      "notes": "SUB FOR CITIZEN E010",
+      "purchase_cost_cents": 4150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME013 Citizen = E030 Citizen",
+      "size": "Ligne Size: 8 1/4",
+      "height": "Thickness: 3.30mm",
+      "power": "MT621 Panasonic",
+      "notes": "Interchange Citizen E011",
+      "purchase_cost_cents": 4200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME031 Citizen = E030 Citizen",
+      "size": "8\u00bc L (18.20mm)",
+      "height": "2.83mm",
+      "power": "295-51",
+      "notes": "SUB FOR CITIZEN E030",
+      "purchase_cost_cents": 4150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME101 Citizen = E100 Citizen",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.50mm",
+      "power": "295-51",
+      "notes": "SUB FOR CITIZEN E100",
+      "purchase_cost_cents": 4980,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME111 Citizen = E110 Citizen",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "3.30mm",
+      "power": "295-51",
+      "notes": "SUB FOR CITIZEN E110",
+      "purchase_cost_cents": 4150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME650",
+      "size": "",
+      "height": "",
+      "power": "295-69",
+      "notes": "",
+      "purchase_cost_cents": 24000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME860 Citizen (Phased Out)",
+      "size": "11\u00bd (25.60 mm)",
+      "height": "4.60mm",
+      "power": "295-56",
+      "notes": "",
+      "purchase_cost_cents": 9500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "ME870 Citizen (Phased Out)",
+      "size": "13\u00bc L (29.7 mm)",
+      "height": "4.20mm",
+      "power": "295-56",
+      "notes": "",
+      "purchase_cost_cents": 18500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS00-4",
+      "size": "10\u00bd L (23.70 mm x 22.00mm)",
+      "height": "4.13mm",
+      "power": "SR626SW",
+      "notes": "XL Stem: 065-557 (24mm)",
+      "purchase_cost_cents": 3250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS00-6",
+      "size": "10\u00bd L (23.70 mm x 22.00mm)",
+      "height": "4.13mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS01",
+      "size": "10\u00bd L (23.70 mm x 22.00mm)",
+      "height": "4.28mm",
+      "power": "SR626SW",
+      "notes": "XL Stem: 065-557 (24mm)",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS10",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "5.10mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS13",
+      "size": "10\u00bd",
+      "height": "5.10mm",
+      "power": "377",
+      "notes": "Higher Hand Version Of FS10",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS20",
+      "size": "10\u00bd L (23.70 mm x 22.00mm)",
+      "height": "5.10mm",
+      "power": "SR626SW",
+      "notes": "XL Stem: 065-557 (24mm)",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS21",
+      "size": "10\u00bd L (23.70 mm x 22.00mm)",
+      "height": "5.25mm",
+      "power": "SR626SW",
+      "notes": "XL Stem: 065-557 (24mm)",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MFS60",
+      "size": "10\u00bd L (23.7 mm x 22mm)",
+      "height": "5.10mm",
+      "power": "SR626SW",
+      "notes": "XL Stem: 065-557 (24mm)",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG012",
+      "size": "",
+      "height": "",
+      "power": "",
+      "notes": "Analog, Quartz Mechanism",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG111",
+      "size": "",
+      "height": "",
+      "power": "SR621SW",
+      "notes": "Subs for (=Miyota G112)",
+      "purchase_cost_cents": 2500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG112",
+      "size": "6 \u00be x8\u2019\u2019\u2019",
+      "height": "2.71mm",
+      "power": "379",
+      "notes": "",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MG620",
+      "size": "Ligne: 3 \u00be x 6 L, Diameter: 9.0 x 13.5",
+      "height": "Plate: 2.17",
+      "power": "295-67",
+      "notes": "",
+      "purchase_cost_cents": 9000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL00 = G001",
+      "size": "6\u00be x 8 L (16.10 x 18.20 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL02 = GL00",
+      "size": "6 3/4\u00d78\u2019\u2019\u2019",
+      "height": "2.70 mm (Overall 2.94mm)",
+      "power": "SR621SW",
+      "notes": "Subs for (=GL12)",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL10 (Disc) - Use MGL12",
+      "size": "6\u00be x 8 L (16.10 x 18.20 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "SUB FOR MIYOTA 6L12-D3XL Stem: 065-995 (24mm)Equivalen to 6L12,1L12, GL12",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL10D6",
+      "size": "6\u00be x 8 L (16.10 x 18.20 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 6L12, 1L12, GL12-D6",
+      "purchase_cost_cents": 790,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL12",
+      "size": "6 3/4 x 8\"",
+      "height": "2.70 mm",
+      "power": "SR621SW",
+      "notes": "Subs for (=6L12 , =GL10)",
+      "purchase_cost_cents": 690,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL12-D6",
+      "size": "6 3/4 x 8\"",
+      "height": "2.70 mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 1L12, 6L12, GL10D6",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL14 D3 = GL13",
+      "size": "6-3/4 x 8\"",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL15 = GL17",
+      "size": "6 3/4x8\"",
+      "height": "",
+      "power": "SR621SW",
+      "notes": "Subs for (=GL17)",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL17 (Disc) - Use GL15",
+      "size": "",
+      "height": "",
+      "power": "",
+      "notes": "Subs for (= Miyota GL15)",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL20 = GL22",
+      "size": "6\u00be x 8 L (16.10 x 18.20 mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-A09 (22mm)Equivalent to GL22",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL22",
+      "size": "6\u00be x 8 L (16.10 x 18.20 mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "SUB FOR MIYOTA GL20, 1L22",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL24 = GL26",
+      "size": "6 3/4 x 8\" (15.3 x 18.2mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL26 = MGL24",
+      "size": "6 \u00be x 8'''",
+      "height": "3.85mm",
+      "power": "364 (SR621SW)",
+      "notes": "Equivalent to MGL24",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL30 (Disc) - Use GL32",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-A09 (22mm)SUB FOR MIYOTA 6L32",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL32",
+      "size": "6\u00be L x 8\"",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 1L32, 6L32, GL30, Citizen 6031",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL34 = GL36",
+      "size": "6 3/4\u00d78\u2019\u2019\u2019",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "Interchange -= GL36",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGL36 (Phased Out) - Use GL34",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.28 mm",
+      "power": "SR621SW",
+      "notes": "Phased out - Use Miyota GL34",
+      "purchase_cost_cents": 765,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM00-DD3 (Disc) - Use GM02",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)SUB FOR MIYOTA 6M00, 6M02, 1M02",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM00-DD6 (Phased Out) - Use GM02DD6",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)SUB FOR MIYOTA 6M02-DD6, 6M00 &1M02",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM02-DD3",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 1M02, 6M00, 6M02, GM00 & Citizen 2500",
+      "purchase_cost_cents": 869,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM02-DD6",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 1M02, 6M00, 6M02, GM00 DD6",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-D3 (Disc) - Use GM12D3",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)SUB FOR MIYOTA 6M12D3 = GM12,6M12",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-D6 (Disc) - Use GM12D6",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)  Discontinued - Use GM12D6 = 6M12, GM12",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-HD4 (Disc) - Use GM12HD4",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)Discontinued - Use GM12HD4 = 6M12, GM12",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM10-RD4 = 6M12",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)Equivalent to 6M12, GM12RD4",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-D3 = 6M10",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "2.71mm",
+      "power": "",
+      "notes": "Equivalent to 6M10, GM10",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-D6 = 6M10",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to 6M10, GM10D6",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-HD4 = GM10HD4",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "2.71mm (Overall 4.17mm)",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM12-RD4 = GM10RD4",
+      "size": "10\u00bd L ( 23.30mm )",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "Use subs ( = GM10-RD4)",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM13 = Use GM14",
+      "size": "10 1/2",
+      "height": "2.71mm",
+      "power": "364",
+      "notes": "Equivalent to GM14",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM14-D3 = GM13",
+      "size": "10 1/2",
+      "height": "2.71mm",
+      "power": "364",
+      "notes": "Equivalent to GM13",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM15-D3 = GM17D3",
+      "size": "10 1/2 (23.7mm x 22.6mm)",
+      "height": "2.71 mm (Overall 3.87mm)",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM15-D6 = GM17D6",
+      "size": "10\u00bd L (23.3mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)",
+      "purchase_cost_cents": 680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM17 = GM15D3",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Subs for (=GM15)",
+      "purchase_cost_cents": 1080,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGM17-D6 = GM15-D6",
+      "size": "10 1/2\u2019\u2019\u2019",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to GM15-D6",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN10 (Disc) - Use GN12",
+      "size": "8 \u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN12 = GN10",
+      "size": "8\u00be (19.73mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "Date at 3 *Hands not included",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN15 (Disc) - Use GN17",
+      "size": "8 \u00be L (19.40mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-995 (24mm)Discontinued - Use GN17",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGN17 = GN15",
+      "size": "8 3/4 L (20.00x 18.00 mm)",
+      "height": "2.71mm",
+      "power": "SR621SW",
+      "notes": "Subs for (=GN15)",
+      "purchase_cost_cents": 900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP00 - Limited Stock",
+      "size": "12\u00bd",
+      "height": "4.4mm",
+      "power": "371",
+      "notes": "Phased out  - Limited Stock Available",
+      "purchase_cost_cents": 4200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP01",
+      "size": "12\u00bd",
+      "height": "4.4mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP10",
+      "size": "12 L (27.00mm)",
+      "height": "4.40mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGP11",
+      "size": "12 L (27.00mm)",
+      "height": "4.40mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MGR02-D3D3",
+      "size": "11 1/2'''",
+      "height": "3.07mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MH504",
+      "size": "",
+      "height": "",
+      "power": "295-51",
+      "notes": "",
+      "purchase_cost_cents": 9250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJ800",
+      "size": "",
+      "height": "",
+      "power": "295-51 solar powered (Eco-Drive)",
+      "notes": "",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJ810",
+      "size": "",
+      "height": "",
+      "power": "295-51",
+      "notes": "",
+      "purchase_cost_cents": 4900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJP15",
+      "size": "12 1/2\u2019\u2019\u2019",
+      "height": "4.30mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 3550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJR10",
+      "size": "12 \u00bd L (28.20mm)",
+      "height": "4.18mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-508 (23.9mm)",
+      "purchase_cost_cents": 3400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS00",
+      "size": "12 1/2\u2019\u2019\u2019",
+      "height": "4.18mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS10",
+      "size": "12\u00bd",
+      "height": "4.18mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS15-D3 Blue date ring",
+      "size": "12 \u00bd L (28.20 x 26.00mm)",
+      "height": "4.30 mm",
+      "power": "SR621SW",
+      "notes": "This model comes with Dark Blue Date Ring.",
+      "purchase_cost_cents": 2400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS15-D3-White",
+      "size": "12\u00bd L (28.20 mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-508 (23.9mm)",
+      "purchase_cost_cents": 2400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS16",
+      "size": "12 1/2",
+      "height": "6.70 mm",
+      "power": "SR621SW",
+      "notes": "Chronograph (3 Eyes at 6-9-12H)",
+      "purchase_cost_cents": 2300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS20",
+      "size": "12 1/2",
+      "height": "4.18 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS25-D6",
+      "size": "12\u00bd L (28.20 mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 2130,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS25-RD4",
+      "size": "12\u00bd L (28.20 mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-508 (23.9mm)",
+      "purchase_cost_cents": 2130,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MJS26-RD4",
+      "size": "12\u00bd L (28.20 mm)",
+      "height": "4.30mm",
+      "power": "SR621SW",
+      "notes": "XL Stem: 065-508 (23.9mm)",
+      "purchase_cost_cents": 2130,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS00",
+      "size": "13 \u00bd\u2019\u2019\u2019",
+      "height": "5.10mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS10",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS11",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS1A (Disc) - Special Order",
+      "size": "13\u00bd",
+      "height": "4.13mm",
+      "power": "399",
+      "notes": "Discontinued - Available On Special Order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS20",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2620,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS20M",
+      "size": "13\u00bd",
+      "height": "5.10mm",
+      "power": "399",
+      "notes": "",
+      "purchase_cost_cents": 3100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS21-D6",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS21-RD4.5",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "5.10mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS2A",
+      "size": "13 \u00bd L ( 30.80mm )",
+      "height": "5.10mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS30",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS60",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 2850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS62",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 3450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS80",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.68mm",
+      "power": "SR626SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 4550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOS90",
+      "size": "13\u00bd L (30.80mm)",
+      "height": "4.13mm",
+      "power": "SR927SW",
+      "notes": "XL Stems: 065-533(L: 24mm T: 5.3mm)065-557 (L: 24mm T: 10mm)",
+      "purchase_cost_cents": 4550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOU30",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "4.10mm",
+      "power": "SR626SW",
+      "notes": "Electro - Luminescent",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MOW50 = Citizen 0850",
+      "size": "13 \u00bd L (30.50mm)",
+      "height": "5.10mm",
+      "power": "295-29",
+      "notes": "",
+      "purchase_cost_cents": 9600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT206",
+      "size": "12\u00bd",
+      "height": "3.16mm",
+      "power": "399",
+      "notes": "",
+      "purchase_cost_cents": 5550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT241",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.91mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Miyota",
+      "model": "MT270",
+      "size": "13 \u00bd L (30.80mm)",
+      "height": "4.91mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 5150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E210.001 - Special Order",
+      "size": "9 L (20.00 mm)",
+      "height": "0.98mm",
+      "power": "SR716SW",
+      "notes": "Available as special order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.242-RD4 (Phase Out)",
+      "size": "13\u00bc L (30.00 x 5mm)",
+      "height": "4.80mm",
+      "power": "SR936W",
+      "notes": "Being Phased Out",
+      "purchase_cost_cents": 14950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.264-RD4  - Special Order",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "5.00mm",
+      "power": "SR936SW (27 Jewel)",
+      "notes": "Subs for  (=ETA 251.262 RD4) -  Available on Special Order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.265 (Phased Out)",
+      "size": "13 \u00bc",
+      "height": "7.46",
+      "power": "394",
+      "notes": "Being Phased Out",
+      "purchase_cost_cents": 22500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.272-RD4",
+      "size": "13\u00bc L (30.00 mm)",
+      "height": "4.60mm",
+      "power": "SR936SW (22 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 22000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.274-RD4 = ETA 251.272 RD4",
+      "size": "13\u00bc L (30.00 mm)",
+      "height": "4.60mm",
+      "power": "SR936SW (22 Jewel)",
+      "notes": "Equivalent to 251.272-RD4",
+      "purchase_cost_cents": 20500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E251.474-RD4 (Phase Out)",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "4.70mm",
+      "power": "SR936SW (23 Jewel)",
+      "notes": "Being Phased Out - Subs for (=ETA 251.471 RD4)",
+      "purchase_cost_cents": 19500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E256.041 = E61.041",
+      "size": "8 1/4\u201d\u2019",
+      "height": "1.95mm",
+      "power": "321",
+      "notes": "Equivalent to E61.041",
+      "purchase_cost_cents": 9150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E280.002",
+      "size": "3\u00be x 6\u00be L (9.00 x 15.15mm)",
+      "height": "1.80mm",
+      "power": "SR616SW (5 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 11450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E282.001 = ETA 282.002",
+      "size": "5 1/2 x 8 L",
+      "height": "1.25mm",
+      "power": "346",
+      "notes": "Equivalent to ETA 282.002 / 400.001 / 562.001 / R3672 / R672 / R762",
+      "purchase_cost_cents": 15000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E282.002 (Disc) - Use E282.001",
+      "size": "5\u00bd X 8 L (13.00 X 17.80mm)",
+      "height": "1.20mm",
+      "power": "SR712SW (13 Jewel)",
+      "notes": "Subs for (=ETA 282.001)",
+      "purchase_cost_cents": 12000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2824-2 = SW200-1",
+      "size": "11\u00bd L",
+      "height": "4.60mm",
+      "power": "Automatic",
+      "notes": "Subs for (= Sellita SW200-1) (=CN 8824)",
+      "purchase_cost_cents": 32500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2836/2",
+      "size": "11\u00bdL",
+      "height": "5.05mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 58850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E2893/2 - Special Order",
+      "size": "11\u00bd L (25.6mm)",
+      "height": "4.10mm",
+      "power": "Automatic",
+      "notes": "Available on special order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E6497-1",
+      "size": "16\u00bd L (37.00 mm)",
+      "height": "4.5mm",
+      "power": "Manual",
+      "notes": "",
+      "purchase_cost_cents": 59500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E7750 = CN 3LZF2",
+      "size": "13\u00bc L (30.00mm)",
+      "height": "7.90mm",
+      "power": "Automatic",
+      "notes": "Special Order on Request - SUB = CHINA 3LZF2",
+      "purchase_cost_cents": 78500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E7753",
+      "size": "13 1/4 '''",
+      "height": "7.90 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 65000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E801.104 (Phase Out) - Use R753",
+      "size": "5\u00bd x 6\u00be",
+      "height": "2.50mm",
+      "power": "379",
+      "notes": "Being Phased Out - Use Ronda 753",
+      "purchase_cost_cents": 3495,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E802.002",
+      "size": "6 \u00be\" \u00d7 8\"",
+      "height": "2.95 mm",
+      "power": "377",
+      "notes": "Subs (= 802.004), (=802.001)",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E802.102",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.95mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "Subs for (=ETA 802.101 and ETA 802.105)",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.112-D3 = E803.114-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.65mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "SUB FOR ETA 803.114-D3",
+      "purchase_cost_cents": 3800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.114-D6 = R585",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "3.40mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "Subs for (= ETA 803.112-D6 and ETA 803.111-D6/R585)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E803.124  = E803.121",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.65mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "Subs for (= ETA 803.122 and ETA 803.121)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.112-D3 = E804.111",
+      "size": "10 \u00bd",
+      "height": "3.40 mm",
+      "power": "397",
+      "notes": "Equivalent to E804.111",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.114-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "Subs for (=ETA 804.111 and ETA 804.112)",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.114-D6",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW  (0 Jewel)",
+      "notes": "SUB (= ETA 804.112 D6 and ETA 804.112 D6)",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E804.124 (Phase Out)",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.40mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "SUB FOR ETA 804.121 DD3",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.112-D3",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "notes": "Subs for (=ETA 805.114, ETA 805.111 and ETA 805.124)",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.112-D6 (Phased Out) - Use F06.111 D6",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.65mm",
+      "power": "SR626SW",
+      "notes": "Phased Out - Use F06.111 D6",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.114-D6 = F06.111 D6",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.40mm",
+      "power": "SR626SW",
+      "notes": "Subs for  (= ETA 805.112 and ETA 805.111)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.124-DD3 = 805.122",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.65 mm",
+      "power": "SR626SW (0 Jewel)",
+      "notes": "Subs for (= ETA 805.122 DD3)",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E805.161 D3",
+      "size": "11 \u00bd L",
+      "height": "25.6mm",
+      "power": "397",
+      "notes": "",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E901.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR616SW (3 Jewel)",
+      "notes": "Subs for (= ETA 901.005)",
+      "purchase_cost_cents": 7600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E901.005 (Disc) - Use 901.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20 mm",
+      "power": "SR616SW (3 Jewel)",
+      "notes": "Discontinued  - Use 901.001",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.002 = ETA 902.005",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.35 mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "Subs for (=ETA 902.005)",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.005  - Use 902.002",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.35 mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "Equivalent to ETA 902.002",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.101 =  E902.105",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.35mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "SUB FOR ETA 902.105",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E902.505 (Phase Out) - Use E902.501",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.90mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "SUB FOR ETA 902.501",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D3 = EF06.115",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Equivalent to EF06.115",
+      "purchase_cost_cents": 5450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D3-2H (Phase Out) = EF06.115-D3-2H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Phase out - SUB ETA F06.115",
+      "purchase_cost_cents": 5450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.112-D6 (Disc) - Use EF06.115-D6-3H",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "2.50mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Discontinued - Use ETA F06.115",
+      "purchase_cost_cents": 5450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.122 (Disc) - Use R517",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Discontinued - Use Ronda 517",
+      "purchase_cost_cents": 6450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.132 (Phased Out)",
+      "size": "11\u00bd",
+      "height": "3.00mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 6450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D3 (Disc) - Use F05.115-D3",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "2.50mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Discontinued - Use F05.115-D3",
+      "purchase_cost_cents": 4320,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D3-2H (Phase Out)",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Being Phased Out -  Sub 955.414 or F05.115",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.412-D6 (Disc) - Use F05.115-D6",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Discontinued - Use F05.115-D6",
+      "purchase_cost_cents": 4465,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.422 (Disc) - Use E955.424",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (7 Jewel)",
+      "notes": "Discontinued - Use 955.424/Ronda 507",
+      "purchase_cost_cents": 5450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E955.424 = ETA 955.422",
+      "size": "10 1/2",
+      "height": "3.00 MM",
+      "power": "371",
+      "notes": "Equivalent to ETA 955.422",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D3 (Disc)",
+      "size": "7\u00be L (17.20 mm)",
+      "height": "2.50mm",
+      "power": "SR621SW (7 Jewel)",
+      "notes": "Discontinued - Sub F03.115-D3=ETA956.114=R775",
+      "purchase_cost_cents": 4230,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D3-2H (Disc) - Use F03.115",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW (7 Jewel)",
+      "notes": "Discontinued - Use F03.115",
+      "purchase_cost_cents": 5700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.112-D6 (Disc) - Use F03.115-D6",
+      "size": "7\u00be L (17.20 mm)",
+      "height": "2.50mm",
+      "power": "SR621SW (7 Jewel)",
+      "notes": "Discontinued - Use F03.115-D6",
+      "purchase_cost_cents": 4450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.122",
+      "size": "7\u00be L (17.20mm)",
+      "height": "3.00mm",
+      "power": "SR621SW (7 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D3 (Disc) = ETA F04.115-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW (7 Jewel)",
+      "notes": "Equivalent to EF04.115-D3",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D3-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW (7 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 7000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.412-D6 (Disc) - Use F04.115-D6",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW (7 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 5450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E956.612-D3 (Disc) = ETA F04.115-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "4.50 mm",
+      "power": "CR1616 (Long Life) (7 Jewel)",
+      "notes": "Equivalent to F04.115-D3",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E976.001",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "1.95mm",
+      "power": "SR616SW (6 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 18200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.106",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW (7 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.108 (Disc) - Use 980.106",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW (7 Jewel)",
+      "notes": "Discontinued - Use ETA 980.106",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.153",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW (11 Jewel)",
+      "notes": "4.25mm Between Pinions",
+      "purchase_cost_cents": 9500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "E980.163",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15mm)",
+      "height": "2.20mm",
+      "power": "SR516SW (15 Jewel)",
+      "notes": "6.25mm Between Pinions",
+      "purchase_cost_cents": 10780,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE01.001",
+      "size": "4\u215e L (11mm)",
+      "height": "2.50mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 26700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE03.001",
+      "size": "5\u00bd L x 6\u00be L (13.00x15.15mm)",
+      "height": "1.35mm",
+      "power": "SR512SW",
+      "notes": "",
+      "purchase_cost_cents": 16000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.041",
+      "size": "8\u00bc L (18.20 mm)",
+      "height": "1.95 mm",
+      "power": "SR616SW",
+      "notes": "SUB FOR ETA 256.041",
+      "purchase_cost_cents": 9900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.041-D6",
+      "size": "8\u00bc L (18.20 mm)",
+      "height": "1.95 mm",
+      "power": "SR616SW",
+      "notes": "",
+      "purchase_cost_cents": 13800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE61.111-D3AO",
+      "size": "8\u00bc L (18.20 mm)",
+      "height": "1.95 mm",
+      "power": "SR616SW",
+      "notes": "SUB FOR ETA 256.111",
+      "purchase_cost_cents": 9900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.041 = ETA 255.441",
+      "size": "10\u00bd L (23.70 mm)",
+      "height": "1.95 mm",
+      "power": "SR920SW",
+      "notes": "SUB FOR ETA 255.441",
+      "purchase_cost_cents": 14000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.111-D3 = ETAF05.111",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "1.95 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F05.111",
+      "purchase_cost_cents": 13000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE63.111-D6",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "1.95 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 18500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE64.111-D3",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "1.95 mm",
+      "power": "SR916SW",
+      "notes": "SUB FOR ETA 255.111/112",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EE64.111-D6",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "1.95 mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D3 = F03.115-D3",
+      "size": "7\u00be L (17.20 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to F03.115-D3",
+      "purchase_cost_cents": 3100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D3V1",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 4750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.111-D6 = EF03.115-D6",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to F03.115-D6",
+      "purchase_cost_cents": 4300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.115-D3 = EF03.111-D3",
+      "size": "7 \u00be \u2034",
+      "height": "2.50 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.115-D6 = EF03.111-D6",
+      "size": "7 \u00be \u2034",
+      "height": "2.50 mm",
+      "power": "364",
+      "notes": "Equivalent to EF03.111-D6",
+      "purchase_cost_cents": 5600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF03.11A-D3",
+      "size": "7\u00be L (17.20 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 4750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.111-D3 = EF04.115-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to EF04.115-D3",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.111-D6 = F04.115-D6",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW",
+      "notes": "Equivalent to F04.115-D6",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.115-D3",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW",
+      "notes": "Subs for (=F04.111)",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.115-D6",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW",
+      "notes": "Subs for (=F04.111)",
+      "purchase_cost_cents": 4550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF04.11A-D3 = F04.111-D3",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 3150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.111-D3",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "(= EF05.11A-D3) (=F05.115-D3)",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.111-D6 = F05.115-D6",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F05.115-D6",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.115-D3",
+      "size": "10 L \u00bd \u2034 ( Diameter 23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "(=ETA F05.11A-D3) (= ETA F05.111-D3)",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.115-D6 = ETA F05.111-D6",
+      "size": "10 L \u00bd L (23.30mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to ETA F05.111-D6",
+      "purchase_cost_cents": 4750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF05.11A-D3",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW",
+      "notes": "(SUB = EF05.111-D3)",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D3",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.5mm",
+      "power": "SR920SW",
+      "notes": "SUBS = F06.115-D3",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D3A0",
+      "size": "11\u00bd L (25.00mm)",
+      "height": "",
+      "power": "SR920SW",
+      "notes": "LOW CANNON PINION: 1.9mm",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.111-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "SUBS = F06.115-D6",
+      "purchase_cost_cents": 4500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D3 = F06.111-D3",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F06.111",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D3-2H = ETA F06.111-D3",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F06.111-D3",
+      "purchase_cost_cents": 5500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.115-D6 = F06.111-D6",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "2.50 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F06.111-D6",
+      "purchase_cost_cents": 5500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF06.161-D3",
+      "size": "11 1/2\"",
+      "height": "3.60 mm (Diameter 25.60 mm)",
+      "power": "371",
+      "notes": "3 Jewels",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF07.111-D3 = F07.115-D3",
+      "size": "13 \u00bc\u00b4\u00b4",
+      "height": "",
+      "power": "371",
+      "notes": "EF07.111-D3 = EF07.115-D3",
+      "purchase_cost_cents": 3600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EF07.115-D3 = F07.111-D3",
+      "size": "13 \u00bc \u2034",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to F07.111-D3",
+      "purchase_cost_cents": 4000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-D3",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "SUB = ETA G10.211 D3",
+      "purchase_cost_cents": 9350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-D6",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 9350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-HD4",
+      "size": "13\u00bc L (29.80mm)",
+      "height": "5.12mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "SUB = ETA G10.211 HD4",
+      "purchase_cost_cents": 8550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.212-RD4",
+      "size": "13\u00bc L (29.80 mm)",
+      "height": "5.12 mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "SUB = ETA G10.211 RD4",
+      "purchase_cost_cents": 9450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.712-HD4",
+      "size": "13\u00bc L (29.80 mm)",
+      "height": "5.62 mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "SUB FOR ETA G10.711 HD4",
+      "purchase_cost_cents": 8800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG10.712-RD4",
+      "size": "13\u00bc L (29.80 mm)",
+      "height": "5.62 mm",
+      "power": "SR936SW (4 Jewel)",
+      "notes": "SUB FOR ETA G10.711 RD4",
+      "purchase_cost_cents": 8700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.211-D6",
+      "size": "10.5\u201d\u2019",
+      "height": "5.25mm",
+      "power": "394",
+      "notes": "",
+      "purchase_cost_cents": 10450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.211-HD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW (6 Jewel)",
+      "notes": "SUB = ETA G15.212 HD4",
+      "purchase_cost_cents": 11200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.212-RD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW (6 Jewel)",
+      "notes": "SUB = ETA G15.211-RD4",
+      "purchase_cost_cents": 11200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.261-HD4",
+      "size": "10\u00bc L (23.30mm)",
+      "height": "5.25mm",
+      "power": "SR936SW (6 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 11850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "EG15.562BE",
+      "size": "10 \u00bd\u2019\u2019\u2019",
+      "height": "5.25 mm (Diameter 23.30 mm)",
+      "power": "394",
+      "notes": "6 Jewels",
+      "purchase_cost_cents": 14850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "P7001",
+      "size": "10\u00bdL (23.3mm)",
+      "height": "2.50mm",
+      "power": "Mechanical",
+      "notes": "",
+      "purchase_cost_cents": 45650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ETA",
+      "model": "SW200-1",
+      "size": "Linges 11.5\u201d\u2019, Dia 25.6mm",
+      "height": "Thickness 4.6mm",
+      "power": "Reserve: 38 hr, Vibrations 28,800, 4Hz per hr",
+      "notes": "Jewels: 26, Lift Angle 50 Degrees",
+      "purchase_cost_cents": 41500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE5820PLATE",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.15 mm)",
+      "height": "0.35mm",
+      "power": "",
+      "notes": "CONVERTS RONDA 751E TO FE 5820",
+      "purchase_cost_cents": 1060,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE6120 (Dis) - Use ETA901.001",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.55mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "Discontinued - Use ETA901.001",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE6130",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.55mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7021",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 3550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7022 = ETA 803.124",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "3.55mm",
+      "power": "SR721SW",
+      "notes": "Equivalent to ETA 803.124",
+      "purchase_cost_cents": 2300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7122 = R705",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.43mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "Equivalent to R705",
+      "purchase_cost_cents": 3200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "FE",
+      "model": "FE7221",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.20mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1E20",
+      "size": "4\u00bc L (9.00 x 9.40mm)",
+      "height": "2.70mm",
+      "power": "SR512SW (5 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 5200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1F20",
+      "size": "4\u00bc x 5\u00bd L (10.00 x 12.50mm)",
+      "height": "1.80mm",
+      "power": "SR512SW",
+      "notes": "",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1F21",
+      "size": "4\u00be L",
+      "height": "2.40 mm",
+      "power": "SR512SW",
+      "notes": "",
+      "purchase_cost_cents": 5500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1N00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "1.90mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H1N01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.30mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 3550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H6N22",
+      "size": "6 3/4 x 8 L (15.15 x 18.2mm)",
+      "height": "2.79mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N00",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.10mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N01",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.10mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N32-D3",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.57mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N32-D6",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.57mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N33",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "2.78mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 3100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N39-D3",
+      "size": "10\u00bd L (21.30 x 21.50 mm)",
+      "height": "2.57mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 6600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N42",
+      "size": "11\u00bd L (21.90 x 23.50mm)",
+      "height": "2.78mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N43",
+      "size": "11\u00bd L (21.90 x 23.50 mm)",
+      "height": "2.78mm",
+      "power": "SR920SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N82",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.60mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 3200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N83-D3D3",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.60mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7N89",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.60mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 3050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7T62 (Disc) - Use HYM62",
+      "size": "Diameter: 24.1 X 27.6mm",
+      "height": "Plate: 3.3mm, Overall: 5.8mm",
+      "power": "Battery: 395/399",
+      "notes": "Discontinued - Use HYM62",
+      "purchase_cost_cents": 12900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "H7T82",
+      "size": "Dia Outside 27.6mm, Casing 27.0mm",
+      "height": "3.3 mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 18700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL20 (Disc) - Use HY120F1",
+      "size": "6 3/4\" x8",
+      "height": "",
+      "power": "377",
+      "notes": "Discontinued - Use HY120F1",
+      "purchase_cost_cents": 540,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL21F1",
+      "size": "6\u00be x 8 L",
+      "height": "3.00 mm",
+      "power": "SR626SW",
+      "notes": "STANDARD = 1.43mm",
+      "purchase_cost_cents": 350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL32",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 484,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL33 - Use HAX33",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "Discontinued - Use HAX33",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL35E (Disc) - Use HY121F1",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "Discontinued - Use HY121F1",
+      "purchase_cost_cents": 1050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL55 (Disc) - Use HY121F1",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "Discontinued - Use HY121F1",
+      "purchase_cost_cents": 675,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL82",
+      "size": "6 x 8 L (15.30 x 17.80 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 495,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAL83",
+      "size": "6 x 8 L (15.30 x 17.80 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 595,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAS32A-D3",
+      "size": "10 L",
+      "height": "4.61mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 1895,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAX32A-D3",
+      "size": "10 1/2'''",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HAX33",
+      "size": "10 1/2",
+      "height": "4.15mm (including battery)",
+      "power": "SR626SW",
+      "notes": "subs for (=AL33)",
+      "purchase_cost_cents": 625,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH15 (Disc)",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "6.01mm",
+      "power": "Automatic",
+      "notes": "Discontinued",
+      "purchase_cost_cents": 10000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH35",
+      "size": "12\u201d\u2019",
+      "height": "5.32mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH70A",
+      "size": "12 L (Outside Diameter 27.4mm)",
+      "height": "5.32mm Thick",
+      "power": "",
+      "notes": "Skeletonized Movement",
+      "purchase_cost_cents": 9500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HNH71A",
+      "size": "12\u201d\u2019 (Diameter 27.4 mm)",
+      "height": "5.32mm",
+      "power": "Automatic",
+      "notes": "",
+      "purchase_cost_cents": 9500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC10A",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "3.15mm",
+      "power": "SR527SW",
+      "notes": "",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC11",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "3.15mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 715,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC20-S",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC21AF (Disc)",
+      "size": "6\u00be x 8 L (14.11 x 18.20 mm)",
+      "height": "4.15 mm",
+      "power": "SR626SW",
+      "notes": "Discontinued - Use HPC21J",
+      "purchase_cost_cents": 500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC21J",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "3.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 459,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC22A",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC22A-D6",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC23",
+      "size": "6\u00be x 8 L (14.11 x 18.20mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 540,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC29M",
+      "size": "6 3/4 x 8",
+      "height": "4.15 mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 730,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC32",
+      "size": "10\u00bd L (22.00 x 22.60 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 440,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC32A-D6",
+      "size": "10\u00bd L (22.00 x 22.60 mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 440,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC33",
+      "size": "10\u00bd L (22.00 x 22.60mm)",
+      "height": "4.15mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HPC39",
+      "size": "10\u00bd",
+      "height": "4.15mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 935,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV021",
+      "size": "13\u00bc L (29.00mm)",
+      "height": "4.10mm",
+      "power": "SR626SW",
+      "notes": "WHILE STOCKS LAST - DISCONTINUED",
+      "purchase_cost_cents": 2950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV041 25",
+      "size": "10\u00bd L",
+      "height": "3.9mm",
+      "power": "396",
+      "notes": "",
+      "purchase_cost_cents": 5700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV172",
+      "size": "12 ''' (27.6mm)",
+      "height": "4.4mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 18000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV501(Disc) - Use HY121/AL21",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "Discontinued - Use HY121/AL21",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV532-24",
+      "size": "10 1/2 L",
+      "height": "3.22 mm",
+      "power": "SR927SW / 395",
+      "notes": "",
+      "purchase_cost_cents": 4920,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV657-20 (Disc) - Use HVD57",
+      "size": "12\u00be L (26.00 X 29.50 mm)",
+      "height": "3.70mm",
+      "power": "SR920W",
+      "notes": "Discontinued - Use HVD57",
+      "purchase_cost_cents": 8300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV810-10",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60mm)",
+      "height": "3.00mm",
+      "power": "SR527SW",
+      "notes": "",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV810-20",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60 mm)",
+      "height": "3.00 mm",
+      "power": "SR527SW",
+      "notes": "",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HV811",
+      "size": "5\u00bd x 6\u00be L (13.10 x 15.60mm)",
+      "height": "3.00mm",
+      "power": "SR527SW",
+      "notes": "",
+      "purchase_cost_cents": 2400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVB20B (Disc)",
+      "size": "3\u00be x 6\u00be L (8.45 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "notes": "Discontinued",
+      "purchase_cost_cents": 2550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50 mm)",
+      "height": "2.38 mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC10F2",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC10G2",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVC11F",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.38mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD31",
+      "size": "12\u00be\u2034",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD32",
+      "size": "12 \u00be L ( 29.5 mm )",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD34",
+      "size": "12 3/4\"",
+      "height": "",
+      "power": "SR920SW",
+      "notes": "3 EYES (3 - 6 - 9)",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD35",
+      "size": "12 \u00be\u2034",
+      "height": "4.57 mm",
+      "power": "SR920SW",
+      "notes": "2 EYES ( 6 - 12 )",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD51C",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD52",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "notes": "Subs for (= VD53 - D6)",
+      "purchase_cost_cents": 1680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53B (Disc) - Use HVD53C",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "notes": "Discontinued - Use HVD53C",
+      "purchase_cost_cents": 1850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53CD4",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "4.57 mm",
+      "power": "SR920SW",
+      "notes": "Subs for ( = VD53C\t)",
+      "purchase_cost_cents": 1680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD53CD6",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "4.57mm",
+      "power": "SR920SW",
+      "notes": "Sub for (=VD52)",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD54C",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD55",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD56",
+      "size": "12\u00be",
+      "height": "3.1mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD57C",
+      "size": "12 \u00be\u2034",
+      "height": "4.57 mm",
+      "power": "SR920SW",
+      "notes": "3 EYES ( 6 -9 -12 ) DATE (F3)",
+      "purchase_cost_cents": 2050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD75A",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "3.45 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD76",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "3.45 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD77",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "3.45 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD78",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "notes": "Phased Out",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD79",
+      "size": "10\u00bd L (22.60mm)",
+      "height": "3.45mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD85",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "3.45 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD86A (Special Order)",
+      "size": "10 1/2'''",
+      "height": "3.45 mm",
+      "power": "377 / SR626SW",
+      "notes": "Available on Special Order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVD87",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "3.45 mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVE00",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "1.99mm",
+      "power": "SR616SW",
+      "notes": "",
+      "purchase_cost_cents": 3350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH63",
+      "size": "10 1/2",
+      "height": "3.45mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH64",
+      "size": "70/120/17",
+      "height": "3.45 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVH67",
+      "size": "10\u00bd L (21.30 x 21.50mm)",
+      "height": "5.86mm",
+      "power": "SR920SW (2 Jewels)",
+      "notes": "",
+      "purchase_cost_cents": 1600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ12",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ12-D6",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ20C",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ21C",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "2.28mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 459,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ22 (Special Order)",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "Available on Special Order",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ22B-D6",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ23B-D3D3",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 780,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ32",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 570,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ32-D6",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ33B",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "2.26mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ34",
+      "size": "10\u00bd L (22.6 mm)",
+      "height": "2.55mm Thick",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 580,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ42-D6",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "Movement 2.71mm (Bottom - Top of pinion 4.4mm)",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ42B-D3",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ43B",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "2.94mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 994,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ45",
+      "size": "11 1/2",
+      "height": "3.05mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 994,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ52",
+      "size": "12\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.71 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ53B",
+      "size": "12 \u00bd\u2034",
+      "height": "2.94 mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVJ76A",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "3.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK63A",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "5.10mm",
+      "power": "SR936SW",
+      "notes": "",
+      "purchase_cost_cents": 3550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK64AD6",
+      "size": "13 \u00bd\u2034",
+      "height": "5.10 mm",
+      "power": "SR936SW",
+      "notes": "",
+      "purchase_cost_cents": 4250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVK67A-D3",
+      "size": "13 \u00bd\u2034",
+      "height": "5.10 mm",
+      "power": "394",
+      "notes": "",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVL58A",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "3.97mm (Total Height 5.82mm)",
+      "power": "371",
+      "notes": "Date at 6",
+      "purchase_cost_cents": 1210,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR32A",
+      "size": "13\u00bd L (30.60 mm)",
+      "height": "6.20 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR32B-D4",
+      "size": "13\u00bd L (30.60 mm)",
+      "height": "6.20 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR33A",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR33B",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR3GB",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "3.97mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR42A",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "4.52mm (including Solar Cell)",
+      "power": "",
+      "notes": "Subs for (=VR42 B)",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVR42B",
+      "size": "13\u00bd L (30.80 mm)",
+      "height": "4.52mm (including Solar Cell)",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS32A",
+      "size": "10\u00bd L (21.30 mm)",
+      "height": "2.98 mm",
+      "power": "3023.24Y",
+      "notes": "",
+      "purchase_cost_cents": 3850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS37M",
+      "size": "10 1/2 (21.30 mm x 24.00 mm)",
+      "height": "2.98 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVS43",
+      "size": "11 \u00bd L",
+      "height": "3.09 mm",
+      "power": "3023-24Y",
+      "notes": "",
+      "purchase_cost_cents": 3900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX00",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "1.90mm",
+      "power": "SR516SW",
+      "notes": "351-819 Tap: 0.90 mm",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX01",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50mm)",
+      "height": "2.30mm",
+      "power": "SR521SW",
+      "notes": "351-819 Tap: 0.90 mm",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX01-B2",
+      "size": "4\u00be x 6\u00bd L (10.80 x 14.50 mm)",
+      "height": "2.30 mm",
+      "power": "SR521SW",
+      "notes": "351-819 Tap: 0.90 mm",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX10",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.19mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX11B",
+      "size": "5\u00bd x 6\u00be L (13.00 x 15.55mm)",
+      "height": "2.49mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX12",
+      "size": "8\u00be L (18.00 x 20.00 mm)",
+      "height": "2.60mm",
+      "power": "SR716SW",
+      "notes": "",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX13",
+      "size": "8 3/4",
+      "height": "2.92mm",
+      "power": "315",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX18",
+      "size": "8\u00be L (18.00 x 20.00 mm)",
+      "height": "3.35 mm",
+      "power": "SR716SW",
+      "notes": "",
+      "purchase_cost_cents": 3200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX19M (Phased out)",
+      "size": "8 3/4 L (18.00 mm x 20.00 mm)",
+      "height": "2.6 mm",
+      "power": "SR716SW",
+      "notes": "Phased Out",
+      "purchase_cost_cents": 1290,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX32E-D3",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 560,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX32E-D6",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 590,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX33E-D3D3",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.98mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX36",
+      "size": "10\u00bd L (23.3 mm)",
+      "height": "3.05 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX38",
+      "size": "10\u00bd",
+      "height": "3.35mm",
+      "power": "373",
+      "notes": "",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3FA",
+      "size": "10 1/2",
+      "height": "3.05mm",
+      "power": "373",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3GA",
+      "size": "10 1/2",
+      "height": "3.05mm",
+      "power": "373",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3HA",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05 mm",
+      "power": "SR916SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3J",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05mm",
+      "power": "SR916SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3K-D3 = HV3KE",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.62 mm",
+      "power": "SR920SW",
+      "notes": "Equivalent to HVK3KE",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3K-D6",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.62 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3KE",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "2.62 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3L",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05 mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3M",
+      "size": "10 1/2",
+      "height": "3.05 mm",
+      "power": "373",
+      "notes": "",
+      "purchase_cost_cents": 1400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3N",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3P",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1480,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3R",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.05 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3S",
+      "size": "10\u00bd L (21.50 x 24.00 mm)",
+      "height": "3.86 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX3TE",
+      "size": "10 1/2''",
+      "height": "3.86mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42-D6",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.62 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 944,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42A2 = HVX42E1",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.62mm",
+      "power": "SR916SW",
+      "notes": "Equivalent to HVX42E1",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42E-D3V1",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX42E1",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.62mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 680,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX43E-D3D3V1",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "2.92mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX44",
+      "size": "11\u00bd L (23.50 x 26.40mm)",
+      "height": "2.98mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 795,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX46",
+      "size": "11\u00bd L (23.50 x 26.40 mm)",
+      "height": "3.49 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 1150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX50",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.16mm",
+      "power": "SR616SW",
+      "notes": "",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX51-E3",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX51E",
+      "size": "6\u00be x 8 L (15.30 x 18.20 mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "notes": "",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX62E",
+      "size": "13\u00bd",
+      "height": "3.63 mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX63E",
+      "size": "13 1/2",
+      "height": "3.63mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7JE",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7N",
+      "size": "12 3/4'''",
+      "height": "3.99 mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 1260,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX7PE",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 1260,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX82-D6",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 590,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX82E-D3",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 1000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX83",
+      "size": "6\u00be x 8 L (15.70 x 17.80 mm)",
+      "height": "3.11mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX83-E3",
+      "size": "6\u00be x 8 L (15.70 x 17.80 mm)",
+      "height": "3.11mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX89-D6",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX89E-D3",
+      "size": "6\u00be x 8 L (15.70 x 17.80mm)",
+      "height": "2.75mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9JE",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9NE",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 1260,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HVX9PE",
+      "size": "12\u00be L (26.00 x 29.50 mm)",
+      "height": "3.99mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY120F1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121 FR",
+      "size": "3/4 x 8'''",
+      "height": "2.99 mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 690,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "377",
+      "notes": "SUB FOR V501 & AL21 F1",
+      "purchase_cost_cents": 395,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F2",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 540,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 440,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F4",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 540,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F5",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.99mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121F6",
+      "size": "6\u00be x 8 L",
+      "height": "2.99mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY121G",
+      "size": "6 3/4 x 8 ligne",
+      "height": "4.5mm",
+      "power": "377",
+      "notes": "",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HY799",
+      "size": "6\u00be x 8 L (22.70 x 24.20mm)",
+      "height": "3.52mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYL50",
+      "size": "4\u00bc L (9.00 x 9.40mm)",
+      "height": "2.70mm",
+      "power": "SR512SW (5 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 5250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYL61",
+      "size": "4\u00be x 5\u00be L (10.80 x 13.50mm)",
+      "height": "2.39mm",
+      "power": "SR421SW",
+      "notes": "",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM26",
+      "size": "12'''",
+      "height": "3.70mm",
+      "power": "399",
+      "notes": "",
+      "purchase_cost_cents": 4050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM62",
+      "size": "12 L (27.60mm)",
+      "height": "3.11mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM82",
+      "size": "12'''",
+      "height": "3.7mm",
+      "power": "SR927W",
+      "notes": "",
+      "purchase_cost_cents": 5350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYM92",
+      "size": "12 L (24.00 x 27.60 mm)",
+      "height": "3.70mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 2650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Seiko/TMI",
+      "model": "HYR67",
+      "size": "10 1/2",
+      "height": "3.05mm",
+      "power": "395",
+      "notes": "",
+      "purchase_cost_cents": 2750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 2320.103",
+      "size": "10 1/2'''",
+      "height": "2.95mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 5850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 2331/103",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.70mm",
+      "power": "SR920SW",
+      "notes": "Phased Out",
+      "purchase_cost_cents": 2500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 307.104 D6",
+      "size": "10 1/2",
+      "height": "3.60mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 8300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 307.40 DD6",
+      "size": "10\u00bd",
+      "height": "3.60mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 8700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 336/101",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.50mm",
+      "power": "377/376",
+      "notes": "",
+      "purchase_cost_cents": 6000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 389/101 (11)",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "2.80mm",
+      "power": "SR726SW (1 Jewel)",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 389/103 (31)",
+      "size": "8\u00be L (19.40 mm)",
+      "height": "3.50mm",
+      "power": "SR726SW",
+      "notes": "",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 638/101",
+      "size": "6\u00be x 8 L (15.30 x 18.20mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "notes": "SUB FOR ISA K63/101",
+      "purchase_cost_cents": 550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8154/201-D6",
+      "size": "11\u00bd",
+      "height": "4.60mm",
+      "power": "395",
+      "notes": "",
+      "purchase_cost_cents": 5300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8162-D6",
+      "size": "11-1/2",
+      "height": "4.2mm",
+      "power": "395",
+      "notes": "",
+      "purchase_cost_cents": 5300,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8172/220",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "4.20mm",
+      "power": "SR927W",
+      "notes": "SUB FOR ISA 8162/220",
+      "purchase_cost_cents": 9800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8174/201",
+      "size": "11 1/2",
+      "height": "4.60mm thick",
+      "power": "SR927SW",
+      "notes": "2 Eye Chrono Hand Size 16",
+      "purchase_cost_cents": 7500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8174/220",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "4.60mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 7500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 8272",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "4.60mm",
+      "power": "SR927W",
+      "notes": "TIDE FUNCTION",
+      "purchase_cost_cents": 6500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA 9238/1970",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "4.13mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": null,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "ISA",
+      "model": "ISA K83/103",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.85mm",
+      "power": "SR721SW",
+      "notes": "",
+      "purchase_cost_cents": 3450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1005",
+      "size": "10 \u00bd L (23.30mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "notes": "",
+      "purchase_cost_cents": 15350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1006",
+      "size": "10\u00bd L (23.90mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "notes": "*Hands are not included",
+      "purchase_cost_cents": 10500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1016",
+      "size": "11 \u00bd L (25.60mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "notes": "",
+      "purchase_cost_cents": 11500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1019",
+      "size": "11 \u00bd L (25.60mm)",
+      "height": "1.90mm",
+      "power": "SR714SW",
+      "notes": "",
+      "purchase_cost_cents": 9450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-0",
+      "size": "3 \u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "notes": "SR-3000-146 Tap: 0.80mmSUB FOR RONDA 732",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-1",
+      "size": "3 \u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "notes": "SR-3000-146 Tap: 0.80mmSUB FOR RONDA 732-2",
+      "purchase_cost_cents": 3620,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-2",
+      "size": "3 \u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "notes": "SR-3000-146 Tap: 0.80mmSUB FOR RONDA 732-3",
+      "purchase_cost_cents": 3690,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1032-3",
+      "size": "3 \u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "notes": "SR-3000-146 Tap: 0.80mmSUB FOR RONDA 732-4",
+      "purchase_cost_cents": 3729,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1042",
+      "size": "4\u00bc L (15.30 x 17.80mm)",
+      "height": "2.90mm",
+      "power": "SR512SW",
+      "notes": "XL: SR-3000-187 (25mm)",
+      "purchase_cost_cents": 4950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1062",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "notes": "XL: SR-3000-165 (20mm)",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1063",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "notes": "XL: SR-3000-165 (20mm)",
+      "purchase_cost_cents": 1800,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1064",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "1.90mm",
+      "power": "SR616SW",
+      "notes": "XL: SR-3000-165 (20mm)4.80mm Between Pinions",
+      "purchase_cost_cents": 2880,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R1069",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.30mm",
+      "power": "SR616SW",
+      "notes": "XL: SR-3000-165 (20mm)6.30mm Between Pinions",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R3540D",
+      "size": "10\u00bd x 11\u00bd'''",
+      "height": "4.9 mm",
+      "power": "392",
+      "notes": "",
+      "purchase_cost_cents": 6000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4003B",
+      "size": "12\u00bd''' (Diameter 28.6 mm)",
+      "height": "4.40 mm",
+      "power": "SR927SW",
+      "notes": "SC-D(12) BIG DATE",
+      "purchase_cost_cents": 7500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4120BM",
+      "size": "12\u00bd L",
+      "height": "4.43 mm",
+      "power": "SR927SW",
+      "notes": "2 EYES ( 3 - 9 )",
+      "purchase_cost_cents": 12200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4220BD6",
+      "size": "12\u00bd L (28.00 mm)",
+      "height": "4.4mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R4310D",
+      "size": "12\u00bd''L (28.00 mm)",
+      "height": "4.4 mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 9000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5010B",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)6.85mm Between Pinions",
+      "purchase_cost_cents": 8350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5021D",
+      "size": "12\u00bd L (28.60 mm)",
+      "height": "4.40mm",
+      "power": "395",
+      "notes": "2 Eyes at 6 & 9, Date at 6",
+      "purchase_cost_cents": 5150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5030D",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)6.85mm Between Pinions",
+      "purchase_cost_cents": 6250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5030D/D6 (Disc)",
+      "size": "Ligne 12 1/2 Round",
+      "height": "",
+      "power": "SR927SW",
+      "notes": "3 Eyes (3,6,9), 6 Jewels (Discontinued)",
+      "purchase_cost_cents": 4950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040-BD12",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)",
+      "purchase_cost_cents": 6000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040B-SA",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)Swiss Assembled",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040D",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)",
+      "purchase_cost_cents": 6350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5040D-SA",
+      "size": "12 \u00bd L (28.40mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "",
+      "purchase_cost_cents": 11000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG1",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG2",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D3-3H AIG6",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG1",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG2",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4-3H AIG6",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG1",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG2",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D4.5-3H AIG6",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D6-3H A1G1",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R505-D6-3H AIG2",
+      "size": "10\u00bd'''",
+      "height": "3 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 1650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5050B",
+      "size": "12 \u00bd L (28.60mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)",
+      "purchase_cost_cents": 8350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R507-DD3-3H",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "4.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1700,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R507/2",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 2050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R509",
+      "size": "10\u00bd L (23.30 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 2480,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R512",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1280,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R513",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1355,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R5130D",
+      "size": "12\u00bd L (28.40 mm)",
+      "height": "4.40mm",
+      "power": "SR927SW",
+      "notes": "XL: SR-3000-191 (32mm)",
+      "purchase_cost_cents": 6400,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R515-D3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)SUB FOR RONDA 315",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R515-D6-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)SUB FOR RONDA 315-D6",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R517-DD3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 1950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R517/2",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 4750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R519",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00 mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-171 (32.50mm)",
+      "purchase_cost_cents": 3350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R519-D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.00 mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R585-D3-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.00mm",
+      "power": "SR721SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R585-D6-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.00mm",
+      "power": "SR721SW",
+      "notes": "",
+      "purchase_cost_cents": 1450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6003B",
+      "size": "11\u00bd L (25.60 mm)",
+      "height": "3.30 mm",
+      "power": "SR916SW",
+      "notes": "XL: SR-3000-199 (25mm)",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6003D",
+      "size": "11 \u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 4950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6004B D6",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "3.30mm",
+      "power": "SR916SW",
+      "notes": "XL: SR-3000-199 (25mm)",
+      "purchase_cost_cents": 6780,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R6004D-D3",
+      "size": "11 \u00bd L (26.20 mm)",
+      "height": "2.50mm",
+      "power": "SR916SW",
+      "notes": "",
+      "purchase_cost_cents": 5000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R702",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 1930,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R704-D3-2H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)SUB FOR RONDA 705-D3-2H",
+      "purchase_cost_cents": 1900,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R704-D6-2H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)SUB FOR RONDA 705-D6-2H",
+      "purchase_cost_cents": 2050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R705-D3-3H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R705-D6-3H",
+      "size": "10\u00bd L (22.00 x 23.00mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706.1",
+      "size": "10 1/2",
+      "height": "4.40",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 3600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706.3",
+      "size": "10 1/2",
+      "height": "3.00 mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 3500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R706B",
+      "size": "10\u00bd",
+      "height": "3.70mm",
+      "power": "",
+      "notes": "",
+      "purchase_cost_cents": 6000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R712",
+      "size": "11 1/2L",
+      "height": "2.55mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R713",
+      "size": "11\u00bd'''",
+      "height": "2.5 mm",
+      "power": "371",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-2H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-158 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-3H",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-158 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D3-3H-H2",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2050,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R715-D6-3HV1",
+      "size": "11\u00bd L (25.60mm)",
+      "height": "2.50mm",
+      "power": "SR920SW",
+      "notes": "XL: SR-3000-158 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R732",
+      "size": "3 \u00bd x 6 L (8.5 x 15.0mm)",
+      "height": "1.95mm",
+      "power": "SR516SW",
+      "notes": "",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751",
+      "size": "5 \u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1580,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751E",
+      "size": "5 \u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)Swiss Assembled",
+      "purchase_cost_cents": 4000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R751E 3",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 2950,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753",
+      "size": "5 \u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1500,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753-2",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "",
+      "purchase_cost_cents": 1889,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R753-3",
+      "size": "5\u00bd L (13.00mm)",
+      "height": "2.50mm",
+      "power": "SR521SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1970,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762-3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R762-SA",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)Swiss Assembled",
+      "purchase_cost_cents": 2890,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-1",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 850,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-3",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1350,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-4",
+      "size": "6\u00be x 8 L (15.30 x 17.80 mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-156 (25mm)SR-3000-139 (32mm)SR-3000-173 (17mm T0.70)",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-5",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 1250,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R763-SA",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R772 - Use R774 D3 2H",
+      "size": "7\u00be L",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 2450,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R773",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "",
+      "purchase_cost_cents": 2100,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R774-D3-2H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)SUB FOR RONDA 775-D3-2H",
+      "purchase_cost_cents": 3000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R774-D6-2H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)SUB FOR RONDA 775-D6-2H",
+      "purchase_cost_cents": 2210,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D3-3H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D3-3H-SA",
+      "size": "7\u00be L (17.20 mm)",
+      "height": "2.50 mm",
+      "power": "SR621SW (1 Jewel)",
+      "notes": "Gold-plated, Swiss-assembled.",
+      "purchase_cost_cents": 3650,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R775-D6-3H",
+      "size": "7\u00be L (17.20mm)",
+      "height": "2.50mm",
+      "power": "SR621SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R778",
+      "size": "7\u00be",
+      "height": "3.00 mm",
+      "power": "364",
+      "notes": "",
+      "purchase_cost_cents": 3600,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R782",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2110,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R783",
+      "size": "8 3/4",
+      "height": "2.50 mm",
+      "power": "362",
+      "notes": "",
+      "purchase_cost_cents": 2110,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D3-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D3-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D6-2H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "notes": "",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R785-D6-3H",
+      "size": "8\u00be L (19.40mm)",
+      "height": "2.50mm",
+      "power": "SR721SW",
+      "notes": "XL: SR-3000-152 (19.24mm)SR-3000-151 (25mm)SR-3000-138 (32mm)",
+      "purchase_cost_cents": 2200,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R788",
+      "size": "8\u00be",
+      "height": "2.98mm",
+      "power": "362",
+      "notes": "",
+      "purchase_cost_cents": 2550,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "R8040N-SA",
+      "size": "15 L (33.80mm)",
+      "height": "5.60mm",
+      "power": "SR927SW",
+      "notes": "Swiss Assembled",
+      "purchase_cost_cents": 14000,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Ronda",
+      "model": "RZ60",
+      "size": "13 1/4\u201d\u2019 (30.60mm)",
+      "height": "4.6mm",
+      "power": "395",
+      "notes": "",
+      "purchase_cost_cents": 3750,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB308-31",
+      "size": "8\u00be L (19.40mm)",
+      "height": "3.15mm",
+      "power": "SR721SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB310-31",
+      "size": "10\u00bd L (23.30mm)",
+      "height": "3.00mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB311-31",
+      "size": "11\u00bd L (25.9 x 3.1mm)",
+      "height": "3.10mm",
+      "power": "SR920SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB682-01",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.00mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB688-01",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    },
+    {
+      "brand": "Swiss Ebauches",
+      "model": "SB688-11",
+      "size": "6\u00be x 8 L (15.30 x 17.80mm)",
+      "height": "3.10mm",
+      "power": "SR626SW",
+      "notes": "",
+      "purchase_cost_cents": 2150,
+      "source": "labanda_html"
+    }
+  ]
+}
