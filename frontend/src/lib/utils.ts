@@ -13,6 +13,10 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+export function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
 /** Format estimated turnaround for shoe repairs: "3–5 days" or "~3 days" */
 export function formatEstimatedTurnaround(min: number, max: number): string {
   if (min === max) return `~${min} day${min === 1 ? '' : 's'}`
@@ -63,6 +67,8 @@ export const STATUS_LABELS: Record<string, string> = {
   completed:           'Work Completed',
   awaiting_collection: 'Ready for Collection',
   collected:           'Collected',
+  en_route:            'En Route',
+  on_site:             'On Site',
   draft:               'Draft',
   sent:                'Sent',
   approved:            'Approved',

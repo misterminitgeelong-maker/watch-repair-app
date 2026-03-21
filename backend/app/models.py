@@ -22,6 +22,8 @@ JobStatus = Literal[
     "completed",
     "awaiting_collection",
     "collected",
+    "en_route",   # Auto key mobile: tech driving to job
+    "on_site",    # Auto key mobile: tech arrived at location
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
@@ -950,6 +952,10 @@ class AutoKeyJob(SQLModel, table=True):
     programming_status: str = "pending"
     priority: str = "normal"
     status: str = "awaiting_quote"
+    # ServiceM8-style scheduling and location
+    scheduled_at: Optional[datetime] = None
+    job_address: Optional[str] = None  # For mobile jobs; falls back to customer address
+    job_type: Optional[str] = None  # "mobile" | "shop"
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
@@ -963,6 +969,9 @@ class AutoKeyJobCreate(SQLModel):
     assigned_user_id: Optional[UUID] = None
     title: str
     description: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    job_address: Optional[str] = None
+    job_type: Optional[str] = None
     vehicle_make: Optional[str] = None
     vehicle_model: Optional[str] = None
     vehicle_year: Optional[int] = None
@@ -1004,6 +1013,9 @@ class AutoKeyJobRead(SQLModel):
     deposit_cents: int
     cost_cents: int
     created_at: datetime
+    scheduled_at: Optional[datetime] = None
+    job_address: Optional[str] = None
+    job_type: Optional[str] = None
 
 
 class AutoKeyJobStatusUpdate(SQLModel):
@@ -1016,6 +1028,9 @@ class AutoKeyJobFieldUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
     assigned_user_id: Optional[UUID] = None
+    scheduled_at: Optional[datetime] = None
+    job_address: Optional[str] = None
+    job_type: Optional[str] = None
     vehicle_make: Optional[str] = None
     vehicle_model: Optional[str] = None
     vehicle_year: Optional[int] = None

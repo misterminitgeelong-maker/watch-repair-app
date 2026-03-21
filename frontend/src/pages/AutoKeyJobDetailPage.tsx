@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, MapPin } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
   listAutoKeyInvoices,
   listAutoKeyQuotes,
   listCustomerAccounts,
+  listUsers,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   type CustomerAccount,
   type JobStatus,
 } from '@/lib/api'
-import { Badge, Card, EmptyState, PageHeader, Select, Spinner } from '@/components/ui'
+import { Badge, Card, EmptyState, Input, PageHeader, Select, Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
@@ -21,6 +22,8 @@ const STATUSES: JobStatus[] = [
   'awaiting_go_ahead',
   'go_ahead',
   'working_on',
+  'en_route',
+  'on_site',
   'awaiting_parts',
   'completed',
   'awaiting_collection',
@@ -36,6 +39,7 @@ export default function AutoKeyJobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const [error, setError] = useState('')
+  const [addressEdit, setAddressEdit] = useState<string | null>(null)
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -46,6 +50,10 @@ export default function AutoKeyJobDetailPage() {
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
+  })
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => listUsers().then(r => r.data),
   })
 
   const { data: quotes = [] } = useQuery({
@@ -70,6 +78,16 @@ export default function AutoKeyJobDetailPage() {
     onError: err => setError(getApiErrorMessage(err, 'Failed to update status.')),
   })
 
+  const assignTechMut = useMutation({
+    mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(id!, { assigned_user_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to assign tech.')),
+  })
+
   const accountMut = useMutation({
     mutationFn: (customer_account_id: string | null) => updateAutoKeyJob(id!, { customer_account_id }),
     onSuccess: () => {
@@ -79,6 +97,32 @@ export default function AutoKeyJobDetailPage() {
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update customer account.')),
   })
+
+  const scheduleMut = useMutation({
+    mutationFn: (data: { scheduled_at?: string | null; job_address?: string | null; job_type?: string | null }) =>
+      updateAutoKeyJob(id!, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to update schedule.')),
+  })
+
+  const toDatetimeLocal = (s?: string | null) => {
+    if (!s) return ''
+    const d = new Date(s)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const handleScheduleChange = (field: 'scheduled_at' | 'job_address' | 'job_type', value: string | null) => {
+    const payload: Parameters<typeof scheduleMut.mutate>[0] = {}
+    if (field === 'scheduled_at') payload.scheduled_at = value ? new Date(value).toISOString() : null
+    if (field === 'job_address') payload.job_address = value || null
+    if (field === 'job_type') payload.job_type = (value as '' | 'mobile' | 'shop') || null
+    scheduleMut.mutate(payload)
+  }
 
   if (isLoading) return <Spinner />
   if (!job) return <EmptyState message='Auto key job not found.' />
@@ -109,6 +153,16 @@ export default function AutoKeyJobDetailPage() {
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{job.vehicle_make || 'Unknown'} {job.vehicle_model || ''}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Programming</span><span>{job.programming_status.replace(/_/g, ' ')}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
+            {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span className='capitalize'>{job.job_type}</span></div>}
+            {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span></div>}
+            {job.job_address && (
+              <div>
+                <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Address</span><span className='text-right'>{job.job_address}</span></div>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                  <MapPin size={12} /> Get directions
+                </a>
+              </div>
+            )}
           </div>
 
           <Select
@@ -118,6 +172,18 @@ export default function AutoKeyJobDetailPage() {
             disabled={statusMut.isPending}
           >
             {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </Select>
+
+          <Select
+            label='Assign tech'
+            value={job.assigned_user_id ?? ''}
+            onChange={e => assignTechMut.mutate(e.target.value || null)}
+            disabled={assignTechMut.isPending}
+          >
+            <option value=''>Unassigned</option>
+            {users.map((u: { id: string; full_name: string }) => (
+              <option key={u.id} value={u.id}>{u.full_name}</option>
+            ))}
           </Select>
 
           <Select
@@ -131,6 +197,37 @@ export default function AutoKeyJobDetailPage() {
               <option key={account.id} value={account.id}>{account.name}{account.account_code ? ` (${account.account_code})` : ''}</option>
             ))}
           </Select>
+
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Schedule</h3>
+          <Select
+            label='Job type'
+            value={job.job_type ?? ''}
+            onChange={e => handleScheduleChange('job_type', e.target.value || null)}
+            disabled={scheduleMut.isPending}
+          >
+            <option value=''>Not set</option>
+            <option value='mobile'>Mobile</option>
+            <option value='shop'>Shop</option>
+          </Select>
+          <Input
+            label='Scheduled date & time'
+            type='datetime-local'
+            value={toDatetimeLocal(job.scheduled_at) ?? ''}
+            onChange={e => handleScheduleChange('scheduled_at', e.target.value || null)}
+            disabled={scheduleMut.isPending}
+          />
+          <Input
+            label='Job address (mobile)'
+            value={addressEdit !== null ? addressEdit : (job.job_address ?? '')}
+            onChange={e => setAddressEdit(e.target.value)}
+            onBlur={() => {
+              const v = addressEdit !== null ? addressEdit : (job.job_address ?? '')
+              handleScheduleChange('job_address', v.trim() || null)
+              setAddressEdit(null)
+            }}
+            disabled={scheduleMut.isPending}
+            placeholder='Address for mobile visits'
+          />
 
           {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
         </Card>

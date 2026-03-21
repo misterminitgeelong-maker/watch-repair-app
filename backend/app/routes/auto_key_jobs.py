@@ -6,6 +6,7 @@ from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
+from .. import sms
 from ..models import (
     AutoKeyJob,
     AutoKeyJobCreate,
@@ -22,6 +23,7 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    User,
 )
 
 router = APIRouter(
@@ -126,12 +128,31 @@ def create_auto_key_job(
 @router.get("", response_model=list[AutoKeyJobRead])
 def list_auto_key_jobs(
     status: str | None = Query(default=None),
+    date_from: str | None = Query(default=None, description="Filter scheduled_at >= date (YYYY-MM-DD)"),
+    date_to: str | None = Query(default=None, description="Filter scheduled_at <= date (YYYY-MM-DD)"),
+    assigned_user_id: UUID | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    from datetime import datetime as dt
+
     query = select(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(AutoKeyJob.status == status)
+    if assigned_user_id:
+        query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
+    if date_from:
+        try:
+            start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            query = query.where(AutoKeyJob.scheduled_at >= start)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            query = query.where(AutoKeyJob.scheduled_at <= end)
+        except ValueError:
+            pass
     return session.exec(query.order_by(AutoKeyJob.created_at.desc())).all()
 
 
@@ -209,6 +230,11 @@ def update_auto_key_job_fields(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
 
+    schedule_fields = {"scheduled_at", "job_address", "job_type"}
+    old_scheduled_at = job.scheduled_at.isoformat() if job.scheduled_at else None
+    old_job_address = job.job_address
+    old_job_type = job.job_type
+
     update_data = payload.model_dump(exclude_unset=True)
     if "customer_account_id" in update_data and update_data["customer_account_id"] is not None:
         account = session.get(CustomerAccount, update_data["customer_account_id"])
@@ -220,8 +246,32 @@ def update_auto_key_job_fields(
     if job.key_quantity < 1:
         job.key_quantity = 1
 
+    schedule_changed = update_data.keys() & schedule_fields and (
+        (job.scheduled_at.isoformat() if job.scheduled_at else None) != old_scheduled_at
+        or job.job_address != old_job_address
+        or job.job_type != old_job_type
+    )
+    to_notify_phone = None
+    if schedule_changed and job.assigned_user_id:
+        assigned_user = session.get(User, job.assigned_user_id)
+        if assigned_user and assigned_user.phone and assigned_user.phone.strip():
+            to_notify_phone = assigned_user.phone.strip()
+
     session.add(job)
     session.commit()
+
+    if to_notify_phone:
+        sms.notify_auto_key_schedule_changed(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=to_notify_phone,
+            job_number=job.job_number,
+            scheduled_at=job.scheduled_at.isoformat() if job.scheduled_at else None,
+            job_address=job.job_address,
+            job_type=job.job_type,
+        )
+        session.commit()
+
     session.refresh(job)
     return job
 

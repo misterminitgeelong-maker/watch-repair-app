@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     # Google Places API (for Prospects search; leave blank to disable)
     google_places_api_key: str = ""
 
+    # Vehicle registration lookup (Blue Flag NEVDIS; leave blank to disable)
+    rego_lookup_api_key: str = ""
+    rego_lookup_base_url: str = "https://sandbox.blueflag.com.au"  # or https://api.blueflag.com.au for prod
+
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

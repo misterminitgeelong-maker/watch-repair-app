@@ -375,7 +375,7 @@ export const listProspectCategories = () => api.get<{ categories: { key: string;
 export const searchProspects = (category: string) => api.get<ProspectSearchResponse>('/prospects/search', { params: { category } })
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
-export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
+export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
@@ -1002,13 +1002,23 @@ export interface AutoKeyJob {
   deposit_cents: number
   cost_cents: number
   created_at: string
+  /** ServiceM8-style: when job is scheduled */
+  scheduled_at?: string
+  /** For mobile jobs; address where tech visits */
+  job_address?: string
+  /** "mobile" | "shop" */
+  job_type?: string
 }
 
 export interface AutoKeyJobCreatePayload {
   customer_id: string
   customer_account_id?: string
+  assigned_user_id?: string
   title: string
   description?: string
+  scheduled_at?: string
+  job_address?: string
+  job_type?: string
   vehicle_make?: string
   vehicle_model?: string
   vehicle_year?: number
@@ -1025,11 +1035,28 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
 }
 
-export const listAutoKeyJobs = () => api.get<AutoKeyJob[]>('/auto-key-jobs')
+export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; assigned_user_id?: string }) =>
+  api.get<AutoKeyJob[]>('/auto-key-jobs', params ? { params } : undefined)
+
+export interface VehicleLookupResult {
+  found: boolean
+  make: string | null
+  model: string | null
+  year: number | null
+  vin: string | null
+  registration_plate: string
+  state: string
+}
+export const vehicleLookup = (plate: string, state: string) =>
+  api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
-export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
+export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type'> {
   customer_account_id?: string | null
+  assigned_user_id?: string | null
+  scheduled_at?: string | null
+  job_address?: string | null
+  job_type?: string | null
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

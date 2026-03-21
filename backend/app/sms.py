@@ -158,3 +158,42 @@ def notify_job_status_changed(
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )
+
+
+def notify_auto_key_schedule_changed(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    job_number: str,
+    scheduled_at: str | None,
+    job_address: str | None,
+    job_type: str | None,
+) -> None:
+    """Notify assigned tech when an auto key job's schedule changes."""
+    parts = [f"Auto key job #{job_number} schedule updated:"]
+    if scheduled_at:
+        from datetime import datetime
+        try:
+            dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            parts.append(f" {dt.strftime('%a %d %b')} at {dt.strftime('%H:%M')}")
+        except (ValueError, TypeError):
+            parts.append(f" {scheduled_at[:16]}")
+    if job_type:
+        parts.append(f" Type: {job_type}")
+    if job_address:
+        parts.append(f" Address: {job_address[:60]}{'…' if len(job_address) > 60 else ''}")
+    body = "".join(parts).strip()
+    if len(body) <= 10:
+        return
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_schedule_changed",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )

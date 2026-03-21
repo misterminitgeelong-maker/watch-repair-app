@@ -29,6 +29,8 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   completed:           'awaiting_collection',
   awaiting_collection: 'collected',
   collected:           null,
+  en_route:            'on_site',
+  on_site:             'completed',
 }
 
 const QUICK_ACTION_STATUSES: JobStatus[] = [
