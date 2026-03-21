@@ -16,11 +16,16 @@ _CATALOGUE_PATH = Path(__file__).parent.parent.parent / "seed" / "shoe_repairs_c
 with open(_CATALOGUE_PATH, encoding="utf-8") as _f:
     _CATALOGUE: dict = json.load(_f)
 
-# Flat index: key → item dict (with group_id and group_label injected)
+# Flat index: key → item dict (with group_id, group_label, and defaults injected)
+_DEFAULTS = _CATALOGUE.get("defaults", {})
 _ITEM_INDEX: dict[str, dict] = {}
 for _group in _CATALOGUE["groups"]:
     for _item in _group["items"]:
         enriched = {**_item, "group_id": _group["id"], "group_label": _group["label"]}
+        # Apply defaults for complexity and estimated_days if missing
+        enriched.setdefault("complexity", _DEFAULTS.get("complexity", "standard"))
+        enriched.setdefault("estimated_days_min", _DEFAULTS.get("estimated_days_min", 3))
+        enriched.setdefault("estimated_days_max", _DEFAULTS.get("estimated_days_max", 7))
         _ITEM_INDEX[_item["key"]] = enriched
 
 

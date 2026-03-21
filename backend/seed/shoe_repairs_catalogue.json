@@ -2,6 +2,11 @@
   "category": "shoe_repairs",
   "source": "AU 2026-27 Price Book.pdf",
   "currency": "AUD",
+  "defaults": {
+    "complexity": "standard",
+    "estimated_days_min": 3,
+    "estimated_days_max": 7
+  },
   "combos": [
     {
       "id": "shoe_care_combo",
@@ -187,7 +192,10 @@
           "name": "Full Leather Sole & Heel",
           "price": 114.95,
           "price_cents": 11495,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "complexity": "complex",
+          "estimated_days_min": 7,
+          "estimated_days_max": 14
         },
         {
           "key": "full_soles__flexi_soft_sole",
@@ -273,7 +281,10 @@
           "name": "Gluing",
           "price": 9.95,
           "price_cents": 995,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "complexity": "simple",
+          "estimated_days_min": 1,
+          "estimated_days_max": 2
         },
         {
           "key": "additional_repairs__zippers",
@@ -327,21 +338,30 @@
           "name": "Buff & Polish",
           "price": 9.95,
           "price_cents": 995,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "complexity": "simple",
+          "estimated_days_min": 1,
+          "estimated_days_max": 2
         },
         {
           "key": "shoe_revival__water_and_stain_protection",
           "name": "Water & Stain Protection",
           "price": 9.95,
           "price_cents": 995,
-          "pricing_type": "each_from"
+          "pricing_type": "each_from",
+          "complexity": "simple",
+          "estimated_days_min": 1,
+          "estimated_days_max": 2
         },
         {
           "key": "shoe_revival__clean_and_deodorise",
           "name": "Clean & Deodorise",
           "price": 9.95,
           "price_cents": 995,
-          "pricing_type": "each_from"
+          "pricing_type": "each_from",
+          "complexity": "simple",
+          "estimated_days_min": 1,
+          "estimated_days_max": 2
         },
         {
           "key": "shoe_revival__revival_package",
@@ -417,7 +437,10 @@
           "name": "Heel Block Replacement",
           "price": 69.95,
           "price_cents": 6995,
-          "pricing_type": "from"
+          "pricing_type": "from",
+          "complexity": "complex",
+          "estimated_days_min": 5,
+          "estimated_days_max": 10
         },
         {
           "key": "miscellaneous_repairs__shoe_pair_bag_recolour",
@@ -543,14 +566,20 @@
           "name": "Footbed Replacement (includes EVA sole replacement)",
           "price": 129.95,
           "price_cents": 12995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "complexity": "complex",
+          "estimated_days_min": 7,
+          "estimated_days_max": 14
         },
         {
           "key": "birkenstock__footbed_replacement_super_sole",
           "name": "Footbed Replacement (includes Super Sole replacement)",
           "price": 139.95,
           "price_cents": 13995,
-          "pricing_type": "fixed"
+          "pricing_type": "fixed",
+          "complexity": "complex",
+          "estimated_days_min": 7,
+          "estimated_days_max": 14
         },
         {
           "key": "birkenstock__toe_build_up",

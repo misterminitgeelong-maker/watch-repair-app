@@ -870,6 +870,8 @@ export type ShoePricingType =
   | 'per_cm' | 'from_per_boot' | 'from_per_strap' | 'per_elastic'
   | 'single' | 'quoted_upon_inspection'
 
+export type ShoeRepairComplexity = 'simple' | 'standard' | 'complex'
+
 export interface ShoeCatalogueItem {
   key: string
   name: string
@@ -878,6 +880,9 @@ export interface ShoeCatalogueItem {
   pricing_type: ShoePricingType
   group_id: string
   group_label: string
+  complexity?: ShoeRepairComplexity
+  estimated_days_min?: number
+  estimated_days_max?: number
   notes?: string
   includes?: string[]
   applicable_shoe_types?: string[]
@@ -1140,6 +1145,12 @@ export interface ShoeRepairJob {
   cost_cents: number
   created_at: string
   items: ShoeRepairJobItem[]
+  /** Derived from services: simple | standard | complex */
+  complexity?: ShoeRepairComplexity
+  estimated_days_min?: number
+  estimated_days_max?: number
+  /** Queue-based: est. date ready (FIFO from jobs ahead) */
+  estimated_ready_by?: string
 }
 
 export interface ShoeRepairJobCreatePayload {

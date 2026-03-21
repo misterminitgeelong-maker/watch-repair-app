@@ -13,6 +13,18 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+/** Format estimated turnaround for shoe repairs: "3–5 days" or "~3 days" */
+export function formatEstimatedTurnaround(min: number, max: number): string {
+  if (min === max) return `~${min} day${min === 1 ? '' : 's'}`
+  return `${min}–${max} days`
+}
+
+export const COMPLEXITY_LABELS: Record<string, string> = {
+  simple: 'Simple',
+  standard: 'Standard',
+  complex: 'Complex',
+}
+
 // Single source of truth for job status order (watch repair directory views)
 export const JOB_STATUS_ORDER = [
   'awaiting_quote',

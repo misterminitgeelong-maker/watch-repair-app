@@ -13,7 +13,7 @@ import {
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -348,6 +348,21 @@ export default function ShoeJobDetailPage() {
         {total > 0 && (
           <span style={{ color: 'var(--cafe-text-muted)' }}>
             Estimated: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(total / 100).toFixed(2)}</span>
+          </span>
+        )}
+        {job.complexity && (
+          <span style={{ color: 'var(--cafe-text-muted)' }}>
+            Complexity: <span className="font-medium capitalize" style={{ color: job.complexity === 'complex' ? '#8B3A3A' : job.complexity === 'simple' ? '#2E7D32' : 'var(--cafe-text)' }}>{COMPLEXITY_LABELS[job.complexity] ?? job.complexity}</span>
+          </span>
+        )}
+        {job.estimated_days_min != null && job.estimated_days_max != null && (
+          <span style={{ color: 'var(--cafe-text-muted)' }}>
+            Est. turnaround: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{formatEstimatedTurnaround(job.estimated_days_min, job.estimated_days_max)}</span>
+          </span>
+        )}
+        {job.estimated_ready_by && (
+          <span style={{ color: 'var(--cafe-text-muted)' }}>
+            Est. ready by: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{formatDate(job.estimated_ready_by)}</span>
           </span>
         )}
         <span style={{ color: 'var(--cafe-text-muted)' }}>

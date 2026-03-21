@@ -10,7 +10,7 @@ import {
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
@@ -115,6 +115,19 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             <h3 className="font-semibold text-sm leading-snug" style={{ color: 'var(--cafe-text)' }}>
               {job.title}
             </h3>
+            {(job.estimated_ready_by || job.complexity || (job.estimated_days_min != null && job.estimated_days_max != null)) && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                {job.estimated_ready_by && (
+                  <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>Est. ready {formatDate(job.estimated_ready_by)}</span>
+                )}
+                {job.estimated_ready_by && job.complexity && ' · '}
+                {job.complexity && <span className="capitalize">{COMPLEXITY_LABELS[job.complexity] ?? job.complexity}</span>}
+                {job.complexity && job.estimated_days_min != null && ' · '}
+                {job.estimated_days_min != null && job.estimated_days_max != null && (
+                  <>~{formatEstimatedTurnaround(job.estimated_days_min, job.estimated_days_max)} repair</>
+                )}
+              </p>
+            )}
             {job.description && (
               <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>{job.description}</p>
             )}

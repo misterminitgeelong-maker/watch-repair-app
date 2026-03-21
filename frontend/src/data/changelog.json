@@ -13,7 +13,9 @@
       "Faster auth redirect: 5s max wait on refresh, redirect to landing page",
       "Excel import: fixed row/header mismatch, Excel date serials, cost overflow clamp, clearer errors",
       "Import: ticket/job number now preserved from source (e.g. Ticket #, Ref, Job No) instead of auto-assigning; strips Excel .0 suffix",
-      "Import: handles varied spreadsheet layouts — unnamed first column as ticket, Number→phone, GA/NG/Collected→status, being done→notes"
+      "Import: handles varied spreadsheet layouts — unnamed first column as ticket, Number→phone, GA/NG/Collected→status, being done→notes",
+      "Shoe repairs: repair complexity (Simple/Standard/Complex) and estimated turnaround per service; displayed when quoting and on job cards",
+      "Shoe repairs: queue-based Est. ready by date — derives from quantity of jobs ahead (FIFO) and each job's repair time"
     ]
   },
   {

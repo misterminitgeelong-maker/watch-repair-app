@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -64,9 +65,73 @@ def _create_job_items(
         )
 
 
-def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
+# Jobs considered "in queue" for FIFO estimated completion
+_ACTIVE_QUEUE_STATUSES = frozenset({
+    "awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on", "awaiting_parts",
+})
+
+
+def _get_job_estimated_days(session: Session, job_id: UUID) -> int:
+    """Return estimated_days_max for a job from its catalogue items. Default 5 if unknown."""
+    from .shoe_catalogue import _ITEM_INDEX
+
+    items = session.exec(
+        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job_id)
+    ).all()
+    days = 0
+    for item in items:
+        cat = _ITEM_INDEX.get(item.catalogue_key)
+        if cat:
+            dmax = cat.get("estimated_days_max", 7)
+            days = max(days, dmax)
+    return days if days else 5
+
+
+def _compute_queue_estimated_ready_by(session: Session, tenant_id: UUID) -> dict[UUID, date]:
+    """FIFO queue: for each active job, compute estimated_ready_by from work ahead + own days."""
+    jobs = session.exec(
+        select(ShoeRepairJob)
+        .where(ShoeRepairJob.tenant_id == tenant_id)
+        .where(ShoeRepairJob.status.in_(_ACTIVE_QUEUE_STATUSES))
+        .order_by(ShoeRepairJob.created_at.asc())
+    ).all()
+    result: dict = {}
+    cumulative_days = 0
+    for job in jobs:
+        job_days = _get_job_estimated_days(session, job.id)
+        work_ahead = cumulative_days
+        total_days = work_ahead + job_days
+        ready = job.created_at + timedelta(days=int(total_days))
+        result[job.id] = ready.date()
+        cumulative_days += job_days
+    return result
+
+
+def _job_to_read(job: ShoeRepairJob, session: Session, queue_ready: dict | None = None) -> ShoeRepairJobRead:
+    from .shoe_catalogue import _ITEM_INDEX
+
     data = job.model_dump()
-    data["items"] = _load_items(session, job.id)
+    items = _load_items(session, job.id)
+    data["items"] = items
+
+    # Compute complexity and estimated turnaround from catalogue
+    complexity_order = {"simple": 0, "standard": 1, "complex": 2}
+    days_min, days_max = 0, 0
+    max_comp = "simple"
+    for item in items:
+        cat = _ITEM_INDEX.get(item.catalogue_key)
+        if cat:
+            comp = cat.get("complexity", "standard")
+            max_comp = max(max_comp, comp, key=lambda c: complexity_order.get(c, 0))
+            dmin, dmax = cat.get("estimated_days_min", 3), cat.get("estimated_days_max", 7)
+            days_min = max(days_min, dmin)
+            days_max = max(days_max, dmax)
+    if items:
+        data["complexity"] = max_comp
+        data["estimated_days_min"] = days_min or 3
+        data["estimated_days_max"] = days_max or 7
+    if queue_ready is not None and job.id in queue_ready:
+        data["estimated_ready_by"] = queue_ready[job.id]
     # Primary shoe details
     primary_shoe = session.get(Shoe, job.shoe_id)
     data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
@@ -182,7 +247,8 @@ def list_shoe_repair_jobs(
     if status:
         query = query.where(ShoeRepairJob.status == status)
     jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc())).all()
-    return [_job_to_read(j, session) for j in jobs]
+    queue_ready = _compute_queue_estimated_ready_by(session, auth.tenant_id)
+    return [_job_to_read(j, session, queue_ready) for j in jobs]
 
 
 @router.get("/{job_id}", response_model=ShoeRepairJobRead)
@@ -194,7 +260,8 @@ def get_shoe_repair_job(
     job = session.get(ShoeRepairJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
-    return _job_to_read(job, session)
+    queue_ready = _compute_queue_estimated_ready_by(session, auth.tenant_id)
+    return _job_to_read(job, session, queue_ready)
 
 
 @router.post("/{job_id}/status", response_model=ShoeRepairJobRead)

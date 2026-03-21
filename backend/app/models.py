@@ -901,6 +901,12 @@ class ShoeRepairJobRead(SQLModel):
     items: list[ShoeRepairJobItemRead] = []
     shoe: Optional[ShoeRead] = None
     extra_shoes: list[ShoeRepairJobShoeRead] = []
+    # Derived from catalogue: max complexity of items, longest estimated turnaround
+    complexity: Optional[str] = None  # "simple" | "standard" | "complex"
+    estimated_days_min: Optional[int] = None
+    estimated_days_max: Optional[int] = None
+    # Queue-based: when this job expected to be ready (FIFO, derived from jobs ahead)
+    estimated_ready_by: Optional[date] = None
 
 
 class ShoeRepairJobStatusUpdate(SQLModel):

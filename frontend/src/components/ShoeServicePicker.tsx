@@ -9,6 +9,7 @@ import {
   type ShoePricingType,
   type ShoeRepairJobItemInput,
 } from '@/lib/api'
+import { formatEstimatedTurnaround, COMPLEXITY_LABELS } from '@/lib/utils'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -173,7 +174,20 @@ export default function ShoeServicePicker({
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{item.group_label}</p>
+                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    {item.group_label}
+                    {item.complexity && (
+                      <>
+                        {' · '}
+                        <span className="capitalize" style={{ color: item.complexity === 'complex' ? '#8B3A3A' : item.complexity === 'simple' ? '#2E7D32' : 'inherit' }}>
+                          {COMPLEXITY_LABELS[item.complexity] ?? item.complexity}
+                        </span>
+                      </>
+                    )}
+                    {item.estimated_days_min != null && item.estimated_days_max != null && (
+                      <> · {formatEstimatedTurnaround(item.estimated_days_min, item.estimated_days_max)}</>
+                    )}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{priceLabel}</p>
@@ -209,6 +223,10 @@ export default function ShoeServicePicker({
                   <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
                   <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                     {item.group_label}
+                    {item.complexity && <> · {COMPLEXITY_LABELS[item.complexity] ?? item.complexity}</>}
+                    {item.estimated_days_min != null && item.estimated_days_max != null && (
+                      <> · Est. {formatEstimatedTurnaround(item.estimated_days_min, item.estimated_days_max)}</>
+                    )}
                     {isPriceAdjustable(item.pricing_type as ShoePricingType)
                       ? <>
                           {' · '}
