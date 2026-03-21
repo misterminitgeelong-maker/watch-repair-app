@@ -18,7 +18,7 @@ interface AuthCtx {
 }
 
 const AuthContext = createContext<AuthCtx | null>(null)
-const SESSION_INIT_TIMEOUT_MS = 15_000
+const SESSION_INIT_TIMEOUT_MS = 5_000
 
 /** Parses role from JWT for optional optimistic UI before /auth/session loads. Session data is the source of truth for role and permissions. */
 function parseRoleFromToken(token: string | null): string | null {

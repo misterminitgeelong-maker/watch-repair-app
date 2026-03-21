@@ -197,7 +197,7 @@ export interface AuthSession {
   available_sites: SiteOption[]
 }
 
-export const getAuthSession = () => api.get<AuthSession>('/auth/session')
+export const getAuthSession = () => api.get<AuthSession>('/auth/session', { timeout: 8_000 })
 export const updateTenantPlan = (plan_code: PlanCode) =>
   api.patch<AuthSession>('/auth/session/plan', { plan_code })
 export interface ActiveSiteSwitchResponse {

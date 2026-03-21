@@ -54,6 +54,16 @@ def _parse_date(raw: str) -> date | None:
         return None
     raw = raw.strip()
 
+    # Excel date serial (e.g. 44927 or 44927.0)
+    try:
+        n = float(raw)
+        if 1000 < n < 100000 and n == int(n):
+            from datetime import timedelta
+            d = date(1899, 12, 30) + timedelta(days=int(n))
+            return d
+    except (ValueError, TypeError):
+        pass
+
     for pattern, groups in [
         (r"^(\d{1,2})/(\d{1,2})/(\d{2})$", "dmy2"),
         (r"^(\d{1,2})/(\d{1,2})/(\d{4})$", "dmy4"),
@@ -91,6 +101,10 @@ def _normalize_phone(raw: str) -> str | None:
     return digits
 
 
+# PostgreSQL INTEGER max; clamp to avoid overflow from corrupted Excel values
+_MAX_CENTS = 2_147_483_647
+
+
 def _dollars_to_cents(raw: str) -> int:
     if not raw or not raw.strip():
         return 0
@@ -107,12 +121,12 @@ def _dollars_to_cents(raw: str) -> int:
         discount = re.search(r"-\s*(\d+(?:\.\d+)?)\s*%", s)
         if discount:
             total *= 1 - (float(discount.group(1)) / 100)
-        return int(round(total * 100))
+        return min(int(round(total * 100)), _MAX_CENTS)
 
     numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", s)]
     if not numbers:
         return 0
-    return int(round(numbers[0] * 100))
+    return min(int(round(numbers[0] * 100)), _MAX_CENTS)
 
 
 def _clean_name(raw: str) -> str | None:
@@ -171,7 +185,7 @@ def _to_text(value: object) -> str:
     if value is None:
         return ""
     if isinstance(value, datetime):
-        return value.isoformat()
+        return value.strftime("%Y-%m-%d")
     if isinstance(value, date):
         return value.isoformat()
     return str(value).strip()
@@ -203,18 +217,39 @@ def _load_csv_rows(raw_bytes: bytes) -> list[dict[str, str]]:
 
 
 def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
-    workbook = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True)
-    sheet = workbook.active
-    all_rows = list(sheet.iter_rows(values_only=True))
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True)
+        sheet = workbook.active
+        if sheet is None:
+            raise HTTPException(status_code=400, detail="Excel file has no worksheets.")
+        all_rows = list(sheet.iter_rows(values_only=True))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not read Excel file. Try saving as CSV (UTF-8) or a fresh .xlsx. Error: {exc}",
+        ) from exc
+
     if not all_rows:
         return []
 
-    header = [_to_text(value) for value in all_rows[0]]
-    return [
-        {header[idx]: _to_text(value) for idx, value in enumerate(row)}
-        for row in all_rows[1:]
-        if any(_to_text(cell) for cell in row)
-    ]
+    header_row = all_rows[0]
+    header = [_to_text(v) or f"_col{i}" for i, v in enumerate(header_row)]
+    # Ensure unique header keys (Excel often has blank columns)
+    seen: set[str] = set()
+    for i, h in enumerate(header):
+        if h in seen:
+            header[i] = f"{h}_{i}"
+        seen.add(header[i])
+
+    result: list[dict[str, str]] = []
+    for row in all_rows[1:]:
+        if not any(_to_text(c) for c in row):
+            continue
+        row_len = len(row)
+        hdr_len = len(header)
+        cells = [_to_text(row[idx]) if idx < row_len else "" for idx in range(hdr_len)]
+        result.append({header[i]: cells[i] for i in range(hdr_len)})
+    return result
 
 
 def _load_xls_rows(raw_bytes: bytes) -> list[dict[str, str]]:
@@ -448,6 +483,7 @@ async def import_csv(
                 status=status,
                 salesperson=team_member or None,
                 deposit_cents=0,
+                pre_quote_cents=quote_cents or cost_cents,
                 cost_cents=cost_cents,
                 created_at=created_at,
             )

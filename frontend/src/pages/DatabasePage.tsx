@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
-import { importCsv, type CsvImportResult } from '@/lib/api'
+import { importCsv, getApiErrorMessage, type CsvImportResult } from '@/lib/api'
 import { PageHeader, Card, Button } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
 
@@ -32,13 +32,7 @@ export default function DatabasePage() {
       setFile(null)
       if (fileRef.current) fileRef.current.value = ''
     } catch (err: unknown) {
-      const apiErr = err as { response?: { status?: number; data?: { detail?: string } | string }; message?: string }
-      const detail =
-        typeof apiErr.response?.data === 'string'
-          ? apiErr.response.data
-          : apiErr.response?.data?.detail
-      const status = apiErr.response?.status
-      setError(detail || (status ? `Import failed (HTTP ${status}).` : apiErr.message || 'Import failed. Check the CSV format and try again.'))
+      setError(getApiErrorMessage(err, 'Import failed. Try saving Excel as CSV (UTF-8) or check column names (customer_name, phone_number, date_in, brand_case_numbers, quote_price, repair_notes).'))
     }
     setUploading(false)
   }
