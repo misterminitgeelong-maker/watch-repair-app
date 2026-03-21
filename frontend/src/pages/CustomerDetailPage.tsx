@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Plus, ChevronLeft, Wrench } from 'lucide-react'
 import { getCustomer, listWatches, createWatch, listJobs, type Watch } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textarea } from '@/components/ui'
+import BrandAutocomplete from '@/components/BrandAutocomplete'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
@@ -25,7 +26,7 @@ function AddWatchModal({ customerId, onClose }: { customerId: string; onClose: (
   return (
     <Modal title="Add Watch" onClose={onClose}>
       <div className="space-y-3">
-        <Input label="Brand" value={form.brand} onChange={set('brand')} placeholder="Rolex, Omega…" />
+        <BrandAutocomplete label="Brand" value={form.brand} onChange={v => setForm(f => ({ ...f, brand: v }))} placeholder="Rolex, Omega…" />
         <Input label="Model" value={form.model} onChange={set('model')} placeholder="Submariner, Speedmaster…" />
         <Input label="Serial Number" value={form.serial_number} onChange={set('serial_number')} />
         <Select label="Movement Type" value={form.movement_type} onChange={set('movement_type')}>

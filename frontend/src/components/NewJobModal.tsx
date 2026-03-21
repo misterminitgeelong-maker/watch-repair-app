@@ -10,6 +10,7 @@ import {
   type JobStatus, type Customer, type Watch, type CustomerAccount,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
 
@@ -334,7 +335,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <Input label="Brand" value={newWatch.brand} onChange={setW('brand')} placeholder="Rolex" autoFocus />
+                <BrandAutocomplete label="Brand" value={newWatch.brand} onChange={v => setNewWatch(prev => ({ ...prev, brand: v }))} placeholder="Rolex" autoFocus />
                 <Input label="Model" value={newWatch.model} onChange={setW('model')} placeholder="Submariner" />
               </div>
               <Input label="Serial Number" value={newWatch.serial_number} onChange={setW('serial_number')} />

@@ -83,3 +83,23 @@ def get_watch(
     if not watch or watch.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Watch not found")
     return watch
+
+
+COMMON_WATCH_BRANDS = [
+    "Rolex", "Omega", "Seiko", "Citizen", "Casio", "Tissot", "Fossil",
+    "Michael Kors", "Tag Heuer", "Longines", "Hamilton", "Swatch",
+    "Bulova", "Oris", "Breitling", "Cartier", "Patek Philippe", "Audemars Piguet",
+    "Timex", "Invicta", "Daniel Wellington", "Movado", "Skagen",
+]
+
+
+@router.get("/watch-brands", response_model=list[str])
+def list_watch_brands(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Return distinct watch brands from the database, merged with common brands."""
+    watches = session.exec(select(Watch).where(Watch.tenant_id == auth.tenant_id)).all()
+    from_db = {w.brand.strip() for w in watches if w.brand and w.brand.strip()}
+    combined = sorted(from_db | set(COMMON_WATCH_BRANDS), key=str.lower)
+    return combined

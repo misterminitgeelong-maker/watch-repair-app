@@ -349,6 +349,7 @@ export interface Watch {
 export const listWatches = (customerId?: string) =>
   api.get<Watch[]>('/watches', { params: customerId ? { customer_id: customerId } : {} })
 export const getWatch = (id: string) => api.get<Watch>(`/watches/${id}`)
+export const listWatchBrands = () => api.get<string[]>('/watch-brands')
 export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Watch>('/watches', data)
 

@@ -111,6 +111,24 @@ def test_customer_and_watch_tenant_isolation():
     assert len(watches_a.json()) == 1
     assert len(watches_b.json()) == 0
 
+    # watch-brands: tenant A has Omega from the watch we created; tenant B has no DB brands
+    brands_a = client.get("/v1/watch-brands", headers=headers_a)
+    brands_b = client.get("/v1/watch-brands", headers=headers_b)
+    assert brands_a.status_code == 200
+    assert brands_b.status_code == 200
+    assert "Omega" in brands_a.json()
+    assert "Omega" in brands_b.json()  # COMMON_WATCH_BRANDS includes Omega
+    # Create watch with unique brand for tenant A
+    client.post(
+        "/v1/watches",
+        headers=headers_a,
+        json={"customer_id": customer_id, "brand": "UniqueBrandForTestOnly", "model": "Test"},
+    )
+    brands_a2 = client.get("/v1/watch-brands", headers=headers_a)
+    brands_b2 = client.get("/v1/watch-brands", headers=headers_b)
+    assert "UniqueBrandForTestOnly" in brands_a2.json()
+    assert "UniqueBrandForTestOnly" not in brands_b2.json()
+
 
 def test_repair_jobs_and_status_history_tenant_isolation():
     suffix_a = uuid4().hex[:8]
