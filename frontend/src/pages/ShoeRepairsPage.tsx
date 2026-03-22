@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X } from 'lucide-react'
 import {
   deleteShoeRepairJob,
@@ -30,6 +31,8 @@ const SHOE_STATUSES = [
   'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on',
   'completed', 'awaiting_collection', 'collected', 'no_go',
 ]
+const SHOE_ACTIVE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on']
+const SHOE_CLOSED_STATUSES = ['completed', 'awaiting_collection', 'collected', 'no_go']
 
 function JobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
@@ -447,16 +450,32 @@ function ComboBanner() {
 
 // -- Page ---------------------------------------------------------------------
 export default function ShoeRepairsPage() {
+  const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<'kanban' | 'cards'>('kanban')
+
+  const statusMut = useMutation({
+    mutationFn: ({ jobId, status }: { jobId: string; status: string }) => updateShoeRepairJobStatus(jobId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] }),
+  })
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ['shoe-repair-jobs'],
     queryFn: () => listShoeRepairJobs().then(r => r.data),
   })
 
+  const statusOptions = jobDirectoryView === 'active' ? SHOE_ACTIVE_STATUSES : SHOE_CLOSED_STATUSES
+  const activeCount = (jobs ?? []).filter(j => SHOE_ACTIVE_STATUSES.includes(j.status)).length
+  const completedCount = (jobs ?? []).filter(j => SHOE_CLOSED_STATUSES.includes(j.status)).length
+
   const filtered = (jobs ?? []).filter(job => {
+    const inDirectory = jobDirectoryView === 'active'
+      ? SHOE_ACTIVE_STATUSES.includes(job.status)
+      : SHOE_CLOSED_STATUSES.includes(job.status)
+    if (!inDirectory) return false
     if (statusFilter !== 'all' && job.status !== statusFilter) return false
     if (search) {
       const q = search.toLowerCase()
@@ -471,7 +490,7 @@ export default function ShoeRepairsPage() {
   })
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8 max-w-5xl mx-auto">
+    <div className="px-4 py-6 sm:px-6 sm:py-8 max-w-6xl mx-auto">
       <PageHeader
         title="Shoe Repairs"
         action={
@@ -487,7 +506,79 @@ export default function ShoeRepairsPage() {
         }
       />
 
+      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+        Soles, heels, stitching, cleaning, and more. Multi-pair intake with combo pricing.
+      </p>
+
+      <div className="mb-5 flex items-center gap-2">
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <span
+            className="px-3 py-1.5 text-xs font-semibold rounded-md"
+            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+          >
+            Jobs
+          </span>
+          <Link
+            to="/shoe-repairs/services"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: 'transparent',
+              color: 'var(--cafe-text-muted)',
+              textDecoration: 'none',
+            }}
+          >
+            Services
+          </Link>
+        </div>
+      </div>
+
       <ComboBanner />
+
+      {/* Active / Completed toggle */}
+      <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
+          >
+            Completed ({completedCount})
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`px-2 py-1 text-xs font-medium rounded ${viewMode === 'kanban' ? 'bg-amber-100' : ''}`}
+            style={viewMode === 'kanban' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { color: 'var(--cafe-text-muted)' }}
+            onClick={() => setViewMode('kanban')}
+          >
+            By stage
+          </button>
+          <button
+            type="button"
+            className={`px-2 py-1 text-xs font-medium rounded ${viewMode === 'cards' ? 'bg-amber-100' : ''}`}
+            style={viewMode === 'cards' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { color: 'var(--cafe-text-muted)' }}
+            onClick={() => setViewMode('cards')}
+          >
+            Cards
+          </button>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row mb-6">
@@ -512,9 +603,9 @@ export default function ShoeRepairsPage() {
           className="h-10 rounded-xl border px-3 text-sm outline-none focus:ring-2 sm:w-48"
           style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
         >
-          <option value="all">All statuses</option>
-          {SHOE_STATUSES.map(s => (
-            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+          <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
+          {statusOptions.map(s => (
+            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </select>
       </div>
@@ -525,11 +616,80 @@ export default function ShoeRepairsPage() {
         <EmptyState message={jobs?.length === 0 ? 'No shoe repair jobs yet - create one to get started.' : 'No jobs match the current filters.'} />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {filtered.map(job => (
-          <JobCard key={job.id} job={job} />
-        ))}
-      </div>
+      {!isLoading && viewMode === 'kanban' && filtered.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
+          {statusOptions
+            .filter(s => statusFilter === 'all' || s === statusFilter)
+            .map((status) => {
+              const jobsInStatus = filtered.filter(j => j.status === status)
+              return (
+                <Card key={status} className="overflow-hidden">
+                  <div
+                    className="px-4 py-3.5 flex items-center justify-between"
+                    style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                  >
+                    <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      {STATUS_LABELS[status] ?? status}
+                    </p>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                      {jobsInStatus.length}
+                    </span>
+                  </div>
+                  <div>
+                    {jobsInStatus.length === 0 ? (
+                      <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No jobs in this stage.</p>
+                    ) : (
+                      jobsInStatus.map((j, i) => {
+                        const total = j.items.reduce((s, it) => s + (it.unit_price_cents != null ? it.unit_price_cents * it.quantity : 0), 0)
+                        return (
+                          <div
+                            key={j.id}
+                            className="px-4 py-3"
+                            style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <Link to={`/shoe-repairs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                                  {j.title}
+                                </Link>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                                  #{j.job_number} · {formatDate(j.created_at)}
+                                </p>
+                              </div>
+                              <Badge status={j.status} />
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                              {j.items.length} service{j.items.length !== 1 ? 's' : ''} · ${(total / 100).toFixed(2)}
+                            </p>
+                            <select
+                              value={j.status}
+                              className="w-full mt-2 rounded-md px-2 py-1.5 text-xs outline-none"
+                              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                              onChange={e => statusMut.mutate({ jobId: j.id, status: e.target.value })}
+                              disabled={statusMut.isPending}
+                            >
+                              {SHOE_STATUSES.map(s => (
+                                <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </Card>
+              )
+            })}
+        </div>
+      )}
+
+      {!isLoading && viewMode === 'cards' && filtered.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {filtered.map(job => (
+            <JobCard key={job.id} job={job} />
+          ))}
+        </div>
+      )}
 
       {showAdd && <NewShoeJobModal onClose={() => setShowAdd(false)} />}
     </div>

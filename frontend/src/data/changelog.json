@@ -15,7 +15,8 @@
       "Import: ticket/job number now preserved from source (e.g. Ticket #, Ref, Job No) instead of auto-assigning; strips Excel .0 suffix",
       "Import: handles varied spreadsheet layouts — unnamed first column as ticket, Number→phone, GA/NG/Collected→status, being done→notes",
       "Shoe repairs: repair complexity (Simple/Standard/Complex) and estimated turnaround per service; displayed when quoting and on job cards",
-      "Shoe repairs: queue-based Est. ready by date — derives from quantity of jobs ahead (FIFO) and each job's repair time"
+      "Shoe repairs: queue-based Est. ready by date — derives from quantity of jobs ahead (FIFO) and each job's repair time",
+      "Mobile Services: ServiceM8-style scheduling — job type (mobile/shop), job address, scheduled date; Dispatch tab with day view and unscheduled queue"
     ]
   },
   {

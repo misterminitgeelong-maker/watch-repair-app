@@ -8,8 +8,8 @@ const LANDING_CSS = `
 .lp-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(90, 55, 16, 0.08), 0 18px 34px rgba(90, 55, 16, 0.10); }
 `
 
-const SEO_TITLE = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and auto key shops. From A$25/month.'
-const SEO_DESCRIPTION = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and auto key shops. From A$25/month.'
+const SEO_TITLE = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$25/month.'
+const SEO_DESCRIPTION = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$25/month.'
 
 export default function PricingPage() {
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function PricingPage() {
       price: 'A$25/mo',
       note: 'Includes one service tab + reports',
       bullets: [
-        'Choose one tab: Watch Repairs, Shoe Repairs, or Auto Key',
+        'Choose one tab: Watch Repairs, Shoe Repairs, or Mobile Services',
         'Add each extra service tab for $10/month',
         'Customers and invoicing included',
       ],

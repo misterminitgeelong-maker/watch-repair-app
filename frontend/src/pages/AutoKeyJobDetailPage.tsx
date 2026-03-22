@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, MapPin } from 'lucide-react'
+import { ChevronLeft, MapPin, MessageSquare } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
@@ -9,12 +9,13 @@ import {
   listAutoKeyQuotes,
   listCustomerAccounts,
   listUsers,
+  sendAutoKeyArrivalSms,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   type CustomerAccount,
   type JobStatus,
 } from '@/lib/api'
-import { Badge, Card, EmptyState, Input, PageHeader, Select, Spinner } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
@@ -40,6 +41,8 @@ export default function AutoKeyJobDetailPage() {
   const qc = useQueryClient()
   const [error, setError] = useState('')
   const [addressEdit, setAddressEdit] = useState<string | null>(null)
+  const [showArrivalSms, setShowArrivalSms] = useState(false)
+  const [arrivalWindow, setArrivalWindow] = useState('9–11am')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -55,6 +58,7 @@ export default function AutoKeyJobDetailPage() {
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
   })
+  const isSolo = users.length <= 1
 
   const { data: quotes = [] } = useQuery({
     queryKey: ['auto-key-quotes', id],
@@ -109,6 +113,15 @@ export default function AutoKeyJobDetailPage() {
     onError: err => setError(getApiErrorMessage(err, 'Failed to update schedule.')),
   })
 
+  const arrivalSmsMut = useMutation({
+    mutationFn: (time_window: string) => sendAutoKeyArrivalSms(id!, time_window),
+    onSuccess: () => {
+      setShowArrivalSms(false)
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to send arrival SMS.')),
+  })
+
   const toDatetimeLocal = (s?: string | null) => {
     if (!s) return ''
     const d = new Date(s)
@@ -125,7 +138,7 @@ export default function AutoKeyJobDetailPage() {
   }
 
   if (isLoading) return <Spinner />
-  if (!job) return <EmptyState message='Auto key job not found.' />
+  if (!job) return <EmptyState message='Mobile Services job not found.' />
 
   const matchingAccounts = customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
 
@@ -137,7 +150,7 @@ export default function AutoKeyJobDetailPage() {
           className='inline-flex items-center gap-1 text-sm font-medium transition-colors'
           style={{ color: 'var(--cafe-text-muted)' }}
         >
-          <ChevronLeft size={14} /> Back to Auto Key Jobs
+          <ChevronLeft size={14} /> Back to Mobile Services
         </Link>
       </div>
 
@@ -163,6 +176,16 @@ export default function AutoKeyJobDetailPage() {
                 </a>
               </div>
             )}
+            {job.job_type === 'mobile' && (
+              <button
+                type="button"
+                onClick={() => setShowArrivalSms(true)}
+                className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg text-sm font-medium touch-manipulation"
+                style={{ color: 'var(--cafe-amber)', backgroundColor: 'rgba(201, 162, 72, 0.12)' }}
+              >
+                <MessageSquare size={16} /> Send arrival SMS to customer
+              </button>
+            )}
           </div>
 
           <Select
@@ -174,6 +197,7 @@ export default function AutoKeyJobDetailPage() {
             {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </Select>
 
+          {!isSolo && (
           <Select
             label='Assign tech'
             value={job.assigned_user_id ?? ''}
@@ -185,6 +209,7 @@ export default function AutoKeyJobDetailPage() {
               <option key={u.id} value={u.id}>{u.full_name}</option>
             ))}
           </Select>
+          )}
 
           <Select
             label='Customer Account'
@@ -231,6 +256,26 @@ export default function AutoKeyJobDetailPage() {
 
           {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
         </Card>
+
+        {showArrivalSms && (
+          <Modal title="Send arrival SMS" onClose={() => setShowArrivalSms(false)}>
+            <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+              Customer will receive: &quot;Your technician is on the way and will arrive between [time window].&quot;
+            </p>
+            <Input
+              label="Time window"
+              value={arrivalWindow}
+              onChange={e => setArrivalWindow(e.target.value)}
+              placeholder="e.g. 9–11am, 2–4pm"
+            />
+            <div className="flex gap-2 mt-4">
+              <Button variant="secondary" onClick={() => setShowArrivalSms(false)}>Cancel</Button>
+              <Button onClick={() => arrivalSmsMut.mutate(arrivalWindow)} disabled={arrivalSmsMut.isPending || !arrivalWindow.trim()}>
+                {arrivalSmsMut.isPending ? 'Sending…' : 'Send SMS'}
+              </Button>
+            </div>
+          </Modal>
+        )}
 
         <div className='lg:col-span-2 space-y-5'>
           <Card>

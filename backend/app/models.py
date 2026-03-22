@@ -219,6 +219,7 @@ class Approval(SQLModel, table=True):
     decision: str
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
+    customer_signature_data_url: Optional[str] = None  # Base64 PNG data URL from signature pad
     decided_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -708,6 +709,7 @@ class QuoteSendResponse(SQLModel):
 
 class QuoteDecisionRequest(SQLModel):
     decision: QuoteDecision
+    signature_data_url: Optional[str] = None  # Base64 PNG data URL from signature pad (optional)
 
 
 class QuoteDecisionResponse(SQLModel):
@@ -956,6 +958,7 @@ class AutoKeyJob(SQLModel, table=True):
     scheduled_at: Optional[datetime] = None
     job_address: Optional[str] = None  # For mobile jobs; falls back to customer address
     job_type: Optional[str] = None  # "mobile" | "shop"
+    visit_order: Optional[int] = None  # Route order for same-day jobs (lower = first)
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
@@ -1016,6 +1019,7 @@ class AutoKeyJobRead(SQLModel):
     scheduled_at: Optional[datetime] = None
     job_address: Optional[str] = None
     job_type: Optional[str] = None
+    visit_order: Optional[int] = None
 
 
 class AutoKeyJobStatusUpdate(SQLModel):
@@ -1031,6 +1035,7 @@ class AutoKeyJobFieldUpdate(SQLModel):
     scheduled_at: Optional[datetime] = None
     job_address: Optional[str] = None
     job_type: Optional[str] = None
+    visit_order: Optional[int] = None
     vehicle_make: Optional[str] = None
     vehicle_model: Optional[str] = None
     vehicle_year: Optional[int] = None

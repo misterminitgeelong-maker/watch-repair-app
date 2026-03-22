@@ -53,7 +53,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site']
+  const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site', 'rego_lookup']
   const [token, setToken] = useState<string | null>(() => {
     try {
       return getStoredAccessToken()

@@ -27,6 +27,7 @@ import AccountsPage from '@/pages/AccountsPage'
 import PlatformAdminUsersPage from '@/pages/PlatformAdminUsersPage'
 import ShoeRepairsPage from '@/pages/ShoeRepairsPage'
 import ShoeJobDetailPage from '@/pages/ShoeJobDetailPage'
+import ShoeServicesPage from '@/pages/ShoeServicesPage'
 import PrintWatchIntakeTicketsPage from '@/pages/PrintWatchIntakeTicketsPage'
 import PrintShoeIntakeTicketsPage from '@/pages/PrintShoeIntakeTicketsPage'
 import AutoKeyJobsPage from '@/pages/AutoKeyJobsPage'
@@ -91,6 +92,7 @@ export default function App() {
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
+              <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />
             </Route>

@@ -170,7 +170,7 @@ export type PlanCode =
   | 'basic_shoe_auto_key'
   | 'basic_all_tabs'
   | 'pro'
-export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site'
+export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site' | 'rego_lookup'
 
 export interface SiteOption {
   tenant_id: string
@@ -449,8 +449,8 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
   axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(`/v1/public/quotes/${token}`)
-export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined') =>
-  axios.post(`/v1/public/quotes/${token}/decision`, { decision })
+export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signatureDataUrl?: string | null) =>
+  axios.post(`/v1/public/quotes/${token}/decision`, { decision, ...(signatureDataUrl ? { signature_data_url: signatureDataUrl } : {}) })
 
 export interface PublicJobStatus {
   job_number: string
@@ -790,6 +790,19 @@ export const getExportJobsCsv = () => api.get<Blob>('/reports/export/jobs', { re
 export const getExportCustomersCsv = () => api.get<Blob>('/reports/export/customers', { responseType: 'blob' })
 export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoices', { responseType: 'blob' })
 
+export interface AutoKeySummary {
+  jobs_by_tech: { tech_id: string; tech_name: string; job_count: number; revenue_cents: number }[]
+  mobile_vs_shop: { mobile: number; shop: number; other: number }
+  total_jobs: number
+  total_revenue_cents: number
+}
+export const getAutoKeySummary = () => api.get<AutoKeySummary>('/reports/auto-key-summary')
+export const sendAutoKeyDayBeforeReminders = () =>
+  api.post<{ techs_notified: number; customers_notified: number }>('/auto-key-jobs/send-day-before-reminders')
+
+export const sendAutoKeyArrivalSms = (jobId: string, time_window: string) =>
+  api.post<{ sent: boolean }>(`/auto-key-jobs/${jobId}/send-arrival-sms`, { time_window })
+
 export const getExportMyData = () => api.get<Record<string, unknown>>('/auth/export-my-data')
 
 // ── Tenant Activity ───────────────────────────────────────────────────────────
@@ -974,7 +987,7 @@ export interface Shoe {
 export const listShoes = (customerId?: string) =>
   api.get<Shoe[]>('/shoe-repair-jobs/shoes', customerId ? { params: { customer_id: customerId } } : undefined)
 
-// ── Auto Key Jobs ────────────────────────────────────────────────────────────
+// ── Mobile Services (auto_key) Jobs ──────────────────────────────────────────
 export type AutoKeyProgrammingStatus = 'pending' | 'in_progress' | 'programmed' | 'failed' | 'not_required'
 
 export interface AutoKeyJob {
@@ -1008,6 +1021,8 @@ export interface AutoKeyJob {
   job_address?: string
   /** "mobile" | "shop" */
   job_type?: string
+  /** Route order for same-day jobs (lower = first) */
+  visit_order?: number
 }
 
 export interface AutoKeyJobCreatePayload {
@@ -1035,7 +1050,7 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
 }
 
-export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; assigned_user_id?: string }) =>
+export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; include_unscheduled?: boolean; assigned_user_id?: string }) =>
   api.get<AutoKeyJob[]>('/auto-key-jobs', params ? { params } : undefined)
 
 export interface VehicleLookupResult {
@@ -1051,12 +1066,13 @@ export const vehicleLookup = (plate: string, state: string) =>
   api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
-export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type'> {
+export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type' | 'visit_order'> {
   customer_account_id?: string | null
   assigned_user_id?: string | null
   scheduled_at?: string | null
   job_address?: string | null
   job_type?: string | null
+  visit_order?: number | null
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

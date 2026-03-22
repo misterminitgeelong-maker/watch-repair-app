@@ -73,7 +73,7 @@ export default function JobsPage() {
   return (
     <div>
       <PageHeader
-        title="Repair Jobs"
+        title="Watch Repairs"
         action={
           <div className="flex flex-col items-end gap-1">
             <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
@@ -84,6 +84,32 @@ export default function JobsPage() {
         }
       />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
+
+      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+        Movement services, batteries, pressure testing, and full servicing.
+      </p>
+
+      <div className="mb-5 flex items-center gap-2">
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <span
+            className="px-3 py-1.5 text-xs font-semibold rounded-md"
+            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+          >
+            Jobs
+          </span>
+          <Link
+            to="/catalogue"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: 'transparent',
+              color: 'var(--cafe-text-muted)',
+              textDecoration: 'none',
+            }}
+          >
+            Catalogue
+          </Link>
+        </div>
+      </div>
 
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>

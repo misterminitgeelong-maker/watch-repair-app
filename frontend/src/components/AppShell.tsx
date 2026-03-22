@@ -78,7 +78,7 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
       intro: 'This profile ties each person to all of their active and completed work.',
       features: [
         'View linked watches and repair history',
-        'Start new watch, shoe, or auto-key jobs from one place',
+        'Start new watch, shoe, or mobile services jobs from one place',
         'Track notes and service context for future visits',
       ],
       nextStep: 'Create a job from this profile to keep records clean and connected.',
@@ -139,8 +139,8 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
   if (pathname === '/auto-key') {
     return {
       key: 'jobs-auto-key',
-      title: 'Auto Key Jobs Board',
-      intro: 'This board handles vehicle key cutting, programming, and handover tracking.',
+      title: 'Mobile Services Board',
+      intro: 'This board handles vehicle key cutting, programming, mobile/shop jobs, and handover tracking.',
       features: [
         'Create jobs with vehicle, key type, and quantity details',
         'Track programming status separately from commercial status',
@@ -152,7 +152,7 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
   if (/^\/auto-key\/[^/]+$/.test(pathname)) {
     return {
       key: 'job-auto-key-detail',
-      title: 'Auto Key Job Detail',
+      title: 'Mobile Services Job Detail',
       intro: 'This page is your technical worksheet plus customer transaction record.',
       features: [
         'Capture VIN, plate, make/model, and key specifications',
@@ -341,7 +341,7 @@ export default function AppShell() {
     const shoeItemsPreview = firstShoeJob?.items.slice(0, 2).map((item) => item.item_name).join(' and ')
     const watchJobLabel = firstWatchJob ? `Open watch job #${firstWatchJob.job_number}` : 'Open a watch repair'
     const shoeJobLabel = firstShoeJob ? `Open shoe job #${firstShoeJob.job_number}` : 'Open a shoe repair'
-    const autoKeyLabel = firstAutoKeyJob ? `Open key job #${firstAutoKeyJob.job_number}` : 'Open an auto key job'
+    const autoKeyLabel = firstAutoKeyJob ? `Open job #${firstAutoKeyJob.job_number}` : 'Open a Mobile Services job'
     const quoteLabel = firstQuote ? 'Go to quotes in progress' : 'Go to quotes'
     const invoiceLabel = firstInvoice ? `Open invoice #${firstInvoice.invoice_number}` : 'Go to invoices'
 
@@ -448,13 +448,13 @@ export default function AppShell() {
           'This gives the demo a tactile feel because the service mix is visible, not hidden.',
           'It is a strong differentiator when showing the app to repair businesses with multiple service types.',
         ],
-        actionLabel: 'Take me to auto key jobs',
+        actionLabel: 'Take me to Mobile Services',
         actionPath: '/auto-key',
       },
       {
         key: 'guided-auto-list',
-        title: 'Auto key work has its own technical flow',
-        label: 'Auto key',
+        title: 'Mobile Services has its own technical flow',
+        label: 'Mobile Services',
         routePath: '/auto-key',
         matcher: exactMatcher('/auto-key'),
         intro: 'Vehicle jobs need a different data model, so this queue is tailored to key programming and vehicle details.',
@@ -468,8 +468,8 @@ export default function AppShell() {
       },
       {
         key: 'guided-auto-detail',
-        title: 'The auto key detail page shows why this is not just another repair template',
-        label: 'Auto key detail',
+        title: 'The Mobile Services detail page shows why this is not just another repair template',
+        label: 'Mobile Services detail',
         routePath: autoKeyDetailPath,
         matcher: (pathname: string) => /^\/auto-key\/[^/]+$/.test(pathname),
         intro: 'VINs, plates, key type, and programming steps matter here, so the app gives that work its own structure.',
@@ -545,7 +545,7 @@ export default function AppShell() {
 
     return steps.filter((step) => {
       if (step.label === 'Shoe repairs' || step.label === 'Shoe repair detail') return hasFeature('shoe')
-      if (step.label === 'Auto key' || step.label === 'Auto key detail') return hasFeature('auto_key')
+      if (step.label === 'Mobile Services' || step.label === 'Mobile Services detail') return hasFeature('auto_key')
       return true
     })
   }, [autoKeyJobs, customers, hasFeature, invoices, jobs, quotes, shoeJobs])
@@ -680,11 +680,11 @@ export default function AppShell() {
         >
           <button
             onClick={() => setMobileNavOpen(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg -ml-1"
             style={{ color: 'var(--cafe-text-mid)' }}
             aria-label="Open navigation"
           >
-            <Menu size={20} />
+            <Menu size={22} />
           </button>
 
           <div className="flex items-center gap-2">
@@ -783,7 +783,7 @@ export default function AppShell() {
               >
                 <div className="font-semibold mb-1" style={{ color: 'var(--cafe-gold)' }}>In-Depth Guided Tour</div>
                 <div className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-                  Follow a structured demo with real customer, watch, shoe, key, quote, and invoice records.
+                  Follow a structured demo with real customer, watch, shoe, mobile services, quote, and invoice records.
                 </div>
               </button>
             </div>

@@ -213,7 +213,7 @@ export default function CustomerAccountsPage() {
   }
 
   function sourceLabel(source: 'watch' | 'shoe' | 'auto_key') {
-    if (source === 'auto_key') return 'Auto Key'
+    if (source === 'auto_key') return 'Mobile Services'
     if (source === 'shoe') return 'Shoe'
     return 'Watch'
   }

@@ -98,10 +98,10 @@ function formatPlanName(planCode: string) {
   if (planCode === 'pro') return 'Pro'
   if (planCode === 'basic_watch') return 'Basic - Watch'
   if (planCode === 'basic_shoe') return 'Basic - Shoe'
-  if (planCode === 'basic_auto_key') return 'Basic - Auto Key'
+  if (planCode === 'basic_auto_key') return 'Basic - Mobile Services'
   if (planCode === 'basic_watch_shoe') return 'Basic +1 Tab (Watch + Shoe)'
-  if (planCode === 'basic_watch_auto_key') return 'Basic +1 Tab (Watch + Auto Key)'
-  if (planCode === 'basic_shoe_auto_key') return 'Basic +1 Tab (Shoe + Auto Key)'
+  if (planCode === 'basic_watch_auto_key') return 'Basic +1 Tab (Watch + Mobile Services)'
+  if (planCode === 'basic_shoe_auto_key') return 'Basic +1 Tab (Shoe + Mobile Services)'
   if (planCode === 'basic_all_tabs') return 'Basic +2 Tabs (All Service Tabs)'
   return planCode
 }
@@ -272,7 +272,7 @@ export default function DashboardPage() {
       to: `/auto-key/${job.id}`,
       created_at: job.created_at,
       status: job.status,
-      typeLabel: 'Auto key',
+      typeLabel: 'Mobile Services',
       detail: `#${job.job_number}`,
     }))
 
@@ -287,11 +287,17 @@ export default function DashboardPage() {
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
 
+  const serviceBreakdown = [
+      hasFeature('watch') && `Watch: ${watchOpenJobs.length}`,
+      hasFeature('shoe') && `Shoe: ${shoeOpenJobs.length}`,
+      hasFeature('auto_key') && `Mobile: ${autoOpenJobs.length}`,
+    ].filter(Boolean).join(' · ')
+
   const statCards = [
     {
       label: 'All Active Jobs',
       value: String(totalServiceJobs),
-      helper: `${urgentAcrossServiceLines} high-priority across all service lines`,
+      helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across all service lines`,
       to: '/jobs',
       icon: Wrench,
       iconBg: '#EFE7DC',
@@ -383,7 +389,7 @@ export default function DashboardPage() {
     ...(hasFeature('auto_key')
       ? [{
           to: '/auto-key',
-          title: 'Auto Key',
+          title: 'Mobile Services',
           icon: KeyRound,
           accent: '#5D4A9B',
           summary: 'Programming queue, vehicle jobs, and key-cutting work that needs technical follow-through.',
@@ -633,7 +639,7 @@ export default function DashboardPage() {
                   Live Service Queue
                 </h2>
                 <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-                  The newest repair activity across watch, shoe, and auto-key work.
+                  The newest repair activity across watch, shoe, and mobile services work.
                 </p>
               </div>
               <Link to="/jobs" className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-amber)' }}>

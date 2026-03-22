@@ -46,9 +46,9 @@ const PLAN_BUNDLES: PlanBundle[] = [
   },
   {
     code: 'basic_auto_key',
-    name: 'Basic - Auto Key',
+    name: 'Basic - Mobile Services',
     monthlyLabel: '$25/mo',
-    modules: ['Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    modules: ['Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '1 service tab included',
   },
   {
@@ -60,23 +60,23 @@ const PLAN_BUNDLES: PlanBundle[] = [
   },
   {
     code: 'basic_watch_auto_key',
-    name: 'Basic +1 Tab (Watch + Auto Key)',
+    name: 'Basic +1 Tab (Watch + Mobile Services)',
     monthlyLabel: '$35/mo',
-    modules: ['Watch repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    modules: ['Watch repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '2 service tabs',
   },
   {
     code: 'basic_shoe_auto_key',
-    name: 'Basic +1 Tab (Shoe + Auto Key)',
+    name: 'Basic +1 Tab (Shoe + Mobile Services)',
     monthlyLabel: '$35/mo',
-    modules: ['Shoe repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    modules: ['Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '2 service tabs',
   },
   {
     code: 'basic_all_tabs',
     name: 'Basic +2 Tabs (All Service Tabs)',
     monthlyLabel: '$45/mo',
-    modules: ['Watch repairs', 'Shoe repairs', 'Auto key jobs', 'Reports', 'Customers', 'Invoices'],
+    modules: ['Watch repairs', 'Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '3 service tabs',
   },
   {
@@ -298,7 +298,7 @@ export default function AccountsPage() {
             )}
             {limits.max_auto_key_jobs > 0 && (
               <div>
-                <span style={{ color: 'var(--cafe-text-mid)' }}>Auto key jobs</span>
+                <span style={{ color: 'var(--cafe-text-mid)' }}>Mobile Services jobs</span>
                 <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.auto_key_jobs ?? 0} / {limits.max_auto_key_jobs}</p>
               </div>
             )}
@@ -584,7 +584,7 @@ function BillingCard() {
           ? <UsageRow label="Shoe repair jobs" used={usage.shoe_jobs} max={limits.max_shoe_jobs} />
           : null}
         {limits.max_auto_key_jobs > 0 || usage.auto_key_jobs > 0
-          ? <UsageRow label="Auto key jobs" used={usage.auto_key_jobs} max={limits.max_auto_key_jobs} />
+          ? <UsageRow label="Mobile Services jobs" used={usage.auto_key_jobs} max={limits.max_auto_key_jobs} />
           : null}
       </div>
 

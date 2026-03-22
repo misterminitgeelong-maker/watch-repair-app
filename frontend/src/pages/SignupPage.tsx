@@ -20,17 +20,17 @@ type UseCaseId = 'watch' | 'shoe' | 'auto_key' | 'multi_site'
 const USE_CASE_OPTIONS: Array<{ id: UseCaseId; label: string; hint: string }> = [
   { id: 'watch', label: 'Watch repairs', hint: 'Traditional watch service and restoration workflow' },
   { id: 'shoe', label: 'Shoe repairs', hint: 'Intake, status tracking, and completion for footwear jobs' },
-  { id: 'auto_key', label: 'Auto keys', hint: 'Track key cutting, programming, and quoting' },
+  { id: 'auto_key', label: 'Mobile Services', hint: 'Track key cutting, programming, and mobile/shop jobs' },
   { id: 'multi_site', label: 'Multiple shop locations', hint: 'Manage sites under one parent account' },
 ]
 
 const PLAN_OPTIONS: Array<{ id: PlanId; name: string; price: string; description: string }> = [
   { id: 'basic_watch', name: 'Basic - Watch', price: 'A$25/month', description: 'One tab: watch repairs' },
   { id: 'basic_shoe', name: 'Basic - Shoe', price: 'A$25/month', description: 'One tab: shoe repairs' },
-  { id: 'basic_auto_key', name: 'Basic - Auto Key', price: 'A$25/month', description: 'One tab: auto key jobs' },
+  { id: 'basic_auto_key', name: 'Basic - Mobile Services', price: 'A$25/month', description: 'One tab: mobile services jobs' },
   { id: 'basic_watch_shoe', name: 'Basic - Watch + Shoe', price: 'A$35/month', description: 'Two service tabs' },
-  { id: 'basic_watch_auto_key', name: 'Basic - Watch + Auto Key', price: 'A$35/month', description: 'Two service tabs' },
-  { id: 'basic_shoe_auto_key', name: 'Basic - Shoe + Auto Key', price: 'A$35/month', description: 'Two service tabs' },
+  { id: 'basic_watch_auto_key', name: 'Basic - Watch + Mobile Services', price: 'A$35/month', description: 'Two service tabs' },
+  { id: 'basic_shoe_auto_key', name: 'Basic - Shoe + Mobile Services', price: 'A$35/month', description: 'Two service tabs' },
   { id: 'basic_all_tabs', name: 'Basic - All Tabs', price: 'A$45/month', description: 'All three service tabs' },
   { id: 'pro', name: 'Pro - Full Access', price: 'A$50/month', description: 'All tabs + multi-site + full features' },
 ]

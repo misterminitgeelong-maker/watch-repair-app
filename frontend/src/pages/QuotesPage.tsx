@@ -156,6 +156,7 @@ export default function QuotesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                  <th className="px-5 py-3 font-medium">Source</th>
                   <th className="px-5 py-3 font-medium">Job</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 font-medium">Total</th>
@@ -167,6 +168,9 @@ export default function QuotesPage() {
               <tbody>
                 {(quotes ?? []).map(q => (
                   <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                    <td className="px-5 py-3">
+                      <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
+                    </td>
                     <td className="px-5 py-3">
                       <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
                     </td>

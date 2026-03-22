@@ -15,7 +15,7 @@ async def vehicle_lookup(
     plate: str = Query(..., min_length=1, description="Registration plate"),
     state: str = Query(..., description="Registration state (ACT, NSW, NT, QLD, SA, TAS, VIC, WA)"),
     _auth=Depends(get_auth_context),
-    _feat=Depends(require_feature("auto_key")),
+    _feat=Depends(require_feature("rego_lookup")),
 ):
     """Look up vehicle details by registration plate and state. Proxies to Blue Flag NEVDIS."""
     if not settings.rego_lookup_api_key:

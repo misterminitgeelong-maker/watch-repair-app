@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { CheckCircle, XCircle, Clock, WrenchIcon } from 'lucide-react'
 import { getPublicQuote, submitQuoteDecision } from '@/lib/api'
+import SignaturePad from '@/components/SignaturePad'
 
 function formatCents(c: number) {
   return (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -13,6 +14,7 @@ export default function ApprovePage() {
   const [decision, setDecision] = useState<'approved' | 'declined' | null>(null)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [signature, setSignature] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-quote', token],
@@ -22,7 +24,7 @@ export default function ApprovePage() {
   })
 
   const mut = useMutation({
-    mutationFn: (d: 'approved' | 'declined') => submitQuoteDecision(token!, d),
+    mutationFn: (d: 'approved' | 'declined') => submitQuoteDecision(token!, d, signature),
     onSuccess: (_, d) => { setDecision(d); setDone(true) },
     onError: () => setError('Something went wrong. Please try again or contact the shop.'),
   })
@@ -145,6 +147,12 @@ export default function ApprovePage() {
         {error && (
           <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>{error}</div>
         )}
+
+        {/* Optional signature */}
+        <div className="mb-5">
+          <p className="text-sm font-medium mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Sign to approve (optional)</p>
+          <SignaturePad onSignatureChange={setSignature} width={280} height={100} />
+        </div>
 
         {/* Decision buttons */}
         <div className="grid grid-cols-2 gap-3">

@@ -172,6 +172,7 @@ def quote_decision(
         decision=payload.decision,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
+        customer_signature_data_url=payload.signature_data_url if payload.decision == "approved" else None,
     )
     session.add(approval)
     session.commit()

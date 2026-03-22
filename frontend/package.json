@@ -12,17 +12,19 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@sentry/react": "^8.0.0",
     "@hookform/resolvers": "^5.2.2",
+    "@sentry/react": "^8.0.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.2",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.1",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"

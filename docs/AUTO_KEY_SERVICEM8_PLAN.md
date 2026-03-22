@@ -1,5 +1,7 @@
 # Auto Key — ServiceM8-Style Build Plan
 
+> **See also:** [ServiceM8 vs Mainspring feature comparison](SERVICEM8_COMPARISON.md) for a detailed gap analysis and solo-operator focus.
+
 ## Product decisions (confirmed)
 
 | Decision | Choice |
@@ -62,7 +64,7 @@
 - [x] Week view (7 days)
 - [x] Time slots (store date + time)
 - [x] Jobs shown in time slots per day
-- [ ] Optional drag-and-drop scheduling later
+- [x] Optional drag-and-drop scheduling (week view)
 
 ---
 
@@ -70,15 +72,15 @@
 
 - [x] Mobile status flow: `scheduled → en_route → on_site → completed`
 - [x] "Get directions" → open Maps with job address
-- [ ] Mobile-optimised layout (touch targets, responsive)
+- [x] Mobile-optimised layout (touch targets ≥44px, touch-manipulation)
 
 ---
 
 ## Phase 6: Notifications ✓
 
 - [x] Notify tech on schedule change
-- [ ] Optional day-before reminder
-- [ ] Optional customer SMS ("Tech arriving 9–11")
+- [x] Optional day-before reminder (techs + customers)
+- [x] Optional customer SMS ("Tech arriving 9–11") — Send arrival SMS on job detail
 - Reuse Twilio if already integrated
 
 ---

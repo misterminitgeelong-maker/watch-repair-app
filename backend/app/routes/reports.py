@@ -9,7 +9,7 @@ from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
-from ..models import AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, TenantEventLog, TenantEventLogRead, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -312,6 +312,51 @@ def export_customers_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=customers.csv"},
     )
+
+
+@router.get("/auto-key-summary", summary="Auto Key jobs and revenue by tech, mobile vs shop")
+def get_auto_key_summary(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant_id = auth.tenant_id
+    jobs = list(session.exec(
+        select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+    ).all())
+    invoices = list(session.exec(
+        select(AutoKeyInvoice)
+        .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .where(AutoKeyInvoice.status == "paid")
+    ).all())
+    revenue_by_job = {inv.auto_key_job_id: inv.total_cents for inv in invoices}
+    jobs_by_tech: dict[str, list] = {}
+    mobile_count = 0
+    shop_count = 0
+    total_revenue_cents = 0
+    for j in jobs:
+        tech_id = str(j.assigned_user_id) if j.assigned_user_id else "unassigned"
+        user = session.get(User, j.assigned_user_id) if j.assigned_user_id else None
+        tech_name = user.full_name if user else "Unassigned"
+        key = tech_id
+        if key not in jobs_by_tech:
+            jobs_by_tech[key] = {"tech_name": tech_name, "job_count": 0, "revenue_cents": 0}
+        jobs_by_tech[key]["job_count"] += 1
+        rev = revenue_by_job.get(j.id, 0)
+        jobs_by_tech[key]["revenue_cents"] += rev
+        total_revenue_cents += rev
+        if j.job_type == "mobile":
+            mobile_count += 1
+        elif j.job_type == "shop":
+            shop_count += 1
+    return {
+        "jobs_by_tech": [
+            {"tech_id": k, "tech_name": v["tech_name"], "job_count": v["job_count"], "revenue_cents": v["revenue_cents"]}
+            for k, v in sorted(jobs_by_tech.items(), key=lambda x: -x[1]["job_count"])
+        ],
+        "mobile_vs_shop": {"mobile": mobile_count, "shop": shop_count, "other": len(jobs) - mobile_count - shop_count},
+        "total_jobs": len(jobs),
+        "total_revenue_cents": total_revenue_cents,
+    }
 
 
 @router.get("/export/invoices", summary="Export invoices as CSV")

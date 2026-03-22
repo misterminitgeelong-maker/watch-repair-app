@@ -134,10 +134,10 @@ export default function ParentAccountPage() {
           <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
             <option value='basic_watch'>Basic - Watch ($25/mo)</option>
             <option value='basic_shoe'>Basic - Shoe ($25/mo)</option>
-            <option value='basic_auto_key'>Basic - Auto Key ($25/mo)</option>
+            <option value='basic_auto_key'>Basic - Mobile Services ($25/mo)</option>
             <option value='basic_watch_shoe'>Basic +1 Tab (Watch + Shoe) ($35/mo)</option>
-            <option value='basic_watch_auto_key'>Basic +1 Tab (Watch + Auto Key) ($35/mo)</option>
-            <option value='basic_shoe_auto_key'>Basic +1 Tab (Shoe + Auto Key) ($35/mo)</option>
+            <option value='basic_watch_auto_key'>Basic +1 Tab (Watch + Mobile Services) ($35/mo)</option>
+            <option value='basic_shoe_auto_key'>Basic +1 Tab (Shoe + Mobile Services) ($35/mo)</option>
             <option value='basic_all_tabs'>Basic +2 Tabs (All Service Tabs) ($45/mo)</option>
             <option value='pro'>Pro ($50/mo)</option>
           </Select>

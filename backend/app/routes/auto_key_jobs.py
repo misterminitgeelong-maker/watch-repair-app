@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlmodel import Session, delete, func, select
+from sqlmodel import Session, SQLModel, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -130,30 +130,52 @@ def list_auto_key_jobs(
     status: str | None = Query(default=None),
     date_from: str | None = Query(default=None, description="Filter scheduled_at >= date (YYYY-MM-DD)"),
     date_to: str | None = Query(default=None, description="Filter scheduled_at <= date (YYYY-MM-DD)"),
+    include_unscheduled: bool = Query(default=False, description="With date range, also include jobs with no scheduled_at"),
     assigned_user_id: UUID | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     from datetime import datetime as dt
+    from sqlalchemy import or_
 
     query = select(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(AutoKeyJob.status == status)
     if assigned_user_id:
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
-    if date_from:
-        try:
-            start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            query = query.where(AutoKeyJob.scheduled_at >= start)
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-            query = query.where(AutoKeyJob.scheduled_at <= end)
-        except ValueError:
-            pass
-    return session.exec(query.order_by(AutoKeyJob.created_at.desc())).all()
+    if date_from or date_to:
+        if date_from and date_to and include_unscheduled:
+            try:
+                start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                query = query.where(
+                    or_(
+                        (AutoKeyJob.scheduled_at >= start) & (AutoKeyJob.scheduled_at <= end),
+                        AutoKeyJob.scheduled_at.is_(None),
+                    )
+                )
+            except ValueError:
+                pass
+        else:
+            if date_from:
+                try:
+                    start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    query = query.where(AutoKeyJob.scheduled_at >= start)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                    query = query.where(AutoKeyJob.scheduled_at <= end)
+                except ValueError:
+                    pass
+    return session.exec(
+        query.order_by(
+            AutoKeyJob.scheduled_at.asc(),
+            AutoKeyJob.visit_order.asc(),
+            AutoKeyJob.created_at.desc(),
+        )
+    ).all()
 
 
 @router.get("/{job_id}", response_model=AutoKeyJobRead)
@@ -271,6 +293,20 @@ def update_auto_key_job_fields(
             job_type=job.job_type,
         )
         session.commit()
+
+    if schedule_changed and job.job_type == "mobile" and job.scheduled_at and job.customer_id:
+        customer = session.get(Customer, job.customer_id)
+        if customer and customer.phone and customer.phone.strip():
+            sms.notify_auto_key_customer_scheduled(
+                session,
+                tenant_id=auth.tenant_id,
+                to_phone=customer.phone.strip(),
+                customer_name=customer.full_name or "Customer",
+                job_number=job.job_number,
+                scheduled_at=job.scheduled_at.isoformat(),
+                job_address=job.job_address,
+            )
+            session.commit()
 
     session.refresh(job)
     return job
@@ -478,3 +514,98 @@ def create_auto_key_invoice_from_quote(
         currency=invoice.currency,
         created_at=invoice.created_at,
     )
+
+
+@router.post("/send-day-before-reminders", summary="Send SMS reminders to techs and customers for tomorrow's jobs")
+def send_day_before_reminders(
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Call from a daily cron (e.g. 6pm) to remind assigned techs and customers of tomorrow's scheduled jobs."""
+    now = datetime.now(timezone.utc)
+    tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_end = tomorrow_start + timedelta(days=1)
+    jobs = list(session.exec(
+        select(AutoKeyJob)
+        .where(AutoKeyJob.tenant_id == auth.tenant_id)
+        .where(AutoKeyJob.scheduled_at >= tomorrow_start)
+        .where(AutoKeyJob.scheduled_at < tomorrow_end)
+    ).all())
+    techs_notified = 0
+    customers_notified = 0
+
+    # Tech reminders (jobs with assigned tech)
+    by_tech: dict[UUID, list[AutoKeyJob]] = {}
+    for job in jobs:
+        uid = job.assigned_user_id
+        if uid:
+            by_tech.setdefault(uid, []).append(job)
+    for uid, job_list in by_tech.items():
+        user = session.get(User, uid)
+        if not user or not user.phone or not user.phone.strip():
+            continue
+        summaries = [f"#{j.job_number} {j.title or 'Auto key'}" for j in job_list]
+        sms.notify_auto_key_day_before_reminder(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=user.phone.strip(),
+            job_summaries=summaries,
+        )
+        session.commit()
+        techs_notified += 1
+
+    # Customer reminders (mobile jobs with customer phone)
+    seen_customers: set[UUID] = set()
+    for job in jobs:
+        if job.job_type != "mobile" or not job.customer_id or job.customer_id in seen_customers:
+            continue
+        customer = session.get(Customer, job.customer_id)
+        if not customer or not customer.phone or not customer.phone.strip():
+            continue
+        sms.notify_auto_key_customer_day_before(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=customer.phone.strip(),
+            customer_name=customer.full_name or "Customer",
+            job_number=job.job_number,
+            scheduled_at=job.scheduled_at.isoformat() if job.scheduled_at else None,
+            job_address=job.job_address,
+        )
+        session.commit()
+        seen_customers.add(job.customer_id)
+        customers_notified += 1
+
+    return {"techs_notified": techs_notified, "customers_notified": customers_notified}
+
+
+class SendArrivalSmsPayload(SQLModel):
+    time_window: str  # e.g. "9–11am", "2–4pm"
+
+
+@router.post("/{job_id}/send-arrival-sms", summary="Send arrival window SMS to customer")
+def send_arrival_sms(
+    job_id: UUID,
+    payload: SendArrivalSmsPayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Send 'Tech arriving between [time_window]' SMS to the job's customer."""
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+    customer = session.get(Customer, job.customer_id) if job.customer_id else None
+    if not customer or not customer.phone or not customer.phone.strip():
+        raise HTTPException(status_code=400, detail="Customer has no phone number")
+    time_window = (payload.time_window or "").strip()
+    if not time_window:
+        raise HTTPException(status_code=400, detail="Time window is required")
+    sms.notify_auto_key_arrival_window(
+        session,
+        tenant_id=auth.tenant_id,
+        to_phone=customer.phone.strip(),
+        customer_name=customer.full_name or "Customer",
+        job_number=job.job_number,
+        time_window=time_window,
+    )
+    session.commit()
+    return {"sent": True}

@@ -160,6 +160,127 @@ def notify_job_status_changed(
     )
 
 
+def notify_auto_key_day_before_reminder(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    job_summaries: list[str],
+) -> None:
+    """Remind tech of tomorrow's scheduled Auto Key jobs."""
+    if not job_summaries:
+        return
+    lines = "Tomorrow's jobs: " + "; ".join(job_summaries[:5])
+    if len(job_summaries) > 5:
+        lines += f" (+{len(job_summaries) - 5} more)"
+    sid = _send_sms(to_phone, lines)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=lines,
+        event="auto_key_day_before_reminder",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_auto_key_customer_scheduled(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    job_number: str,
+    scheduled_at: str | None,
+    job_address: str | None,
+) -> None:
+    """Notify customer when their mobile Auto Key job is scheduled."""
+    if not scheduled_at:
+        return
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        when = f"{dt.strftime('%a %d %b')} around {dt.strftime('%H:%M')}"
+    except (ValueError, TypeError):
+        when = scheduled_at[:16] if scheduled_at else ""
+    body = f"Hi {customer_name}, your auto key technician is scheduled for {when}."
+    if job_address:
+        body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_customer_scheduled",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_auto_key_customer_day_before(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    job_number: str,
+    scheduled_at: str | None,
+    job_address: str | None,
+) -> None:
+    """Notify customer of tomorrow's scheduled mobile job."""
+    if not scheduled_at:
+        return
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        when = f"{dt.strftime('%a %d %b')} around {dt.strftime('%H:%M')}"
+    except (ValueError, TypeError):
+        when = scheduled_at[:16] if scheduled_at else "tomorrow"
+    body = f"Hi {customer_name}, your technician is scheduled for {when}."
+    if job_address:
+        body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
+    body += " We'll SMS you with your arrival window on the day."
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_customer_day_before",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_auto_key_arrival_window(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    job_number: str,
+    time_window: str,
+) -> None:
+    """Notify customer: tech on the way, arriving in time window (e.g. 9–11am)."""
+    body = f"Hi {customer_name}, your technician is on the way and will arrive between {time_window}."
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_arrival_window",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_auto_key_schedule_changed(
     session: Session,
     *,

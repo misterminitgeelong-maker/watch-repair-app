@@ -89,6 +89,7 @@ ALL_PLAN_FEATURES = {
     "auto_key",
     "customer_accounts",
     "multi_site",
+    "rego_lookup",
 }
 
 PLAN_FEATURES: dict[str, set[str]] = {

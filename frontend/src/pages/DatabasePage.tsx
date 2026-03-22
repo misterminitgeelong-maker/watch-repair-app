@@ -154,7 +154,7 @@ export default function DatabasePage() {
                 {[
                   { key: 'watch', label: 'Watch (customers, watches, jobs, quotes, invoices)' },
                   { key: 'shoe', label: 'Shoe (shoes, shoe repair jobs)' },
-                  { key: 'auto_key', label: 'Auto key (auto key jobs, quotes, invoices)' },
+                  { key: 'auto_key', label: 'Mobile Services (mobile services jobs, quotes, invoices)' },
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer">
                     <input

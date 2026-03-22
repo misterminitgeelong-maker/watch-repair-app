@@ -263,7 +263,7 @@ function PricingSection() {
       price: 'A$25/mo',
       note: 'Includes one service tab + reports',
       bullets: [
-        'Choose one tab: Watch Repairs, Shoe Repairs, or Auto Key',
+        'Choose one tab: Watch Repairs, Shoe Repairs, or Mobile Services',
         'Add each extra service tab for $10/month',
         'Customers and invoicing included',
       ],
@@ -375,9 +375,16 @@ function FinalCTA() {
 }
 
 export default function LandingPage() {
-  const { token } = useAuth()
+  const { token, initializing } = useAuth()
 
-  if (token) return <Navigate to="/dashboard" replace />
+  if (token && !initializing) return <Navigate to="/dashboard" replace />
+  if (token && initializing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm">Checking session…</p>
+      </div>
+    )
+  }
 
   return (
     <div

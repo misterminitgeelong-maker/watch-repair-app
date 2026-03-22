@@ -1,11 +1,12 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, MapPin } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map, MapPin } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
   createAutoKeyQuote,
+  createCustomer,
   getApiErrorMessage,
   listCustomerAccounts,
   listAutoKeyInvoices,
@@ -14,13 +15,18 @@ import {
   listCustomers,
   listUsers,
   sendAutoKeyQuote,
+  sendAutoKeyDayBeforeReminders,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
+  getAutoKeySummary,
   vehicleLookup,
   type AutoKeyProgrammingStatus,
+  type Customer,
   type CustomerAccount,
   type JobStatus,
 } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import MobileServicesMap from '@/components/MobileServicesMap'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
@@ -28,13 +34,83 @@ const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
 
 const PROGRAMMING_STATUSES: AutoKeyProgrammingStatus[] = ['pending', 'in_progress', 'programmed', 'failed', 'not_required']
 
+const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const
+
 function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
 }
 
+function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
+  const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? customers.filter(c =>
+        c.full_name.toLowerCase().includes(q) ||
+        (c.phone && c.phone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
+        (c.email && c.email.toLowerCase().includes(q))
+      )
+    : customers
+  const selected = customers.find(c => c.id === value)
+  const display = selected ? `${selected.full_name}${selected.phone ? ` · ${selected.phone}` : ''}` : search
+  useEffect(() => { setHighlight(0) }, [search, filtered.length])
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const h = (e: MouseEvent) => { if (!el.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+  return (
+    <div ref={containerRef} className="relative">
+      <Input
+        label="Search customer"
+        value={open ? search : display}
+        onChange={e => { setSearch(e.target.value); setOpen(true); setHighlight(0) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={e => {
+          if (!open || filtered.length === 0) return
+          if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(i => (i + 1) % filtered.length) }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(i => (i - 1 + filtered.length) % filtered.length) }
+          else if (e.key === 'Enter') { e.preventDefault(); onChange(filtered[highlight].id); setOpen(false); setSearch('') }
+          else if (e.key === 'Escape') setOpen(false)
+        }}
+        placeholder="Type name, phone or email…"
+      />
+      {open && (
+        <ul className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-48" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)' }}>
+          {filtered.slice(0, 30).map((c, i) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm truncate"
+                style={{ color: 'var(--cafe-text)', backgroundColor: i === highlight ? '#F5EDE0' : 'transparent' }}
+                onMouseEnter={() => setHighlight(i)}
+                onMouseDown={e => { e.preventDefault(); onChange(c.id); setOpen(false); setSearch('') }}
+              >
+                {c.full_name}{c.phone ? ` · ${c.phone}` : ''}{c.email ? ` · ${c.email}` : ''}
+              </button>
+            </li>
+          ))}
+          {filtered.length === 0 && <li className="px-3 py-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No customers match</li>}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
+  const { hasFeature } = useAuth()
+  const canLookupRego = hasFeature('rego_lookup')
   const [error, setError] = useState('')
+  const [regoLookupError, setRegoLookupError] = useState('')
+  const [regoLookupLoading, setRegoLookupLoading] = useState(false)
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
+  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [form, setForm] = useState({
     customer_id: '',
     customer_account_id: '',
@@ -48,7 +124,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     vehicle_model: '',
     vehicle_year: '',
     registration_plate: '',
-    rego_state: 'VIC',
+    rego_state: 'NSW' as string,
     vin: '',
     key_type: '',
     key_quantity: '1',
@@ -78,30 +154,20 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(form.customer_id))
     : customerAccounts
 
-  const lookupMut = useMutation({
-    mutationFn: () => vehicleLookup(form.registration_plate.trim(), form.rego_state).then(r => r.data),
-    onSuccess: data => {
-      if (data.found) {
-        setForm(f => ({
-          ...f,
-          vehicle_make: data.make ?? f.vehicle_make,
-          vehicle_model: data.model ?? f.vehicle_model,
-          vehicle_year: data.year ? String(data.year) : f.vehicle_year,
-          vin: data.vin ?? f.vin,
-          registration_plate: data.registration_plate ?? f.registration_plate,
-        }))
-      }
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Lookup failed. Check plate, state, or API config.')),
-  })
-
   const createMut = useMutation({
     mutationFn: async () => {
-      if (!form.customer_id || !form.title.trim()) {
-        throw new Error('Customer and job title are required.')
+      if (!form.title.trim()) throw new Error('Job title is required.')
+      let customerId = form.customer_id
+      if (customerMode === 'new') {
+        if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
+        const { data } = await createCustomer(newCustomer)
+        customerId = data.id
+        qc.invalidateQueries({ queryKey: ['customers'] })
+      } else if (!customerId) {
+        throw new Error('Please select a customer.')
       }
       return createAutoKeyJob({
-        customer_id: form.customer_id,
+        customer_id: customerId,
         customer_account_id: form.customer_account_id || undefined,
         assigned_user_id: form.assigned_user_id || undefined,
         title: form.title.trim(),
@@ -129,26 +195,47 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err, 'Failed to create auto key job.')),
+    onError: (err) => setError(getApiErrorMessage(err, 'Failed to create Mobile Services job.')),
   })
 
   return (
-    <Modal title="New Auto Key Job" onClose={onClose}>
+    <Modal title="New Mobile Services Job" onClose={onClose}>
       <div className="space-y-3">
-        <Select label="Customer *" value={form.customer_id} onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))}>
-          <option value="">Select customer</option>
-          {customers.map(c => (
-            <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>
-          ))}
-        </Select>
-        <Select label="Customer Account (optional)" value={form.customer_account_id} onChange={e => setForm(f => ({ ...f, customer_account_id: e.target.value }))}>
-          <option value="">No B2B account</option>
-          {matchingAccounts.map((account: CustomerAccount) => (
-            <option key={account.id} value={account.id}>
-              {account.name}{account.account_code ? ` (${account.account_code})` : ''}
-            </option>
-          ))}
-        </Select>
+        <div className="flex gap-2 mb-1">
+          <button
+            onClick={() => setCustomerMode('existing')}
+            className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+            style={customerMode === 'existing' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+          >Existing Customer</button>
+          <button
+            onClick={() => setCustomerMode('new')}
+            className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+            style={customerMode === 'new' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+          >New Customer</button>
+        </div>
+        {customerMode === 'existing' ? (
+          <CustomerSearchSelect customers={customers} value={form.customer_id} onChange={id => setForm(f => ({ ...f, customer_id: id }))} />
+        ) : (
+          <>
+            <Input label="Full Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Jane Smith" />
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
+              <Input label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" />
+            </div>
+            <Input label="Address" value={newCustomer.address} onChange={e => setNewCustomer(f => ({ ...f, address: e.target.value }))} placeholder="Optional" />
+            <Textarea label="Notes" value={newCustomer.notes} onChange={e => setNewCustomer(f => ({ ...f, notes: e.target.value }))} rows={1} placeholder="Optional" />
+          </>
+        )}
+        {customerMode === 'existing' && form.customer_id && (
+          <Select label="Customer Account (optional)" value={form.customer_account_id} onChange={e => setForm(f => ({ ...f, customer_account_id: e.target.value }))}>
+            <option value="">No B2B account</option>
+            {matchingAccounts.map((account: CustomerAccount) => (
+              <option key={account.id} value={account.id}>
+                {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+              </option>
+            ))}
+          </Select>
+        )}
         <Select label="Assign tech" value={form.assigned_user_id} onChange={e => setForm(f => ({ ...f, assigned_user_id: e.target.value }))}>
           <option value="">Unassigned</option>
           {users.map((u: { id: string; full_name: string }) => (
@@ -166,27 +253,79 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           <Input label="Job address" value={form.job_address} onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))} placeholder="Where to meet customer" />
         )}
         <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
-        <div className="flex flex-wrap items-end gap-2">
-          <Input label="Registration" value={form.registration_plate} onChange={e => setForm(f => ({ ...f, registration_plate: e.target.value }))} placeholder="ABC123" className="flex-1 min-w-[120px]" />
-          <Select label="State" value={form.rego_state} onChange={e => setForm(f => ({ ...f, rego_state: e.target.value }))} className="w-24">
-            {['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'].map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </Select>
-          <Button type="button" variant="secondary" onClick={() => lookupMut.mutate()} disabled={lookupMut.isPending || !form.registration_plate.trim()}>
-            {lookupMut.isPending ? 'Looking up…' : 'Look up'}
-          </Button>
-        </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} />
           <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} />
-          <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--cafe-text)' }}>Registration</label>
+            <div className="flex gap-2">
+              <Input
+                value={form.registration_plate}
+                onChange={e => { setForm(f => ({ ...f, registration_plate: e.target.value })); setRegoLookupError('') }}
+                placeholder="ABC123"
+                className="flex-1"
+              />
+              {canLookupRego ? (
+                <>
+                  <Select
+                    value={form.rego_state}
+                    onChange={e => setForm(f => ({ ...f, rego_state: e.target.value }))}
+                    className="w-20 shrink-0"
+                  >
+                    {AU_STATES.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!form.registration_plate.trim() || regoLookupLoading}
+                    onClick={async () => {
+                      setRegoLookupError('')
+                      setRegoLookupLoading(true)
+                      try {
+                        const { data } = await vehicleLookup(form.registration_plate.trim(), form.rego_state)
+                        if (data.found) {
+                          setForm(f => ({
+                            ...f,
+                            vehicle_make: data.make ?? f.vehicle_make,
+                            vehicle_model: data.model ?? f.vehicle_model,
+                            vehicle_year: data.year ? String(data.year) : f.vehicle_year,
+                            vin: data.vin ?? f.vin,
+                          }))
+                        } else {
+                          setRegoLookupError('Registration not found')
+                        }
+                      } catch (err) {
+                        const status = (err as { response?: { status?: number } })?.response?.status
+                        if (status === 403) {
+                          setRegoLookupError('Upgrade to Pro for rego lookup')
+                        } else {
+                          setRegoLookupError(getApiErrorMessage(err, 'Lookup failed'))
+                        }
+                      } finally {
+                        setRegoLookupLoading(false)
+                      }
+                    }}
+                  >
+                    {regoLookupLoading ? <Spinner className="w-4 h-4" /> : 'Look up'}
+                  </Button>
+                </>
+              ) : (
+                <span className="flex items-center text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Upgrade for rego lookup</span>
+              )}
+            </div>
+            {regoLookupError && <p className="text-sm mt-1" style={{ color: '#C96A5A' }}>{regoLookupError}</p>}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
+          <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
           <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
           <Select label="Programming" value={form.programming_status} onChange={e => setForm(f => ({ ...f, programming_status: e.target.value as AutoKeyProgrammingStatus }))}>
             {PROGRAMMING_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
@@ -226,7 +365,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const [error, setError] = useState('')
-  const [description, setDescription] = useState('Auto key service')
+  const [description, setDescription] = useState('Mobile service')
   const [quantity, setQuantity] = useState('1')
   const [unitPrice, setUnitPrice] = useState('120.00')
   const [tax, setTax] = useState('0.00')
@@ -236,7 +375,7 @@ function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => vo
       createAutoKeyQuote(jobId, {
         line_items: [
           {
-            description: description.trim() || 'Auto key service',
+            description: description.trim() || 'Mobile service',
             quantity: Math.max(1, Number(quantity || '1')),
             unit_price_cents: Math.max(0, Math.round(parseFloat(unitPrice || '0') * 100)),
           },
@@ -251,7 +390,7 @@ function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => vo
   })
 
   return (
-    <Modal title="Create Auto Key Quote" onClose={onClose}>
+    <Modal title="Create Mobile Services Quote" onClose={onClose}>
       <div className="space-y-3">
         <Input label="Line item" value={description} onChange={e => setDescription(e.target.value)} />
         <div className="grid grid-cols-3 gap-3">
@@ -271,7 +410,7 @@ function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => vo
   )
 }
 
-function AutoKeyJobCard({ job, users }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[] }) {
+function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
 
@@ -328,7 +467,7 @@ function AutoKeyJobCard({ job, users }: { job: { id: string; job_number: string;
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-xs font-mono font-semibold" style={{ color: 'var(--cafe-amber)' }}>#{job.job_number}</p>
-            {job.assigned_user_id && (
+            {!isSolo && job.assigned_user_id && (
               <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(93,74,155,0.2)', color: '#5D4A9B' }}>
                 {users.find(u => u.id === job.assigned_user_id)?.full_name ?? 'Assigned'}
               </span>
@@ -388,6 +527,7 @@ function AutoKeyJobCard({ job, users }: { job: { id: string; job_number: string;
           >
             {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
           </Select>
+          {!isSolo && (
           <div className="mt-2">
             <Select
               label="Assign tech"
@@ -401,6 +541,7 @@ function AutoKeyJobCard({ job, users }: { job: { id: string; job_number: string;
               ))}
             </Select>
           </div>
+          )}
           <div className="mt-2">
             <Select
               value={job.customer_account_id ?? ''}
@@ -437,8 +578,9 @@ function AutoKeyJobCard({ job, users }: { job: { id: string; job_number: string;
 }
 
 export default function AutoKeyJobsPage() {
+  const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [view, setView] = useState<'jobs' | 'dispatch' | 'week'>('jobs')
+  const [view, setView] = useState<'jobs' | 'dispatch' | 'week' | 'map' | 'reports'>('dispatch')
   const [dispatchDate, setDispatchDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
   const [weekStart, setWeekStart] = useState(() => {
@@ -459,11 +601,11 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listUsers().then(r => r.data),
   })
 
-  const dispatchParams = view === 'dispatch' ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
+  const dispatchParams = view === 'dispatch' || view === 'map' ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter],
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
-    enabled: view === 'dispatch' && !!dispatchParams,
+    enabled: (view === 'dispatch' || view === 'map') && !!dispatchParams,
   })
 
   const weekEnd = (() => {
@@ -471,7 +613,24 @@ export default function AutoKeyJobsPage() {
     d.setDate(d.getDate() + 6)
     return d.toISOString().slice(0, 10)
   })()
-  const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd } : undefined
+  const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
+  const { data: autoKeySummary, isLoading: summaryLoading } = useQuery({
+    queryKey: ['auto-key-summary'],
+    queryFn: () => getAutoKeySummary().then(r => r.data),
+    enabled: view === 'reports',
+  })
+  const sendRemindersMut = useMutation({
+    mutationFn: () => sendAutoKeyDayBeforeReminders().then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-summary'] }),
+  })
+
+  const rescheduleMut = useMutation({
+    mutationFn: ({ jobId, scheduled_at }: { jobId: string; scheduled_at: string | null }) =>
+      updateAutoKeyJob(jobId, scheduled_at ? { scheduled_at } : { scheduled_at: null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+    },
+  })
   const { data: weekJobs = [], isLoading: weekLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'week', weekStart, weekEnd],
     queryFn: () => listAutoKeyJobs(weekParams!).then(r => r.data),
@@ -479,35 +638,55 @@ export default function AutoKeyJobsPage() {
   })
 
   const unscheduledJobs = view === 'dispatch' ? jobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) : []
+  const isSolo = users.length <= 1
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <PageHeader
-          title="Auto Key"
+          title="Mobile Services"
           action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />New Job</Button>}
         />
+      </div>
+      <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>
+        Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setView('jobs')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
             style={view === 'jobs' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <List size={16} /> Jobs
           </button>
           <button
             onClick={() => setView('dispatch')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
             style={view === 'dispatch' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <Calendar size={16} /> Dispatch
           </button>
           <button
             onClick={() => setView('week')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'week' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'week' ? 'bg-opacity-20' : ''}`}
             style={view === 'week' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <CalendarDays size={16} /> Week
+          </button>
+          <button
+            onClick={() => setView('map')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'map' ? 'bg-opacity-20' : ''}`}
+            style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <Map size={16} /> Map
+          </button>
+          <button
+            onClick={() => setView('reports')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'reports' ? 'bg-opacity-20' : ''}`}
+            style={view === 'reports' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <BarChart3 size={16} /> Reports
           </button>
         </div>
       </div>
@@ -517,7 +696,7 @@ export default function AutoKeyJobsPage() {
       {view === 'jobs' && (
         isLoading ? <Spinner /> : (
           <div className="space-y-3">
-            {jobs.length === 0 ? <EmptyState message="No auto key jobs yet." /> : jobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} />)}
+            {jobs.length === 0 ? <EmptyState message="No Mobile Services jobs yet." /> : jobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)}
           </div>
         )
       )}
@@ -535,6 +714,7 @@ export default function AutoKeyJobsPage() {
                 style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
               />
             </div>
+            {!isSolo && (
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
               <Select
@@ -549,20 +729,21 @@ export default function AutoKeyJobsPage() {
                 ))}
               </Select>
             </div>
+            )}
           </div>
 
           {dispatchLoading ? <Spinner /> : (
             <>
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
-                  Scheduled for {formatDate(dispatchDate)}
+                  {isSolo ? "Today's schedule" : 'Scheduled for'} {formatDate(dispatchDate)}
                 </h3>
                 {dispatchJobs.length === 0 ? (
                   <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>No jobs scheduled for this date.</p>
-                ) : dispatchTechFilter ? (
+                ) : isSolo || dispatchTechFilter ? (
                   <div className="space-y-2">
                     {dispatchJobs.map((job: object) => (
-                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} />
+                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
                     ))}
                   </div>
                 ) : (
@@ -582,14 +763,14 @@ export default function AutoKeyJobsPage() {
                     })
                     return (
                       <div className="space-y-4">
-                        {assigned.map(([uid, jobs]) => (
+                        {assigned.map(([uid, techJobs]) => (
                           <div key={uid}>
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-amber)' }}>
                               {users.find((u: { id: string }) => u.id === uid)?.full_name ?? 'Tech'}
                             </p>
                             <div className="space-y-2">
-                              {jobs.map((job: object) => (
-                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} />
+                              {techJobs.map((job: object) => (
+                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
                               ))}
                             </div>
                           </div>
@@ -599,7 +780,7 @@ export default function AutoKeyJobsPage() {
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Unassigned</p>
                             <div className="space-y-2">
                               {unassigned.map((job: object) => (
-                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} />
+                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
                               ))}
                             </div>
                           </div>
@@ -616,9 +797,9 @@ export default function AutoKeyJobsPage() {
                     Unscheduled ({unscheduledJobs.length})
                   </h3>
                   <div className="space-y-2">
-                    {unscheduledJobs.map((job: object) => (
-                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} />
-                    ))}
+{unscheduledJobs.map((job: object) => (
+                    <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
+                  ))}
                   </div>
                 </div>
               )}
@@ -647,6 +828,44 @@ export default function AutoKeyJobsPage() {
             </div>
           </div>
           {weekLoading ? <Spinner /> : (
+            <div className="space-y-4">
+              {(() => {
+                const unscheduled = weekJobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at)
+                return (
+                  <>
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Unscheduled — {unscheduled.length > 0 ? 'drag onto a slot to schedule, or drop here to unschedule' : 'drop jobs here to unschedule'}
+                </h3>
+                <div
+                    className="min-h-[52px] p-2 rounded border flex flex-wrap gap-2 content-start transition-colors"
+                    style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)', borderStyle: 'dashed' }}
+                    onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0' }}
+                    onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)' }}
+                    onDrop={e => {
+                      e.preventDefault()
+                      ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
+                      const jobId = e.dataTransfer.getData('application/x-autokey-job-id')
+                      if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: null })
+                    }}
+                  >
+                    {unscheduled.map((job: object) => (
+                      <div
+                        key={(job as { id: string }).id}
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('application/x-autokey-job-id', (job as { id: string }).id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        className="cursor-grab active:cursor-grabbing shrink-0"
+                      >
+                        <Link to={`/auto-key/${(job as { id: string }).id}`} className="block text-xs p-1.5 rounded hover:opacity-90" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)' }} onClick={e => e.stopPropagation()}>
+                          #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
             <div className="overflow-x-auto">
               <div className="grid gap-2" style={{ gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))' }}>
                 <div />
@@ -680,12 +899,35 @@ export default function AutoKeyJobsPage() {
                         const t = new Date(j.scheduled_at).getTime()
                         return t >= slotStart.getTime() && t < slotEnd.getTime()
                       })
+                      const newScheduledAt = slotStart.toISOString()
                       return (
-                        <div key={`${dayStr}-${hour}`} className="min-h-[44px] p-1 rounded border" style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)' }}>
+                        <div
+                          key={`${dayStr}-${hour}`}
+                          className="min-h-[44px] p-1 rounded border transition-colors"
+                          style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)' }}
+                          onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0' }}
+                          onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)' }}
+                          onDrop={e => {
+                            e.preventDefault()
+                            ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
+                            const jobId = e.dataTransfer.getData('application/x-autokey-job-id')
+                            if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: newScheduledAt })
+                          }}
+                        >
                           {inSlot.map((job: object) => (
-                            <Link key={(job as { id: string }).id} to={`/auto-key/${(job as { id: string }).id}`} className="block text-xs p-1.5 rounded mb-1 hover:opacity-90" style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}>
-                              #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
-                            </Link>
+                            <div
+                              key={(job as { id: string }).id}
+                              draggable
+                              onDragStart={e => {
+                                e.dataTransfer.setData('application/x-autokey-job-id', (job as { id: string }).id)
+                                e.dataTransfer.effectAllowed = 'move'
+                              }}
+                              className="cursor-grab active:cursor-grabbing"
+                            >
+                              <Link to={`/auto-key/${(job as { id: string }).id}`} className="block text-xs p-1.5 rounded mb-1 hover:opacity-90" style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }} onClick={e => e.stopPropagation()}>
+                                #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
+                              </Link>
+                            </div>
                           ))}
                         </div>
                       )
@@ -694,6 +936,74 @@ export default function AutoKeyJobsPage() {
                 ))}
               </div>
             </div>
+                  </>
+                )
+              })()}
+          </div>
+          )}
+        </div>
+      )}
+
+      {view === 'map' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+            <input
+              type="date"
+              value={dispatchDate}
+              onChange={e => setDispatchDate(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            />
+          </div>
+          {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} />}
+        </div>
+      )}
+
+      {view === 'reports' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--cafe-text)' }}>Mobile Services Summary</h2>
+            <Button variant="secondary" onClick={() => sendRemindersMut.mutate()} disabled={sendRemindersMut.isPending}>
+              {sendRemindersMut.isPending ? 'Sending…' : 'Send day-before reminders now'}
+            </Button>
+          </div>
+          {summaryLoading ? <Spinner /> : autoKeySummary ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total jobs</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{autoKeySummary.total_jobs}</p>
+              </Card>
+              <Card className="p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total revenue</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeySummary.total_revenue_cents)}</p>
+              </Card>
+              <Card className="p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Mobile vs shop</p>
+                <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>
+                  Mobile: {autoKeySummary.mobile_vs_shop.mobile} · Shop: {autoKeySummary.mobile_vs_shop.shop}
+                  {autoKeySummary.mobile_vs_shop.other > 0 ? ` · Other: ${autoKeySummary.mobile_vs_shop.other}` : ''}
+                </p>
+              </Card>
+            </div>
+          ) : null}
+          {!isSolo && autoKeySummary && autoKeySummary.jobs_by_tech.length > 0 && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs & revenue by tech</h3>
+              <div className="space-y-2">
+                {autoKeySummary.jobs_by_tech.map(t => (
+                  <div key={t.tech_id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
+                    <span style={{ color: 'var(--cafe-text)' }}>{t.tech_name}</span>
+                    <span className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                      {t.job_count} job{t.job_count !== 1 ? 's' : ''} · {formatCents(t.revenue_cents)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+          {autoKeySummary && autoKeySummary.total_jobs === 0 && (
+            <EmptyState message="No Mobile Services jobs yet. Create one to see reports." />
           )}
         </div>
       )}
