@@ -1,14 +1,18 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, Tag, X } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Search, Tag, X } from 'lucide-react'
 import {
   listShoeCatalogueGroups,
   searchShoeCatalogueItems,
+  listCustomServices,
+  createCustomService,
   formatShoePricingType,
   type ShoeCatalogueItem,
   type ShoePricingType,
   type ShoeRepairJobItemInput,
 } from '@/lib/api'
+import { Button, Input } from '@/components/ui'
+import { getApiErrorMessage } from '@/lib/api'
 import { formatEstimatedTurnaround, COMPLEXITY_LABELS } from '@/lib/utils'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
@@ -65,6 +69,10 @@ export default function ShoeServicePicker({
 }) {
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', price: '' })
+  const [addError, setAddError] = useState('')
+  const qc = useQueryClient()
 
   const { data: groups = [] } = useQuery({
     queryKey: ['shoe-catalogue-groups'],
@@ -77,6 +85,32 @@ export default function ShoeServicePicker({
     queryFn: () => searchShoeCatalogueItems({ q: search || undefined, group: groupFilter || undefined }).then(r => r.data),
     staleTime: 30_000,
   })
+
+  const { data: customItems = [] } = useQuery({
+    queryKey: ['custom-services', 'shoe'],
+    queryFn: () => listCustomServices('shoe').then(r => r.data),
+    staleTime: 60_000,
+  })
+
+  const createMut = useMutation({
+    mutationFn: (payload: Parameters<typeof createCustomService>[0]) => createCustomService(payload).then(r => r.data),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['custom-services', 'shoe'] })
+      setAddForm({ name: '', price: '' })
+      setAddOpen(false)
+      addItem(data as ShoeCatalogueItem)
+    },
+    onError: (err) => setAddError(getApiErrorMessage(err, 'Failed to add service')),
+  })
+
+  const customAsShoe = customItems.map(c => ({
+    ...c,
+    price: c.price ?? (c.price_cents ?? 0) / 100,
+    price_cents: c.price_cents,
+    complexity: 'standard' as const,
+    estimated_days_min: 3,
+    estimated_days_max: 7,
+  })) as ShoeCatalogueItem[]
 
   // Filter items by applicable_shoe_types if present, else fallback to group filter
   let filteredItems = items
@@ -94,6 +128,13 @@ export default function ShoeServicePicker({
       return groupMatch
     })
   }
+  const q = search.trim().toLowerCase()
+  const filteredCustom = customAsShoe.filter(c => {
+    if (groupFilter && (c.group_id ?? '') !== groupFilter) return false
+    if (q && !c.name.toLowerCase().includes(q)) return false
+    return true
+  })
+  const allItems = [...filteredItems, ...filteredCustom]
 
   const selectedKeys = new Set(selected.map(s => s.item.key))
 
@@ -104,6 +145,22 @@ export default function ShoeServicePicker({
 
   function removeItem(key: string) {
     onChange(selected.filter(s => s.item.key !== key))
+  }
+
+  function submitAdd() {
+    setAddError('')
+    const name = addForm.name.trim()
+    const price = parseFloat(addForm.price)
+    if (!name) { setAddError('Service name is required.'); return }
+    if (isNaN(price) || price < 0) { setAddError('Enter a valid price.'); return }
+    createMut.mutate({
+      service_type: 'shoe',
+      name,
+      price_cents: Math.round(price * 100),
+      group_id: 'custom',
+      group_label: 'Custom',
+      pricing_type: 'fixed',
+    })
   }
 
   return (
@@ -143,17 +200,56 @@ export default function ShoeServicePicker({
           {groups.map(g => (
             <option key={g.id} value={g.id}>{g.label}</option>
           ))}
+          {customAsShoe.length > 0 && !groups.some(g => g.id === 'custom') && (
+            <option value="custom">Custom</option>
+          )}
         </select>
+      </div>
+
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setAddOpen(!addOpen)}
+          className="flex items-center gap-1.5 text-xs font-medium py-1.5 px-2 rounded"
+          style={{ color: 'var(--cafe-amber)' }}
+        >
+          <Plus size={14} />
+          Add your own service
+        </button>
+        {addOpen && (
+          <div className="mt-2 p-3 rounded-lg border space-y-2" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
+            <Input
+              label="Service name"
+              value={addForm.name}
+              onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Hand dye job"
+            />
+            <Input
+              label="Price ($)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={addForm.price}
+              onChange={e => setAddForm(f => ({ ...f, price: e.target.value }))}
+              placeholder="0.00"
+            />
+            {addError && <p className="text-xs" style={{ color: '#C96A5A' }}>{addError}</p>}
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => { setAddOpen(false); setAddError('') }}>Cancel</Button>
+              <Button onClick={submitAdd} disabled={createMut.isPending}>{createMut.isPending ? 'Adding…' : 'Add'}</Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div
         className="rounded-xl border overflow-y-auto mb-4"
         style={{ maxHeight: '220px', borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
       >
-        {filteredItems.length === 0 ? (
+        {allItems.length === 0 ? (
           <p className="text-center py-6 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No services found for this shoe type</p>
         ) : (
-          filteredItems.map(item => {
+          allItems.map(item => {
             const alreadyAdded = selectedKeys.has(item.key)
             const priceLabel = formatShoePricingType(item.pricing_type as ShoePricingType, item.price_cents)
             return (

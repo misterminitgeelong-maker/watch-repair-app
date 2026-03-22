@@ -8,6 +8,7 @@ from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
     Attachment,
+    CustomService,
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
@@ -71,16 +72,33 @@ _ACTIVE_QUEUE_STATUSES = frozenset({
 })
 
 
-def _get_job_estimated_days(session: Session, job_id: UUID) -> int:
-    """Return estimated_days_max for a job from its catalogue items. Default 5 if unknown."""
+def _get_catalogue_item(session: Session, tenant_id: UUID, catalogue_key: str) -> dict | None:
+    """Resolve catalogue item from built-in or custom services."""
+    if catalogue_key.startswith("custom__"):
+        try:
+            sid = UUID(catalogue_key.replace("custom__", "", 1))
+            cs = session.get(CustomService, sid)
+            if cs and cs.tenant_id == tenant_id and cs.service_type == "shoe":
+                return {
+                    "estimated_days_min": 3,
+                    "estimated_days_max": 7,
+                    "complexity": "standard",
+                }
+        except (ValueError, TypeError):
+            pass
+        return None
     from .shoe_catalogue import _ITEM_INDEX
+    return _ITEM_INDEX.get(catalogue_key)
 
+
+def _get_job_estimated_days(session: Session, job: ShoeRepairJob) -> int:
+    """Return estimated_days_max for a job from its catalogue items. Default 5 if unknown."""
     items = session.exec(
-        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job_id)
+        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
     ).all()
     days = 0
     for item in items:
-        cat = _ITEM_INDEX.get(item.catalogue_key)
+        cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
         if cat:
             dmax = cat.get("estimated_days_max", 7)
             days = max(days, dmax)
@@ -98,7 +116,7 @@ def _compute_queue_estimated_ready_by(session: Session, tenant_id: UUID) -> dict
     result: dict = {}
     cumulative_days = 0
     for job in jobs:
-        job_days = _get_job_estimated_days(session, job.id)
+        job_days = _get_job_estimated_days(session, job)
         work_ahead = cumulative_days
         total_days = work_ahead + job_days
         ready = job.created_at + timedelta(days=int(total_days))
@@ -108,18 +126,16 @@ def _compute_queue_estimated_ready_by(session: Session, tenant_id: UUID) -> dict
 
 
 def _job_to_read(job: ShoeRepairJob, session: Session, queue_ready: dict | None = None) -> ShoeRepairJobRead:
-    from .shoe_catalogue import _ITEM_INDEX
-
     data = job.model_dump()
     items = _load_items(session, job.id)
     data["items"] = items
 
-    # Compute complexity and estimated turnaround from catalogue
+    # Compute complexity and estimated turnaround from catalogue (built-in or custom)
     complexity_order = {"simple": 0, "standard": 1, "complex": 2}
     days_min, days_max = 0, 0
     max_comp = "simple"
     for item in items:
-        cat = _ITEM_INDEX.get(item.catalogue_key)
+        cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
         if cat:
             comp = cat.get("complexity", "standard")
             max_comp = max(max_comp, comp, key=lambda c: complexity_order.get(c, 0))

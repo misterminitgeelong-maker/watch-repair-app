@@ -37,6 +37,7 @@ from .routes.billing import router as billing_router
 from .routes.stocktakes import router as stocktake_router
 from .routes.prospects import router as prospects_router
 from .routes.vehicle_lookup import router as vehicle_lookup_router
+from .routes.custom_services import router as custom_services_router
 from .startup_seed import ensure_demo_tenant, ensure_platform_admin_account, get_seed_status, seed_from_csv_if_empty
 
 
@@ -150,6 +151,7 @@ app.include_router(billing_router)
 app.include_router(stocktake_router)
 app.include_router(prospects_router)
 app.include_router(vehicle_lookup_router)
+app.include_router(custom_services_router)
 
 # ---------- Serve the built React frontend ----------
 _static = Path(settings.static_dir) if settings.static_dir else None

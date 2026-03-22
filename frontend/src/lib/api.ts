@@ -972,6 +972,37 @@ export const listWatchMovements = () =>
 export const getWatchMovementQuote = (key: string) =>
   api.get<{ key: string; name: string; quote_cents: number }>(`/watch-catalogue/movements/${key}/quote`)
 
+// ── Custom Services (tenant-defined watch/shoe) ─────────────────────────────────
+export interface CustomServiceItem {
+  key: string
+  name: string
+  price: number
+  price_cents: number
+  pricing_type: string
+  group_id: string
+  group_label: string
+  notes?: string
+}
+
+export const listCustomServices = (type: 'watch' | 'shoe') =>
+  api.get<CustomServiceItem[]>('/custom-services', { params: { service_type: type } })
+
+export const createCustomService = (data: {
+  service_type: 'watch' | 'shoe'
+  name: string
+  group_id?: string
+  group_label?: string
+  price_cents: number
+  pricing_type?: string
+  notes?: string
+}) =>
+  api.post<CustomServiceItem>('/custom-services', {
+    ...data,
+    group_id: data.group_id ?? 'custom',
+    group_label: data.group_label ?? 'Custom',
+    pricing_type: data.pricing_type ?? 'fixed',
+  })
+
 // ── Shoes (items being repaired) ──────────────────────────────────────────────
 export interface Shoe {
   id: string

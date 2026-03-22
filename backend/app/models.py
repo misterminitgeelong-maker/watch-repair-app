@@ -105,6 +105,52 @@ class TenantEventLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class CustomService(SQLModel, table=True):
+    """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    service_type: str = Field(index=True)  # "watch" | "shoe"
+    name: str
+    group_id: str = "custom"  # e.g. "custom" or an existing group id
+    group_label: str = "Custom"
+    price_cents: int
+    pricing_type: str = "fixed"  # for shoe: fixed, from, quoted_upon_inspection, etc.
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomServiceCreate(SQLModel):
+    service_type: str  # "watch" | "shoe"
+    name: str
+    group_id: str = "custom"
+    group_label: str = "Custom"
+    price_cents: int
+    pricing_type: str = "fixed"
+    notes: Optional[str] = None
+
+
+class CustomServiceRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    service_type: str
+    name: str
+    group_id: str
+    group_label: str
+    price_cents: int
+    pricing_type: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+class CustomServiceUpdate(SQLModel):
+    name: Optional[str] = None
+    group_id: Optional[str] = None
+    group_label: Optional[str] = None
+    price_cents: Optional[int] = None
+    pricing_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class Customer(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
