@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map, MapPin } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -311,7 +311,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                       }
                     }}
                   >
-                    {regoLookupLoading ? <Spinner className="w-4 h-4" /> : 'Look up'}
+                    {regoLookupLoading ? 'Loading…' : 'Look up'}
                   </Button>
                 </>
               ) : (
@@ -679,7 +679,7 @@ export default function AutoKeyJobsPage() {
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'map' ? 'bg-opacity-20' : ''}`}
             style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
-            <Map size={16} /> Map
+            <MapIcon size={16} /> Map
           </button>
           <button
             onClick={() => setView('reports')}
@@ -748,7 +748,7 @@ export default function AutoKeyJobsPage() {
                   </div>
                 ) : (
                   (() => {
-                    const byTech = new Map<string | null, typeof dispatchJobs>()
+                    const byTech = new Map<string, object[]>()
                     for (const j of dispatchJobs) {
                       const uid = (j as { assigned_user_id?: string }).assigned_user_id ?? null
                       const key = uid ?? '__unassigned__'

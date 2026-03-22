@@ -15,6 +15,7 @@ interface Job {
   job_number: string
   title: string
   job_address?: string
+  job_type?: string
   scheduled_at?: string
 }
 
@@ -23,7 +24,7 @@ interface Props {
   date: string
 }
 
-async function geocode(address: string, country = 'Australia'): Promise<[number, number] | null> {
+async function geocode(address: string): Promise<[number, number] | null> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=au&limit=1`,
