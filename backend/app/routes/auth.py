@@ -770,27 +770,52 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 "credit_limit": 12500,
             },
         ]
-        for idx in range(account_count, min(20, account_count + len(account_specs))):
-            spec = account_specs[idx - account_count]
-            account = CustomerAccount(
-                tenant_id=tenant.id,
-                name=spec["name"],
-                account_code=spec["account_code"],
-                account_type=spec["account_type"],
-                fleet_size=spec["fleet_size"],
-                contact_name=spec["contact_name"],
-                primary_contact_name=spec["contact_name"],
-                contact_phone=spec["contact_phone"],
-                primary_contact_phone=spec["contact_phone"],
-                contact_email=spec["contact_email"],
-                billing_address=spec["billing_address"],
-                payment_terms_days=spec["payment_terms_days"],
-                billing_cycle=spec["billing_cycle"],
-                credit_limit=spec["credit_limit"],
-                created_at=datetime.now(timezone.utc) - timedelta(days=randint(30, 180)),
-            )
-            session.add(account)
-            created_customer_accounts += 1
+        if account_count < 20:
+            for idx in range(account_count, min(20, account_count + len(account_specs))):
+                spec = account_specs[idx - account_count]
+                account = CustomerAccount(
+                    tenant_id=tenant.id,
+                    name=spec["name"],
+                    account_code=spec["account_code"],
+                    account_type=spec["account_type"],
+                    fleet_size=spec["fleet_size"],
+                    contact_name=spec["contact_name"],
+                    primary_contact_name=spec["contact_name"],
+                    contact_phone=spec["contact_phone"],
+                    primary_contact_phone=spec["contact_phone"],
+                    contact_email=spec["contact_email"],
+                    billing_address=spec["billing_address"],
+                    payment_terms_days=spec["payment_terms_days"],
+                    billing_cycle=spec["billing_cycle"],
+                    credit_limit=spec["credit_limit"],
+                    created_at=datetime.now(timezone.utc) - timedelta(days=randint(30, 180)),
+                )
+                session.add(account)
+                created_customer_accounts += 1
+        else:
+            # Refresh existing 20 accounts to Victorian specs (so demo-seed updates old data)
+            existing_accounts = session.exec(
+                select(CustomerAccount)
+                .where(CustomerAccount.tenant_id == tenant.id)
+                .order_by(CustomerAccount.created_at)
+            ).all()
+            for i, account in enumerate(existing_accounts[:20]):
+                if i < len(account_specs):
+                    spec = account_specs[i]
+                    account.name = spec["name"]
+                    account.account_code = spec["account_code"]
+                    account.account_type = spec["account_type"]
+                    account.fleet_size = spec["fleet_size"]
+                    account.contact_name = spec["contact_name"]
+                    account.primary_contact_name = spec["contact_name"]
+                    account.contact_phone = spec["contact_phone"]
+                    account.primary_contact_phone = spec["contact_phone"]
+                    account.contact_email = spec["contact_email"]
+                    account.billing_address = spec["billing_address"]
+                    account.payment_terms_days = spec["payment_terms_days"]
+                    account.billing_cycle = spec["billing_cycle"]
+                    account.credit_limit = spec["credit_limit"]
+                    session.add(account)
 
     session.flush()
 
