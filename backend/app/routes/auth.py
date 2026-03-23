@@ -24,6 +24,7 @@ from ..models import (
     AutoKeyJob,
     BootstrapResponse,
     Customer,
+    CustomerAccount,
     Invoice,
     LoginRequest,
     MultiSiteLoginRequest,
@@ -473,6 +474,105 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             session.add(job)
             created_auto_key_jobs += 1
 
+    # Seed customer accounts (B2B / fleet / dealer) for demo
+    account_count = int(
+        session.exec(
+            select(func.count()).select_from(CustomerAccount).where(CustomerAccount.tenant_id == tenant.id)
+        ).one()
+    )
+    created_customer_accounts = 0
+    if account_count < 5:
+        account_specs = [
+            {
+                "name": "Pickles Auto Group",
+                "account_code": "PKL-001",
+                "account_type": "Car Auctions",
+                "fleet_size": 450,
+                "contact_name": "Jason Mercer",
+                "contact_phone": "0398765432",
+                "contact_email": "jason.mercer@pickles.com.au",
+                "billing_address": "673 Boundary Rd, Coopers Plains QLD 4108",
+                "payment_terms_days": 30,
+                "billing_cycle": "Monthly",
+                "credit_limit": 15000,
+            },
+            {
+                "name": "SG Fleet Victoria",
+                "account_code": "SGF-VIC",
+                "account_type": "Corporate Fleet",
+                "fleet_size": 280,
+                "contact_name": "Michelle Tan",
+                "contact_phone": "0392001234",
+                "contact_email": "michelle.tan@sgfleet.com",
+                "billing_address": "565 Bourke St, Melbourne VIC 3000",
+                "payment_terms_days": 30,
+                "billing_cycle": "Monthly",
+                "credit_limit": 20000,
+            },
+            {
+                "name": "Hertz Australia",
+                "account_code": "HTZ-AUS",
+                "account_type": "Rental Fleet",
+                "fleet_size": 620,
+                "contact_name": "David Nguyen",
+                "contact_phone": "0396541200",
+                "contact_email": "david.nguyen@hertz.com.au",
+                "billing_address": "97 Franklin St, Melbourne VIC 3000",
+                "payment_terms_days": 14,
+                "billing_cycle": "Fortnightly",
+                "credit_limit": 25000,
+            },
+            {
+                "name": "Manheim Auctions",
+                "account_code": "MNH-001",
+                "account_type": "Car Auctions",
+                "fleet_size": 310,
+                "contact_name": "Sarah O'Brien",
+                "contact_phone": "0387652100",
+                "contact_email": "sarah.obrien@manheim.com.au",
+                "billing_address": "211 Boundary Rd, Mordialloc VIC 3195",
+                "payment_terms_days": 30,
+                "billing_cycle": "Monthly",
+                "credit_limit": 12000,
+            },
+            {
+                "name": "FleetPartners",
+                "account_code": "FLP-VIC",
+                "account_type": "Corporate Fleet",
+                "fleet_size": 195,
+                "contact_name": "Tom Ridley",
+                "contact_phone": "0394321800",
+                "contact_email": "tom.ridley@fleetpartners.com.au",
+                "billing_address": "10 Dorcas St, South Melbourne VIC 3205",
+                "payment_terms_days": 30,
+                "billing_cycle": "Monthly",
+                "credit_limit": 18000,
+            },
+        ]
+        for idx in range(account_count, min(5, account_count + len(account_specs))):
+            spec = account_specs[idx - account_count]
+            account = CustomerAccount(
+                tenant_id=tenant.id,
+                name=spec["name"],
+                account_code=spec["account_code"],
+                account_type=spec["account_type"],
+                fleet_size=spec["fleet_size"],
+                contact_name=spec["contact_name"],
+                primary_contact_name=spec["contact_name"],
+                contact_phone=spec["contact_phone"],
+                primary_contact_phone=spec["contact_phone"],
+                contact_email=spec["contact_email"],
+                billing_address=spec["billing_address"],
+                payment_terms_days=spec["payment_terms_days"],
+                billing_cycle=spec["billing_cycle"],
+                credit_limit=spec["credit_limit"],
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(30, 180)),
+            )
+            session.add(account)
+            created_customer_accounts += 1
+
+    session.flush()
+
     # Seed up to 3 paid invoices linked to demo watch repair jobs (for guided tour step 10+)
     existing_invoice_count = int(
         session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant.id)).one()
@@ -503,7 +603,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             session.add(inv)
             created_invoices += 1
 
-    if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs, created_invoices]):
+    if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs, created_customer_accounts, created_invoices]):
         session.add(
             TenantEventLog(
                 tenant_id=tenant.id,
@@ -514,7 +614,8 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 event_summary=(
                     f"Demo data seeded by {actor.email}: "
                     f"customers={created_customers}, watches={created_watches}, "
-                    f"watch_jobs={created_repair_jobs}, shoe_jobs={created_shoe_jobs}, auto_key_jobs={created_auto_key_jobs}, invoices={created_invoices}"
+                    f"watch_jobs={created_repair_jobs}, shoe_jobs={created_shoe_jobs}, auto_key_jobs={created_auto_key_jobs}, "
+                    f"customer_accounts={created_customer_accounts}, invoices={created_invoices}"
                 ),
             )
         )
@@ -527,6 +628,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         "repair_jobs": created_repair_jobs,
         "shoe_jobs": created_shoe_jobs,
         "auto_key_jobs": created_auto_key_jobs,
+        "customer_accounts": created_customer_accounts,
         "invoices": created_invoices,
     }
 
