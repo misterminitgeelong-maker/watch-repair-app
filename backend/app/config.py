@@ -2,7 +2,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Check .env in cwd and backend/.env (for "uvicorn backend.app.main:app" from root)
+    model_config = SettingsConfigDict(
+        env_file=(".env", "backend/.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "Mainspring API"
     database_url: str = "sqlite:///./watch_repair.db"

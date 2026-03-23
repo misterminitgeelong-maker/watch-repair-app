@@ -106,7 +106,27 @@ app.add_middleware(
 
 @app.get("/v1/health")
 def health():
-    return {"status": "ok", "startup_seed": get_seed_status()}
+    from sqlmodel import select
+    from .config import settings
+    from .models import Tenant
+    testing_configured = bool(
+        (settings.testing_tenant_slug or "").strip()
+        and (settings.testing_owner_email or "").strip()
+        and settings.testing_owner_password
+    )
+    testing_tenant_exists = False
+    if testing_configured:
+        slug = (settings.testing_tenant_slug or "").strip().lower()
+        with Session(engine) as session:
+            testing_tenant_exists = session.exec(
+                select(Tenant).where(Tenant.slug == slug)
+            ).first() is not None
+    return {
+        "status": "ok",
+        "startup_seed": get_seed_status(),
+        "testing_tenant_configured": testing_configured,
+        "testing_tenant_exists": testing_tenant_exists,
+    }
 
 
 @app.get("/v1/ready")

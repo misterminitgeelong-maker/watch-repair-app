@@ -42,9 +42,16 @@ Only you know the credentials. The login page looks the same to everyone—there
 - If you see "Request timed out", the backend is not reachable. Start it and try again.
 
 **"Invalid shop ID, email, or password"**
-- The testing tenant is only created when `TESTING_TENANT_SLUG`, `TESTING_OWNER_EMAIL`, and `TESTING_OWNER_PASSWORD` are set in the backend `.env`.
-- `.env` is read from the directory you start the backend from (e.g. `backend/.env` if you run `cd backend && uvicorn app.main:app`).
+- The testing tenant is only created when all three env vars are set in `.env`:
+  - `TESTING_TENANT_SLUG=testing`
+  - `TESTING_OWNER_EMAIL=your@email.com`
+  - `TESTING_OWNER_PASSWORD=yourpassword`
+- Use a `.env` in the project root **or** in `backend/` (both are checked).
 - Restart the backend after changing `.env`.
+- **Verify setup**: Open `http://localhost:8000/v1/health` in a browser. You should see:
+  - `"testing_tenant_configured": true` – env vars were loaded
+  - `"testing_tenant_exists": true` – tenant was created at startup
+  If either is `false`, fix your `.env` and restart.
 
 ## Environment variables (optional)
 
