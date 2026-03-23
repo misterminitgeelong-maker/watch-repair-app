@@ -8,7 +8,6 @@ import {
   createAutoKeyQuote,
   createCustomer,
   deleteAutoKeyJob,
-  updateAutoKeyInvoice,
   getApiErrorMessage,
   listCustomerAccounts,
   listAutoKeyInvoices,
@@ -124,7 +123,8 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     description: '',
     job_type: '' as '' | 'mobile' | 'shop',
     job_address: '',
-    scheduled_at: '',
+    scheduled_at: '',  // date only for display
+    scheduled_datetime: '',  // full datetime for booking
     vehicle_make: '',
     vehicle_model: '',
     vehicle_year: '',
@@ -179,7 +179,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         description: form.description.trim() || undefined,
         job_type: form.job_type || undefined,
         job_address: form.job_address.trim() || undefined,
-        scheduled_at: form.scheduled_at ? form.scheduled_at + 'T09:00:00Z' : undefined,
+        scheduled_at: form.scheduled_datetime ? new Date(form.scheduled_datetime).toISOString() : (form.scheduled_at ? form.scheduled_at + 'T09:00:00Z' : undefined),
         vehicle_make: form.vehicle_make.trim() || undefined,
         vehicle_model: form.vehicle_model.trim() || undefined,
         vehicle_year: form.vehicle_year ? Number(form.vehicle_year) : undefined,
@@ -258,6 +258,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           <Input label="Job address" value={form.job_address} onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))} placeholder="Where to meet customer" />
         )}
         <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+        <Input label="Book date & time (optional)" type="datetime-local" value={form.scheduled_datetime} onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} />
           <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} />
@@ -368,10 +369,38 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 }
 
 const POS_QUICK_ITEMS = [
-  { label: 'Key cut', desc: 'Key cutting', price: 5000 },
-  { label: 'Programming', desc: 'Transponder programming', price: 12000 },
-  { label: 'Duplicate key', desc: 'Duplicate transponder key', price: 8000 },
-  { label: 'Lockout', desc: 'Lockout / emergency entry', price: 15000 },
+  // Key cutting & blanks
+  { label: 'Key cut – basic', desc: 'Basic key cutting', price: 3500 },
+  { label: 'Key cut – laser', desc: 'Laser-cut key', price: 12000 },
+  { label: 'Key cut – Tibbe', desc: 'Tibbe key cutting', price: 15000 },
+  { label: 'Blank – transponder', desc: 'Transponder blank', price: 4500 },
+  { label: 'Blank – flip key', desc: 'Flip/smart key blank', price: 8500 },
+  { label: 'Blank – proximity', desc: 'Proximity key blank', price: 12000 },
+  // Programming
+  { label: 'Program – transponder', desc: 'Transponder key programming', price: 9500 },
+  { label: 'Program – proximity', desc: 'Proximity key programming', price: 15000 },
+  { label: 'Program – all keys lost', desc: 'All keys lost – full programming', price: 25000 },
+  { label: 'Program – add key', desc: 'Add key to existing', price: 7500 },
+  { label: 'Sync remote', desc: 'Remote/fob sync', price: 5500 },
+  // Duplication & replacement
+  { label: 'Duplicate – transponder', desc: 'Duplicate transponder key', price: 12000 },
+  { label: 'Duplicate – flip key', desc: 'Duplicate flip key', price: 18000 },
+  { label: 'Replace – lost key', desc: 'Replace lost key (cut + program)', price: 15000 },
+  { label: 'Replace – all keys lost', desc: 'Replace all lost keys', price: 35000 },
+  // Lockout & entry
+  { label: 'Lockout – car', desc: 'Car lockout / emergency entry', price: 12000 },
+  { label: 'Lockout – boot/trunk', desc: 'Boot/trunk lockout', price: 8500 },
+  { label: 'Lockout – roadside', desc: 'Roadside lockout callout', price: 18000 },
+  // Ignition & lock work
+  { label: 'Ignition repair', desc: 'Ignition barrel repair', price: 15000 },
+  { label: 'Ignition replace', desc: 'Ignition barrel replacement', price: 25000 },
+  { label: 'Broken key extraction', desc: 'Extract broken key from lock', price: 8500 },
+  { label: 'Door lock change', desc: 'Door lock cylinder change', price: 12000 },
+  { label: 'Boot lock change', desc: 'Boot/trunk lock change', price: 9500 },
+  // Service & misc
+  { label: 'Service call', desc: 'Service call / travel fee', price: 5500 },
+  { label: 'After hours', desc: 'After-hours surcharge', price: 3500 },
+  { label: 'Diagnostic', desc: 'Key/ECU diagnostic', price: 6500 },
 ] as const
 
 interface CartLine {
@@ -381,10 +410,11 @@ interface CartLine {
   unit_price_cents: number
 }
 
-function POSView({ customers, onComplete }: { customers: Customer[]; onComplete: () => void }) {
+function POSView({ customers, customerAccounts, onComplete }: { customers: Customer[]; customerAccounts: CustomerAccount[]; onComplete: () => void }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [customerId, setCustomerId] = useState('')
+  const [customerAccountId, setCustomerAccountId] = useState('')
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
@@ -425,8 +455,13 @@ function POSView({ customers, onComplete }: { customers: Customer[]; onComplete:
 
       if (cart.length === 0) throw new Error('Add at least one item.')
 
+      const accountId = customerAccountId && customerAccounts.some((a: CustomerAccount) => a.id === customerAccountId && a.customer_ids.includes(cid))
+        ? customerAccountId
+        : undefined
+
       const job = await createAutoKeyJob({
         customer_id: cid,
+        customer_account_id: accountId || undefined,
         title: `POS sale ${new Date().toLocaleDateString()}`,
         key_quantity: 1,
         programming_status: 'not_required',
@@ -442,15 +477,15 @@ function POSView({ customers, onComplete }: { customers: Customer[]; onComplete:
       }).then(r => r.data)
 
       const invoice = await createAutoKeyInvoiceFromQuote(job.id, quote.id).then(r => r.data)
-      await updateAutoKeyInvoice(job.id, invoice.id, { status: 'paid' })
       await updateAutoKeyJobStatus(job.id, 'collected')
 
-      return job
+      return { job, invoice }
     },
-    onSuccess: (job) => {
+    onSuccess: ({ job }) => {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
       setCart([])
       setCustomerId('')
+      setCustomerAccountId('')
       setNewCustomer({ full_name: '', email: '', phone: '' })
       setSuccessJobId(job.id)
       onComplete()
@@ -462,10 +497,12 @@ function POSView({ customers, onComplete }: { customers: Customer[]; onComplete:
     return (
       <Card className="p-8 text-center">
         <p className="text-lg font-semibold mb-2" style={{ color: 'var(--cafe-text)' }}>Sale complete</p>
-        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Invoice marked paid.</p>
-        <div className="flex gap-2 justify-center">
+        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+          Invoice created (unpaid). Send to customer via email or SMS, or record payment on the job.
+        </p>
+        <div className="flex gap-2 justify-center flex-wrap">
           <Button variant="secondary" onClick={() => setSuccessJobId(null)}>New sale</Button>
-          <Button onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>View job</Button>
+          <Button onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>View job & record payment</Button>
         </div>
       </Card>
     )
@@ -489,7 +526,25 @@ function POSView({ customers, onComplete }: { customers: Customer[]; onComplete:
             >Walk-in</button>
           </div>
           {customerMode === 'existing' ? (
-            <CustomerSearchSelect customers={customers} value={customerId} onChange={setCustomerId} />
+            <>
+              <CustomerSearchSelect customers={customers} value={customerId} onChange={id => { setCustomerId(id); setCustomerAccountId('') }} />
+              {customerId && (
+                <Select
+                  label="B2B Account (optional)"
+                  value={customerAccountId}
+                  onChange={e => setCustomerAccountId(e.target.value)}
+                >
+                  <option value="">Personal / no B2B</option>
+                  {customerAccounts
+                    .filter((a: CustomerAccount) => a.customer_ids.includes(customerId))
+                    .map((a: CustomerAccount) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}{a.account_code ? ` (${a.account_code})` : ''}
+                      </option>
+                    ))}
+                </Select>
+              )}
+            </>
           ) : (
             <div className="space-y-2">
               <Input label="Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Customer name" />
@@ -887,6 +942,11 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listCustomers().then(r => r.data),
     enabled: view === 'pos',
   })
+  const { data: customerAccounts = [] } = useQuery({
+    queryKey: ['customer-accounts'],
+    queryFn: () => listCustomerAccounts().then(r => r.data),
+    enabled: view === 'pos',
+  })
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
@@ -1148,6 +1208,7 @@ export default function AutoKeyJobsPage() {
       {view === 'pos' && (
         <POSView
           customers={customers}
+          customerAccounts={customerAccounts}
           onComplete={() => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })}
         />
       )}
