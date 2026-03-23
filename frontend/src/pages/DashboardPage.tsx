@@ -8,6 +8,7 @@ import {
   Database,
   DollarSign,
   FileText,
+  Inbox,
   KeyRound,
   Receipt,
   Scissors,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import {
   getBillingLimits,
+  getInbox,
   getReportsSummary,
   getReportsWidgets,
   listAutoKeyJobs,
@@ -214,6 +216,10 @@ export default function DashboardPage() {
   const { data: widgets } = useQuery({
     queryKey: ['reports-widgets'],
     queryFn: () => getReportsWidgets().then((r) => r.data),
+  })
+  const { data: inboxAlerts } = useQuery({
+    queryKey: ['inbox'],
+    queryFn: () => getInbox(20).then((r) => r.data),
   })
 
   useEffect(() => {
@@ -581,6 +587,25 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
+          </Card>
+        )}
+
+        {inboxAlerts && inboxAlerts.length > 0 && (
+          <Card className="mb-6 p-4">
+            <Link to="/inbox" className="flex items-center gap-3">
+              <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E8F0FE', color: '#1A73E8' }}>
+                <Inbox size={20} />
+              </div>
+              <div>
+                <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                  {inboxAlerts.length} alert{inboxAlerts.length !== 1 ? 's' : ''} in Inbox
+                </p>
+                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Customer quote approvals and declines
+                </p>
+              </div>
+              <ArrowRight size={18} className="ml-auto shrink-0" style={{ color: 'var(--cafe-amber)' }} />
+            </Link>
           </Card>
         )}
 

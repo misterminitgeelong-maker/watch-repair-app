@@ -16,6 +16,7 @@ import PrintInvoicePage from '@/pages/PrintInvoicePage'
 import DatabasePage from '@/pages/DatabasePage'
 import CataloguePage from '@/pages/CataloguePage'
 import ReportsPage from '@/pages/ReportsPage'
+import InboxPage from '@/pages/InboxPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import SignupCheckoutPage from '@/pages/SignupCheckoutPage'
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
+              <Route path="inbox" element={<InboxPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="stocktakes" element={<StocktakesPage />} />
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />

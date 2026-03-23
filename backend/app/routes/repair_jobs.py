@@ -160,18 +160,27 @@ def update_repair_job_status(
     )
     session.add(history)
 
-    # Email customer when job is ready for collection (no status SMS — we text only on job_live and quote_sent)
     watch = session.get(Watch, job.watch_id)
     if watch:
         customer = session.get(Customer, watch.customer_id)
-        if customer and customer.email and job.status in ("completed", "awaiting_collection"):
-            from ..email_client import send_job_ready_email
-            send_job_ready_email(
-                to_email=customer.email,
-                customer_name=customer.full_name,
-                job_number=job.job_number,
-                status_token=job.status_token,
-            )
+        if customer:
+            if customer.phone and job.status == "working_on":
+                sms.notify_work_started(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    repair_job_id=job.id,
+                    customer_name=customer.full_name or "there",
+                    to_phone=customer.phone,
+                    job_number=job.job_number,
+                )
+            if customer.email and job.status in ("completed", "awaiting_collection"):
+                from ..email_client import send_job_ready_email
+                send_job_ready_email(
+                    to_email=customer.email,
+                    customer_name=customer.full_name,
+                    job_number=job.job_number,
+                    status_token=job.status_token,
+                )
 
     session.commit()
     session.refresh(job)

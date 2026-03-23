@@ -97,6 +97,33 @@ def notify_job_live(
     )
 
 
+def notify_work_started(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    job_number: str,
+) -> None:
+    """Notify customer that work has started on their watch."""
+    body = (
+        f"Hi {customer_name}, we have started work on your watch (job #{job_number}). "
+        f"You will hear from us in the coming days when your watch is ready for collection."
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="work_started",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_quote_sent(
     session: Session,
     *,
