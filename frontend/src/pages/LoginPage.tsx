@@ -75,14 +75,14 @@ export default function LoginPage() {
       const { data } = await login(demoCreds.slug, demoCreds.email, demoCreds.password)
       enableDemoMode(true)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
-      try {
-        await seedDemoData()
-        queryClient.invalidateQueries({ queryKey: ['customer-accounts'] })
-        queryClient.invalidateQueries({ queryKey: ['jobs'] })
-        queryClient.invalidateQueries({ queryKey: ['customers'] })
-      } catch {
-        // Non-fatal for login: demo can still proceed even if records already exist.
-      }
+      // Run seed in background — don't block login if it hangs or fails
+      seedDemoData()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['customer-accounts'] })
+          queryClient.invalidateQueries({ queryKey: ['jobs'] })
+          queryClient.invalidateQueries({ queryKey: ['customers'] })
+        })
+        .catch(() => { /* Non-fatal */ })
       resetDemoTour()
       resetAllPageTutorials()
       navigate('/dashboard')
