@@ -713,6 +713,13 @@ export interface StatusHistoryEntry {
 export const getStatusHistory = (jobId: string) =>
   api.get<StatusHistoryEntry[]>(`/repair-jobs/${jobId}/status-history`)
 
+// ── SMS Log (Messages) ────────────────────────────────────────────────────────
+export interface SmsLogEntry {
+  id: string; to_phone: string; body: string; event: string; status: string; created_at: string
+}
+export const getSmsLog = (jobId: string) =>
+  api.get<SmsLogEntry[]>(`/repair-jobs/${jobId}/sms-log`)
+
 // ── Invoices ──────────────────────────────────────────────────────────────────
 export interface Invoice {
   id: string; tenant_id: string; repair_job_id: string; quote_id?: string

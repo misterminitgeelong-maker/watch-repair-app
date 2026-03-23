@@ -10,6 +10,7 @@ from ..models import (
     Approval,
     Attachment,
     Customer,
+    SmsLogRead,
     CustomerAccount,
     CustomerAccountMembership,
     Invoice,
@@ -91,6 +92,20 @@ def create_repair_job(
         change_note="Job created",
     )
     session.add(history)
+
+    # Send "job is live" SMS so customer can track it
+    customer = session.get(Customer, watch.customer_id)
+    if customer and customer.phone:
+        sms.notify_job_live(
+            session,
+            tenant_id=auth.tenant_id,
+            repair_job_id=job.id,
+            customer_name=customer.full_name or "there",
+            to_phone=customer.phone,
+            status_token=job.status_token,
+            job_number=job.job_number,
+        )
+
     session.commit()
     session.refresh(job)
     return job
@@ -145,21 +160,10 @@ def update_repair_job_status(
     )
     session.add(history)
 
-    # Send status-update SMS to customer if they have a phone number
+    # Email customer when job is ready for collection (no status SMS — we text only on job_live and quote_sent)
     watch = session.get(Watch, job.watch_id)
     if watch:
         customer = session.get(Customer, watch.customer_id)
-        if customer and customer.phone:
-            sms.notify_job_status_changed(
-                session,
-                tenant_id=auth.tenant_id,
-                repair_job_id=job.id,
-                customer_name=customer.full_name,
-                to_phone=customer.phone,
-                job_number=job.job_number,
-                status_token=job.status_token,
-                new_status=job.status,
-            )
         if customer and customer.email and job.status in ("completed", "awaiting_collection"):
             from ..email_client import send_job_ready_email
             send_job_ready_email(
@@ -255,21 +259,6 @@ def submit_job_intake(
         )
     )
 
-    watch = session.get(Watch, job.watch_id)
-    if watch:
-        customer = session.get(Customer, watch.customer_id)
-        if customer and customer.phone:
-            sms.notify_job_status_changed(
-                session,
-                tenant_id=auth.tenant_id,
-                repair_job_id=job.id,
-                customer_name=customer.full_name,
-                to_phone=customer.phone,
-                job_number=job.job_number,
-                status_token=job.status_token,
-                new_status="awaiting_go_ahead",
-            )
-
     session.commit()
     session.refresh(job)
     return job
@@ -311,6 +300,35 @@ def update_repair_job_fields(
     session.commit()
     session.refresh(job)
     return job
+
+
+@router.get("/{job_id}/sms-log", response_model=list[SmsLogRead])
+def get_repair_job_sms_log(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    logs = session.exec(
+        select(SmsLog)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+        .where(SmsLog.repair_job_id == job_id)
+        .order_by(SmsLog.created_at.desc())
+    ).all()
+    return [
+        SmsLogRead(
+            id=log.id,
+            to_phone=log.to_phone,
+            body=log.body,
+            event=log.event,
+            status=log.status,
+            created_at=log.created_at,
+        )
+        for log in logs
+    ]
 
 
 @router.get("/{job_id}/status-history", response_model=list[JobStatusHistoryRead])

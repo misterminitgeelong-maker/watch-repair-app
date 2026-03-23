@@ -9,8 +9,10 @@ from ..dependencies import AuthContext, get_auth_context
 from ..models import (
     Approval,
     Customer,
+    JobStatusHistory,
     Quote,
     QuoteCreate,
+    TenantEventLog,
     QuoteDecisionRequest,
     QuoteDecisionResponse,
     QuoteLineItem,
@@ -110,8 +112,23 @@ def send_quote(
     quote.sent_at = datetime.now(timezone.utc)
     session.add(quote)
 
-    # Send SMS to customer if they have a phone number
     job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)
+    if job and job.status not in ("go_ahead", "no_go", "completed", "awaiting_collection", "collected"):
+        prev = job.status
+        job.status = "awaiting_go_ahead"
+        session.add(job)
+        session.add(
+            JobStatusHistory(
+                tenant_id=job.tenant_id,
+                repair_job_id=job.id,
+                old_status=prev,
+                new_status="awaiting_go_ahead",
+                changed_by_user_id=auth.user_id,
+                change_note="Quote sent — awaiting customer approval",
+            )
+        )
+
+    # Send SMS to customer if they have a phone number
     if job:
         watch = session.get(Watch, job.watch_id)
         if watch:
@@ -175,6 +192,38 @@ def quote_decision(
         customer_signature_data_url=payload.signature_data_url if payload.decision == "approved" else None,
     )
     session.add(approval)
+
+    # Update job status and log event for staff bump
+    job = get_tenant_repair_job(session, quote.repair_job_id, quote.tenant_id)
+    if job and job.status == "awaiting_go_ahead":
+        job.status = "go_ahead" if payload.decision == "approved" else "no_go"
+        session.add(job)
+        session.add(
+            JobStatusHistory(
+                tenant_id=job.tenant_id,
+                repair_job_id=job.id,
+                old_status="awaiting_go_ahead",
+                new_status=job.status,
+                changed_by_user_id=None,
+                change_note=f"Customer {payload.decision} quote",
+            )
+        )
+        event_type = "quote_approved" if payload.decision == "approved" else "quote_declined"
+        event_summary = (
+            f"Customer approved quote for job #{job.job_number}" if payload.decision == "approved"
+            else f"Customer declined quote for job #{job.job_number} — return watch"
+        )
+        session.add(
+            TenantEventLog(
+                tenant_id=job.tenant_id,
+                actor_user_id=None,
+                entity_type="repair_job",
+                entity_id=job.id,
+                event_type=event_type,
+                event_summary=event_summary,
+            )
+        )
+
     session.commit()
 
     return QuoteDecisionResponse(

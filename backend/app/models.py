@@ -304,10 +304,19 @@ class SmsLog(SQLModel, table=True):
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     to_phone: str
     body: str
-    event: str  # e.g. "quote_sent", "status_ready"
+    event: str  # e.g. "quote_sent", "job_live", "status_ready"
     provider_sid: Optional[str] = None  # Twilio message SID
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SmsLogRead(SQLModel):
+    id: UUID
+    to_phone: str
+    body: str
+    event: str
+    status: str
+    created_at: datetime
 
 
 class ImportLog(SQLModel, table=True):

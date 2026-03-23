@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer } from 'lucide-react'
+import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare } from 'lucide-react'
 import {
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment, getAttachmentDownloadUrl,
-  getStatusHistory,
+  getStatusHistory, getSmsLog,
   listCustomerAccounts, getWatch,
   getWatchMovementQuote,
   type JobStatus, type RepairJob, type CustomerAccount,
@@ -119,7 +119,7 @@ function LogWorkModal({ jobId, onClose }: { jobId: string; onClose: () => void }
 }
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
-type Tab = 'details' | 'worklogs' | 'attachments' | 'history'
+type Tab = 'details' | 'worklogs' | 'attachments' | 'history' | 'messages'
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -191,6 +191,7 @@ export default function JobDetailPage() {
   const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: tab === 'worklogs' })
   const { data: attachments } = useQuery({ queryKey: ['attachments', id], queryFn: () => listAttachments(id!).then(r => r.data) })
   const { data: history } = useQuery({ queryKey: ['history', id], queryFn: () => getStatusHistory(id!).then(r => r.data), enabled: tab === 'history' })
+  const { data: smsLog } = useQuery({ queryKey: ['sms-log', id], queryFn: () => getSmsLog(id!).then(r => r.data), enabled: tab === 'messages' })
 
   const nextStatus = job ? STATUS_FLOW[job.status] : null
 
@@ -230,6 +231,7 @@ export default function JobDetailPage() {
     { key: 'worklogs', label: 'Work Logs', icon: <Clock size={14} /> },
     { key: 'attachments', label: 'Attachments', icon: <Paperclip size={14} /> },
     { key: 'history', label: 'History', icon: <History size={14} /> },
+    { key: 'messages', label: 'Messages', icon: <MessageSquare size={14} /> },
   ]
 
   if (isLoading) return <Spinner />
@@ -528,6 +530,31 @@ export default function JobDetailPage() {
                   >
                     <Download size={15} />
                   </a>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Messages (SMS log) ───────────────────────────────────────────── */}
+      {tab === 'messages' && (
+        <div>
+          <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Texts sent to the customer for this job.</p>
+          {!smsLog ? <Spinner /> : smsLog.length === 0 ? <EmptyState message="No messages sent yet. The customer will receive a text when the job goes live and when a quote is sent." /> : (
+            <div className="space-y-3">
+              {smsLog.map(log => (
+                <Card key={log.id} className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--cafe-text-mid)' }}>{log.body}</p>
+                      <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                        To: {log.to_phone} · {log.event.replace(/_/g, ' ')}
+                        {log.status === 'dry_run' && ' (dry run)'}
+                      </p>
+                    </div>
+                    <span className="text-xs whitespace-nowrap" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(log.created_at)}</span>
+                  </div>
                 </Card>
               ))}
             </div>

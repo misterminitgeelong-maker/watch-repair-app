@@ -68,6 +68,35 @@ def _persist(
 # Public notification functions — each maps to a business event
 # ---------------------------------------------------------------------------
 
+def notify_job_live(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    status_token: str,
+    job_number: str,
+) -> None:
+    """Send 'your job is live' SMS with link to track status."""
+    status_url = f"{settings.public_base_url}/status/{status_token}"
+    body = (
+        f"Hi {customer_name}, your watch repair job #{job_number} is now live! "
+        f"Track it here: {status_url}"
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="job_live",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_quote_sent(
     session: Session,
     *,
