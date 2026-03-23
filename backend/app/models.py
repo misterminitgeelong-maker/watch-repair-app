@@ -1132,6 +1132,8 @@ class AutoKeyInvoice(SQLModel, table=True):
     tax_cents: int = 0
     total_cents: int = 0
     currency: str = "AUD"
+    payment_method: Optional[str] = None  # cash, eftpos, bank
+    paid_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -1180,6 +1182,8 @@ class AutoKeyInvoiceRead(SQLModel):
     tax_cents: int
     total_cents: int
     currency: str
+    payment_method: Optional[str] = None
+    paid_at: Optional[datetime] = None
     created_at: datetime
 
 

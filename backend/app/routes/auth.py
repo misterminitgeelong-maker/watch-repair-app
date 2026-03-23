@@ -727,8 +727,13 @@ def seed_demo_data(
     if not tenant or not user or user.tenant_id != tenant.id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    if settings.app_env.lower() == "production" and tenant.slug != _normalize_slug(settings.startup_seed_tenant_slug):
-        raise HTTPException(status_code=403, detail="Demo seeding is only available for the configured demo tenant")
+    if settings.app_env.lower() == "production":
+        allowed = [
+            _normalize_slug(settings.startup_seed_tenant_slug),
+            *([_normalize_slug(s) for s in [settings.testing_tenant_slug] if (s or "").strip()]),
+        ]
+        if tenant.slug not in [a for a in allowed if a]:
+            raise HTTPException(status_code=403, detail="Demo seeding is only available for the configured demo or testing tenant")
 
     created = _seed_demo_data_for_tenant(session, tenant, user)
     return {"ok": True, "created": created}

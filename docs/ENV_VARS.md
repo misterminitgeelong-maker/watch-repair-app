@@ -24,6 +24,7 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `STRIPE_WEBHOOK_SECRET` | (empty) | No | Stripe webhook signing secret. |
 | `STRIPE_PRICE_*` | (empty) | No | Various Stripe price IDs for plans. |
 | `PLATFORM_ADMIN_*` | (empty) | No | Optional platform admin account (email, password, etc.). |
+| `TESTING_TENANT_SLUG` / `TESTING_OWNER_EMAIL` / `TESTING_OWNER_PASSWORD` | (empty) | No | Optional testing tenant for QA. When set, creates a separate tenant at startup; testing login has no demo prompts. |
 | `STARTUP_SEED_*` | (varies) | No | One-time CSV seed and demo tenant settings. |
 | `SENTRY_DSN` | (empty) | No | Sentry DSN for backend error reporting. Leave blank to disable. |
 | `SENDGRID_API_KEY` / `POSTMARK_API_KEY` | (empty) | No | Optional email provider API key when `enable_email_notifications` is true. |
@@ -40,4 +41,5 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 |----------|-------------|
 | `VITE_ENABLE_DEV_AUTO_LOGIN` | Set to `true` in dev to use dev-auto-login. |
 | `VITE_DEMO_TENANT_SLUG` / `VITE_DEMO_EMAIL` / `VITE_DEMO_PASSWORD` | Demo login button prefills (optional). |
+| `VITE_TESTING_TENANT_SLUG` / `VITE_TESTING_EMAIL` / `VITE_TESTING_PASSWORD` | Testing login (optional). When all three are set, shows "Testing Login (no prompts)" on the login page. |
 | `VITE_SENTRY_DSN` | Sentry DSN for frontend error reporting (optional). Leave unset to disable. |

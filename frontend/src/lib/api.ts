@@ -1145,6 +1145,8 @@ export interface AutoKeyInvoice {
   tax_cents: number
   total_cents: number
   currency: string
+  payment_method?: string
+  paid_at?: string
   created_at: string
 }
 
@@ -1164,7 +1166,7 @@ export const sendAutoKeyQuote = (quoteId: string) => api.post<AutoKeyQuote>(`/au
 export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
 export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
   api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
-export const updateAutoKeyInvoice = (jobId: string, invoiceId: string, data: { status?: string }) =>
+export const updateAutoKeyInvoice = (jobId: string, invoiceId: string, data: { status?: string; payment_method?: string }) =>
   api.patch<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/${invoiceId}`, data)
 
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>

@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     startup_seed_owner_email: str = "admin@admin.com"
     startup_seed_owner_password: str = "Admin"
 
+    # Optional testing tenant (no demo prompts; for internal QA/breaking things)
+    testing_tenant_slug: str = ""
+    testing_tenant_name: str = "Testing"
+    testing_owner_email: str = ""
+    testing_owner_password: str = ""
+
     # Optional global platform admin account (cross-tenant visibility)
     platform_admin_enabled: bool = False
     platform_admin_email: str = ""

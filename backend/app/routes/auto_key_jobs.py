@@ -459,6 +459,8 @@ def list_auto_key_invoices(
             tax_cents=i.tax_cents,
             total_cents=i.total_cents,
             currency=i.currency,
+            payment_method=getattr(i, "payment_method", None),
+            paid_at=getattr(i, "paid_at", None),
             created_at=i.created_at,
         )
         for i in invoices
@@ -512,12 +514,15 @@ def create_auto_key_invoice_from_quote(
         tax_cents=invoice.tax_cents,
         total_cents=invoice.total_cents,
         currency=invoice.currency,
+        payment_method=getattr(invoice, "payment_method", None),
+        paid_at=getattr(invoice, "paid_at", None),
         created_at=invoice.created_at,
     )
 
 
 class AutoKeyInvoiceUpdate(SQLModel):
     status: str | None = None
+    payment_method: str | None = None  # cash, eftpos, bank
 
 
 @router.patch("/{job_id}/invoices/{invoice_id}", response_model=AutoKeyInvoiceRead)
@@ -536,6 +541,15 @@ def update_auto_key_invoice(
         if payload.status not in ("unpaid", "paid", "void"):
             raise HTTPException(status_code=400, detail="Invalid status")
         invoice.status = payload.status
+        if payload.status == "paid":
+            invoice.paid_at = datetime.now(timezone.utc)
+        elif payload.status == "unpaid":
+            invoice.paid_at = None
+    if payload.payment_method is not None:
+        v = (payload.payment_method or "").strip().lower()
+        if v and v not in ("cash", "eftpos", "bank"):
+            raise HTTPException(status_code=400, detail="Invalid payment_method; use cash, eftpos, or bank")
+        invoice.payment_method = v or None
     session.add(invoice)
     session.commit()
     session.refresh(invoice)
@@ -550,6 +564,8 @@ def update_auto_key_invoice(
         tax_cents=invoice.tax_cents,
         total_cents=invoice.total_cents,
         currency=invoice.currency,
+        payment_method=getattr(invoice, "payment_method", None),
+        paid_at=getattr(invoice, "paid_at", None),
         created_at=invoice.created_at,
     )
 

@@ -183,6 +183,39 @@ def ensure_demo_tenant(session: Session) -> Tenant:
     return _ensure_tenant_owner(session)
 
 
+def ensure_testing_tenant(session: Session) -> Tenant | None:
+    """Creates a testing tenant + owner if TESTING_* env vars are set. No demo prompts."""
+    slug = (settings.testing_tenant_slug or "").strip().lower()
+    email = (settings.testing_owner_email or "").strip().lower()
+    password = settings.testing_owner_password or ""
+    if not slug or "@" not in email or len(password) < 4:
+        return None
+
+    tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
+    if tenant:
+        return tenant
+
+    tenant = Tenant(
+        name=(settings.testing_tenant_name or "Testing").strip() or "Testing",
+        slug=slug,
+    )
+    session.add(tenant)
+    session.flush()
+
+    owner = User(
+        tenant_id=tenant.id,
+        email=email,
+        full_name="Testing",
+        role="owner",
+        password_hash=hash_password(password),
+        is_active=True,
+    )
+    session.add(owner)
+    session.commit()
+    session.refresh(tenant)
+    return tenant
+
+
 def _ensure_tenant_owner(session: Session) -> Tenant:
     tenant = session.exec(select(Tenant).where(Tenant.slug == settings.startup_seed_tenant_slug)).first()
     if tenant:

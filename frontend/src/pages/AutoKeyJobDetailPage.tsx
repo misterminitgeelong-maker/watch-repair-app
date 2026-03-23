@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, MapPin, MessageSquare } from 'lucide-react'
+import { CheckCircle, ChevronLeft, MapPin, MessageSquare } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
@@ -10,6 +10,7 @@ import {
   listCustomerAccounts,
   listUsers,
   sendAutoKeyArrivalSms,
+  updateAutoKeyInvoice,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   type CustomerAccount,
@@ -43,6 +44,8 @@ export default function AutoKeyJobDetailPage() {
   const [addressEdit, setAddressEdit] = useState<string | null>(null)
   const [showArrivalSms, setShowArrivalSms] = useState(false)
   const [arrivalWindow, setArrivalWindow] = useState('9–11am')
+  const [invoiceToPay, setInvoiceToPay] = useState<{ id: string; invoice_number: string; total_cents: number } | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'eftpos' | 'bank'>('eftpos')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -90,6 +93,18 @@ export default function AutoKeyJobDetailPage() {
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to assign tech.')),
+  })
+
+  const recordPaymentMut = useMutation({
+    mutationFn: ({ invId, method }: { invId: string; method: 'cash' | 'eftpos' | 'bank' }) =>
+      updateAutoKeyInvoice(id!, invId, { status: 'paid', payment_method: method }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setInvoiceToPay(null)
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to record payment.')),
   })
 
   const accountMut = useMutation({
@@ -305,18 +320,64 @@ export default function AutoKeyJobDetailPage() {
               <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>No invoices yet.</p>
             ) : (
               invoices.map(inv => (
-                <div key={inv.id} className='px-5 py-3 text-sm flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                <div key={inv.id} className='px-5 py-3 text-sm flex items-center justify-between flex-wrap gap-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
                   <div>
                     <p style={{ color: 'var(--cafe-text)' }}>{inv.invoice_number}</p>
-                    <p className='text-xs capitalize' style={{ color: 'var(--cafe-text-muted)' }}>{inv.status} · {formatDate(inv.created_at)}</p>
+                    <p className='text-xs capitalize' style={{ color: 'var(--cafe-text-muted)' }}>
+                      {inv.status}
+                      {inv.payment_method && <span> · {inv.payment_method}</span>}
+                      {' · '}{formatDate(inv.created_at)}
+                    </p>
                   </div>
-                  <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</p>
+                  <div className='flex items-center gap-2'>
+                    <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</p>
+                    {inv.status === 'unpaid' && (
+                      <Button
+                        variant="secondary"
+                        className="text-xs py-1 px-2"
+                        onClick={() => setInvoiceToPay({ id: inv.id, invoice_number: inv.invoice_number, total_cents: inv.total_cents })}
+                      >
+                        <CheckCircle size={12} /> Record payment
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </Card>
         </div>
       </div>
+      {invoiceToPay && (
+        <Modal title="Record payment" onClose={() => setInvoiceToPay(null)}>
+          <div className="space-y-4">
+            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+              <p><span style={{ color: 'var(--cafe-text-muted)' }}>Invoice</span> #{invoiceToPay.invoice_number}</p>
+              <p><span style={{ color: 'var(--cafe-text-muted)' }}>Total</span> {formatCents(invoiceToPay.total_cents)}</p>
+            </div>
+            <Select
+              label="Payment method"
+              value={paymentMethod}
+              onChange={e => setPaymentMethod(e.target.value as 'cash' | 'eftpos' | 'bank')}
+            >
+              <option value="cash">Cash</option>
+              <option value="eftpos">EFTPOS</option>
+              <option value="bank">Bank transfer</option>
+            </Select>
+            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setInvoiceToPay(null)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                onClick={() => recordPaymentMut.mutate({ invId: invoiceToPay.id, method: paymentMethod })}
+                disabled={recordPaymentMut.isPending}
+              >
+                <CheckCircle size={14} />
+                {recordPaymentMut.isPending ? 'Recording…' : 'Mark paid'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
