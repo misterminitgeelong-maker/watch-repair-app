@@ -340,7 +340,7 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
     return tenant
 
 
-# Melbourne addresses for demo auto_key_jobs K-1001..K-1008
+# Melbourne addresses for demo auto_key_jobs K-1001..K-1012
 DEMO_AUTO_KEY_ADDRESSES: dict[str, str] = {
     "K-1001": "45 Glenferrie Rd, Malvern VIC 3144",
     "K-1002": "12 Chapel St, Prahran VIC 3181",
@@ -350,6 +350,10 @@ DEMO_AUTO_KEY_ADDRESSES: dict[str, str] = {
     "K-1006": "15 Lygon St, Carlton VIC 3053",
     "K-1007": "88 Sydney Rd, Brunswick VIC 3056",
     "K-1008": "120 Collins St, Melbourne VIC 3000",
+    "K-1009": "42 Smith St, Collingwood VIC 3066",
+    "K-1010": "99 Bridge Rd, Richmond VIC 3121",
+    "K-1011": "55 Swan St, Richmond VIC 3121",
+    "K-1012": "78 Victoria St, Abbotsford VIC 3067",
 }
 
 

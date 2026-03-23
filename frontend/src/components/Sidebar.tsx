@@ -8,7 +8,7 @@ import type { FeatureKey } from '@/lib/api'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/inbox', label: 'Inbox', icon: Inbox },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Customer quote approvals and declines' },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/prospects', label: 'Prospects', icon: ClipboardList },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' as FeatureKey },
@@ -73,10 +73,11 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1">
-        {navItems.map(({ to, label, icon: Icon }) => (
+        {navItems.map(({ to, label, icon: Icon, title }) => (
           <NavLink
             key={to}
             to={to}
+            title={title}
             end={to === '/'}
             onClick={onNavigate}
             className={({ isActive }) =>
