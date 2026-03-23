@@ -9,6 +9,7 @@ from ..dependencies import AuthContext, get_auth_context, require_feature, requi
 from ..models import (
     Customer,
     CustomerAccount,
+    FleetAccountType,
     CustomerAccountCreate,
     CustomerAccountInvoice,
     CustomerAccountInvoiceLine,
@@ -32,6 +33,11 @@ router = APIRouter(
 )
 
 
+_VALID_ACCOUNT_TYPES: frozenset[str] = frozenset(
+    {"Dealership", "Rental Fleet", "Government Fleet", "Corporate Fleet", "Car Auctions", "Other"}
+)
+
+
 def _to_read(session: Session, account: CustomerAccount) -> CustomerAccountRead:
     membership_rows = session.exec(
         select(CustomerAccountMembership)
@@ -40,6 +46,9 @@ def _to_read(session: Session, account: CustomerAccount) -> CustomerAccountRead:
         .order_by(CustomerAccountMembership.created_at)
     ).all()
     customer_ids = [m.customer_id for m in membership_rows]
+    account_type: FleetAccountType | None = (
+        account.account_type if (account.account_type or "") in _VALID_ACCOUNT_TYPES else "Other"
+    )
     return CustomerAccountRead(
         id=account.id,
         tenant_id=account.tenant_id,
@@ -55,7 +64,7 @@ def _to_read(session: Session, account: CustomerAccount) -> CustomerAccountRead:
         created_at=account.created_at,
         customer_ids=customer_ids,
         # Fleet/Dealer fields
-        account_type=account.account_type,
+        account_type=account_type,
         fleet_size=account.fleet_size,
         primary_contact_name=account.primary_contact_name,
         primary_contact_phone=account.primary_contact_phone,
