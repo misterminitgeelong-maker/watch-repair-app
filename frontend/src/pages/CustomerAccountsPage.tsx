@@ -121,9 +121,10 @@ export default function CustomerAccountsPage() {
   const [expandedInvoiceById, setExpandedInvoiceById] = useState<Record<string, boolean>>({})
   const [billingErrorByAccount, setBillingErrorByAccount] = useState<Record<string, string>>({})
 
-  const { data: accounts = [], isLoading } = useQuery({
+  const { data: accounts = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
+    retry: 1,
   })
 
   const { data: customers = [] } = useQuery({
@@ -335,9 +336,24 @@ export default function CustomerAccountsPage() {
 
       {showCreate && <CreateCustomerAccountModal onClose={() => setShowCreate(false)} />}
 
-      {isLoading ? <Spinner /> : (
+      {isError ? (
+        <div className="rounded-lg border p-4" style={{ borderColor: '#C96A5A', backgroundColor: '#FDF2F0' }}>
+          <p className="text-sm font-semibold" style={{ color: '#C96A5A' }}>Could not load customer accounts</p>
+          <p className="text-xs mt-1" style={{ color: '#5F4734' }}>
+            {getApiErrorMessage(error as unknown, 'Unknown error')}
+          </p>
+          <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+            Visit <a href="/v1/debug/demo-status" target="_blank" rel="noreferrer" className="underline">/v1/debug/demo-status</a> to check backend state. Restart the backend to seed B2B accounts at startup.
+          </p>
+          <Button className="mt-3" onClick={() => refetch()}>Try again</Button>
+        </div>
+      ) : isLoading ? (
+        <Spinner />
+      ) : accounts.length === 0 ? (
+        <EmptyState message="No customer accounts yet." />
+      ) : (
         <div className="space-y-3">
-          {accounts.length === 0 ? <EmptyState message="No customer accounts yet." /> : accounts.map(account => {
+          {accounts.map(account => {
             const selectedCustomer = selectedCustomerByAccount[account.id] ?? ''
             const periodValue = periodValueFor(account.id)
             const { year, month } = parsePeriod(periodValue)

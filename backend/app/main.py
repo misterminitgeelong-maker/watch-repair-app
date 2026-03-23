@@ -105,6 +105,31 @@ app.add_middleware(
 )
 
 
+@app.get("/v1/debug/demo-status")
+def debug_demo_status():
+    """Diagnostic: demo tenant state and B2B account count. No auth required."""
+    from sqlmodel import select, func
+    from .config import settings
+    from .models import CustomerAccount, Tenant
+
+    slug = (settings.startup_seed_tenant_slug or "myshop").strip().lower()
+    with Session(engine) as session:
+        tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
+        if not tenant:
+            return {"demo_tenant": None, "message": f"Demo tenant '{slug}' not found"}
+        count = session.exec(
+            select(func.count()).select_from(CustomerAccount).where(CustomerAccount.tenant_id == tenant.id)
+        ).one()
+        return {
+            "demo_tenant": {
+                "slug": tenant.slug,
+                "id": str(tenant.id),
+                "plan_code": tenant.plan_code,
+            },
+            "customer_account_count": int(count),
+        }
+
+
 @app.get("/v1/health")
 def health():
     from sqlmodel import select
@@ -122,11 +147,18 @@ def health():
             testing_tenant_exists = session.exec(
                 select(Tenant).where(Tenant.slug == slug)
             ).first() is not None
+    demo_status = None
+    try:
+        demo_status = debug_demo_status()
+    except Exception:
+        pass
+
     return {
         "status": "ok",
         "startup_seed": get_seed_status(),
         "testing_tenant_configured": testing_configured,
         "testing_tenant_exists": testing_tenant_exists,
+        "demo": demo_status,
     }
 
 
