@@ -663,7 +663,7 @@ export const createWorkLog = (data: { repair_job_id: string; note?: string; minu
 // ── Attachments ───────────────────────────────────────────────────────────────
 export interface Attachment {
   id: string; tenant_id: string; repair_job_id?: string; watch_id?: string
-  shoe_repair_job_id?: string
+  shoe_repair_job_id?: string; auto_key_job_id?: string
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
   label?: string; created_at: string
 }
@@ -680,6 +680,17 @@ export const uploadAttachment = (file: File, repairJobId: string, label?: string
 }
 export const listShoeAttachments = (shoeRepairJobId: string) =>
   api.get<Attachment[]>('/attachments', { params: { shoe_repair_job_id: shoeRepairJobId } })
+export const listAutoKeyAttachments = (autoKeyJobId: string) =>
+  api.get<Attachment[]>('/attachments', { params: { auto_key_job_id: autoKeyJobId } })
+export const uploadAutoKeyAttachment = (file: File, autoKeyJobId: string, label?: string) => {
+  const form = new FormData()
+  form.append('file', file)
+  const params = new URLSearchParams({ auto_key_job_id: autoKeyJobId })
+  if (label) params.append('label', label)
+  return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
 export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?: string) => {
   const form = new FormData()
   form.append('file', file)
@@ -1039,6 +1050,9 @@ export interface AutoKeyJob {
   registration_plate?: string
   vin?: string
   key_type?: string
+  blade_code?: string
+  chip_type?: string
+  tech_notes?: string
   key_quantity: number
   programming_status: AutoKeyProgrammingStatus
   priority: 'low' | 'normal' | 'high' | 'urgent'
@@ -1106,6 +1120,10 @@ export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePa
   job_address?: string | null
   job_type?: string | null
   visit_order?: number | null
+  key_type?: string | null
+  blade_code?: string | null
+  chip_type?: string | null
+  tech_notes?: string | null
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

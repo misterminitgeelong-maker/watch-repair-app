@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { CheckCircle, ChevronLeft, MapPin, MessageSquare } from 'lucide-react'
+import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
+  getCustomer,
+  getAttachmentDownloadUrl,
+  listAutoKeyAttachments,
   listAutoKeyInvoices,
   listAutoKeyQuotes,
   listCustomerAccounts,
@@ -13,6 +16,7 @@ import {
   updateAutoKeyInvoice,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
+  uploadAutoKeyAttachment,
   type CustomerAccount,
   type JobStatus,
 } from '@/lib/api'
@@ -43,6 +47,10 @@ export default function AutoKeyJobDetailPage() {
   const qc = useQueryClient()
   const [error, setError] = useState('')
   const [addressEdit, setAddressEdit] = useState<string | null>(null)
+  const [keyTypeEdit, setKeyTypeEdit] = useState<string | null>(null)
+  const [bladeCodeEdit, setBladeCodeEdit] = useState<string | null>(null)
+  const [chipTypeEdit, setChipTypeEdit] = useState<string | null>(null)
+  const [techNotesEdit, setTechNotesEdit] = useState<string | null>(null)
   const [showArrivalSms, setShowArrivalSms] = useState(false)
   const [arrivalWindow, setArrivalWindow] = useState('9–11am')
   const [invoiceToPay, setInvoiceToPay] = useState<{ id: string; invoice_number: string; total_cents: number } | null>(null)
@@ -53,6 +61,21 @@ export default function AutoKeyJobDetailPage() {
     queryFn: () => getAutoKeyJob(id!).then(r => r.data),
     enabled: !!id,
   })
+
+  const { data: customer } = useQuery({
+    queryKey: ['customer', job?.customer_id],
+    queryFn: () => getCustomer(job!.customer_id).then(r => r.data),
+    enabled: !!job?.customer_id,
+  })
+
+  const { data: attachments = [], refetch: refetchAttachments } = useQuery({
+    queryKey: ['auto-key-attachments', id],
+    queryFn: () => listAutoKeyAttachments(id!).then(r => r.data),
+    enabled: !!id,
+  })
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -129,6 +152,27 @@ export default function AutoKeyJobDetailPage() {
     onError: err => setError(getApiErrorMessage(err, 'Failed to update schedule.')),
   })
 
+  const keyDetailsMut = useMutation({
+    mutationFn: (data: { key_type?: string | null; blade_code?: string | null; chip_type?: string | null; tech_notes?: string | null }) =>
+      updateAutoKeyJob(id!, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to update key details.')),
+  })
+
+  const uploadAttachmentMut = useMutation({
+    mutationFn: (file: File) => uploadAutoKeyAttachment(file, id!),
+    onSuccess: () => {
+      refetchAttachments()
+      qc.invalidateQueries({ queryKey: ['auto-key-attachments', id] })
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to upload photo.')),
+  })
+
   const arrivalSmsMut = useMutation({
     mutationFn: (time_window: string) => sendAutoKeyArrivalSms(id!, time_window),
     onSuccess: () => {
@@ -153,6 +197,39 @@ export default function AutoKeyJobDetailPage() {
     scheduleMut.mutate(payload)
   }
 
+  const handleKeyDetailBlur = (field: 'key_type' | 'blade_code' | 'chip_type' | 'tech_notes', value: string) => {
+    const trimmed = value.trim() || null
+    keyDetailsMut.mutate({ [field]: trimmed })
+    if (field === 'key_type') setKeyTypeEdit(null)
+    if (field === 'blade_code') setBladeCodeEdit(null)
+    if (field === 'chip_type') setChipTypeEdit(null)
+    if (field === 'tech_notes') setTechNotesEdit(null)
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || attachments.length >= 5) return
+    setUploading(true)
+    try {
+      await uploadAttachmentMut.mutateAsync(file)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleCameraCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || attachments.length >= 5) return
+    setUploading(true)
+    try {
+      await uploadAttachmentMut.mutateAsync(file)
+    } finally {
+      setUploading(false)
+      if (cameraInputRef.current) cameraInputRef.current.value = ''
+    }
+  }
+
   if (isLoading) return <Spinner />
   if (!job) return <EmptyState message='Mobile Services job not found.' />
 
@@ -173,7 +250,31 @@ export default function AutoKeyJobDetailPage() {
       <PageHeader title={`#${job.job_number} · ${job.title}`} />
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-5'>
-        <Card className='p-5 space-y-3'>
+        <Card className='p-5 space-y-4'>
+          {/* Customer section */}
+          {customer && (
+            <div className='pb-3' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+              <h2 className='font-semibold text-xs uppercase tracking-widest mb-2' style={{ color: 'var(--cafe-text-muted)' }}>Customer</h2>
+              <div className='space-y-1.5 text-sm'>
+                <div>
+                  <Link to={`/customers/${customer.id}`} className='font-medium' style={{ color: 'var(--cafe-amber)' }}>
+                    {customer.full_name || 'Unknown'}
+                  </Link>
+                </div>
+                {customer.phone && (
+                  <a href={`tel:${customer.phone.replace(/\s/g, '')}`} className='flex items-center gap-1.5 touch-manipulation' style={{ color: 'var(--cafe-text)' }}>
+                    <Phone size={14} /> {customer.phone}
+                  </a>
+                )}
+                {customer.email && (
+                  <a href={`mailto:${customer.email}`} className='flex items-center gap-1.5' style={{ color: 'var(--cafe-text)' }}>
+                    <Mail size={14} /> {customer.email}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
           <h2 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Job Info</h2>
           <div className='space-y-2 text-sm'>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Status</span><Badge status={job.status} /></div>
@@ -186,9 +287,15 @@ export default function AutoKeyJobDetailPage() {
             {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span></div>}
             {job.job_address && (
               <div>
-                <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Address</span><span className='text-right'>{job.job_address}</span></div>
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
-                  <MapPin size={12} /> Get directions
+                <div className='flex justify-between items-start gap-2'><span style={{ color: 'var(--cafe-text-muted)' }}>Address</span><span className='text-right'>{job.job_address}</span></div>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 min-h-9 px-3 py-1.5 rounded-lg text-sm font-medium mt-2 touch-manipulation"
+                  style={{ color: 'var(--cafe-text)', backgroundColor: 'rgba(201, 162, 72, 0.15)', border: '1px solid var(--cafe-amber)' }}
+                >
+                  <MapPin size={14} /> Get Directions
                 </a>
               </div>
             )}
@@ -202,6 +309,103 @@ export default function AutoKeyJobDetailPage() {
                 <MessageSquare size={16} /> Send arrival SMS to customer
               </button>
             )}
+          </div>
+
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Key Details</h3>
+          <Input
+            label='Key Type'
+            value={keyTypeEdit !== null ? keyTypeEdit : (job.key_type ?? '')}
+            onChange={e => setKeyTypeEdit(e.target.value)}
+            onBlur={e => { handleKeyDetailBlur('key_type', e.target.value) }}
+            disabled={keyDetailsMut.isPending}
+            placeholder='From intake'
+          />
+          <Input
+            label='Blade Code'
+            value={bladeCodeEdit !== null ? bladeCodeEdit : (job.blade_code ?? '')}
+            onChange={e => setBladeCodeEdit(e.target.value)}
+            onBlur={e => { handleKeyDetailBlur('blade_code', e.target.value) }}
+            disabled={keyDetailsMut.isPending}
+            placeholder='Blade code'
+          />
+          <Input
+            label='Transponder Chip Type'
+            value={chipTypeEdit !== null ? chipTypeEdit : (job.chip_type ?? '')}
+            onChange={e => setChipTypeEdit(e.target.value)}
+            onBlur={e => { handleKeyDetailBlur('chip_type', e.target.value) }}
+            disabled={keyDetailsMut.isPending}
+            placeholder='Chip type'
+          />
+
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Tech Notes</h3>
+          <textarea
+            value={techNotesEdit !== null ? techNotesEdit : (job.tech_notes ?? '')}
+            onChange={e => setTechNotesEdit(e.target.value)}
+            onBlur={e => { handleKeyDetailBlur('tech_notes', e.target.value) }}
+            disabled={keyDetailsMut.isPending}
+            placeholder='Notes for the technician'
+            className='w-full min-h-20 px-3 py-2 rounded-lg text-sm resize-y'
+            style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+          />
+
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Photo Attachments</h3>
+          <div className='space-y-2'>
+            {attachments.length > 0 && (
+              <div className='flex flex-wrap gap-2'>
+                {attachments.map((a: { id: string; storage_key: string }) => (
+                  <a
+                    key={a.id}
+                    href={getAttachmentDownloadUrl(a.storage_key)}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='block w-16 h-16 rounded-lg overflow-hidden shrink-0'
+                    style={{ border: '1px solid var(--cafe-border)' }}
+                  >
+                    <img
+                      src={getAttachmentDownloadUrl(a.storage_key)}
+                      alt=''
+                      className='w-full h-full object-cover'
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+            {attachments.length < 5 && (
+              <div className='flex gap-2'>
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='image/*'
+                  onChange={handlePhotoUpload}
+                  className='hidden'
+                />
+                <input
+                  ref={cameraInputRef}
+                  type='file'
+                  accept='image/*'
+                  capture='environment'
+                  onChange={handleCameraCapture}
+                  className='hidden'
+                />
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || attachments.length >= 5}
+                >
+                  {uploading ? 'Uploading…' : 'Choose photo'}
+                </Button>
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={uploading || attachments.length >= 5}
+                >
+                  <Camera size={14} /> Camera
+                </Button>
+              </div>
+            )}
+            <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{attachments.length}/5 photos</p>
           </div>
 
           <Select

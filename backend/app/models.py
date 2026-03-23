@@ -223,6 +223,7 @@ class Attachment(SQLModel, table=True):
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     watch_id: Optional[UUID] = Field(default=None, index=True, foreign_key="watch.id")
     shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
+    auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
     uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     storage_key: str = Field(index=True, unique=True)
     file_name: Optional[str] = None
@@ -705,6 +706,7 @@ class AttachmentRead(SQLModel):
     repair_job_id: Optional[UUID] = None
     watch_id: Optional[UUID] = None
     shoe_repair_job_id: Optional[UUID] = None
+    auto_key_job_id: Optional[UUID] = None
     storage_key: str
     file_name: Optional[str] = None
     content_type: Optional[str] = None
@@ -996,6 +998,9 @@ class AutoKeyJob(SQLModel, table=True):
     registration_plate: Optional[str] = None
     vin: Optional[str] = None
     key_type: Optional[str] = None
+    blade_code: Optional[str] = None
+    chip_type: Optional[str] = None
+    tech_notes: Optional[str] = None
     key_quantity: int = 1
     programming_status: str = "pending"
     priority: str = "normal"
@@ -1053,6 +1058,9 @@ class AutoKeyJobRead(SQLModel):
     registration_plate: Optional[str] = None
     vin: Optional[str] = None
     key_type: Optional[str] = None
+    blade_code: Optional[str] = None
+    chip_type: Optional[str] = None
+    tech_notes: Optional[str] = None
     key_quantity: int
     programming_status: AutoKeyProgrammingStatus
     priority: Literal["low", "normal", "high", "urgent"]
@@ -1088,6 +1096,9 @@ class AutoKeyJobFieldUpdate(SQLModel):
     registration_plate: Optional[str] = None
     vin: Optional[str] = None
     key_type: Optional[str] = None
+    blade_code: Optional[str] = None
+    chip_type: Optional[str] = None
+    tech_notes: Optional[str] = None
     key_quantity: Optional[int] = None
     programming_status: Optional[AutoKeyProgrammingStatus] = None
     collection_date: Optional[date] = None

@@ -17,6 +17,7 @@ from ..models import (
     AttachmentCreate,
     AttachmentRead,
     AttachmentUrlResponse,
+    AutoKeyJob,
     RepairJob,
     ShoeRepairJob,
     User,
@@ -38,12 +39,13 @@ async def upload_attachment(
     repair_job_id: UUID | None = None,
     watch_id: UUID | None = None,
     shoe_repair_job_id: UUID | None = None,
+    auto_key_job_id: UUID | None = None,
     label: str | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    if not repair_job_id and not watch_id and not shoe_repair_job_id:
-        raise HTTPException(status_code=400, detail="repair_job_id, watch_id, or shoe_repair_job_id is required")
+    if not repair_job_id and not watch_id and not shoe_repair_job_id and not auto_key_job_id:
+        raise HTTPException(status_code=400, detail="repair_job_id, watch_id, shoe_repair_job_id, or auto_key_job_id is required")
 
     if repair_job_id:
         job = session.get(RepairJob, repair_job_id)
@@ -59,6 +61,11 @@ async def upload_attachment(
         shoe_job = session.get(ShoeRepairJob, shoe_repair_job_id)
         if not shoe_job or shoe_job.tenant_id != auth.tenant_id:
             raise HTTPException(status_code=404, detail="Shoe repair job not found")
+
+    if auto_key_job_id:
+        ak_job = session.get(AutoKeyJob, auto_key_job_id)
+        if not ak_job or ak_job.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Auto key job not found")
 
     safe_name = Path(file.filename or "file").name
     raw = await file.read()
@@ -80,8 +87,16 @@ async def upload_attachment(
         except UnidentifiedImageError:
             pass  # not a recognised image, store as-is
 
-    storage_key = f"{uuid4().hex}_{safe_name}"
-    dest = UPLOAD_DIR / storage_key
+    file_id = uuid4().hex
+    if auto_key_job_id:
+        job_subdir = f"auto-key-photos/{auto_key_job_id}"
+        storage_key = f"{job_subdir}/{file_id}_{safe_name}"
+        dest_dir = UPLOAD_DIR / job_subdir
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / f"{file_id}_{safe_name}"
+    else:
+        storage_key = f"{file_id}_{safe_name}"
+        dest = UPLOAD_DIR / storage_key
     dest.write_bytes(raw)
 
     attachment = Attachment(
@@ -89,6 +104,7 @@ async def upload_attachment(
         repair_job_id=repair_job_id,
         watch_id=watch_id,
         shoe_repair_job_id=shoe_repair_job_id,
+        auto_key_job_id=auto_key_job_id,
         uploaded_by_user_id=auth.user_id,
         storage_key=storage_key,
         file_name=safe_name,
@@ -143,6 +159,7 @@ def list_attachments(
     repair_job_id: UUID | None = None,
     watch_id: UUID | None = None,
     shoe_repair_job_id: UUID | None = None,
+    auto_key_job_id: UUID | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -153,6 +170,8 @@ def list_attachments(
         query = query.where(Attachment.watch_id == watch_id)
     if shoe_repair_job_id:
         query = query.where(Attachment.shoe_repair_job_id == shoe_repair_job_id)
+    if auto_key_job_id:
+        query = query.where(Attachment.auto_key_job_id == auto_key_job_id)
 
     rows = session.exec(query).all()
     return [AttachmentRead(**row.model_dump()) for row in rows]
