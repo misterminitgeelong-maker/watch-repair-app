@@ -286,7 +286,7 @@ export interface Customer {
 }
 
 // ── Customer Accounts (Fleet/B2B) ─────────────────────────────────────────────
-export type FleetAccountType = 'Dealership' | 'Rental Fleet' | 'Government Fleet' | 'Corporate Fleet' | 'Other'
+export type FleetAccountType = 'Dealership' | 'Rental Fleet' | 'Government Fleet' | 'Corporate Fleet' | 'Car Auctions' | 'Other'
 export type FleetBillingCycle = 'Monthly' | 'Fortnightly' | 'Weekly'
 
 export interface CustomerAccount {

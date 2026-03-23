@@ -80,6 +80,7 @@ function CreateCustomerAccountModal({ onClose }: { onClose: () => void }) {
           <option value="Rental Fleet">Rental Fleet</option>
           <option value="Government Fleet">Government Fleet</option>
           <option value="Corporate Fleet">Corporate Fleet</option>
+          <option value="Car Auctions">Car Auctions</option>
           <option value="Other">Other</option>
         </Select>
         <Input label="Fleet size (vehicles)" type="number" min="0" value={form.fleet_size} onChange={e => setForm(f => ({ ...f, fleet_size: e.target.value }))} />

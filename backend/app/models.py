@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 
-FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Corporate Fleet", "Other"]
+FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Corporate Fleet", "Car Auctions", "Other"]
 FleetBillingCycle = Literal["Monthly", "Fortnightly", "Weekly"]
 SubscriptionPlan = Literal["starter", "pro", "fleet", "none"]
 
