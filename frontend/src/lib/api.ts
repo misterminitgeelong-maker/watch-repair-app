@@ -332,7 +332,7 @@ export interface CustomerAccountCreate {
   account_notes?: string
 }
 
-const CUSTOMER_ACCOUNTS_TIMEOUT_MS = 20_000
+const CUSTOMER_ACCOUNTS_TIMEOUT_MS = 8_000
 export const listCustomerAccounts = () =>
   api.get<CustomerAccount[]>('/customer-accounts', { timeout: CUSTOMER_ACCOUNTS_TIMEOUT_MS })
 export const createCustomerAccount = (data: CustomerAccountCreate) => api.post<CustomerAccount>('/customer-accounts', data)

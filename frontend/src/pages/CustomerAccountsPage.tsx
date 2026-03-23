@@ -342,10 +342,7 @@ export default function CustomerAccountsPage() {
         <div className="rounded-lg border p-4" style={{ borderColor: '#C96A5A', backgroundColor: '#FDF2F0' }}>
           <p className="text-sm font-semibold" style={{ color: '#C96A5A' }}>Could not load customer accounts</p>
           <p className="text-xs mt-1" style={{ color: '#5F4734' }}>
-            {getApiErrorMessage(error as unknown, 'Unknown error')}
-          </p>
-          <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
-            On Railway: redeploy to get the latest fixes, then check your domain/v1/debug/demo-status for backend state.
+            {getApiErrorMessage(error as unknown, 'Request timed out or failed')}
           </p>
           <Button className="mt-3" onClick={() => refetch()}>Try again</Button>
         </div>
