@@ -330,8 +330,7 @@ def get_auto_key_summary(
     ).all())
     revenue_by_job = {inv.auto_key_job_id: inv.total_cents for inv in invoices}
     jobs_by_tech: dict[str, list] = {}
-    mobile_count = 0
-    shop_count = 0
+    job_type_breakdown: dict[str, int] = {}
     total_revenue_cents = 0
     for j in jobs:
         tech_id = str(j.assigned_user_id) if j.assigned_user_id else "unassigned"
@@ -344,16 +343,14 @@ def get_auto_key_summary(
         rev = revenue_by_job.get(j.id, 0)
         jobs_by_tech[key]["revenue_cents"] += rev
         total_revenue_cents += rev
-        if j.job_type == "mobile":
-            mobile_count += 1
-        elif j.job_type == "shop":
-            shop_count += 1
+        type_key = j.job_type or "Not set"
+        job_type_breakdown[type_key] = job_type_breakdown.get(type_key, 0) + 1
     return {
         "jobs_by_tech": [
             {"tech_id": k, "tech_name": v["tech_name"], "job_count": v["job_count"], "revenue_cents": v["revenue_cents"]}
             for k, v in sorted(jobs_by_tech.items(), key=lambda x: -x[1]["job_count"])
         ],
-        "mobile_vs_shop": {"mobile": mobile_count, "shop": shop_count, "other": len(jobs) - mobile_count - shop_count},
+        "job_type_breakdown": dict(sorted(job_type_breakdown.items(), key=lambda x: -x[1])),
         "total_jobs": len(jobs),
         "total_revenue_cents": total_revenue_cents,
     }

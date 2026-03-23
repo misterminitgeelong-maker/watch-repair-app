@@ -793,7 +793,7 @@ export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoice
 
 export interface AutoKeySummary {
   jobs_by_tech: { tech_id: string; tech_name: string; job_count: number; revenue_cents: number }[]
-  mobile_vs_shop: { mobile: number; shop: number; other: number }
+  job_type_breakdown: Record<string, number>
   total_jobs: number
   total_revenue_cents: number
 }

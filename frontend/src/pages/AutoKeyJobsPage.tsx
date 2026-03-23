@@ -29,6 +29,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
+import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
@@ -121,7 +122,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     assigned_user_id: '',
     title: '',
     description: '',
-    job_type: '' as '' | 'mobile' | 'shop',
+    job_type: '' as string,
     job_address: '',
     scheduled_at: '',  // date only for display
     scheduled_datetime: '',  // full datetime for booking
@@ -249,14 +250,13 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         </Select>
         <Input label="Job title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Duplicate transponder key" />
         <Textarea label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-        <Select label="Job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value as '' | 'mobile' | 'shop' }))}>
+        <Select label="Job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
           <option value="">Not set</option>
-          <option value="shop">Shop (in-store)</option>
-          <option value="mobile">Mobile (on-site visit)</option>
+          {AUTO_KEY_JOB_TYPES.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
         </Select>
-        {form.job_type === 'mobile' && (
-          <Input label="Job address" value={form.job_address} onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))} placeholder="Where to meet customer" />
-        )}
+        <Input label="Job address (for mobile/on-site)" value={form.job_address} onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))} placeholder="Where to meet customer (optional)" />
         <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
         <Input label="Book date & time (optional)" type="datetime-local" value={form.scheduled_datetime} onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))} />
         <div className="grid grid-cols-2 gap-3">
@@ -801,11 +801,10 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
               {job.scheduled_at && <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span>}
               {job.scheduled_at && job.job_type && ' · '}
-              {job.job_type === 'mobile' && <>Mobile{job.job_address ? ` · ${job.job_address}` : ''}</>}
-              {job.job_type === 'shop' && 'Shop'}
+              {job.job_type}{job.job_address ? ` · ${job.job_address}` : ''}
             </p>
           )}
-          {job.job_type === 'mobile' && job.job_address && (
+          {job.job_address && (
             <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
               <MapPin size={12} /> Get directions
             </a>
@@ -1179,7 +1178,7 @@ export default function AutoKeyJobsPage() {
                                 </p>
                               )}
                               {job.job_type && (
-                                <p className="text-[11px] mt-1 capitalize" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
+                                <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
                               )}
                               <select
                                 value={job.status}
@@ -1553,11 +1552,19 @@ export default function AutoKeyJobsPage() {
                 <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeySummary.total_revenue_cents)}</p>
               </Card>
               <Card className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Mobile vs shop</p>
-                <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>
-                  Mobile: {autoKeySummary.mobile_vs_shop.mobile} · Shop: {autoKeySummary.mobile_vs_shop.shop}
-                  {autoKeySummary.mobile_vs_shop.other > 0 ? ` · Other: ${autoKeySummary.mobile_vs_shop.other}` : ''}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>By job type</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {Object.entries(autoKeySummary.job_type_breakdown).length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No jobs yet</p>
+                  ) : (
+                    Object.entries(autoKeySummary.job_type_breakdown).map(([type, count]) => (
+                      <div key={type} className="flex justify-between text-sm">
+                        <span style={{ color: 'var(--cafe-text)' }}>{type}</span>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>{count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </Card>
             </div>
           ) : null}

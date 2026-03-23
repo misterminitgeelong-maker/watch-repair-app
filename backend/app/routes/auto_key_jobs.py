@@ -294,7 +294,7 @@ def update_auto_key_job_fields(
         )
         session.commit()
 
-    if schedule_changed and job.job_type == "mobile" and job.scheduled_at and job.customer_id:
+    if schedule_changed and job.job_address and job.scheduled_at and job.customer_id:
         customer = session.get(Customer, job.customer_id)
         if customer and customer.phone and customer.phone.strip():
             sms.notify_auto_key_customer_scheduled(
@@ -611,7 +611,7 @@ def send_day_before_reminders(
     # Customer reminders (mobile jobs with customer phone)
     seen_customers: set[UUID] = set()
     for job in jobs:
-        if job.job_type != "mobile" or not job.customer_id or job.customer_id in seen_customers:
+        if not job.job_address or not job.customer_id or job.customer_id in seen_customers:
             continue
         customer = session.get(Customer, job.customer_id)
         if not customer or not customer.phone or not customer.phone.strip():

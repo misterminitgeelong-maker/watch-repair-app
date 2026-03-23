@@ -1003,7 +1003,7 @@ class AutoKeyJob(SQLModel, table=True):
     # ServiceM8-style scheduling and location
     scheduled_at: Optional[datetime] = None
     job_address: Optional[str] = None  # For mobile jobs; falls back to customer address
-    job_type: Optional[str] = None  # "mobile" | "shop"
+    job_type: Optional[str] = None  # e.g. Key Cutting (in-store), Lockout – Car, etc.
     visit_order: Optional[int] = None  # Route order for same-day jobs (lower = first)
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None

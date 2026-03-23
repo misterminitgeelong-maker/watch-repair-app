@@ -16,6 +16,7 @@ import {
   type CustomerAccount,
   type JobStatus,
 } from '@/lib/api'
+import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
@@ -148,7 +149,7 @@ export default function AutoKeyJobDetailPage() {
     const payload: Parameters<typeof scheduleMut.mutate>[0] = {}
     if (field === 'scheduled_at') payload.scheduled_at = value ? new Date(value).toISOString() : null
     if (field === 'job_address') payload.job_address = value || null
-    if (field === 'job_type') payload.job_type = (value as '' | 'mobile' | 'shop') || null
+    if (field === 'job_type') payload.job_type = value || null
     scheduleMut.mutate(payload)
   }
 
@@ -181,7 +182,7 @@ export default function AutoKeyJobDetailPage() {
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{job.vehicle_make || 'Unknown'} {job.vehicle_model || ''}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Programming</span><span>{job.programming_status.replace(/_/g, ' ')}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
-            {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span className='capitalize'>{job.job_type}</span></div>}
+            {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
             {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span></div>}
             {job.job_address && (
               <div>
@@ -191,7 +192,7 @@ export default function AutoKeyJobDetailPage() {
                 </a>
               </div>
             )}
-            {job.job_type === 'mobile' && (
+            {job.job_address && (
               <button
                 type="button"
                 onClick={() => setShowArrivalSms(true)}
@@ -246,8 +247,9 @@ export default function AutoKeyJobDetailPage() {
             disabled={scheduleMut.isPending}
           >
             <option value=''>Not set</option>
-            <option value='mobile'>Mobile</option>
-            <option value='shop'>Shop</option>
+            {AUTO_KEY_JOB_TYPES.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </Select>
           <Input
             label='Scheduled date & time'

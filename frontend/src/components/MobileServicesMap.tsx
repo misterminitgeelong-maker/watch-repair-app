@@ -47,7 +47,7 @@ export default function MobileServicesMap({ jobs, date }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, [number, number]>>(new Map())
   const [loading, setLoading] = useState(true)
 
-  const mobileJobs = jobs.filter((j) => j.job_type === 'mobile' && j.job_address)
+  const mobileJobs = jobs.filter((j) => j.job_address)
 
   useEffect(() => {
     const geocodeAll = async () => {
