@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Eye, EyeOff } from 'lucide-react'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -17,6 +18,7 @@ const ANIM_CSS = `
 export default function LoginPage() {
   const { token, login: setToken } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
 
   const demoCreds = useMemo(() => ({
@@ -75,6 +77,9 @@ export default function LoginPage() {
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       try {
         await seedDemoData()
+        queryClient.invalidateQueries({ queryKey: ['customer-accounts'] })
+        queryClient.invalidateQueries({ queryKey: ['jobs'] })
+        queryClient.invalidateQueries({ queryKey: ['customers'] })
       } catch {
         // Non-fatal for login: demo can still proceed even if records already exist.
       }

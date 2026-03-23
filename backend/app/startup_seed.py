@@ -240,9 +240,18 @@ def ensure_testing_tenant(session: Session) -> Tenant | None:
 def _ensure_tenant_owner(session: Session) -> Tenant:
     tenant = session.exec(select(Tenant).where(Tenant.slug == settings.startup_seed_tenant_slug)).first()
     if tenant:
+        # Ensure demo tenant always has pro plan (full features including customer_accounts)
+        if tenant.plan_code != "pro":
+            tenant.plan_code = "pro"
+            session.add(tenant)
+            session.commit()
         return tenant
 
-    tenant = Tenant(name=settings.startup_seed_tenant_name, slug=settings.startup_seed_tenant_slug)
+    tenant = Tenant(
+        name=settings.startup_seed_tenant_name,
+        slug=settings.startup_seed_tenant_slug,
+        plan_code="pro",
+    )
     session.add(tenant)
     session.flush()
 
