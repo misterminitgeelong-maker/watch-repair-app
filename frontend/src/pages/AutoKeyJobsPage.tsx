@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, CreditCard, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -863,7 +863,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [view, setView] = useState<'pos' | 'jobs' | 'dispatch' | 'week' | 'map' | 'reports'>('pos')
+  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'reports'>('dashboard')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -915,6 +915,11 @@ export default function AutoKeyJobsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-summary'] }),
   })
 
+  const statusMut = useMutation({
+    mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+  })
+
   const rescheduleMut = useMutation({
     mutationFn: ({ jobId, scheduled_at }: { jobId: string; scheduled_at: string | null }) =>
       updateAutoKeyJob(jobId, scheduled_at ? { scheduled_at } : { scheduled_at: null }),
@@ -961,11 +966,11 @@ export default function AutoKeyJobsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setView('pos')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'pos' ? 'bg-opacity-20' : ''}`}
-            style={view === 'pos' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            onClick={() => setView('dashboard')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
+            style={view === 'dashboard' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
-            <CreditCard size={16} /> POS
+            <LayoutGrid size={16} /> Dashboard
           </button>
           <button
             onClick={() => setView('jobs')}
@@ -973,6 +978,13 @@ export default function AutoKeyJobsPage() {
             style={view === 'jobs' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <List size={16} /> Jobs
+          </button>
+          <button
+            onClick={() => setView('pos')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'pos' ? 'bg-opacity-20' : ''}`}
+            style={view === 'pos' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <CreditCard size={16} /> POS
           </button>
           <button
             onClick={() => setView('dispatch')}
@@ -1006,6 +1018,132 @@ export default function AutoKeyJobsPage() {
       </div>
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
+
+      {view === 'dashboard' && (
+        <>
+          <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+              <button
+                type="button"
+                onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Completed ({completedCount})
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--cafe-text-muted)' }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
+                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                />
+              </div>
+              <Select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="min-w-[140px]"
+                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              >
+                <option value="all">All stages</option>
+                {statusOptions.map(s => (
+                  <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          {isLoading ? <Spinner /> : filteredJobs.length === 0 ? (
+            <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
+              {(statusFilter === 'all' ? statusOptions : statusOptions.filter(s => s === statusFilter)).map((status) => {
+                const jobsInStatus = filteredJobs.filter((j: { status: JobStatus }) => j.status === status)
+                return (
+                  <Card key={status} className="overflow-hidden min-w-[240px]">
+                    <div
+                      className="px-4 py-3.5 flex items-center justify-between"
+                      style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                    >
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}
+                      </p>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                        {jobsInStatus.length}
+                      </span>
+                    </div>
+                    <div>
+                      {jobsInStatus.length === 0 ? (
+                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No jobs in this stage.</p>
+                      ) : (
+                        jobsInStatus.map((j: object, i: number) => {
+                          const job = j as { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; created_at: string; job_type?: string }
+                          return (
+                            <div
+                              key={job.id}
+                              className="px-4 py-3"
+                              style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <Link to={`/auto-key/${job.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                                    {job.title}
+                                  </Link>
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                                    #{job.job_number} · {formatDate(job.created_at)}
+                                  </p>
+                                </div>
+                                <Badge status={job.status} />
+                              </div>
+                              {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
+                                <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                                  {job.vehicle_make || ''} {job.vehicle_model || ''}{job.registration_plate ? ` · ${job.registration_plate}` : ''}
+                                </p>
+                              )}
+                              {job.job_type && (
+                                <p className="text-[11px] mt-1 capitalize" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
+                              )}
+                              <select
+                                value={job.status}
+                                className="w-full mt-2 rounded-md px-2 py-1.5 text-xs outline-none"
+                                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                                onChange={e => statusMut.mutate({ jobId: job.id, status: e.target.value as JobStatus })}
+                                disabled={statusMut.isPending}
+                              >
+                                {statusOptions.map(s => (
+                                  <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {view === 'pos' && (
         <POSView
