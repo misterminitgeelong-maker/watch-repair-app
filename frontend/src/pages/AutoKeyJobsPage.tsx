@@ -1689,7 +1689,7 @@ export default function AutoKeyJobsPage() {
                         const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
                         return ta - tb
                       })
-                      .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }, idx: number) => {
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
                         const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
                         const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
                         return (
