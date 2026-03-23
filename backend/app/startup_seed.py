@@ -1,14 +1,85 @@
 import csv
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from random import randint
 from uuid import uuid4
 
 from sqlmodel import Session, func, select
 
 from .config import settings
-from .models import Customer, Quote, RepairJob, Tenant, User, Watch
+from .models import Customer, CustomerAccount, Quote, RepairJob, Tenant, User, Watch
 from .security import hash_password
+
+# Victorian B2B demo accounts (used at startup and by demo-seed)
+DEMO_B2B_ACCOUNT_SPECS: list[dict] = [
+    {"name": "Pickles Auto Group", "account_code": "PKL-VIC", "account_type": "Car Auctions", "fleet_size": 450,
+     "contact_name": "Jason Mercer", "contact_phone": "0398765432", "contact_email": "jason.mercer@pickles.com.au",
+     "billing_address": "211 Boundary Rd, Mordialloc VIC 3195", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 15000},
+    {"name": "SG Fleet Victoria", "account_code": "SGF-VIC", "account_type": "Corporate Fleet", "fleet_size": 280,
+     "contact_name": "Michelle Tan", "contact_phone": "0392001234", "contact_email": "michelle.tan@sgfleet.com",
+     "billing_address": "565 Bourke St, Melbourne VIC 3000", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 20000},
+    {"name": "Hertz Australia", "account_code": "HTZ-AUS", "account_type": "Rental Fleet", "fleet_size": 620,
+     "contact_name": "David Nguyen", "contact_phone": "0396541200", "contact_email": "david.nguyen@hertz.com.au",
+     "billing_address": "97 Franklin St, Melbourne VIC 3000", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 25000},
+    {"name": "Manheim Auctions", "account_code": "MNH-001", "account_type": "Car Auctions", "fleet_size": 310,
+     "contact_name": "Sarah O'Brien", "contact_phone": "0387652100", "contact_email": "sarah.obrien@manheim.com.au",
+     "billing_address": "211 Boundary Rd, Mordialloc VIC 3195", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 12000},
+    {"name": "FleetPartners", "account_code": "FLP-VIC", "account_type": "Corporate Fleet", "fleet_size": 195,
+     "contact_name": "Tom Ridley", "contact_phone": "0394321800", "contact_email": "tom.ridley@fleetpartners.com.au",
+     "billing_address": "10 Dorcas St, South Melbourne VIC 3205", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 18000},
+    {"name": "Budget Rent a Car Melbourne", "account_code": "BDG-VIC", "account_type": "Rental Fleet", "fleet_size": 420,
+     "contact_name": "Lisa Chen", "contact_phone": "0398765400", "contact_email": "lisa.chen@budget.com.au",
+     "billing_address": "115 Elizabeth St, Melbourne VIC 3000", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 22000},
+    {"name": "Toyota Fleet Sales Melbourne", "account_code": "TFS-MEL", "account_type": "Dealership", "fleet_size": 85,
+     "contact_name": "Andrew Walsh", "contact_phone": "0398761234", "contact_email": "andrew.walsh@toyotafleet.com.au",
+     "billing_address": "350 Warrigal Rd, Cheltenham VIC 3192", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 14000},
+    {"name": "Apex Auctions Melbourne", "account_code": "APX-VIC", "account_type": "Car Auctions", "fleet_size": 180,
+     "contact_name": "Emma Foster", "contact_phone": "0392456789", "contact_email": "emma.foster@apexauctions.com.au",
+     "billing_address": "50 Hammond Rd, Dandenong South VIC 3175", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 9500},
+    {"name": "Novated Lease Co Melbourne", "account_code": "NVL-VIC", "account_type": "Corporate Fleet", "fleet_size": 520,
+     "contact_name": "James Park", "contact_phone": "0391234567", "contact_email": "james.park@novatedlease.com.au",
+     "billing_address": "200 Collins St, Melbourne VIC 3000", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 28000},
+    {"name": "Europcar Melbourne", "account_code": "EUR-VIC", "account_type": "Rental Fleet", "fleet_size": 340,
+     "contact_name": "Nina Sharma", "contact_phone": "0392345678", "contact_email": "nina.sharma@europcar.com.au",
+     "billing_address": "144 Bourke St, Melbourne VIC 3000", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 19000},
+    {"name": "Melbourne City Council Fleet", "account_code": "MCC-FLT", "account_type": "Government Fleet", "fleet_size": 210,
+     "contact_name": "Robert Kim", "contact_phone": "0396555555", "contact_email": "r.kim@melbourne.vic.gov.au",
+     "billing_address": "200 Little Collins St, Melbourne VIC 3000", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 16000},
+    {"name": "BMW Group Melbourne", "account_code": "BMW-VIC", "account_type": "Corporate Fleet", "fleet_size": 155,
+     "contact_name": "Claire Bennett", "contact_phone": "0398001234", "contact_email": "claire.bennett@bmw.com.au",
+     "billing_address": "101 Collins St, Melbourne VIC 3000", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 24000},
+    {"name": "Grays Online Auctions Melbourne", "account_code": "GRY-VIC", "account_type": "Car Auctions", "fleet_size": 290,
+     "contact_name": "Michael Torres", "contact_phone": "0398765432", "contact_email": "michael.torres@grays.com.au",
+     "billing_address": "88 Eastern Rd, South Melbourne VIC 3205", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 13500},
+    {"name": "Redspot Car Rentals Melbourne", "account_code": "RSP-VIC", "account_type": "Rental Fleet", "fleet_size": 380,
+     "contact_name": "Daniel Lee", "contact_phone": "0391234567", "contact_email": "daniel.lee@redspot.com.au",
+     "billing_address": "230 Spencer St, Melbourne VIC 3000", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 17500},
+    {"name": "Lexus Fleet Melbourne", "account_code": "LEX-VIC", "account_type": "Dealership", "fleet_size": 72,
+     "contact_name": "Sophie Adams", "contact_phone": "0395666777", "contact_email": "sophie.adams@lexusmelbourne.com.au",
+     "billing_address": "620 Springvale Rd, Glen Waverley VIC 3150", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 11000},
+    {"name": "Thrifty Car Rental Melbourne", "account_code": "THF-VIC", "account_type": "Rental Fleet", "fleet_size": 510,
+     "contact_name": "Kate Morrison", "contact_phone": "0398765432", "contact_email": "kate.morrison@thrifty.com.au",
+     "billing_address": "40 Grant St, Port Melbourne VIC 3207", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 23000},
+    {"name": "Suncorp Fleet Melbourne", "account_code": "SUN-VIC", "account_type": "Corporate Fleet", "fleet_size": 165,
+     "contact_name": "Paul Williams", "contact_phone": "0393123456", "contact_email": "paul.williams@suncorp.com.au",
+     "billing_address": "36 Exhibition St, Melbourne VIC 3000", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 15000},
+    {"name": "Ross Auctions Geelong", "account_code": "RSS-VIC", "account_type": "Car Auctions", "fleet_size": 125,
+     "contact_name": "Amy Johnston", "contact_phone": "0398765432", "contact_email": "amy.johnston@rossauctions.com.au",
+     "billing_address": "125 Boundary Rd, North Geelong VIC 3215", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 8500},
+    {"name": "ANZ Bank Fleet", "account_code": "ANZ-FLT", "account_type": "Corporate Fleet", "fleet_size": 430,
+     "contact_name": "Rachel Green", "contact_phone": "0396543210", "contact_email": "rachel.green@anz.com",
+     "billing_address": "833 Collins St, Docklands VIC 3008", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 32000},
+    {"name": "Sixt Rent a Car", "account_code": "SXT-MEL", "account_type": "Rental Fleet", "fleet_size": 275,
+     "contact_name": "Oliver Schmidt", "contact_phone": "0398123456", "contact_email": "oliver.schmidt@sixt.com.au",
+     "billing_address": "278 Flinders St, Melbourne VIC 3000", "payment_terms_days": 14, "billing_cycle": "Fortnightly", "credit_limit": 18500},
+    {"name": "Victorian Government Fleet", "account_code": "VIC-GOV", "account_type": "Government Fleet", "fleet_size": 680,
+     "contact_name": "Helen Zhang", "contact_phone": "0396012345", "contact_email": "helen.zhang@vicroads.vic.gov.au",
+     "billing_address": "60 Denmark St, Kew VIC 3101", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 35000},
+    {"name": "Ford Dealer Network VIC", "account_code": "FND-VIC", "account_type": "Dealership", "fleet_size": 95,
+     "contact_name": "Mark Thompson", "contact_phone": "0394332211", "contact_email": "mark.thompson@forddealer.net",
+     "billing_address": "450 High St, Kew VIC 3101", "payment_terms_days": 30, "billing_cycle": "Monthly", "credit_limit": 12500},
+]
 
 
 _seed_status: dict[str, object] = {
@@ -267,6 +338,64 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
     session.commit()
     session.refresh(tenant)
     return tenant
+
+
+def ensure_demo_b2b_accounts(session: Session, tenant: Tenant, *, commit: bool = True) -> int:
+    """Seed Victorian B2B customer accounts for demo tenant. Returns number created. Set commit=False when called from a larger transaction."""
+    account_count = int(
+        session.exec(
+            select(func.count()).select_from(CustomerAccount).where(CustomerAccount.tenant_id == tenant.id)
+        ).one()
+    )
+    created = 0
+    if account_count < 20:
+        for idx in range(account_count, min(20, account_count + len(DEMO_B2B_ACCOUNT_SPECS))):
+            spec = DEMO_B2B_ACCOUNT_SPECS[idx - account_count]
+            account = CustomerAccount(
+                tenant_id=tenant.id,
+                name=spec["name"],
+                account_code=spec["account_code"],
+                account_type=spec["account_type"],
+                fleet_size=spec["fleet_size"],
+                contact_name=spec["contact_name"],
+                primary_contact_name=spec["contact_name"],
+                contact_phone=spec["contact_phone"],
+                primary_contact_phone=spec["contact_phone"],
+                contact_email=spec["contact_email"],
+                billing_address=spec["billing_address"],
+                payment_terms_days=spec["payment_terms_days"],
+                billing_cycle=spec["billing_cycle"],
+                credit_limit=spec["credit_limit"],
+                created_at=datetime.now(timezone.utc) - timedelta(days=randint(30, 180)),
+            )
+            session.add(account)
+            created += 1
+    else:
+        existing_accounts = session.exec(
+            select(CustomerAccount)
+            .where(CustomerAccount.tenant_id == tenant.id)
+            .order_by(CustomerAccount.created_at)
+        ).all()
+        for i, account in enumerate(existing_accounts[:20]):
+            if i < len(DEMO_B2B_ACCOUNT_SPECS):
+                spec = DEMO_B2B_ACCOUNT_SPECS[i]
+                account.name = spec["name"]
+                account.account_code = spec["account_code"]
+                account.account_type = spec["account_type"]
+                account.fleet_size = spec["fleet_size"]
+                account.contact_name = spec["contact_name"]
+                account.primary_contact_name = spec["contact_name"]
+                account.contact_phone = spec["contact_phone"]
+                account.primary_contact_phone = spec["contact_phone"]
+                account.contact_email = spec["contact_email"]
+                account.billing_address = spec["billing_address"]
+                account.payment_terms_days = spec["payment_terms_days"]
+                account.billing_cycle = spec["billing_cycle"]
+                account.credit_limit = spec["credit_limit"]
+                session.add(account)
+    if commit:
+        session.commit()
+    return created
 
 
 def ensure_platform_admin_account(session: Session) -> None:
