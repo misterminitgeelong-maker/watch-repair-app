@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Search, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, CreditCard, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
   createAutoKeyQuote,
   createCustomer,
   deleteAutoKeyJob,
+  updateAutoKeyInvoice,
   getApiErrorMessage,
   listCustomerAccounts,
   listAutoKeyInvoices,
@@ -366,6 +367,231 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+const POS_QUICK_ITEMS = [
+  { label: 'Key cut', desc: 'Key cutting', price: 5000 },
+  { label: 'Programming', desc: 'Transponder programming', price: 12000 },
+  { label: 'Duplicate key', desc: 'Duplicate transponder key', price: 8000 },
+  { label: 'Lockout', desc: 'Lockout / emergency entry', price: 15000 },
+] as const
+
+interface CartLine {
+  id: string
+  description: string
+  quantity: number
+  unit_price_cents: number
+}
+
+function POSView({ customers, onComplete }: { customers: Customer[]; onComplete: () => void }) {
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const [customerId, setCustomerId] = useState('')
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
+  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
+  const [cart, setCart] = useState<CartLine[]>([])
+  const [customDesc, setCustomDesc] = useState('')
+  const [customPrice, setCustomPrice] = useState('')
+  const [error, setError] = useState('')
+  const [successJobId, setSuccessJobId] = useState<string | null>(null)
+
+  const subtotal = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
+  const tax = 0
+  const total = subtotal + tax
+
+  const addToCart = (description: string, unit_price_cents: number, quantity = 1) => {
+    const existing = cart.find(l => l.description === description && l.unit_price_cents === unit_price_cents)
+    if (existing) {
+      setCart(cart.map(l => l.id === existing.id ? { ...l, quantity: l.quantity + quantity } : l))
+    } else {
+      setCart([...cart, { id: crypto.randomUUID(), description, quantity, unit_price_cents }])
+    }
+  }
+
+  const removeFromCart = (id: string) => setCart(cart.filter(l => l.id !== id))
+  const updateQty = (id: string, qty: number) => {
+    if (qty < 1) removeFromCart(id)
+    else setCart(cart.map(l => l.id === id ? { ...l, quantity: qty } : l))
+  }
+
+  const completeMut = useMutation({
+    mutationFn: async () => {
+      setError('')
+      let cid = customerId
+      if (customerMode === 'new') {
+        if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
+        const { data } = await createCustomer(newCustomer)
+        cid = data.id
+        qc.invalidateQueries({ queryKey: ['customers'] })
+      } else if (!cid) throw new Error('Select a customer.')
+
+      if (cart.length === 0) throw new Error('Add at least one item.')
+
+      const job = await createAutoKeyJob({
+        customer_id: cid,
+        title: `POS sale ${new Date().toLocaleDateString()}`,
+        key_quantity: 1,
+        programming_status: 'not_required',
+        priority: 'normal',
+        status: 'awaiting_quote',
+        deposit_cents: 0,
+        cost_cents: total,
+      }).then(r => r.data)
+
+      const quote = await createAutoKeyQuote(job.id, {
+        line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+        tax_cents: tax,
+      }).then(r => r.data)
+
+      const invoice = await createAutoKeyInvoiceFromQuote(job.id, quote.id).then(r => r.data)
+      await updateAutoKeyInvoice(job.id, invoice.id, { status: 'paid' })
+      await updateAutoKeyJobStatus(job.id, 'collected')
+
+      return job
+    },
+    onSuccess: (job) => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setCart([])
+      setCustomerId('')
+      setNewCustomer({ full_name: '', email: '', phone: '' })
+      setSuccessJobId(job.id)
+      onComplete()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, 'Sale failed.')),
+  })
+
+  if (successJobId) {
+    return (
+      <Card className="p-8 text-center">
+        <p className="text-lg font-semibold mb-2" style={{ color: 'var(--cafe-text)' }}>Sale complete</p>
+        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Invoice marked paid.</p>
+        <div className="flex gap-2 justify-center">
+          <Button variant="secondary" onClick={() => setSuccessJobId(null)}>New sale</Button>
+          <Button onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>View job</Button>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-4">
+        <Card className="p-5">
+          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Customer</h3>
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setCustomerMode('existing')}
+              className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'existing' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
+              style={customerMode === 'existing' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--cafe-amber)' } : {}}
+            >Existing</button>
+            <button
+              onClick={() => setCustomerMode('new')}
+              className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'new' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
+              style={customerMode === 'new' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--cafe-amber)' } : {}}
+            >Walk-in</button>
+          </div>
+          {customerMode === 'existing' ? (
+            <CustomerSearchSelect customers={customers} value={customerId} onChange={setCustomerId} />
+          ) : (
+            <div className="space-y-2">
+              <Input label="Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Customer name" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
+                <Input label="Email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="email@example.com" />
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Add items</h3>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {POS_QUICK_ITEMS.map(({ label, desc, price }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => addToCart(desc, price)}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors"
+                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              >
+                {label} — ${(price / 100).toFixed(2)}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              placeholder="Description"
+              value={customDesc}
+              onChange={e => setCustomDesc(e.target.value)}
+            />
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Price"
+              className="w-24"
+              value={customPrice}
+              onChange={e => setCustomPrice(e.target.value)}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const cents = Math.round(parseFloat(customPrice || '0') * 100)
+                if (customDesc.trim() && cents > 0) {
+                  addToCart(customDesc.trim(), cents)
+                  setCustomDesc('')
+                  setCustomPrice('')
+                }
+              }}
+            >
+              Add
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-5 h-fit">
+        <h3 className="text-sm font-semibold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          <ShoppingCart size={16} /> Cart
+        </h3>
+        {cart.length === 0 ? (
+          <p className="text-sm py-6 text-center" style={{ color: 'var(--cafe-text-muted)' }}>Cart empty. Add items above.</p>
+        ) : (
+          <div className="space-y-3 mb-4">
+            {cart.map(line => (
+              <div key={line.id} className="flex items-center justify-between gap-2 py-2 border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{line.description}</p>
+                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button type="button" onClick={() => updateQty(line.id, line.quantity - 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}><Minus size={14} /></button>
+                  <span className="text-sm w-6 text-center" style={{ color: 'var(--cafe-text)' }}>{line.quantity}</span>
+                  <button type="button" onClick={() => updateQty(line.id, line.quantity + 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}>+</button>
+                  <button type="button" onClick={() => removeFromCart(line.id)} className="w-7 h-7 rounded flex items-center justify-center" style={{ color: '#C96A5A' }}><X size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="border-t pt-4" style={{ borderColor: 'var(--cafe-border)' }}>
+          <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--cafe-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--cafe-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
+          {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--cafe-text-muted)' }}>Tax</span><span style={{ color: 'var(--cafe-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
+          <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--cafe-amber)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
+        </div>
+        {error && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{error}</p>}
+        <Button
+          className="w-full mt-4"
+          onClick={() => completeMut.mutate()}
+          disabled={completeMut.isPending || cart.length === 0}
+        >
+          <CreditCard size={16} />
+          {completeMut.isPending ? 'Processing…' : 'Complete sale'}
+        </Button>
+      </Card>
+    </div>
+  )
+}
+
 function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const [error, setError] = useState('')
@@ -637,7 +863,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [view, setView] = useState<'jobs' | 'dispatch' | 'week' | 'map' | 'reports'>('dispatch')
+  const [view, setView] = useState<'pos' | 'jobs' | 'dispatch' | 'week' | 'map' | 'reports'>('pos')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -655,6 +881,11 @@ export default function AutoKeyJobsPage() {
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
+  })
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => listCustomers().then(r => r.data),
+    enabled: view === 'pos',
   })
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
@@ -728,7 +959,14 @@ export default function AutoKeyJobsPage() {
         Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.
       </p>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setView('pos')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'pos' ? 'bg-opacity-20' : ''}`}
+            style={view === 'pos' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <CreditCard size={16} /> POS
+          </button>
           <button
             onClick={() => setView('jobs')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
@@ -768,6 +1006,13 @@ export default function AutoKeyJobsPage() {
       </div>
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
+
+      {view === 'pos' && (
+        <POSView
+          customers={customers}
+          onComplete={() => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })}
+        />
+      )}
 
       {view === 'jobs' && (
         <>

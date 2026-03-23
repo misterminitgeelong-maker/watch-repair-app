@@ -516,6 +516,44 @@ def create_auto_key_invoice_from_quote(
     )
 
 
+class AutoKeyInvoiceUpdate(SQLModel):
+    status: str | None = None
+
+
+@router.patch("/{job_id}/invoices/{invoice_id}", response_model=AutoKeyInvoiceRead)
+def update_auto_key_invoice(
+    job_id: UUID,
+    invoice_id: UUID,
+    payload: AutoKeyInvoiceUpdate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Update auto key invoice (e.g. mark paid for POS completion)."""
+    invoice = session.get(AutoKeyInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id or invoice.auto_key_job_id != job_id:
+        raise HTTPException(status_code=404, detail="Auto key invoice not found")
+    if payload.status is not None:
+        if payload.status not in ("unpaid", "paid", "void"):
+            raise HTTPException(status_code=400, detail="Invalid status")
+        invoice.status = payload.status
+    session.add(invoice)
+    session.commit()
+    session.refresh(invoice)
+    return AutoKeyInvoiceRead(
+        id=invoice.id,
+        tenant_id=invoice.tenant_id,
+        auto_key_job_id=invoice.auto_key_job_id,
+        auto_key_quote_id=invoice.auto_key_quote_id,
+        invoice_number=invoice.invoice_number,
+        status=invoice.status,
+        subtotal_cents=invoice.subtotal_cents,
+        tax_cents=invoice.tax_cents,
+        total_cents=invoice.total_cents,
+        currency=invoice.currency,
+        created_at=invoice.created_at,
+    )
+
+
 @router.post("/send-day-before-reminders", summary="Send SMS reminders to techs and customers for tomorrow's jobs")
 def send_day_before_reminders(
     auth: AuthContext = Depends(require_tech_or_above),
