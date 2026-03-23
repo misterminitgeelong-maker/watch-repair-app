@@ -12,33 +12,27 @@ Uses a dedicated demo tenant with seeded data: customers, watch/shoe/auto-key jo
 
 ## Testing login (no prompts)
 
-For internal QA and breaking things without tutorial pop-ups or guided tours, use a **dedicated testing account**.
+For internal QA and breaking things without tutorial pop-ups or guided tours, use a **dedicated testing account**. Credentials stay in the backend only—there is no button or link that reveals them.
 
 ### Setup
 
-1. **Backend** – add to `backend/.env`:
-   ```env
-   TESTING_TENANT_SLUG=testing
-   TESTING_OWNER_EMAIL=you@example.com
-   TESTING_OWNER_PASSWORD=your-secure-password
-   ```
+Add to `backend/.env` (never commit this file):
 
-2. **Frontend** – add to `frontend/.env` (or root `.env`):
-   ```env
-   VITE_TESTING_TENANT_SLUG=testing
-   VITE_TESTING_EMAIL=you@example.com
-   VITE_TESTING_PASSWORD=your-secure-password
-   ```
+```env
+TESTING_TENANT_SLUG=testing
+TESTING_OWNER_EMAIL=you@example.com
+TESTING_OWNER_PASSWORD=your-secure-password
+```
 
-3. Restart backend and frontend. The testing tenant is created at startup. Rebuild the frontend after changing env vars.
+Restart the backend. The testing tenant is created at startup. **Do not put these in the frontend**—credentials in `VITE_*` vars get bundled into the public JS.
 
 ### Use
 
-1. Go to `/login` or `/login?testing=1`
-2. Click **"Testing Login (no prompts)"**
-3. Seeded data is created if missing; you land on the dashboard with no modals or tutorials
+1. Go to `/login`
+2. Use the normal **Sign in** form and enter your testing Shop ID, email, and password
+3. You land on the dashboard with no modals or tutorials
 
-The testing account uses the same seed data as the demo tenant but **demo mode is off**, so you can explore and test without prompts.
+Only you know the credentials. The login page looks the same to everyone—there is no "Testing Login" button.
 
 ## Environment variables (optional)
 
@@ -48,8 +42,4 @@ The testing account uses the same seed data as the demo tenant but **demo mode i
 - `VITE_DEMO_EMAIL` — demo login email (default: `admin@admin.com`)
 - `VITE_DEMO_PASSWORD` — demo login password (default: `Admin`)
 
-**Testing credentials** (only shown when all three are set):
-
-- `VITE_TESTING_TENANT_SLUG`, `VITE_TESTING_EMAIL`, `VITE_TESTING_PASSWORD`
-
-The backend `seed_demo_data` endpoint is called on both demo and testing login and creates customers, watches, shoe jobs, auto key jobs, and invoices when they're missing.
+The backend `seed_demo_data` endpoint is called on demo login. For the testing tenant, you can call it once after logging in (e.g. via API) if you want sample data; otherwise the account starts empty.

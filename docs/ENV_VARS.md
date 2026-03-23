@@ -41,5 +41,4 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 |----------|-------------|
 | `VITE_ENABLE_DEV_AUTO_LOGIN` | Set to `true` in dev to use dev-auto-login. |
 | `VITE_DEMO_TENANT_SLUG` / `VITE_DEMO_EMAIL` / `VITE_DEMO_PASSWORD` | Demo login button prefills (optional). |
-| `VITE_TESTING_TENANT_SLUG` / `VITE_TESTING_EMAIL` / `VITE_TESTING_PASSWORD` | Testing login (optional). When all three are set, shows "Testing Login (no prompts)" on the login page. |
 | `VITE_SENTRY_DSN` | Sentry DSN for frontend error reporting (optional). Leave unset to disable. |

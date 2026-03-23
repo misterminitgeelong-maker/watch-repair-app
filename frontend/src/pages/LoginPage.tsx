@@ -24,13 +24,6 @@ export default function LoginPage() {
     password: String(import.meta.env.VITE_DEMO_PASSWORD ?? 'Admin'),
   }), [])
 
-  const testingCreds = useMemo(() => ({
-    slug: String(import.meta.env.VITE_TESTING_TENANT_SLUG ?? '').trim(),
-    email: String(import.meta.env.VITE_TESTING_EMAIL ?? '').trim(),
-    password: String(import.meta.env.VITE_TESTING_PASSWORD ?? ''),
-  }), [])
-  const hasTestingAccount = !!(testingCreds.slug && testingCreds.email && testingCreds.password)
-
   const [slug, setSlug] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,16 +34,11 @@ export default function LoginPage() {
   const [btnHover, setBtnHover] = useState(false)
 
   useEffect(() => {
-    if (searchParams.get('demo') === '1') {
-      setSlug(demoCreds.slug)
-      setEmail(demoCreds.email)
-      setPassword(demoCreds.password)
-    } else if (searchParams.get('testing') === '1' && hasTestingAccount) {
-      setSlug(testingCreds.slug)
-      setEmail(testingCreds.email)
-      setPassword(testingCreds.password)
-    }
-  }, [demoCreds, testingCreds, hasTestingAccount, searchParams])
+    if (searchParams.get('demo') !== '1') return
+    setSlug(demoCreds.slug)
+    setEmail(demoCreds.email)
+    setPassword(demoCreds.password)
+  }, [demoCreds.email, demoCreds.password, demoCreds.slug, searchParams])
 
   if (token) return <Navigate to="/dashboard" replace />
 
@@ -91,28 +79,6 @@ export default function LoginPage() {
       navigate('/dashboard')
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleTestingLogin() {
-    if (!hasTestingAccount) return
-    setError('')
-    setLoading(true)
-    try {
-      setRememberMe(true)
-      const { data } = await login(testingCreds.slug, testingCreds.email, testingCreds.password)
-      enableDemoMode(false)
-      setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
-      try {
-        await seedDemoData()
-      } catch {
-        // Non-fatal: testing account can proceed with or without seeded data.
-      }
-      navigate('/dashboard')
-    } catch {
-      setError('Testing login failed. Check your credentials and that the testing tenant exists.')
     } finally {
       setLoading(false)
     }
@@ -256,31 +222,6 @@ export default function LoginPage() {
               >
                 {loading ? 'Preparing Demo…' : 'Launch Interactive Demo'}
               </button>
-
-              {hasTestingAccount && (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={handleTestingLogin}
-                  style={{
-                    width: '100%',
-                    padding: '0.62rem',
-                    borderRadius: '10px',
-                    border: '1px solid #9BB89C',
-                    backgroundColor: '#E8F0E9',
-                    color: '#4A6B4C',
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.07em',
-                    textTransform: 'uppercase',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.75 : 1,
-                  }}
-                >
-                  {loading ? 'Signing in…' : 'Testing Login (no prompts)'}
-                </button>
-              )}
 
               {mode === 'single' && (
                 <LoginField
