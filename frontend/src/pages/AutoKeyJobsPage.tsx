@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Search, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
   createAutoKeyQuote,
   createCustomer,
+  deleteAutoKeyJob,
   getApiErrorMessage,
   listCustomerAccounts,
   listAutoKeyInvoices,
@@ -31,6 +32,9 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spin
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
+
+const AUTO_KEY_CLOSED_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
+const AUTO_KEY_ACTIVE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on', 'en_route', 'on_site', 'awaiting_parts'] as const
 
 const PROGRAMMING_STATUSES: AutoKeyProgrammingStatus[] = ['pending', 'in_progress', 'programmed', 'failed', 'not_required']
 
@@ -412,7 +416,10 @@ function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => vo
 
 function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -460,11 +467,28 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
     },
   })
 
+  const deleteMut = useMutation({
+    mutationFn: () => deleteAutoKeyJob(job.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setShowDeleteConfirm(false)
+      setDeleteError('')
+    },
+    onError: (err) => setDeleteError(getApiErrorMessage(err, 'Failed to delete job.')),
+  })
+
   return (
+    <>
     <Card className="p-4">
       {showQuoteModal && <CreateQuoteModal jobId={job.id} onClose={() => setShowQuoteModal(false)} />}
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div
+          className="min-w-0 flex-1 cursor-pointer"
+          onClick={() => navigate(`/auto-key/${job.id}`)}
+          onKeyDown={e => e.key === 'Enter' && navigate(`/auto-key/${job.id}`)}
+          role="button"
+          tabIndex={0}
+        >
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-xs font-mono font-semibold" style={{ color: 'var(--cafe-amber)' }}>#{job.job_number}</p>
             {!isSolo && job.assigned_user_id && (
@@ -478,9 +502,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
               </span>
             )}
           </div>
-          <Link to={`/auto-key/${job.id}`} className="text-sm font-semibold hover:underline" style={{ color: 'var(--cafe-text)' }}>
+          <span className="text-sm font-semibold hover:underline block" style={{ color: 'var(--cafe-text)' }}>
             {job.title}
-          </Link>
+          </span>
           <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
             {job.vehicle_make || 'Unknown make'} {job.vehicle_model || ''}
             {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
@@ -501,7 +525,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             </p>
           )}
           {job.job_type === 'mobile' && job.job_address && (
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
               <MapPin size={12} /> Get directions
             </a>
           )}
@@ -518,8 +542,19 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           )}
         </div>
 
-        <div className="w-56">
-          <div className="mb-2"><Badge status={job.status} /></div>
+        <div className="w-56 shrink-0" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <Badge status={job.status} />
+            <button
+              type="button"
+              aria-label={`Delete job ${job.job_number}`}
+              onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}
+              className="h-7 w-7 rounded-full flex items-center justify-center transition-colors shrink-0"
+              style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
+            >
+              <X size={14} />
+            </button>
+          </div>
           <Select
             value={job.status}
             onChange={e => statusMut.mutate(e.target.value as JobStatus)}
@@ -574,6 +609,28 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
         </div>
       </div>
     </Card>
+    {showDeleteConfirm && (
+      <Modal
+        title="Delete Mobile Services Job"
+        onClose={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>Are you sure you want to delete this job?</p>
+          <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>#{job.job_number} · {job.title}</p>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>This action cannot be undone.</p>
+          {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+          <div className="flex gap-2 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}>Cancel</Button>
+            <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
+              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )}
+    </>
   )
 }
 
@@ -581,6 +638,9 @@ export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [view, setView] = useState<'jobs' | 'dispatch' | 'week' | 'map' | 'reports'>('dispatch')
+  const [search, setSearch] = useState('')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dispatchDate, setDispatchDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
   const [weekStart, setWeekStart] = useState(() => {
@@ -640,6 +700,22 @@ export default function AutoKeyJobsPage() {
   const unscheduledJobs = view === 'dispatch' ? jobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) : []
   const isSolo = users.length <= 1
 
+  const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
+  const isClosed = (status: JobStatus) => autoKeyClosedStatuses.has(status as typeof AUTO_KEY_CLOSED_STATUSES[number])
+  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string }) => {
+    const q = search.trim().toLowerCase()
+    const matchSearch = !q || j.job_number.toLowerCase().includes(q) || j.title.toLowerCase().includes(q) ||
+      (j.vehicle_make && j.vehicle_make.toLowerCase().includes(q)) ||
+      (j.vehicle_model && j.vehicle_model.toLowerCase().includes(q)) ||
+      (j.registration_plate && j.registration_plate.toLowerCase().includes(q))
+    const inDirectory = jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
+    const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
+    return matchSearch && inDirectory && matchStatus
+  })
+  const statusOptions = jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
+  const activeCount = (jobs ?? []).filter((j: { status: JobStatus }) => !isClosed(j.status)).length
+  const completedCount = (jobs ?? []).filter((j: { status: JobStatus }) => isClosed(j.status)).length
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
@@ -694,11 +770,65 @@ export default function AutoKeyJobsPage() {
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
 
       {view === 'jobs' && (
-        isLoading ? <Spinner /> : (
-          <div className="space-y-3">
-            {jobs.length === 0 ? <EmptyState message="No Mobile Services jobs yet." /> : jobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)}
+        <>
+          <div className="mb-5 flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--cafe-text-muted)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search jobs, vehicle, rego…"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
+                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              />
+            </div>
+            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+              <button
+                type="button"
+                onClick={() => setJobDirectoryView('active')}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setJobDirectoryView('completed')}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Completed ({completedCount})
+              </button>
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="min-w-[160px]"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            >
+              <option value="all">All statuses</option>
+              {statusOptions.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+              ))}
+            </Select>
           </div>
-        )
+          {isLoading ? <Spinner /> : (
+            <div className="space-y-3">
+              {filteredJobs.length === 0 ? (
+                <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+              ) : (
+                filteredJobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {view === 'dispatch' && (
