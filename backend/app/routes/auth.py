@@ -7,7 +7,7 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..database import get_session
-from ..startup_seed import ensure_demo_b2b_accounts
+from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, ensure_demo_b2b_accounts
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -572,6 +572,13 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             )
             session.add(job)
             created_auto_key_jobs += 1
+
+    # Backfill job_address for existing auto key jobs that don't have it (e.g. from before migration)
+    existing_auto = session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant.id)).all()
+    for job in existing_auto:
+        if not job.job_address and job.job_number in DEMO_AUTO_KEY_ADDRESSES:
+            job.job_address = DEMO_AUTO_KEY_ADDRESSES[job.job_number]
+            session.add(job)
 
     # Seed customer accounts (B2B / fleet / dealer) for demo — uses shared startup logic
     created_customer_accounts = ensure_demo_b2b_accounts(session, tenant, commit=False)

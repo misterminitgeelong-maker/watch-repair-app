@@ -1622,6 +1622,22 @@ export default function AutoKeyJobsPage() {
               className="rounded-lg border px-3 py-2 text-sm"
               style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
             />
+            {users.length > 1 && (
+              <>
+                <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+                <Select
+                  value={dispatchTechFilter}
+                  onChange={e => setDispatchTechFilter(e.target.value)}
+                  className="min-w-[160px]"
+                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                >
+                  <option value="">All techs</option>
+                  {users.map((u: { id: string; full_name: string }) => (
+                    <option key={u.id} value={u.id}>{u.full_name}</option>
+                  ))}
+                </Select>
+              </>
+            )}
           </div>
           {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />}
         </div>

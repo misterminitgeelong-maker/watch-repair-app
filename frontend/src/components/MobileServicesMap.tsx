@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
 import { STATUS_LABELS } from '@/lib/utils'
 
@@ -7,6 +7,7 @@ const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
 interface Customer {
   id: string
   full_name: string
+  address?: string
 }
 
 interface Job {
@@ -30,7 +31,13 @@ interface Props {
   customers?: Customer[]
 }
 
+/** In-memory cache: address -> coords. Avoids re-geocoding the same address in a session. */
+const geocodeCache = new Map<string, { lat: number; lng: number }>()
+
 async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+  const cacheKey = address.trim().toLowerCase()
+  const cached = geocodeCache.get(cacheKey)
+  if (cached) return cached
   try {
     const res = await fetch(
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=au&key=${apiKey}`
@@ -38,7 +45,9 @@ async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat
     const data = await res.json()
     if (data?.status === 'OK' && data?.results?.[0]?.geometry?.location) {
       const loc = data.results[0].geometry.location
-      return { lat: loc.lat, lng: loc.lng }
+      const coords = { lat: loc.lat, lng: loc.lng }
+      geocodeCache.set(cacheKey, coords)
+      return coords
     }
   } catch {
     // ignore
@@ -60,10 +69,12 @@ function MarkerWithInfoWindow({
   job,
   position,
   customers,
+  displayAddress,
 }: {
   job: Job
   position: { lat: number; lng: number }
   customers: Customer[]
+  displayAddress: string
 }) {
   const [markerRef, marker] = useMarkerRef()
   const [infoWindowShown, setInfoWindowShown] = useState(false)
@@ -100,7 +111,7 @@ function MarkerWithInfoWindow({
               </span>
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-              {job.job_address}
+              {displayAddress}
             </p>
             <a
               href={`/auto-key/${job.id}`}
@@ -150,10 +161,11 @@ function MapContent({
   return (
     <>
       {jobs.map((job) => {
-        const coords = job.job_address ? geocoded.get(job.id) : null
+        const coords = geocoded.get(job.id)
+        const displayAddress = (job as { _addressForMap?: string })._addressForMap ?? job.job_address ?? ''
         if (!coords) return null
         return (
-          <MarkerWithInfoWindow key={job.id} job={job} position={coords} customers={customers} />
+          <MarkerWithInfoWindow key={job.id} job={job} position={coords} customers={customers} displayAddress={displayAddress} />
         )
       })}
     </>
@@ -163,36 +175,54 @@ function MapContent({
 function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
+  const abortedRef = useRef(false)
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
-  const mobileJobs = jobs.filter((j) => j.job_address)
+  const mobileJobs = useMemo(() => {
+    return jobs
+      .map((j) => {
+        const address = j.job_address?.trim() || (customers.find((c) => c.id === j.customer_id)?.address?.trim())
+        return address ? { ...j, _addressForMap: address } : null
+      })
+      .filter((j): j is NonNullable<typeof j> => !!j)
+  }, [jobs, customers])
+  const jobsKey = useMemo(
+    () => mobileJobs.map((j) => `${j.id}:${j._addressForMap}`).sort().join('|'),
+    [mobileJobs]
+  )
 
-  const geocodeAll = useCallback(async () => {
+  useEffect(() => {
+    abortedRef.current = false
     if (!apiKey || mobileJobs.length === 0) {
       setLoading(false)
       return
     }
-    const results = new Map<string, { lat: number; lng: number }>()
-    for (let i = 0; i < mobileJobs.length; i++) {
-      const j = mobileJobs[i]
-      const coords = await geocodeWithGoogle(j.job_address!, apiKey)
-      if (coords) results.set(j.id, coords)
-      if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
+    const run = async () => {
+      const results = new Map<string, { lat: number; lng: number }>()
+      for (let i = 0; i < mobileJobs.length; i++) {
+        if (abortedRef.current) return
+        const j = mobileJobs[i]
+        const coords = await geocodeWithGoogle(j._addressForMap, apiKey)
+        if (abortedRef.current) return
+        if (coords) results.set(j.id, coords)
+        if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
+      }
+      if (!abortedRef.current) {
+        setGeocoded(results)
+        setLoading(false)
+      }
     }
-    setGeocoded(results)
-    setLoading(false)
-  }, [apiKey, mobileJobs])
-
-  useEffect(() => {
-    geocodeAll()
-  }, [date, mobileJobs.map((j) => `${j.id}:${j.job_address}`).join('|'), geocodeAll])
+    setLoading(true)
+    run()
+    return () => { abortedRef.current = true }
+  }, [apiKey, date, jobsKey])
 
   if (mobileJobs.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
-        <p style={{ color: 'var(--cafe-text-muted)' }}>No mobile jobs with addresses for this date.</p>
+        <p style={{ color: 'var(--cafe-text-muted)' }}>No jobs with addresses for this date.</p>
         <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-          Add job addresses to see them on the map.
+          Add job addresses (or customer addresses) to see them on the map.
         </p>
       </div>
     )
