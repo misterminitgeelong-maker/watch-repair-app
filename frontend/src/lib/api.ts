@@ -1113,7 +1113,7 @@ export const vehicleLookup = (plate: string, state: string) =>
   api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
-export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type' | 'visit_order'> {
+export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type' | 'visit_order' | 'key_type' | 'blade_code' | 'chip_type' | 'tech_notes'> {
   customer_account_id?: string | null
   assigned_user_id?: string | null
   scheduled_at?: string | null

@@ -389,7 +389,7 @@ export default function AutoKeyJobDetailPage() {
                 />
                 <Button
                   variant='secondary'
-                  size='sm'
+                  className='text-sm py-2 px-3'
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading || attachments.length >= 5}
                 >
@@ -397,7 +397,7 @@ export default function AutoKeyJobDetailPage() {
                 </Button>
                 <Button
                   variant='secondary'
-                  size='sm'
+                  className='text-sm py-2 px-3'
                   onClick={() => cameraInputRef.current?.click()}
                   disabled={uploading || attachments.length >= 5}
                 >
