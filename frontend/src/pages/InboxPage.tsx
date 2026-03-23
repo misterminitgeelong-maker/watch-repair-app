@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CheckCircle, XCircle, ArrowRight } from 'lucide-react'
-import { getInbox } from '@/lib/api'
+import { CheckCircle, XCircle, ArrowRight, Trash2 } from 'lucide-react'
+import { getInbox, deleteInboxEvent } from '@/lib/api'
 import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
 
 function formatDate(s: string) {
@@ -15,9 +15,14 @@ function formatDate(s: string) {
 }
 
 export default function InboxPage() {
+  const qc = useQueryClient()
   const { data: alerts, isLoading } = useQuery({
     queryKey: ['inbox'],
     queryFn: () => getInbox(50).then(r => r.data),
+  })
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteInboxEvent(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inbox'] }),
   })
 
   if (isLoading) return <Spinner />
@@ -55,15 +60,28 @@ export default function InboxPage() {
                       {formatDate(ev.created_at)}
                     </p>
                   </div>
-                  {jobLink && (
-                    <Link
-                      to={jobLink}
-                      className="shrink-0 flex items-center gap-1 text-sm font-medium transition-colors"
-                      style={{ color: 'var(--cafe-amber)' }}
+                  <div className="shrink-0 flex items-center gap-2">
+                    {jobLink && (
+                      <Link
+                        to={jobLink}
+                        className="flex items-center gap-1 text-sm font-medium transition-colors"
+                        style={{ color: 'var(--cafe-amber)' }}
+                      >
+                        View job <ArrowRight size={14} />
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => deleteMut.mutate(ev.id)}
+                      disabled={deleteMut.isPending}
+                      className="p-1.5 rounded transition-colors hover:bg-black/10"
+                      style={{ color: 'var(--cafe-text-muted)' }}
+                      title="Delete"
+                      aria-label="Delete"
                     >
-                      View job <ArrowRight size={14} />
-                    </Link>
-                  )}
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </Card>
             )

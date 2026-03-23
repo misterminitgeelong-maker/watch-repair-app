@@ -866,6 +866,8 @@ export const getTenantActivity = (limit = 50) =>
 // ── Inbox (alerts) ───────────────────────────────────────────────────────────
 export const getInbox = (limit = 50) =>
   api.get<TenantActivityEvent[]>('/inbox', { params: { limit } })
+export const deleteInboxEvent = (eventId: string) =>
+  api.delete(`/inbox/${eventId}`)
 export const listUsers = () => api.get<TenantUser[]>('/users')
 // ── Billing ───────────────────────────────────────────────────────────────────
 export interface BillingPlanLimits {

@@ -70,9 +70,20 @@ function MarkerWithInfoWindow({
   const handleMarkerClick = useCallback(() => setInfoWindowShown((s) => !s), [])
   const handleClose = useCallback(() => setInfoWindowShown(false), [])
 
+  const labelText = job.job_number || job.title || '?'
   return (
     <>
-      <Marker ref={markerRef} position={position} onClick={handleMarkerClick} />
+      <Marker
+        ref={markerRef}
+        position={position}
+        label={{
+          text: labelText,
+          color: '#2C1810',
+          fontSize: '14px',
+          fontWeight: 'bold',
+        }}
+        onClick={handleMarkerClick}
+      />
       {infoWindowShown && marker && (
         <InfoWindow anchor={marker} onClose={handleClose} disableAutoPan shouldFocus={false}>
           <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>

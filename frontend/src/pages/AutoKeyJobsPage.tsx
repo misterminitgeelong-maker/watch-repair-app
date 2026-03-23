@@ -960,7 +960,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'reports'>('dashboard')
+  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -985,7 +985,7 @@ export default function AutoKeyJobsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
-    enabled: view === 'pos' || view === 'map',
+    enabled: view === 'pos' || view === 'map' || view === 'planner',
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -997,11 +997,11 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listUsers().then(r => r.data),
   })
 
-  const dispatchParams = view === 'dispatch' || view === 'map' ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
+  const dispatchParams = view === 'dispatch' || view === 'map' || view === 'planner' ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter],
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
-    enabled: (view === 'dispatch' || view === 'map') && !!dispatchParams,
+    enabled: (view === 'dispatch' || view === 'map' || view === 'planner') && !!dispatchParams,
   })
 
   const weekEnd = (() => {
@@ -1152,6 +1152,13 @@ export default function AutoKeyJobsPage() {
             style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <MapIcon size={16} /> Map
+          </button>
+          <button
+            onClick={() => setView('planner')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'planner' ? 'bg-opacity-20' : ''}`}
+            style={view === 'planner' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <CalendarDays size={16} /> Day Planner
           </button>
           <button
             onClick={() => setView('reports')}
@@ -1617,6 +1624,98 @@ export default function AutoKeyJobsPage() {
             />
           </div>
           {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />}
+        </div>
+      )}
+
+      {view === 'planner' && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+            <input
+              type="date"
+              value={dispatchDate}
+              onChange={e => setDispatchDate(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            />
+            {users.length > 1 && (
+              <>
+                <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+                <Select
+                  value={dispatchTechFilter}
+                  onChange={e => setDispatchTechFilter(e.target.value)}
+                  className="min-w-[160px]"
+                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                >
+                  <option value="">All techs</option>
+                  {users.map((u: { id: string; full_name: string }) => (
+                    <option key={u.id} value={u.id}>{u.full_name}</option>
+                  ))}
+                </Select>
+              </>
+            )}
+          </div>
+          {dispatchLoading ? (
+            <Spinner />
+          ) : (
+            <>
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {formatDate(dispatchDate)} — {dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''}
+                </h3>
+                {dispatchJobs.length === 0 ? (
+                  <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>No jobs scheduled for this date.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {[...dispatchJobs]
+                      .sort((a: { scheduled_at?: string }, b: { scheduled_at?: string }) => {
+                        const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+                        const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+                        return ta - tb
+                      })
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }, idx: number) => {
+                        const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
+                        const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+                        return (
+                          <div
+                            key={job.id}
+                            className="flex items-start gap-4 py-3 border-b last:border-b-0"
+                            style={{ borderColor: 'var(--cafe-border)' }}
+                          >
+                            <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{timeStr}</span>
+                            <div className="flex-1 min-w-0">
+                              <Link to={`/auto-key/${job.id}`} className="font-medium hover:underline" style={{ color: 'var(--cafe-text)' }}>
+                                #{job.job_number} · {job.title}
+                              </Link>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                                {customer?.full_name ?? '—'}
+                                {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
+                              </p>
+                              {job.job_address && (
+                                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                                  <MapPin size={12} /> {job.job_address}
+                                </p>
+                              )}
+                            </div>
+                            <Link
+                              to={`/auto-key/${job.id}`}
+                              className="shrink-0 px-3 py-1.5 rounded text-xs font-medium"
+                              style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                            >
+                              View
+                            </Link>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+              </Card>
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Map — where to go</h3>
+                <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />
+              </div>
+            </>
+          )}
         </div>
       )}
 
