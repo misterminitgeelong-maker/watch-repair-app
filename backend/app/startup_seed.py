@@ -193,6 +193,27 @@ def ensure_testing_tenant(session: Session) -> Tenant | None:
 
     tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if tenant:
+        # Tenant exists: ensure user exists and password matches current env
+        owner = session.exec(
+            select(User).where(User.tenant_id == tenant.id).where(User.email == email)
+        ).first()
+        if owner:
+            owner.password_hash = hash_password(password)
+            owner.is_active = True
+            session.add(owner)
+        else:
+            session.add(
+                User(
+                    tenant_id=tenant.id,
+                    email=email,
+                    full_name="Testing",
+                    role="owner",
+                    password_hash=hash_password(password),
+                    is_active=True,
+                )
+            )
+        session.commit()
+        session.refresh(tenant)
         return tenant
 
     tenant = Tenant(

@@ -739,6 +739,23 @@ def seed_demo_data(
     return {"ok": True, "created": created}
 
 
+@router.post("/ensure-testing-tenant")
+def ensure_testing_tenant_endpoint(session: Session = Depends(get_session)):
+    """Force-create/update the testing tenant from env vars. Use when login fails with 'Invalid credentials'.
+    Enable with ALLOW_ENSURE_TESTING_TENANT=true or when APP_ENV is not production."""
+    if settings.app_env.lower() == "production" and not settings.allow_ensure_testing_tenant:
+        raise HTTPException(status_code=403, detail="Set ALLOW_ENSURE_TESTING_TENANT=true in .env to enable")
+    from ..startup_seed import ensure_testing_tenant
+
+    result = ensure_testing_tenant(session)
+    if not result:
+        return {
+            "ok": False,
+            "detail": "Testing tenant not configured. Set TESTING_TENANT_SLUG, TESTING_OWNER_EMAIL, TESTING_OWNER_PASSWORD in .env",
+        }
+    return {"ok": True, "tenant_slug": result.slug, "detail": "Testing tenant ready. Try signing in."}
+
+
 @router.post("/dev-auto-login", response_model=TokenResponse)
 def dev_auto_login(session: Session = Depends(get_session)):
     if settings.app_env.lower() == "production" or not settings.allow_dev_auto_login:

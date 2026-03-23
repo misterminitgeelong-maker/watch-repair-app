@@ -53,6 +53,12 @@ Only you know the credentials. The login page looks the same to everyone—there
   - `"testing_tenant_exists": true` – tenant was created at startup
   If either is `false`, fix your `.env` and restart.
 
+- **Force-create the tenant**: If login still fails, call:
+  ```
+  curl -X POST http://localhost:8000/v1/auth/ensure-testing-tenant
+  ```
+  Add `ALLOW_ENSURE_TESTING_TENANT=true` to your `.env` first, restart the backend, then run the curl. This creates/updates the tenant and syncs the password from `.env`.
+
 ## Environment variables (optional)
 
 **Demo credentials** (for the public demo flow):

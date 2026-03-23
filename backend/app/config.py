@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     testing_tenant_name: str = "Testing"
     testing_owner_email: str = ""
     testing_owner_password: str = ""
+    allow_ensure_testing_tenant: bool = False  # When True, enables POST /auth/ensure-testing-tenant
 
     # Optional global platform admin account (cross-tenant visibility)
     platform_admin_enabled: bool = False
