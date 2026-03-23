@@ -74,7 +74,7 @@ function MarkerWithInfoWindow({
     <>
       <Marker ref={markerRef} position={position} onClick={handleMarkerClick} />
       {infoWindowShown && marker && (
-        <InfoWindow anchor={marker} onClose={handleClose}>
+        <InfoWindow anchor={marker} onClose={handleClose} disableAutoPan shouldFocus={false}>
           <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>
             <p className="font-semibold" style={{ color: 'var(--cafe-amber)' }}>
               #{job.job_number}
