@@ -25,10 +25,7 @@ export default function InboxPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Inbox"
-        subtitle="Customer quote approvals and declines"
-      />
+      <PageHeader title="Inbox" />
       {alerts.length === 0 ? (
         <EmptyState message="No alerts yet. When customers approve or decline quotes, they'll show up here." />
       ) : (
