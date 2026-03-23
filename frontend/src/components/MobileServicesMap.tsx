@@ -31,8 +31,36 @@ interface Props {
   customers?: Customer[]
 }
 
-/** In-memory cache: address -> coords. Avoids re-geocoding the same address in a session. */
-const geocodeCache = new Map<string, { lat: number; lng: number }>()
+const GEOCODE_CACHE_KEY = 'geocode_cache'
+
+function loadGeocodeCache(): Map<string, { lat: number; lng: number }> {
+  try {
+    const raw = sessionStorage.getItem(GEOCODE_CACHE_KEY)
+    if (!raw) return new Map()
+    const parsed = JSON.parse(raw) as { key: string; lat: number; lng: number }[]
+    if (!Array.isArray(parsed)) return new Map()
+    const map = new Map<string, { lat: number; lng: number }>()
+    for (const { key, lat, lng } of parsed) {
+      if (typeof key === 'string' && typeof lat === 'number' && typeof lng === 'number') {
+        map.set(key, { lat, lng })
+      }
+    }
+    return map
+  } catch {
+    return new Map()
+  }
+}
+
+function saveGeocodeCache(map: Map<string, { lat: number; lng: number }>) {
+  try {
+    const entries = Array.from(map.entries(), ([key, coords]) => ({ key, ...coords }))
+    sessionStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(entries))
+  } catch {
+    // ignore
+  }
+}
+
+const geocodeCache = loadGeocodeCache()
 
 async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
   const cacheKey = address.trim().toLowerCase()
@@ -47,6 +75,7 @@ async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat
       const loc = data.results[0].geometry.location
       const coords = { lat: loc.lat, lng: loc.lng }
       geocodeCache.set(cacheKey, coords)
+      saveGeocodeCache(geocodeCache)
       return coords
     }
   } catch {
@@ -191,14 +220,35 @@ function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
     [mobileJobs]
   )
 
+  const lastJobsKeyRef = useRef<string | null>(null)
+
   useEffect(() => {
     abortedRef.current = false
     if (!apiKey || mobileJobs.length === 0) {
       setLoading(false)
       return
     }
+    // Skip if we already completed for this exact jobsKey (prevents duplicate runs from parent re-renders)
+    if (lastJobsKeyRef.current === jobsKey) {
+      setLoading(false)
+      return
+    }
     const run = async () => {
       const results = new Map<string, { lat: number; lng: number }>()
+      // Fast path: if all addresses are cached, resolve synchronously (0 API calls)
+      const cacheKeys = mobileJobs.map((j) => j._addressForMap.trim().toLowerCase())
+      const allCached = cacheKeys.every((ck) => geocodeCache.has(ck))
+      if (allCached) {
+        for (const j of mobileJobs) {
+          const ck = j._addressForMap.trim().toLowerCase()
+          const c = geocodeCache.get(ck)
+          if (c) results.set(j.id, c)
+        }
+        lastJobsKeyRef.current = jobsKey
+        setGeocoded(results)
+        setLoading(false)
+        return
+      }
       for (let i = 0; i < mobileJobs.length; i++) {
         if (abortedRef.current) return
         const j = mobileJobs[i]
@@ -208,6 +258,7 @@ function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
         if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
       }
       if (!abortedRef.current) {
+        lastJobsKeyRef.current = jobsKey
         setGeocoded(results)
         setLoading(false)
       }
