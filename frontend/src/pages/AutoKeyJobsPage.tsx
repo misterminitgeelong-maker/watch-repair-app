@@ -812,9 +812,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
         >
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-xs font-mono font-semibold" style={{ color: 'var(--cafe-amber)' }}>#{job.job_number}</p>
-            {!isSolo && job.assigned_user_id && (
-              <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(93,74,155,0.2)', color: '#5D4A9B' }}>
-                {users.find(u => u.id === job.assigned_user_id)?.full_name ?? 'Assigned'}
+            {!isSolo && (
+              <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: job.assigned_user_id ? 'rgba(93,74,155,0.2)' : 'rgba(138,117,99,0.25)', color: job.assigned_user_id ? '#5D4A9B' : 'var(--cafe-text-muted)' }}>
+                {job.assigned_user_id ? (users.find(u => u.id === job.assigned_user_id)?.full_name ?? 'Assigned') : 'Unassigned'}
               </span>
             )}
             {job.customer_account_id && (
@@ -831,11 +831,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
             {job.registration_plate ? ` · ${job.registration_plate}` : ''}
           </p>
-          {job.job_address && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
-              {job.job_address}
-            </p>
-          )}
+          <p className="text-xs mt-0.5" style={{ color: job.job_address ? 'var(--cafe-text-mid)' : 'var(--cafe-text-muted)' }}>
+            {job.job_address || 'No address set'}
+          </p>
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
             Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity} · Programming {job.programming_status.replace(/_/g, ' ')}
           </p>
@@ -846,7 +844,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
               {job.scheduled_at && <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span>}
               {job.scheduled_at && job.job_type && ' · '}
-              {job.job_type}{job.job_address ? ` · ${job.job_address}` : ''}
+              {job.job_type}
             </p>
           )}
           {job.job_address && (

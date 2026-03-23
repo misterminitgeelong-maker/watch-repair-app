@@ -80,17 +80,20 @@ export const STATUS_LABELS: Record<string, string> = {
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  awaiting_quote:      'bg-[#EEE8F5] text-[#6A4A8B]',
+  // Mobile Services dispatch palette (grey, amber, blue, orange, purple, green, red, dark green)
+  awaiting_quote:      'bg-[#E8E6E3] text-[#6B5D52]',
   awaiting_go_ahead:   'bg-[#FEF0DC] text-[#9B6820]',
-  go_ahead:            'bg-[#E8F0E4] text-[#3B6B42]',
+  go_ahead:            'bg-[#E0E8F5] text-[#2E4A7A]',
   no_go:               'bg-[#F5E8E8] text-[#8B3A3A]',
-  working_on:          'bg-[#E8EEF8] text-[#3A508B]',
-  awaiting_parts:      'bg-[#FDECD3] text-[#9B4E0F]',
+  working_on:          'bg-[#FDF0E6] text-[#B35A1F]',
+  en_route:            'bg-[#EDE5F5] text-[#5D4A9B]',
+  on_site:             'bg-[#E4F0E4] text-[#2F6A3D]',
+  awaiting_parts:      'bg-[#FDE8E8] text-[#A53A3A]',
   parts_to_order:      'bg-[#F0EAF5] text-[#6B4A8B]',
   sent_to_labanda:     'bg-[#F0EBE0] text-[#6B5238]',
   quoted_by_labanda:   'bg-[#EAE0F0] text-[#5A3877]',
   service:             'bg-[#DFF0EC] text-[#2A6B65]',
-  completed:           'bg-[#E4F0E4] text-[#2F6B34]',
+  completed:           'bg-[#D4E8D4] text-[#1F5C24]',
   awaiting_collection: 'bg-[#FEF0DC] text-[#9B6820]',
   collected:           'bg-[#DFF0EC] text-[#2A6B65]',
   draft:               'bg-[#EEEBE5] text-[#7A6A5A]',
