@@ -125,7 +125,8 @@ export default function CustomerAccountsPage() {
   const { data: accounts = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
-    retry: 1,
+    retry: 0,
+    staleTime: 0,
   })
 
   const { data: customers = [] } = useQuery({
@@ -344,7 +345,7 @@ export default function CustomerAccountsPage() {
             {getApiErrorMessage(error as unknown, 'Unknown error')}
           </p>
           <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
-            Visit <a href="/v1/debug/demo-status" target="_blank" rel="noreferrer" className="underline">/v1/debug/demo-status</a> to check backend state. Restart the backend to seed B2B accounts at startup.
+            On Railway: redeploy to get the latest fixes, then check your domain/v1/debug/demo-status for backend state.
           </p>
           <Button className="mt-3" onClick={() => refetch()}>Try again</Button>
         </div>
