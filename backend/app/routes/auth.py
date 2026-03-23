@@ -625,6 +625,46 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             )
         )
 
+    # Seed fake Inbox messages (quote approvals/declines) for demo
+    inbox_count = int(
+        session.exec(
+            select(func.count())
+            .select_from(TenantEventLog)
+            .where(TenantEventLog.tenant_id == tenant.id)
+            .where(TenantEventLog.event_type.in_(["quote_approved", "quote_declined"]))
+        ).one()
+    )
+    if inbox_count < 6:
+        repair_jobs_for_inbox = session.exec(
+            select(RepairJob)
+            .where(RepairJob.tenant_id == tenant.id)
+            .order_by(RepairJob.job_number)
+            .limit(8)
+        ).all()
+        fake_inbox_events = [
+            ("quote_approved", "Customer approved quote for job #{job_number}"),
+            ("quote_approved", "Customer approved quote for job #{job_number}"),
+            ("quote_declined", "Customer declined quote for job #{job_number} — return watch"),
+            ("quote_approved", "Customer approved quote for job #{job_number}"),
+            ("quote_declined", "Customer declined quote for job #{job_number} — return watch"),
+            ("quote_approved", "Customer approved quote for job #{job_number}"),
+        ]
+        for i, (event_type, template) in enumerate(fake_inbox_events):
+            if i >= len(repair_jobs_for_inbox):
+                break
+            job = repair_jobs_for_inbox[i]
+            session.add(
+                TenantEventLog(
+                    tenant_id=tenant.id,
+                    actor_user_id=None,
+                    entity_type="repair_job",
+                    entity_id=job.id,
+                    event_type=event_type,
+                    event_summary=template.format(job_number=job.job_number),
+                    created_at=datetime.now(timezone.utc) - timedelta(hours=randint(2, 72)),
+                )
+            )
+
     session.commit()
 
     return {
