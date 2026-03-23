@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { APIProvider, Map as GoogleMap, AdvancedMarker, InfoWindow, useAdvancedMarkerRef, useMap } from '@vis.gl/react-google-maps'
+import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
@@ -66,14 +65,14 @@ function MarkerWithInfoWindow({
   position: { lat: number; lng: number }
   customers: Customer[]
 }) {
-  const [markerRef, marker] = useAdvancedMarkerRef()
+  const [markerRef, marker] = useMarkerRef()
   const [infoWindowShown, setInfoWindowShown] = useState(false)
   const handleMarkerClick = useCallback(() => setInfoWindowShown((s) => !s), [])
   const handleClose = useCallback(() => setInfoWindowShown(false), [])
 
   return (
     <>
-      <AdvancedMarker ref={markerRef} position={position} onClick={handleMarkerClick} />
+      <Marker ref={markerRef} position={position} onClick={handleMarkerClick} />
       {infoWindowShown && marker && (
         <InfoWindow anchor={marker} onClose={handleClose}>
           <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>
@@ -92,13 +91,14 @@ function MarkerWithInfoWindow({
             <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
               {job.job_address}
             </p>
-            <Link
-              to={`/auto-key/${job.id}`}
+            <a
+              href={`/auto-key/${job.id}`}
               className="mt-2 inline-block text-xs font-semibold hover:underline"
               style={{ color: 'var(--cafe-amber)' }}
+              onClick={(e) => e.stopPropagation()}
             >
               View job →
-            </Link>
+            </a>
           </div>
         </InfoWindow>
       )}
@@ -223,13 +223,13 @@ function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
         </span>
         {mobileJobs.map((j, i) => (
           <span key={j.id} className="text-sm">
-            <Link
-              to={`/auto-key/${j.id}`}
+            <a
+              href={`/auto-key/${j.id}`}
               className="px-3 py-1.5 rounded inline-block"
               style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
             >
               {i + 1}. #{j.job_number} · {j.title}
-            </Link>
+            </a>
           </span>
         ))}
       </div>
