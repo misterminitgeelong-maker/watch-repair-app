@@ -19,7 +19,7 @@ import {
   sendAutoKeyDayBeforeReminders,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
-  getAutoKeySummary,
+  getAutoKeyReports,
   vehicleLookup,
   type AutoKeyProgrammingStatus,
   type Customer,
@@ -976,6 +976,9 @@ export default function AutoKeyJobsPage() {
     mon.setDate(diff)
     return mon.toISOString().slice(0, 10)
   })
+  const [reportDateFrom, setReportDateFrom] = useState('')
+  const [reportDateTo, setReportDateTo] = useState('')
+  const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['auto-key-jobs'],
@@ -1009,14 +1012,55 @@ export default function AutoKeyJobsPage() {
     return d.toISOString().slice(0, 10)
   })()
   const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
-  const { data: autoKeySummary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['auto-key-summary'],
-    queryFn: () => getAutoKeySummary().then(r => r.data),
-    enabled: view === 'reports',
+
+  const reportDateParams = (() => {
+    if (view !== 'reports') return undefined
+    if (reportPreset === 'custom' && reportDateFrom && reportDateTo) {
+      return { date_from: reportDateFrom, date_to: reportDateTo }
+    }
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    if (reportPreset === 'today') {
+      const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      return { date_from: today, date_to: today }
+    }
+    if (reportPreset === 'week') {
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const mon = new Date(d)
+      mon.setDate(diff)
+      const sun = new Date(mon)
+      sun.setDate(mon.getDate() + 6)
+      return {
+        date_from: mon.toISOString().slice(0, 10),
+        date_to: sun.toISOString().slice(0, 10),
+      }
+    }
+    if (reportPreset === 'month') {
+      const start = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      return { date_from: start, date_to: end.toISOString().slice(0, 10) }
+    }
+    if (reportPreset === 'last_month') {
+      const prev = new Date(d.getFullYear(), d.getMonth() - 1)
+      const start = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-01`
+      const end = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
+      return { date_from: start, date_to: end.toISOString().slice(0, 10) }
+    }
+    if (reportPreset === 'all') {
+      return { date_from: '2000-01-01', date_to: '2099-12-31' }
+    }
+    return undefined
+  })()
+
+  const { data: autoKeyReports, isLoading: reportsLoading } = useQuery({
+    queryKey: ['auto-key-reports', reportDateParams?.date_from, reportDateParams?.date_to],
+    queryFn: () => getAutoKeyReports(reportDateParams!).then(r => r.data),
+    enabled: view === 'reports' && !!reportDateParams,
   })
   const sendRemindersMut = useMutation({
     mutationFn: () => sendAutoKeyDayBeforeReminders().then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-summary'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-reports'] }),
   })
 
   const statusMut = useMutation({
@@ -1579,57 +1623,163 @@ export default function AutoKeyJobsPage() {
       )}
 
       {view === 'reports' && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--cafe-text)' }}>Mobile Services Summary</h2>
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Date range:</span>
+              {(['today', 'week', 'month', 'last_month', 'all'] as const).map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setReportPreset(preset)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${reportPreset === preset ? '' : ''}`}
+                  style={reportPreset === preset ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+                >
+                  {preset === 'today' ? 'Today' : preset === 'week' ? 'This Week' : preset === 'month' ? 'This Month' : preset === 'last_month' ? 'Last Month' : 'All Time'}
+                </button>
+              ))}
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={reportPreset === 'custom'}
+                  onChange={e => setReportPreset(e.target.checked ? 'custom' : 'month')}
+                />
+                <span style={{ color: 'var(--cafe-text-muted)' }}>Custom</span>
+              </label>
+              {reportPreset === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={reportDateFrom}
+                    onChange={e => setReportDateFrom(e.target.value)}
+                    className="w-36"
+                  />
+                  <span style={{ color: 'var(--cafe-text-muted)' }}>to</span>
+                  <Input
+                    type="date"
+                    value={reportDateTo}
+                    onChange={e => setReportDateTo(e.target.value)}
+                    className="w-36"
+                  />
+                </div>
+              )}
+            </div>
             <Button variant="secondary" onClick={() => sendRemindersMut.mutate()} disabled={sendRemindersMut.isPending}>
               {sendRemindersMut.isPending ? 'Sending…' : 'Send day-before reminders now'}
             </Button>
           </div>
-          {summaryLoading ? <Spinner /> : autoKeySummary ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total jobs</p>
-                <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{autoKeySummary.total_jobs}</p>
-              </Card>
-              <Card className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total revenue</p>
-                <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeySummary.total_revenue_cents)}</p>
-              </Card>
-              <Card className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>By job type</p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {Object.entries(autoKeySummary.job_type_breakdown).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No jobs yet</p>
-                  ) : (
-                    Object.entries(autoKeySummary.job_type_breakdown).map(([type, count]) => (
-                      <div key={type} className="flex justify-between text-sm">
-                        <span style={{ color: 'var(--cafe-text)' }}>{type}</span>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>{count}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-          ) : null}
-          {!isSolo && autoKeySummary && autoKeySummary.jobs_by_tech.length > 0 && (
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs & revenue by tech</h3>
-              <div className="space-y-2">
-                {autoKeySummary.jobs_by_tech.map(t => (
-                  <div key={t.tech_id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
-                    <span style={{ color: 'var(--cafe-text)' }}>{t.tech_name}</span>
-                    <span className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-                      {t.job_count} job{t.job_count !== 1 ? 's' : ''} · {formatCents(t.revenue_cents)}
-                    </span>
-                  </div>
-                ))}
+
+          {reportsLoading ? <Spinner /> : autoKeyReports ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Jobs</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{autoKeyReports.summary.total_jobs}</p>
+                </Card>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Revenue</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeyReports.summary.total_revenue_cents)}</p>
+                </Card>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Avg Job Value</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeyReports.summary.avg_job_value_cents)}</p>
+                </Card>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Mobile vs Shop</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+                    Mobile: {autoKeyReports.summary.mobile_count} ({autoKeyReports.summary.mobile_pct}%) · Shop: {autoKeyReports.summary.shop_count} ({autoKeyReports.summary.shop_pct}%)
+                  </p>
+                </Card>
               </div>
-            </Card>
-          )}
-          {autoKeySummary && autoKeySummary.total_jobs === 0 && (
-            <EmptyState message="No Mobile Services jobs yet. Create one to see reports." />
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Type</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Job Type</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Jobs</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
+                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Avg Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {autoKeyReports.jobs_by_type.map(row => (
+                          <tr key={row.job_type} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
+                            <td className="py-2 pr-4" style={{ color: 'var(--cafe-text)' }}>{row.job_type}</td>
+                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{row.jobs}</td>
+                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(row.revenue_cents)}</td>
+                            <td className="py-2 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(row.avg_value_cents)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Tech</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Tech</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Jobs</th>
+                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {autoKeyReports.jobs_by_tech.length === 0 ? (
+                          <tr><td colSpan={3} className="py-4 text-center text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No data</td></tr>
+                        ) : (
+                          autoKeyReports.jobs_by_tech.map(t => (
+                            <tr key={t.tech_id} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
+                              <td className="py-2 pr-4" style={{ color: 'var(--cafe-text)' }}>{t.tech_name}</td>
+                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{t.job_count}</td>
+                              <td className="py-2 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(t.revenue_cents)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Status (Live Pipeline)</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {autoKeyReports.jobs_by_status.map(s => (
+                      <div
+                        key={s.status}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+                      >
+                        <span className="text-sm" style={{ color: 'var(--cafe-text)' }}>{s.label}</span>
+                        <span className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Week on Week (Last 8 Weeks)</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {autoKeyReports.week_on_week.map((w, i) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm" style={{ borderColor: 'var(--cafe-border)' }}>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>{w.week_label}</span>
+                        <span style={{ color: 'var(--cafe-text)' }}>
+                          {w.jobs} jobs · {formatCents(w.revenue_cents)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </>
+          ) : (
+            <EmptyState message="No report data. Select a date range." />
           )}
         </div>
       )}

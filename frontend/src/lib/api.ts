@@ -810,6 +810,27 @@ export interface AutoKeySummary {
   total_revenue_cents: number
 }
 export const getAutoKeySummary = () => api.get<AutoKeySummary>('/reports/auto-key-summary')
+
+export interface AutoKeyReports {
+  date_from: string
+  date_to: string
+  summary: {
+    total_jobs: number
+    total_revenue_cents: number
+    avg_job_value_cents: number
+    completed_jobs: number
+    mobile_count: number
+    mobile_pct: number
+    shop_count: number
+    shop_pct: number
+  }
+  jobs_by_type: { job_type: string; jobs: number; revenue_cents: number; avg_value_cents: number }[]
+  jobs_by_tech: { tech_id: string; tech_name: string; job_count: number; revenue_cents: number }[]
+  jobs_by_status: { status: string; label: string; count: number }[]
+  week_on_week: { week_label: string; jobs: number; revenue_cents: number }[]
+}
+export const getAutoKeyReports = (params: { date_from?: string; date_to?: string }) =>
+  api.get<AutoKeyReports>('/reports/auto-key-reports', { params })
 export const sendAutoKeyDayBeforeReminders = () =>
   api.post<{ techs_notified: number; customers_notified: number }>('/auto-key-jobs/send-day-before-reminders')
 
