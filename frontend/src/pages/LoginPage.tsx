@@ -83,6 +83,7 @@ export default function LoginPage() {
           queryClient.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
           queryClient.invalidateQueries({ queryKey: ['auto-key-jobs'] })
           queryClient.invalidateQueries({ queryKey: ['customers'] })
+          queryClient.invalidateQueries({ queryKey: ['inbox'] })
         })
         .catch(() => { /* Non-fatal */ })
       resetDemoTour()
