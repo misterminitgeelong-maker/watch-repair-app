@@ -340,18 +340,21 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
     return tenant
 
 
-# Melbourne addresses for demo auto_key_jobs K-1001..K-1005 (Toyota Hilux, Ford Ranger, etc.)
+# Melbourne addresses for demo auto_key_jobs K-1001..K-1008
 DEMO_AUTO_KEY_ADDRESSES: dict[str, str] = {
     "K-1001": "45 Glenferrie Rd, Malvern VIC 3144",
     "K-1002": "12 Chapel St, Prahran VIC 3181",
     "K-1003": "8 Bay St, Port Melbourne VIC 3207",
     "K-1004": "231 Punt Rd, Richmond VIC 3121",
     "K-1005": "67 Burke Rd, Camberwell VIC 3124",
+    "K-1006": "15 Lygon St, Carlton VIC 3053",
+    "K-1007": "88 Sydney Rd, Brunswick VIC 3056",
+    "K-1008": "120 Collins St, Melbourne VIC 3000",
 }
 
 
 def ensure_demo_auto_key_addresses(session: Session, tenant_id) -> int:
-    """Update existing demo auto_key_jobs (K-1001..K-1005) with Melbourne addresses and scheduled_at. Returns count updated."""
+    """Update existing demo auto_key_jobs (K-1001..K-1008) with Melbourne addresses and scheduled_at. Returns count updated."""
     today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
     updated = 0
     for job_number, address in DEMO_AUTO_KEY_ADDRESSES.items():

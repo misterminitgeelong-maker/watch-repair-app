@@ -247,7 +247,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         select(Watch).where(Watch.tenant_id == tenant.id).order_by(Watch.created_at)
     ).all()
     created_watches = 0
-    if len(watches) < 8 and customers:
+    if len(watches) < 26 and customers:
         watch_specs = [
             ("Omega", "Seamaster", "automatic"),
             ("Rolex", "Datejust", "automatic"),
@@ -257,8 +257,25 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             ("Hamilton", "Khaki", "automatic"),
             ("Citizen", "Eco-Drive", "solar"),
             ("TAG Heuer", "Carrera", "automatic"),
+            ("Orient", "Bambino", "automatic"),
+            ("Breitling", "Navitimer", "automatic"),
+            ("Grand Seiko", "Snowflake", "automatic"),
+            ("Nomos", "Tangente", "automatic"),
+            ("Junghans", "Max Bill", "automatic"),
+            ("Mido", "Multifort", "automatic"),
+            ("Rado", "DiaStar", "automatic"),
+            ("Certina", "DS Action", "automatic"),
+            ("Christopher Ward", "C63", "automatic"),
+            ("Sinn", "556", "automatic"),
+            ("Ball", "Engineer", "automatic"),
+            ("Frederique Constant", "Classics", "automatic"),
+            ("Raymond Weil", "Parsifal", "quartz"),
+            ("Movado", "Museum", "quartz"),
+            ("Baume & Mercier", "Clifton", "automatic"),
+            ("Montblanc", "1858", "automatic"),
+            ("Panerai", "Luminor", "automatic"),
         ]
-        for idx in range(len(watches), 8):
+        for idx in range(len(watches), 26):
             brand, model, movement = watch_specs[idx % len(watch_specs)]
             customer = customers[idx % len(customers)]
             watch = Watch(
@@ -285,8 +302,36 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant.id)
         ).one()
     )
+    watch_repair_titles = [
+        "Full service and regulation",
+        "Crystal replacement",
+        "Crown and tube replacement",
+        "Movement overhaul",
+        "Bracelet resizing",
+        "Battery replacement",
+        "Waterproof reseal",
+        "Dial refinish",
+        "Hand replacement",
+        "Mainspring replacement",
+        "Escapement service",
+        "Chronograph service",
+        "Date mechanism repair",
+        "Case polishing",
+        "Gasket replacement",
+        "Quartz movement swap",
+        "Strap replacement",
+        "Timing adjustment",
+        "Rotor bearing service",
+        "Keyless works repair",
+        "Jewelling replacement",
+        "Hairspring adjustment",
+        "Balance staff replacement",
+        "Automatic module service",
+        "Shock absorber repair",
+        "Complication service",
+    ]
     created_repair_jobs = 0
-    if repair_job_count < 10 and watches:
+    if repair_job_count < 26 and watches:
         statuses = [
             "awaiting_quote",
             "awaiting_go_ahead",
@@ -296,14 +341,15 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             "awaiting_collection",
         ]
         priorities = ["low", "normal", "high", "urgent"]
-        for idx in range(repair_job_count, 10):
+        for idx in range(repair_job_count, 26):
             watch = watches[idx % len(watches)]
+            title = watch_repair_titles[idx % len(watch_repair_titles)]
             job = RepairJob(
                 tenant_id=tenant.id,
                 watch_id=watch.id,
                 assigned_user_id=actor.id,
                 job_number=f"W-{idx + 1001:04d}",
-                title=f"{watch.brand or 'Watch'} service and regulation",
+                title=f"{watch.brand or 'Watch'} {title}",
                 description="Amplitude check, gasket refresh, and pressure test.",
                 priority=priorities[idx % len(priorities)],
                 status=statuses[idx % len(statuses)],
@@ -375,7 +421,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         select(Shoe).where(Shoe.tenant_id == tenant.id).order_by(Shoe.created_at)
     ).all()
     created_shoes = 0
-    if len(shoes) < 6 and customers:
+    if len(shoes) < 21 and customers:
         shoe_specs = [
             ("boots", "RM Williams", "chestnut"),
             ("sneakers", "Nike", "white"),
@@ -383,8 +429,23 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             ("heels", "Nine West", "tan"),
             ("sandals", "Birkenstock", "brown"),
             ("work", "Blundstone", "black"),
+            ("loafers", "Clarks", "brown"),
+            ("oxfords", "Church's", "black"),
+            ("ankle boots", "Dr. Martens", "black"),
+            ("running", "Asics", "blue"),
+            ("slip-on", "Vans", "checkered"),
+            ("mules", "Maje", "black"),
+            ("derby", "Grenson", "tan"),
+            ("chelsea", "Solovair", "black"),
+            ("espadrille", "Castaner", "natural"),
+            ("riding", "Ariat", "brown"),
+            ("trail", "Merrell", "grey"),
+            ("ballet flat", "Repetto", "red"),
+            ("wedge", "Toms", "navy"),
+            ("brogue", "Barker", "brown"),
+            ("monk strap", "Meermin", "burgundy"),
         ]
-        for idx in range(len(shoes), 6):
+        for idx in range(len(shoes), 21):
             shoe_type, brand, color = shoe_specs[idx % len(shoe_specs)]
             customer = customers[idx % len(customers)]
             shoe = Shoe(
@@ -410,17 +471,41 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant.id)
         ).one()
     )
+    shoe_repair_titles = [
+        "Heel replacement",
+        "Full sole replacement",
+        "Resole and heel",
+        "Stretch and soften",
+        "Clean and polish",
+        "Stitching repair",
+        "Zip replacement",
+        "Insole replacement",
+        "Toe cap repair",
+        "Welt repair",
+        "Upper refurbish",
+        "Waterproofing",
+        "Dye refresh",
+        "Lining repair",
+        "Tread replacement",
+        "Heel tip replacement",
+        "Elastic repair",
+        "Buckle replacement",
+        "Sole edge repair",
+        "Scuff removal",
+        "Full restoration",
+    ]
     created_shoe_jobs = 0
-    if shoe_job_count < 6 and shoes:
+    if shoe_job_count < 21 and shoes:
         shoe_statuses = ["awaiting_quote", "working_on", "completed", "awaiting_collection"]
-        for idx in range(shoe_job_count, 6):
+        for idx in range(shoe_job_count, 21):
             shoe = shoes[idx % len(shoes)]
+            title = shoe_repair_titles[idx % len(shoe_repair_titles)]
             job = ShoeRepairJob(
                 tenant_id=tenant.id,
                 shoe_id=shoe.id,
                 assigned_user_id=actor.id,
                 job_number=f"S-{idx + 1001:04d}",
-                title=f"{shoe.brand or 'Shoe'} restoration",
+                title=f"{shoe.brand or 'Shoe'} {title}",
                 description="Sole edge clean, polish, and heel/sole repair.",
                 priority="normal",
                 status=shoe_statuses[idx % len(shoe_statuses)],
@@ -438,17 +523,20 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         ).one()
     )
     created_auto_key_jobs = 0
-    if auto_key_count < 5 and customers:
+    if auto_key_count < 8 and customers:
         vehicle_specs = [
             ("Toyota", "Hilux", "TRX-001", "45 Glenferrie Rd, Malvern VIC 3144"),
             ("Ford", "Ranger", "FRD-202", "12 Chapel St, Prahran VIC 3181"),
             ("Mazda", "CX-5", "MZD-303", "8 Bay St, Port Melbourne VIC 3207"),
             ("Hyundai", "i30", "HYU-404", "231 Punt Rd, Richmond VIC 3121"),
             ("Kia", "Sportage", "KIA-505", "67 Burke Rd, Camberwell VIC 3124"),
+            ("Honda", "CR-V", "HND-606", "15 Lygon St, Carlton VIC 3053"),
+            ("Volkswagen", "Golf", "VW-707", "88 Sydney Rd, Brunswick VIC 3056"),
+            ("Subaru", "Outback", "SUB-808", "120 Collins St, Melbourne VIC 3000"),
         ]
         programming = ["pending", "in_progress", "programmed"]
         today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
-        for idx in range(auto_key_count, 5):
+        for idx in range(auto_key_count, 8):
             make, model, plate, address = vehicle_specs[idx % len(vehicle_specs)]
             customer = customers[idx % len(customers)]
             scheduled = today_start + timedelta(hours=idx * 2)

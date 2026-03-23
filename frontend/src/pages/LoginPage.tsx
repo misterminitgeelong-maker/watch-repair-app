@@ -80,6 +80,8 @@ export default function LoginPage() {
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['customer-accounts'] })
           queryClient.invalidateQueries({ queryKey: ['jobs'] })
+          queryClient.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+          queryClient.invalidateQueries({ queryKey: ['auto-key-jobs'] })
           queryClient.invalidateQueries({ queryKey: ['customers'] })
         })
         .catch(() => { /* Non-fatal */ })
