@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
@@ -251,6 +252,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 type="password"
+                showPasswordToggle
               />
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--cafe-text-mid)' }}>
                 <input
@@ -310,12 +312,17 @@ export default function LoginPage() {
 
 // ── Styled input used only on the login page ──────────────────────────────────
 function LoginField({
-  label, value, onChange, type = 'text', placeholder = '', autoComplete, autoFocus = false,
+  label, value, onChange, type = 'text', placeholder = '', autoComplete, autoFocus = false, showPasswordToggle = false,
 }: {
   label: string; value: string; onChange: (v: string) => void
-  type?: string; placeholder?: string; autoComplete?: string; autoFocus?: boolean
+  type?: string; placeholder?: string; autoComplete?: string; autoFocus?: boolean; showPasswordToggle?: boolean
 }) {
   const [focused, setFocused] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const isPassword = type === 'password'
+  const inputType = isPassword && showPasswordToggle ? (revealed ? 'text' : 'password') : type
+  const hasToggle = isPassword && showPasswordToggle
+
   return (
     <label style={{ display: 'block' }}>
       <span style={{
@@ -329,33 +336,60 @@ function LoginField({
       }}>
         {label}
       </span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        autoFocus={autoFocus}
-        required
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: '100%',
-          padding: '0.66rem 0.95rem',
-          borderRadius: '11px',
-          border: focused ? '1.5px solid #C9A248' : '1.5px solid #D8CBBA',
-          backgroundColor: focused ? '#FFFDF8' : 'var(--cafe-bg)',
-          color: 'var(--cafe-text)',
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '0.9rem',
-          outline: 'none',
-          boxSizing: 'border-box',
-          boxShadow: focused
-            ? '0 0 0 3.5px rgba(201,162,72,0.18), 0 1px 4px rgba(140,95,15,0.10)'
-            : '0 1px 2px rgba(100,65,30,0.05)',
-          transition: 'border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease',
-        }}
-      />
+      <div style={{ position: 'relative' }}>
+        <input
+          type={inputType}
+          value={value}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          autoFocus={autoFocus}
+          required
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width: '100%',
+            padding: '0.66rem 0.95rem',
+            paddingRight: hasToggle ? '2.75rem' : '0.95rem',
+            borderRadius: '11px',
+            border: focused ? '1.5px solid #C9A248' : '1.5px solid #D8CBBA',
+            backgroundColor: focused ? '#FFFDF8' : 'var(--cafe-bg)',
+            color: 'var(--cafe-text)',
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '0.9rem',
+            outline: 'none',
+            boxSizing: 'border-box',
+            boxShadow: focused
+              ? '0 0 0 3.5px rgba(201,162,72,0.18), 0 1px 4px rgba(140,95,15,0.10)'
+              : '0 1px 2px rgba(100,65,30,0.05)',
+            transition: 'border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease',
+          }}
+        />
+        {hasToggle && (
+          <button
+            type="button"
+            onClick={() => setRevealed(v => !v)}
+            title={revealed ? 'Hide password' : 'Show password'}
+            aria-label={revealed ? 'Hide password' : 'Show password'}
+            style={{
+              position: 'absolute',
+              right: '0.5rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              padding: '0.25rem',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: 'var(--cafe-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
     </label>
   )
 }
