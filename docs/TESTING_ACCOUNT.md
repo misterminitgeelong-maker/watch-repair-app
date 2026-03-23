@@ -34,6 +34,18 @@ Restart the backend. The testing tenant is created at startup. **Do not put thes
 
 Only you know the credentials. The login page looks the same to everyone—there is no "Testing Login" button.
 
+### Troubleshooting
+
+**Stuck on "Signing in…"**
+- Ensure the backend is running (e.g. `uvicorn backend.app.main:app` or `cd backend && uvicorn app.main:app`, typically on port 8000).
+- The frontend dev server proxies `/v1` to `http://127.0.0.1:8000`; if you're not using the proxy, the API URL may be wrong.
+- If you see "Request timed out", the backend is not reachable. Start it and try again.
+
+**"Invalid shop ID, email, or password"**
+- The testing tenant is only created when `TESTING_TENANT_SLUG`, `TESTING_OWNER_EMAIL`, and `TESTING_OWNER_PASSWORD` are set in the backend `.env`.
+- `.env` is read from the directory you start the backend from (e.g. `backend/.env` if you run `cd backend && uvicorn app.main:app`).
+- Restart the backend after changing `.env`.
+
 ## Environment variables (optional)
 
 **Demo credentials** (for the public demo flow):

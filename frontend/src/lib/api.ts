@@ -143,8 +143,9 @@ export interface TokenResponse {
   refresh_token?: string
   refresh_expires_in_seconds?: number
 }
+const LOGIN_TIMEOUT_MS = 15_000
 export const login = (tenant_slug: string, email: string, password: string) =>
-  api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
+  api.post<TokenResponse>('/auth/login', { tenant_slug, email, password }, { timeout: LOGIN_TIMEOUT_MS })
 export const refreshAuth = (refresh_token: string) =>
   api.post<TokenResponse>('/auth/refresh', { refresh_token })
 export interface MultiSiteLoginResponse {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
-import { getRememberMe, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
+import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
@@ -54,8 +54,11 @@ export default function LoginPage() {
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       navigate('/dashboard')
-    } catch {
-      setError(mode === 'multi' ? 'Invalid email or password for multi-site login.' : 'Invalid shop ID, email, or password.')
+    } catch (err) {
+      const msg = getApiErrorMessage(err, mode === 'multi' ? 'Invalid email or password.' : 'Invalid shop ID, email, or password.')
+      setError(err && typeof (err as { code?: string }).code === 'string' && (err as { code: string }).code === 'ECONNABORTED'
+        ? 'Request timed out. Is the backend running on port 8000?'
+        : msg)
     } finally {
       setLoading(false)
     }
