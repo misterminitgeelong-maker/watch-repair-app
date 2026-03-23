@@ -73,6 +73,7 @@ export function getApiErrorMessage(error: unknown, fallback = 'Request failed.')
     if (error.response?.status === 401) return 'Session expired. Please sign in again.'
     if (error.response?.status === 402) return typeof detail === 'string' && detail.trim() ? detail : 'Plan limit reached. Upgrade for more capacity.'
   }
+  if (error instanceof Error && error.message?.trim()) return error.message
   return fallback
 }
 

@@ -15,4 +15,18 @@ export const AUTO_KEY_JOB_TYPES = [
   'Diagnostic',
 ] as const
 
+/** Job types that require a job address (mobile/on-site visits) */
+export const MOBILE_JOB_TYPES: ReadonlySet<string> = new Set([
+  'Lockout – Car',
+  'Lockout – Boot/Trunk',
+  'Lockout – Roadside',
+  'All Keys Lost',
+  'Remote / Fob Sync',
+  'Ignition Repair',
+  'Ignition Replace',
+  'Broken Key Extraction',
+  'Door Lock Change',
+  'Diagnostic',
+])
+
 export type AutoKeyJobType = (typeof AUTO_KEY_JOB_TYPES)[number] | ''

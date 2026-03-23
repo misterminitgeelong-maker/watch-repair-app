@@ -29,7 +29,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
-import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
@@ -163,6 +163,9 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const createMut = useMutation({
     mutationFn: async () => {
       if (!form.title.trim()) throw new Error('Job title is required.')
+      if (MOBILE_JOB_TYPES.has(form.job_type) && !form.job_address.trim()) {
+        throw new Error('Address required for mobile jobs')
+      }
       let customerId = form.customer_id
       if (customerMode === 'new') {
         if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
@@ -256,9 +259,14 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </Select>
-        <Input label="Job address (for mobile/on-site)" value={form.job_address} onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))} placeholder="Where to meet customer (optional)" />
         <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
         <Input label="Book date & time (optional)" type="datetime-local" value={form.scheduled_datetime} onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))} />
+        <Input
+          label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
+          value={form.job_address}
+          onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))}
+          placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} />
           <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} />
@@ -791,6 +799,11 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
             {job.registration_plate ? ` · ${job.registration_plate}` : ''}
           </p>
+          {job.job_address && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+              {job.job_address}
+            </p>
+          )}
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
             Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity} · Programming {job.programming_status.replace(/_/g, ' ')}
           </p>
