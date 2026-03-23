@@ -440,16 +440,18 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
     created_auto_key_jobs = 0
     if auto_key_count < 5 and customers:
         vehicle_specs = [
-            ("Toyota", "Hilux", "TRX-001"),
-            ("Ford", "Ranger", "FRD-202"),
-            ("Mazda", "CX-5", "MZD-303"),
-            ("Hyundai", "i30", "HYU-404"),
-            ("Kia", "Sportage", "KIA-505"),
+            ("Toyota", "Hilux", "TRX-001", "45 Glenferrie Rd, Malvern VIC 3144"),
+            ("Ford", "Ranger", "FRD-202", "12 Chapel St, Prahran VIC 3181"),
+            ("Mazda", "CX-5", "MZD-303", "8 Bay St, Port Melbourne VIC 3207"),
+            ("Hyundai", "i30", "HYU-404", "231 Punt Rd, Richmond VIC 3121"),
+            ("Kia", "Sportage", "KIA-505", "67 Burke Rd, Camberwell VIC 3124"),
         ]
         programming = ["pending", "in_progress", "programmed"]
+        today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
         for idx in range(auto_key_count, 5):
-            make, model, plate = vehicle_specs[idx % len(vehicle_specs)]
+            make, model, plate, address = vehicle_specs[idx % len(vehicle_specs)]
             customer = customers[idx % len(customers)]
+            scheduled = today_start + timedelta(hours=idx * 2)
             job = AutoKeyJob(
                 tenant_id=tenant.id,
                 customer_id=customer.id,
@@ -470,6 +472,8 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 deposit_cents=2000 + (idx * 450),
                 cost_cents=2500 + (idx * 500),
                 created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 70)),
+                job_address=address,
+                scheduled_at=scheduled,
             )
             session.add(job)
             created_auto_key_jobs += 1

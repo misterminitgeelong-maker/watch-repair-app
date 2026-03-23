@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlmodel import Session, func, select
 
 from .config import settings
-from .models import Customer, CustomerAccount, Quote, RepairJob, Tenant, User, Watch
+from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, Tenant, User, Watch
 from .security import hash_password
 
 # Victorian B2B demo accounts (used at startup and by demo-seed)
@@ -338,6 +338,35 @@ def _ensure_tenant_owner(session: Session) -> Tenant:
     session.commit()
     session.refresh(tenant)
     return tenant
+
+
+# Melbourne addresses for demo auto_key_jobs K-1001..K-1005 (Toyota Hilux, Ford Ranger, etc.)
+DEMO_AUTO_KEY_ADDRESSES: dict[str, str] = {
+    "K-1001": "45 Glenferrie Rd, Malvern VIC 3144",
+    "K-1002": "12 Chapel St, Prahran VIC 3181",
+    "K-1003": "8 Bay St, Port Melbourne VIC 3207",
+    "K-1004": "231 Punt Rd, Richmond VIC 3121",
+    "K-1005": "67 Burke Rd, Camberwell VIC 3124",
+}
+
+
+def ensure_demo_auto_key_addresses(session: Session, tenant_id) -> int:
+    """Update existing demo auto_key_jobs (K-1001..K-1005) with Melbourne addresses and scheduled_at. Returns count updated."""
+    today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
+    updated = 0
+    for job_number, address in DEMO_AUTO_KEY_ADDRESSES.items():
+        job = session.exec(
+            select(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant_id)
+            .where(AutoKeyJob.job_number == job_number)
+        ).first()
+        if job and (not job.job_address or not job.scheduled_at):
+            job.job_address = address
+            idx = int(job_number.split("-")[1]) - 1001
+            job.scheduled_at = today_start + timedelta(hours=idx * 2)
+            session.add(job)
+            updated += 1
+    return updated
 
 
 def ensure_demo_b2b_accounts(session: Session, tenant: Tenant, *, commit: bool = True) -> int:

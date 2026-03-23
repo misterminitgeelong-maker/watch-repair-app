@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { APIProvider, Map as GoogleMap, AdvancedMarker, InfoWindow, useAdvancedMarkerRef, useMap } from '@vis.gl/react-google-maps'
+import { STATUS_LABELS } from '@/lib/utils'
 
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-})
+const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
+
+interface Customer {
+  id: string
+  full_name: string
+}
 
 interface Job {
   id: string
@@ -17,22 +17,29 @@ interface Job {
   job_address?: string
   job_type?: string
   scheduled_at?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  status: string
+  customer_id: string
 }
 
 interface Props {
   jobs: Job[]
   date: string
+  customers?: Customer[]
 }
 
-async function geocode(address: string): Promise<[number, number] | null> {
+async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=au&limit=1`,
-      { headers: { 'User-Agent': 'Mainspring/1.0' } }
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=au&key=${apiKey}`
     )
     const data = await res.json()
-    if (data?.[0]?.lat && data?.[0]?.lon) {
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)]
+    if (data?.status === 'OK' && data?.results?.[0]?.geometry?.location) {
+      const loc = data.results[0].geometry.location
+      return { lat: loc.lat, lng: loc.lng }
     }
   } catch {
     // ignore
@@ -40,73 +47,153 @@ async function geocode(address: string): Promise<[number, number] | null> {
   return null
 }
 
-export default function MobileServicesMap({ jobs, date }: Props) {
-  const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstance = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.Marker[]>([])
-  const [geocoded, setGeocoded] = useState<Map<string, [number, number]>>(new Map())
+function customerName(customers: Customer[], customerId: string): string {
+  const c = customers.find((x) => x.id === customerId)
+  return c?.full_name ?? '—'
+}
+
+function vehicleLabel(job: Job): string {
+  const parts = [job.vehicle_make || 'Vehicle', job.vehicle_model, job.vehicle_year?.toString(), job.registration_plate].filter(Boolean)
+  return parts.join(' · ') || '—'
+}
+
+function MarkerWithInfoWindow({
+  job,
+  position,
+  customers,
+}: {
+  job: Job
+  position: { lat: number; lng: number }
+  customers: Customer[]
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef()
+  const [infoWindowShown, setInfoWindowShown] = useState(false)
+  const handleMarkerClick = useCallback(() => setInfoWindowShown((s) => !s), [])
+  const handleClose = useCallback(() => setInfoWindowShown(false), [])
+
+  return (
+    <>
+      <AdvancedMarker ref={markerRef} position={position} onClick={handleMarkerClick} />
+      {infoWindowShown && marker && (
+        <InfoWindow anchor={marker} onClose={handleClose}>
+          <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>
+            <p className="font-semibold" style={{ color: 'var(--cafe-amber)' }}>
+              #{job.job_number}
+            </p>
+            <p className="mt-1 font-medium">{vehicleLabel(job)}</p>
+            <p className="mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+              {customerName(customers, job.customer_id)}
+            </p>
+            <p className="mt-0.5">
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: 'var(--cafe-text-mid)' }}>
+                {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+              </span>
+            </p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              {job.job_address}
+            </p>
+            <Link
+              to={`/auto-key/${job.id}`}
+              className="mt-2 inline-block text-xs font-semibold hover:underline"
+              style={{ color: 'var(--cafe-amber)' }}
+            >
+              View job →
+            </Link>
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  )
+}
+
+function MapContent({
+  jobs,
+  customers,
+  geocoded,
+}: {
+  jobs: Job[]
+  customers: Customer[]
+  geocoded: Map<string, { lat: number; lng: number }>
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map || geocoded.size === 0) return
+    const coords = Array.from(geocoded.values())
+    if (coords.length === 1) {
+      map.setCenter(coords[0])
+      map.setZoom(14)
+    } else if (coords.length > 1) {
+      const lats = coords.map((c) => c.lat)
+      const lngs = coords.map((c) => c.lng)
+      const bounds = {
+        south: Math.min(...lats),
+        north: Math.max(...lats),
+        west: Math.min(...lngs),
+        east: Math.max(...lngs),
+      }
+      map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 })
+    }
+  }, [map, geocoded])
+
+  return (
+    <>
+      {jobs.map((job) => {
+        const coords = job.job_address ? geocoded.get(job.id) : null
+        if (!coords) return null
+        return (
+          <MarkerWithInfoWindow key={job.id} job={job} position={coords} customers={customers} />
+        )
+      })}
+    </>
+  )
+}
+
+function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
+  const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
 
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
   const mobileJobs = jobs.filter((j) => j.job_address)
 
-  useEffect(() => {
-    const geocodeAll = async () => {
-      const results = new Map<string, [number, number]>()
-      for (let i = 0; i < mobileJobs.length; i++) {
-        const j = mobileJobs[i]
-        const coords = await geocode(j.job_address!)
-        if (coords) results.set(j.id, coords)
-        if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 1100))
-      }
-      setGeocoded(results)
+  const geocodeAll = useCallback(async () => {
+    if (!apiKey || mobileJobs.length === 0) {
       setLoading(false)
+      return
     }
-    if (mobileJobs.length > 0) geocodeAll()
-    else setLoading(false)
-  }, [date, mobileJobs.map((j) => `${j.id}:${j.job_address}`).join('|')])
+    const results = new Map<string, { lat: number; lng: number }>()
+    for (let i = 0; i < mobileJobs.length; i++) {
+      const j = mobileJobs[i]
+      const coords = await geocodeWithGoogle(j.job_address!, apiKey)
+      if (coords) results.set(j.id, coords)
+      if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
+    }
+    setGeocoded(results)
+    setLoading(false)
+  }, [apiKey, mobileJobs])
 
   useEffect(() => {
-    if (!mapRef.current) return
-    if (mapInstance.current) {
-      markersRef.current.forEach((m) => m.remove())
-      markersRef.current = []
-    }
-    const map = L.map(mapRef.current).setView([-33.8688, 151.2093], 11)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-    }).addTo(map)
-    mapInstance.current = map
-    return () => {
-      map.remove()
-      mapInstance.current = null
-    }
-  }, [date])
-
-  useEffect(() => {
-    const map = mapInstance.current
-    if (!map || geocoded.size === 0) return
-    markersRef.current.forEach((m) => m.remove())
-    markersRef.current = []
-    const bounds: L.LatLngExpression[] = []
-    geocoded.forEach((coords, jobId) => {
-      const job = mobileJobs.find((j) => j.id === jobId)
-      if (!job) return
-      const marker = L.marker(coords)
-        .addTo(map)
-        .bindPopup(
-          `<strong>#${job.job_number}</strong> ${job.title}<br><a href="/auto-key/${job.id}">View job</a>`
-        )
-      markersRef.current.push(marker)
-      bounds.push(coords)
-    })
-    if (bounds.length > 1) map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [30, 30] })
-    else if (bounds.length === 1) map.setView(bounds[0], 14)
-  }, [geocoded, mobileJobs])
+    geocodeAll()
+  }, [date, mobileJobs.map((j) => `${j.id}:${j.job_address}`).join('|'), geocodeAll])
 
   if (mobileJobs.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
         <p style={{ color: 'var(--cafe-text-muted)' }}>No mobile jobs with addresses for this date.</p>
+        <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Add job addresses to see them on the map.
+        </p>
+      </div>
+    )
+  }
+
+  if (!apiKey) {
+    return (
+      <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
+        <p style={{ color: 'var(--cafe-text-muted)' }}>Google Maps API key not configured.</p>
+        <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Set VITE_GOOGLE_MAPS_API_KEY in your environment to display the map.
+        </p>
       </div>
     )
   }
@@ -114,11 +201,26 @@ export default function MobileServicesMap({ jobs, date }: Props) {
   return (
     <div className="space-y-3">
       {loading && (
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>Geocoding addresses…</p>
+        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Geocoding addresses…
+        </p>
       )}
-      <div ref={mapRef} className="h-[400px] rounded-lg border" style={{ borderColor: 'var(--cafe-border)' }} />
+      <div className="h-[400px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
+        <APIProvider apiKey={apiKey}>
+          <GoogleMap
+            defaultCenter={MELBOURNE_CENTRE}
+            defaultZoom={11}
+            gestureHandling="greedy"
+            style={{ width: '100%', height: '100%' }}
+          >
+            <MapContent jobs={mobileJobs} customers={customers} geocoded={geocoded} />
+          </GoogleMap>
+        </APIProvider>
+      </div>
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Route order:</span>
+        <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+          Jobs on map:
+        </span>
         {mobileJobs.map((j, i) => (
           <span key={j.id} className="text-sm">
             <Link
@@ -133,4 +235,8 @@ export default function MobileServicesMap({ jobs, date }: Props) {
       </div>
     </div>
   )
+}
+
+export default function MobileServicesMap(props: Props) {
+  return <MobileServicesMapInner {...props} />
 }

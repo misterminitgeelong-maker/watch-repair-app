@@ -985,7 +985,7 @@ export default function AutoKeyJobsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
-    enabled: view === 'pos',
+    enabled: view === 'pos' || view === 'map',
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -1616,7 +1616,7 @@ export default function AutoKeyJobsPage() {
               style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
             />
           </div>
-          {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} />}
+          {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />}
         </div>
       )}
 
