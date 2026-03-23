@@ -1,6 +1,9 @@
 # ── Stage 1: Build the React frontend ──────────────────────────────────────────
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
+# Vite env vars must be passed as build args (Railway injects service vars)
+ARG VITE_GOOGLE_MAPS_API_KEY
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
