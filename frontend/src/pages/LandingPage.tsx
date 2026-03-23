@@ -90,7 +90,7 @@ function HeroSection() {
           className="mt-5 text-4xl leading-tight sm:text-5xl"
           style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)', fontWeight: 600 }}
         >
-          Repair OS for watchmakers, cobblers, and locksmiths.
+          All your repairs. One workspace.
         </h1>
         <p className="mt-5 max-w-xl text-base sm:text-lg" style={{ color: 'var(--cafe-text-mid)', lineHeight: 1.7 }}>
           Mainspring brings watch repairs, shoe repairs, and mobile key services into one workspace. Track every job, run your POS, manage customers, and keep operations visible—from intake to collection.
