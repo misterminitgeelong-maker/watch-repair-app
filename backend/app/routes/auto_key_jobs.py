@@ -128,6 +128,8 @@ def create_auto_key_job(
 @router.get("", response_model=list[AutoKeyJobRead])
 def list_auto_key_jobs(
     status: str | None = Query(default=None),
+    customer_id: UUID | None = Query(default=None, description="Filter by customer"),
+    active_only: bool = Query(default=False, description="Exclude completed, collected, no_go"),
     date_from: str | None = Query(default=None, description="Filter scheduled_at >= date (YYYY-MM-DD)"),
     date_to: str | None = Query(default=None, description="Filter scheduled_at <= date (YYYY-MM-DD)"),
     include_unscheduled: bool = Query(default=False, description="With date range, also include jobs with no scheduled_at"),
@@ -141,6 +143,10 @@ def list_auto_key_jobs(
     query = select(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(AutoKeyJob.status == status)
+    if customer_id:
+        query = query.where(AutoKeyJob.customer_id == customer_id)
+    if active_only:
+        query = query.where(AutoKeyJob.status.notin_(["completed", "collected", "no_go"]))
     if assigned_user_id:
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
     if date_from or date_to:

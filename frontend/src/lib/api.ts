@@ -1097,7 +1097,7 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
 }
 
-export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; include_unscheduled?: boolean; assigned_user_id?: string }) =>
+export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; include_unscheduled?: boolean; assigned_user_id?: string; customer_id?: string; status?: string; active_only?: boolean }) =>
   api.get<AutoKeyJob[]>('/auto-key-jobs', params ? { params } : undefined)
 
 export interface VehicleLookupResult {

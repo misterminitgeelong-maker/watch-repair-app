@@ -423,9 +423,16 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
   const navigate = useNavigate()
   const [customerId, setCustomerId] = useState('')
   const [customerAccountId, setCustomerAccountId] = useState('')
+  const [linkToJobId, setLinkToJobId] = useState('')
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
+
+  const { data: activeJobsForCustomer = [] } = useQuery({
+    queryKey: ['auto-key-jobs', 'active', customerId],
+    queryFn: () => listAutoKeyJobs({ customer_id: customerId, active_only: true }).then(r => r.data),
+    enabled: !!customerId && customerMode === 'existing',
+  })
   const [customDesc, setCustomDesc] = useState('')
   const [customPrice, setCustomPrice] = useState('')
   const [error, setError] = useState('')
@@ -467,33 +474,44 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
         ? customerAccountId
         : undefined
 
-      const job = await createAutoKeyJob({
-        customer_id: cid,
-        customer_account_id: accountId || undefined,
-        title: `POS sale ${new Date().toLocaleDateString()}`,
-        key_quantity: 1,
-        programming_status: 'not_required',
-        priority: 'normal',
-        status: 'awaiting_quote',
-        deposit_cents: 0,
-        cost_cents: total,
-      }).then(r => r.data)
+      let job: { id: string }
+      if (linkToJobId) {
+        job = { id: linkToJobId }
+        const quote = await createAutoKeyQuote(linkToJobId, {
+          line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+          tax_cents: tax,
+        }).then(r => r.data)
+        await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id)
+        await updateAutoKeyJobStatus(linkToJobId, 'completed')
+      } else {
+        job = await createAutoKeyJob({
+          customer_id: cid,
+          customer_account_id: accountId || undefined,
+          title: `POS sale ${new Date().toLocaleDateString()}`,
+          key_quantity: 1,
+          programming_status: 'not_required',
+          priority: 'normal',
+          status: 'awaiting_quote',
+          deposit_cents: 0,
+          cost_cents: total,
+        }).then(r => r.data)
+        const quote = await createAutoKeyQuote(job.id, {
+          line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+          tax_cents: tax,
+        }).then(r => r.data)
+        await createAutoKeyInvoiceFromQuote(job.id, quote.id)
+        await updateAutoKeyJobStatus(job.id, 'collected')
+      }
 
-      const quote = await createAutoKeyQuote(job.id, {
-        line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
-        tax_cents: tax,
-      }).then(r => r.data)
-
-      const invoice = await createAutoKeyInvoiceFromQuote(job.id, quote.id).then(r => r.data)
-      await updateAutoKeyJobStatus(job.id, 'collected')
-
-      return { job, invoice }
+      return { job }
     },
     onSuccess: ({ job }) => {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-job', job.id] })
       setCart([])
       setCustomerId('')
       setCustomerAccountId('')
+      setLinkToJobId('')
       setNewCustomer({ full_name: '', email: '', phone: '' })
       setSuccessJobId(job.id)
       onComplete()
@@ -535,22 +553,36 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
           </div>
           {customerMode === 'existing' ? (
             <>
-              <CustomerSearchSelect customers={customers} value={customerId} onChange={id => { setCustomerId(id); setCustomerAccountId('') }} />
+              <CustomerSearchSelect customers={customers} value={customerId} onChange={id => { setCustomerId(id); setCustomerAccountId(''); setLinkToJobId('') }} />
               {customerId && (
-                <Select
-                  label="B2B Account (optional)"
-                  value={customerAccountId}
-                  onChange={e => setCustomerAccountId(e.target.value)}
-                >
-                  <option value="">Personal / no B2B</option>
-                  {customerAccounts
-                    .filter((a: CustomerAccount) => a.customer_ids.includes(customerId))
-                    .map((a: CustomerAccount) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}{a.account_code ? ` (${a.account_code})` : ''}
+                <>
+                  <Select
+                    label="B2B Account (optional)"
+                    value={customerAccountId}
+                    onChange={e => setCustomerAccountId(e.target.value)}
+                  >
+                    <option value="">Personal / no B2B</option>
+                    {customerAccounts
+                      .filter((a: CustomerAccount) => a.customer_ids.includes(customerId))
+                      .map((a: CustomerAccount) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}{a.account_code ? ` (${a.account_code})` : ''}
+                        </option>
+                      ))}
+                  </Select>
+                  <Select
+                    label="Link to Job (optional)"
+                    value={linkToJobId}
+                    onChange={e => setLinkToJobId(e.target.value)}
+                  >
+                    <option value="">Create new job</option>
+                    {(activeJobsForCustomer ?? []).map((j: { id: string; job_number: string; vehicle_make?: string; vehicle_model?: string }) => (
+                      <option key={j.id} value={j.id}>
+                        {j.job_number} · {[j.vehicle_make, j.vehicle_model].filter(Boolean).join(' ') || 'No vehicle'}
                       </option>
                     ))}
-                </Select>
+                  </Select>
+                </>
               )}
             </>
           ) : (
