@@ -125,7 +125,7 @@ export default function LoginPage() {
               textTransform: 'uppercase',
               color: 'var(--cafe-text-muted)',
             }}>
-              Repair OS
+              Repair OS for the modern bench.
             </p>
           </div>
 
