@@ -5,6 +5,7 @@ import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail } 
 import {
   getAutoKeyJob,
   getApiErrorMessage,
+  getUploadErrorMessage,
   getCustomer,
   listAutoKeyAttachments,
   listAutoKeyInvoices,
@@ -197,7 +198,7 @@ export default function AutoKeyJobDetailPage() {
       qc.invalidateQueries({ queryKey: ['auto-key-attachments', id] })
       setError('')
     },
-    onError: err => setError(getApiErrorMessage(err, 'Failed to upload photo.')),
+    onError: err => setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to upload photo.'))),
   })
 
   const arrivalSmsMut = useMutation({

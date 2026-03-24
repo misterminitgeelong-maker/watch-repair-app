@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
-import { listCustomers, createCustomer, type Customer } from '@/lib/api'
+import { DEFAULT_PAGE_SIZE, listCustomers, createCustomer, getApiErrorMessage, type Customer, type SortDir } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Textarea } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
 function AddCustomerModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
@@ -40,9 +41,24 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
 export default function CustomersPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
-  const { data: customers, isLoading } = useQuery({ queryKey: ['customers'], queryFn: () => listCustomers().then(r => r.data) })
+  const [sortBy, setSortBy] = useState<'created_at' | 'full_name'>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
-  const filtered = (customers ?? []).filter(c =>
+  const customersQuery = useOffsetPaginatedQuery({
+    queryKey: ['customers', 'paged', sortBy, sortDir],
+    queryFn: (offset) =>
+      listCustomers({
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+      }).then((r) => r.data),
+  })
+
+  const customers = useMemo(() => flattenInfinitePages(customersQuery.data), [customersQuery.data])
+  const isLoading = customersQuery.isLoading
+
+  const filtered = customers.filter(c =>
     c.full_name.toLowerCase().includes(search.toLowerCase()) ||
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
     c.phone?.includes(search)
@@ -53,20 +69,63 @@ export default function CustomersPage() {
       <PageHeader title="Customers" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Customer</Button>} />
       {showAdd && <AddCustomerModal onClose={() => setShowAdd(false)} />}
 
-      <div className="mb-5 relative w-full max-w-md">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
-        <input
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+      <div className="mb-5 flex flex-wrap gap-3 items-end">
+        <div className="relative w-full max-w-md flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+          <input
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+            placeholder="Search customers…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
           style={{
             backgroundColor: 'var(--cafe-surface)',
             border: '1px solid var(--cafe-border-2)',
             color: 'var(--cafe-text)',
           }}
-          placeholder="Search customers…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'created_at' | 'full_name')}
+          aria-label="Sort customers"
+        >
+          <option value="created_at">Sort: Date added</option>
+          <option value="full_name">Sort: Name</option>
+        </select>
+        <select
+          className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={sortDir}
+          onChange={(e) => setSortDir(e.target.value as SortDir)}
+          aria-label="Sort direction"
+        >
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
       </div>
+
+      {customersQuery.error && (
+        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(customersQuery.error)}</p>
+      )}
+      {(customersQuery.hasNextPage || search.trim()) && (
+        <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+          {search.trim()
+            ? 'Search applies to customers already loaded. Load more to include additional rows in search.'
+            : customersQuery.hasNextPage
+              ? 'More customers are available — use Load more.'
+              : null}
+        </p>
+      )}
 
       {isLoading ? <Spinner /> : (
         <Card>
@@ -128,6 +187,18 @@ export default function CustomersPage() {
             </>
           )}
         </Card>
+      )}
+
+      {customersQuery.hasNextPage && (
+        <div className="mt-6 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => void customersQuery.fetchNextPage()}
+            disabled={customersQuery.isFetchingNextPage}
+          >
+            {customersQuery.isFetchingNextPage ? 'Loading…' : 'Load more customers'}
+          </Button>
+        </div>
       )}
     </div>
   )

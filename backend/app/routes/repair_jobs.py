@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
@@ -25,6 +27,7 @@ from ..models import (
     RepairJobStatusUpdate,
     Quote,
     QuoteLineItem,
+    RepairJobNumberCounter,
     SmsLog,
     WorkLog,
     Watch,
@@ -39,8 +42,35 @@ router = APIRouter(
 
 
 def _next_job_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant_id)).one()
-    return f"JOB-{int(count) + 1:05d}"
+    # Optimistic CAS loop for cross-dialect safety (SQLite + Postgres).
+    for _ in range(20):
+        counter = session.exec(
+            select(RepairJobNumberCounter).where(RepairJobNumberCounter.tenant_id == tenant_id)
+        ).first()
+        if not counter:
+            counter = RepairJobNumberCounter(tenant_id=tenant_id, next_number=2)
+            session.add(counter)
+            try:
+                session.flush()
+                return "JOB-00001"
+            except IntegrityError:
+                # Another transaction inserted the row first; retry with existing row.
+                session.rollback()
+                continue
+
+        current_number = int(counter.next_number)
+        result = session.exec(
+            update(RepairJobNumberCounter)
+            .where(RepairJobNumberCounter.tenant_id == tenant_id)
+            .where(RepairJobNumberCounter.next_number == current_number)
+            .values(next_number=current_number + 1)
+        )
+        if result.rowcount != 1:
+            continue
+        session.flush()
+        return f"JOB-{current_number:05d}"
+
+    raise HTTPException(status_code=500, detail="Could not allocate repair job number")
 
 
 @router.post("", response_model=RepairJobRead, status_code=201)
@@ -114,12 +144,36 @@ def create_repair_job(
 @router.get("", response_model=list[RepairJobRead])
 def list_repair_jobs(
     status: str | None = Query(default=None),
+    assigned_user_id: UUID | None = Query(default=None),
+    customer_id: UUID | None = Query(default=None, description="Filter jobs whose watch belongs to this customer"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)
+    if customer_id:
+        query = query.join(Watch, RepairJob.watch_id == Watch.id).where(Watch.customer_id == customer_id)
     if status:
         query = query.where(RepairJob.status == status)
+    if assigned_user_id:
+        query = query.where(RepairJob.assigned_user_id == assigned_user_id)
+
+    sort_fields = {
+        "created_at": RepairJob.created_at,
+        "job_number": RepairJob.job_number,
+        "status": RepairJob.status,
+        "priority": RepairJob.priority,
+    }
+    sort_col = sort_fields.get(sort_by)
+    if sort_col is None:
+        raise HTTPException(status_code=400, detail="Invalid sort_by")
+    if sort_dir.lower() not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_dir")
+    query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    query = query.offset(offset).limit(limit)
     return session.exec(query).all()
 
 

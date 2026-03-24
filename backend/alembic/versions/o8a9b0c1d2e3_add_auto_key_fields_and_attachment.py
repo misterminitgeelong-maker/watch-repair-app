@@ -21,13 +21,16 @@ def upgrade() -> None:
     op.add_column("autokeyjob", sa.Column("tech_notes", sa.Text(), nullable=True))
 
     op.add_column("attachment", sa.Column("auto_key_job_id", sa.Uuid(), nullable=True))
-    op.create_foreign_key("fk_attachment_auto_key_job_id", "attachment", "autokeyjob", ["auto_key_job_id"], ["id"])
+    # SQLite cannot ALTER TABLE to add constraints; keep FK for non-SQLite.
+    if op.get_bind().dialect.name != "sqlite":
+        op.create_foreign_key("fk_attachment_auto_key_job_id", "attachment", "autokeyjob", ["auto_key_job_id"], ["id"])
     op.create_index("ix_attachment_auto_key_job_id", "attachment", ["auto_key_job_id"], unique=False)
 
 
 def downgrade() -> None:
     op.drop_index("ix_attachment_auto_key_job_id", table_name="attachment")
-    op.drop_constraint("fk_attachment_auto_key_job_id", "attachment", type_="foreignkey")
+    if op.get_bind().dialect.name != "sqlite":
+        op.drop_constraint("fk_attachment_auto_key_job_id", "attachment", type_="foreignkey")
     op.drop_column("attachment", "auto_key_job_id")
 
     op.drop_column("autokeyjob", "tech_notes")

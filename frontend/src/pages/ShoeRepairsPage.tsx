@@ -7,7 +7,7 @@ import {
   deleteShoeRepairJob,
   getApiErrorMessage,
   listShoeRepairJobs, updateShoeRepairJobStatus, getShoeGuarantee, listShoeCombos,
-  formatShoePricingType, listShoeAttachments, uploadShoeAttachment,
+  formatShoePricingType, listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
@@ -44,6 +44,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
   const [deleteError, setDeleteError] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -74,9 +75,12 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
+    setUploadError('')
     try {
       await Promise.all(files.map(f => uploadShoeAttachment(f, job.id)))
       qc.invalidateQueries({ queryKey: ['shoe-attachments', job.id] })
+    } catch (err: unknown) {
+      setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -227,6 +231,11 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
 
         {showPhotos && (
           <div className="mt-3">
+            {uploadError && (
+              <p className="text-xs mb-2" style={{ color: '#C96A5A' }} onClick={e => e.stopPropagation()} role="alert">
+                {uploadError}
+              </p>
+            )}
             {(photos ?? []).length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {(photos ?? []).map(photo => (

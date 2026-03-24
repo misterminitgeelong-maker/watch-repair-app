@@ -17,19 +17,17 @@ import {
   Wrench,
 } from 'lucide-react'
 import {
+  DEFAULT_PAGE_SIZE,
   getBillingLimits,
   getInbox,
   getReportsSummary,
   getReportsWidgets,
   listAutoKeyJobs,
   listCustomerAccounts,
-  listCustomers,
   listInvoices,
   listJobs,
-  listQuotes,
   listShoeRepairJobs,
   listUsers,
-  type RepairJob,
 } from '@/lib/api'
 import { Badge, Card, PageHeader, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -38,17 +36,6 @@ import { formatCents, formatDate } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
-const GO_AHEAD_STATUSES = [
-  'go_ahead',
-  'parts_to_order',
-  'sent_to_labanda',
-  'quoted_by_labanda',
-  'awaiting_parts',
-  'working_on',
-  'service',
-  'completed',
-  'awaiting_collection',
-]
 
 const DASHBOARD_CSS = `
 @keyframes dashboardRise {
@@ -112,8 +99,12 @@ function isOpenStatus(status: string) {
   return !CLOSED_JOB_STATUSES.includes(status)
 }
 
-function watchJobValue(job: RepairJob) {
-  return job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents
+function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefined): number {
+  if (!jobsByStatus) return 0
+  return Object.entries(jobsByStatus).reduce(
+    (sum, [status, n]) => (CLOSED_JOB_STATUSES.includes(status) ? sum : sum + n),
+    0,
+  )
 }
 
 function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
@@ -183,17 +174,20 @@ export default function DashboardPage() {
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
-  const { data: jobs, isLoading: jobsLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then((r) => r.data) })
-  const { data: customers, isLoading: customersLoading } = useQuery({ queryKey: ['customers'], queryFn: () => listCustomers().then((r) => r.data) })
-  const { data: quotes, isLoading: quotesLoading } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then((r) => r.data) })
   const { data: invoices, isLoading: invoicesLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then((r) => r.data) })
   const { data: reports, isLoading: reportsLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
-  const { data: shoeJobs } = useQuery({
+  const { data: recentWatchJobs } = useQuery({
+    queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
+    queryFn: () =>
+      listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
+    enabled: hasFeature('watch'),
+  })
+  const { data: shoeJobs, isLoading: shoeJobsLoading } = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
     enabled: hasFeature('shoe'),
   })
-  const { data: autoKeyJobs } = useQuery({
+  const { data: autoKeyJobs, isLoading: autoKeyJobsLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
     enabled: hasFeature('auto_key'),
@@ -226,35 +220,49 @@ export default function DashboardPage() {
     setChecklistDismissedState(isChecklistDismissed(tenantId))
   }, [tenantId])
 
-  const watchOpenJobs = useMemo(() => (jobs ?? []).filter((job) => isOpenStatus(job.status)), [jobs])
-  const watchAwaitingGoAhead = useMemo(() => (jobs ?? []).filter((job) => job.status === 'awaiting_go_ahead'), [jobs])
-  const watchOutstandingValue = useMemo(
-    () => (jobs ?? [])
-      .filter((job) => GO_AHEAD_STATUSES.includes(job.status))
-      .reduce((sum, job) => sum + watchJobValue(job), 0),
-    [jobs],
+  const watchOpenJobsCount = useMemo(
+    () => openWatchJobsFromSummary(reports?.jobs_by_status),
+    [reports?.jobs_by_status],
   )
+  const watchAwaitingGoAheadCount = reports?.jobs_by_status?.awaiting_go_ahead ?? 0
   const shoeOpenJobs = useMemo(() => (shoeJobs ?? []).filter((job) => isOpenStatus(job.status)), [shoeJobs])
   const autoOpenJobs = useMemo(() => (autoKeyJobs ?? []).filter((job) => isOpenStatus(job.status)), [autoKeyJobs])
-  const quotesPending = useMemo(() => (quotes ?? []).filter((quote) => quote.status === 'draft' || quote.status === 'sent'), [quotes])
+  const quotesPendingCount = useMemo(() => {
+    const q = reports?.quotes_by_status
+    if (!q) return 0
+    return (q.draft ?? 0) + (q.sent ?? 0)
+  }, [reports?.quotes_by_status])
   const invoicesOpen = useMemo(() => (invoices ?? []).filter((invoice) => invoice.status !== 'paid'), [invoices])
   const invoicesOpenValue = useMemo(() => invoicesOpen.reduce((sum, invoice) => sum + invoice.total_cents, 0), [invoicesOpen])
-  const totalServiceJobs = watchOpenJobs.length + shoeOpenJobs.length + autoOpenJobs.length
-  const urgentAcrossServiceLines = [...(jobs ?? []), ...(shoeJobs ?? []), ...(autoKeyJobs ?? [])].filter(
-    (job) => job.priority === 'high' || job.priority === 'urgent',
-  ).length
+  const totalServiceJobs = watchOpenJobsCount + shoeOpenJobs.length + autoOpenJobs.length
+  const urgentWatchSample = useMemo(
+    () => (recentWatchJobs ?? []).filter((job) => job.priority === 'high' || job.priority === 'urgent').length,
+    [recentWatchJobs],
+  )
+  const urgentShoeAuto = useMemo(
+    () =>
+      [...(shoeJobs ?? []), ...(autoKeyJobs ?? [])].filter((job) => job.priority === 'high' || job.priority === 'urgent')
+        .length,
+    [shoeJobs, autoKeyJobs],
+  )
+  const urgentAcrossServiceLines = urgentWatchSample + urgentShoeAuto
 
   const checklist = [
-    { key: 'customer', label: 'Add your first customer', done: (customers?.length ?? 0) > 0, to: '/customers' },
-    { key: 'watch', label: 'Create a watch repair', done: (jobs?.length ?? 0) > 0, to: '/jobs' },
-    { key: 'quote', label: 'Send a quote', done: (quotes?.length ?? 0) > 0, to: '/quotes' },
-    { key: 'invoice', label: 'Raise an invoice', done: (invoices?.length ?? 0) > 0, to: '/invoices' },
+    { key: 'customer', label: 'Add your first customer', done: (reports?.counts.customers ?? 0) > 0, to: '/customers' },
+    { key: 'watch', label: 'Create a watch repair', done: (reports?.counts.jobs ?? 0) > 0, to: '/jobs' },
+    {
+      key: 'quote',
+      label: 'Send a quote',
+      done: (reports?.sales_funnel.sent_quotes ?? 0) > 0 || (reports?.counts.quotes ?? 0) > 0,
+      to: '/quotes',
+    },
+    { key: 'invoice', label: 'Raise an invoice', done: (reports?.counts.invoices ?? 0) > 0, to: '/invoices' },
     { key: 'team', label: 'Set up team accounts', done: (users?.length ?? 0) > 1, to: '/accounts' },
   ]
   const checklistDone = checklist.filter((item) => item.done).length
 
   const recentItems = useMemo<RecentItem[]>(() => {
-    const watchItems = (jobs ?? []).map((job) => ({
+    const watchItems = (recentWatchJobs ?? []).map((job) => ({
       id: job.id,
       title: job.title,
       to: `/jobs/${job.id}`,
@@ -285,16 +293,21 @@ export default function DashboardPage() {
     return [...watchItems, ...shoeItems, ...autoItems]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 8)
-  }, [autoKeyJobs, jobs, shoeJobs])
+  }, [autoKeyJobs, recentWatchJobs, shoeJobs])
 
-  if (jobsLoading || customersLoading || quotesLoading || invoicesLoading || reportsLoading) {
+  if (
+    invoicesLoading ||
+    reportsLoading ||
+    (hasFeature('shoe') && shoeJobsLoading) ||
+    (hasFeature('auto_key') && autoKeyJobsLoading)
+  ) {
     return <Spinner />
   }
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
 
   const serviceBreakdown = [
-      hasFeature('watch') && `Watch: ${watchOpenJobs.length}`,
+      hasFeature('watch') && `Watch: ${watchOpenJobsCount}`,
       hasFeature('shoe') && `Shoe: ${shoeOpenJobs.length}`,
       hasFeature('auto_key') && `Mobile: ${autoOpenJobs.length}`,
     ].filter(Boolean).join(' · ')
@@ -303,7 +316,7 @@ export default function DashboardPage() {
     {
       label: 'All Active Jobs',
       value: String(totalServiceJobs),
-      helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across all service lines`,
+      helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across service lines`,
       to: '/jobs',
       icon: Wrench,
       iconBg: '#EFE7DC',
@@ -311,7 +324,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Customers',
-      value: String(customers?.length ?? 0),
+      value: String(reports?.counts.customers ?? 0),
       helper: `${customerAccounts?.length ?? 0} business account groups`,
       to: '/customers',
       icon: Users,
@@ -320,7 +333,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Quotes Awaiting Action',
-      value: String(quotesPending.length),
+      value: String(quotesPendingCount),
       helper: `${reports?.sales_funnel.approval_rate_percent ?? 0}% approval rate`,
       to: '/quotes',
       icon: FileText,
@@ -338,8 +351,8 @@ export default function DashboardPage() {
     },
     {
       label: 'Outstanding Work Value',
-      value: formatCents((reports?.financials.outstanding_cents ?? 0) || watchOutstandingValue),
-      helper: `${watchAwaitingGoAhead.length} watch jobs waiting for approval`,
+      value: formatCents(reports?.financials.outstanding_cents ?? 0),
+      helper: `${watchAwaitingGoAheadCount} watch jobs waiting for approval`,
       to: '/reports',
       icon: DollarSign,
       iconBg: '#E8F0E4',
@@ -364,7 +377,7 @@ export default function DashboardPage() {
       accent: '#2A6B65',
       summary: 'Your customer book, intake records, and repeat-client history all feed from here.',
       metrics: [
-        { label: 'Total', value: String(customers?.length ?? 0) },
+        { label: 'Total', value: String(reports?.counts.customers ?? 0) },
         { label: 'Accounts', value: String(customerAccounts?.length ?? 0) },
       ],
     },
@@ -375,8 +388,8 @@ export default function DashboardPage() {
       accent: '#8D6725',
       summary: 'Bench workload, approvals, and quote-ready watch jobs for the core repair pipeline.',
       metrics: [
-        { label: 'Open', value: String(watchOpenJobs.length) },
-        { label: 'Awaiting OK', value: String(watchAwaitingGoAhead.length) },
+        { label: 'Open', value: String(watchOpenJobsCount) },
+        { label: 'Awaiting OK', value: String(watchAwaitingGoAheadCount) },
       ],
     },
     ...(hasFeature('shoe')
@@ -664,7 +677,7 @@ export default function DashboardPage() {
                   Live Service Queue
                 </h2>
                 <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-                  The newest repair activity across watch, shoe, and mobile services work.
+                  Newest repair activity merged from your latest watch batch (50), plus shoe and mobile lists.
                 </p>
               </div>
               <Link to="/jobs" className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-amber)' }}>
@@ -757,14 +770,17 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                Urgent total includes watch jobs from your {DEFAULT_PAGE_SIZE} most recent by date, plus full shoe and mobile lists.
+              </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Watch OK wait</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{watchAwaitingGoAhead.length}</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{watchAwaitingGoAheadCount}</p>
                 </div>
                 <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Quotes pending</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{quotesPending.length}</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{quotesPendingCount}</p>
                 </div>
                 <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Urgent jobs</p>

@@ -729,9 +729,8 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
     _ensure_parent_membership(session, parent, owner)
     session.commit()
 
-    token_subject = f"{tenant.id}:{owner.id}:{owner.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(tenant.id, owner.id, owner.role)
+    refresh_token, refresh_expires = create_refresh_token(tenant.id, owner.id, owner.role)
     return TenantSignupResponse(
         tenant_id=tenant.id,
         user=_build_public_user(owner),
@@ -782,7 +781,7 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_se
 
 # Dynamically set rate limit based on environment
 def get_login_rate_limit():
-    return "1000/minute" if settings.app_env == "test" else "20/minute"
+    return settings.rate_limit_auth_login_test if settings.app_env == "test" else settings.rate_limit_auth_login
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(get_login_rate_limit)
@@ -813,9 +812,8 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
     )
     session.commit()
 
-    token_subject = f"{tenant.id}:{user.id}:{user.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(tenant.id, user.id, user.role)
+    refresh_token, refresh_expires = create_refresh_token(tenant.id, user.id, user.role)
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -858,9 +856,8 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
     )
     session.commit()
 
-    token_subject = f"{selected.tenant_id}:{selected.user_id}:{selected.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(selected.tenant_id, selected.user_id, selected.role)
+    refresh_token, refresh_expires = create_refresh_token(selected.tenant_id, selected.user_id, selected.role)
     return MultiSiteLoginResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -921,9 +918,8 @@ def dev_auto_login(session: Session = Depends(get_session)):
         session.add(tenant)
         session.flush()
         user = _create_default_owner(session, tenant)
-        token_subject = f"{tenant.id}:{user.id}:{user.role}"
-        token, expires = create_access_token(token_subject)
-        refresh_token, refresh_expires = create_refresh_token(token_subject)
+        token, expires = create_access_token(tenant.id, user.id, user.role)
+        refresh_token, refresh_expires = create_refresh_token(tenant.id, user.id, user.role)
         return TokenResponse(
             access_token=token,
             expires_in_seconds=expires,
@@ -960,9 +956,8 @@ def dev_auto_login(session: Session = Depends(get_session)):
     if not user:
         user = _create_default_owner(session, selected_tenant)
 
-    token_subject = f"{selected_tenant.id}:{user.id}:{user.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(selected_tenant.id, user.id, user.role)
+    refresh_token, refresh_expires = create_refresh_token(selected_tenant.id, user.id, user.role)
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -974,15 +969,11 @@ def dev_auto_login(session: Session = Depends(get_session)):
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_session)):
     try:
-        subject = decode_refresh_token(payload.refresh_token)
+        claims = decode_refresh_token(payload.refresh_token)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-
-    parts = subject.split(":", maxsplit=2)
-    if len(parts) < 2:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-    tenant_id = UUID(parts[0])
-    user_id = UUID(parts[1])
+    tenant_id = claims.tenant_id
+    user_id = claims.user_id
 
     user = session.get(User, user_id)
     if not user or user.tenant_id != tenant_id or not user.is_active:
@@ -992,9 +983,8 @@ def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_sessi
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    token_subject = f"{tenant_id}:{user_id}:{user.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(tenant_id, user_id, user.role)
+    refresh_token, refresh_expires = create_refresh_token(tenant_id, user_id, user.role)
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -1111,9 +1101,8 @@ def switch_active_site(
         )
         session.commit()
 
-    token_subject = f"{target.tenant_id}:{target.user_id}:{target.role}"
-    token, expires = create_access_token(token_subject)
-    refresh_token, refresh_expires = create_refresh_token(token_subject)
+    token, expires = create_access_token(target.tenant_id, target.user_id, target.role)
+    refresh_token, refresh_expires = create_refresh_token(target.tenant_id, target.user_id, target.role)
     return ActiveSiteSwitchResponse(
         access_token=token,
         expires_in_seconds=expires,

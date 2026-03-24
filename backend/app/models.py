@@ -6,7 +6,7 @@ FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Co
 FleetBillingCycle = Literal["Monthly", "Fortnightly", "Weekly"]
 SubscriptionPlan = Literal["starter", "pro", "fleet", "none"]
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 JobStatus = Literal[
@@ -51,12 +51,18 @@ class Tenant(SQLModel, table=True):
     slug: str = Field(index=True, unique=True)
     plan_tier: str = "starter"
     plan_code: str = "pro"
+    default_currency: str = "AUD"
+    timezone: str = "Australia/Melbourne"
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class User(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     email: str = Field(index=True)
@@ -218,6 +224,11 @@ class Watch(SQLModel, table=True):
 
 
 class RepairJob(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "job_number", name="uq_repairjob_tenant_job_number"),
+        CheckConstraint("deposit_cents >= 0", name="ck_repairjob_deposit_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     watch_id: UUID = Field(index=True, foreign_key="watch.id")
@@ -237,6 +248,14 @@ class RepairJob(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class RepairJobNumberCounter(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    next_number: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class JobStatusHistory(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
@@ -249,6 +268,10 @@ class JobStatusHistory(SQLModel, table=True):
 
 
 class WorkLog(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("minutes_spent >= 0", name="ck_worklog_minutes_spent_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
@@ -261,6 +284,13 @@ class WorkLog(SQLModel, table=True):
 
 
 class Attachment(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint(
+            "file_size_bytes IS NULL OR file_size_bytes >= 0",
+            name="ck_attachment_file_size_bytes_non_negative",
+        ),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
@@ -286,6 +316,7 @@ class Quote(SQLModel, table=True):
     total_cents: int = 0
     currency: str = "USD"
     approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    approval_token_expires_at: Optional[datetime] = Field(default=None, index=True)
     sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -315,6 +346,13 @@ class Approval(SQLModel, table=True):
 
 
 class Invoice(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "invoice_number", name="uq_invoice_tenant_invoice_number"),
+        CheckConstraint("subtotal_cents >= 0", name="ck_invoice_subtotal_cents_non_negative"),
+        CheckConstraint("tax_cents >= 0", name="ck_invoice_tax_cents_non_negative"),
+        CheckConstraint("total_cents >= 0", name="ck_invoice_total_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
@@ -328,7 +366,19 @@ class Invoice(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class InvoiceNumberCounter(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    next_number: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Payment(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("amount_cents >= 0", name="ck_payment_amount_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     invoice_id: UUID = Field(index=True, foreign_key="invoice.id")
@@ -635,6 +685,8 @@ class ImportSummaryResponse(SQLModel):
     customers_created: int
     total_rows: int
     skipped_reasons: dict[str, int] = Field(default_factory=dict)
+    dry_run: bool = False
+    duplicate_customer_rows_in_file: int = 0
 
 
 class CustomerCreate(SQLModel):
@@ -1209,6 +1261,12 @@ class AutoKeyQuoteLineItem(SQLModel, table=True):
 
 
 class AutoKeyInvoice(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("subtotal_cents >= 0", name="ck_autokeyinvoice_subtotal_cents_non_negative"),
+        CheckConstraint("tax_cents >= 0", name="ck_autokeyinvoice_tax_cents_non_negative"),
+        CheckConstraint("total_cents >= 0", name="ck_autokeyinvoice_total_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
@@ -1388,6 +1446,12 @@ CustomerAccountSourceType = Literal["watch", "shoe", "auto_key"]
 
 
 class CustomerAccountInvoice(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("subtotal_cents >= 0", name="ck_customeraccountinvoice_subtotal_cents_non_negative"),
+        CheckConstraint("tax_cents >= 0", name="ck_customeraccountinvoice_tax_cents_non_negative"),
+        CheckConstraint("total_cents >= 0", name="ck_customeraccountinvoice_total_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     customer_account_id: UUID = Field(index=True, foreign_key="customeraccount.id")
@@ -1403,6 +1467,10 @@ class CustomerAccountInvoice(SQLModel, table=True):
 
 
 class CustomerAccountInvoiceLine(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("amount_cents >= 0", name="ck_customeraccountinvoiceline_amount_cents_non_negative"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     customer_account_invoice_id: UUID = Field(index=True, foreign_key="customeraccountinvoice.id")

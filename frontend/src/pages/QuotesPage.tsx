@@ -1,10 +1,20 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2, MessageSquare, Copy, CheckCheck } from 'lucide-react'
-import { listQuotes, createQuote, sendQuote, listJobs, type QuoteLineItemInput } from '@/lib/api'
+import {
+  DEFAULT_PAGE_SIZE,
+  listQuotes,
+  createQuote,
+  sendQuote,
+  listJobs,
+  getApiErrorMessage,
+  type QuoteLineItemInput,
+  type SortDir,
+} from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Badge, Select } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
+import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
 function AddLineItemRow({ item, index, onChange, onRemove }: {
   item: QuoteLineItemInput; index: number
@@ -75,7 +85,17 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
 
 function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
-  const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
+  const jobsQuery = useOffsetPaginatedQuery({
+    queryKey: ['jobs', 'paged', 'quote-modal', 'created_at', 'desc'],
+    queryFn: (offset) =>
+      listJobs({
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: 'created_at',
+        sort_dir: 'desc',
+      }).then((r) => r.data),
+  })
+  const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
   const [jobId, setJobId] = useState('')
   const [taxCents, setTaxCents] = useState(0)
   const [items, setItems] = useState<QuoteLineItemInput[]>([{ item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 }])
@@ -95,7 +115,7 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
     onError: () => setError('Failed to create quote.'),
   })
 
-  const activeJobs = (jobs ?? []).filter(j => !['collected', 'no_go'].includes(j.status))
+  const activeJobs = jobs.filter(j => !['collected', 'no_go'].includes(j.status))
 
   return (
     <Modal title="Create Quote" onClose={onClose}>
@@ -104,6 +124,17 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
           <option value="">Select a job…</option>
           {activeJobs.map(j => <option key={j.id} value={j.id}>#{j.job_number} — {j.title}</option>)}
         </Select>
+        {jobsQuery.hasNextPage && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-xs"
+            onClick={() => void jobsQuery.fetchNextPage()}
+            disabled={jobsQuery.isFetchingNextPage}
+          >
+            {jobsQuery.isFetchingNextPage ? 'Loading jobs…' : 'Load more jobs in list'}
+          </Button>
+        )}
 
         <div className="space-y-2">
           <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Line Items</label>
@@ -142,11 +173,36 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+const QUOTE_STATUS_FILTERS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'All statuses' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'expired', label: 'Expired' },
+]
+
 export default function QuotesPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const { data: quotes, isLoading } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
+  const [statusFilter, setStatusFilter] = useState('')
+  const [sortBy, setSortBy] = useState<'created_at' | 'sent_at' | 'status' | 'total_cents'>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const quotesQuery = useOffsetPaginatedQuery({
+    queryKey: ['quotes', 'paged', 'page', statusFilter || null, sortBy, sortDir],
+    queryFn: (offset) =>
+      listQuotes(undefined, {
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        ...(statusFilter ? { status: statusFilter } : {}),
+      }).then((r) => r.data),
+  })
+  const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
+  const isLoading = quotesQuery.isLoading
 
   const sendMut = useMutation({
     mutationFn: (id: string) => sendQuote(id),
@@ -165,9 +221,68 @@ export default function QuotesPage() {
       <PageHeader title="Quotes" action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />New Quote</Button>} />
       {showCreate && <CreateQuoteModal onClose={() => setShowCreate(false)} />}
 
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
+        <select
+          className="rounded-lg px-3 py-2 text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter by quote status"
+        >
+          {QUOTE_STATUS_FILTERS.map((o) => (
+            <option key={o.value || 'all'} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-lg px-3 py-2 text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          aria-label="Sort quotes"
+        >
+          <option value="created_at">Sort: Created</option>
+          <option value="sent_at">Sort: Sent</option>
+          <option value="status">Sort: Status</option>
+          <option value="total_cents">Sort: Total</option>
+        </select>
+        <select
+          className="rounded-lg px-3 py-2 text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={sortDir}
+          onChange={(e) => setSortDir(e.target.value as SortDir)}
+          aria-label="Sort direction"
+        >
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+      </div>
+
+      {quotesQuery.error && (
+        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(quotesQuery.error)}</p>
+      )}
+      {quotesQuery.hasNextPage && (
+        <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+          More quotes exist — use Load more to fetch the next batch.
+        </p>
+      )}
+
       {isLoading ? <Spinner /> : (
         <Card>
-          {(quotes ?? []).length === 0 ? <EmptyState message="No quotes yet." /> : (
+          {quotes.length === 0 ? <EmptyState message="No quotes yet." /> : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
@@ -181,7 +296,7 @@ export default function QuotesPage() {
                 </tr>
               </thead>
               <tbody>
-                {(quotes ?? []).map(q => (
+                {quotes.map(q => (
                   <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                     <td className="px-5 py-3">
                       <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
@@ -236,6 +351,18 @@ export default function QuotesPage() {
             </table>
           )}
         </Card>
+      )}
+
+      {quotesQuery.hasNextPage && (
+        <div className="mt-6 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => void quotesQuery.fetchNextPage()}
+            disabled={quotesQuery.isFetchingNextPage}
+          >
+            {quotesQuery.isFetchingNextPage ? 'Loading…' : 'Load more quotes'}
+          </Button>
+        </div>
       )}
     </div>
   )

@@ -1,13 +1,28 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
-import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
+import {
+  DEFAULT_PAGE_SIZE,
+  deleteJob,
+  getApiErrorMessage,
+  listJobs,
+  listQuotes,
+  listUsers,
+  updateJobStatus,
+  type JobStatus,
+  type RepairJob,
+  type SortDir,
+} from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
+import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
 const ALL_STATUS_OPTIONS: JobStatus[] = [...JOB_STATUS_ORDER]
+
+const JOB_SORT_FIELDS = ['created_at', 'job_number', 'status', 'priority'] as const
+type JobSortField = (typeof JOB_SORT_FIELDS)[number]
 
 export default function JobsPage() {
   const qc = useQueryClient()
@@ -18,8 +33,46 @@ export default function JobsPage() {
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const { data: jobs, isLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
-  const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
+  const [sortBy, setSortBy] = useState<JobSortField>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [assignedUserId, setAssignedUserId] = useState<string>('')
+
+  const apiStatus = statusFilter === 'all' ? undefined : statusFilter
+
+  const jobsQuery = useOffsetPaginatedQuery({
+    queryKey: ['jobs', 'paged', apiStatus, assignedUserId || null, sortBy, sortDir],
+    queryFn: (offset) =>
+      listJobs({
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        ...(apiStatus ? { status: apiStatus } : {}),
+        ...(assignedUserId ? { assigned_user_id: assignedUserId } : {}),
+      }).then((r) => r.data),
+  })
+
+  const quotesQuery = useOffsetPaginatedQuery({
+    queryKey: ['quotes', 'paged', 'jobs-page'],
+    queryFn: (offset) =>
+      listQuotes(undefined, {
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: 'created_at',
+        sort_dir: 'desc',
+      }).then((r) => r.data),
+  })
+
+  const { data: usersForAssignee } = useQuery({
+    queryKey: ['users', 'jobs-filter'],
+    queryFn: () => listUsers().then((r) => r.data),
+  })
+
+  const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
+  const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
+
+  const isLoading = jobsQuery.isLoading
+  const listError = jobsQuery.error ?? quotesQuery.error
 
   const latestQuoteByJob = new Map<string, number>()
   for (const q of quotes ?? []) {
@@ -61,7 +114,7 @@ export default function JobsPage() {
     },
   })
 
-  const filtered = (jobs ?? []).filter(j => {
+  const filtered = jobs.filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
     const inDirectory = jobDirectoryView === 'active'
       ? !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
@@ -69,6 +122,16 @@ export default function JobsPage() {
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     return matchSearch && inDirectory && matchStatus
   })
+
+  async function handleLoadMore() {
+    const tasks: Promise<unknown>[] = []
+    if (jobsQuery.hasNextPage) tasks.push(jobsQuery.fetchNextPage())
+    if (quotesQuery.hasNextPage) tasks.push(quotesQuery.fetchNextPage())
+    await Promise.all(tasks)
+  }
+
+  const showLoadMore = jobsQuery.hasNextPage ?? false
+  const loadMoreBusy = jobsQuery.isFetchingNextPage || quotesQuery.isFetchingNextPage
 
   return (
     <div>
@@ -172,7 +235,69 @@ export default function JobsPage() {
           <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
           {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
+        <select
+          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as JobSortField)}
+          aria-label="Sort jobs by"
+        >
+          <option value="created_at">Sort: Date in</option>
+          <option value="job_number">Sort: Job #</option>
+          <option value="status">Sort: Status</option>
+          <option value="priority">Sort: Priority</option>
+        </select>
+        <select
+          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={sortDir}
+          onChange={(e) => setSortDir(e.target.value as SortDir)}
+          aria-label="Sort direction"
+        >
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+        <select
+          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={assignedUserId}
+          onChange={(e) => setAssignedUserId(e.target.value)}
+          aria-label="Filter by assignee"
+        >
+          <option value="">All assignees</option>
+          {(usersForAssignee ?? []).map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.full_name} ({u.email})
+            </option>
+          ))}
+        </select>
       </div>
+
+      {(showLoadMore || jobs.length > 0) && (
+        <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+          {showLoadMore
+            ? 'More jobs exist on the server — use Load more to fetch the next batch. Totals above reflect loaded rows only until you load everything.'
+            : 'All matching jobs loaded for this filter.'}
+        </p>
+      )}
+
+      {listError && (
+        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>
+          {getApiErrorMessage(listError, 'Could not load jobs or quotes.')}
+        </p>
+      )}
 
       {isLoading ? <Spinner /> : (
         filtered.length === 0 ? (
@@ -273,6 +398,14 @@ export default function JobsPage() {
               })}
           </div>
         )
+      )}
+
+      {showLoadMore && (
+        <div className="mt-6 flex justify-center">
+          <Button variant="secondary" onClick={() => void handleLoadMore()} disabled={loadMoreBusy}>
+            {loadMoreBusy ? 'Loading…' : 'Load more jobs'}
+          </Button>
+        </div>
       )}
 
       {jobToDelete && (

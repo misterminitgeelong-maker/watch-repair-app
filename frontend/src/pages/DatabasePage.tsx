@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
+import axios from 'axios'
 import { importCsv, getApiErrorMessage, type CsvImportResult } from '@/lib/api'
 import { PageHeader, Card, Button } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
@@ -8,6 +9,7 @@ export default function DatabasePage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [replaceExisting, setReplaceExisting] = useState(false)
+  const [dryRun, setDryRun] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const [error, setError] = useState('')
@@ -21,18 +23,29 @@ export default function DatabasePage() {
     setError('')
   }
 
-  async function handleImport() {
+  async function runImport(opts: { dryRun: boolean }) {
     if (!file) return
     setUploading(true)
     setError('')
     setResult(null)
     try {
-      const { data } = await importCsv(file, { replaceExisting, clearTabs })
+      const { data } = await importCsv(file, { replaceExisting, clearTabs, dryRun: opts.dryRun })
       setResult(data)
-      setFile(null)
-      if (fileRef.current) fileRef.current.value = ''
+      if (!opts.dryRun) {
+        setFile(null)
+        if (fileRef.current) fileRef.current.value = ''
+      }
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Import failed. Try saving Excel as CSV (UTF-8) or check column names (customer_name, phone_number, date_in, brand_case_numbers, quote_price, repair_notes).'))
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError('Too many import attempts — try again in a minute.')
+      } else {
+        setError(
+          getApiErrorMessage(
+            err,
+            'Import failed. Try saving Excel as CSV (UTF-8) or check column names (customer_name, phone_number, date_in, brand_case_numbers, quote_price, repair_notes).',
+          ),
+        )
+      }
     }
     setUploading(false)
   }
@@ -137,6 +150,20 @@ export default function DatabasePage() {
             <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
               <input
                 type="checkbox"
+                checked={dryRun}
+                onChange={(e) => setDryRun(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Dry run (preview only — recommended)
+                <span className="block text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Validates the file and shows a summary without writing data. Turn off to apply a real import.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
+              <input
+                type="checkbox"
                 checked={replaceExisting}
                 onChange={(e) => setReplaceExisting(e.target.checked)}
                 className="mt-0.5"
@@ -172,22 +199,25 @@ export default function DatabasePage() {
             )}
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <Button onClick={handleImport} disabled={!file || uploading}>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Button onClick={() => void runImport({ dryRun })} disabled={!file || uploading}>
               <Upload size={15} />
-              {uploading ? 'Importing…' : 'Import file'}
+              {uploading ? 'Working…' : dryRun ? 'Preview import' : 'Run import'}
             </Button>
           </div>
         </Card>
 
-        {/* Success result */}
         {result && (
           <Card className="p-5 border-green-200 bg-green-50">
             <div className="flex items-start gap-3">
               <CheckCircle size={20} className="text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <h3 className="text-sm font-semibold text-green-800">Import Complete</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-green-800">
+                  {result.dry_run ? 'Dry run complete' : 'Import complete'}
+                </h3>
                 <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                  <span className="text-green-700">Dry run:</span>
+                  <span className="font-medium text-green-900">{result.dry_run ? 'Yes' : 'No'}</span>
                   <span className="text-green-700">Import ID:</span>
                   <span className="font-medium text-green-900 break-all">{result.import_id}</span>
                   <span className="text-green-700">Total rows:</span>
@@ -198,6 +228,12 @@ export default function DatabasePage() {
                   <span className="font-medium text-green-900">{result.skipped}</span>
                   <span className="text-green-700">Customers created:</span>
                   <span className="font-medium text-green-900">{result.customers_created}</span>
+                  {result.duplicate_customer_rows_in_file != null && (
+                    <>
+                      <span className="text-green-700">Duplicate customer rows in file:</span>
+                      <span className="font-medium text-green-900">{result.duplicate_customer_rows_in_file}</span>
+                    </>
+                  )}
                 </div>
                 {Object.keys(result.skipped_reasons ?? {}).length > 0 && (
                   <div className="mt-3 text-sm">
@@ -207,6 +243,24 @@ export default function DatabasePage() {
                         <li key={reason}>{reason}: {count}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+                {result.dry_run && file && (
+                  <div className="mt-4 rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF9E8', border: '1px solid #E8D4A0' }}>
+                    <p className="text-sm font-medium text-green-900">Ready to apply?</p>
+                    <p className="text-xs mt-1 text-green-800">
+                      Your file is still selected. Turn off &quot;Dry run&quot; above (or use the button below) to write data for real.
+                    </p>
+                    <Button
+                      className="mt-3"
+                      disabled={uploading}
+                      onClick={() => {
+                        void runImport({ dryRun: false })
+                        setDryRun(false)
+                      }}
+                    >
+                      Run import (apply changes)
+                    </Button>
                   </div>
                 )}
               </div>

@@ -26,6 +26,11 @@ from ..models import (
     Watch,
 )
 from ..security import decode_access_token
+from ..services.attachment_storage import (
+    AttachmentNotFoundError,
+    InvalidStorageKeyError,
+    LocalAttachmentStorage,
+)
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
 
@@ -33,8 +38,11 @@ optional_bearer = HTTPBearer(auto_error=False)
 SIGNED_DOWNLOAD_TOKEN_TYP = "attachment_download"
 SIGNED_DOWNLOAD_EXPIRE_SECONDS = 300
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+attachment_storage = LocalAttachmentStorage(settings.attachment_local_upload_dir)
+
+
+def _allowed_content_types() -> set[str]:
+    return {ct.strip().lower() for ct in settings.attachment_allowed_content_types.split(",") if ct.strip()}
 
 
 def _create_signed_download_token(*, tenant_id: UUID, user_id: UUID, storage_key: str) -> str:
@@ -99,7 +107,12 @@ async def upload_attachment(
 
     safe_name = Path(file.filename or "file").name
     raw = await file.read()
-    content_type = file.content_type or "application/octet-stream"
+    content_type = (file.content_type or "application/octet-stream").lower()
+
+    if content_type not in _allowed_content_types():
+        raise HTTPException(status_code=415, detail="Unsupported file type")
+    if len(raw) > settings.attachment_max_upload_bytes:
+        raise HTTPException(status_code=413, detail="File too large")
 
     # Compress images on upload
     if content_type.startswith("image/"):
@@ -121,13 +134,9 @@ async def upload_attachment(
     if auto_key_job_id:
         job_subdir = f"auto-key-photos/{auto_key_job_id}"
         storage_key = f"{job_subdir}/{file_id}_{safe_name}"
-        dest_dir = UPLOAD_DIR / job_subdir
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / f"{file_id}_{safe_name}"
     else:
         storage_key = f"{file_id}_{safe_name}"
-        dest = UPLOAD_DIR / storage_key
-    dest.write_bytes(raw)
+    file_size = attachment_storage.save_bytes(storage_key, raw)
 
     attachment = Attachment(
         tenant_id=auth.tenant_id,
@@ -139,7 +148,7 @@ async def upload_attachment(
         storage_key=storage_key,
         file_name=safe_name,
         content_type=content_type,
-        file_size_bytes=dest.stat().st_size,
+        file_size_bytes=file_size,
         label=label,
     )
     session.add(attachment)
@@ -167,10 +176,9 @@ def download_attachment(
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         try:
-            subject = decode_access_token(token)
-            parts = subject.split(":", maxsplit=2)
-            tenant_id = UUID(parts[0])
-            user_id = UUID(parts[1])
+            claims = decode_access_token(token)
+            tenant_id = claims.tenant_id
+            user_id = claims.user_id
         except Exception as exc:
             raise HTTPException(status_code=401, detail="Invalid token") from exc
 
@@ -185,8 +193,11 @@ def download_attachment(
     ).first()
     if not attachment:
         raise HTTPException(status_code=404, detail="Not found")
-    dest = UPLOAD_DIR / storage_key
-    if not dest.exists():
+    try:
+        dest = attachment_storage.resolve_existing_path(storage_key)
+    except InvalidStorageKeyError as exc:
+        raise HTTPException(status_code=404, detail="Not found") from exc
+    except AttachmentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="File not found on disk")
     return FileResponse(str(dest), filename=attachment.file_name or storage_key, media_type=attachment.content_type or "application/octet-stream")
 
@@ -222,6 +233,10 @@ def list_attachments(
     watch_id: UUID | None = None,
     shoe_repair_job_id: UUID | None = None,
     auto_key_job_id: UUID | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -234,6 +249,19 @@ def list_attachments(
         query = query.where(Attachment.shoe_repair_job_id == shoe_repair_job_id)
     if auto_key_job_id:
         query = query.where(Attachment.auto_key_job_id == auto_key_job_id)
+
+    sort_fields = {
+        "created_at": Attachment.created_at,
+        "file_name": Attachment.file_name,
+        "file_size_bytes": Attachment.file_size_bytes,
+    }
+    sort_col = sort_fields.get(sort_by)
+    if sort_col is None:
+        raise HTTPException(status_code=400, detail="Invalid sort_by")
+    if sort_dir.lower() not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_dir")
+    query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    query = query.offset(offset).limit(limit)
 
     rows = session.exec(query).all()
     return [AttachmentRead(**row.model_dump()) for row in rows]

@@ -26,10 +26,26 @@ def create_customer(
 
 @router.get("/customers", response_model=list[CustomerRead])
 def list_customers(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    return session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
+    query = select(Customer).where(Customer.tenant_id == auth.tenant_id)
+    sort_fields = {
+        "created_at": Customer.created_at,
+        "full_name": Customer.full_name,
+    }
+    sort_col = sort_fields.get(sort_by)
+    if sort_col is None:
+        raise HTTPException(status_code=400, detail="Invalid sort_by")
+    if sort_dir.lower() not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_dir")
+    query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    query = query.offset(offset).limit(limit)
+    return session.exec(query).all()
 
 
 @router.get("/customers/{customer_id}", response_model=CustomerRead)
@@ -64,12 +80,31 @@ def create_watch(
 @router.get("/watches", response_model=list[WatchRead])
 def list_watches(
     customer_id: Optional[UUID] = Query(default=None),
+    brand: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     q = select(Watch).where(Watch.tenant_id == auth.tenant_id)
     if customer_id is not None:
         q = q.where(Watch.customer_id == customer_id)
+    if brand is not None and brand.strip():
+        q = q.where(Watch.brand == brand.strip())
+    sort_fields = {
+        "created_at": Watch.created_at,
+        "brand": Watch.brand,
+        "model": Watch.model,
+    }
+    sort_col = sort_fields.get(sort_by)
+    if sort_col is None:
+        raise HTTPException(status_code=400, detail="Invalid sort_by")
+    if sort_dir.lower() not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_dir")
+    q = q.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    q = q.offset(offset).limit(limit)
     return session.exec(q).all()
 
 

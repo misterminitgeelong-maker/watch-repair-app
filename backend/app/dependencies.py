@@ -120,13 +120,14 @@ def get_auth_context(
         raise HTTPException(status_code=401, detail="Invalid auth scheme")
 
     try:
-        subject = decode_access_token(credentials.credentials)
-        parts = subject.split(":", maxsplit=2)
-        tenant_id = UUID(parts[0])
-        user_id = UUID(parts[1])
+        claims = decode_access_token(credentials.credentials)
+        tenant_id = claims.tenant_id
+        user_id = claims.user_id
 
         user = session.get(User, user_id)
         if not user or user.tenant_id != tenant_id or not user.is_active:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if claims.role != user.role:
             raise HTTPException(status_code=401, detail="Invalid token")
 
         tenant = session.get(Tenant, tenant_id)

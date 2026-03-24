@@ -10,9 +10,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
-from .config import settings
+from .config import settings, validate_runtime_config
 from .database import create_db_and_tables, engine
 from .limiter import limiter
 from .routes.auth import router as auth_router
@@ -55,16 +57,29 @@ if getattr(settings, "sentry_dsn", "").strip():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
-    with Session(engine) as session:
-        demo_tenant = ensure_demo_tenant(session)
-        ensure_demo_b2b_accounts(session, demo_tenant)
-        ensure_demo_auto_key_addresses(session, demo_tenant.id)
-        session.commit()
-        ensure_testing_tenant(session)
-        ensure_platform_admin_account(session)
-        ensure_suburbs_seeded(session)
-        seed_from_csv_if_empty(session)
+    # Fail fast on unsafe production config before any startup side effects.
+    validate_runtime_config()
+    if settings.auto_create_schema_on_startup:
+        create_db_and_tables()
+    try:
+        # Clear startup failure if schema is missing and AUTO_CREATE_SCHEMA_ON_STARTUP is off.
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
+        with Session(engine) as session:
+            demo_tenant = ensure_demo_tenant(session)
+            ensure_demo_b2b_accounts(session, demo_tenant)
+            ensure_demo_auto_key_addresses(session, demo_tenant.id)
+            session.commit()
+            ensure_testing_tenant(session)
+            ensure_platform_admin_account(session)
+            ensure_suburbs_seeded(session)
+            seed_from_csv_if_empty(session)
+    except OperationalError as exc:
+        raise RuntimeError(
+            "Database schema is missing or out of date. Run 'alembic upgrade head' "
+            "in backend/ before starting the app. "
+            "For dev-only auto bootstrap, set AUTO_CREATE_SCHEMA_ON_STARTUP=true."
+        ) from exc
     yield
 
 

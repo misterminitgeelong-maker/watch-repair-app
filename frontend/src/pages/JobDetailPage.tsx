@@ -1,17 +1,21 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare } from 'lucide-react'
 import {
+  DEFAULT_PAGE_SIZE,
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment,
   getStatusHistory, getSmsLog,
   listCustomerAccounts, getWatch,
   getWatchMovementQuote,
+  getApiErrorMessage,
+  getUploadErrorMessage,
   type JobStatus, type RepairJob, type CustomerAccount,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
+import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
@@ -151,6 +155,9 @@ export default function JobDetailPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [attachmentSortBy, setAttachmentSortBy] = useState<'created_at' | 'file_name' | 'file_size_bytes'>('created_at')
+  const [attachmentSortDir, setAttachmentSortDir] = useState<'asc' | 'desc'>('desc')
   const parseDollarsToCents = (value: string) => {
     const parsed = Number.parseFloat(value)
     return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0
@@ -192,9 +199,33 @@ export default function JobDetailPage() {
     },
   })
 
-  const { data: quotes } = useQuery({ queryKey: ['quotes', id], queryFn: () => listQuotes(id).then(r => r.data) })
+  const quotesQuery = useOffsetPaginatedQuery({
+    queryKey: ['quotes', id, 'paged', 'created_at', 'desc'],
+    queryFn: (offset) =>
+      listQuotes(id!, {
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: 'created_at',
+        sort_dir: 'desc',
+      }).then((r) => r.data),
+    enabled: !!id,
+  })
+  const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
+
   const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: tab === 'worklogs' })
-  const { data: attachments } = useQuery({ queryKey: ['attachments', id], queryFn: () => listAttachments(id!).then(r => r.data) })
+
+  const attachmentsQuery = useOffsetPaginatedQuery({
+    queryKey: ['attachments', id, 'paged', attachmentSortBy, attachmentSortDir],
+    queryFn: (offset) =>
+      listAttachments(id!, {
+        limit: DEFAULT_PAGE_SIZE,
+        offset,
+        sort_by: attachmentSortBy,
+        sort_dir: attachmentSortDir,
+      }).then((r) => r.data),
+    enabled: !!id,
+  })
+  const attachments = useMemo(() => flattenInfinitePages(attachmentsQuery.data), [attachmentsQuery.data])
   const { data: history } = useQuery({ queryKey: ['history', id], queryFn: () => getStatusHistory(id!).then(r => r.data), enabled: tab === 'history' })
   const { data: smsLog } = useQuery({ queryKey: ['sms-log', id], queryFn: () => getSmsLog(id!).then(r => r.data), enabled: tab === 'messages' })
 
@@ -203,9 +234,12 @@ export default function JobDetailPage() {
   async function uploadFile(file: File, label?: string) {
     if (!file || !id) return
     setUploading(true)
+    setUploadError('')
     try {
       await uploadAttachment(file, id, label)
       qc.invalidateQueries({ queryKey: ['attachments', id] })
+    } catch (err: unknown) {
+      setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
     } finally {
       setUploading(false)
     }
@@ -413,8 +447,8 @@ export default function JobDetailPage() {
 
             {/* Intake Photos */}
             {(() => {
-              const frontPhoto = (attachments ?? []).find(a => a.label === 'watch_front')
-              const backPhoto = (attachments ?? []).find(a => a.label === 'watch_back')
+              const frontPhoto = attachments.find(a => a.label === 'watch_front')
+              const backPhoto = attachments.find(a => a.label === 'watch_back')
               if (!frontPhoto && !backPhoto) return null
               return (
                 <div className="pt-3" style={{ borderTop: '1px solid var(--cafe-border)' }}>
@@ -452,20 +486,41 @@ export default function JobDetailPage() {
                 <Link to="/quotes" className="text-xs font-medium tracking-wide uppercase transition-colors" style={{ color: 'var(--cafe-amber)' }}>Manage quotes →</Link>
               </div>
               <div>
-                {(quotes ?? []).map((q, i) => (
-                  <div key={q.id} className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: i < (quotes ?? []).length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Quote</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(q.created_at)}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>${((q.total_cents ?? 0) / 100).toFixed(2)}</span>
-                      <Badge status={q.status} />
-                    </div>
-                  </div>
-                ))}
-                {(quotes ?? []).length === 0 && (
-                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No quotes yet.</p>
+                {quotesQuery.error && (
+                  <p className="px-5 py-2 text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(quotesQuery.error, 'Could not load quotes.')}</p>
+                )}
+                {quotesQuery.isLoading && quotes.length === 0 ? (
+                  <div className="px-5 py-5"><Spinner /></div>
+                ) : (
+                  <>
+                    {quotes.map((q, i) => (
+                      <div key={q.id} className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: i < quotes.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Quote</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(q.created_at)}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>${((q.total_cents ?? 0) / 100).toFixed(2)}</span>
+                          <Badge status={q.status} />
+                        </div>
+                      </div>
+                    ))}
+                    {quotes.length === 0 && !quotesQuery.isLoading && (
+                      <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No quotes yet.</p>
+                    )}
+                    {quotesQuery.hasNextPage && (
+                      <div className="px-5 py-3 flex justify-center" style={{ borderTop: '1px solid var(--cafe-border)' }}>
+                        <Button
+                          variant="secondary"
+                          className="text-xs"
+                          onClick={() => void quotesQuery.fetchNextPage()}
+                          disabled={quotesQuery.isFetchingNextPage}
+                        >
+                          {quotesQuery.isFetchingNextPage ? 'Loading…' : 'Load more quotes'}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </Card>
@@ -503,9 +558,33 @@ export default function JobDetailPage() {
       {/* ── Tab: Attachments ──────────────────────────────────── */}
       {tab === 'attachments' && (
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>{(attachments ?? []).length} file{(attachments ?? []).length !== 1 ? 's' : ''}</p>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+              {attachments.length} file{attachments.length !== 1 ? 's' : ''} loaded
+              {attachmentsQuery.hasNextPage ? ' — more available' : ''}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="rounded-lg px-2 py-1.5 text-xs outline-none"
+                style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                value={attachmentSortBy}
+                onChange={(e) => setAttachmentSortBy(e.target.value as typeof attachmentSortBy)}
+                aria-label="Sort attachments by"
+              >
+                <option value="created_at">Sort: Date</option>
+                <option value="file_name">Sort: Name</option>
+                <option value="file_size_bytes">Sort: Size</option>
+              </select>
+              <select
+                className="rounded-lg px-2 py-1.5 text-xs outline-none"
+                style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                value={attachmentSortDir}
+                onChange={(e) => setAttachmentSortDir(e.target.value as 'asc' | 'desc')}
+                aria-label="Attachment sort direction"
+              >
+                <option value="desc">Newest / Z–A</option>
+                <option value="asc">Oldest / A–Z</option>
+              </select>
               <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
               <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={uploading}>
@@ -516,28 +595,51 @@ export default function JobDetailPage() {
               </Button>
             </div>
           </div>
-          {!attachments ? <Spinner /> : attachments.length === 0 ? <EmptyState message="No attachments yet. Upload photos or documents." /> : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {attachments.map(att => (
-                <Card key={att.id} className="p-4 flex items-start gap-3">
-                  <Paperclip size={17} className="mt-0.5 shrink-0" style={{ color: 'var(--cafe-text-muted)' }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{att.file_name}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{att.content_type} · {att.file_size_bytes ? `${(att.file_size_bytes / 1024).toFixed(1)} KB` : ''}</p>
-                  </div>
-                  <SecureAttachmentLink
-                    storageKey={att.storage_key}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 transition-colors"
-                    style={{ color: 'var(--cafe-amber)' }}
-                    title="Download"
+          {uploadError && (
+            <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{uploadError}</p>
+          )}
+          {attachmentsQuery.error && (
+            <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(attachmentsQuery.error, 'Could not load attachments.')}</p>
+          )}
+          {attachmentsQuery.isLoading && attachments.length === 0 ? (
+            <Spinner />
+          ) : attachments.length === 0 ? (
+            <EmptyState message="No attachments yet. Upload photos or documents." />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {attachments.map(att => (
+                  <Card key={att.id} className="p-4 flex items-start gap-3">
+                    <Paperclip size={17} className="mt-0.5 shrink-0" style={{ color: 'var(--cafe-text-muted)' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{att.file_name}</p>
+                      <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{att.content_type} · {att.file_size_bytes ? `${(att.file_size_bytes / 1024).toFixed(1)} KB` : ''}</p>
+                    </div>
+                    <SecureAttachmentLink
+                      storageKey={att.storage_key}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 transition-colors"
+                      style={{ color: 'var(--cafe-amber)' }}
+                      title="Download"
+                    >
+                      <Download size={15} />
+                    </SecureAttachmentLink>
+                  </Card>
+                ))}
+              </div>
+              {attachmentsQuery.hasNextPage && (
+                <div className="mt-6 flex justify-center">
+                  <Button
+                    variant="secondary"
+                    onClick={() => void attachmentsQuery.fetchNextPage()}
+                    disabled={attachmentsQuery.isFetchingNextPage}
                   >
-                    <Download size={15} />
-                  </SecureAttachmentLink>
-                </Card>
-              ))}
-            </div>
+                    {attachmentsQuery.isFetchingNextPage ? 'Loading…' : 'Load more attachments'}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

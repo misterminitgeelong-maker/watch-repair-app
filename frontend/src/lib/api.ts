@@ -82,6 +82,43 @@ export function isPlanLimitError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 402
 }
 
+/** Default page size aligned with backend list endpoints (max 200). */
+export const DEFAULT_PAGE_SIZE = 50
+
+export type SortDir = 'asc' | 'desc'
+
+export interface ListParams {
+  limit?: number
+  offset?: number
+  sort_by?: string
+  sort_dir?: SortDir
+}
+
+/** Build axios `params` object; omits undefined / null / empty string. */
+export function compactListParams(
+  p?: Record<string, string | number | boolean | undefined | null>,
+): Record<string, string | number | boolean> {
+  if (!p) return {}
+  const o: Record<string, string | number | boolean> = {}
+  for (const [k, v] of Object.entries(p)) {
+    if (v === undefined || v === null || v === '') continue
+    o[k] = v
+  }
+  return o
+}
+
+/** Map attachment upload errors to clear copy; falls back to API detail. */
+export function getUploadErrorMessage(error: unknown, fallback = 'Upload failed.'): string {
+  if (axios.isAxiosError(error)) {
+    const s = error.response?.status
+    if (s === 415) return 'File type not allowed.'
+    if (s === 413) return 'File too large.'
+    return getApiErrorMessage(error, fallback)
+  }
+  if (error instanceof Error && error.message?.trim()) return error.message
+  return fallback
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const REFRESH_TOKEN_KEY = 'refresh_token'
 const REMEMBER_ME_KEY = 'remember_me'
@@ -368,7 +405,12 @@ export const listCustomerAccounts = () =>
   api.get<CustomerAccount[]>('/customer-accounts', { timeout: CUSTOMER_ACCOUNTS_TIMEOUT_MS })
 export const createCustomerAccount = (data: CustomerAccountCreate) => api.post<CustomerAccount>('/customer-accounts', data)
 export const updateCustomerAccount = (id: string, data: Partial<CustomerAccountCreate>) => api.patch<CustomerAccount>(`/customer-accounts/${id}`, data)
-export const listCustomers = () => api.get<Customer[]>('/customers')
+export interface CustomerListFilters {
+  /** reserved for future API filters */
+}
+
+export const listCustomers = (params?: ListParams & CustomerListFilters) =>
+  api.get<Customer[]>('/customers', { params: compactListParams(params as Record<string, string | number | boolean | undefined | null>) })
 export const getCustomer = (id: string) => api.get<Customer>(`/customers/${id}`)
 export const createCustomer = (data: Omit<Customer, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Customer>('/customers', data)
@@ -381,8 +423,17 @@ export interface Watch {
   brand?: string; model?: string; serial_number?: string
   movement_type?: string; condition_notes?: string; created_at: string
 }
-export const listWatches = (customerId?: string) =>
-  api.get<Watch[]>('/watches', { params: customerId ? { customer_id: customerId } : {} })
+export interface WatchListFilters {
+  brand?: string
+}
+
+export const listWatches = (customerId?: string, params?: ListParams & WatchListFilters) =>
+  api.get<Watch[]>('/watches', {
+    params: compactListParams({
+      customer_id: customerId,
+      ...(params ?? {}),
+    } as Record<string, string | number | boolean | undefined | null>),
+  })
 export const getWatch = (id: string) => api.get<Watch>(`/watches/${id}`)
 export const listWatchBrands = () => api.get<string[]>('/watch-brands')
 export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>) =>
@@ -425,7 +476,15 @@ export interface RepairJob {
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
-export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
+export interface JobListFilters {
+  status?: string
+  assigned_user_id?: string
+  /** When set, only jobs linked to a watch owned by this customer */
+  customer_id?: string
+}
+
+export const listJobs = (params?: ListParams & JobListFilters) =>
+  api.get<RepairJob[]>('/repair-jobs', { params: compactListParams(params as Record<string, string | number | boolean | undefined | null>) })
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
 export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
 export interface RepairJobCreatePayload {
@@ -483,8 +542,17 @@ export interface Quote {
   subtotal_cents: number; tax_cents: number; total_cents: number; currency: string
   approval_token: string; sent_at?: string; created_at: string
 }
-export const listQuotes = (repairJobId?: string) =>
-  api.get<Quote[]>('/quotes', repairJobId ? { params: { repair_job_id: repairJobId } } : undefined)
+export interface QuoteListFilters {
+  status?: string
+}
+
+export const listQuotes = (repairJobId?: string, params?: ListParams & QuoteListFilters) =>
+  api.get<Quote[]>('/quotes', {
+    params: compactListParams({
+      repair_job_id: repairJobId,
+      ...(params ?? {}),
+    } as Record<string, string | number | boolean | undefined | null>),
+  })
 export const createQuote = (data: { repair_job_id: string; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
   api.post<Quote>('/quotes', data)
 export const sendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/send`)
@@ -709,8 +777,13 @@ export interface Attachment {
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
   label?: string; created_at: string
 }
-export const listAttachments = (repairJobId: string) =>
-  api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId } })
+export const listAttachments = (repairJobId: string, params?: ListParams) =>
+  api.get<Attachment[]>('/attachments', {
+    params: compactListParams({
+      repair_job_id: repairJobId,
+      ...(params ?? {}),
+    } as Record<string, string | number | boolean | undefined | null>),
+  })
 export const uploadAttachment = (file: File, repairJobId: string, label?: string) => {
   const form = new FormData()
   form.append('file', file)
@@ -720,10 +793,20 @@ export const uploadAttachment = (file: File, repairJobId: string, label?: string
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
-export const listShoeAttachments = (shoeRepairJobId: string) =>
-  api.get<Attachment[]>('/attachments', { params: { shoe_repair_job_id: shoeRepairJobId } })
-export const listAutoKeyAttachments = (autoKeyJobId: string) =>
-  api.get<Attachment[]>('/attachments', { params: { auto_key_job_id: autoKeyJobId } })
+export const listShoeAttachments = (shoeRepairJobId: string, params?: ListParams) =>
+  api.get<Attachment[]>('/attachments', {
+    params: compactListParams({
+      shoe_repair_job_id: shoeRepairJobId,
+      ...(params ?? {}),
+    } as Record<string, string | number | boolean | undefined | null>),
+  })
+export const listAutoKeyAttachments = (autoKeyJobId: string, params?: ListParams) =>
+  api.get<Attachment[]>('/attachments', {
+    params: compactListParams({
+      auto_key_job_id: autoKeyJobId,
+      ...(params ?? {}),
+    } as Record<string, string | number | boolean | undefined | null>),
+  })
 export const uploadAutoKeyAttachment = (file: File, autoKeyJobId: string, label?: string) => {
   const form = new FormData()
   form.append('file', file)
@@ -795,19 +878,32 @@ export interface CsvImportResult {
   import_id: string
   imported: number; skipped: number; customers_created: number; total_rows: number
   skipped_reasons: Record<string, number>
+  dry_run?: boolean
+  duplicate_customer_rows_in_file?: number
 }
-export const importCsv = (
-  file: File,
-  options?: { replaceExisting?: boolean; clearTabs?: string[] }
-) => {
-  const form = new FormData()
-  form.append('file', file)
-  const params = []
+
+/** Build query string for CSV import (used by importCsv and tests). */
+export function buildImportCsvQueryString(options?: {
+  replaceExisting?: boolean
+  clearTabs?: string[]
+  dryRun?: boolean
+}): string {
+  const params: string[] = []
   if (options?.replaceExisting) params.push('replace_existing=true')
+  if (options?.dryRun) params.push('dry_run=true')
   if (options?.clearTabs && options.clearTabs.length > 0) {
     for (const tab of options.clearTabs) params.push(`clear_tabs=${encodeURIComponent(tab)}`)
   }
-  const query = params.length ? `?${params.join('&')}` : ''
+  return params.length ? `?${params.join('&')}` : ''
+}
+
+export const importCsv = (
+  file: File,
+  options?: { replaceExisting?: boolean; clearTabs?: string[]; dryRun?: boolean },
+) => {
+  const form = new FormData()
+  form.append('file', file)
+  const query = buildImportCsvQueryString(options)
   return api.post<CsvImportResult>(`/import/csv${query}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

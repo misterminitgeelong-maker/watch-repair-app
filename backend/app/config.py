@@ -1,3 +1,6 @@
+from typing import Literal
+from urllib.parse import urlparse
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +18,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     jwt_refresh_expire_days: int = 7
-    app_env: str = "production"
+    app_env: Literal["development", "test", "staging", "production"] = "development"
+    # Break-glass flag only for explicitly intended production SQLite runs.
+    allow_sqlite_in_production: bool = False
     allow_public_bootstrap: bool = True
     allow_dev_auto_login: bool = False
 
@@ -31,6 +36,8 @@ class Settings(BaseSettings):
     startup_seed_tenant_name: str = "My Shop"
     startup_seed_owner_email: str = "admin@admin.com"
     startup_seed_owner_password: str = "Admin"
+    # Dev-only convenience flag: explicitly allow runtime create_all bootstrap.
+    auto_create_schema_on_startup: bool = False
 
     # Optional testing tenant (no demo prompts; for internal QA/breaking things)
     testing_tenant_slug: str = ""
@@ -92,20 +99,72 @@ class Settings(BaseSettings):
     stripe_price_auto_key: str = ""
     stripe_price_enterprise: str = ""
 
+    # Rate limiting (slowapi format, e.g. "20/minute")
+    rate_limit_auth_login: str = "20/minute"
+    rate_limit_auth_login_test: str = "1000/minute"
+    rate_limit_public_quote_get: str = "30/minute"
+    rate_limit_public_quote_decision: str = "20/minute"
+    rate_limit_import_csv: str = "5/minute"
+
+    # Public quote approval token lifetime from send time.
+    quote_approval_token_ttl_hours: int = 168
+
+    # Attachments: local storage + upload validation defaults
+    attachment_allowed_content_types: str = (
+        "image/jpeg,image/png,image/webp,application/pdf,text/plain"
+    )
+    attachment_max_upload_bytes: int = 10 * 1024 * 1024
+    attachment_local_upload_dir: str = "uploads"
+
 
 settings = Settings()
 
-# Production safety: reject default JWT secret and optional bootstrap default
-def _validate_production_config() -> None:
-    if settings.app_env.strip().lower() != "production":
+
+def _is_local_public_url(url: str) -> bool:
+    parsed = urlparse((url or "").strip())
+    host = (parsed.hostname or "").strip().lower()
+    return host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+
+def _is_sqlite_url(database_url: str) -> bool:
+    return (database_url or "").strip().lower().startswith("sqlite")
+
+
+def validate_runtime_config() -> None:
+    """
+    Enforce strict safety checks in production only.
+    Keep development/test/staging flexible for local onboarding.
+    """
+    if settings.app_env != "production":
         return
+
     if not settings.jwt_secret or settings.jwt_secret.strip() == "change-me-in-production":
         raise ValueError(
-            "JWT_SECRET must be set to a secure value in production. "
-            "Run: openssl rand -hex 32"
+            "Invalid production config: JWT_SECRET is unset or using the default placeholder. "
+            "Set a strong secret (for example, 32+ random bytes)."
         )
+
+    cors_values = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    if any(origin == "*" for origin in cors_values):
+        raise ValueError(
+            "Invalid production config: CORS_ORIGINS cannot include '*'. "
+            "Set explicit allowed origin URLs."
+        )
+
+    if _is_local_public_url(settings.public_base_url):
+        raise ValueError(
+            "Invalid production config: PUBLIC_BASE_URL points to localhost/loopback. "
+            "Set your real public HTTPS URL."
+        )
+
+    if _is_sqlite_url(settings.database_url) and not settings.allow_sqlite_in_production:
+        raise ValueError(
+            "Invalid production config: DATABASE_URL uses SQLite. "
+            "Use a server database for production, or set ALLOW_SQLITE_IN_PRODUCTION=true only when explicitly intended."
+        )
+
     if settings.allow_public_bootstrap:
-        # Allow but warn; operator can set ALLOW_PUBLIC_BOOTSTRAP=false after first tenant
+        # Allow but warn; operator can set ALLOW_PUBLIC_BOOTSTRAP=false after first tenant.
         import warnings
         warnings.warn(
             "ALLOW_PUBLIC_BOOTSTRAP is True in production. Set ALLOW_PUBLIC_BOOTSTRAP=false after bootstrapping your first tenant.",
@@ -114,4 +173,4 @@ def _validate_production_config() -> None:
         )
 
 
-_validate_production_config()
+validate_runtime_config()

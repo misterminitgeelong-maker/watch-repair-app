@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
-  listShoeAttachments, uploadShoeAttachment,
+  listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
   listCustomerAccounts,
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob,
@@ -227,6 +227,7 @@ export default function ShoeJobDetailPage() {
   const [editingCost, setEditingCost] = useState(false)
   const [costInput, setCostInput] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const parseDollarsToCents = (value: string) => {
     const parsed = Number.parseFloat(value)
     return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0
@@ -281,9 +282,12 @@ export default function ShoeJobDetailPage() {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
+    setUploadError('')
     try {
       await Promise.all(files.map(f => uploadShoeAttachment(f, id!)))
       qc.invalidateQueries({ queryKey: ['shoe-attachments', id] })
+    } catch (err: unknown) {
+      setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -600,6 +604,10 @@ export default function ShoeJobDetailPage() {
 
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
             <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+
+            {uploadError && (
+              <p className="px-5 pt-2 text-sm" style={{ color: '#C96A5A' }}>{uploadError}</p>
+            )}
 
             {photos.length === 0 ? (
               <div

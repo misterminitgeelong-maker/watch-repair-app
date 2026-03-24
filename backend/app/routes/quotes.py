@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
+from datetime import timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
+from ..config import settings
 from ..models import (
     Approval,
     Customer,
@@ -18,6 +20,7 @@ from ..models import (
     QuoteLineItem,
     QuoteRead,
     QuoteSendResponse,
+    Tenant,
     Watch,
 )
 from ..limiter import limiter
@@ -27,15 +30,53 @@ from .. import sms
 router = APIRouter(prefix="/v1", tags=["quotes"])
 
 
+def get_public_quote_rate_limit() -> str:
+    return settings.rate_limit_public_quote_get
+
+
+def get_public_quote_decision_rate_limit() -> str:
+    return settings.rate_limit_public_quote_decision
+
+
+def _quote_token_is_expired(quote: Quote) -> bool:
+    expires_at = quote.approval_token_expires_at
+    if not expires_at:
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) > expires_at
+
+
 @router.get("/quotes", response_model=list[QuoteRead])
 def list_quotes(
     repair_job_id: UUID | None = None,
+    status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(Quote).where(Quote.tenant_id == auth.tenant_id)
     if repair_job_id:
         query = query.where(Quote.repair_job_id == repair_job_id)
+    if status:
+        query = query.where(Quote.status == status)
+
+    sort_fields = {
+        "created_at": Quote.created_at,
+        "sent_at": Quote.sent_at,
+        "status": Quote.status,
+        "total_cents": Quote.total_cents,
+    }
+    sort_col = sort_fields.get(sort_by)
+    if sort_col is None:
+        raise HTTPException(status_code=400, detail="Invalid sort_by")
+    if sort_dir.lower() not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_dir")
+    query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    query = query.offset(offset).limit(limit)
     return session.exec(query).all()
 
 
@@ -58,6 +99,8 @@ def create_quote(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    tenant = session.get(Tenant, auth.tenant_id)
+    tenant_currency = (tenant.default_currency if tenant and tenant.default_currency else "AUD").upper()
     job = get_tenant_repair_job(session, payload.repair_job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
@@ -85,6 +128,7 @@ def create_quote(
         subtotal_cents=subtotal,
         tax_cents=payload.tax_cents,
         total_cents=subtotal + payload.tax_cents,
+        currency=tenant_currency,
     )
     session.add(quote)
     session.flush()
@@ -108,8 +152,10 @@ def send_quote(
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
+    now = datetime.now(timezone.utc)
     quote.status = "sent"
-    quote.sent_at = datetime.now(timezone.utc)
+    quote.sent_at = now
+    quote.approval_token_expires_at = now + timedelta(hours=max(settings.quote_approval_token_ttl_hours, 1))
     session.add(quote)
 
     job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)
@@ -165,7 +211,7 @@ def send_quote(
 
 
 @router.post("/public/quotes/{token}/decision", response_model=QuoteDecisionResponse)
-@limiter.limit("20/minute")
+@limiter.limit(get_public_quote_decision_rate_limit)
 def quote_decision(
     request: Request,
     token: str,
@@ -175,6 +221,12 @@ def quote_decision(
     quote = session.exec(select(Quote).where(Quote.approval_token == token)).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Invalid token")
+    if _quote_token_is_expired(quote):
+        if quote.status not in {"approved", "declined"}:
+            quote.status = "expired"
+            session.add(quote)
+            session.commit()
+        raise HTTPException(status_code=410, detail="Quote approval link has expired")
 
     if quote.status in {"approved", "declined"}:
         raise HTTPException(status_code=409, detail="Decision already recorded")
@@ -234,11 +286,17 @@ def quote_decision(
 
 
 @router.get("/public/quotes/{token}")
-@limiter.limit("30/minute")
+@limiter.limit(get_public_quote_rate_limit)
 def get_public_quote(request: Request, token: str, session: Session = Depends(get_session)):
     quote = session.exec(select(Quote).where(Quote.approval_token == token)).first()
     if not quote:
-        raise HTTPException(status_code=404, detail="Invalid or expired link")
+        raise HTTPException(status_code=404, detail="Invalid token")
+    if _quote_token_is_expired(quote):
+        if quote.status not in {"approved", "declined"}:
+            quote.status = "expired"
+            session.add(quote)
+            session.commit()
+        raise HTTPException(status_code=410, detail="Quote approval link has expired")
     items = session.exec(select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)).all()
     return {
         "id": quote.id,

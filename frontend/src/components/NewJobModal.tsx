@@ -7,6 +7,7 @@ import {
   listCustomerAccounts,
   uploadAttachment,
   getApiErrorMessage,
+  getUploadErrorMessage,
   getWatchRepairsConfig,
   type JobStatus, type Customer, type Watch, type CustomerAccount,
   type WatchCatalogueItem,
@@ -241,7 +242,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       ])
       qc.invalidateQueries({ queryKey: ['jobs'] })
       setCreatedJobId(data.id)
-    } catch (err) { setError(getApiErrorMessage(err, 'Failed to create job.')) }
+    } catch (err: unknown) {
+      setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
+    }
     setLoading(false)
   }
 

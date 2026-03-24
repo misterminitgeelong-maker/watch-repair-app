@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, select
 import openpyxl
@@ -18,6 +18,8 @@ import xlrd
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
+from ..config import settings
+from ..limiter import limiter
 from ..models import (
     Approval,
     Attachment,
@@ -42,9 +44,14 @@ from ..models import (
     ShoeRepairJob,
     ShoeRepairJobItem,
     ShoeRepairJobShoe,
+    Tenant,
 )
 
 router = APIRouter(prefix="/v1/import", tags=["import"])
+
+
+def get_import_csv_rate_limit() -> str:
+    return settings.rate_limit_import_csv
 
 
 # ── Helpers (ported from import_csv.py) ────────────────────────────────────────
@@ -381,9 +388,12 @@ def _clear_tenant_importable_data(session: Session, tenant_id, clear_tabs: list[
 from fastapi import Query
 
 @router.post("/csv", response_model=ImportSummaryResponse)
+@limiter.limit(get_import_csv_rate_limit)
 async def import_csv(
+    request: Request,
     file: UploadFile = File(...),
     replace_existing: bool = False,
+    dry_run: bool = False,
     clear_tabs: list[str] = Query(["watch", "shoe", "auto_key"], description="Tabs to clear: watch, shoe, auto_key"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
@@ -397,32 +407,38 @@ async def import_csv(
         raise HTTPException(status_code=400, detail="Import file is empty.")
 
     tenant_id = auth.tenant_id
-    if replace_existing:
+    tenant = session.get(Tenant, tenant_id)
+    tenant_currency = (tenant.default_currency if tenant and tenant.default_currency else "AUD").upper()
+    if replace_existing and not dry_run:
         _clear_tenant_importable_data(session, tenant_id, clear_tabs)
         session.commit()
 
-    import_log = ImportLog(
-        tenant_id=tenant_id,
-        uploaded_by_user_id=auth.user_id,
-        file_name=file.filename,
-        file_type=file_type,
-        total_rows=len(rows),
-    )
-    session.add(import_log)
-    session.commit()
-    session.refresh(import_log)
+    import_log = None
+    if not dry_run:
+        import_log = ImportLog(
+            tenant_id=tenant_id,
+            uploaded_by_user_id=auth.user_id,
+            file_name=file.filename,
+            file_type=file_type,
+            total_rows=len(rows),
+        )
+        session.add(import_log)
+        session.commit()
+        session.refresh(import_log)
 
     customer_cache: dict[tuple[str, str | None], Customer] = {}
     imported = 0
     skipped = 0
     job_seq = 0
     skipped_reasons: dict[str, int] = {}
+    duplicate_customer_rows_in_file = 0
 
     def log_skip(row_number: int, reason: str) -> None:
         nonlocal skipped
         skipped += 1
         skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-        session.add(ImportLogDetail(import_log_id=import_log.id, row_number=row_number, skip_reason=reason))
+        if import_log is not None:
+            session.add(ImportLogDetail(import_log_id=import_log.id, row_number=row_number, skip_reason=reason))
 
     try:
         for idx, row in enumerate(rows, start=1):
@@ -450,6 +466,9 @@ async def import_csv(
                     if not has_meaningful_data:
                         log_skip(idx, "empty_row")
                         continue
+                    if not brand_case and not phone_raw:
+                        log_skip(idx, "missing_core_fields")
+                        continue
                     customer_name = f"Unknown Customer {original_job_id or uuid4().hex[:8]}"
 
             phone = _normalize_phone(phone_raw)
@@ -462,6 +481,7 @@ async def import_csv(
             created_customer_id = None
             if cache_key in customer_cache:
                 customer = customer_cache[cache_key]
+                duplicate_customer_rows_in_file += 1
             else:
                 customer = Customer(tenant_id=tenant_id, full_name=customer_name, phone=phone)
                 session.add(customer)
@@ -519,20 +539,34 @@ async def import_csv(
                     subtotal_cents=quote_cents,
                     tax_cents=0,
                     total_cents=quote_cents,
-                    currency="AUD",
+                    currency=tenant_currency,
                     created_at=created_at,
                 ))
 
-            session.add(
-                ImportLogDetail(
-                    import_log_id=import_log.id,
-                    row_number=idx,
-                    created_repair_job_id=job.id,
-                    created_customer_id=created_customer_id,
+            if import_log is not None:
+                session.add(
+                    ImportLogDetail(
+                        import_log_id=import_log.id,
+                        row_number=idx,
+                        created_repair_job_id=job.id,
+                        created_customer_id=created_customer_id,
+                    )
                 )
-            )
 
             imported += 1
+
+        if dry_run:
+            session.rollback()
+            return ImportSummaryResponse(
+                import_id=uuid4(),
+                imported=imported,
+                skipped=skipped,
+                customers_created=len(customer_cache),
+                total_rows=len(rows),
+                skipped_reasons=skipped_reasons,
+                dry_run=True,
+                duplicate_customer_rows_in_file=duplicate_customer_rows_in_file,
+            )
 
         import_log.imported_count = imported
         import_log.skipped_count = skipped
@@ -542,13 +576,14 @@ async def import_csv(
         session.commit()
     except Exception as exc:
         session.rollback()
-        import_log.status = "failed"
-        import_log.error_message = str(exc)
-        import_log.imported_count = imported
-        import_log.skipped_count = skipped
-        import_log.customers_created_count = len(customer_cache)
-        session.add(import_log)
-        session.commit()
+        if import_log is not None:
+            import_log.status = "failed"
+            import_log.error_message = str(exc)
+            import_log.imported_count = imported
+            import_log.skipped_count = skipped
+            import_log.customers_created_count = len(customer_cache)
+            session.add(import_log)
+            session.commit()
         raise HTTPException(status_code=400, detail=f"Import failed: {exc}") from exc
 
     return ImportSummaryResponse(
@@ -558,4 +593,6 @@ async def import_csv(
         customers_created=len(customer_cache),
         total_rows=len(rows),
         skipped_reasons=skipped_reasons,
+        dry_run=False,
+        duplicate_customer_rows_in_file=duplicate_customer_rows_in_file,
     )

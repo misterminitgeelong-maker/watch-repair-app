@@ -27,13 +27,15 @@ def upgrade() -> None:
         ["mobile_lead_ingest_public_id"],
         unique=True,
     )
-    op.create_foreign_key(
-        "fk_parentaccount_mobile_lead_default_tenant_id_tenant",
-        "parentaccount",
-        "tenant",
-        ["mobile_lead_default_tenant_id"],
-        ["id"],
-    )
+    # SQLite cannot ALTER TABLE to add constraints; keep FK for non-SQLite.
+    if op.get_bind().dialect.name != "sqlite":
+        op.create_foreign_key(
+            "fk_parentaccount_mobile_lead_default_tenant_id_tenant",
+            "parentaccount",
+            "tenant",
+            ["mobile_lead_default_tenant_id"],
+            ["id"],
+        )
 
     op.create_table(
         "mobilesuburbroute",
@@ -61,7 +63,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_mobilesuburbroute_parent_account_id"), table_name="mobilesuburbroute")
     op.drop_table("mobilesuburbroute")
 
-    op.drop_constraint("fk_parentaccount_mobile_lead_default_tenant_id_tenant", "parentaccount", type_="foreignkey")
+    if op.get_bind().dialect.name != "sqlite":
+        op.drop_constraint("fk_parentaccount_mobile_lead_default_tenant_id_tenant", "parentaccount", type_="foreignkey")
     op.drop_index(op.f("ix_parentaccount_mobile_lead_ingest_public_id"), table_name="parentaccount")
     op.drop_column("parentaccount", "mobile_lead_default_tenant_id")
     op.drop_column("parentaccount", "mobile_lead_webhook_secret_hash")

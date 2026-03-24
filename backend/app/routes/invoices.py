@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..database import get_session
@@ -8,6 +10,7 @@ from ..dependencies import AuthContext, get_auth_context, require_manager_or_abo
 from ..models import (
     Invoice,
     InvoiceCreateFromQuoteResponse,
+    InvoiceNumberCounter,
     InvoiceRead,
     InvoiceWithPayments,
     Payment,
@@ -21,8 +24,33 @@ router = APIRouter(prefix="/v1/invoices", tags=["invoices", "payments"])
 
 
 def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant_id)).one()
-    return f"INV-{int(count) + 1:05d}"
+    for _ in range(20):
+        counter = session.exec(
+            select(InvoiceNumberCounter).where(InvoiceNumberCounter.tenant_id == tenant_id)
+        ).first()
+        if not counter:
+            counter = InvoiceNumberCounter(tenant_id=tenant_id, next_number=2)
+            session.add(counter)
+            try:
+                session.flush()
+                return "INV-00001"
+            except IntegrityError:
+                session.rollback()
+                continue
+
+        current_number = int(counter.next_number)
+        result = session.exec(
+            update(InvoiceNumberCounter)
+            .where(InvoiceNumberCounter.tenant_id == tenant_id)
+            .where(InvoiceNumberCounter.next_number == current_number)
+            .values(next_number=current_number + 1)
+        )
+        if result.rowcount != 1:
+            continue
+        session.flush()
+        return f"INV-{current_number:05d}"
+
+    raise HTTPException(status_code=500, detail="Could not allocate invoice number")
 
 
 @router.get("", response_model=list[InvoiceRead])
@@ -184,6 +212,7 @@ def create_payment(
     payment = Payment(
         tenant_id=auth.tenant_id,
         invoice_id=invoice.id,
+        currency=invoice.currency,
         amount_cents=payload.amount_cents,
         provider_reference=payload.provider_reference,
     )
