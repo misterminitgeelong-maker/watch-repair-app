@@ -13,7 +13,7 @@ export default function ProspectsPage() {
   const { data: searchData, refetch, isFetching } = useQuery<ProspectSearchResponse>({
     queryKey: ['prospects', category],
     queryFn: () => searchProspects(category || '').then(r => r.data),
-    enabled: false,
+    enabled: !!category,
   })
 
   return (
