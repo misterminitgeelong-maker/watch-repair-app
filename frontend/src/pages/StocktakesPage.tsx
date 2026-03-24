@@ -250,7 +250,7 @@ export default function StocktakesPage() {
                     variant="danger"
                     disabled={deleteMut.isPending}
                     onClick={() => {
-                      const confirmed = window.confirm(`Delete stocktake \"${session.name}\"? This cannot be undone.`)
+                      const confirmed = window.confirm(`Delete stocktake "${session.name}"? This cannot be undone.`)
                       if (!confirmed) return
                       deleteMut.mutate(session.id)
                     }}

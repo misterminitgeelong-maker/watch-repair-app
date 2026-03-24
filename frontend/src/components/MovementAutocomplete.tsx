@@ -33,9 +33,7 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
       )
     : movements
 
-  useEffect(() => {
-    setHighlight(0)
-  }, [value, suggestions])
+  const safeHighlight = suggestions.length === 0 ? 0 : Math.min(highlight, suggestions.length - 1)
 
   useEffect(() => {
     const el = containerRef.current
@@ -60,7 +58,7 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
       setHighlight(i => (i - 1 + suggestions.length) % suggestions.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      pick(suggestions[highlight])
+      pick(suggestions[safeHighlight])
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -111,7 +109,7 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
                 className="w-full text-left px-3 py-2 text-sm flex justify-between items-center gap-2"
                 style={{
                   color: 'var(--cafe-text)',
-                  backgroundColor: i === highlight ? '#F5EDE0' : 'transparent',
+                  backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent',
                 }}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={e => {

@@ -21,9 +21,7 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
     ? WATCH_BRANDS.filter(b => b.toLowerCase().includes(q))
     : WATCH_BRANDS
 
-  useEffect(() => {
-    setHighlight(0)
-  }, [value, suggestions])
+  const safeHighlight = suggestions.length === 0 ? 0 : Math.min(highlight, suggestions.length - 1)
 
   useEffect(() => {
     const el = containerRef.current
@@ -48,7 +46,7 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
       setHighlight(i => (i - 1 + suggestions.length) % suggestions.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      onChange(suggestions[highlight])
+      onChange(suggestions[safeHighlight])
       setOpen(false)
     } else if (e.key === 'Escape') {
       setOpen(false)
@@ -95,7 +93,7 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
                 className="w-full text-left px-3 py-2 text-sm truncate"
                 style={{
                   color: 'var(--cafe-text)',
-                  backgroundColor: i === highlight ? '#F5EDE0' : 'transparent',
+                  backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent',
                 }}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={e => {

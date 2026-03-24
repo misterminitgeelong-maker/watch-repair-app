@@ -87,6 +87,12 @@ export function Button({
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }>(
   function Input({ label, error, ...props }, ref) {
+    const inputStyle: React.CSSProperties & { '--tw-ring-color': string } = {
+      backgroundColor: 'var(--cafe-surface)',
+      borderColor: error ? '#C96A5A' : 'var(--cafe-border-2)',
+      color: 'var(--cafe-text)',
+      '--tw-ring-color': 'var(--cafe-gold)',
+    }
     return (
       <div className="flex flex-col gap-1">
         {label && (
@@ -101,13 +107,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
             'h-11 rounded-lg border px-3 text-base outline-none transition focus:ring-2 sm:text-sm',
             props.className
           )}
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            borderColor: error ? '#C96A5A' : 'var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-            // @ts-ignore
-            '--tw-ring-color': 'var(--cafe-gold)',
-          }}
+          style={inputStyle}
         />
         {error && <p className="text-xs" style={{ color: '#C96A5A' }}>{error}</p>}
       </div>

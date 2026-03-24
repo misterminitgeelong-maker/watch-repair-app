@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 

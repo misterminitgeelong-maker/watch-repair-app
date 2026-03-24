@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ScanLine } from 'lucide-react'
@@ -50,6 +50,9 @@ export default function StocktakeWorkspacePage() {
       stock_item_id: entry.stock_item_id,
       counted_qty: Number(entry.counted_qty),
     }))),
+    onMutate: () => {
+      setSaveStatus('Saving…')
+    },
     onSuccess: (_response, entries) => {
       setDraftEntries(current => {
         const next = { ...current }
@@ -78,12 +81,11 @@ export default function StocktakeWorkspacePage() {
   useEffect(() => {
     const pending = Object.values(draftEntries).filter(entry => entry.counted_qty !== '' && !Number.isNaN(Number(entry.counted_qty)))
     if (pending.length === 0 || !id) return undefined
-    setSaveStatus('Saving…')
     const timer = window.setTimeout(() => {
       saveMut.mutate(pending)
     }, 700)
     return () => window.clearTimeout(timer)
-  }, [draftEntries, id])
+  }, [draftEntries, id, saveMut])
 
   const progress = stocktake?.progress ?? { counted_items: 0, total_items: 0 }
 
@@ -105,7 +107,7 @@ export default function StocktakeWorkspacePage() {
     return counted - line.expected_qty
   }
 
-  const visibleLines = useMemo(() => {
+  const visibleLines = (() => {
     const lines = [...(stocktake?.lines ?? [])]
     if (!countQueueMode) return lines
     return lines.sort((left, right) => {
@@ -114,20 +116,14 @@ export default function StocktakeWorkspacePage() {
       if (leftCounted !== rightCounted) return leftCounted ? 1 : -1
       return left.item_code.localeCompare(right.item_code)
     })
-  }, [countQueueMode, draftEntries, stocktake])
+  })()
 
-  const remainingLines = useMemo(
-    () => visibleLines.filter(line => !isLineCounted(line)),
-    [visibleLines, draftEntries]
-  )
+  const remainingLines = visibleLines.filter(line => !isLineCounted(line))
 
-  const varianceLines = useMemo(
-    () => visibleLines.filter(line => {
-      const variance = lineVariance(line)
-      return variance != null && variance !== 0
-    }),
-    [visibleLines, draftEntries]
-  )
+  const varianceLines = visibleLines.filter(line => {
+    const variance = lineVariance(line)
+    return variance != null && variance !== 0
+  })
 
   function focusNext(currentIndex: number) {
     const remainingAfterCurrent = visibleLines.slice(currentIndex + 1).find(line => !isLineCounted(line))
