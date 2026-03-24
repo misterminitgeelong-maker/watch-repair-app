@@ -29,6 +29,8 @@ interface Props {
   jobs: Job[]
   date: string
   customers?: Customer[]
+  /** Shown above the map (e.g. selected date range) */
+  rangeLabel?: string
 }
 
 const GEOCODE_CACHE_KEY = 'geocode_cache'
@@ -201,7 +203,7 @@ function MapContent({
   )
 }
 
-function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
+function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
   const abortedRef = useRef(false)
@@ -292,6 +294,11 @@ function MobileServicesMapInner({ jobs, date, customers = [] }: Props) {
 
   return (
     <div className="space-y-3">
+      {rangeLabel && (
+        <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+          {rangeLabel}
+        </p>
+      )}
       {loading && (
         <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
           Geocoding addresses…

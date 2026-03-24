@@ -1,14 +1,16 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
   createAutoKeyQuote,
   createCustomer,
+  createUser,
   deleteAutoKeyJob,
   getApiErrorMessage,
+  getAutoKeyJob,
   listCustomerAccounts,
   listAutoKeyInvoices,
   listAutoKeyJobs,
@@ -22,6 +24,7 @@ import {
   getAutoKeyReports,
   vehicleLookup,
   type AutoKeyProgrammingStatus,
+  type AutoKeyJob,
   type Customer,
   type CustomerAccount,
   type JobStatus,
@@ -43,6 +46,152 @@ const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const
 
 function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
+}
+
+function ymdLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Monday–Sunday week in local time containing YYYY-MM-DD anchor */
+function weekRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const anchor = new Date(y, m - 1, d)
+  const day = anchor.getDay()
+  const diff = anchor.getDate() - day + (day === 0 ? -6 : 1)
+  const mon = new Date(anchor)
+  mon.setDate(diff)
+  const sun = new Date(mon)
+  sun.setDate(mon.getDate() + 6)
+  return { date_from: ymdLocal(mon), date_to: ymdLocal(sun) }
+}
+
+function monthRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
+  const [y, m] = ymd.split('-').map(Number)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const start = `${y}-${pad(m)}-01`
+  const last = new Date(y, m, 0)
+  const end = `${y}-${pad(m)}-${pad(last.getDate())}`
+  return { date_from: start, date_to: end }
+}
+
+function AddTechnicianModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({ full_name: '', email: '', password: '' })
+  const [error, setError] = useState('')
+  const mut = useMutation({
+    mutationFn: () => createUser({ full_name: form.full_name.trim(), email: form.email.trim(), password: form.password, role: 'tech' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      onClose()
+    },
+    onError: (err: unknown) => {
+      setError(getApiErrorMessage(err, 'Could not add technician. Only owners can add accounts; check plan limits.'))
+    },
+  })
+  return (
+    <Modal title="Add technician" onClose={onClose}>
+      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        Creates a login they can use in the app. Assign them to jobs from the job page or dispatch views.
+      </p>
+      <div className="space-y-3">
+        <Input label="Full name *" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Alex Smith" autoFocus />
+        <Input label="Email *" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="alex@shop.com" />
+        <Input label="Password *" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="At least 8 characters" />
+        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button
+            type="button"
+            onClick={() => { setError(''); mut.mutate() }}
+            disabled={mut.isPending || !form.full_name.trim() || !form.email.trim() || form.password.length < 8}
+          >
+            {mut.isPending ? 'Adding…' : 'Add technician'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function PlannerJobDetailModal({
+  jobId,
+  onClose,
+  customers,
+  users,
+}: {
+  jobId: string
+  onClose: () => void
+  customers: Customer[]
+  users: { id: string; full_name: string }[]
+}) {
+  const { data: job, isLoading, isError, error } = useQuery({
+    queryKey: ['auto-key-jobs', jobId, 'planner-detail'],
+    queryFn: () => getAutoKeyJob(jobId).then(r => r.data),
+    enabled: !!jobId,
+  })
+  const customer = job ? customers.find(c => c.id === job.customer_id) : undefined
+  const tech = job?.assigned_user_id ? users.find(u => u.id === job.assigned_user_id) : undefined
+  const j = job as AutoKeyJob | undefined
+
+  const row = (label: string, value: string | ReactNode) => (
+    <>
+      <dt className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>{label}</dt>
+      <dd className="text-sm" style={{ color: 'var(--cafe-text)' }}>{value}</dd>
+    </>
+  )
+
+  return (
+    <Modal title={j ? `Job #${j.job_number}` : 'Job details'} onClose={onClose}>
+      {isLoading && <Spinner />}
+      {isError && <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(error, 'Could not load job')}</p>}
+      {j && (
+        <div className="space-y-4">
+          <p className="text-base font-medium" style={{ color: 'var(--cafe-text)' }}>{j.title}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+            <dl className="contents">
+              {row('Status', <Badge status={j.status} />)}
+              {row('Customer', customer?.full_name ?? '—')}
+              {row('Phone', customer?.phone ?? '—')}
+              {row('Assigned tech', tech?.full_name ?? '—')}
+              {row('Job type', j.job_type ?? '—')}
+              {row('Vehicle', [j.vehicle_make, j.vehicle_model, j.vehicle_year, j.registration_plate].filter(Boolean).join(' · ') || '—')}
+              {row('Address', j.job_address ?? '—')}
+              {row('Scheduled', j.scheduled_at ? new Date(j.scheduled_at).toLocaleString() : '—')}
+              {row('Programming', j.programming_status?.replace(/_/g, ' ') ?? '—')}
+              {row('Priority', j.priority)}
+              {row('Deposit', formatCents(j.deposit_cents))}
+              {row('Cost / quote', formatCents(j.cost_cents))}
+              {row('Key type', j.key_type ?? '—')}
+              {row('Blade / chip', [j.blade_code, j.chip_type].filter(Boolean).join(' · ') || '—')}
+            </dl>
+          </div>
+          {j.description && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Description</p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--cafe-text)' }}>{j.description}</p>
+            </div>
+          )}
+          {j.tech_notes && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Tech notes</p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--cafe-text)' }}>{j.tech_notes}</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={onClose}>Close</Button>
+            <Link
+              to={`/auto-key/${j.id}`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium"
+              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+            >
+              Open full job page
+            </Link>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
 }
 
 function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
@@ -959,7 +1108,11 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
+  const { role } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
+  const [showAddTech, setShowAddTech] = useState(false)
+  const [plannerDetailJobId, setPlannerDetailJobId] = useState<string | null>(null)
+  const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>('day')
   const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
@@ -998,9 +1151,34 @@ export default function AutoKeyJobsPage() {
   })
 
   const dispatchViews = view === 'dispatch' || view === 'map' || view === 'planner'
-  const dispatchParams = dispatchViews ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
+  const dispatchParams = useMemo(() => {
+    if (!dispatchViews) return undefined
+    const tech = dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}
+    if (view === 'map') {
+      if (mapRangeMode === 'day') return { date_from: dispatchDate, date_to: dispatchDate, ...tech }
+      if (mapRangeMode === 'week') {
+        const w = weekRangeFromYmd(dispatchDate)
+        return { date_from: w.date_from, date_to: w.date_to, ...tech }
+      }
+      const mo = monthRangeFromYmd(dispatchDate)
+      return { date_from: mo.date_from, date_to: mo.date_to, ...tech }
+    }
+    return { date_from: dispatchDate, date_to: dispatchDate, ...tech }
+  }, [dispatchViews, view, dispatchDate, dispatchTechFilter, mapRangeMode])
+
+  const mapRangeLabel = useMemo(() => {
+    if (view !== 'map') return ''
+    if (mapRangeMode === 'day') return `Showing jobs scheduled on ${formatDate(dispatchDate)}.`
+    if (mapRangeMode === 'week') {
+      const w = weekRangeFromYmd(dispatchDate)
+      return `Showing jobs scheduled ${formatDate(w.date_from)} – ${formatDate(w.date_to)}.`
+    }
+    const mo = monthRangeFromYmd(dispatchDate)
+    return `Showing jobs scheduled ${formatDate(mo.date_from)} – ${formatDate(mo.date_to)}.`
+  }, [view, mapRangeMode, dispatchDate])
+
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery({
-    queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter],
+    queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter, view === 'map' ? mapRangeMode : 'single-day'],
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
     enabled: dispatchViews && !!dispatchParams,
   })
@@ -1052,7 +1230,7 @@ export default function AutoKeyJobsPage() {
     return undefined
   })()
 
-  const { data: autoKeyReports, isLoading: reportsLoading } = useQuery({
+  const { data: autoKeyReports, isLoading: reportsLoading, isError: reportsError, error: reportsErr } = useQuery({
     queryKey: ['auto-key-reports', reportDateParams?.date_from, reportDateParams?.date_to],
     queryFn: () => getAutoKeyReports(reportDateParams!).then(r => r.data),
     enabled: view === 'reports' && !!reportDateParams,
@@ -1074,7 +1252,7 @@ export default function AutoKeyJobsPage() {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
     },
   })
-  const { data: weekJobs = [], isLoading: weekLoading } = useQuery({
+  const { data: weekJobs = [], isLoading: weekLoading, isError: weekError, error: weekErr, refetch: refetchWeek } = useQuery({
     queryKey: ['auto-key-jobs', 'week', weekStart, weekEnd],
     queryFn: () => listAutoKeyJobs(weekParams!).then(r => r.data),
     enabled: view === 'week' && !!weekParams,
@@ -1104,7 +1282,16 @@ export default function AutoKeyJobsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <PageHeader
           title="Mobile Services"
-          action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />New Job</Button>}
+          action={(
+            <div className="flex flex-wrap items-center gap-2">
+              {role === 'owner' && (
+                <Button variant="secondary" onClick={() => setShowAddTech(true)} type="button">
+                  <UserPlus size={16} />Add technician
+                </Button>
+              )}
+              <Button onClick={() => setShowCreate(true)} type="button"><Plus size={16} />New Job</Button>
+            </div>
+          )}
         />
       </div>
       <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -1172,6 +1359,15 @@ export default function AutoKeyJobsPage() {
       </div>
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
+      {showAddTech && <AddTechnicianModal onClose={() => setShowAddTech(false)} />}
+      {plannerDetailJobId && (
+        <PlannerJobDetailModal
+          jobId={plannerDetailJobId}
+          onClose={() => setPlannerDetailJobId(null)}
+          customers={customers}
+          users={users}
+        />
+      )}
 
       {view === 'dashboard' && (
         <>
@@ -1495,8 +1691,17 @@ export default function AutoKeyJobsPage() {
               }}><ChevronRight size={16} /></Button>
             </div>
           </div>
-          {weekLoading ? <Spinner /> : (
+          {weekError && !weekLoading && (
+            <Card className="p-4">
+              <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(weekErr, 'Could not load jobs for this week.')}</p>
+              <Button variant="secondary" className="mt-3" type="button" onClick={() => refetchWeek()}>Retry</Button>
+            </Card>
+          )}
+          {weekLoading ? <Spinner /> : weekError ? null : (
             <div className="space-y-4">
+              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                {weekJobs.length === 0 ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.' : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view (scheduled + unscheduled).`}
+              </p>
               {(() => {
                 const unscheduled = weekJobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at)
                 return (
@@ -1615,7 +1820,24 @@ export default function AutoKeyJobsPage() {
       {view === 'map' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+            <span className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Range</span>
+            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+              {(['day', 'week', 'month'] as const).map(m => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMapRangeMode(m)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
+                  style={{
+                    backgroundColor: mapRangeMode === m ? 'var(--cafe-paper)' : 'transparent',
+                    color: mapRangeMode === m ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  }}
+                >
+                  {m === 'day' ? 'Day' : m === 'week' ? 'Week' : 'Month'}
+                </button>
+              ))}
+            </div>
+            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{mapRangeMode === 'day' ? 'Date' : 'Anchor date'}</label>
             <input
               type="date"
               value={dispatchDate}
@@ -1640,7 +1862,9 @@ export default function AutoKeyJobsPage() {
               </>
             )}
           </div>
-          {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />}
+          {dispatchLoading ? <Spinner /> : (
+            <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} rangeLabel={mapRangeLabel} />
+          )}
         </div>
       )}
 
@@ -1696,14 +1920,23 @@ export default function AutoKeyJobsPage() {
                         return (
                           <div
                             key={job.id}
-                            className="flex items-start gap-4 py-3 border-b last:border-b-0"
+                            role="button"
+                            tabIndex={0}
+                            className="flex items-start gap-4 py-3 border-b last:border-b-0 rounded-md px-1 -mx-1 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                             style={{ borderColor: 'var(--cafe-border)' }}
+                            onClick={() => setPlannerDetailJobId(job.id)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                setPlannerDetailJobId(job.id)
+                              }
+                            }}
                           >
                             <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{timeStr}</span>
                             <div className="flex-1 min-w-0">
-                              <Link to={`/auto-key/${job.id}`} className="font-medium hover:underline" style={{ color: 'var(--cafe-text)' }}>
+                              <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>
                                 #{job.job_number} · {job.title}
-                              </Link>
+                              </p>
                               <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
                                 {customer?.full_name ?? '—'}
                                 {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
@@ -1713,14 +1946,14 @@ export default function AutoKeyJobsPage() {
                                   <MapPin size={12} /> {job.job_address}
                                 </p>
                               )}
+                              <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>Click for full details</p>
                             </div>
-                            <Link
-                              to={`/auto-key/${job.id}`}
+                            <span
                               className="shrink-0 px-3 py-1.5 rounded text-xs font-medium"
                               style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
                             >
-                              View
-                            </Link>
+                              Details
+                            </span>
                           </div>
                         )
                       })}
@@ -1783,7 +2016,13 @@ export default function AutoKeyJobsPage() {
             </Button>
           </div>
 
-          {reportsLoading ? <Spinner /> : autoKeyReports ? (
+          {reportsError && !reportsLoading && (
+            <Card className="p-4">
+              <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(reportsErr, 'Could not load reports.')}</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>If you are on a restricted role, ask an owner to confirm you can access reports. Otherwise check your connection and try again.</p>
+            </Card>
+          )}
+          {reportsLoading ? <Spinner /> : reportsError ? null : autoKeyReports ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>

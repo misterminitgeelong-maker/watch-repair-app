@@ -1142,8 +1142,25 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
 }
 
-export const listAutoKeyJobs = (params?: { date_from?: string; date_to?: string; include_unscheduled?: boolean; assigned_user_id?: string; customer_id?: string; status?: string; active_only?: boolean }) =>
-  api.get<AutoKeyJob[]>('/auto-key-jobs', params ? { params } : undefined)
+export const listAutoKeyJobs = (params?: {
+  date_from?: string
+  date_to?: string
+  include_unscheduled?: boolean
+  assigned_user_id?: string
+  customer_id?: string
+  status?: string
+  active_only?: boolean
+}) => {
+  if (!params) return api.get<AutoKeyJob[]>('/auto-key-jobs')
+  const q = new URLSearchParams()
+  for (const [key, val] of Object.entries(params)) {
+    if (val === undefined || val === null) continue
+    if (typeof val === 'boolean') q.set(key, val ? 'true' : 'false')
+    else q.set(key, String(val))
+  }
+  const qs = q.toString()
+  return api.get<AutoKeyJob[]>(`/auto-key-jobs${qs ? `?${qs}` : ''}`)
+}
 
 export interface VehicleLookupResult {
   found: boolean
