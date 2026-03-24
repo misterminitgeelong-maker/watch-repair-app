@@ -55,6 +55,7 @@ export default function AutoKeyJobDetailPage() {
   const [arrivalWindow, setArrivalWindow] = useState('9–11am')
   const [invoiceToPay, setInvoiceToPay] = useState<{ id: string; invoice_number: string; total_cents: number } | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'eftpos' | 'bank'>('eftpos')
+  const [statusFeedback, setStatusFeedback] = useState('')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -108,6 +109,32 @@ export default function AutoKeyJobDetailPage() {
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update status.')),
   })
+
+  const handleStatusChange = async (status: JobStatus) => {
+    setStatusFeedback('')
+    const invoicesBefore = invoices.length
+    await statusMut.mutateAsync(status)
+    if (status !== 'completed') return
+
+    const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
+      listAutoKeyQuotes(id!),
+      listAutoKeyInvoices(id!),
+    ])
+    const newestQuote = latestQuotes[0]
+    if (latestInvoices.length > invoicesBefore) {
+      setStatusFeedback('Completed and invoice auto-created.')
+      return
+    }
+    if (!newestQuote) {
+      setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.')
+      return
+    }
+    if (newestQuote.status === 'declined') {
+      setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.')
+      return
+    }
+    setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+  }
 
   const assignTechMut = useMutation({
     mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(id!, { assigned_user_id }),
@@ -411,11 +438,16 @@ export default function AutoKeyJobDetailPage() {
           <Select
             label='Status'
             value={job.status}
-            onChange={e => statusMut.mutate(e.target.value as JobStatus)}
+            onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
             disabled={statusMut.isPending}
           >
             {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </Select>
+          {statusFeedback && (
+            <p className='text-xs rounded-md px-2 py-1.5' style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
+              {statusFeedback}
+            </p>
+          )}
 
           {!isSolo && (
           <Select

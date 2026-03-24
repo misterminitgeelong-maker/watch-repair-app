@@ -901,6 +901,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [statusFeedback, setStatusFeedback] = useState('')
 
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -959,6 +960,32 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
     },
     onError: (err) => setDeleteError(getApiErrorMessage(err, 'Failed to delete job.')),
   })
+
+  const handleStatusChange = async (status: JobStatus) => {
+    setStatusFeedback('')
+    const invoicesBefore = invoices.length
+    await statusMut.mutateAsync(status)
+    if (status !== 'completed') return
+
+    const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
+      listAutoKeyQuotes(job.id),
+      listAutoKeyInvoices(job.id),
+    ])
+    const newestQuote = latestQuotes[0]
+    if (latestInvoices.length > invoicesBefore) {
+      setStatusFeedback('Completed and invoice auto-created.')
+      return
+    }
+    if (!newestQuote) {
+      setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.')
+      return
+    }
+    if (newestQuote.status === 'declined') {
+      setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.')
+      return
+    }
+    setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+  }
 
   return (
     <>
@@ -1042,7 +1069,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           </div>
           <Select
             value={job.status}
-            onChange={e => statusMut.mutate(e.target.value as JobStatus)}
+            onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
             disabled={statusMut.isPending}
           >
             {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
@@ -1080,7 +1107,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             {nextStatus && (
               <Button
                 className="w-full"
-                onClick={() => statusMut.mutate(nextStatus)}
+                onClick={() => { void handleStatusChange(nextStatus) }}
                 disabled={statusMut.isPending}
               >
                 {statusMut.isPending ? 'Updating…' : quickStatusLabel}
@@ -1098,6 +1125,11 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
               <Button className="w-full" onClick={() => invoiceMut.mutate(latestQuote.id)} disabled={invoiceMut.isPending}>
                 {invoiceMut.isPending ? 'Creating…' : 'Create Invoice from Quote'}
               </Button>
+            )}
+            {statusFeedback && (
+              <p className="text-xs rounded-md px-2 py-1.5" style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
+                {statusFeedback}
+              </p>
             )}
           </div>
         </div>
