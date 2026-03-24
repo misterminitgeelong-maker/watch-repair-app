@@ -1,0 +1,4343 @@
+{
+  "currency": "AUD",
+  "default_margin_percent": 175,
+  "minimum_rrp_cents": 7995,
+  "description": "RRP = max(floor, cost × 2.75). One formula for all movements.",
+  "movements": [
+    {
+      "key": "miyota_2025",
+      "name": "Miyota 2025",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "eta_2824_2",
+      "name": "ETA 2824-2",
+      "purchase_cost_cents": 12000
+    },
+    {
+      "key": "eta_2892",
+      "name": "ETA 2892",
+      "purchase_cost_cents": 14000
+    },
+    {
+      "key": "eta_7750",
+      "name": "ETA 7750 (Chronograph)",
+      "purchase_cost_cents": 20000
+    },
+    {
+      "key": "sellita_sw200",
+      "name": "Sellita SW200",
+      "purchase_cost_cents": 11500
+    },
+    {
+      "key": "sellita_sw220",
+      "name": "Sellita SW220",
+      "purchase_cost_cents": 13000
+    },
+    {
+      "key": "sellita_sw500",
+      "name": "Sellita SW500 (Chronograph)",
+      "purchase_cost_cents": 19000
+    },
+    {
+      "key": "miyota_9015",
+      "name": "Miyota 9015",
+      "purchase_cost_cents": 9000
+    },
+    {
+      "key": "miyota_8215",
+      "name": "Miyota 8215",
+      "purchase_cost_cents": 6000
+    },
+    {
+      "key": "seiko_nh35",
+      "name": "Seiko NH35",
+      "purchase_cost_cents": 5500
+    },
+    {
+      "key": "seiko_6r15",
+      "name": "Seiko 6R15",
+      "purchase_cost_cents": 10000
+    },
+    {
+      "key": "seiko_7s26",
+      "name": "Seiko 7S26",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "generic_3hand",
+      "name": "Generic 3-hand mechanical",
+      "purchase_cost_cents": 8000
+    },
+    {
+      "key": "generic_chrono",
+      "name": "Generic chronograph",
+      "purchase_cost_cents": 18000
+    },
+    {
+      "key": "eta_955_112",
+      "name": "ETA 955.112",
+      "purchase_cost_cents": 5474
+    },
+    {
+      "key": "eta_955_412",
+      "name": "ETA 955.412",
+      "purchase_cost_cents": 9377
+    },
+    {
+      "key": "eta_vk63",
+      "name": "ETA VK63",
+      "purchase_cost_cents": 6881
+    },
+    {
+      "key": "eta_vx32",
+      "name": "ETA VX32",
+      "purchase_cost_cents": 1231
+    },
+    {
+      "key": "miyota_2035",
+      "name": "Miyota 2035",
+      "purchase_cost_cents": 689
+    },
+    {
+      "key": "miyota_os20",
+      "name": "Miyota OS20",
+      "purchase_cost_cents": 1599
+    },
+    {
+      "key": "ronda_505",
+      "name": "Ronda 505",
+      "purchase_cost_cents": 2119
+    },
+    {
+      "key": "ronda_515",
+      "name": "Ronda 515",
+      "purchase_cost_cents": 2679
+    },
+    {
+      "key": "ronda_ronda_505",
+      "name": "Ronda RONDA 505",
+      "purchase_cost_cents": 809
+    },
+    {
+      "key": "ronda_ronda_515",
+      "name": "Ronda RONDA 515",
+      "purchase_cost_cents": 3397
+    },
+    {
+      "key": "seiko_hattori_epson_vx12",
+      "name": "Seiko/Hattori/Epson VX12",
+      "purchase_cost_cents": 761
+    },
+    {
+      "key": "seiko_hattori_epson_vx32",
+      "name": "Seiko/Hattori/Epson VX32",
+      "purchase_cost_cents": 743
+    },
+    {
+      "key": "seiko_tmi_pc21",
+      "name": "Seiko/TMI PC21",
+      "purchase_cost_cents": 7529
+    },
+    {
+      "key": "seiko_tmi_pc32",
+      "name": "Seiko/TMI PC32",
+      "purchase_cost_cents": 740
+    },
+    {
+      "key": "seiko_tmi_vd53",
+      "name": "Seiko/TMI VD53",
+      "purchase_cost_cents": 2959
+    },
+    {
+      "key": "seiko_tmi_vd54",
+      "name": "Seiko/TMI VD54",
+      "purchase_cost_cents": 7851
+    },
+    {
+      "key": "seiko_tmi_vk63",
+      "name": "Seiko/TMI VK63",
+      "purchase_cost_cents": 959
+    },
+    {
+      "key": "seiko_tmi_vk64",
+      "name": "Seiko/TMI VK64",
+      "purchase_cost_cents": 5878
+    },
+    {
+      "key": "labanda_eta_e210_001",
+      "name": "ETA E210.001",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e251_242_rd4_phase_out",
+      "name": "ETA E251.242-RD4 *(Phase Out)*",
+      "purchase_cost_cents": 14950
+    },
+    {
+      "key": "labanda_eta_e251_264_rd4_special_order",
+      "name": "ETA E251.264-RD4 *(Special Order)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e251_265_phased_out",
+      "name": "ETA E251.265 *(Phased Out)*",
+      "purchase_cost_cents": 22500
+    },
+    {
+      "key": "labanda_eta_e251_272_rd4",
+      "name": "ETA E251.272-RD4",
+      "purchase_cost_cents": 22000
+    },
+    {
+      "key": "labanda_eta_e251_274_rd4",
+      "name": "ETA E251.274-RD4",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e251_474_rd4_phase_out",
+      "name": "ETA E251.474-RD4 *(Phase Out)*",
+      "purchase_cost_cents": 19500
+    },
+    {
+      "key": "labanda_eta_e256_041",
+      "name": "ETA E256.041",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e280_002",
+      "name": "ETA E280.002",
+      "purchase_cost_cents": 11450
+    },
+    {
+      "key": "labanda_eta_e282_001",
+      "name": "ETA E282.001",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e282_002_disc",
+      "name": "ETA E282.002 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e2824_2",
+      "name": "ETA E2824-2",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e2836_2",
+      "name": "ETA E2836/2",
+      "purchase_cost_cents": 58850
+    },
+    {
+      "key": "labanda_eta_e2893_2_special_order",
+      "name": "ETA E2893/2 *(Special Order)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e6497_1",
+      "name": "ETA E6497-1",
+      "purchase_cost_cents": 59500
+    },
+    {
+      "key": "labanda_eta_e7750",
+      "name": "ETA E7750",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e7753",
+      "name": "ETA E7753",
+      "purchase_cost_cents": 65000
+    },
+    {
+      "key": "labanda_eta_e801_104_phase_out",
+      "name": "ETA E801.104 *(Phase Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e802_002",
+      "name": "ETA E802.002",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_eta_e802_102",
+      "name": "ETA E802.102",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_eta_e803_112_d3",
+      "name": "ETA E803.112-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e803_114_d6",
+      "name": "ETA E803.114-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e803_124",
+      "name": "ETA E803.124",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e804_112_d3",
+      "name": "ETA E804.112-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e804_114_d3",
+      "name": "ETA E804.114-D3",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_eta_e804_114_d6",
+      "name": "ETA E804.114-D6",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_eta_e804_124_phase_out",
+      "name": "ETA E804.124 *(Phase Out)*",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_eta_e805_112_d3",
+      "name": "ETA E805.112-D3",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_eta_e805_112_d6_phased_out",
+      "name": "ETA E805.112-D6 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e805_114_d6",
+      "name": "ETA E805.114-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e805_124_dd3",
+      "name": "ETA E805.124-DD3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e805_161_d3",
+      "name": "ETA E805.161 D3",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_eta_e901_001",
+      "name": "ETA E901.001",
+      "purchase_cost_cents": 7600
+    },
+    {
+      "key": "labanda_eta_e901_005_disc",
+      "name": "ETA E901.005 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_002",
+      "name": "ETA E902.002",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_005",
+      "name": "ETA E902.005",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_101",
+      "name": "ETA E902.101",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_505_phase_out",
+      "name": "ETA E902.505 *(Phase Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e955_112_d3",
+      "name": "ETA E955.112-D3",
+      "purchase_cost_cents": 142
+    },
+    {
+      "key": "labanda_eta_e955_112_d3_2h_phase_out",
+      "name": "ETA E955.112-D3-2H *(Phase Out)*",
+      "purchase_cost_cents": 142
+    },
+    {
+      "key": "labanda_eta_e955_112_d6_disc",
+      "name": "ETA E955.112-D6 *(Disc)*",
+      "purchase_cost_cents": 142
+    },
+    {
+      "key": "labanda_eta_e955_122_disc",
+      "name": "ETA E955.122 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e955_132_phased_out",
+      "name": "ETA E955.132 *(Phased Out)*",
+      "purchase_cost_cents": 6450
+    },
+    {
+      "key": "labanda_eta_e955_412_d3_disc",
+      "name": "ETA E955.412-D3 *(Disc)*",
+      "purchase_cost_cents": 539
+    },
+    {
+      "key": "labanda_eta_e955_412_d3_2h_phase_out",
+      "name": "ETA E955.412-D3-2H *(Phase Out)*",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_eta_e955_412_d6_disc",
+      "name": "ETA E955.412-D6 *(Disc)*",
+      "purchase_cost_cents": 539
+    },
+    {
+      "key": "labanda_eta_e955_422_disc",
+      "name": "ETA E955.422 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e955_424",
+      "name": "ETA E955.424",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e956_112_d3_disc",
+      "name": "ETA E956.112-D3 *(Disc)*",
+      "purchase_cost_cents": 4230
+    },
+    {
+      "key": "labanda_eta_e956_112_d3_2h_disc",
+      "name": "ETA E956.112-D3-2H *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e956_112_d6_disc",
+      "name": "ETA E956.112-D6 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e956_122",
+      "name": "ETA E956.122",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_eta_e956_412_d3_disc",
+      "name": "ETA E956.412-D3 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e956_412_d3_2h",
+      "name": "ETA E956.412-D3-2H",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_eta_e956_412_d6_disc",
+      "name": "ETA E956.412-D6 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e956_612_d3_disc",
+      "name": "ETA E956.612-D3 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e976_001",
+      "name": "ETA E976.001",
+      "purchase_cost_cents": 18200
+    },
+    {
+      "key": "labanda_eta_e980_106",
+      "name": "ETA E980.106",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_eta_e980_108_disc",
+      "name": "ETA E980.108 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e980_153",
+      "name": "ETA E980.153",
+      "purchase_cost_cents": 9500
+    },
+    {
+      "key": "labanda_eta_e980_163",
+      "name": "ETA E980.163",
+      "purchase_cost_cents": 10780
+    },
+    {
+      "key": "labanda_eta_ee01_001",
+      "name": "ETA EE01.001",
+      "purchase_cost_cents": 26700
+    },
+    {
+      "key": "labanda_eta_ee03_001",
+      "name": "ETA EE03.001",
+      "purchase_cost_cents": 16000
+    },
+    {
+      "key": "labanda_eta_ee61_041",
+      "name": "ETA EE61.041",
+      "purchase_cost_cents": 9900
+    },
+    {
+      "key": "labanda_eta_ee61_041_d6",
+      "name": "ETA EE61.041-D6",
+      "purchase_cost_cents": 13800
+    },
+    {
+      "key": "labanda_eta_ee61_111_d3ao",
+      "name": "ETA EE61.111-D3AO",
+      "purchase_cost_cents": 9900
+    },
+    {
+      "key": "labanda_eta_ee63_041",
+      "name": "ETA EE63.041",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ee63_111_d3",
+      "name": "ETA EE63.111-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ee63_111_d6",
+      "name": "ETA EE63.111-D6",
+      "purchase_cost_cents": 18500
+    },
+    {
+      "key": "labanda_eta_ee64_111_d3",
+      "name": "ETA EE64.111-D3",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_eta_ee64_111_d6",
+      "name": "ETA EE64.111-D6",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_eta_ef03_111_d3",
+      "name": "ETA EF03.111-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef03_111_d3v1",
+      "name": "ETA EF03.111-D3V1",
+      "purchase_cost_cents": 4750
+    },
+    {
+      "key": "labanda_eta_ef03_111_d6",
+      "name": "ETA EF03.111-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef03_115_d3",
+      "name": "ETA EF03.115-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef03_115_d6",
+      "name": "ETA EF03.115-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef03_11a_d3",
+      "name": "ETA EF03.11A-D3",
+      "purchase_cost_cents": 4750
+    },
+    {
+      "key": "labanda_eta_ef04_111_d3",
+      "name": "ETA EF04.111-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef04_111_d6",
+      "name": "ETA EF04.111-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef04_115_d3",
+      "name": "ETA EF04.115-D3",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef04_115_d6",
+      "name": "ETA EF04.115-D6",
+      "purchase_cost_cents": 4550
+    },
+    {
+      "key": "labanda_eta_ef04_11a_d3",
+      "name": "ETA EF04.11A-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef05_111_d3",
+      "name": "ETA EF05.111-D3",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef05_111_d6",
+      "name": "ETA EF05.111-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef05_115_d3",
+      "name": "ETA EF05.115-D3",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_eta_ef05_115_d6",
+      "name": "ETA EF05.115-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef05_11a_d3",
+      "name": "ETA EF05.11A-D3",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef06_111_d3",
+      "name": "ETA EF06.111-D3",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef06_111_d3a0",
+      "name": "ETA EF06.111-D3A0",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef06_111_d6",
+      "name": "ETA EF06.111-D6",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_ef06_115_d3",
+      "name": "ETA EF06.115-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef06_115_d3_2h",
+      "name": "ETA EF06.115-D3-2H",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef06_115_d6",
+      "name": "ETA EF06.115-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef06_161_d3",
+      "name": "ETA EF06.161-D3",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_eta_ef07_111_d3",
+      "name": "ETA EF07.111-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ef07_115_d3",
+      "name": "ETA EF07.115-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_eg10_212_d3",
+      "name": "ETA EG10.212-D3",
+      "purchase_cost_cents": 9350
+    },
+    {
+      "key": "labanda_eta_eg10_212_d6",
+      "name": "ETA EG10.212-D6",
+      "purchase_cost_cents": 9350
+    },
+    {
+      "key": "labanda_eta_eg10_212_hd4",
+      "name": "ETA EG10.212-HD4",
+      "purchase_cost_cents": 8550
+    },
+    {
+      "key": "labanda_eta_eg10_212_rd4",
+      "name": "ETA EG10.212-RD4",
+      "purchase_cost_cents": 9450
+    },
+    {
+      "key": "labanda_eta_eg10_712_hd4",
+      "name": "ETA EG10.712-HD4",
+      "purchase_cost_cents": 8800
+    },
+    {
+      "key": "labanda_eta_eg10_712_rd4",
+      "name": "ETA EG10.712-RD4",
+      "purchase_cost_cents": 8700
+    },
+    {
+      "key": "labanda_eta_eg15_211_d6",
+      "name": "ETA EG15.211-D6",
+      "purchase_cost_cents": 10450
+    },
+    {
+      "key": "labanda_eta_eg15_211_hd4",
+      "name": "ETA EG15.211-HD4",
+      "purchase_cost_cents": 11200
+    },
+    {
+      "key": "labanda_eta_eg15_212_rd4",
+      "name": "ETA EG15.212-RD4",
+      "purchase_cost_cents": 11200
+    },
+    {
+      "key": "labanda_eta_eg15_261_hd4",
+      "name": "ETA EG15.261-HD4",
+      "purchase_cost_cents": 11850
+    },
+    {
+      "key": "labanda_eta_eg15_562be",
+      "name": "ETA EG15.562BE",
+      "purchase_cost_cents": 14850
+    },
+    {
+      "key": "labanda_eta_p7001",
+      "name": "ETA P7001",
+      "purchase_cost_cents": 45650
+    },
+    {
+      "key": "labanda_eta_sw200_1",
+      "name": "ETA SW200-1",
+      "purchase_cost_cents": 41500
+    },
+    {
+      "key": "labanda_fe_fe5820plate",
+      "name": "FE5820PLATE",
+      "purchase_cost_cents": 1060
+    },
+    {
+      "key": "labanda_fe_fe6120_disc",
+      "name": "FE6120 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_fe_fe6130",
+      "name": "FE6130",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_fe_fe7021",
+      "name": "FE7021",
+      "purchase_cost_cents": 3550
+    },
+    {
+      "key": "labanda_fe_fe7022",
+      "name": "FE7022",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_fe_fe7122",
+      "name": "FE7122",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_fe_fe7221",
+      "name": "FE7221",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_seiko_tmi_h1e20",
+      "name": "Seiko/TMI H1E20",
+      "purchase_cost_cents": 5200
+    },
+    {
+      "key": "labanda_seiko_tmi_h1f20",
+      "name": "Seiko/TMI H1F20",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_seiko_tmi_h1f21",
+      "name": "Seiko/TMI H1F21",
+      "purchase_cost_cents": 5500
+    },
+    {
+      "key": "labanda_seiko_tmi_h1n00",
+      "name": "Seiko/TMI H1N00",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_seiko_tmi_h1n01",
+      "name": "Seiko/TMI H1N01",
+      "purchase_cost_cents": 3550
+    },
+    {
+      "key": "labanda_seiko_tmi_h6n22",
+      "name": "Seiko/TMI H6N22",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n00",
+      "name": "Seiko/TMI H7N00",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n01",
+      "name": "Seiko/TMI H7N01",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n32_d3",
+      "name": "Seiko/TMI H7N32-D3",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n32_d6",
+      "name": "Seiko/TMI H7N32-D6",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n33",
+      "name": "Seiko/TMI H7N33",
+      "purchase_cost_cents": 3100
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n39_d3",
+      "name": "Seiko/TMI H7N39-D3",
+      "purchase_cost_cents": 6600
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n42",
+      "name": "Seiko/TMI H7N42",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n43",
+      "name": "Seiko/TMI H7N43",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n82",
+      "name": "Seiko/TMI H7N82",
+      "purchase_cost_cents": 3200
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n83_d3d3",
+      "name": "Seiko/TMI H7N83-D3D3",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7n89",
+      "name": "Seiko/TMI H7N89",
+      "purchase_cost_cents": 3050
+    },
+    {
+      "key": "labanda_seiko_tmi_h7t62_disc",
+      "name": "Seiko/TMI H7T62 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_h7t82",
+      "name": "Seiko/TMI H7T82",
+      "purchase_cost_cents": 18700
+    },
+    {
+      "key": "labanda_seiko_tmi_hal20_disc",
+      "name": "Seiko/TMI HAL20 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hal21f1",
+      "name": "Seiko/TMI HAL21F1",
+      "purchase_cost_cents": 350
+    },
+    {
+      "key": "labanda_seiko_tmi_hal32",
+      "name": "Seiko/TMI HAL32",
+      "purchase_cost_cents": 484
+    },
+    {
+      "key": "labanda_seiko_tmi_hal33_disc",
+      "name": "Seiko/TMI HAL33 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hal35e_disc",
+      "name": "Seiko/TMI HAL35E *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hal55_disc",
+      "name": "Seiko/TMI HAL55 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hal82",
+      "name": "Seiko/TMI HAL82",
+      "purchase_cost_cents": 495
+    },
+    {
+      "key": "labanda_seiko_tmi_hal83",
+      "name": "Seiko/TMI HAL83",
+      "purchase_cost_cents": 595
+    },
+    {
+      "key": "labanda_seiko_tmi_has32a_d3",
+      "name": "Seiko/TMI HAS32A-D3",
+      "purchase_cost_cents": 1895
+    },
+    {
+      "key": "labanda_seiko_tmi_hax32a_d3",
+      "name": "Seiko/TMI HAX32A-D3",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hax33",
+      "name": "Seiko/TMI HAX33",
+      "purchase_cost_cents": 625
+    },
+    {
+      "key": "labanda_seiko_tmi_hnh15_disc",
+      "name": "Seiko/TMI HNH15 *(Disc)*",
+      "purchase_cost_cents": 10000
+    },
+    {
+      "key": "labanda_seiko_tmi_hnh35",
+      "name": "Seiko/TMI HNH35",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_seiko_tmi_hnh70a",
+      "name": "Seiko/TMI HNH70A",
+      "purchase_cost_cents": 9500
+    },
+    {
+      "key": "labanda_seiko_tmi_hnh71a",
+      "name": "Seiko/TMI HNH71A",
+      "purchase_cost_cents": 9500
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc10a",
+      "name": "Seiko/TMI HPC10A",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc11",
+      "name": "Seiko/TMI HPC11",
+      "purchase_cost_cents": 715
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc20_s",
+      "name": "Seiko/TMI HPC20-S",
+      "purchase_cost_cents": 500
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc21af_disc",
+      "name": "Seiko/TMI HPC21AF *(Disc)*",
+      "purchase_cost_cents": 500
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc21j",
+      "name": "Seiko/TMI HPC21J",
+      "purchase_cost_cents": 459
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc22a",
+      "name": "Seiko/TMI HPC22A",
+      "purchase_cost_cents": 450
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc22a_d6",
+      "name": "Seiko/TMI HPC22A-D6",
+      "purchase_cost_cents": 450
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc23",
+      "name": "Seiko/TMI HPC23",
+      "purchase_cost_cents": 540
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc29m",
+      "name": "Seiko/TMI HPC29M",
+      "purchase_cost_cents": 730
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc32",
+      "name": "Seiko/TMI HPC32",
+      "purchase_cost_cents": 440
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc32a_d6",
+      "name": "Seiko/TMI HPC32A-D6",
+      "purchase_cost_cents": 440
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc33",
+      "name": "Seiko/TMI HPC33",
+      "purchase_cost_cents": 600
+    },
+    {
+      "key": "labanda_seiko_tmi_hpc39",
+      "name": "Seiko/TMI HPC39",
+      "purchase_cost_cents": 935
+    },
+    {
+      "key": "labanda_seiko_tmi_hv021",
+      "name": "Seiko/TMI HV021",
+      "purchase_cost_cents": 2950
+    },
+    {
+      "key": "labanda_seiko_tmi_hv041_25",
+      "name": "Seiko/TMI HV041 25",
+      "purchase_cost_cents": 5700
+    },
+    {
+      "key": "labanda_seiko_tmi_hv172",
+      "name": "Seiko/TMI HV172",
+      "purchase_cost_cents": 18000
+    },
+    {
+      "key": "labanda_seiko_tmi_hv501_disc",
+      "name": "Seiko/TMI HV501 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hv532_24",
+      "name": "Seiko/TMI HV532-24",
+      "purchase_cost_cents": 4920
+    },
+    {
+      "key": "labanda_seiko_tmi_hv657_20_disc",
+      "name": "Seiko/TMI HV657-20 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hv810_10",
+      "name": "Seiko/TMI HV810-10",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_seiko_tmi_hv810_20",
+      "name": "Seiko/TMI HV810-20",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_seiko_tmi_hv811",
+      "name": "Seiko/TMI HV811",
+      "purchase_cost_cents": 2400
+    },
+    {
+      "key": "labanda_seiko_tmi_hvb20b_disc",
+      "name": "Seiko/TMI HVB20B *(Disc)*",
+      "purchase_cost_cents": 2550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvc00",
+      "name": "Seiko/TMI HVC00",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_seiko_tmi_hvc01",
+      "name": "Seiko/TMI HVC01",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvc10f2",
+      "name": "Seiko/TMI HVC10F2",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvc10g2",
+      "name": "Seiko/TMI HVC10G2",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvc11f",
+      "name": "Seiko/TMI HVC11F",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd31",
+      "name": "Seiko/TMI HVD31",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd32",
+      "name": "Seiko/TMI HVD32",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd34",
+      "name": "Seiko/TMI HVD34",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd35",
+      "name": "Seiko/TMI HVD35",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd51c",
+      "name": "Seiko/TMI HVD51C",
+      "purchase_cost_cents": 1680
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd52",
+      "name": "Seiko/TMI HVD52",
+      "purchase_cost_cents": 1680
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd53b_disc",
+      "name": "Seiko/TMI HVD53B *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd53cd4",
+      "name": "Seiko/TMI HVD53CD4",
+      "purchase_cost_cents": 1680
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd53cd6",
+      "name": "Seiko/TMI HVD53CD6",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd54c",
+      "name": "Seiko/TMI HVD54C",
+      "purchase_cost_cents": 2050
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd55",
+      "name": "Seiko/TMI HVD55",
+      "purchase_cost_cents": 1550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd56",
+      "name": "Seiko/TMI HVD56",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd57c",
+      "name": "Seiko/TMI HVD57C",
+      "purchase_cost_cents": 2050
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd75a",
+      "name": "Seiko/TMI HVD75A",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd76",
+      "name": "Seiko/TMI HVD76",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd77",
+      "name": "Seiko/TMI HVD77",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd78_phased_out",
+      "name": "Seiko/TMI HVD78 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd79",
+      "name": "Seiko/TMI HVD79",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd85",
+      "name": "Seiko/TMI HVD85",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd86a_special_order",
+      "name": "Seiko/TMI HVD86A *(Special Order)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd87",
+      "name": "Seiko/TMI HVD87",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_seiko_tmi_hve00",
+      "name": "Seiko/TMI HVE00",
+      "purchase_cost_cents": 3350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvh63",
+      "name": "Seiko/TMI HVH63",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_seiko_tmi_hvh64",
+      "name": "Seiko/TMI HVH64",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_seiko_tmi_hvh67",
+      "name": "Seiko/TMI HVH67",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj12",
+      "name": "Seiko/TMI HVJ12",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj12_d6",
+      "name": "Seiko/TMI HVJ12-D6",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj20c",
+      "name": "Seiko/TMI HVJ20C",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj21c",
+      "name": "Seiko/TMI HVJ21C",
+      "purchase_cost_cents": 459
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj22_special_order",
+      "name": "Seiko/TMI HVJ22 *(Special Order)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj22b_d6",
+      "name": "Seiko/TMI HVJ22B-D6",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj23b_d3d3",
+      "name": "Seiko/TMI HVJ23B-D3D3",
+      "purchase_cost_cents": 780
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj32",
+      "name": "Seiko/TMI HVJ32",
+      "purchase_cost_cents": 570
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj32_d6",
+      "name": "Seiko/TMI HVJ32-D6",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj33b",
+      "name": "Seiko/TMI HVJ33B",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj34",
+      "name": "Seiko/TMI HVJ34",
+      "purchase_cost_cents": 580
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj42_d6",
+      "name": "Seiko/TMI HVJ42-D6",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj42b_d3",
+      "name": "Seiko/TMI HVJ42B-D3",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj43b",
+      "name": "Seiko/TMI HVJ43B",
+      "purchase_cost_cents": 994
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj45",
+      "name": "Seiko/TMI HVJ45",
+      "purchase_cost_cents": 994
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj52",
+      "name": "Seiko/TMI HVJ52",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj53b",
+      "name": "Seiko/TMI HVJ53B",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_seiko_tmi_hvj76a",
+      "name": "Seiko/TMI HVJ76A",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvk63a",
+      "name": "Seiko/TMI HVK63A",
+      "purchase_cost_cents": 3550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvk64ad6",
+      "name": "Seiko/TMI HVK64AD6",
+      "purchase_cost_cents": 4250
+    },
+    {
+      "key": "labanda_seiko_tmi_hvk67a_d3",
+      "name": "Seiko/TMI HVK67A-D3",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_seiko_tmi_hvl58a",
+      "name": "Seiko/TMI HVL58A",
+      "purchase_cost_cents": 1210
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr32a",
+      "name": "Seiko/TMI HVR32A",
+      "purchase_cost_cents": 1850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr32b_d4",
+      "name": "Seiko/TMI HVR32B-D4",
+      "purchase_cost_cents": 1850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr33a",
+      "name": "Seiko/TMI HVR33A",
+      "purchase_cost_cents": 1700
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr33b",
+      "name": "Seiko/TMI HVR33B",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr3gb",
+      "name": "Seiko/TMI HVR3GB",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr42a",
+      "name": "Seiko/TMI HVR42A",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvr42b",
+      "name": "Seiko/TMI HVR42B",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvs32a",
+      "name": "Seiko/TMI HVS32A",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvs37m",
+      "name": "Seiko/TMI HVS37M",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvs43",
+      "name": "Seiko/TMI HVS43",
+      "purchase_cost_cents": 3900
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx00",
+      "name": "Seiko/TMI HVX00",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx01",
+      "name": "Seiko/TMI HVX01",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx01_b2",
+      "name": "Seiko/TMI HVX01-B2",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx10",
+      "name": "Seiko/TMI HVX10",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx11b",
+      "name": "Seiko/TMI HVX11B",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx12",
+      "name": "Seiko/TMI HVX12",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx13",
+      "name": "Seiko/TMI HVX13",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx18",
+      "name": "Seiko/TMI HVX18",
+      "purchase_cost_cents": 3200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx19m_phased_out",
+      "name": "Seiko/TMI HVX19M *(Phased Out)*",
+      "purchase_cost_cents": 1290
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx32e_d3",
+      "name": "Seiko/TMI HVX32E-D3",
+      "purchase_cost_cents": 560
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx32e_d6",
+      "name": "Seiko/TMI HVX32E-D6",
+      "purchase_cost_cents": 590
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx33e_d3d3",
+      "name": "Seiko/TMI HVX33E-D3D3",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx36",
+      "name": "Seiko/TMI HVX36",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx38",
+      "name": "Seiko/TMI HVX38",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3fa",
+      "name": "Seiko/TMI HVX3FA",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3ga",
+      "name": "Seiko/TMI HVX3GA",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3ha",
+      "name": "Seiko/TMI HVX3HA",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3j",
+      "name": "Seiko/TMI HVX3J",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3k_d3",
+      "name": "Seiko/TMI HVX3K-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3k_d6",
+      "name": "Seiko/TMI HVX3K-D6",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3ke",
+      "name": "Seiko/TMI HVX3KE",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3l",
+      "name": "Seiko/TMI HVX3L",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3m",
+      "name": "Seiko/TMI HVX3M",
+      "purchase_cost_cents": 1400
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3n",
+      "name": "Seiko/TMI HVX3N",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3p",
+      "name": "Seiko/TMI HVX3P",
+      "purchase_cost_cents": 1480
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3r",
+      "name": "Seiko/TMI HVX3R",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3s",
+      "name": "Seiko/TMI HVX3S",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3te",
+      "name": "Seiko/TMI HVX3TE",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx42_d6",
+      "name": "Seiko/TMI HVX42-D6",
+      "purchase_cost_cents": 944
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx42a2",
+      "name": "Seiko/TMI HVX42A2",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx42e_d3v1",
+      "name": "Seiko/TMI HVX42E-D3V1",
+      "purchase_cost_cents": 680
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx42e1",
+      "name": "Seiko/TMI HVX42E1",
+      "purchase_cost_cents": 680
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx43e_d3d3v1",
+      "name": "Seiko/TMI HVX43E-D3D3V1",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx44",
+      "name": "Seiko/TMI HVX44",
+      "purchase_cost_cents": 795
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx46",
+      "name": "Seiko/TMI HVX46",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx50",
+      "name": "Seiko/TMI HVX50",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx51_e3",
+      "name": "Seiko/TMI HVX51-E3",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx51e",
+      "name": "Seiko/TMI HVX51E",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx62e",
+      "name": "Seiko/TMI HVX62E",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx63e",
+      "name": "Seiko/TMI HVX63E",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx7je",
+      "name": "Seiko/TMI HVX7JE",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx7n",
+      "name": "Seiko/TMI HVX7N",
+      "purchase_cost_cents": 1260
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx7pe",
+      "name": "Seiko/TMI HVX7PE",
+      "purchase_cost_cents": 1260
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx82_d6",
+      "name": "Seiko/TMI HVX82-D6",
+      "purchase_cost_cents": 590
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx82e_d3",
+      "name": "Seiko/TMI HVX82E-D3",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx83",
+      "name": "Seiko/TMI HVX83",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx83_e3",
+      "name": "Seiko/TMI HVX83-E3",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx89_d6",
+      "name": "Seiko/TMI HVX89-D6",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx89e_d3",
+      "name": "Seiko/TMI HVX89E-D3",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx9je",
+      "name": "Seiko/TMI HVX9JE",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx9ne",
+      "name": "Seiko/TMI HVX9NE",
+      "purchase_cost_cents": 1260
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx9pe",
+      "name": "Seiko/TMI HVX9PE",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_seiko_tmi_hy120f1",
+      "name": "Seiko/TMI HY120F1",
+      "purchase_cost_cents": 350
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121_fr",
+      "name": "Seiko/TMI HY121 FR",
+      "purchase_cost_cents": 690
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f1",
+      "name": "Seiko/TMI HY121F1",
+      "purchase_cost_cents": 395
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f2",
+      "name": "Seiko/TMI HY121F2",
+      "purchase_cost_cents": 540
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f3",
+      "name": "Seiko/TMI HY121F3",
+      "purchase_cost_cents": 440
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f4",
+      "name": "Seiko/TMI HY121F4",
+      "purchase_cost_cents": 540
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f5",
+      "name": "Seiko/TMI HY121F5",
+      "purchase_cost_cents": 500
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121f6",
+      "name": "Seiko/TMI HY121F6",
+      "purchase_cost_cents": 500
+    },
+    {
+      "key": "labanda_seiko_tmi_hy121g",
+      "name": "Seiko/TMI HY121G",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_seiko_tmi_hy799",
+      "name": "Seiko/TMI HY799",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_seiko_tmi_hyl50",
+      "name": "Seiko/TMI HYL50",
+      "purchase_cost_cents": 5250
+    },
+    {
+      "key": "labanda_seiko_tmi_hyl61",
+      "name": "Seiko/TMI HYL61",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_seiko_tmi_hym26",
+      "name": "Seiko/TMI HYM26",
+      "purchase_cost_cents": 4050
+    },
+    {
+      "key": "labanda_seiko_tmi_hym62",
+      "name": "Seiko/TMI HYM62",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_seiko_tmi_hym82",
+      "name": "Seiko/TMI HYM82",
+      "purchase_cost_cents": 5350
+    },
+    {
+      "key": "labanda_seiko_tmi_hym92",
+      "name": "Seiko/TMI HYM92",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_seiko_tmi_hyr67",
+      "name": "Seiko/TMI HYR67",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_isa_isa_2320_103",
+      "name": "ISA 2320.103",
+      "purchase_cost_cents": 5850
+    },
+    {
+      "key": "labanda_isa_isa_2331_103_phased_out",
+      "name": "ISA 2331/103 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_isa_isa_307_104_d6",
+      "name": "ISA 307.104 D6",
+      "purchase_cost_cents": 8300
+    },
+    {
+      "key": "labanda_isa_isa_307_40_dd6",
+      "name": "ISA 307.40 DD6",
+      "purchase_cost_cents": 8700
+    },
+    {
+      "key": "labanda_isa_isa_336_101",
+      "name": "ISA 336/101",
+      "purchase_cost_cents": 6000
+    },
+    {
+      "key": "labanda_isa_isa_389_101",
+      "name": "ISA 389/101",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_isa_isa_389_103",
+      "name": "ISA 389/103",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_isa_isa_638_101",
+      "name": "ISA 638/101",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_isa_isa_8154_201_d6",
+      "name": "ISA 8154/201-D6",
+      "purchase_cost_cents": 5300
+    },
+    {
+      "key": "labanda_isa_isa_8162_d6",
+      "name": "ISA 8162-D6",
+      "purchase_cost_cents": 5300
+    },
+    {
+      "key": "labanda_isa_isa_8172_220",
+      "name": "ISA 8172/220",
+      "purchase_cost_cents": 9800
+    },
+    {
+      "key": "labanda_isa_isa_8174_201",
+      "name": "ISA 8174/201",
+      "purchase_cost_cents": 7500
+    },
+    {
+      "key": "labanda_isa_isa_8174_220",
+      "name": "ISA 8174/220",
+      "purchase_cost_cents": 7500
+    },
+    {
+      "key": "labanda_isa_isa_8272",
+      "name": "ISA 8272",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_isa_isa_9238_1970",
+      "name": "ISA 9238/1970",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_isa_isa_k83_103",
+      "name": "ISA K83/103",
+      "purchase_cost_cents": 3450
+    },
+    {
+      "key": "labanda_miyota_m0t45",
+      "name": "Miyota M0T45",
+      "purchase_cost_cents": 1550
+    },
+    {
+      "key": "labanda_miyota_m1102",
+      "name": "Miyota M1102",
+      "purchase_cost_cents": 2500
+    },
+    {
+      "key": "labanda_miyota_m1l02_disc",
+      "name": "Miyota M1L02 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l12_disc",
+      "name": "Miyota M1L12 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l12_d6_disc",
+      "name": "Miyota M1L12-D6 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l15",
+      "name": "Miyota M1L15",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m1l22_disc",
+      "name": "Miyota M1L22 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l26_disc",
+      "name": "Miyota M1L26 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l32_disc",
+      "name": "Miyota M1L32 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1l40",
+      "name": "Miyota M1L40",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m1l45",
+      "name": "Miyota M1L45",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_miyota_m1m02_disc",
+      "name": "Miyota M1M02 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1m12_disc",
+      "name": "Miyota M1M12 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1m12_d6_disc",
+      "name": "Miyota M1M12-D6 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1m15",
+      "name": "Miyota M1M15",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_miyota_m1m50",
+      "name": "Miyota M1M50",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_m1n12_d3_phased_out",
+      "name": "Miyota M1N12-D3 *(Phased Out)*",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_m1n12_d6_disc",
+      "name": "Miyota M1N12-D6 *(Disc)*",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_miyota_m1s02_phased_out",
+      "name": "Miyota M1S02 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1s12_disc",
+      "name": "Miyota M1S12 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m1s13",
+      "name": "Miyota M1S13",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_miyota_m1s13_d6",
+      "name": "Miyota M1S13-D6",
+      "purchase_cost_cents": 1550
+    },
+    {
+      "key": "labanda_miyota_m2005",
+      "name": "Miyota M2005",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m2015",
+      "name": "Miyota M2015",
+      "purchase_cost_cents": 780
+    },
+    {
+      "key": "labanda_miyota_m2015_d6",
+      "name": "Miyota M2015-D6",
+      "purchase_cost_cents": 780
+    },
+    {
+      "key": "labanda_miyota_m2025",
+      "name": "Miyota M2025",
+      "purchase_cost_cents": 430
+    },
+    {
+      "key": "labanda_miyota_m2033",
+      "name": "Miyota M2033",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_miyota_m2034",
+      "name": "Miyota M2034",
+      "purchase_cost_cents": 560
+    },
+    {
+      "key": "labanda_miyota_m2035",
+      "name": "Miyota M2035",
+      "purchase_cost_cents": 450
+    },
+    {
+      "key": "labanda_miyota_m2036",
+      "name": "Miyota M2036",
+      "purchase_cost_cents": 484
+    },
+    {
+      "key": "labanda_miyota_m2039",
+      "name": "Miyota M2039",
+      "purchase_cost_cents": 550
+    },
+    {
+      "key": "labanda_miyota_m2105",
+      "name": "Miyota M2105",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m2115_d3",
+      "name": "Miyota M2115-D3",
+      "purchase_cost_cents": 670
+    },
+    {
+      "key": "labanda_miyota_m2115_d6",
+      "name": "Miyota M2115-D6",
+      "purchase_cost_cents": 695
+    },
+    {
+      "key": "labanda_miyota_m213d",
+      "name": "Miyota M213D",
+      "purchase_cost_cents": 1400
+    },
+    {
+      "key": "labanda_miyota_m2305_d3d3",
+      "name": "Miyota M2305-D3D3",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m2315",
+      "name": "Miyota M2315",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m2315_d6",
+      "name": "Miyota M2315-D6",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_m2405_d3d3",
+      "name": "Miyota M2405-D3D3",
+      "purchase_cost_cents": 955
+    },
+    {
+      "key": "labanda_miyota_m2415",
+      "name": "Miyota M2415",
+      "purchase_cost_cents": 770
+    },
+    {
+      "key": "labanda_miyota_m2417",
+      "name": "Miyota M2417",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_miyota_m2500",
+      "name": "Miyota M2500",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m2510",
+      "name": "Miyota M2510",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_miyota_m2f00_disc",
+      "name": "Miyota M2F00 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m2f10_disc",
+      "name": "Miyota M2F10 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m2s60",
+      "name": "Miyota M2S60",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_miyota_m3s10",
+      "name": "Miyota M3S10",
+      "purchase_cost_cents": 6800
+    },
+    {
+      "key": "labanda_miyota_m3t30",
+      "name": "Miyota M3T30",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_miyota_m5500",
+      "name": "Miyota M5500",
+      "purchase_cost_cents": 4800
+    },
+    {
+      "key": "labanda_miyota_m5920",
+      "name": "Miyota M5920",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m5930",
+      "name": "Miyota M5930",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_miyota_m5r21",
+      "name": "Miyota M5R21",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_miyota_m5r22",
+      "name": "Miyota M5R22",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_miyota_m5r32",
+      "name": "Miyota M5R32",
+      "purchase_cost_cents": 3900
+    },
+    {
+      "key": "labanda_miyota_m5y20",
+      "name": "Miyota M5Y20",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_miyota_m5y30",
+      "name": "Miyota M5Y30",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_miyota_m6l02_disc",
+      "name": "Miyota M6L02 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m6l12_disc",
+      "name": "Miyota M6L12 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m6l40",
+      "name": "Miyota M6L40",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_miyota_m6l90",
+      "name": "Miyota M6L90",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_miyota_m6m02_disc",
+      "name": "Miyota M6M02 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m6m12_disc",
+      "name": "Miyota M6M12 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m6m12_d6_phased_out",
+      "name": "Miyota M6M12-D6 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_m6m17",
+      "name": "Miyota M6M17",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_miyota_m6m55",
+      "name": "Miyota M6M55",
+      "purchase_cost_cents": 5100
+    },
+    {
+      "key": "labanda_miyota_m6m85",
+      "name": "Miyota M6M85",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_miyota_m6m90",
+      "name": "Miyota M6M90",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_miyota_m6p00",
+      "name": "Miyota M6P00",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_miyota_m6p05",
+      "name": "Miyota M6P05",
+      "purchase_cost_cents": 3300
+    },
+    {
+      "key": "labanda_miyota_m6p09",
+      "name": "Miyota M6P09",
+      "purchase_cost_cents": 3300
+    },
+    {
+      "key": "labanda_miyota_m6p20",
+      "name": "Miyota M6P20",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_miyota_m6p21",
+      "name": "Miyota M6P21",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_miyota_m6p23",
+      "name": "Miyota M6P23",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p25",
+      "name": "Miyota M6P25",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p26",
+      "name": "Miyota M6P26",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p27",
+      "name": "Miyota M6P27",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p29",
+      "name": "Miyota M6P29",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p73",
+      "name": "Miyota M6P73",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p79",
+      "name": "Miyota M6P79",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p80",
+      "name": "Miyota M6P80",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p89",
+      "name": "Miyota M6P89",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6p90",
+      "name": "Miyota M6P90",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_miyota_m6s20_rd4",
+      "name": "Miyota M6S20-RD4",
+      "purchase_cost_cents": 3750
+    },
+    {
+      "key": "labanda_miyota_m6s21",
+      "name": "Miyota M6S21",
+      "purchase_cost_cents": 4300
+    },
+    {
+      "key": "labanda_miyota_m6t28",
+      "name": "Miyota M6T28",
+      "purchase_cost_cents": 5800
+    },
+    {
+      "key": "labanda_miyota_m7871_disc",
+      "name": "Miyota M7871 *(Disc)*",
+      "purchase_cost_cents": 4900
+    },
+    {
+      "key": "labanda_miyota_m7t35",
+      "name": "Miyota M7T35",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_miyota_m8205_d3d3",
+      "name": "Miyota M8205-D3D3",
+      "purchase_cost_cents": 6100
+    },
+    {
+      "key": "labanda_miyota_m8215",
+      "name": "Miyota M8215",
+      "purchase_cost_cents": 6100
+    },
+    {
+      "key": "labanda_miyota_m8n24",
+      "name": "Miyota M8N24",
+      "purchase_cost_cents": 8350
+    },
+    {
+      "key": "labanda_miyota_m8n24g",
+      "name": "Miyota M8N24G",
+      "purchase_cost_cents": 9550
+    },
+    {
+      "key": "labanda_miyota_m8n33_g",
+      "name": "Miyota M8N33/G",
+      "purchase_cost_cents": 6550
+    },
+    {
+      "key": "labanda_miyota_m9t13_d6",
+      "name": "Miyota M9T13-D6",
+      "purchase_cost_cents": 1490
+    },
+    {
+      "key": "labanda_miyota_m9t15",
+      "name": "Miyota M9T15",
+      "purchase_cost_cents": 1660
+    },
+    {
+      "key": "labanda_miyota_m9t22",
+      "name": "Miyota M9T22",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_miyota_m9t33",
+      "name": "Miyota M9T33",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_miyota_m9u13",
+      "name": "Miyota M9U13",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_miyota_m9u13_d6",
+      "name": "Miyota M9U13 D6",
+      "purchase_cost_cents": 1550
+    },
+    {
+      "key": "labanda_miyota_m9u15",
+      "name": "Miyota M9U15",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_miyota_m9u15_d6",
+      "name": "Miyota M9U15 D6",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_miyota_mb023",
+      "name": "Miyota MB023",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mb033_disc",
+      "name": "Miyota MB033 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mb035",
+      "name": "Miyota MB035",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_miyota_me001",
+      "name": "Miyota ME001",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me011",
+      "name": "Miyota ME011",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me013",
+      "name": "Miyota ME013",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me031",
+      "name": "Miyota ME031",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me101",
+      "name": "Miyota ME101",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me111",
+      "name": "Miyota ME111",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me650",
+      "name": "Miyota ME650",
+      "purchase_cost_cents": 24000
+    },
+    {
+      "key": "labanda_miyota_me860_phased_out",
+      "name": "Miyota ME860 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_me870_phased_out",
+      "name": "Miyota ME870 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mfs00_4",
+      "name": "Miyota MFS00-4",
+      "purchase_cost_cents": 3250
+    },
+    {
+      "key": "labanda_miyota_mfs00_6",
+      "name": "Miyota MFS00-6",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_miyota_mfs01",
+      "name": "Miyota MFS01",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_miyota_mfs10",
+      "name": "Miyota MFS10",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_miyota_mfs13",
+      "name": "Miyota MFS13",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_miyota_mfs20",
+      "name": "Miyota MFS20",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_miyota_mfs21",
+      "name": "Miyota MFS21",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_miyota_mfs60",
+      "name": "Miyota MFS60",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_miyota_mg012",
+      "name": "Miyota MG012",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_miyota_mg111",
+      "name": "Miyota MG111",
+      "purchase_cost_cents": 2500
+    },
+    {
+      "key": "labanda_miyota_mg112",
+      "name": "Miyota MG112",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_miyota_mg620",
+      "name": "Miyota MG620",
+      "purchase_cost_cents": 9000
+    },
+    {
+      "key": "labanda_miyota_mgl00",
+      "name": "Miyota MGL00",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl02",
+      "name": "Miyota MGL02",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl10_disc",
+      "name": "Miyota MGL10 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl10d6",
+      "name": "Miyota MGL10D6",
+      "purchase_cost_cents": 790
+    },
+    {
+      "key": "labanda_miyota_mgl12",
+      "name": "Miyota MGL12",
+      "purchase_cost_cents": 690
+    },
+    {
+      "key": "labanda_miyota_mgl12_d6",
+      "name": "Miyota MGL12-D6",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_miyota_mgl14_d3",
+      "name": "Miyota MGL14 D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl15",
+      "name": "Miyota MGL15",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl17_disc",
+      "name": "Miyota MGL17 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl20",
+      "name": "Miyota MGL20",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl22",
+      "name": "Miyota MGL22",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_miyota_mgl24",
+      "name": "Miyota MGL24",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl26",
+      "name": "Miyota MGL26",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl30_disc",
+      "name": "Miyota MGL30 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl32",
+      "name": "Miyota MGL32",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgl34",
+      "name": "Miyota MGL34",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgl36_phased_out",
+      "name": "Miyota MGL36 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm00_dd3_disc",
+      "name": "Miyota MGM00-DD3 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm00_dd6_phased_out",
+      "name": "Miyota MGM00-DD6 *(Phased Out)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm02_dd3",
+      "name": "Miyota MGM02-DD3",
+      "purchase_cost_cents": 869
+    },
+    {
+      "key": "labanda_miyota_mgm02_dd6",
+      "name": "Miyota MGM02-DD6",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgm10_d3_disc",
+      "name": "Miyota MGM10-D3 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm10_d6_disc",
+      "name": "Miyota MGM10-D6 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm10_hd4_disc",
+      "name": "Miyota MGM10-HD4 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm10_rd4",
+      "name": "Miyota MGM10-RD4",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm12_d3",
+      "name": "Miyota MGM12-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm12_d6",
+      "name": "Miyota MGM12-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm12_hd4",
+      "name": "Miyota MGM12-HD4",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm12_rd4",
+      "name": "Miyota MGM12-RD4",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm13",
+      "name": "Miyota MGM13",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm14_d3",
+      "name": "Miyota MGM14-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm15_d3",
+      "name": "Miyota MGM15-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm15_d6",
+      "name": "Miyota MGM15-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm17",
+      "name": "Miyota MGM17",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgm17_d6",
+      "name": "Miyota MGM17-D6",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgn10_disc",
+      "name": "Miyota MGN10 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgn12",
+      "name": "Miyota MGN12",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgn15_disc",
+      "name": "Miyota MGN15 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgn17",
+      "name": "Miyota MGN17",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgp00_ltd_stock",
+      "name": "Miyota MGP00 *(Ltd Stock)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mgp01",
+      "name": "Miyota MGP01",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_miyota_mgp10",
+      "name": "Miyota MGP10",
+      "purchase_cost_cents": 2950
+    },
+    {
+      "key": "labanda_miyota_mgp11",
+      "name": "Miyota MGP11",
+      "purchase_cost_cents": 2750
+    },
+    {
+      "key": "labanda_miyota_mgr02_d3d3",
+      "name": "Miyota MGR02-D3D3",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_miyota_mh504",
+      "name": "Miyota MH504",
+      "purchase_cost_cents": 9250
+    },
+    {
+      "key": "labanda_miyota_mj800",
+      "name": "Miyota MJ800",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_miyota_mj810",
+      "name": "Miyota MJ810",
+      "purchase_cost_cents": 4900
+    },
+    {
+      "key": "labanda_miyota_mjp15",
+      "name": "Miyota MJP15",
+      "purchase_cost_cents": 3550
+    },
+    {
+      "key": "labanda_miyota_mjr10",
+      "name": "Miyota MJR10",
+      "purchase_cost_cents": 3400
+    },
+    {
+      "key": "labanda_miyota_mjs00",
+      "name": "Miyota MJS00",
+      "purchase_cost_cents": 2400
+    },
+    {
+      "key": "labanda_miyota_mjs10",
+      "name": "Miyota MJS10",
+      "purchase_cost_cents": 2400
+    },
+    {
+      "key": "labanda_miyota_mjs15_d3",
+      "name": "Miyota MJS15-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mjs15_d3_white",
+      "name": "Miyota MJS15-D3-White",
+      "purchase_cost_cents": 2400
+    },
+    {
+      "key": "labanda_miyota_mjs16",
+      "name": "Miyota MJS16",
+      "purchase_cost_cents": 2300
+    },
+    {
+      "key": "labanda_miyota_mjs20",
+      "name": "Miyota MJS20",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_miyota_mjs25_d6",
+      "name": "Miyota MJS25-D6",
+      "purchase_cost_cents": 2130
+    },
+    {
+      "key": "labanda_miyota_mjs25_rd4",
+      "name": "Miyota MJS25-RD4",
+      "purchase_cost_cents": 2130
+    },
+    {
+      "key": "labanda_miyota_mjs26_rd4",
+      "name": "Miyota MJS26-RD4",
+      "purchase_cost_cents": 2130
+    },
+    {
+      "key": "labanda_miyota_mos00",
+      "name": "Miyota MOS00",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_miyota_mos10",
+      "name": "Miyota MOS10",
+      "purchase_cost_cents": 2800
+    },
+    {
+      "key": "labanda_miyota_mos11",
+      "name": "Miyota MOS11",
+      "purchase_cost_cents": 2600
+    },
+    {
+      "key": "labanda_miyota_mos1a_disc_special_order",
+      "name": "Miyota MOS1A *(Disc/Special Order)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mos20",
+      "name": "Miyota MOS20",
+      "purchase_cost_cents": 2620
+    },
+    {
+      "key": "labanda_miyota_mos20m",
+      "name": "Miyota MOS20M",
+      "purchase_cost_cents": 3100
+    },
+    {
+      "key": "labanda_miyota_mos21_d6",
+      "name": "Miyota MOS21-D6",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_miyota_mos21_rd4_5",
+      "name": "Miyota MOS21-RD4.5",
+      "purchase_cost_cents": 2950
+    },
+    {
+      "key": "labanda_miyota_mos2a",
+      "name": "Miyota MOS2A",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_miyota_mos30",
+      "name": "Miyota MOS30",
+      "purchase_cost_cents": 2700
+    },
+    {
+      "key": "labanda_miyota_mos60",
+      "name": "Miyota MOS60",
+      "purchase_cost_cents": 2850
+    },
+    {
+      "key": "labanda_miyota_mos62",
+      "name": "Miyota MOS62",
+      "purchase_cost_cents": 3450
+    },
+    {
+      "key": "labanda_miyota_mos80",
+      "name": "Miyota MOS80",
+      "purchase_cost_cents": 4550
+    },
+    {
+      "key": "labanda_miyota_mos90",
+      "name": "Miyota MOS90",
+      "purchase_cost_cents": 4550
+    },
+    {
+      "key": "labanda_miyota_mou30",
+      "name": "Miyota MOU30",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_miyota_mow50",
+      "name": "Miyota MOW50",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_miyota_mt206",
+      "name": "Miyota MT206",
+      "purchase_cost_cents": 5550
+    },
+    {
+      "key": "labanda_miyota_mt241",
+      "name": "Miyota MT241",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_miyota_mt270",
+      "name": "Miyota MT270",
+      "purchase_cost_cents": 5150
+    },
+    {
+      "key": "labanda_ronda_r1005",
+      "name": "Ronda R1005",
+      "purchase_cost_cents": 15350
+    },
+    {
+      "key": "labanda_ronda_r1006",
+      "name": "Ronda R1006",
+      "purchase_cost_cents": 10500
+    },
+    {
+      "key": "labanda_ronda_r1016",
+      "name": "Ronda R1016",
+      "purchase_cost_cents": 11500
+    },
+    {
+      "key": "labanda_ronda_r1019",
+      "name": "Ronda R1019",
+      "purchase_cost_cents": 9450
+    },
+    {
+      "key": "labanda_ronda_r1032_0",
+      "name": "Ronda R1032-0",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_ronda_r1032_1",
+      "name": "Ronda R1032-1",
+      "purchase_cost_cents": 3620
+    },
+    {
+      "key": "labanda_ronda_r1032_2",
+      "name": "Ronda R1032-2",
+      "purchase_cost_cents": 3690
+    },
+    {
+      "key": "labanda_ronda_r1032_3",
+      "name": "Ronda R1032-3",
+      "purchase_cost_cents": 3729
+    },
+    {
+      "key": "labanda_ronda_r1042",
+      "name": "Ronda R1042",
+      "purchase_cost_cents": 4950
+    },
+    {
+      "key": "labanda_ronda_r1062",
+      "name": "Ronda R1062",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_ronda_r1063",
+      "name": "Ronda R1063",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_ronda_r1064",
+      "name": "Ronda R1064",
+      "purchase_cost_cents": 2880
+    },
+    {
+      "key": "labanda_ronda_r1069",
+      "name": "Ronda R1069",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_ronda_r3540d",
+      "name": "Ronda R3540D",
+      "purchase_cost_cents": 6000
+    },
+    {
+      "key": "labanda_ronda_r4003b",
+      "name": "Ronda R4003B",
+      "purchase_cost_cents": 7500
+    },
+    {
+      "key": "labanda_ronda_r4120bm",
+      "name": "Ronda R4120BM",
+      "purchase_cost_cents": 12200
+    },
+    {
+      "key": "labanda_ronda_r4220bd6",
+      "name": "Ronda R4220BD6",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_ronda_r4310d",
+      "name": "Ronda R4310D",
+      "purchase_cost_cents": 9000
+    },
+    {
+      "key": "labanda_ronda_r5010b",
+      "name": "Ronda R5010B",
+      "purchase_cost_cents": 8350
+    },
+    {
+      "key": "labanda_ronda_r5021d",
+      "name": "Ronda R5021D",
+      "purchase_cost_cents": 5150
+    },
+    {
+      "key": "labanda_ronda_r5030d",
+      "name": "Ronda R5030D",
+      "purchase_cost_cents": 6250
+    },
+    {
+      "key": "labanda_ronda_r5030d_d6_disc",
+      "name": "Ronda R5030D/D6 *(Disc)*",
+      "purchase_cost_cents": 4950
+    },
+    {
+      "key": "labanda_ronda_r5040_bd12",
+      "name": "Ronda R5040-BD12",
+      "purchase_cost_cents": 6000
+    },
+    {
+      "key": "labanda_ronda_r5040b_sa",
+      "name": "Ronda R5040B-SA",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_ronda_r5040d",
+      "name": "Ronda R5040D",
+      "purchase_cost_cents": 6350
+    },
+    {
+      "key": "labanda_ronda_r5040d_sa",
+      "name": "Ronda R5040D-SA",
+      "purchase_cost_cents": 11000
+    },
+    {
+      "key": "labanda_ronda_r505_d3_3h_aig1",
+      "name": "Ronda R505-D3-3H AIG1",
+      "purchase_cost_cents": 1400
+    },
+    {
+      "key": "labanda_ronda_r505_d3_3h_aig2",
+      "name": "Ronda R505-D3-3H AIG2",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_ronda_r505_d3_3h_aig6",
+      "name": "Ronda R505-D3-3H AIG6",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r505_d4_3h_aig1",
+      "name": "Ronda R505-D4-3H AIG1",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_ronda_r505_d4_3h_aig2",
+      "name": "Ronda R505-D4-3H AIG2",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_ronda_r505_d4_3h_aig6",
+      "name": "Ronda R505-D4-3H AIG6",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r505_d4_5_3h_aig1",
+      "name": "Ronda R505-D4.5-3H AIG1",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_ronda_r505_d4_5_3h_aig2",
+      "name": "Ronda R505-D4.5-3H AIG2",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_ronda_r505_d4_5_3h_aig6",
+      "name": "Ronda R505-D4.5-3H AIG6",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r505_d6_3h_a1g1",
+      "name": "Ronda R505-D6-3H A1G1",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_ronda_r505_d6_3h_aig2",
+      "name": "Ronda R505-D6-3H AIG2",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_ronda_r5050b",
+      "name": "Ronda R5050B",
+      "purchase_cost_cents": 8350
+    },
+    {
+      "key": "labanda_ronda_r507_dd3_3h",
+      "name": "Ronda R507-DD3-3H",
+      "purchase_cost_cents": 1700
+    },
+    {
+      "key": "labanda_ronda_r507_2",
+      "name": "Ronda R507/2",
+      "purchase_cost_cents": 2050
+    },
+    {
+      "key": "labanda_ronda_r509",
+      "name": "Ronda R509",
+      "purchase_cost_cents": 2480
+    },
+    {
+      "key": "labanda_ronda_r512",
+      "name": "Ronda R512",
+      "purchase_cost_cents": 1280
+    },
+    {
+      "key": "labanda_ronda_r513",
+      "name": "Ronda R513",
+      "purchase_cost_cents": 1355
+    },
+    {
+      "key": "labanda_ronda_r5130d",
+      "name": "Ronda R5130D",
+      "purchase_cost_cents": 6400
+    },
+    {
+      "key": "labanda_ronda_r515_d3_3h",
+      "name": "Ronda R515-D3-3H",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_ronda_r515_d6_3h",
+      "name": "Ronda R515-D6-3H",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_ronda_r517_dd3_3h",
+      "name": "Ronda R517-DD3-3H",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_ronda_r517_2",
+      "name": "Ronda R517/2",
+      "purchase_cost_cents": 4750
+    },
+    {
+      "key": "labanda_ronda_r519",
+      "name": "Ronda R519",
+      "purchase_cost_cents": 3350
+    },
+    {
+      "key": "labanda_ronda_r519_d6",
+      "name": "Ronda R519-D6",
+      "purchase_cost_cents": 2450
+    },
+    {
+      "key": "labanda_ronda_r585_d3_3h",
+      "name": "Ronda R585-D3-3H",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_ronda_r585_d6_3h",
+      "name": "Ronda R585-D6-3H",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_ronda_r6003b",
+      "name": "Ronda R6003B",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_ronda_r6003d",
+      "name": "Ronda R6003D",
+      "purchase_cost_cents": 4950
+    },
+    {
+      "key": "labanda_ronda_r6004b_d6",
+      "name": "Ronda R6004B D6",
+      "purchase_cost_cents": 6780
+    },
+    {
+      "key": "labanda_ronda_r6004d_d3",
+      "name": "Ronda R6004D-D3",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_ronda_r702",
+      "name": "Ronda R702",
+      "purchase_cost_cents": 1930
+    },
+    {
+      "key": "labanda_ronda_r704_d3_2h",
+      "name": "Ronda R704-D3-2H",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_ronda_r704_d6_2h",
+      "name": "Ronda R704-D6-2H",
+      "purchase_cost_cents": 2050
+    },
+    {
+      "key": "labanda_ronda_r705_d3_3h",
+      "name": "Ronda R705-D3-3H",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r705_d6_3h",
+      "name": "Ronda R705-D6-3H",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_ronda_r706_1",
+      "name": "Ronda R706.1",
+      "purchase_cost_cents": 3600
+    },
+    {
+      "key": "labanda_ronda_r706_3",
+      "name": "Ronda R706.3",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_ronda_r706b",
+      "name": "Ronda R706B",
+      "purchase_cost_cents": 6000
+    },
+    {
+      "key": "labanda_ronda_r712",
+      "name": "Ronda R712",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_ronda_r713",
+      "name": "Ronda R713",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r715_d3_2h",
+      "name": "Ronda R715-D3-2H",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r715_d3_3h",
+      "name": "Ronda R715-D3-3H",
+      "purchase_cost_cents": 2350
+    },
+    {
+      "key": "labanda_ronda_r715_d3_3h_h2",
+      "name": "Ronda R715-D3-3H-H2",
+      "purchase_cost_cents": 2050
+    },
+    {
+      "key": "labanda_ronda_r715_d6_3hv1",
+      "name": "Ronda R715-D6-3HV1",
+      "purchase_cost_cents": 2250
+    },
+    {
+      "key": "labanda_ronda_r732",
+      "name": "Ronda R732",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_ronda_r751",
+      "name": "Ronda R751",
+      "purchase_cost_cents": 1580
+    },
+    {
+      "key": "labanda_ronda_r751e",
+      "name": "Ronda R751E",
+      "purchase_cost_cents": 4000
+    },
+    {
+      "key": "labanda_ronda_r751e_3",
+      "name": "Ronda R751E 3",
+      "purchase_cost_cents": 2950
+    },
+    {
+      "key": "labanda_ronda_r753",
+      "name": "Ronda R753",
+      "purchase_cost_cents": 1500
+    },
+    {
+      "key": "labanda_ronda_r753_2",
+      "name": "Ronda R753-2",
+      "purchase_cost_cents": 1889
+    },
+    {
+      "key": "labanda_ronda_r753_3",
+      "name": "Ronda R753-3",
+      "purchase_cost_cents": 1970
+    },
+    {
+      "key": "labanda_ronda_r762",
+      "name": "Ronda R762",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_ronda_r762_3",
+      "name": "Ronda R762-3",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_ronda_r762_sa",
+      "name": "Ronda R762-SA",
+      "purchase_cost_cents": 2890
+    },
+    {
+      "key": "labanda_ronda_r763_1",
+      "name": "Ronda R763-1",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_ronda_r763_3",
+      "name": "Ronda R763-3",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_ronda_r763_4",
+      "name": "Ronda R763-4",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_ronda_r763_5",
+      "name": "Ronda R763-5",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_ronda_r763_sa",
+      "name": "Ronda R763-SA",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r772",
+      "name": "Ronda R772",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_ronda_r773",
+      "name": "Ronda R773",
+      "purchase_cost_cents": 2100
+    },
+    {
+      "key": "labanda_ronda_r774_d3_2h",
+      "name": "Ronda R774-D3-2H",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_ronda_r774_d6_2h",
+      "name": "Ronda R774-D6-2H",
+      "purchase_cost_cents": 2210
+    },
+    {
+      "key": "labanda_ronda_r775_d3_3h",
+      "name": "Ronda R775-D3-3H",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r775_d3_3h_sa",
+      "name": "Ronda R775-D3-3H-SA",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_ronda_r775_d6_3h",
+      "name": "Ronda R775-D6-3H",
+      "purchase_cost_cents": 2000
+    },
+    {
+      "key": "labanda_ronda_r778",
+      "name": "Ronda R778",
+      "purchase_cost_cents": 3600
+    },
+    {
+      "key": "labanda_ronda_r782",
+      "name": "Ronda R782",
+      "purchase_cost_cents": 2110
+    },
+    {
+      "key": "labanda_ronda_r783",
+      "name": "Ronda R783",
+      "purchase_cost_cents": 2110
+    },
+    {
+      "key": "labanda_ronda_r785_d3_2h",
+      "name": "Ronda R785-D3-2H",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_ronda_r785_d3_3h",
+      "name": "Ronda R785-D3-3H",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_ronda_r785_d6_2h",
+      "name": "Ronda R785-D6-2H",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_ronda_r785_d6_3h",
+      "name": "Ronda R785-D6-3H",
+      "purchase_cost_cents": 2200
+    },
+    {
+      "key": "labanda_ronda_r788",
+      "name": "Ronda R788",
+      "purchase_cost_cents": 2550
+    },
+    {
+      "key": "labanda_ronda_r8040n_sa",
+      "name": "Ronda R8040N-SA",
+      "purchase_cost_cents": 14000
+    },
+    {
+      "key": "labanda_ronda_rz60",
+      "name": "Ronda RZ60",
+      "purchase_cost_cents": 3750
+    },
+    {
+      "key": "labanda_swiss_sb308_31",
+      "name": "Swiss SB308-31",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_swiss_sb310_31",
+      "name": "Swiss SB310-31",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_swiss_sb311_31",
+      "name": "Swiss SB311-31",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_swiss_sb682_01",
+      "name": "Swiss SB682-01",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_swiss_sb688_01",
+      "name": "Swiss SB688-01",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_swiss_sb688_11",
+      "name": "Swiss SB688-11",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_china_cn_2650g",
+      "name": "China CN 2650G",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_china_cn_2l27",
+      "name": "China CN 2L27",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_china_cn_2l31",
+      "name": "China CN 2L31",
+      "purchase_cost_cents": 4000
+    },
+    {
+      "key": "labanda_china_cn_2l43_1",
+      "name": "China CN 2L43-1",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_china_cn_2l55",
+      "name": "China CN 2L55",
+      "purchase_cost_cents": 4900
+    },
+    {
+      "key": "labanda_china_cn_7750",
+      "name": "China CN 7750",
+      "purchase_cost_cents": 48050
+    },
+    {
+      "key": "labanda_china_cn_8824",
+      "name": "China CN 8824",
+      "purchase_cost_cents": 17500
+    },
+    {
+      "key": "labanda_china_cn_8836",
+      "name": "China CN 8836",
+      "purchase_cost_cents": 18500
+    },
+    {
+      "key": "labanda_china_cn_dg2803",
+      "name": "China CN DG2803",
+      "purchase_cost_cents": 2700
+    },
+    {
+      "key": "labanda_china_cn_dg2812",
+      "name": "China CN DG2812",
+      "purchase_cost_cents": 9850
+    },
+    {
+      "key": "labanda_china_cn_dg2813",
+      "name": "China CN DG2813",
+      "purchase_cost_cents": 7500
+    },
+    {
+      "key": "labanda_china_cn_dg2816",
+      "name": "China CN DG2816",
+      "purchase_cost_cents": 2700
+    },
+    {
+      "key": "labanda_china_cn_dg2833",
+      "name": "China CN DG2833",
+      "purchase_cost_cents": 6550
+    },
+    {
+      "key": "labanda_china_cn_dg3612",
+      "name": "China CN DG3612",
+      "purchase_cost_cents": 5700
+    },
+    {
+      "key": "labanda_china_cn_dg3804_disc",
+      "name": "China CN DG3804 *(Disc)*",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_china_cn_dg3806_12d",
+      "name": "China CN DG3806-12D",
+      "purchase_cost_cents": 3700
+    },
+    {
+      "key": "labanda_china_cn_dg3806b",
+      "name": "China CN DG3806B",
+      "purchase_cost_cents": 5900
+    },
+    {
+      "key": "labanda_china_cn_dg3806eb_3d",
+      "name": "China CN DG3806EB-3D",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_china_cn_dg3806pb",
+      "name": "China CN DG3806PB",
+      "purchase_cost_cents": 2300
+    },
+    {
+      "key": "labanda_china_cn_dg3809",
+      "name": "China CN DG3809",
+      "purchase_cost_cents": 3250
+    },
+    {
+      "key": "labanda_china_cn_dg3809a_3d",
+      "name": "China CN DG3809A-3D",
+      "purchase_cost_cents": 3650
+    },
+    {
+      "key": "labanda_china_cn_dg3814",
+      "name": "China CN DG3814",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_china_cn_dg3836",
+      "name": "China CN DG3836",
+      "purchase_cost_cents": 7150
+    },
+    {
+      "key": "labanda_china_cn_dg3836_4d",
+      "name": "China CN DG3836-4D",
+      "purchase_cost_cents": 4750
+    },
+    {
+      "key": "labanda_china_cn_dg3836_6d",
+      "name": "China CN DG3836-6D",
+      "purchase_cost_cents": 8050
+    },
+    {
+      "key": "labanda_china_cn_dg3847b",
+      "name": "China CN DG3847B",
+      "purchase_cost_cents": 3750
+    },
+    {
+      "key": "labanda_china_cn_dg3857",
+      "name": "China CN DG3857",
+      "purchase_cost_cents": 3250
+    },
+    {
+      "key": "labanda_china_cn_dg3886",
+      "name": "China CN DG3886",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_dg4813",
+      "name": "China CN DG4813",
+      "purchase_cost_cents": 4550
+    },
+    {
+      "key": "labanda_china_cn_f3211",
+      "name": "China CN F3211",
+      "purchase_cost_cents": 3750
+    },
+    {
+      "key": "labanda_china_cn_f8131",
+      "name": "China CN F8131",
+      "purchase_cost_cents": 3750
+    },
+    {
+      "key": "labanda_china_cn_hz2189g",
+      "name": "China CN HZ2189G",
+      "purchase_cost_cents": 9500
+    },
+    {
+      "key": "labanda_china_cn_lb06",
+      "name": "China CN LB06",
+      "purchase_cost_cents": 5650
+    },
+    {
+      "key": "labanda_china_cn_m3113",
+      "name": "China CN M3113",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_m3191",
+      "name": "China CN M3191",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_ml6102",
+      "name": "China CN ML6102",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_china_cn_ml7102",
+      "name": "China CN ML7102",
+      "purchase_cost_cents": 1850
+    },
+    {
+      "key": "labanda_china_cn_r15",
+      "name": "China CN R15",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_r16_1",
+      "name": "China CN R16-1",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_r19",
+      "name": "China CN R19",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_r30",
+      "name": "China CN R30",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_r44",
+      "name": "China CN R44",
+      "purchase_cost_cents": 8550
+    },
+    {
+      "key": "labanda_china_cn_sl68",
+      "name": "China CN SL68",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_china_cn_sp09",
+      "name": "China CN SP09",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_china_cn_sp16",
+      "name": "China CN SP16",
+      "purchase_cost_cents": 4200
+    },
+    {
+      "key": "labanda_china_cn_sps24",
+      "name": "China CN SPS24",
+      "purchase_cost_cents": 3850
+    },
+    {
+      "key": "labanda_china_cn_sps51",
+      "name": "China CN SPS51",
+      "purchase_cost_cents": 7350
+    },
+    {
+      "key": "labanda_china_cn_st6d1",
+      "name": "China CN ST6D1",
+      "purchase_cost_cents": 8050
+    },
+    {
+      "key": "labanda_china_cn_ty2530",
+      "name": "China CN TY2530",
+      "purchase_cost_cents": 7700
+    },
+    {
+      "key": "labanda_china_cn_ty2555",
+      "name": "China CN TY2555",
+      "purchase_cost_cents": 11750
+    },
+    {
+      "key": "labanda_china_cn_ty2706",
+      "name": "China CN TY2706",
+      "purchase_cost_cents": 6550
+    },
+    {
+      "key": "labanda_china_cn_ty2707",
+      "name": "China CN TY2707",
+      "purchase_cost_cents": 2650
+    },
+    {
+      "key": "labanda_china_cn_ty2708",
+      "name": "China CN TY2708",
+      "purchase_cost_cents": 7750
+    },
+    {
+      "key": "labanda_china_cn_ty2712",
+      "name": "China CN TY2712",
+      "purchase_cost_cents": 7350
+    },
+    {
+      "key": "labanda_china_cn_ty2714",
+      "name": "China CN TY2714",
+      "purchase_cost_cents": 7350
+    },
+    {
+      "key": "labanda_china_cn_ty2807",
+      "name": "China CN TY2807",
+      "purchase_cost_cents": 7100
+    },
+    {
+      "key": "labanda_china_cn_ty2866",
+      "name": "China CN TY2866",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_ty2867",
+      "name": "China CN TY2867",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_ty2869",
+      "name": "China CN TY2869",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_ty2871_s",
+      "name": "China CN TY2871-S",
+      "purchase_cost_cents": 1650
+    },
+    {
+      "key": "labanda_china_cn_ty2876",
+      "name": "China CN TY2876",
+      "purchase_cost_cents": 5750
+    },
+    {
+      "key": "labanda_china_cn_ty601",
+      "name": "China CN TY601",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_china_cn_ty603k",
+      "name": "China CN TY603K",
+      "purchase_cost_cents": 7350
+    },
+    {
+      "key": "labanda_china_cn_z2033",
+      "name": "China CN Z2033",
+      "purchase_cost_cents": 6500
+    },
+    {
+      "key": "labanda_china_rlx3135",
+      "name": "China RLX3135",
+      "purchase_cost_cents": 39900
+    },
+    {
+      "key": "labanda_china_rlx3186",
+      "name": "China RLX3186",
+      "purchase_cost_cents": 35000
+    },
+    {
+      "key": "labanda_china_cn_dg3804",
+      "name": "China CN DG3804",
+      "purchase_cost_cents": 10200
+    },
+    {
+      "key": "labanda_miyota_m1l02_disc_use_gl02",
+      "name": "Miyota M1L02 (Disc) - Use GL02",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_miyota_m1l12_disc_use_gl10d3",
+      "name": "Miyota M1L12 (Disc) -  Use GL10D3",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_miyota_m1l12_d6_disc_use_gl10d6",
+      "name": "Miyota M1L12-D6 (Disc) -  Use GL10D6",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_miyota_m1l22_disc_use_gl22",
+      "name": "Miyota M1L22 (Disc) - Use GL22",
+      "purchase_cost_cents": 630
+    },
+    {
+      "key": "labanda_miyota_m1l26_disc_use_gl24",
+      "name": "Miyota M1L26 (Disc) - Use GL24",
+      "purchase_cost_cents": 1400
+    },
+    {
+      "key": "labanda_miyota_m1l32_disc_use_gl32",
+      "name": "Miyota M1L32 (Disc) - Use GL32",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_m1m02_disc_use_gm02",
+      "name": "Miyota M1M02 (Disc) - Use GM02",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_miyota_m1m12_disc_use_gm12_d3",
+      "name": "Miyota M1M12 (Disc) - Use GM12-D3",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_miyota_m1m12_d6_disc_use_gm12_d6",
+      "name": "Miyota M1M12-D6 (Disc) - Use GM12-D6",
+      "purchase_cost_cents": 1350
+    },
+    {
+      "key": "labanda_miyota_m1s02_phased_out_use_gr02",
+      "name": "Miyota M1S02 (Phased out) -  Use GR02",
+      "purchase_cost_cents": 1450
+    },
+    {
+      "key": "labanda_miyota_m1s12_disc_use_1s13",
+      "name": "Miyota M1S12 (Disc) - Use 1S13",
+      "purchase_cost_cents": 765
+    },
+    {
+      "key": "labanda_miyota_m2500_citizen",
+      "name": "Miyota M2500 Citizen",
+      "purchase_cost_cents": 3950
+    },
+    {
+      "key": "labanda_miyota_m2f00_disc_use_citizen_2500",
+      "name": "Miyota M2F00 (Disc) - Use Citizen 2500",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_miyota_m2f10_disc_use_citizen_2510",
+      "name": "Miyota M2F10 (Disc) - Use Citizen 2510",
+      "purchase_cost_cents": 1800
+    },
+    {
+      "key": "labanda_miyota_m5920_use_m5y20",
+      "name": "Miyota M5920 - Use M5Y20",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_miyota_m6l02_disc_use_gl02",
+      "name": "Miyota M6L02 (Disc) - Use GL02",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_m6l12_disc_use_gl12",
+      "name": "Miyota M6L12 (Disc) - Use GL12",
+      "purchase_cost_cents": 1600
+    },
+    {
+      "key": "labanda_miyota_m6m02_disc_use_gm00",
+      "name": "Miyota M6M02 (Disc) - Use GM00",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_m6m12_disc_use_gm12",
+      "name": "Miyota M6M12 (Disc) - Use GM12",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_miyota_m6m12_d6_phased_out_use_gm12d6",
+      "name": "Miyota M6M12-D6 (Phased Out) - Use GM12D6",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_miyota_mb023_citizen",
+      "name": "Miyota MB023 Citizen",
+      "purchase_cost_cents": 7900
+    },
+    {
+      "key": "labanda_miyota_mb033_citizen_disc_use_b035_citizen",
+      "name": "Miyota MB033 Citizen (Disc) - Use B035 Citizen",
+      "purchase_cost_cents": 6200
+    },
+    {
+      "key": "labanda_miyota_me001_citizen_e000_citizen",
+      "name": "Miyota ME001 Citizen = E000 Citizen",
+      "purchase_cost_cents": 4150
+    },
+    {
+      "key": "labanda_miyota_me011_citizen_citizen_e010",
+      "name": "Miyota ME011 Citizen = Citizen E010",
+      "purchase_cost_cents": 4150
+    },
+    {
+      "key": "labanda_miyota_me013_citizen_e030_citizen",
+      "name": "Miyota ME013 Citizen = E030 Citizen",
+      "purchase_cost_cents": 4200
+    },
+    {
+      "key": "labanda_miyota_me031_citizen_e030_citizen",
+      "name": "Miyota ME031 Citizen = E030 Citizen",
+      "purchase_cost_cents": 4150
+    },
+    {
+      "key": "labanda_miyota_me101_citizen_e100_citizen",
+      "name": "Miyota ME101 Citizen = E100 Citizen",
+      "purchase_cost_cents": 4980
+    },
+    {
+      "key": "labanda_miyota_me111_citizen_e110_citizen",
+      "name": "Miyota ME111 Citizen = E110 Citizen",
+      "purchase_cost_cents": 4150
+    },
+    {
+      "key": "labanda_miyota_me860_citizen_phased_out",
+      "name": "Miyota ME860 Citizen (Phased Out)",
+      "purchase_cost_cents": 9500
+    },
+    {
+      "key": "labanda_miyota_me870_citizen_phased_out",
+      "name": "Miyota ME870 Citizen (Phased Out)",
+      "purchase_cost_cents": 18500
+    },
+    {
+      "key": "labanda_miyota_mgl00_g001",
+      "name": "Miyota MGL00 = G001",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgl02_gl00",
+      "name": "Miyota MGL02 = GL00",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgl10_disc_use_mgl12",
+      "name": "Miyota MGL10 (Disc) - Use MGL12",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgl14_d3_gl13",
+      "name": "Miyota MGL14 D3 = GL13",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_miyota_mgl15_gl17",
+      "name": "Miyota MGL15 = GL17",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_miyota_mgl17_disc_use_gl15",
+      "name": "Miyota MGL17 (Disc) - Use GL15",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_miyota_mgl20_gl22",
+      "name": "Miyota MGL20 = GL22",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgl24_gl26",
+      "name": "Miyota MGL24 = GL26",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_miyota_mgl26_mgl24",
+      "name": "Miyota MGL26 = MGL24",
+      "purchase_cost_cents": 1150
+    },
+    {
+      "key": "labanda_miyota_mgl30_disc_use_gl32",
+      "name": "Miyota MGL30 (Disc) - Use GL32",
+      "purchase_cost_cents": 700
+    },
+    {
+      "key": "labanda_miyota_mgl34_gl36",
+      "name": "Miyota MGL34 = GL36",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_miyota_mgl36_phased_out_use_gl34",
+      "name": "Miyota MGL36 (Phased Out) - Use GL34",
+      "purchase_cost_cents": 765
+    },
+    {
+      "key": "labanda_miyota_mgm00_dd3_disc_use_gm02",
+      "name": "Miyota MGM00-DD3 (Disc) - Use GM02",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_miyota_mgm00_dd6_phased_out_use_gm02dd6",
+      "name": "Miyota MGM00-DD6 (Phased Out) - Use GM02DD6",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_miyota_mgm10_d3_disc_use_gm12d3",
+      "name": "Miyota MGM10-D3 (Disc) - Use GM12D3",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgm10_d6_disc_use_gm12d6",
+      "name": "Miyota MGM10-D6 (Disc) - Use GM12D6",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgm10_hd4_disc_use_gm12hd4",
+      "name": "Miyota MGM10-HD4 (Disc) - Use GM12HD4",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgm10_rd4_6m12",
+      "name": "Miyota MGM10-RD4 = 6M12",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_miyota_mgm12_d3_6m10",
+      "name": "Miyota MGM12-D3 = 6M10",
+      "purchase_cost_cents": 1250
+    },
+    {
+      "key": "labanda_miyota_mgm12_d6_6m10",
+      "name": "Miyota MGM12-D6 = 6M10",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgm12_hd4_gm10hd4",
+      "name": "Miyota MGM12-HD4 = GM10HD4",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgm12_rd4_gm10rd4",
+      "name": "Miyota MGM12-RD4 = GM10RD4",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgm13_use_gm14",
+      "name": "Miyota MGM13 = Use GM14",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_miyota_mgm14_d3_gm13",
+      "name": "Miyota MGM14-D3 = GM13",
+      "purchase_cost_cents": 1000
+    },
+    {
+      "key": "labanda_miyota_mgm15_d3_gm17d3",
+      "name": "Miyota MGM15-D3 = GM17D3",
+      "purchase_cost_cents": 680
+    },
+    {
+      "key": "labanda_miyota_mgm15_d6_gm17d6",
+      "name": "Miyota MGM15-D6 = GM17D6",
+      "purchase_cost_cents": 680
+    },
+    {
+      "key": "labanda_miyota_mgm17_gm15d3",
+      "name": "Miyota MGM17 = GM15D3",
+      "purchase_cost_cents": 1080
+    },
+    {
+      "key": "labanda_miyota_mgm17_d6_gm15_d6",
+      "name": "Miyota MGM17-D6 = GM15-D6",
+      "purchase_cost_cents": 850
+    },
+    {
+      "key": "labanda_miyota_mgn10_disc_use_gn12",
+      "name": "Miyota MGN10 (Disc) - Use GN12",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgn12_gn10",
+      "name": "Miyota MGN12 = GN10",
+      "purchase_cost_cents": 950
+    },
+    {
+      "key": "labanda_miyota_mgn15_disc_use_gn17",
+      "name": "Miyota MGN15 (Disc) - Use GN17",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgn17_gn15",
+      "name": "Miyota MGN17 = GN15",
+      "purchase_cost_cents": 900
+    },
+    {
+      "key": "labanda_miyota_mgp00_limited_stock",
+      "name": "Miyota MGP00 - Limited Stock",
+      "purchase_cost_cents": 4200
+    },
+    {
+      "key": "labanda_miyota_mjs15_d3_blue_date_ring",
+      "name": "Miyota MJS15-D3 Blue date ring",
+      "purchase_cost_cents": 2400
+    },
+    {
+      "key": "labanda_miyota_mow50_citizen_0850",
+      "name": "Miyota MOW50 = Citizen 0850",
+      "purchase_cost_cents": 9600
+    },
+    {
+      "key": "labanda_eta_e210_001_special_order",
+      "name": "ETA E210.001 - Special Order",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e251_274_rd4_eta_251_272_rd4",
+      "name": "ETA E251.274-RD4 = ETA 251.272 RD4",
+      "purchase_cost_cents": 20500
+    },
+    {
+      "key": "labanda_eta_e256_041_e61_041",
+      "name": "ETA E256.041 = E61.041",
+      "purchase_cost_cents": 9150
+    },
+    {
+      "key": "labanda_eta_e282_001_eta_282_002",
+      "name": "ETA E282.001 = ETA 282.002",
+      "purchase_cost_cents": 15000
+    },
+    {
+      "key": "labanda_eta_e282_002_disc_use_e282_001",
+      "name": "ETA E282.002 (Disc) - Use E282.001",
+      "purchase_cost_cents": 12000
+    },
+    {
+      "key": "labanda_eta_e2824_2_sw200_1",
+      "name": "ETA E2824-2 = SW200-1",
+      "purchase_cost_cents": 32500
+    },
+    {
+      "key": "labanda_eta_e7750_cn_3lzf2",
+      "name": "ETA E7750 = CN 3LZF2",
+      "purchase_cost_cents": 78500
+    },
+    {
+      "key": "labanda_eta_e801_104_phase_out_use_r753",
+      "name": "ETA E801.104 (Phase Out) - Use R753",
+      "purchase_cost_cents": 3495
+    },
+    {
+      "key": "labanda_eta_e803_112_d3_e803_114_d3",
+      "name": "ETA E803.112-D3 = E803.114-D3",
+      "purchase_cost_cents": 3800
+    },
+    {
+      "key": "labanda_eta_e803_114_d6_r585",
+      "name": "ETA E803.114-D6 = R585",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_eta_e803_124_e803_121",
+      "name": "ETA E803.124  = E803.121",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_eta_e804_112_d3_e804_111",
+      "name": "ETA E804.112-D3 = E804.111",
+      "purchase_cost_cents": 1900
+    },
+    {
+      "key": "labanda_eta_e805_112_d6_phased_out_use_f06_111_d6",
+      "name": "ETA E805.112-D6 (Phased Out) - Use F06.111 D6",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_eta_e805_114_d6_f06_111_d6",
+      "name": "ETA E805.114-D6 = F06.111 D6",
+      "purchase_cost_cents": 1950
+    },
+    {
+      "key": "labanda_eta_e805_124_dd3_805_122",
+      "name": "ETA E805.124-DD3 = 805.122",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_eta_e901_005_disc_use_901_001",
+      "name": "ETA E901.005 (Disc) - Use 901.001",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_002_eta_902_005",
+      "name": "ETA E902.002 = ETA 902.005",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_eta_e902_005_use_902_002",
+      "name": "ETA E902.005  - Use 902.002",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e902_101_e902_105",
+      "name": "ETA E902.101 =  E902.105",
+      "purchase_cost_cents": 3000
+    },
+    {
+      "key": "labanda_eta_e902_505_phase_out_use_e902_501",
+      "name": "ETA E902.505 (Phase Out) - Use E902.501",
+      "purchase_cost_cents": 4500
+    },
+    {
+      "key": "labanda_eta_e955_112_d3_ef06_115",
+      "name": "ETA E955.112-D3 = EF06.115",
+      "purchase_cost_cents": 5450
+    },
+    {
+      "key": "labanda_eta_e955_112_d3_2h_phase_out_ef06_115_d3_2h",
+      "name": "ETA E955.112-D3-2H (Phase Out) = EF06.115-D3-2H",
+      "purchase_cost_cents": 5450
+    },
+    {
+      "key": "labanda_eta_e955_112_d6_disc_use_ef06_115_d6_3h",
+      "name": "ETA E955.112-D6 (Disc) - Use EF06.115-D6-3H",
+      "purchase_cost_cents": 5450
+    },
+    {
+      "key": "labanda_eta_e955_122_disc_use_r517",
+      "name": "ETA E955.122 (Disc) - Use R517",
+      "purchase_cost_cents": 6450
+    },
+    {
+      "key": "labanda_eta_e955_412_d3_disc_use_f05_115_d3",
+      "name": "ETA E955.412-D3 (Disc) - Use F05.115-D3",
+      "purchase_cost_cents": 4320
+    },
+    {
+      "key": "labanda_eta_e955_412_d6_disc_use_f05_115_d6",
+      "name": "ETA E955.412-D6 (Disc) - Use F05.115-D6",
+      "purchase_cost_cents": 4465
+    },
+    {
+      "key": "labanda_eta_e955_422_disc_use_e955_424",
+      "name": "ETA E955.422 (Disc) - Use E955.424",
+      "purchase_cost_cents": 5450
+    },
+    {
+      "key": "labanda_eta_e955_424_eta_955_422",
+      "name": "ETA E955.424 = ETA 955.422",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_eta_e956_112_d3_2h_disc_use_f03_115",
+      "name": "ETA E956.112-D3-2H (Disc) - Use F03.115",
+      "purchase_cost_cents": 5700
+    },
+    {
+      "key": "labanda_eta_e956_112_d6_disc_use_f03_115_d6",
+      "name": "ETA E956.112-D6 (Disc) - Use F03.115-D6",
+      "purchase_cost_cents": 4450
+    },
+    {
+      "key": "labanda_eta_e956_412_d3_disc_eta_f04_115_d3",
+      "name": "ETA E956.412-D3 (Disc) = ETA F04.115-D3",
+      "purchase_cost_cents": 7000
+    },
+    {
+      "key": "labanda_eta_e956_412_d6_disc_use_f04_115_d6",
+      "name": "ETA E956.412-D6 (Disc) - Use F04.115-D6",
+      "purchase_cost_cents": 5450
+    },
+    {
+      "key": "labanda_eta_e956_612_d3_disc_eta_f04_115_d3",
+      "name": "ETA E956.612-D3 (Disc) = ETA F04.115-D3",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_e980_108_disc_use_980_106",
+      "name": "ETA E980.108 (Disc) - Use 980.106",
+      "purchase_cost_cents": 0
+    },
+    {
+      "key": "labanda_eta_ee63_041_eta_255_441",
+      "name": "ETA EE63.041 = ETA 255.441",
+      "purchase_cost_cents": 14000
+    },
+    {
+      "key": "labanda_eta_ee63_111_d3_etaf05_111",
+      "name": "ETA EE63.111-D3 = ETAF05.111",
+      "purchase_cost_cents": 13000
+    },
+    {
+      "key": "labanda_eta_ef03_111_d3_f03_115_d3",
+      "name": "ETA EF03.111-D3 = F03.115-D3",
+      "purchase_cost_cents": 3100
+    },
+    {
+      "key": "labanda_eta_ef03_111_d6_ef03_115_d6",
+      "name": "ETA EF03.111-D6 = EF03.115-D6",
+      "purchase_cost_cents": 4300
+    },
+    {
+      "key": "labanda_eta_ef03_115_d3_ef03_111_d3",
+      "name": "ETA EF03.115-D3 = EF03.111-D3",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_eta_ef03_115_d6_ef03_111_d6",
+      "name": "ETA EF03.115-D6 = EF03.111-D6",
+      "purchase_cost_cents": 5600
+    },
+    {
+      "key": "labanda_eta_ef04_111_d3_ef04_115_d3",
+      "name": "ETA EF04.111-D3 = EF04.115-D3",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_eta_ef04_111_d6_f04_115_d6",
+      "name": "ETA EF04.111-D6 = F04.115-D6",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_eta_ef04_11a_d3_f04_111_d3",
+      "name": "ETA EF04.11A-D3 = F04.111-D3",
+      "purchase_cost_cents": 3150
+    },
+    {
+      "key": "labanda_eta_ef05_111_d6_f05_115_d6",
+      "name": "ETA EF05.111-D6 = F05.115-D6",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_eta_ef05_115_d6_eta_f05_111_d6",
+      "name": "ETA EF05.115-D6 = ETA F05.111-D6",
+      "purchase_cost_cents": 4750
+    },
+    {
+      "key": "labanda_eta_ef06_115_d3_f06_111_d3",
+      "name": "ETA EF06.115-D3 = F06.111-D3",
+      "purchase_cost_cents": 5000
+    },
+    {
+      "key": "labanda_eta_ef06_115_d3_2h_eta_f06_111_d3",
+      "name": "ETA EF06.115-D3-2H = ETA F06.111-D3",
+      "purchase_cost_cents": 5500
+    },
+    {
+      "key": "labanda_eta_ef06_115_d6_f06_111_d6",
+      "name": "ETA EF06.115-D6 = F06.111-D6",
+      "purchase_cost_cents": 5500
+    },
+    {
+      "key": "labanda_eta_ef07_111_d3_f07_115_d3",
+      "name": "ETA EF07.111-D3 = F07.115-D3",
+      "purchase_cost_cents": 3600
+    },
+    {
+      "key": "labanda_eta_ef07_115_d3_f07_111_d3",
+      "name": "ETA EF07.115-D3 = F07.111-D3",
+      "purchase_cost_cents": 4000
+    },
+    {
+      "key": "labanda_fe_fe6120_dis_use_eta901_001",
+      "name": "FE6120 (Dis) - Use ETA901.001",
+      "purchase_cost_cents": 1750
+    },
+    {
+      "key": "labanda_fe_fe7022_eta_803_124",
+      "name": "FE7022 = ETA 803.124",
+      "purchase_cost_cents": 2300
+    },
+    {
+      "key": "labanda_fe_fe7122_r705",
+      "name": "FE7122 = R705",
+      "purchase_cost_cents": 3200
+    },
+    {
+      "key": "labanda_seiko_tmi_h7t62_disc_use_hym62",
+      "name": "Seiko/TMI H7T62 (Disc) - Use HYM62",
+      "purchase_cost_cents": 12900
+    },
+    {
+      "key": "labanda_seiko_tmi_hal20_disc_use_hy120f1",
+      "name": "Seiko/TMI HAL20 (Disc) - Use HY120F1",
+      "purchase_cost_cents": 540
+    },
+    {
+      "key": "labanda_seiko_tmi_hal33_use_hax33",
+      "name": "Seiko/TMI HAL33 - Use HAX33",
+      "purchase_cost_cents": 800
+    },
+    {
+      "key": "labanda_seiko_tmi_hal35e_disc_use_hy121f1",
+      "name": "Seiko/TMI HAL35E (Disc) - Use HY121F1",
+      "purchase_cost_cents": 1050
+    },
+    {
+      "key": "labanda_seiko_tmi_hal55_disc_use_hy121f1",
+      "name": "Seiko/TMI HAL55 (Disc) - Use HY121F1",
+      "purchase_cost_cents": 675
+    },
+    {
+      "key": "labanda_seiko_tmi_hv501_disc_use_hy121_al21",
+      "name": "Seiko/TMI HV501(Disc) - Use HY121/AL21",
+      "purchase_cost_cents": 1200
+    },
+    {
+      "key": "labanda_seiko_tmi_hv657_20_disc_use_hvd57",
+      "name": "Seiko/TMI HV657-20 (Disc) - Use HVD57",
+      "purchase_cost_cents": 8300
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd53b_disc_use_hvd53c",
+      "name": "Seiko/TMI HVD53B (Disc) - Use HVD53C",
+      "purchase_cost_cents": 1850
+    },
+    {
+      "key": "labanda_seiko_tmi_hvd78",
+      "name": "Seiko/TMI HVD78",
+      "purchase_cost_cents": 3500
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx3k_d3_hv3ke",
+      "name": "Seiko/TMI HVX3K-D3 = HV3KE",
+      "purchase_cost_cents": 750
+    },
+    {
+      "key": "labanda_seiko_tmi_hvx42a2_hvx42e1",
+      "name": "Seiko/TMI HVX42A2 = HVX42E1",
+      "purchase_cost_cents": 650
+    },
+    {
+      "key": "labanda_isa_isa_2331_103",
+      "name": "ISA 2331/103",
+      "purchase_cost_cents": 2500
+    },
+    {
+      "key": "labanda_isa_isa_389_101_11",
+      "name": "ISA 389/101 (11)",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_isa_isa_389_103_31",
+      "name": "ISA 389/103 (31)",
+      "purchase_cost_cents": 1100
+    },
+    {
+      "key": "labanda_ronda_r772_use_r774_d3_2h",
+      "name": "Ronda R772 - Use R774 D3 2H",
+      "purchase_cost_cents": 2450
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb308_31",
+      "name": "Swiss Ebauches SB308-31",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb310_31",
+      "name": "Swiss Ebauches SB310-31",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb311_31",
+      "name": "Swiss Ebauches SB311-31",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb682_01",
+      "name": "Swiss Ebauches SB682-01",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb688_01",
+      "name": "Swiss Ebauches SB688-01",
+      "purchase_cost_cents": 2150
+    },
+    {
+      "key": "labanda_swiss_ebauches_sb688_11",
+      "name": "Swiss Ebauches SB688-11",
+      "purchase_cost_cents": 2150
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "version": "1.2.0",
+    "date": "2026-03-21",
+    "title": "Movement pricing, combos, and import fixes",
+    "items": [
+      "Movement catalogue: show cost and RRP side-by-side when choosing movements",
+      "New RRP formula for all movements: max($80 floor, cost × 2.75)",
+      "New repair services: Bracelet resize ($20), Spring bar ($9.95), Back gasket ($14.95), Case polishing Light/Full ($60/$110), Full Service — quoted",
+      "Combo pricing: Battery + Pressure Test $49.95 total; Battery + Band 20% off the band",
+      "Quoted services (e.g. Full Service) force job to Awaiting quote for workshop review before sending",
+      "Lazy-load movement list so job pages load faster",
+      "Faster auth redirect: 5s max wait on refresh, redirect to landing page",
+      "Excel import: fixed row/header mismatch, Excel date serials, cost overflow clamp, clearer errors",
+      "Import: ticket/job number now preserved from source (e.g. Ticket #, Ref, Job No) instead of auto-assigning; strips Excel .0 suffix",
+      "Import: handles varied spreadsheet layouts — unnamed first column as ticket, Number→phone, GA/NG/Collected→status, being done→notes",
+      "Shoe repairs: repair complexity (Simple/Standard/Complex) and estimated turnaround per service; displayed when quoting and on job cards",
+      "Shoe repairs: queue-based Est. ready by date — derives from quantity of jobs ahead (FIFO) and each job's repair time",
+      "Mobile Services: ServiceM8-style scheduling — job type (mobile/shop), job address, scheduled date; Dispatch tab with day view and unscheduled queue"
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-03-17",
+    "title": "Improvements and new features",
+    "items": [
+      "Proactive token refresh so you stay signed in longer",
+      "Remember this device option on login (session-only when unchecked)",
+      "Plan usage and limits shown on Team Accounts; upgrade CTA when at limit",
+      "Audit log restricted to owners and managers",
+      "Request ID on API responses for support and debugging",
+      "Stricter password policy options (configurable)",
+      "Export and data portability (CSV and export my data)",
+      "Dashboard widgets: overdue jobs, quotes pending, overdue invoices",
+      "Customer self-service portal link",
+      "Error tracking (Sentry) and nightly backup check script"
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-03-01",
+    "title": "Initial release",
+    "items": [
+      "Watch, shoe, and auto-key repair job tracking",
+      "Quotes and customer approval flow",
+      "Invoicing and manual payment capture",
+      "Multi-tenant team accounts and plans",
+      "Reports and analytics",
+      "B2B customer accounts and statements"
+    ]
+  }
+]

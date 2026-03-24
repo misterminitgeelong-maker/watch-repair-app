@@ -1,0 +1,392 @@
+openapi: 3.1.0
+info:
+  title: Watch Repair SaaS API
+  version: 0.4.0
+  description: MVP API for multi-tenant watch repair workflow.
+servers:
+  - url: https://api.example.com
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail: { type: string }
+      required: [detail]
+    LoginRequest:
+      type: object
+      properties:
+        tenant_slug: { type: string }
+        email: { type: string, format: email }
+        password: { type: string }
+      required: [tenant_slug, email, password]
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string }
+        expires_in_seconds: { type: integer }
+      required: [access_token, token_type, expires_in_seconds]
+    RepairJob:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        watch_id: { type: string, format: uuid }
+        job_number: { type: string }
+        title: { type: string }
+        priority: { type: string, enum: [low, normal, high, urgent] }
+        status:
+          type: string
+          enum: [intake, diagnosis, awaiting_approval, in_repair, qc, ready, delivered, cancelled]
+      required: [id, tenant_id, watch_id, job_number, title, priority, status]
+    QuoteLineItemCreate:
+      type: object
+      properties:
+        item_type: { type: string, enum: [labor, part, fee] }
+        description: { type: string }
+        quantity: { type: number }
+        unit_price_cents: { type: integer }
+      required: [item_type, description, quantity, unit_price_cents]
+    QuoteCreate:
+      type: object
+      properties:
+        repair_job_id: { type: string, format: uuid }
+        tax_cents: { type: integer }
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteLineItemCreate'
+      required: [repair_job_id, line_items]
+    Quote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        repair_job_id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, sent, approved, declined, expired] }
+        subtotal_cents: { type: integer }
+        tax_cents: { type: integer }
+        total_cents: { type: integer }
+        currency: { type: string }
+      required: [id, tenant_id, repair_job_id, status, subtotal_cents, tax_cents, total_cents, currency]
+    QuoteSendResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, sent, approved, declined, expired] }
+        sent_at: { type: string, format: date-time }
+        approval_token: { type: string }
+      required: [id, status, sent_at, approval_token]
+    QuoteDecisionRequest:
+      type: object
+      properties:
+        decision: { type: string, enum: [approved, declined] }
+      required: [decision]
+    Invoice:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        repair_job_id: { type: string, format: uuid }
+        quote_id: { type: ["string", "null"], format: uuid }
+        invoice_number: { type: string }
+        status: { type: string, enum: [unpaid, paid, refunded, void] }
+        subtotal_cents: { type: integer }
+        tax_cents: { type: integer }
+        total_cents: { type: integer }
+        currency: { type: string }
+      required: [id, tenant_id, repair_job_id, invoice_number, status, subtotal_cents, tax_cents, total_cents, currency]
+    PaymentCreate:
+      type: object
+      properties:
+        amount_cents: { type: integer }
+        provider_reference: { type: ["string", "null"] }
+      required: [amount_cents]
+    Payment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        invoice_id: { type: string, format: uuid }
+        amount_cents: { type: integer }
+        currency: { type: string }
+        status: { type: string, enum: [pending, succeeded, failed, refunded] }
+        provider: { type: string }
+        provider_reference: { type: ["string", "null"] }
+      required: [id, tenant_id, invoice_id, amount_cents, currency, status, provider]
+    WorkLogCreate:
+      type: object
+      properties:
+        repair_job_id: { type: string, format: uuid }
+        note: { type: ["string", "null"] }
+        minutes_spent: { type: integer }
+      required: [repair_job_id]
+    WorkLog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        repair_job_id: { type: string, format: uuid }
+        user_id: { type: ["string", "null"], format: uuid }
+        note: { type: ["string", "null"] }
+        minutes_spent: { type: integer }
+        created_at: { type: string, format: date-time }
+      required: [id, tenant_id, repair_job_id, minutes_spent, created_at]
+    AttachmentCreate:
+      type: object
+      properties:
+        repair_job_id: { type: ["string", "null"], format: uuid }
+        watch_id: { type: ["string", "null"], format: uuid }
+        file_name: { type: string }
+        content_type: { type: string }
+        file_size_bytes: { type: integer }
+      required: [file_name, content_type, file_size_bytes]
+    Attachment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        repair_job_id: { type: ["string", "null"], format: uuid }
+        watch_id: { type: ["string", "null"], format: uuid }
+        storage_key: { type: string }
+        file_name: { type: ["string", "null"] }
+        content_type: { type: ["string", "null"] }
+        file_size_bytes: { type: ["integer", "null"] }
+        created_at: { type: string, format: date-time }
+      required: [id, tenant_id, storage_key, created_at]
+paths:
+  /v1/health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        '200': { description: Healthy }
+  /v1/auth/login:
+    post:
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: JWT access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+  /v1/repair-jobs/{jobId}:
+    get:
+      summary: Get repair job
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Repair job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepairJob'
+  /v1/quotes:
+    post:
+      summary: Create quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteCreate'
+      responses:
+        '201':
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+  /v1/quotes/{quoteId}/send:
+    post:
+      summary: Mark quote as sent and return approval token
+      parameters:
+        - in: path
+          name: quoteId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Quote sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteSendResponse'
+  /v1/public/quotes/{token}/decision:
+    post:
+      summary: Public quote approval/decline endpoint
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteDecisionRequest'
+      responses:
+        '200': { description: Decision stored }
+        '404': { description: Invalid token }
+        '409': { description: Decision already recorded }
+
+  /v1/invoices/from-quote/{quoteId}:
+    post:
+      summary: Create invoice from an approved quote
+      parameters:
+        - in: path
+          name: quoteId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+                required: [invoice]
+        '409': { description: Quote must be approved }
+  /v1/invoices/{invoiceId}:
+    get:
+      summary: Get invoice with payments
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+                required: [invoice, payments]
+  /v1/invoices/{invoiceId}/payments:
+    post:
+      summary: Record manual payment on invoice
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+
+  /v1/work-logs:
+    post:
+      summary: Create work log entry for a repair job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkLogCreate'
+      responses:
+        '201':
+          description: Work log created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkLog'
+    get:
+      summary: List work logs for a repair job
+      parameters:
+        - in: query
+          name: repair_job_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Work logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkLog'
+  /v1/attachments:
+    post:
+      summary: Create attachment metadata and get signed URL placeholders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachmentCreate'
+      responses:
+        '201':
+          description: Attachment metadata created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attachment:
+                    $ref: '#/components/schemas/Attachment'
+                  upload_url: { type: string }
+                  download_url: { type: string }
+                required: [attachment, upload_url, download_url]
+    get:
+      summary: List attachments
+      parameters:
+        - in: query
+          name: repair_job_id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: watch_id
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attachment'

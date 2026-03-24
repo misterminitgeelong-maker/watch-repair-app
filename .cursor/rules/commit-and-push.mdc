@@ -1,0 +1,14 @@
+---
+description: Always commit and push changes after making edits
+alwaysApply: true
+---
+
+# Commit and Push
+
+After making code changes to this project:
+
+1. **Stage** all modified files: `git add` (or `git add -A` for all changes)
+2. **Commit** with a concise message describing what changed
+3. **Push** to the remote: `git push`
+
+Do this at the end of any session where edits were made. Do not leave changes uncommitted or unpushed unless the user asks to skip.

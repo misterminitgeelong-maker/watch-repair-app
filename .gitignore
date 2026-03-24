@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Browser profile (session cookies for authenticated scraping)
+aliexpress_watch_movements_scraper/browser_profile/
+labanda_scraper/browser_profile/
+
+# Local DB files
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+
+# Uploads (user data)
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+.claude/

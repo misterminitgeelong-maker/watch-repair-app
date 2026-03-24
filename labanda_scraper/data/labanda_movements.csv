@@ -1,0 +1,696 @@
+brand,model,size,height,power,source
+ETA,E210.001,9 L (20.00mm),0.98mm,SR716SW,labanda
+ETA,E251.242-RD4 *(Phase Out)*,13¼ L (30.00 x 5mm),4.80mm,SR936W,labanda
+ETA,E251.264-RD4 *(Special Order)*,13¼ L (30.00mm),5.00mm,SR936SW,labanda
+ETA,E251.265 *(Phased Out)*,13¼,7.46mm,394,labanda
+ETA,E251.272-RD4,13¼ L (30.00mm),4.60mm,SR936SW,labanda
+ETA,E251.274-RD4,13¼ L (30.00mm),4.60mm,SR936SW,labanda
+ETA,E251.474-RD4 *(Phase Out)*,10½ L (23.30mm),4.70mm,SR936SW,labanda
+ETA,E256.041,8¼,1.95mm,321,labanda
+ETA,E280.002,3¾ x 6¾ L (9.00 x 15.15mm),1.80mm,SR616SW,labanda
+ETA,E282.001,5½ x 8 L,1.25mm,346,labanda
+ETA,E282.002 *(Disc)*,5½ x 8 L (13.00 x 17.80mm),1.20mm,SR712SW,labanda
+ETA,E2824-2,11½ L,4.60mm,Automatic,labanda
+ETA,E2836/2,11½ L,5.05mm,Automatic,labanda
+ETA,E2893/2 *(Special Order)*,11½ L (25.6mm),4.10mm,Automatic,labanda
+ETA,E6497-1,16½ L (37.00mm),4.5mm,Manual,labanda
+ETA,E7750,13¼ L (30.00mm),7.90mm,Automatic,labanda
+ETA,E7753,13¼,7.90mm,—,labanda
+ETA,E801.104 *(Phase Out)*,5½ x 6¾,2.50mm,379,labanda
+ETA,E802.002,6¾ x 8,2.95mm,377,labanda
+ETA,E802.102,6¾ x 8 L (15.30 x 17.80mm),2.95mm,SR626SW,labanda
+ETA,E803.112-D3,8¾ L (19.40mm),3.65mm,SR626SW,labanda
+ETA,E803.114-D6,8¾ L (19.40mm),3.40mm,SR626SW,labanda
+ETA,E803.124,8¾ L (19.40mm),3.65mm,SR626SW,labanda
+ETA,E804.112-D3,10½,3.40mm,397,labanda
+ETA,E804.114-D3,10½ L (23.30mm),3.40mm,SR626SW,labanda
+ETA,E804.114-D6,10½ L (23.30mm),3.40mm,SR626SW,labanda
+ETA,E804.124 *(Phase Out)*,10½ L (23.30mm),3.40mm,SR626SW,labanda
+ETA,E805.112-D3,11½ L (25.60mm),3.65mm,SR626SW,labanda
+ETA,E805.112-D6 *(Phased Out)*,11½ L (25.60mm),3.65mm,SR626SW,labanda
+ETA,E805.114-D6,11½ L (25.60mm),3.40mm,SR626SW,labanda
+ETA,E805.124-DD3,11½ L (25.60mm),3.65mm,SR626SW,labanda
+ETA,E805.161 D3,11½ L,—,397,labanda
+ETA,E901.001,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR616SW,labanda
+ETA,E901.005 *(Disc)*,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR616SW,labanda
+ETA,E902.002,6¾ x 8 L (15.30 x 17.80mm),2.35mm,SR621SW,labanda
+ETA,E902.005,6¾ x 8 L (15.30 x 17.80mm),2.35mm,SR621SW,labanda
+ETA,E902.101,6¾ x 8 L (15.30 x 17.80mm),2.35mm,SR621SW,labanda
+ETA,E902.505 *(Phase Out)*,6¾ x 8 L (15.30 x 17.80mm),2.90mm,SR621SW,labanda
+ETA,E955.112-D3,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,E955.112-D3-2H *(Phase Out)*,11½ L (25.60mm),3.00mm,SR920SW,labanda
+ETA,E955.112-D6 *(Disc)*,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,E955.122 *(Disc)*,11½ L (25.60mm),3.00mm,SR920SW,labanda
+ETA,E955.132 *(Phased Out)*,11½,3.00mm,371,labanda
+ETA,E955.412-D3 *(Disc)*,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,E955.412-D3-2H *(Phase Out)*,10½ L (23.30mm),3.00mm,SR920SW,labanda
+ETA,E955.412-D6 *(Disc)*,10½ L (23.30mm),3.00mm,SR920SW,labanda
+ETA,E955.422 *(Disc)*,10½ L (23.30mm),3.00mm,SR920SW,labanda
+ETA,E955.424,10½,3.00mm,371,labanda
+ETA,E956.112-D3 *(Disc)*,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,E956.112-D3-2H *(Disc)*,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,E956.112-D6 *(Disc)*,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,E956.122,7¾ L (17.20mm),3.00mm,SR621SW,labanda
+ETA,E956.412-D3 *(Disc)*,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+ETA,E956.412-D3-2H,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+ETA,E956.412-D6 *(Disc)*,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+ETA,E956.612-D3 *(Disc)*,8¾ L (19.40mm),4.50mm,CR1616,labanda
+ETA,E976.001,5½ x 6¾ L (13.00 x 15.15mm),1.95mm,SR616SW,labanda
+ETA,E980.106,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR516SW,labanda
+ETA,E980.108 *(Disc)*,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR516SW,labanda
+ETA,E980.153,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR516SW,labanda
+ETA,E980.163,5½ x 6¾ L (13.00 x 15.15mm),2.20mm,SR516SW,labanda
+ETA,EE01.001,4⅞ L (11mm),2.50mm,SR516SW,labanda
+ETA,EE03.001,5½ x 6¾ L (13.00 x 15.15mm),1.35mm,SR512SW,labanda
+ETA,EE61.041,8¼ L (18.20mm),1.95mm,SR616SW,labanda
+ETA,EE61.041-D6,8¼ L (18.20mm),1.95mm,SR616SW,labanda
+ETA,EE61.111-D3AO,8¼ L (18.20mm),1.95mm,SR616SW,labanda
+ETA,EE63.041,10½ L (23.70mm),1.95mm,SR920SW,labanda
+ETA,EE63.111-D3,10½ L (23.30mm),1.95mm,SR920SW,labanda
+ETA,EE63.111-D6,10½ L (23.30mm),1.95mm,SR920SW,labanda
+ETA,EE64.111-D3,11½ L (25.60mm),1.95mm,SR916SW,labanda
+ETA,EE64.111-D6,11½ L (25.60mm),1.95mm,SR916SW,labanda
+ETA,EF03.111-D3,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,EF03.111-D3V1,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,EF03.111-D6,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,EF03.115-D3,7¾,2.50mm,364,labanda
+ETA,EF03.115-D6,7¾,2.50mm,364,labanda
+ETA,EF03.11A-D3,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+ETA,EF04.111-D3,8¾ L (19.40mm),2.50mm,SR621SW,labanda
+ETA,EF04.111-D6,8¾ L (19.40mm),2.50mm,SR621SW,labanda
+ETA,EF04.115-D3,8¾ L (19.40mm),2.50mm,SR621SW,labanda
+ETA,EF04.115-D6,8¾ L (19.40mm),2.50mm,SR621SW,labanda
+ETA,EF04.11A-D3,8¾ L (19.40mm),2.50mm,SR621SW,labanda
+ETA,EF05.111-D3,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,EF05.111-D6,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,EF05.115-D3,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,EF05.115-D6,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,EF05.11A-D3,10½ L (23.30mm),2.50mm,SR920SW,labanda
+ETA,EF06.111-D3,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,EF06.111-D3A0,11½ L (25.00mm),—,SR920SW,labanda
+ETA,EF06.111-D6,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,EF06.115-D3,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,EF06.115-D3-2H,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,EF06.115-D6,11½ L (25.60mm),2.50mm,SR920SW,labanda
+ETA,EF06.161-D3,11½,3.60mm,371,labanda
+ETA,EF07.111-D3,13¼,—,371,labanda
+ETA,EF07.115-D3,13¼,2.50mm,SR920SW,labanda
+ETA,EG10.212-D3,13¼ L (29.80mm),5.12mm,SR936SW,labanda
+ETA,EG10.212-D6,13¼ L (29.80mm),5.12mm,SR936SW,labanda
+ETA,EG10.212-HD4,13¼ L (29.80mm),5.12mm,SR936SW,labanda
+ETA,EG10.212-RD4,13¼ L (29.80mm),5.12mm,SR936SW,labanda
+ETA,EG10.712-HD4,13¼ L (29.80mm),5.62mm,SR936SW,labanda
+ETA,EG10.712-RD4,13¼ L (29.80mm),5.62mm,SR936SW,labanda
+ETA,EG15.211-D6,10½,5.25mm,394,labanda
+ETA,EG15.211-HD4,10¼ L (23.30mm),5.25mm,SR936SW,labanda
+ETA,EG15.212-RD4,10¼ L (23.30mm),5.25mm,SR936SW,labanda
+ETA,EG15.261-HD4,10¼ L (23.30mm),5.25mm,SR936SW,labanda
+ETA,EG15.562BE,10½,5.25mm,394,labanda
+ETA,P7001,10½ L (23.3mm),2.50mm,Mechanical,labanda
+ETA,SW200-1,11½ (25.6mm),4.6mm,Automatic,labanda
+FE,FE5820PLATE,5½ x 6¾ L (13.00 x 15.15mm),0.35mm,—,labanda
+FE,FE6120 *(Disc)*,6¾ x 8 L (15.30 x 17.80mm),2.55mm,SR621SW,labanda
+FE,FE6130,6¾ x 8 L (15.30 x 17.80mm),2.55mm,SR621SW,labanda
+FE,FE7021,8¾ L (19.40mm),3.00mm,SR920SW,labanda
+FE,FE7022,8¾ L (19.40mm),3.55mm,SR721SW,labanda
+FE,FE7122,10½ L (23.30mm),3.43mm,SR920SW,labanda
+FE,FE7221,11½ L (25.60mm),3.20mm,SR920SW,labanda
+Seiko/TMI,H1E20,4¼ L (9.00 x 9.40mm),2.70mm,SR512SW,labanda
+Seiko/TMI,H1F20,4¼ x 5½ L (10.00 x 12.50mm),1.80mm,SR512SW,labanda
+Seiko/TMI,H1F21,4¾ L,2.40mm,SR512SW,labanda
+Seiko/TMI,H1N00,4¾ x 6½ L (10.80 x 14.50mm),1.90mm,SR516SW,labanda
+Seiko/TMI,H1N01,4¾ x 6½ L (10.80 x 14.50mm),2.30mm,SR521SW,labanda
+Seiko/TMI,H6N22,6¾ x 8 L (15.15 x 18.2mm),2.79mm,364,labanda
+Seiko/TMI,H7N00,6¾ x 8 L (15.30 x 17.80mm),2.10mm,SR621SW,labanda
+Seiko/TMI,H7N01,6¾ x 8 L (15.30 x 17.80mm),2.10mm,SR516SW,labanda
+Seiko/TMI,H7N32-D3,10½ L (21.30 x 21.50mm),2.57mm,SR920SW,labanda
+Seiko/TMI,H7N32-D6,10½ L (21.30 x 21.50mm),2.57mm,SR920SW,labanda
+Seiko/TMI,H7N33,10½ L (21.30 x 21.50mm),2.78mm,SR920SW,labanda
+Seiko/TMI,H7N39-D3,10½ L (21.30 x 21.50mm),2.57mm,SR920SW,labanda
+Seiko/TMI,H7N42,11½ L (21.90 x 23.50mm),2.78mm,SR920SW,labanda
+Seiko/TMI,H7N43,11½ L (21.90 x 23.50mm),2.78mm,SR920SW,labanda
+Seiko/TMI,H7N82,6¾ x 8 L (15.30 x 17.80mm),2.60mm,SR621SW,labanda
+Seiko/TMI,H7N83-D3D3,6¾ x 8 L (15.30 x 17.80mm),2.60mm,SR621SW,labanda
+Seiko/TMI,H7N89,6¾ x 8 L (15.30 x 17.80mm),2.60mm,SR621SW,labanda
+Seiko/TMI,H7T62 *(Disc)*,24.1 x 27.6mm,3.3mm (plate),395/399,labanda
+Seiko/TMI,H7T82,Ø27.6mm,3.3mm,SR927W,labanda
+Seiko/TMI,HAL20 *(Disc)*,6¾ x 8,—,377,labanda
+Seiko/TMI,HAL21F1,6¾ x 8 L,3.00mm,SR626SW,labanda
+Seiko/TMI,HAL32,10½ L (23.30mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HAL33 *(Disc)*,10½ L (23.30mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HAL35E *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HAL55 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HAL82,6 x 8 L (15.30 x 17.80mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HAL83,6 x 8 L (15.30 x 17.80mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HAS32A-D3,10 L,4.61mm,—,labanda
+Seiko/TMI,HAX32A-D3,10½,4.15mm,SR626SW,labanda
+Seiko/TMI,HAX33,10½,4.15mm,SR626SW,labanda
+Seiko/TMI,HNH15 *(Disc)*,10½ L (21.30mm),6.01mm,Automatic,labanda
+Seiko/TMI,HNH35,12,5.32mm,—,labanda
+Seiko/TMI,HNH70A,12 L (Ø27.4mm),5.32mm,—,labanda
+Seiko/TMI,HNH71A,12 (Ø27.4mm),5.32mm,Automatic,labanda
+Seiko/TMI,HPC10A,5½ x 6¾ L (13.00 x 15.55mm),3.15mm,SR527SW,labanda
+Seiko/TMI,HPC11,5½ x 6¾ L (13.00 x 15.55mm),3.15mm,SR516SW,labanda
+Seiko/TMI,HPC20-S,6¾ x 8 L (15.30 x 17.80mm),3.15mm,SR626SW,labanda
+Seiko/TMI,HPC21AF *(Disc)*,6¾ x 8 L (14.11 x 18.20mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC21J,6¾ x 8 L (15.30 x 17.80mm),3.15mm,SR626SW,labanda
+Seiko/TMI,HPC22A,6¾ x 8 L (14.11 x 18.20mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC22A-D6,6¾ x 8 L (14.11 x 18.20mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC23,6¾ x 8 L (14.11 x 18.20mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC29M,6¾ x 8,4.15mm,377,labanda
+Seiko/TMI,HPC32,10½ L (22.00 x 22.60mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC32A-D6,10½ L (22.00 x 22.60mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC33,10½ L (22.00 x 22.60mm),4.15mm,SR626SW,labanda
+Seiko/TMI,HPC39,10½,4.15mm,377,labanda
+Seiko/TMI,HV021,13¼ L (29.00mm),4.10mm,SR626SW,labanda
+Seiko/TMI,HV041 25,10½ L,3.9mm,396,labanda
+Seiko/TMI,HV172,12 (27.6mm),4.4mm,—,labanda
+Seiko/TMI,HV501 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HV532-24,10½ L,3.22mm,SR927SW/395,labanda
+Seiko/TMI,HV657-20 *(Disc)*,12¾ L (26.00 x 29.50mm),3.70mm,SR920W,labanda
+Seiko/TMI,HV810-10,5½ x 6¾ L (13.10 x 15.60mm),3.00mm,SR527SW,labanda
+Seiko/TMI,HV810-20,5½ x 6¾ L (13.10 x 15.60mm),3.00mm,SR527SW,labanda
+Seiko/TMI,HV811,5½ x 6¾ L (13.10 x 15.60mm),3.00mm,SR527SW,labanda
+Seiko/TMI,HVB20B *(Disc)*,3¾ x 6¾ L (8.45 x 15.55mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVC00,4¾ x 6½ L (10.80 x 14.50mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVC01,4¾ x 6½ L (10.80 x 14.50mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVC10F2,5½ x 6¾ L (13.00 x 15.55mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVC10G2,5½ x 6¾ L (13.00 x 15.55mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVC11F,5½ x 6¾ L (13.00 x 15.55mm),2.38mm,SR521SW,labanda
+Seiko/TMI,HVD31,12¾,4.57mm,SR920SW,labanda
+Seiko/TMI,HVD32,12¾ L (29.5mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVD34,12¾,—,SR920SW,labanda
+Seiko/TMI,HVD35,12¾,4.57mm,SR920SW,labanda
+Seiko/TMI,HVD51C,12¾ L (26.00 x 29.50mm),4.57mm,SR920SW,labanda
+Seiko/TMI,HVD52,12¾ L (26.00 x 29.50mm),4.57mm,SR920SW,labanda
+Seiko/TMI,HVD53B *(Disc)*,12¾ L (26.00 x 29.50mm),4.57mm,SR920SW,labanda
+Seiko/TMI,HVD53CD4,12¾ L (26.00 x 29.50mm),4.57mm,SR920SW,labanda
+Seiko/TMI,HVD53CD6,12¾ L (26.00 x 29.50mm),4.57mm,SR920SW,labanda
+Seiko/TMI,HVD54C,12¾ L (26.00 x 29.50mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVD55,12¾ L (26.00 x 29.50mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVD56,12¾,3.10mm,371,labanda
+Seiko/TMI,HVD57C,12¾,4.57mm,SR920SW,labanda
+Seiko/TMI,HVD75A,10½ L (21.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD76,10½ L (21.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD77,10½ L (21.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD78 *(Phased Out)*,10½ L (23.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD79,10½ L (22.60mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD85,10½ L (21.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVD86A *(Special Order)*,10½,3.45mm,SR626SW,labanda
+Seiko/TMI,HVD87,10½ L (21.30mm),3.45mm,SR626SW,labanda
+Seiko/TMI,HVE00,6¾ x 8 L (15.30 x 18.20mm),1.99mm,SR616SW,labanda
+Seiko/TMI,HVH63,10½,3.45mm,SR920SW,labanda
+Seiko/TMI,HVH64,10½,3.45mm,371,labanda
+Seiko/TMI,HVH67,10½ L (21.30 x 21.50mm),5.86mm,SR920SW,labanda
+Seiko/TMI,HVJ12,8¾ L (19.40mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ12-D6,8¾ L (19.40mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ20C,6¾ x 8 L (15.30 x 18.20mm),2.28mm,SR621SW,labanda
+Seiko/TMI,HVJ21C,6¾ x 8 L (15.30 x 18.20mm),2.28mm,SR621SW,labanda
+Seiko/TMI,HVJ22 *(Special Order)*,6¾ x 8 L (15.30 x 18.20mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ22B-D6,6¾ x 8 L (15.30 x 18.20mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ23B-D3D3,6¾ x 8 L (15.30 x 18.20mm),2.94mm,SR621SW,labanda
+Seiko/TMI,HVJ32,10½ L (21.30mm),2.26mm,SR621SW,labanda
+Seiko/TMI,HVJ32-D6,10½ L (21.30mm),2.26mm,SR621SW,labanda
+Seiko/TMI,HVJ33B,10½ L (21.30mm),2.26mm,SR621SW,labanda
+Seiko/TMI,HVJ34,10½ L (22.6mm),2.55mm,SR621SW,labanda
+Seiko/TMI,HVJ42-D6,11½ L (25.60mm),2.71mm,364,labanda
+Seiko/TMI,HVJ42B-D3,11½ L (23.50 x 26.40mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ43B,11½ L (25.60mm),2.94mm,SR621SW,labanda
+Seiko/TMI,HVJ45,11½,3.05mm,364,labanda
+Seiko/TMI,HVJ52,12½ L (23.50 x 26.40mm),2.71mm,SR621SW,labanda
+Seiko/TMI,HVJ53B,12½,2.94mm,SR621SW,labanda
+Seiko/TMI,HVJ76A,11½ L (23.50 x 26.40mm),3.50mm,SR621SW,labanda
+Seiko/TMI,HVK63A,13½ L (30.80mm),5.10mm,SR936SW,labanda
+Seiko/TMI,HVK64AD6,13½,5.10mm,SR936SW,labanda
+Seiko/TMI,HVK67A-D3,13½,5.10mm,394,labanda
+Seiko/TMI,HVL58A,13½ L (30.80mm),3.97mm,371,labanda
+Seiko/TMI,HVR32A,13½ L (30.60mm),6.20mm,SR920SW,labanda
+Seiko/TMI,HVR32B-D4,13½ L (30.60mm),6.20mm,SR920SW,labanda
+Seiko/TMI,HVR33A,13½ L (30.80mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVR33B,13½ L (30.80mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVR3GB,13½ L (30.80mm),3.97mm,SR920SW,labanda
+Seiko/TMI,HVR42A,13½ L (30.80mm),4.52mm,Solar,labanda
+Seiko/TMI,HVR42B,13½ L (30.80mm),4.52mm,Solar,labanda
+Seiko/TMI,HVS32A,10½ L (21.30mm),2.98mm,3023-24Y,labanda
+Seiko/TMI,HVS37M,10½ (21.30 x 24.00mm),2.98mm,—,labanda
+Seiko/TMI,HVS43,11½ L,3.09mm,3023-24Y,labanda
+Seiko/TMI,HVX00,4¾ x 6½ L (10.80 x 14.50mm),1.90mm,SR516SW,labanda
+Seiko/TMI,HVX01,4¾ x 6½ L (10.80 x 14.50mm),2.30mm,SR521SW,labanda
+Seiko/TMI,HVX01-B2,4¾ x 6½ L (10.80 x 14.50mm),2.30mm,SR521SW,labanda
+Seiko/TMI,HVX10,5½ x 6¾ L (13.00 x 15.55mm),2.19mm,SR516SW,labanda
+Seiko/TMI,HVX11B,5½ x 6¾ L (13.00 x 15.55mm),2.49mm,SR521SW,labanda
+Seiko/TMI,HVX12,8¾ L (18.00 x 20.00mm),2.60mm,SR716SW,labanda
+Seiko/TMI,HVX13,8¾,2.92mm,315,labanda
+Seiko/TMI,HVX18,8¾ L (18.00 x 20.00mm),3.35mm,SR716SW,labanda
+Seiko/TMI,HVX19M *(Phased Out)*,8¾ L (18.00 x 20.00mm),2.60mm,SR716SW,labanda
+Seiko/TMI,HVX32E-D3,10½ L (21.50 x 24.00mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX32E-D6,10½ L (21.50 x 24.00mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX33E-D3D3,10½ L (21.50 x 24.00mm),2.98mm,SR920SW,labanda
+Seiko/TMI,HVX36,10½ L (23.3mm),3.05mm,SR920SW,labanda
+Seiko/TMI,HVX38,10½,3.35mm,373,labanda
+Seiko/TMI,HVX3FA,10½,3.05mm,373,labanda
+Seiko/TMI,HVX3GA,10½,3.05mm,373,labanda
+Seiko/TMI,HVX3HA,10½ L (21.50 x 24.00mm),3.05mm,SR916SW,labanda
+Seiko/TMI,HVX3J,10½ L (21.50 x 24.00mm),3.05mm,SR916SW,labanda
+Seiko/TMI,HVX3K-D3,10½ L (21.50 x 24.00mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX3K-D6,10½ L (21.50 x 24.00mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX3KE,10½ L (21.50 x 24.00mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX3L,10½ L (21.50 x 24.00mm),3.05mm,SR916SW,labanda
+Seiko/TMI,HVX3M,10½,3.05mm,373,labanda
+Seiko/TMI,HVX3N,10½ L (21.50 x 24.00mm),3.05mm,SR920SW,labanda
+Seiko/TMI,HVX3P,10½ L (21.50 x 24.00mm),3.05mm,SR920SW,labanda
+Seiko/TMI,HVX3R,10½ L (21.50 x 24.00mm),3.05mm,SR920SW,labanda
+Seiko/TMI,HVX3S,10½ L (21.50 x 24.00mm),3.86mm,SR920SW,labanda
+Seiko/TMI,HVX3TE,10½,3.86mm,SR920SW,labanda
+Seiko/TMI,HVX42-D6,11½ L (23.50 x 26.40mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX42A2,11½ L (23.50 x 26.40mm),2.62mm,SR916SW,labanda
+Seiko/TMI,HVX42E-D3V1,11½ L (23.50 x 26.40mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX42E1,11½ L (23.50 x 26.40mm),2.62mm,SR920SW,labanda
+Seiko/TMI,HVX43E-D3D3V1,11½ L (23.50 x 26.40mm),2.92mm,SR916SW,labanda
+Seiko/TMI,HVX44,11½ L (23.50 x 26.40mm),2.98mm,SR920SW,labanda
+Seiko/TMI,HVX46,11½ L (23.50 x 26.40mm),3.49mm,SR920SW,labanda
+Seiko/TMI,HVX50,6¾ x 8 L (15.30 x 18.20mm),2.16mm,SR616SW,labanda
+Seiko/TMI,HVX51-E3,6¾ x 8 L (15.30 x 18.20mm),2.30mm,SR616SW,labanda
+Seiko/TMI,HVX51E,6¾ x 8 L (15.30 x 18.20mm),2.30mm,SR616SW,labanda
+Seiko/TMI,HVX62E,13½,3.63mm,SR927SW,labanda
+Seiko/TMI,HVX63E,13½,3.63mm,SR927SW,labanda
+Seiko/TMI,HVX7JE,12¾ L (26.00 x 29.50mm),3.99mm,SR927SW,labanda
+Seiko/TMI,HVX7N,12¾,3.99mm,SR927SW,labanda
+Seiko/TMI,HVX7PE,12¾ L (26.00 x 29.50mm),—,—,labanda
+Seiko/TMI,HVX82-D6,6¾ x 8 L (15.70 x 17.80mm),2.75mm,SR621SW,labanda
+Seiko/TMI,HVX82E-D3,6¾ x 8 L (15.70 x 17.80mm),2.75mm,SR621SW,labanda
+Seiko/TMI,HVX83,6¾ x 8 L (15.70 x 17.80mm),3.11mm,SR621SW,labanda
+Seiko/TMI,HVX83-E3,6¾ x 8 L (15.70 x 17.80mm),3.11mm,SR621SW,labanda
+Seiko/TMI,HVX89-D6,6¾ x 8 L (15.70 x 17.80mm),2.75mm,SR621SW,labanda
+Seiko/TMI,HVX89E-D3,6¾ x 8 L (15.70 x 17.80mm),2.75mm,SR621SW,labanda
+Seiko/TMI,HVX9JE,12¾ L (26.00 x 29.50mm),3.99mm,SR927SW,labanda
+Seiko/TMI,HVX9NE,12¾ L (26.00 x 29.50mm),3.99mm,SR927SW,labanda
+Seiko/TMI,HVX9PE,12¾ L (26.00 x 29.50mm),3.99mm,SR927SW,labanda
+Seiko/TMI,HY120F1,6¾ x 8 L (15.30 x 17.80mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HY121 FR,6¾ x 8,2.99mm,377,labanda
+Seiko/TMI,HY121F1,6¾ x 8 L (15.30 x 17.80mm),2.99mm,377,labanda
+Seiko/TMI,HY121F2,6¾ x 8 L (15.30 x 17.80mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HY121F3,6¾ x 8 L (15.30 x 17.80mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HY121F4,6¾ x 8 L (15.30 x 17.80mm),2.99mm,SR626SW,labanda
+Seiko/TMI,HY121F5,6¾ x 8 L (15.30 x 17.80mm),2.99mm,—,labanda
+Seiko/TMI,HY121F6,6¾ x 8 L,2.99mm,SR626SW,labanda
+Seiko/TMI,HY121G,6¾ x 8 ligne,4.5mm,377,labanda
+Seiko/TMI,HY799,6¾ x 8 L (22.70 x 24.20mm),3.52mm,SR626SW,labanda
+Seiko/TMI,HYL50,4¼ L (9.00 x 9.40mm),2.70mm,SR512SW,labanda
+Seiko/TMI,HYL61,4¾ x 5¾ L (10.80 x 13.50mm),2.39mm,SR421SW,labanda
+Seiko/TMI,HYM26,12,3.70mm,399,labanda
+Seiko/TMI,HYM62,12 L (27.60mm),3.11mm,SR927W,labanda
+Seiko/TMI,HYM82,12,3.70mm,SR927W,labanda
+Seiko/TMI,HYM92,12 L (24.00 x 27.60mm),3.70mm,SR927SW,labanda
+Seiko/TMI,HYR67,10½,3.05mm,395,labanda
+ISA,ISA 2320.103,10½,2.95mm,371,labanda
+ISA,ISA 2331/103 *(Phased Out)*,11½ L (25.60mm),4.70mm,SR920SW,labanda
+ISA,ISA 307.104 D6,10½,3.60mm,371,labanda
+ISA,ISA 307.40 DD6,10½,3.60mm,371,labanda
+ISA,ISA 336/101,6¾ x 8 L (15.30 x 17.80mm),2.50mm,377/376,labanda
+ISA,ISA 389/101,8¾ L (19.40mm),2.80mm,SR726SW,labanda
+ISA,ISA 389/103,8¾ L (19.40mm),3.50mm,SR726SW,labanda
+ISA,ISA 638/101,6¾ x 8 L (15.30 x 18.20mm),3.10mm,SR626SW,labanda
+ISA,ISA 8154/201-D6,11½,4.60mm,395,labanda
+ISA,ISA 8162-D6,11½,4.20mm,395,labanda
+ISA,ISA 8172/220,11½ L (25.60mm),4.20mm,SR927W,labanda
+ISA,ISA 8174/201,11½,4.60mm,SR927SW,labanda
+ISA,ISA 8174/220,11½ L (25.60mm),4.60mm,SR927SW,labanda
+ISA,ISA 8272,11½ L (25.60mm),4.60mm,SR927W,labanda
+ISA,ISA 9238/1970,10½ L (23.30mm),4.13mm,SR920SW,labanda
+ISA,ISA K83/103,8¾ L (19.40mm),2.85mm,SR721SW,labanda
+Miyota,M0T45,13½ L (30.80mm),4.13mm,SR927W,labanda
+Miyota,M1102,10½ L (23.70mm),2.71mm,SR621SW,labanda
+Miyota,M1L02 *(Disc)*,6¾ x 8 L (17.40 x 18.20mm),2.94mm,SR621SW,labanda
+Miyota,M1L12 *(Disc)*,6¾ x 8,2.71mm,364,labanda
+Miyota,M1L12-D6 *(Disc)*,6¾ x 8 L (17.40 x 18.20mm),2.71mm,SR621SW,labanda
+Miyota,M1L15,6¾ x 8 L (17.40 x 18.20mm),2.71mm,SR621SW,labanda
+Miyota,M1L22 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.15mm,SR616SW,labanda
+Miyota,M1L26 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.15mm,SR616SW,labanda
+Miyota,M1L32 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.28mm,SR621SW,labanda
+Miyota,M1L40,6¾ x 8 L (15.30 x 18.20mm),2.93mm,SR621SW,labanda
+Miyota,M1L45,6¾ x 8 L (15.30 x 18.20mm),2.93mm,SR621SW,labanda
+Miyota,M1M02 *(Disc)*,10½ L (23.70mm),2.94mm,SR621SW,labanda
+Miyota,M1M12 *(Disc)*,10½ L (23.70mm),2.71mm,SR621SW,labanda
+Miyota,M1M12-D6 *(Disc)*,10½ L (23.70mm),2.71mm,SR621SW,labanda
+Miyota,M1M15,10½ L (23.30mm),2.71mm,SR621SW,labanda
+Miyota,M1M50,10½ L (23.70mm),2.94mm,SR621SW,labanda
+Miyota,M1N12-D3 *(Phased Out)*,8¾ L (20.00mm),2.58mm,SR616SW,labanda
+Miyota,M1N12-D6 *(Disc)*,8¾ L (20.00mm),2.58mm,SR616SW,labanda
+Miyota,M1S02 *(Phased Out)*,11½ L (26.40mm),3.07mm,SR621SW,labanda
+Miyota,M1S12 *(Disc)*,11½ L (26.40mm),2.71mm,SR621SW,labanda
+Miyota,M1S13,11½ L (23.50 x 21.90mm),2.71mm,SR621SW,labanda
+Miyota,M1S13-D6,11½ L (23.50 x 21.90mm),2.71mm,SR621SW,labanda
+Miyota,M2005,6¾ x 8 L (16.30 x 18.20mm),4.15mm,SR626SW,labanda
+Miyota,M2015,6¾ x 8 L (16.30 x 18.20mm),4.15mm,SR626SW,labanda
+Miyota,M2015-D6,6¾ x 8 L (16.30 x 18.20mm),4.15mm,SR626SW,labanda
+Miyota,M2025,6¾ x 8 L (15.30 x 18.20mm),3.15mm,SR626SW,labanda
+Miyota,M2033,6¾ x 8 L (15.30 x 18.20mm),3.15mm,SR626SW,labanda
+Miyota,M2034,6¾ x 8,3.15mm,SR626SW,labanda
+Miyota,M2035,6¾ x 8 L (15.30 x 18.20mm),3.15mm,SR626SW,labanda
+Miyota,M2036,6¾ x 8 L (15.30 x 18.20mm),3.15mm,SR626SW,labanda
+Miyota,M2039,6¾ x 8 L (15.30 x 18.20mm),3.15mm,SR626SW,labanda
+Miyota,M2105,10½ L (23.70mm),4.15mm,SR626SW,labanda
+Miyota,M2115-D3,10½ L (23.70mm),4.15mm,SR626SW,labanda
+Miyota,M2115-D6,10½ L (23.70mm),4.15mm,SR626SW,labanda
+Miyota,M213D,10½,—,377,labanda
+Miyota,M2305-D3D3,11½ L (23.5 x 23.5mm),4.15mm,SR626SW,labanda
+Miyota,M2315,11½ L (23.50 x 23.50mm),4.15mm,SR626SW,labanda
+Miyota,M2315-D6,11½ (23.50 x 23.50mm),4.15mm,377,labanda
+Miyota,M2405-D3D3,11½ L (23.5 x 23.5mm),4.15mm,SR626SW,labanda
+Miyota,M2415,13½ L (30.80mm),4.35mm,SR626SW,labanda
+Miyota,M2417,13½,4.35mm,377,labanda
+Miyota,M2500,10½ (21.5 x 23.7mm),2.90mm,SR920SW,labanda
+Miyota,M2510,10½ L (21.5 x 23.7mm),2.70mm,SR920SW,labanda
+Miyota,M2F00 *(Disc)*,10½ L (21.50 x 23.70mm),2.70mm,SR920SW,labanda
+Miyota,M2F10 *(Disc)*,10½ L (21.50 x 23.70mm),2.70mm,SR920SW,labanda
+Miyota,M2S60,10½,3.99mm,CR2012,labanda
+Miyota,M3S10,13½,4.20mm,—,labanda
+Miyota,M3T30,6¾ x 8,2.30mm,—,labanda
+Miyota,M5500,10½,—,SR920SW,labanda
+Miyota,M5920,5½ x 6¾ L (13.00 x 15.75mm),2.54mm,SR521SW,labanda
+Miyota,M5930,5½ x 6¾ L (13.00 x 15.75mm),2.54mm,SR521SW,labanda
+Miyota,M5R21,3¾ x 6 L (9.00 x 13.20mm),1.90mm,SR416SW,labanda
+Miyota,M5R22,3¾ x 6 L (9.00 x 13.20mm),1.90mm,SR416SW,labanda
+Miyota,M5R32,3¾ x 6 L (9.00 x 13.20mm),2.00mm,SR416SW,labanda
+Miyota,M5Y20,5½ x 6¾ L (13.00 x 15.75mm),2.54mm,SR521SW,labanda
+Miyota,M5Y30,5½ x 6¾ L (13.00 x 15.75mm),2.54mm,SR521SW,labanda
+Miyota,M6L02 *(Disc)*,6¾ x 8 L (17.10 x 18.20mm),3.30mm,SR621SW,labanda
+Miyota,M6L12 *(Disc)*,6¾ x 8,3.07mm,364,labanda
+Miyota,M6L40,6¾ x 8 L (15.30 x 18.20mm),3.20mm,SR621SW,labanda
+Miyota,M6L90,6¾ x 8,3.30mm,364,labanda
+Miyota,M6M02 *(Disc)*,10½,3.30mm,364,labanda
+Miyota,M6M12 *(Disc)*,10½,3.30mm,364,labanda
+Miyota,M6M12-D6 *(Phased Out)*,10½,3.30mm,—,labanda
+Miyota,M6M17,10½ L (23.70mm),3.30mm,SR621SW,labanda
+Miyota,M6M55,13½,3.85mm,364,labanda
+Miyota,M6M85,10½,3.30mm,364,labanda
+Miyota,M6M90,10½,3.30mm,364,labanda
+Miyota,M6P00,10½,3.45mm,364,labanda
+Miyota,M6P05,10½,3.45mm,—,labanda
+Miyota,M6P09,10½,3.45mm,364,labanda
+Miyota,M6P20,10½ L (23.70mm),3.45mm,SR621SW,labanda
+Miyota,M6P21,10½,3.45mm,364,labanda
+Miyota,M6P23,10½ L (23.70mm),3.45mm,SR621SW,labanda
+Miyota,M6P25,10½ L (23.70mm),3.45mm,SR621SW,labanda
+Miyota,M6P26,10½ L (23.70mm),3.45mm,SR621SW,labanda
+Miyota,M6P27,10½ L (23.70mm),3.45mm,SR621SW,labanda
+Miyota,M6P29,10½ L (23.30mm),3.45mm,SR621SW,labanda
+Miyota,M6P73,10½ L (23.30mm),3.45mm,SR621SW,labanda
+Miyota,M6P79,10½,3.45mm,364,labanda
+Miyota,M6P80,10½ L (23.70mm),3.85mm,SR621SW,labanda
+Miyota,M6P89,10½,3.85mm,364,labanda
+Miyota,M6P90,10½,3.85mm,364,labanda
+Miyota,M6S20-RD4,15 L (34.60mm),4.90mm,SR927W,labanda
+Miyota,M6S21,15,4.90mm,SR927W,labanda
+Miyota,M6T28,8¾ L,5.23mm,Automatic,labanda
+Miyota,M7871 *(Disc)*,11½,—,295-40,labanda
+Miyota,M7T35,6¾ x 8 ligne,3.20mm,377,labanda
+Miyota,M8205-D3D3,11½ L (25.60mm),5.67mm,Automatic (21J),labanda
+Miyota,M8215,11½ L (25.60mm),5.67mm,Automatic (21J),labanda
+Miyota,M8N24,11½ L (Ø25.6mm),5.67mm,Automatic (21J),labanda
+Miyota,M8N24G,11½ L,5.55mm,—,labanda
+Miyota,M8N33/G,11½ L (25.60mm),4.47mm,Manual,labanda
+Miyota,M9T13-D6,6¾ x 8 L (16.10 x 17.80mm),2.33mm,SR616SW,labanda
+Miyota,M9T15,6¾ x 8 L (17.40 x 18.20mm),2.33mm,SR616SW,labanda
+Miyota,M9T22,6¾ x 8 L (15.40 x 18.20mm),1.90mm,SR616SW,labanda
+Miyota,M9T33,6¾ x 8 L (15.80 x 17.80mm),1.90mm,SR616SW,labanda
+Miyota,M9U13,10½,2.33mm,SR916SW,labanda
+Miyota,M9U13 D6,10½ (21.50 x 23.70mm),2.33mm,SR916SW,labanda
+Miyota,M9U15,10½ L (23.70mm),2.33mm,SR916SW,labanda
+Miyota,M9U15 D6,10½ L (23.70mm),2.33mm,SR916SW,labanda
+Miyota,MB023,16 x 14.9mm,2.50mm,295-76,labanda
+Miyota,MB033 *(Disc)*,16 x 14.9mm,2.50mm,—,labanda
+Miyota,MB035,16 x 14.9mm,2.50mm,295-76,labanda
+Miyota,ME001,8¼ L (18.20mm),3.50mm,295-51,labanda
+Miyota,ME011,8¼ L (18.20mm),3.30mm,295-51,labanda
+Miyota,ME013,8¼,3.30mm,MT621,labanda
+Miyota,ME031,8¼ L (18.20mm),2.83mm,295-51,labanda
+Miyota,ME101,10½ L (23.70mm),3.50mm,295-51,labanda
+Miyota,ME111,10½ L (23.70mm),3.30mm,295-51,labanda
+Miyota,ME650,—,—,295-69,labanda
+Miyota,ME860 *(Phased Out)*,11½ (25.60mm),4.60mm,295-56,labanda
+Miyota,ME870 *(Phased Out)*,13¼ L (29.7mm),4.20mm,295-56,labanda
+Miyota,MFS00-4,10½ L (23.70 x 22.00mm),4.13mm,SR626SW,labanda
+Miyota,MFS00-6,10½ L (23.70 x 22.00mm),4.13mm,SR626SW,labanda
+Miyota,MFS01,10½ L (23.70 x 22.00mm),4.28mm,SR626SW,labanda
+Miyota,MFS10,10½,5.10mm,377,labanda
+Miyota,MFS13,10½,5.10mm,377,labanda
+Miyota,MFS20,10½ L (23.70 x 22.00mm),5.10mm,SR626SW,labanda
+Miyota,MFS21,10½ L (23.70 x 22.00mm),5.25mm,SR626SW,labanda
+Miyota,MFS60,10½ L (23.7 x 22mm),5.10mm,SR626SW,labanda
+Miyota,MG012,—,—,Quartz,labanda
+Miyota,MG111,—,—,SR621SW,labanda
+Miyota,MG112,6¾ x 8,2.71mm,379,labanda
+Miyota,MG620,3¾ x 6 L (9.0 x 13.5mm),2.17mm,295-67,labanda
+Miyota,MGL00,6¾ x 8 L (16.10 x 18.20mm),2.94mm,SR621SW,labanda
+Miyota,MGL02,6¾ x 8,2.70mm,SR621SW,labanda
+Miyota,MGL10 *(Disc)*,6¾ x 8 L (16.10 x 18.20mm),2.71mm,SR621SW,labanda
+Miyota,MGL10D6,6¾ x 8 L (16.10 x 18.20mm),2.71mm,SR621SW,labanda
+Miyota,MGL12,6¾ x 8,2.70mm,SR621SW,labanda
+Miyota,MGL12-D6,6¾ x 8,2.70mm,SR621SW,labanda
+Miyota,MGL14 D3,6¾ x 8,2.71mm,SR621SW,labanda
+Miyota,MGL15,6¾ x 8,—,SR621SW,labanda
+Miyota,MGL17 *(Disc)*,—,—,—,labanda
+Miyota,MGL20,6¾ x 8 L (16.10 x 18.20mm),2.28mm,SR621SW,labanda
+Miyota,MGL22,6¾ x 8 L (16.10 x 18.20mm),2.28mm,SR621SW,labanda
+Miyota,MGL24,6¾ x 8 (15.3 x 18.2mm),2.28mm,SR621SW,labanda
+Miyota,MGL26,6¾ x 8,3.85mm,364,labanda
+Miyota,MGL30 *(Disc)*,6¾ x 8 L (15.30 x 18.20mm),2.28mm,SR621SW,labanda
+Miyota,MGL32,6¾ x 8,2.28mm,SR621SW,labanda
+Miyota,MGL34,6¾ x 8,2.28mm,SR621SW,labanda
+Miyota,MGL36 *(Phased Out)*,6¾ x 8 L (15.30 x 17.80mm),2.28mm,SR621SW,labanda
+Miyota,MGM00-DD3 *(Disc)*,10½ L (23.3mm),2.94mm,SR621SW,labanda
+Miyota,MGM00-DD6 *(Phased Out)*,10½ L (23.3mm),2.94mm,SR621SW,labanda
+Miyota,MGM02-DD3,10½ L (23.70mm),2.94mm,SR621SW,labanda
+Miyota,MGM02-DD6,10½ L (23.70mm),2.94mm,SR621SW,labanda
+Miyota,MGM10-D3 *(Disc)*,10½ L (23.3mm),2.71mm,SR621SW,labanda
+Miyota,MGM10-D6 *(Disc)*,10½ L (23.3mm),2.71mm,SR621SW,labanda
+Miyota,MGM10-HD4 *(Disc)*,10½ L (23.3mm),2.71mm,SR621SW,labanda
+Miyota,MGM10-RD4,10½ L (23.3mm),2.71mm,SR621SW,labanda
+Miyota,MGM12-D3,10½,2.71mm,—,labanda
+Miyota,MGM12-D6,10½ L (23.30mm),2.71mm,SR621SW,labanda
+Miyota,MGM12-HD4,10½,2.71mm,SR621SW,labanda
+Miyota,MGM12-RD4,10½ L (23.30mm),2.71mm,SR621SW,labanda
+Miyota,MGM13,10½,2.71mm,364,labanda
+Miyota,MGM14-D3,10½,2.71mm,364,labanda
+Miyota,MGM15-D3,10½ (23.7 x 22.6mm),2.71mm,SR621SW,labanda
+Miyota,MGM15-D6,10½ L (23.3mm),2.71mm,SR621SW,labanda
+Miyota,MGM17,10½,2.71mm,SR621SW,labanda
+Miyota,MGM17-D6,10½,2.71mm,SR621SW,labanda
+Miyota,MGN10 *(Disc)*,8¾ L (19.40mm),2.71mm,SR621SW,labanda
+Miyota,MGN12,8¾ (19.73mm),2.71mm,SR621SW,labanda
+Miyota,MGN15 *(Disc)*,8¾ L (19.40mm),2.71mm,SR621SW,labanda
+Miyota,MGN17,8¾ L (20.00 x 18.00mm),2.71mm,SR621SW,labanda
+Miyota,MGP00 *(Ltd Stock)*,12½,4.40mm,371,labanda
+Miyota,MGP01,12½,4.40mm,371,labanda
+Miyota,MGP10,12 L (27.00mm),4.40mm,SR920SW,labanda
+Miyota,MGP11,12 L (27.00mm),4.40mm,SR920SW,labanda
+Miyota,MGR02-D3D3,11½,3.07mm,364,labanda
+Miyota,MH504,—,—,295-51,labanda
+Miyota,MJ800,—,—,295-51 (Eco-Drive),labanda
+Miyota,MJ810,—,—,295-51,labanda
+Miyota,MJP15,12½,4.30mm,364,labanda
+Miyota,MJR10,12½ L (28.20mm),4.18mm,SR621SW,labanda
+Miyota,MJS00,12½,4.18mm,364,labanda
+Miyota,MJS10,12½,4.18mm,364,labanda
+Miyota,MJS15-D3,12½ L (28.20 x 26.00mm),4.30mm,SR621SW,labanda
+Miyota,MJS15-D3-White,12½ L (28.20mm),4.30mm,SR621SW,labanda
+Miyota,MJS16,12½,6.70mm,SR621SW,labanda
+Miyota,MJS20,12½,4.18mm,364,labanda
+Miyota,MJS25-D6,12½ L (28.20mm),4.30mm,SR621SW,labanda
+Miyota,MJS25-RD4,12½ L (28.20mm),4.30mm,SR621SW,labanda
+Miyota,MJS26-RD4,12½ L (28.20mm),4.30mm,SR621SW,labanda
+Miyota,MOS00,13½,5.10mm,SR927W,labanda
+Miyota,MOS10,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOS11,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOS1A *(Disc/Special Order)*,13½,4.13mm,399,labanda
+Miyota,MOS20,13½ L (30.80mm),5.10mm,SR927SW,labanda
+Miyota,MOS20M,13½,5.10mm,399,labanda
+Miyota,MOS21-D6,13½ L (30.80mm),5.10mm,SR927SW,labanda
+Miyota,MOS21-RD4.5,13½ L (30.80mm),5.10mm,SR927SW,labanda
+Miyota,MOS2A,13½ L (30.80mm),5.10mm,SR927W,labanda
+Miyota,MOS30,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOS60,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOS62,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOS80,13½ L (30.80mm),4.68mm,SR626SW,labanda
+Miyota,MOS90,13½ L (30.80mm),4.13mm,SR927SW,labanda
+Miyota,MOU30,10½ L (23.30mm),4.10mm,SR626SW,labanda
+Miyota,MOW50,13½ L (30.50mm),5.10mm,295-29,labanda
+Miyota,MT206,12½,3.16mm,399,labanda
+Miyota,MT241,13½ L (30.80mm),4.91mm,SR927SW,labanda
+Miyota,MT270,13½ L (30.80mm),4.91mm,SR927SW,labanda
+Ronda,R1005,10½ L (23.30mm),1.90mm,SR714SW,labanda
+Ronda,R1006,10½ L (23.90mm),1.90mm,SR714SW,labanda
+Ronda,R1016,11½ L (25.60mm),1.90mm,SR714SW,labanda
+Ronda,R1019,11½ L (25.60mm),1.90mm,SR714SW,labanda
+Ronda,R1032-0,3½ x 6 L (8.5 x 15.0mm),1.95mm,SR516SW,labanda
+Ronda,R1032-1,3½ x 6 L (8.5 x 15.0mm),1.95mm,SR516SW,labanda
+Ronda,R1032-2,3½ x 6 L (8.5 x 15.0mm),1.95mm,SR516SW,labanda
+Ronda,R1032-3,3½ x 6 L (8.5 x 15.0mm),1.95mm,SR516SW,labanda
+Ronda,R1042,4¼ L (15.30 x 17.80mm),2.90mm,SR512SW,labanda
+Ronda,R1062,6¾ x 8 L (15.30 x 17.80mm),1.90mm,SR616SW,labanda
+Ronda,R1063,6¾ x 8 L (15.30 x 17.80mm),1.90mm,SR616SW,labanda
+Ronda,R1064,6¾ x 8 L (15.30 x 17.80mm),1.90mm,SR616SW,labanda
+Ronda,R1069,6¾ x 8 L (15.30 x 17.80mm),2.30mm,SR616SW,labanda
+Ronda,R3540D,10½ x 11½,4.90mm,392,labanda
+Ronda,R4003B,12½ (Ø28.6mm),4.40mm,SR927SW,labanda
+Ronda,R4120BM,12½ L,4.43mm,SR927SW,labanda
+Ronda,R4220BD6,12½ L (28.00mm),4.40mm,—,labanda
+Ronda,R4310D,12½ L (28.00mm),4.40mm,SR927SW,labanda
+Ronda,R5010B,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R5021D,12½ L (28.60mm),4.40mm,395,labanda
+Ronda,R5030D,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R5030D/D6 *(Disc)*,12½ Round,—,SR927SW,labanda
+Ronda,R5040-BD12,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R5040B-SA,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R5040D,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R5040D-SA,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R505-D3-3H AIG1,10½ L (23.30mm),3.00mm,SR920SW,labanda
+Ronda,R505-D3-3H AIG2,10½,3.00mm,371,labanda
+Ronda,R505-D3-3H AIG6,10½,3.00mm,371,labanda
+Ronda,R505-D4-3H AIG1,10½,3.00mm,371,labanda
+Ronda,R505-D4-3H AIG2,10½,3.00mm,371,labanda
+Ronda,R505-D4-3H AIG6,10½,3.00mm,371,labanda
+Ronda,R505-D4.5-3H AIG1,10½,3.00mm,371,labanda
+Ronda,R505-D4.5-3H AIG2,10½,3.00mm,371,labanda
+Ronda,R505-D4.5-3H AIG6,10½,3.00mm,371,labanda
+Ronda,R505-D6-3H A1G1,10½ L (23.30mm),3.00mm,SR920SW,labanda
+Ronda,R505-D6-3H AIG2,10½,3.00mm,371,labanda
+Ronda,R5050B,12½ L (28.60mm),4.40mm,SR927SW,labanda
+Ronda,R507-DD3-3H,10½ L (23.30mm),4.50mm,SR920SW,labanda
+Ronda,R507/2,10½ L (23.30mm),3.00mm,SR920SW,labanda
+Ronda,R509,10½ L (23.30mm),3.00mm,SR920SW,labanda
+Ronda,R512,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R513,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R5130D,12½ L (28.40mm),4.40mm,SR927SW,labanda
+Ronda,R515-D3-3H,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R515-D6-3H,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R517-DD3-3H,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R517/2,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R519,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R519-D6,11½ L (25.60mm),3.00mm,SR920SW,labanda
+Ronda,R585-D3-3H,8¾ L (19.40mm),3.00mm,SR721SW,labanda
+Ronda,R585-D6-3H,8¾ L (19.40mm),3.00mm,SR721SW,labanda
+Ronda,R6003B,11½ L (25.60mm),3.30mm,SR916SW,labanda
+Ronda,R6003D,11½ L (25.60mm),2.50mm,SR916SW,labanda
+Ronda,R6004B D6,11½ L (25.60mm),3.30mm,SR916SW,labanda
+Ronda,R6004D-D3,11½ L (26.20mm),2.50mm,SR916SW,labanda
+Ronda,R702,10½ L (22.00 x 23.00mm),2.50mm,SR920SW,labanda
+Ronda,R704-D3-2H,10½ L (22.00 x 23.00mm),2.50mm,SR920SW,labanda
+Ronda,R704-D6-2H,10½ L (22.00 x 23.00mm),2.50mm,SR920SW,labanda
+Ronda,R705-D3-3H,10½ L (22.00 x 23.00mm),2.50mm,SR920SW,labanda
+Ronda,R705-D6-3H,10½ L (22.00 x 23.00mm),2.50mm,SR920SW,labanda
+Ronda,R706.1,10½,4.40mm,SR920SW,labanda
+Ronda,R706.3,10½,3.00mm,—,labanda
+Ronda,R706B,10½,3.70mm,—,labanda
+Ronda,R712,11½ L,2.55mm,371,labanda
+Ronda,R713,11½,2.50mm,371,labanda
+Ronda,R715-D3-2H,11½ L (25.60mm),2.50mm,SR920SW,labanda
+Ronda,R715-D3-3H,11½ L (25.60mm),2.50mm,SR920SW,labanda
+Ronda,R715-D3-3H-H2,11½ L (25.60mm),2.50mm,SR920SW,labanda
+Ronda,R715-D6-3HV1,11½ L (25.60mm),2.50mm,SR920SW,labanda
+Ronda,R732,3½ x 6 L (8.5 x 15.0mm),1.95mm,SR516SW,labanda
+Ronda,R751,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R751E,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R751E 3,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R753,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R753-2,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R753-3,5½ L (13.00mm),2.50mm,SR521SW,labanda
+Ronda,R762,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R762-3,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R762-SA,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R763-1,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R763-3,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R763-4,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R763-5,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R763-SA,6¾ x 8 L (15.30 x 17.80mm),2.50mm,SR621SW,labanda
+Ronda,R772,7¾ L,2.50mm,SR621SW,labanda
+Ronda,R773,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+Ronda,R774-D3-2H,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+Ronda,R774-D6-2H,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+Ronda,R775-D3-3H,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+Ronda,R775-D3-3H-SA,7¾ L (17.20mm),2.50mm,SR621SW (1J),labanda
+Ronda,R775-D6-3H,7¾ L (17.20mm),2.50mm,SR621SW,labanda
+Ronda,R778,7¾,3.00mm,364,labanda
+Ronda,R782,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+Ronda,R783,8¾,2.50mm,362,labanda
+Ronda,R785-D3-2H,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+Ronda,R785-D3-3H,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+Ronda,R785-D6-2H,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+Ronda,R785-D6-3H,8¾ L (19.40mm),2.50mm,SR721SW,labanda
+Ronda,R788,8¾,2.98mm,362,labanda
+Ronda,R8040N-SA,15 L (33.80mm),5.60mm,SR927SW,labanda
+Ronda,RZ60,13¼ (30.60mm),4.60mm,395,labanda
+Swiss,SB308-31,8¾ L (19.40mm),3.15mm,SR721SW,labanda
+Swiss,SB310-31,10½ L (23.30mm),3.00mm,SR920SW,labanda
+Swiss,SB311-31,11½ L (25.9 x 3.1mm),3.10mm,SR920SW,labanda
+Swiss,SB682-01,6¾ x 8 L (15.30 x 17.80mm),3.00mm,SR626SW,labanda
+Swiss,SB688-01,6¾ x 8 L (15.30 x 17.80mm),3.10mm,SR626SW,labanda
+Swiss,SB688-11,6¾ x 8 L (15.30 x 17.80mm),3.10mm,SR626SW,labanda
+China,CN 2650G,27.00mm,4.30mm,Manual,labanda
+China,CN 2L27,30.40mm,6.80mm,Automatic,labanda
+China,CN 2L31,30.40mm,6.80mm,Automatic,labanda
+China,CN 2L43-1,30.40mm,7.20mm,Automatic,labanda
+China,CN 2L55,30.40mm,7.10mm,Automatic,labanda
+China,CN 7750,13¼ L (30.00mm),7.90mm,Automatic,labanda
+China,CN 8824,11½ L (26.00mm),4.60mm,Automatic,labanda
+China,CN 8836,11½ L (26.00mm),5.05mm,Automatic,labanda
+China,CN DG2803,11½ L (26.00mm),5.76mm,Automatic,labanda
+China,CN DG2812,11½ L (26.00mm),5.45mm,Automatic,labanda
+China,CN DG2813,11½ L (26.00mm),5.45mm,Automatic,labanda
+China,CN DG2816,11½ L (26.00mm),5.87mm,Automatic,labanda
+China,CN DG2833,11½ L (26.00mm),3.90mm,Manual,labanda
+China,CN DG3612,36.80mm,4.55mm,Manual,labanda
+China,CN DG3804 *(Disc)*,11½ L (26.00mm),5.97mm,Automatic,labanda
+China,CN DG3806-12D,11½ L (26.00mm),5.65mm,Automatic,labanda
+China,CN DG3806B,11½ L (26.00mm),5.87mm,Automatic,labanda
+China,CN DG3806EB-3D,11½ L (26.00mm),5.87mm,Automatic,labanda
+China,CN DG3806PB,11½ L (26.00mm),5.87mm,Automatic,labanda
+China,CN DG3809,11½ L (26.00mm),6.12mm,Automatic,labanda
+China,CN DG3809A-3D,34.00mm,6.12mm,Automatic,labanda
+China,CN DG3814,13¼ L (29.80mm),6.42mm,Automatic,labanda
+China,CN DG3836,11½ L (26.00mm),6.12mm,Automatic,labanda
+China,CN DG3836-4D,11½ L (26.00mm),6.22mm,Automatic,labanda
+China,CN DG3836-6D,11½ L (26.00mm),6.22mm,Automatic,labanda
+China,CN DG3847B,11½ L (26.00mm),6.02mm,Automatic,labanda
+China,CN DG3857,34.00mm,6.15mm,Automatic,labanda
+China,CN DG3886,13¼ L (29.40mm),6.27mm,Automatic,labanda
+China,CN DG4813,11½ L (26.00mm),4.60mm,Automatic,labanda
+China,CN F3211,29.70mm,5.75mm,Automatic,labanda
+China,CN F8131,28.80mm,5.75mm,Automatic,labanda
+China,CN HZ2189G,12 L (27.40mm),4.74mm,Automatic,labanda
+China,CN LB06,30.40mm,6.48mm,Automatic,labanda
+China,CN M3113,30.40mm,6.80mm,Automatic,labanda
+China,CN M3191,30.40mm,6.80mm,Automatic,labanda
+China,CN ML6102,11½ L (26.00mm),4.56mm,Manual,labanda
+China,CN ML7102,27.50mm,5.75mm,Automatic,labanda
+China,CN R15,28.00mm,6.55mm,Automatic,labanda
+China,CN R16-1,28.00mm,6.55mm,Automatic,labanda
+China,CN R19,11½ L (26.00mm),6.10mm,Automatic,labanda
+China,CN R30,30.40mm,6.90mm,Automatic,labanda
+China,CN R44,30.40mm,7.20mm,Automatic,labanda
+China,CN SL68,6¾ x 8 L,3.15mm,SR626SW,labanda
+China,CN SP09,27.40mm,6.05mm,Automatic,labanda
+China,CN SP16,27.40mm,6.05mm,Automatic,labanda
+China,CN SPS24,27.40mm,6.05mm,Automatic,labanda
+China,CN SPS51,27.40mm,6.05mm,Automatic,labanda
+China,CN ST6D1,8¾ L (19.80mm),6.20mm,Automatic,labanda
+China,CN TY2530,30.40mm,7.40mm,Automatic,labanda
+China,CN TY2555,30.40mm,7.40mm,Automatic,labanda
+China,CN TY2706,11½ L (26.00mm),4.65mm,Automatic,labanda
+China,CN TY2707,29.00mm,5.95mm,Automatic,labanda
+China,CN TY2708,11½ L (26.00mm),5.25mm,Automatic,labanda
+China,CN TY2712,29.30mm,6.73mm,Automatic,labanda
+China,CN TY2714,28.00mm,6.44mm,Automatic,labanda
+China,CN TY2807,12 L (28.00mm),5.18mm,Automatic,labanda
+China,CN TY2866,11½ L (26.00mm),6.48mm,Automatic,labanda
+China,CN TY2867,12 L (28.00mm),6.48mm,Automatic,labanda
+China,CN TY2869,11½ L (26.00mm),6.45mm,Automatic,labanda
+China,CN TY2871-S,12 L (28.00mm),6.57mm,Automatic,labanda
+China,CN TY2876,28.00mm,6.48mm,Automatic,labanda
+China,CN TY601,11½ L (26.00mm),7.03mm,Automatic,labanda
+China,CN TY603K,11½ L (26.00mm),6.75mm,Automatic,labanda
+China,CN Z2033,33.60mm,6.00mm,Automatic,labanda
+China,RLX3135,—,—,Automatic,labanda
+China,RLX3186,—,—,Automatic,labanda
