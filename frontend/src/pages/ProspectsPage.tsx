@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
+import { getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui'
 
 export default function ProspectsPage() {
@@ -16,6 +16,7 @@ export default function ProspectsPage() {
   const [category, setCategory] = useState<string | null>(null)
   const [state, setState] = useState<string>('')
   const [suburbs, setSuburbs] = useState<Set<string>>(new Set())
+  const [useLiveApi, setUseLiveApi] = useState(false)
 
   const suburbsForState: string[] = useMemo(() => {
     const raw = state && regions?.suburbs?.[state]
@@ -40,19 +41,25 @@ export default function ProspectsPage() {
   }
 
   const searchParams = useMemo(
-    () => (category && state ? { category, state, suburbs: suburbs.size ? Array.from(suburbs) : undefined } : null),
-    [category, state, suburbs]
+    () => (category && state ? { category, state, suburbs: suburbs.size ? Array.from(suburbs) : undefined, live: useLiveApi } : null),
+    [category, state, suburbs, useLiveApi]
   )
 
   const { data: searchData, refetch, isFetching } = useQuery<ProspectSearchResponse>({
-    queryKey: ['prospects', searchParams?.category, searchParams?.state, searchParams?.suburbs?.join(',')],
+    queryKey: ['prospects', searchParams?.category, searchParams?.state, searchParams?.suburbs?.join(','), searchParams?.live],
     queryFn: () =>
       searchProspects(
         searchParams!.category,
         searchParams!.state,
-        searchParams!.suburbs
+        searchParams!.suburbs,
+        searchParams!.live
       ).then(r => r.data),
     enabled: !!searchParams,
+  })
+
+  const { data: collectorStatus } = useQuery({
+    queryKey: ['prospect-collector-status'],
+    queryFn: () => getProspectCollectorStatus().then(r => r.data),
   })
 
   return (
@@ -90,13 +97,23 @@ export default function ProspectsPage() {
               ))}
             </Select>
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-3">
             <Button
               onClick={() => refetch()}
               disabled={!category || !state || isFetching}
             >
               {isFetching ? 'Searching…' : 'Search'}
             </Button>
+            <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
+              <input
+                type="checkbox"
+                checked={useLiveApi}
+                onChange={e => setUseLiveApi(e.target.checked)}
+                className="rounded border"
+                style={{ accentColor: 'var(--cafe-amber)' }}
+              />
+              Refresh from Google (live API)
+            </label>
           </div>
         </div>
 
@@ -142,6 +159,12 @@ export default function ProspectsPage() {
           </div>
         )}
       </Card>
+
+      {collectorStatus && collectorStatus.total > 0 && (
+        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+          {collectorStatus.total.toLocaleString()} prospects stored. Searches use stored data unless &quot;Refresh from Google&quot; is checked.
+        </p>
+      )}
 
       <div>
         {isFetching ? (

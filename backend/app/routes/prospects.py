@@ -1,13 +1,13 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 from typing import Optional
 
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import Suburb
+from ..models import ProspectBusiness, Suburb
 
 router = APIRouter(prefix="/v1/prospects", tags=["prospects"])
 
@@ -89,16 +89,28 @@ async def _fetch_places(client: httpx.AsyncClient, query: str) -> list[dict]:
     return data.get("results", [])
 
 
+def _prospect_from_db_row(row: ProspectBusiness) -> Prospect:
+    return Prospect(
+        name=row.name,
+        address=row.address,
+        phone=row.phone,
+        website=row.website,
+        rating=row.rating,
+        review_count=row.review_count,
+        category=row.category,
+        place_id=row.place_id,
+    )
+
+
 @router.get("/search", response_model=ProspectSearchResponse)
 async def search_prospects(
     category: str = Query(..., description="Category key from the allowed list"),
     state: str = Query(..., description="State code (e.g. VIC, NSW)"),
     suburbs: str | None = Query(default=None, description="Comma-separated suburb names to narrow search"),
+    live: bool = Query(default=False, description="Force live Places API instead of stored data"),
     auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
 ):
-    if not settings.google_places_api_key:
-        raise HTTPException(status_code=500, detail="Google Places API key not configured")
-
     if category not in CATEGORY_BASES:
         raise HTTPException(
             status_code=400,
@@ -110,17 +122,41 @@ async def search_prospects(
             detail=f"Invalid state. Choose from: {', '.join(STATE_CODES)}",
         )
 
-    base = CATEGORY_BASES[category]
-    state_name = _state_name_for_query(state.upper())
+    state_upper = state.upper()
     suburb_list = [s.strip() for s in (suburbs or "").split(",") if s.strip()] if suburbs else []
-    suburb_list = suburb_list[:5]  # max 5 suburbs to avoid rate limits
+    suburb_list = suburb_list[:20]  # allow more when using stored data
+
+    # Prefer stored ProspectBusiness data if available (and not forcing live)
+    if not live:
+        try:
+            q = (
+                select(ProspectBusiness)
+                .where(ProspectBusiness.category == category)
+                .where(ProspectBusiness.state_code == state_upper)
+            )
+            if suburb_list:
+                q = q.where(ProspectBusiness.suburb_name.in_(suburb_list))
+            stored = list(session.exec(q).all())
+            if stored:
+                prospects = [_prospect_from_db_row(r) for r in stored]
+                return ProspectSearchResponse(results=prospects, total=len(prospects), category=category)
+        except Exception:
+            pass
+
+    # Fallback to live Google Places API
+    if not settings.google_places_api_key:
+        raise HTTPException(status_code=500, detail="Google Places API key not configured")
+
+    base = CATEGORY_BASES[category]
+    state_name = _state_name_for_query(state_upper)
+    suburb_list_api = suburb_list[:5]  # max 5 for API rate limits
 
     seen_place_ids: set[str] = set()
     all_prospects: list[Prospect] = []
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        if suburb_list:
-            for suburb in suburb_list:
+        if suburb_list_api:
+            for suburb in suburb_list_api:
                 search_query = f"{base} {suburb} {state_name} Australia"
                 places = await _fetch_places(client, search_query)
                 for p in places:
@@ -160,6 +196,27 @@ async def search_prospects(
                     )
 
     return ProspectSearchResponse(results=all_prospects, total=len(all_prospects), category=category)
+
+@router.get("/collector-status")
+async def collector_status(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Count of stored prospects by category. Run scripts/collect_prospects to populate."""
+    try:
+        total = session.exec(select(func.count()).select_from(ProspectBusiness)).one()
+        by_cat = session.exec(
+            select(ProspectBusiness.category, func.count())
+            .select_from(ProspectBusiness)
+            .group_by(ProspectBusiness.category)
+        ).all()
+        return {
+            "total": int(total),
+            "by_category": [{"category": c, "count": int(n)} for c, n in by_cat],
+        }
+    except Exception:
+        return {"total": 0, "by_category": []}
+
 
 @router.get("/categories")
 async def list_categories(auth: AuthContext = Depends(get_auth_context)):

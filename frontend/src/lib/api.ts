@@ -378,11 +378,14 @@ export interface ProspectSearchResponse {
 export const listProspectCategories = () => api.get<{ categories: { key: string; label: string }[] }>('/prospects/categories')
 export const listProspectRegions = () =>
   api.get<{ states: { code: string; name: string }[]; suburbs: Record<string, string[]> }>('/prospects/regions')
-export const searchProspects = (category: string, state: string, suburbs?: string[]) => {
-  const params: Record<string, string> = { category, state }
+export const searchProspects = (category: string, state: string, suburbs?: string[], live?: boolean) => {
+  const params: Record<string, string | boolean> = { category, state }
   if (suburbs?.length) params.suburbs = suburbs.join(',')
+  if (live) params.live = true
   return api.get<ProspectSearchResponse>('/prospects/search', { params })
 }
+export const getProspectCollectorStatus = () =>
+  api.get<{ total: number; by_category: { category: string; count: number }[] }>('/prospects/collector-status')
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
 export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site'

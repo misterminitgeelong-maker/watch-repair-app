@@ -158,6 +158,22 @@ class Suburb(SQLModel, table=True):
     state_code: str = Field(index=True)  # ACT, NSW, NT, QLD, SA, TAS, VIC, WA
 
 
+class ProspectBusiness(SQLModel, table=True):
+    """Stored business prospect from Google Places API collector. Deduped by place_id."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    place_id: str = Field(index=True, unique=True)
+    name: str
+    address: str = ""
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    category: str = Field(index=True)
+    suburb_name: str = Field(index=True)
+    state_code: str = Field(index=True)
+    fetched_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Customer(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
