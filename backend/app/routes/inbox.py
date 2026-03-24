@@ -20,7 +20,7 @@ def delete_inbox_event(
     event = session.get(TenantEventLog, event_id)
     if not event or event.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Not found")
-    if event.event_type not in ("quote_approved", "quote_declined"):
+    if event.event_type not in ("quote_approved", "quote_declined", "mobile_lead_quote_needed"):
         raise HTTPException(status_code=400, detail="Can only delete inbox alerts")
     session.delete(event)
     session.commit()
@@ -33,11 +33,11 @@ def get_inbox(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    """Alerts from customer quote approvals and declines."""
+    """Quote approvals/declines and website mobile leads awaiting a quote."""
     rows = session.exec(
         select(TenantEventLog)
         .where(TenantEventLog.tenant_id == auth.tenant_id)
-        .where(TenantEventLog.event_type.in_(["quote_approved", "quote_declined"]))
+        .where(TenantEventLog.event_type.in_(["quote_approved", "quote_declined", "mobile_lead_quote_needed"]))
         .order_by(TenantEventLog.created_at.desc())
         .limit(limit)
     ).all()

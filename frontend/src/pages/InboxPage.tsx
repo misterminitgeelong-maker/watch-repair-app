@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CheckCircle, XCircle, ArrowRight, Trash2 } from 'lucide-react'
+import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound } from 'lucide-react'
 import { getInbox, deleteInboxEvent } from '@/lib/api'
 import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
 
@@ -32,25 +32,35 @@ export default function InboxPage() {
     <div>
       <PageHeader title="Inbox" />
       {alerts.length === 0 ? (
-        <EmptyState message="No alerts yet. When customers approve or decline quotes, they'll show up here." />
+        <EmptyState message="No alerts yet. Quote approvals and declines, and new website mobile key leads, will show up here." />
       ) : (
         <div className="space-y-3">
           {alerts.map(ev => {
+            const isWebsiteLead = ev.event_type === 'mobile_lead_quote_needed'
             const isApproved = ev.event_type === 'quote_approved'
-            const jobLink = ev.entity_type === 'repair_job' && ev.entity_id
-              ? `/jobs/${ev.entity_id}`
-              : null
+            const jobLink =
+              ev.entity_type === 'repair_job' && ev.entity_id
+                ? `/jobs/${ev.entity_id}`
+                : ev.entity_type === 'auto_key_job' && ev.entity_id
+                  ? `/auto-key/${ev.entity_id}`
+                  : null
+            const iconBg = isWebsiteLead
+              ? 'rgba(180,120,40,0.15)'
+              : isApproved
+                ? 'rgba(31,109,76,0.12)'
+                : 'rgba(139,58,58,0.12)'
+            const iconColor = isWebsiteLead ? '#B47828' : isApproved ? '#1F6D4C' : '#8B3A3A'
             return (
               <Card key={ev.id} className="p-4">
                 <div className="flex items-start gap-4">
                   <div
                     className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
                     style={{
-                      backgroundColor: isApproved ? 'rgba(31,109,76,0.12)' : 'rgba(139,58,58,0.12)',
-                      color: isApproved ? '#1F6D4C' : '#8B3A3A',
+                      backgroundColor: iconBg,
+                      color: iconColor,
                     }}
                   >
-                    {isApproved ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                    {isWebsiteLead ? <KeyRound size={20} /> : isApproved ? <CheckCircle size={20} /> : <XCircle size={20} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>

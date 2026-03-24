@@ -37,6 +37,7 @@ from .routes.parent_accounts import router as parent_accounts_router
 from .routes.billing import router as billing_router
 from .routes.stocktakes import router as stocktake_router
 from .routes.prospects import router as prospects_router
+from .routes.mobile_lead_ingest import router as mobile_lead_ingest_router
 from .routes.vehicle_lookup import router as vehicle_lookup_router
 from .routes.custom_services import router as custom_services_router
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
@@ -198,6 +199,7 @@ app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(inbox_router)
 app.include_router(public_jobs_router)
+app.include_router(mobile_lead_ingest_router)
 app.include_router(users_router)
 app.include_router(platform_admin_router)
 app.include_router(shoe_catalogue_router)

@@ -1,6 +1,7 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from ..database import get_session
@@ -13,6 +14,9 @@ from ..dependencies import (
     require_owner,
 )
 from ..models import (
+    MobileSuburbRoute,
+    MobileSuburbRouteCreateRequest,
+    MobileSuburbRouteRead,
     ParentAccount,
     ParentAccountCreateTenantRequest,
     ParentAccountEventLog,
@@ -21,15 +25,24 @@ from ..models import (
     ParentAccountMembership,
     ParentAccountSiteRead,
     ParentAccountSummaryResponse,
+    ParentMobileLeadDefaultTenantBody,
+    ParentMobileLeadWebhookSecretBody,
     Tenant,
     User,
 )
+from ..security import hash_password
 
 router = APIRouter(
     prefix="/v1/parent-accounts",
     tags=["parent-accounts"],
     dependencies=[Depends(require_feature("multi_site"))],
 )
+
+AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
+
+
+def _normalize_suburb(name: str) -> str:
+    return " ".join(name.strip().lower().split())
 
 
 def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
@@ -74,6 +87,9 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
         parent_account_name=parent.name,
         owner_email=parent.owner_email,
         sites=sorted(sites, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower())),
+        mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
+        mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
+        mobile_lead_default_tenant_id=parent.mobile_lead_default_tenant_id,
     )
 
 
@@ -106,6 +122,234 @@ def _record_event(
             event_summary=event_summary,
         )
     )
+
+
+def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID) -> bool:
+    return (
+        session.exec(
+            select(ParentAccountMembership)
+            .where(ParentAccountMembership.parent_account_id == parent_id)
+            .where(ParentAccountMembership.tenant_id == tenant_id)
+        ).first()
+        is not None
+    )
+
+
+@router.post("/me/mobile-lead-ingest/enable", response_model=ParentAccountSummaryResponse)
+def enable_mobile_lead_ingest(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Assign a public ingest id for website POSTs (if not already set)."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    if parent.mobile_lead_ingest_public_id is None:
+        parent.mobile_lead_ingest_public_id = uuid4()
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=None,
+            actor_user_id=current_user.id,
+            actor_email=current_user.email,
+            event_type="mobile_lead_ingest_enabled",
+            event_summary="Enabled website mobile key lead ingest URL",
+        )
+        session.add(parent)
+        session.commit()
+    session.refresh(parent)
+    return _to_summary(session, parent)
+
+
+@router.put("/me/mobile-lead-ingest/secret", response_model=ParentAccountSummaryResponse)
+def set_mobile_lead_webhook_secret(
+    body: ParentMobileLeadWebhookSecretBody,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    if parent.mobile_lead_ingest_public_id is None:
+        parent.mobile_lead_ingest_public_id = uuid4()
+    parent.mobile_lead_webhook_secret_hash = hash_password(body.webhook_secret.strip())
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_secret_set",
+        event_summary="Set website mobile key lead webhook secret",
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _to_summary(session, parent)
+
+
+@router.delete("/me/mobile-lead-ingest/secret", response_model=ParentAccountSummaryResponse)
+def clear_mobile_lead_webhook_secret(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    parent.mobile_lead_webhook_secret_hash = None
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_secret_cleared",
+        event_summary="Cleared website mobile key lead webhook secret",
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _to_summary(session, parent)
+
+
+@router.put("/me/mobile-lead-ingest/default-tenant", response_model=ParentAccountSummaryResponse)
+def set_mobile_lead_default_tenant(
+    body: ParentMobileLeadDefaultTenantBody,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    if body.tenant_id is None:
+        parent.mobile_lead_default_tenant_id = None
+        summary = "Cleared default site for unmatched suburbs"
+    else:
+        if not _tenant_linked_to_parent(session, parent.id, body.tenant_id):
+            raise HTTPException(status_code=400, detail="That site is not linked to this parent account")
+        parent.mobile_lead_default_tenant_id = body.tenant_id
+        summary = "Set default site for website leads when suburb is not mapped"
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=body.tenant_id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_default_tenant",
+        event_summary=summary,
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _to_summary(session, parent)
+
+
+@router.get("/me/mobile-lead-routes", response_model=list[MobileSuburbRouteRead])
+def list_mobile_suburb_routes(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    rows = session.exec(
+        select(MobileSuburbRoute)
+        .where(MobileSuburbRoute.parent_account_id == parent.id)
+        .order_by(MobileSuburbRoute.state_code, MobileSuburbRoute.suburb_normalized)
+    ).all()
+    return [
+        MobileSuburbRouteRead(
+            id=r.id,
+            state_code=r.state_code,
+            suburb_normalized=r.suburb_normalized,
+            target_tenant_id=r.target_tenant_id,
+        )
+        for r in rows
+    ]
+
+
+@router.post("/me/mobile-lead-routes", response_model=MobileSuburbRouteRead)
+def create_mobile_suburb_route(
+    payload: MobileSuburbRouteCreateRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    st = payload.state_code.strip().upper()
+    if st not in AU_STATES:
+        raise HTTPException(status_code=400, detail=f"Invalid state_code; use one of: {', '.join(sorted(AU_STATES))}")
+    sub_norm = _normalize_suburb(payload.suburb)
+    if not sub_norm:
+        raise HTTPException(status_code=400, detail="suburb is required")
+    if not _tenant_linked_to_parent(session, parent.id, payload.target_tenant_id):
+        raise HTTPException(status_code=400, detail="Target site is not linked to this parent account")
+    row = MobileSuburbRoute(
+        parent_account_id=parent.id,
+        state_code=st,
+        suburb_normalized=sub_norm,
+        target_tenant_id=payload.target_tenant_id,
+    )
+    session.add(row)
+    try:
+        session.flush()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A route for this state and suburb already exists",
+        ) from None
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=payload.target_tenant_id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_route_added",
+        event_summary=f"Mapped suburb '{sub_norm}' ({st}) to a linked site",
+    )
+    session.commit()
+    session.refresh(row)
+    return MobileSuburbRouteRead(
+        id=row.id,
+        state_code=row.state_code,
+        suburb_normalized=row.suburb_normalized,
+        target_tenant_id=row.target_tenant_id,
+    )
+
+
+@router.delete("/me/mobile-lead-routes/{route_id}")
+def delete_mobile_suburb_route(
+    route_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    row = session.get(MobileSuburbRoute, route_id)
+    if not row or row.parent_account_id != parent.id:
+        raise HTTPException(status_code=404, detail="Route not found")
+    session.delete(row)
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=row.target_tenant_id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_route_removed",
+        event_summary=f"Removed suburb route {row.suburb_normalized} ({row.state_code})",
+    )
+    session.commit()
+    return {"ok": True}
 
 
 @router.get("/me", response_model=ParentAccountSummaryResponse)
@@ -315,6 +559,17 @@ def unlink_tenant_from_parent_account(
     tenant = session.get(Tenant, membership.tenant_id)
     tenant_name = tenant.name if tenant else str(membership.tenant_id)
     tenant_slug = tenant.slug if tenant else "unknown"
+
+    for r in session.exec(
+        select(MobileSuburbRoute).where(
+            MobileSuburbRoute.parent_account_id == parent.id,
+            MobileSuburbRoute.target_tenant_id == tenant_id,
+        )
+    ).all():
+        session.delete(r)
+    if parent.mobile_lead_default_tenant_id == tenant_id:
+        parent.mobile_lead_default_tenant_id = None
+        session.add(parent)
 
     session.delete(membership)
     _record_event(

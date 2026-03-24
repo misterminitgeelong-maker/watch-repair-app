@@ -8,7 +8,7 @@ import type { FeatureKey } from '@/lib/api'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Customer quote approvals and declines' },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Quote activity and website mobile key leads' },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/prospects', label: 'Prospects', icon: ClipboardList },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' as FeatureKey },

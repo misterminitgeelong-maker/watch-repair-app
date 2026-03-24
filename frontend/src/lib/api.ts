@@ -256,6 +256,16 @@ export interface ParentAccountSummary {
   parent_account_name: string
   owner_email: string
   sites: ParentAccountSite[]
+  mobile_lead_ingest_public_id?: string | null
+  mobile_lead_webhook_secret_configured?: boolean
+  mobile_lead_default_tenant_id?: string | null
+}
+
+export interface MobileSuburbRouteRow {
+  id: string
+  state_code: string
+  suburb_normalized: string
+  target_tenant_id: string
 }
 
 export interface ParentAccountActivityEvent {
@@ -278,6 +288,27 @@ export const createTenantFromParentAccount = (payload: { tenant_name: string; te
   api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
+
+export const enableParentMobileLeadIngest = () =>
+  api.post<ParentAccountSummary>('/parent-accounts/me/mobile-lead-ingest/enable')
+
+export const setParentMobileLeadWebhookSecret = (webhook_secret: string) =>
+  api.put<ParentAccountSummary>('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret })
+
+export const clearParentMobileLeadWebhookSecret = () =>
+  api.delete<ParentAccountSummary>('/parent-accounts/me/mobile-lead-ingest/secret')
+
+export const setParentMobileLeadDefaultTenant = (tenant_id: string | null) =>
+  api.put<ParentAccountSummary>('/parent-accounts/me/mobile-lead-ingest/default-tenant', { tenant_id })
+
+export const listMobileSuburbRoutes = () =>
+  api.get<MobileSuburbRouteRow[]>('/parent-accounts/me/mobile-lead-routes')
+
+export const createMobileSuburbRoute = (payload: { state_code: string; suburb: string; target_tenant_id: string }) =>
+  api.post<MobileSuburbRouteRow>('/parent-accounts/me/mobile-lead-routes', payload)
+
+export const deleteMobileSuburbRoute = (route_id: string) =>
+  api.delete<{ ok: boolean }>(`/parent-accounts/me/mobile-lead-routes/${route_id}`)
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 export interface Customer {

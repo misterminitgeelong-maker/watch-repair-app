@@ -6,6 +6,7 @@ FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Co
 FleetBillingCycle = Literal["Monthly", "Fortnightly", "Weekly"]
 SubscriptionPlan = Literal["starter", "pro", "fleet", "none"]
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 JobStatus = Literal[
@@ -70,6 +71,25 @@ class ParentAccount(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
     owner_email: str = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Website → Mobile Services auto-routing (multi-site): public UUID for POST URL, secret verifies caller
+    mobile_lead_ingest_public_id: Optional[UUID] = Field(default=None, index=True, unique=True)
+    mobile_lead_webhook_secret_hash: Optional[str] = None
+    mobile_lead_default_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+
+
+class MobileSuburbRoute(SQLModel, table=True):
+    """Maps customer suburb + state to a linked site (tenant) for automated mobile key web leads."""
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "state_code", "suburb_normalized", name="uq_mobile_suburb_route_parent_state_suburb"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    state_code: str = Field(index=True, max_length=8)
+    suburb_normalized: str = Field(index=True, max_length=200)
+    target_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -473,6 +493,9 @@ class ParentAccountSummaryResponse(SQLModel):
     parent_account_name: str
     owner_email: str
     sites: list[ParentAccountSiteRead] = Field(default_factory=list)
+    mobile_lead_ingest_public_id: Optional[UUID] = None
+    mobile_lead_webhook_secret_configured: bool = False
+    mobile_lead_default_tenant_id: Optional[UUID] = None
 
 
 class ParentAccountEventLogRead(SQLModel):
@@ -538,6 +561,27 @@ class ParentAccountCreateTenantRequest(SQLModel):
     tenant_name: str
     tenant_slug: str
     plan_code: Optional[PlanCode] = None
+
+
+class ParentMobileLeadWebhookSecretBody(SQLModel):
+    webhook_secret: str = Field(..., min_length=16, max_length=512)
+
+
+class ParentMobileLeadDefaultTenantBody(SQLModel):
+    tenant_id: Optional[UUID] = None
+
+
+class MobileSuburbRouteRead(SQLModel):
+    id: UUID
+    state_code: str
+    suburb_normalized: str
+    target_tenant_id: UUID
+
+
+class MobileSuburbRouteCreateRequest(SQLModel):
+    state_code: str = Field(..., min_length=2, max_length=8)
+    suburb: str = Field(..., min_length=1, max_length=200)
+    target_tenant_id: UUID
 
 
 class TenantPlanUpdateRequest(SQLModel):

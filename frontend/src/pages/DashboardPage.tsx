@@ -601,7 +601,7 @@ export default function DashboardPage() {
                   {inboxAlerts.length} alert{inboxAlerts.length !== 1 ? 's' : ''} in Inbox
                 </p>
                 <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                  Customer quote approvals and declines
+                  Quote activity and website mobile key leads
                 </p>
               </div>
               <ArrowRight size={18} className="ml-auto shrink-0" style={{ color: 'var(--cafe-amber)' }} />
