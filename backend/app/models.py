@@ -151,6 +151,13 @@ class CustomServiceUpdate(SQLModel):
     notes: Optional[str] = None
 
 
+class Suburb(SQLModel, table=True):
+    """Australian suburb/locality for prospect search. Populated from public data (e.g. matthewproctor/australianpostcodes)."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(index=True)
+    state_code: str = Field(index=True)  # ACT, NSW, NT, QLD, SA, TAS, VIC, WA
+
+
 class Customer(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")

@@ -1,9 +1,13 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlmodel import Session, select
 from typing import Optional
+
 from ..config import settings
+from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
+from ..models import Suburb
 
 router = APIRouter(prefix="/v1/prospects", tags=["prospects"])
 
@@ -34,8 +38,8 @@ AU_STATES = [
 
 STATE_CODES = {s["code"] for s in AU_STATES}
 
-# Major suburbs per state (curated list for prospect search)
-SUBURBS_BY_STATE: dict[str, list[str]] = {
+# Fallback suburbs when DB is empty (e.g. before seed runs)
+SUBURBS_BY_STATE_FALLBACK: dict[str, list[str]] = {
     "ACT": ["Canberra", "Belconnen", "Woden", "Tuggeranong", "Gungahlin", "Queanbeyan", "Fyshwick", "Dickson", "Kingston", "Braddon"],
     "NSW": ["Sydney", "Parramatta", "Newcastle", "Wollongong", "Central Coast", "Penrith", "Liverpool", "Blacktown", "Chatswood", "North Sydney", "Bondi", "Surry Hills", "Marrickville", "Randwick", "Hurstville", "Campbelltown", "Dubbo", "Wagga Wagga", "Albury", "Tamworth"],
     "NT": ["Darwin", "Alice Springs", "Palmerston", "Katherine", "Tennant Creek", "Jabiru", "Nhulunbuy"],
@@ -168,6 +172,19 @@ async def list_categories(auth: AuthContext = Depends(get_auth_context)):
 
 
 @router.get("/regions")
-async def list_regions(auth: AuthContext = Depends(get_auth_context)):
-    """States and suburbs for prospect search filters."""
-    return {"states": AU_STATES, "suburbs": SUBURBS_BY_STATE}
+async def list_regions(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """States and suburbs for prospect search filters. Suburbs from DB (public data), fallback to curated list if empty."""
+    try:
+        suburbs_rows = session.exec(select(Suburb).order_by(Suburb.state_code, Suburb.name)).all()
+        suburbs_by_state: dict[str, list[str]] = {code: [] for code in STATE_CODES}
+        for sub in suburbs_rows:
+            if sub.state_code in suburbs_by_state:
+                suburbs_by_state[sub.state_code].append(sub.name)
+        if not any(suburbs_by_state.values()):
+            suburbs_by_state = SUBURBS_BY_STATE_FALLBACK
+    except Exception:
+        suburbs_by_state = SUBURBS_BY_STATE_FALLBACK
+    return {"states": AU_STATES, "suburbs": suburbs_by_state}

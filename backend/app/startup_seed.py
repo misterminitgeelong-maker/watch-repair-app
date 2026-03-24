@@ -1,14 +1,16 @@
 import csv
+import io
 import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from random import randint
 from uuid import uuid4
 
+import httpx
 from sqlmodel import Session, func, select
 
 from .config import settings
-from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, Tenant, User, Watch
+from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, Suburb, Tenant, User, Watch
 from .security import hash_password
 
 # Victorian B2B demo accounts (used at startup and by demo-seed)
@@ -475,6 +477,42 @@ def ensure_platform_admin_account(session: Session) -> None:
             )
         )
 
+    session.commit()
+
+
+AU_STATE_CODES = {"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"}
+SUBURBS_CSV_URL = "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/australian_postcodes.csv"
+
+
+def ensure_suburbs_seeded(session: Session) -> None:
+    """Populate suburbs table from public Australian localities data (matthewproctor/australianpostcodes) if empty."""
+    count = session.exec(select(func.count()).select_from(Suburb)).one()
+    if int(count) > 0:
+        return
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(SUBURBS_CSV_URL)
+            resp.raise_for_status()
+            content = resp.text
+    except Exception:
+        return
+
+    seen: set[tuple[str, str]] = set()
+    rows = list(csv.DictReader(io.StringIO(content)))
+    for row in rows:
+        locality = (row.get("locality") or "").strip()
+        state = (row.get("state") or "").strip().upper()
+        if not locality or state not in AU_STATE_CODES:
+            continue
+        name = locality.strip().title() if locality else ""
+        if not name or len(name) < 2:
+            continue
+        key = (name, state)
+        if key in seen:
+            continue
+        seen.add(key)
+        session.add(Suburb(name=name, state_code=state))
     session.commit()
 
 
