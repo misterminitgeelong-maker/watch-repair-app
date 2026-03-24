@@ -228,7 +228,9 @@ def update_auto_key_job_status(
               .order_by(AutoKeyQuote.created_at.desc())
           ).first()
 
-          if latest_quote and latest_quote.status in {"approved", "sent"}:
+          # Permit auto-invoicing for any actionable quote state; only declined
+          # quotes should be blocked from creating an invoice on completion.
+          if latest_quote and latest_quote.status != "declined":
               session.add(
                   AutoKeyInvoice(
                       tenant_id=auth.tenant_id,
