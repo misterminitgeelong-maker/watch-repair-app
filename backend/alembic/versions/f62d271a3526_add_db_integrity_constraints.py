@@ -21,11 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     bind = op.get_bind()
 
+    # Quote "user": in PostgreSQL `user` is reserved; unquoted FROM user targets the wrong relation.
     duplicate_users = bind.execute(
         sa.text(
             """
             SELECT tenant_id, email, COUNT(*) AS c
-            FROM user
+            FROM "user"
             GROUP BY tenant_id, email
             HAVING COUNT(*) > 1
             """
