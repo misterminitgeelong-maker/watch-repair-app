@@ -53,10 +53,14 @@ function ymdLocal(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+function dateFromYmdLocal(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 /** Monday–Sunday week in local time containing YYYY-MM-DD anchor */
 function weekRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
-  const [y, m, d] = ymd.split('-').map(Number)
-  const anchor = new Date(y, m - 1, d)
+  const anchor = dateFromYmdLocal(ymd)
   const day = anchor.getDay()
   const diff = anchor.getDate() - day + (day === 0 ? -6 : 1)
   const mon = new Date(anchor)
@@ -73,6 +77,13 @@ function monthRangeFromYmd(ymd: string): { date_from: string; date_to: string } 
   const last = new Date(y, m, 0)
   const end = `${y}-${pad(m)}-${pad(last.getDate())}`
   return { date_from: start, date_to: end }
+}
+
+function nextMobileStatus(status: JobStatus): JobStatus | null {
+  if (status === 'awaiting_go_ahead' || status === 'go_ahead' || status === 'working_on') return 'en_route'
+  if (status === 'en_route') return 'on_site'
+  if (status === 'on_site') return 'completed'
+  return null
 }
 
 function AddTechnicianModal({ onClose }: { onClose: () => void }) {
@@ -209,7 +220,7 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
     : customers
   const selected = customers.find(c => c.id === value)
   const display = selected ? `${selected.full_name}${selected.phone ? ` · ${selected.phone}` : ''}` : search
-  useEffect(() => { setHighlight(0) }, [search, filtered.length])
+  const safeHighlight = filtered.length === 0 ? 0 : Math.min(highlight, filtered.length - 1)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -229,7 +240,7 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
           if (!open || filtered.length === 0) return
           if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(i => (i + 1) % filtered.length) }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(i => (i - 1 + filtered.length) % filtered.length) }
-          else if (e.key === 'Enter') { e.preventDefault(); onChange(filtered[highlight].id); setOpen(false); setSearch('') }
+          else if (e.key === 'Enter') { e.preventDefault(); onChange(filtered[safeHighlight].id); setOpen(false); setSearch('') }
           else if (e.key === 'Escape') setOpen(false)
         }}
         placeholder="Type name, phone or email…"
@@ -241,7 +252,7 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm truncate"
-                style={{ color: 'var(--cafe-text)', backgroundColor: i === highlight ? '#F5EDE0' : 'transparent' }}
+                style={{ color: 'var(--cafe-text)', backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent' }}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={e => { e.preventDefault(); onChange(c.id); setOpen(false); setSearch('') }}
               >
@@ -908,6 +919,8 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 
   const latestQuote = quotes[0]
   const latestInvoice = invoices[0]
+  const nextStatus = nextMobileStatus(job.status)
+  const quickStatusLabel = nextStatus ? `Mark ${STATUS_LABELS[nextStatus] ?? nextStatus.replace(/_/g, ' ')}` : null
 
   const statusMut = useMutation({
     mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(job.id, status),
@@ -1064,6 +1077,15 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             </Select>
           </div>
           <div className="mt-2 space-y-2">
+            {nextStatus && (
+              <Button
+                className="w-full"
+                onClick={() => statusMut.mutate(nextStatus)}
+                disabled={statusMut.isPending}
+              >
+                {statusMut.isPending ? 'Updating…' : quickStatusLabel}
+              </Button>
+            )}
             <Button variant="secondary" className="w-full" onClick={() => setShowQuoteModal(true)}>
               New Quote
             </Button>
@@ -1117,7 +1139,7 @@ export default function AutoKeyJobsPage() {
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [dispatchDate, setDispatchDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dispatchDate, setDispatchDate] = useState(() => ymdLocal(new Date()))
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date()
@@ -1125,7 +1147,7 @@ export default function AutoKeyJobsPage() {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday
     const mon = new Date(d)
     mon.setDate(diff)
-    return mon.toISOString().slice(0, 10)
+    return ymdLocal(mon)
   })
   const [reportDateFrom, setReportDateFrom] = useState('')
   const [reportDateTo, setReportDateTo] = useState('')
@@ -1184,9 +1206,9 @@ export default function AutoKeyJobsPage() {
   })
 
   const weekEnd = (() => {
-    const d = new Date(weekStart)
+    const d = dateFromYmdLocal(weekStart)
     d.setDate(d.getDate() + 6)
-    return d.toISOString().slice(0, 10)
+    return ymdLocal(d)
   })()
   const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
 
@@ -1258,7 +1280,14 @@ export default function AutoKeyJobsPage() {
     enabled: view === 'week' && !!weekParams,
   })
 
-  const unscheduledJobs = view === 'dispatch' ? jobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) : []
+  const unscheduledJobs = useMemo(() => {
+    if (view !== 'dispatch') return []
+    return jobs.filter((j: { scheduled_at?: string; status: JobStatus; assigned_user_id?: string }) => {
+      if (j.scheduled_at) return false
+      if (dispatchTechFilter && j.assigned_user_id !== dispatchTechFilter) return false
+      return !isClosed(j.status)
+    })
+  }, [view, jobs, dispatchTechFilter])
   const isSolo = users.length <= 1
 
   const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
@@ -1677,17 +1706,17 @@ export default function AutoKeyJobsPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => {
-                const d = new Date(weekStart)
+                const d = dateFromYmdLocal(weekStart)
                 d.setDate(d.getDate() - 7)
-                setWeekStart(d.toISOString().slice(0, 10))
+                setWeekStart(ymdLocal(d))
               }}><ChevronLeft size={16} /></Button>
               <span className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
                 {formatDate(weekStart)} – {formatDate(weekEnd)}
               </span>
               <Button variant="secondary" onClick={() => {
-                const d = new Date(weekStart)
+                const d = dateFromYmdLocal(weekStart)
                 d.setDate(d.getDate() + 7)
-                setWeekStart(d.toISOString().slice(0, 10))
+                setWeekStart(ymdLocal(d))
               }}><ChevronRight size={16} /></Button>
             </div>
           </div>
@@ -1743,12 +1772,12 @@ export default function AutoKeyJobsPage() {
               <div className="grid gap-2" style={{ gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))' }}>
                 <div />
                 {[...Array(7)].map((_, i) => {
-                  const d = new Date(weekStart)
+                  const d = dateFromYmdLocal(weekStart)
                   d.setDate(d.getDate() + i)
-                  const dayStr = d.toISOString().slice(0, 10)
+                  const dayStr = ymdLocal(d)
                   const dayName = d.toLocaleDateString('en-AU', { weekday: 'short' })
                   const dayNum = d.getDate()
-                  const isToday = dayStr === new Date().toISOString().slice(0, 10)
+                  const isToday = dayStr === ymdLocal(new Date())
                   return (
                     <div key={dayStr} className="text-center py-2 rounded-lg" style={{ backgroundColor: isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
                       <p className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>{dayName}</p>
@@ -1762,11 +1791,12 @@ export default function AutoKeyJobsPage() {
                       {String(hour).padStart(2, '0')}:00
                     </div>
                     {[...Array(7)].map((_, i) => {
-                      const d = new Date(weekStart)
+                      const d = dateFromYmdLocal(weekStart)
                       d.setDate(d.getDate() + i)
-                      const dayStr = d.toISOString().slice(0, 10)
-                      const slotStart = new Date(`${dayStr}T${String(hour).padStart(2, '0')}:00:00Z`)
-                      const slotEnd = new Date(`${dayStr}T${String(hour + 1).padStart(2, '0')}:00:00Z`)
+                      const dayStr = ymdLocal(d)
+                      const [y, m, dayOfMonth] = dayStr.split('-').map(Number)
+                      const slotStart = new Date(y, m - 1, dayOfMonth, hour, 0, 0)
+                      const slotEnd = new Date(y, m - 1, dayOfMonth, hour + 1, 0, 0)
                       const inSlot = weekJobs.filter((j: { scheduled_at?: string }) => {
                         if (!j.scheduled_at) return false
                         const t = new Date(j.scheduled_at).getTime()

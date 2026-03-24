@@ -221,21 +221,27 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     () => mobileJobs.map((j) => `${j.id}:${j._addressForMap}`).sort().join('|'),
     [mobileJobs]
   )
+  const ungeocodedJobs = useMemo(
+    () => mobileJobs.filter((j) => !geocoded.has(j.id)),
+    [mobileJobs, geocoded]
+  )
 
   const lastJobsKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     abortedRef.current = false
-    if (!apiKey || mobileJobs.length === 0) {
-      setLoading(false)
-      return
-    }
-    // Skip if we already completed for this exact jobsKey (prevents duplicate runs from parent re-renders)
-    if (lastJobsKeyRef.current === jobsKey) {
-      setLoading(false)
-      return
-    }
     const run = async () => {
+      if (!apiKey || mobileJobs.length === 0) {
+        setGeocoded(new Map())
+        setLoading(false)
+        return
+      }
+      // Skip if we already completed for this exact jobsKey (prevents duplicate runs from parent re-renders)
+      if (lastJobsKeyRef.current === jobsKey) {
+        setLoading(false)
+        return
+      }
+      setLoading(true)
       const results = new Map<string, { lat: number; lng: number }>()
       // Fast path: if all addresses are cached, resolve synchronously (0 API calls)
       const cacheKeys = mobileJobs.map((j) => j._addressForMap.trim().toLowerCase())
@@ -265,10 +271,9 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
         setLoading(false)
       }
     }
-    setLoading(true)
-    run()
+    void run()
     return () => { abortedRef.current = true }
-  }, [apiKey, date, jobsKey])
+  }, [apiKey, date, jobsKey, mobileJobs])
 
   if (mobileJobs.length === 0) {
     return (
@@ -303,6 +308,30 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
         <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
           Geocoding addresses…
         </p>
+      )}
+      {!loading && ungeocodedJobs.length > 0 && (
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: '#E7C6B7', backgroundColor: '#FFF7F3', color: 'var(--cafe-text-mid)' }}>
+          <p className="font-medium">
+            Could not place {ungeocodedJobs.length} job{ungeocodedJobs.length === 1 ? '' : 's'} on the map.
+          </p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            You can still open directions from these jobs:
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {ungeocodedJobs.slice(0, 8).map((j) => (
+              <a
+                key={j.id}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(j._addressForMap)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-1 rounded text-xs font-medium"
+                style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}
+              >
+                #{j.job_number}
+              </a>
+            ))}
+          </div>
+        </div>
       )}
       <div className="h-[400px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
         <APIProvider apiKey={apiKey}>
