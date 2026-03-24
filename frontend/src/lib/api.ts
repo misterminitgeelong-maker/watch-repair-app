@@ -376,7 +376,13 @@ export interface ProspectSearchResponse {
 }
 
 export const listProspectCategories = () => api.get<{ categories: { key: string; label: string }[] }>('/prospects/categories')
-export const searchProspects = (category: string) => api.get<ProspectSearchResponse>('/prospects/search', { params: { category } })
+export const listProspectRegions = () =>
+  api.get<{ states: { code: string; name: string }[]; suburbs: Record<string, string[]> }>('/prospects/regions')
+export const searchProspects = (category: string, state: string, suburbs?: string[]) => {
+  const params: Record<string, string> = { category, state }
+  if (suburbs?.length) params.suburbs = suburbs.join(',')
+  return api.get<ProspectSearchResponse>('/prospects/search', { params })
+}
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
 export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site'
