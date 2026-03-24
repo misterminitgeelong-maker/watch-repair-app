@@ -1,46 +1,48 @@
-# Prospect Collector
+# Prospect Scripts
 
-Fetches businesses via **Google Places API** and stores them in the database for fast prospect search.
+## 1. Raw Scraper → Excel (no API)
 
-## Setup
-
-1. Set `GOOGLE_PLACES_API_KEY` in `.env`
-2. Ensure suburbs are seeded (run the app once; it seeds suburbs on startup if empty)
-3. Run the prospect migration or start the app (table is created if missing)
-
-## Usage
+`scrape_prospects.py` — Scrapes directory sites (Yellow Pages AU) via HTTP and exports to Excel.
 
 ```bash
 cd backend
 
-# Dry run (see what would be fetched)
-python -m scripts.collect_prospects --dry-run
+# Required: state. Output to Excel
+python -m scripts.scrape_prospects --state VIC -o prospects.xlsx
 
-# Collect for one state, limit suburbs (for testing)
-python -m scripts.collect_prospects --state VIC --limit 20
+# Limit suburbs for testing
+python -m scripts.scrape_prospects --state NSW --limit 10 -o test.xlsx
 
-# Collect one category only
-python -m scripts.collect_prospects --state NSW --category mechanics --limit 50
-
-# Full run (all categories × all suburbs) — can take hours and use API quota
-python -m scripts.collect_prospects --delay 1.5
+# One category only
+python -m scripts.scrape_prospects --state VIC --category mechanics -o mechanics.xlsx
 ```
 
-## Options
+| Flag        | Description                     |
+|------------|---------------------------------|
+| `--state`  | State code (required)           |
+| `--category` | One category (default: all)  |
+| `--limit`  | Max suburbs (0 = all)           |
+| `--delay`  | Seconds between requests (default: 2) |
+| `-o`       | Output Excel path               |
+| `--source` | `yp` or `truelocal` (default: truelocal) |
+| `--browser`| Use Playwright headless browser — bypasses 403 from many sites |
+| `--dry-run`| No fetch or write               |
 
-| Flag       | Description                                  | Default |
-|-----------|----------------------------------------------|---------|
-| `--state` | Limit to one state (VIC, NSW, etc.)          | All     |
-| `--category` | Limit to one category                     | All     |
-| `--limit` | Max suburbs to process (0 = no limit)       | 0       |
-| `--delay` | Seconds between API calls (rate limiting)    | 1.2     |
-| `--dry-run` | Don't call API or write to DB              | false   |
+**If you get 403 Forbidden:** Directory sites often block plain HTTP requests. Install Playwright and use `--browser`:
+```bash
+pip install playwright
+playwright install chromium
+python -m scripts.scrape_prospects --state VIC --limit 5 --browser -o prospects.xlsx
+```
 
-## API Cost
+**Note:** HTML selectors may need updates if directory sites change structure.
 
-Google Places Text Search costs ~$32 per 1000 requests. With ~4000 suburbs × 8 categories ≈ 32,000 requests for a full run. Use `--state` and `--limit` for smaller batches.
+---
 
-## Search Behavior
+## 2. Google Places API Collector (optional)
 
-- **Prospects tab**: Uses stored data by default. Faster, no per-search API cost.
-- **"Refresh from Google"** checkbox: Forces live Places API for fresh data.
+`collect_prospects.py` — Fetches via Places API and stores in DB. Requires `GOOGLE_PLACES_API_KEY`.
+
+```bash
+python -m scripts.collect_prospects --state VIC --limit 20
+```
