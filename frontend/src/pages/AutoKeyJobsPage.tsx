@@ -1312,18 +1312,16 @@ export default function AutoKeyJobsPage() {
     enabled: view === 'week' && !!weekParams,
   })
 
-  const unscheduledJobs = useMemo(() => {
-    if (view !== 'dispatch') return []
-    return jobs.filter((j: { scheduled_at?: string; status: JobStatus; assigned_user_id?: string }) => {
+  const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
+  const isClosed = (status: JobStatus) => autoKeyClosedStatuses.has(status as typeof AUTO_KEY_CLOSED_STATUSES[number])
+  const unscheduledJobs = view === 'dispatch'
+    ? jobs.filter((j: { scheduled_at?: string; status: JobStatus; assigned_user_id?: string }) => {
       if (j.scheduled_at) return false
       if (dispatchTechFilter && j.assigned_user_id !== dispatchTechFilter) return false
       return !isClosed(j.status)
     })
-  }, [view, jobs, dispatchTechFilter])
+    : []
   const isSolo = users.length <= 1
-
-  const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
-  const isClosed = (status: JobStatus) => autoKeyClosedStatuses.has(status as typeof AUTO_KEY_CLOSED_STATUSES[number])
   const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string }) => {
     const q = search.trim().toLowerCase()
     const matchSearch = !q || j.job_number.toLowerCase().includes(q) || j.title.toLowerCase().includes(q) ||
