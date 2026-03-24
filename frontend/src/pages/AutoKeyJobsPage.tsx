@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, ChevronLeft, ChevronRight, CreditCard, LayoutGrid, List, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -960,9 +960,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [view, setView] = useState<'board' | 'schedule' | 'pos' | 'reports'>('board')
-  const [scheduleSubView, setScheduleSubView] = useState<'day' | 'week' | 'map'>('day')
-  const [boardLayout, setBoardLayout] = useState<'columns' | 'list'>('columns')
+  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -987,7 +985,7 @@ export default function AutoKeyJobsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
-    enabled: view === 'pos' || (view === 'schedule' && scheduleSubView === 'map') || (view === 'schedule' && scheduleSubView === 'day'),
+    enabled: view === 'pos' || view === 'map' || view === 'dispatch' || view === 'planner',
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -999,11 +997,12 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listUsers().then(r => r.data),
   })
 
-  const dispatchParams = view === 'schedule' && (scheduleSubView === 'day' || scheduleSubView === 'map') ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
+  const dispatchViews = view === 'dispatch' || view === 'map' || view === 'planner'
+  const dispatchParams = dispatchViews ? { date_from: dispatchDate, date_to: dispatchDate, ...(dispatchTechFilter ? { assigned_user_id: dispatchTechFilter } : {}) } : undefined
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter],
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
-    enabled: view === 'schedule' && (scheduleSubView === 'day' || scheduleSubView === 'map') && !!dispatchParams,
+    enabled: dispatchViews && !!dispatchParams,
   })
 
   const weekEnd = (() => {
@@ -1011,7 +1010,7 @@ export default function AutoKeyJobsPage() {
     d.setDate(d.getDate() + 6)
     return d.toISOString().slice(0, 10)
   })()
-  const weekParams = view === 'schedule' && scheduleSubView === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
+  const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
 
   const reportDateParams = (() => {
     if (view !== 'reports') return undefined
@@ -1078,10 +1077,10 @@ export default function AutoKeyJobsPage() {
   const { data: weekJobs = [], isLoading: weekLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'week', weekStart, weekEnd],
     queryFn: () => listAutoKeyJobs(weekParams!).then(r => r.data),
-    enabled: view === 'schedule' && scheduleSubView === 'week' && !!weekParams,
+    enabled: view === 'week' && !!weekParams,
   })
 
-  const unscheduledJobs = view === 'schedule' && scheduleSubView === 'day' ? jobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) : []
+  const unscheduledJobs = view === 'dispatch' ? jobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) : []
   const isSolo = users.length <= 1
 
   const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
@@ -1111,21 +1110,21 @@ export default function AutoKeyJobsPage() {
       <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>
         Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.
       </p>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setView('board')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'board' ? 'bg-opacity-20' : ''}`}
-            style={view === 'board' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            onClick={() => setView('dashboard')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
+            style={view === 'dashboard' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
-            <LayoutGrid size={16} /> Board
+            <LayoutGrid size={16} /> Dashboard
           </button>
           <button
-            onClick={() => { setView('schedule'); setScheduleSubView('day') }}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'schedule' ? 'bg-opacity-20' : ''}`}
-            style={view === 'schedule' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            onClick={() => setView('jobs')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
+            style={view === 'jobs' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
-            <Calendar size={16} /> Schedule
+            <List size={16} /> Jobs
           </button>
           <button
             onClick={() => setView('pos')}
@@ -1135,6 +1134,34 @@ export default function AutoKeyJobsPage() {
             <CreditCard size={16} /> POS
           </button>
           <button
+            onClick={() => setView('dispatch')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
+            style={view === 'dispatch' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <Calendar size={16} /> Dispatch
+          </button>
+          <button
+            onClick={() => setView('week')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'week' ? 'bg-opacity-20' : ''}`}
+            style={view === 'week' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <CalendarDays size={16} /> Week
+          </button>
+          <button
+            onClick={() => setView('map')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'map' ? 'bg-opacity-20' : ''}`}
+            style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <MapIcon size={16} /> Map
+          </button>
+          <button
+            onClick={() => setView('planner')}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'planner' ? 'bg-opacity-20' : ''}`}
+            style={view === 'planner' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+          >
+            <Clock size={16} /> Day Planner
+          </button>
+          <button
             onClick={() => setView('reports')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'reports' ? 'bg-opacity-20' : ''}`}
             style={view === 'reports' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
@@ -1142,68 +1169,36 @@ export default function AutoKeyJobsPage() {
             <BarChart3 size={16} /> Reports
           </button>
         </div>
-        {view === 'schedule' && (
-          <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
-            <button
-              type="button"
-              onClick={() => setScheduleSubView('day')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
-              style={{ backgroundColor: scheduleSubView === 'day' ? 'var(--cafe-paper)' : 'transparent', color: scheduleSubView === 'day' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}
-            >
-              Day
-            </button>
-            <button
-              type="button"
-              onClick={() => setScheduleSubView('week')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
-              style={{ backgroundColor: scheduleSubView === 'week' ? 'var(--cafe-paper)' : 'transparent', color: scheduleSubView === 'week' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}
-            >
-              Week
-            </button>
-            <button
-              type="button"
-              onClick={() => setScheduleSubView('map')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
-              style={{ backgroundColor: scheduleSubView === 'map' ? 'var(--cafe-paper)' : 'transparent', color: scheduleSubView === 'map' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}
-            >
-              Map
-            </button>
-          </div>
-        )}
       </div>
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
 
-      {view === 'board' && (
+      {view === 'dashboard' && (
         <>
           <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex items-center gap-2">
-              <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
-                <button
-                  type="button"
-                  onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                  style={{ backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent', color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}
-                >
-                  Active ({activeCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                  style={{ backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent', color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}
-                >
-                  Completed ({completedCount})
-                </button>
-              </div>
-              <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
-                <button type="button" onClick={() => setBoardLayout('columns')} className="px-3 py-1.5 text-xs font-semibold rounded-md transition" style={{ backgroundColor: boardLayout === 'columns' ? 'var(--cafe-paper)' : 'transparent', color: boardLayout === 'columns' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
-                  <LayoutGrid size={14} className="inline" /> Columns
-                </button>
-                <button type="button" onClick={() => setBoardLayout('list')} className="px-3 py-1.5 text-xs font-semibold rounded-md transition" style={{ backgroundColor: boardLayout === 'list' ? 'var(--cafe-paper)' : 'transparent', color: boardLayout === 'list' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
-                  <List size={14} className="inline" /> List
-                </button>
-              </div>
+            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+              <button
+                type="button"
+                onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Completed ({completedCount})
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-xs">
@@ -1212,7 +1207,7 @@ export default function AutoKeyJobsPage() {
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder={boardLayout === 'columns' ? 'Search…' : 'Search jobs, vehicle, rego…'}
+                  placeholder="Search…"
                   className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
                   style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
                 />
@@ -1220,17 +1215,17 @@ export default function AutoKeyJobsPage() {
               <Select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className={boardLayout === 'columns' ? 'min-w-[140px]' : 'min-w-[160px]'}
+                className="min-w-[140px]"
                 style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
               >
-                <option value="all">{boardLayout === 'columns' ? 'All stages' : 'All statuses'}</option>
+                <option value="all">All stages</option>
                 {statusOptions.map(s => (
                   <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
                 ))}
               </Select>
             </div>
           </div>
-          {boardLayout === 'columns' ? (isLoading ? <Spinner /> : filteredJobs.length === 0 ? (
+          {isLoading ? <Spinner /> : filteredJobs.length === 0 ? (
             <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
@@ -1300,16 +1295,68 @@ export default function AutoKeyJobsPage() {
                 )
               })}
             </div>
-          )) : (
-            isLoading ? <Spinner /> : (
-              <div className="space-y-3">
-                {filteredJobs.length === 0 ? (
-                  <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
-                ) : (
-                  filteredJobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
-                )}
-              </div>
-            )
+          )}
+        </>
+      )}
+
+      {view === 'jobs' && (
+        <>
+          <div className="mb-5 flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 max-w-xs min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--cafe-text-muted)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search jobs, vehicle, rego…"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
+                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              />
+            </div>
+            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+              <button
+                type="button"
+                onClick={() => setJobDirectoryView('active')}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setJobDirectoryView('completed')}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                style={{
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                }}
+              >
+                Completed ({completedCount})
+              </button>
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="min-w-[160px]"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            >
+              <option value="all">All statuses</option>
+              {statusOptions.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+              ))}
+            </Select>
+          </div>
+          {isLoading ? <Spinner /> : (
+            <div className="space-y-3">
+              {filteredJobs.length === 0 ? (
+                <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+              ) : (
+                filteredJobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
+              )}
+            </div>
           )}
         </>
       )}
@@ -1322,7 +1369,7 @@ export default function AutoKeyJobsPage() {
         />
       )}
 
-      {view === 'schedule' && scheduleSubView === 'day' && (
+      {view === 'dispatch' && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
@@ -1424,62 +1471,12 @@ export default function AutoKeyJobsPage() {
                   </div>
                 </div>
               )}
-
-              {dispatchJobs.length > 0 && (
-                <>
-                  <Card className="p-5">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
-                      Run sheet — {formatDate(dispatchDate)} ({dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''})
-                    </h3>
-                    <div className="space-y-3">
-                      {[...dispatchJobs]
-                        .sort((a: { scheduled_at?: string }, b: { scheduled_at?: string }) => {
-                          const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
-                          const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
-                          return ta - tb
-                        })
-                        .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
-                          const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
-                          const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
-                          return (
-                            <div
-                              key={job.id}
-                              className="flex items-start gap-4 py-3 border-b last:border-b-0"
-                              style={{ borderColor: 'var(--cafe-border)' }}
-                            >
-                              <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{timeStr}</span>
-                              <div className="flex-1 min-w-0">
-                                <Link to={`/auto-key/${job.id}`} className="font-medium hover:underline" style={{ color: 'var(--cafe-text)' }}>
-                                  #{job.job_number} · {job.title}
-                                </Link>
-                                <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                                  {customer?.full_name ?? '—'}
-                                  {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
-                                </p>
-                                {job.job_address && (
-                                  <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--cafe-text-mid)' }}>
-                                    <MapPin size={12} /> {job.job_address}
-                                  </p>
-                                )}
-                              </div>
-                              <Link to={`/auto-key/${job.id}`} className="shrink-0 px-3 py-1.5 rounded text-xs font-medium" style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}>View</Link>
-                            </div>
-                          )
-                        })}
-                    </div>
-                  </Card>
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Map — where to go</h3>
-                    <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
       )}
 
-      {view === 'schedule' && scheduleSubView === 'week' && (
+      {view === 'week' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -1615,7 +1612,7 @@ export default function AutoKeyJobsPage() {
         </div>
       )}
 
-      {view === 'schedule' && scheduleSubView === 'map' && (
+      {view === 'map' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-4">
             <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
@@ -1644,6 +1641,98 @@ export default function AutoKeyJobsPage() {
             )}
           </div>
           {dispatchLoading ? <Spinner /> : <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />}
+        </div>
+      )}
+
+      {view === 'planner' && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+            <input
+              type="date"
+              value={dispatchDate}
+              onChange={e => setDispatchDate(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            />
+            {users.length > 1 && (
+              <>
+                <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+                <Select
+                  value={dispatchTechFilter}
+                  onChange={e => setDispatchTechFilter(e.target.value)}
+                  className="min-w-[160px]"
+                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                >
+                  <option value="">All techs</option>
+                  {users.map((u: { id: string; full_name: string }) => (
+                    <option key={u.id} value={u.id}>{u.full_name}</option>
+                  ))}
+                </Select>
+              </>
+            )}
+          </div>
+          {dispatchLoading ? (
+            <Spinner />
+          ) : (
+            <>
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {formatDate(dispatchDate)} — {dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''}
+                </h3>
+                {dispatchJobs.length === 0 ? (
+                  <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>No jobs scheduled for this date.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {[...dispatchJobs]
+                      .sort((a: { scheduled_at?: string }, b: { scheduled_at?: string }) => {
+                        const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+                        const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+                        return ta - tb
+                      })
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
+                        const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
+                        const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+                        return (
+                          <div
+                            key={job.id}
+                            className="flex items-start gap-4 py-3 border-b last:border-b-0"
+                            style={{ borderColor: 'var(--cafe-border)' }}
+                          >
+                            <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{timeStr}</span>
+                            <div className="flex-1 min-w-0">
+                              <Link to={`/auto-key/${job.id}`} className="font-medium hover:underline" style={{ color: 'var(--cafe-text)' }}>
+                                #{job.job_number} · {job.title}
+                              </Link>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                                {customer?.full_name ?? '—'}
+                                {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
+                              </p>
+                              {job.job_address && (
+                                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                                  <MapPin size={12} /> {job.job_address}
+                                </p>
+                              )}
+                            </div>
+                            <Link
+                              to={`/auto-key/${job.id}`}
+                              className="shrink-0 px-3 py-1.5 rounded text-xs font-medium"
+                              style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                            >
+                              View
+                            </Link>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+              </Card>
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Map — where to go</h3>
+                <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />
+              </div>
+            </>
+          )}
         </div>
       )}
 
