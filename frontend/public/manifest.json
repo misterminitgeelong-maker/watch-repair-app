@@ -3,14 +3,22 @@
   "short_name": "Mainspring",
   "description": "Watch repairs, shoe repairs, and mobile services",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#FEFCF8",
+  "background_color": "#F6F2EB",
   "theme_color": "#C9A248",
   "icons": [
     {
-      "src": "/mainspring-logo.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
