@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
 interface AuthCtx {
@@ -10,6 +11,9 @@ interface AuthCtx {
   availableSites: SiteOption[]
   planCode: PlanCode
   enabledFeatures: FeatureKey[]
+  /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
+  sessionReady: boolean
+  /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
   initializing: boolean
   login: (accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) => void
   logout: () => void
@@ -53,7 +57,13 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** Marketing pages where we validate the JWT in the background without blocking the hero/pricing UI. */
+function isSessionDeferPath(pathname: string) {
+  return pathname === '/' || pathname === '/pricing'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site', 'rego_lookup']
   const [token, setToken] = useState<string | null>(() => {
     try {
@@ -69,7 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
-  const [initializing, setInitializing] = useState(true)
+  const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
+
+  const initializing = useMemo(
+    () => Boolean(token && !sessionReady && !isSessionDeferPath(location.pathname)),
+    [token, sessionReady, location.pathname],
+  )
 
   function scheduleProactiveRefresh(expiresInSeconds: number) {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
@@ -141,6 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let canceled = false
       let timedOut = false
 
+      setSessionReady(false)
+
       const timeoutId = setTimeout(() => {
         timedOut = true
         if (!canceled) {
@@ -152,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAvailableSites([])
           setPlanCode('pro')
           setEnabledFeatures(defaultFeatures)
-          setInitializing(false)
+          setSessionReady(true)
         }
       }, SESSION_INIT_TIMEOUT_MS)
 
@@ -173,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } finally {
           clearTimeout(timeoutId)
-          if (!canceled && !timedOut) setInitializing(false)
+          if (!canceled && !timedOut) setSessionReady(true)
         }
       }
 
@@ -188,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       import.meta.env.DEV && String(import.meta.env.VITE_ENABLE_DEV_AUTO_LOGIN ?? 'false') === 'true'
 
     if (!enableDevAutoLogin) {
-      setInitializing(false)
+      setSessionReady(true)
       return
     }
 
@@ -206,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAvailableSites([])
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
-        setInitializing(false)
+        setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
 
@@ -232,7 +249,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } finally {
         clearTimeout(timeoutId)
-        if (!canceled && !timedOut) setInitializing(false)
+        // If dev login set a token, the [token] effect will load session; only unblock when still logged out.
+        if (!canceled && !timedOut && !getStoredAccessToken()) setSessionReady(true)
       }
     }
 
@@ -278,7 +296,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return enabledFeatures.includes(feature)
   }
 
-  return <AuthContext.Provider value={{ token, role, tenantId, activeSiteTenantId, availableSites, planCode, enabledFeatures, initializing, login, logout, hasFeature, refreshSession, switchSite }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        token,
+        role,
+        tenantId,
+        activeSiteTenantId,
+        availableSites,
+        planCode,
+        enabledFeatures,
+        sessionReady,
+        initializing,
+        login,
+        logout,
+        hasFeature,
+        refreshSession,
+        switchSite,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

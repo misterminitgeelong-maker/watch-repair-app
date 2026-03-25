@@ -54,9 +54,9 @@ function FeatureGate({ feature, children }: { feature: FeatureKey; children: Rea
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <ErrorBoundary>
-          <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <ErrorBoundary>
             <Routes>
             {/* Public — no auth required */}
             <Route path="/" element={<LandingPage />} />
@@ -100,9 +100,9 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </BrowserRouter>
-        </ErrorBoundary>
-      </AuthProvider>
+          </ErrorBoundary>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   )
 }

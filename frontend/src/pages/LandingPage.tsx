@@ -459,16 +459,10 @@ function FinalCTA() {
 }
 
 export default function LandingPage() {
-  const { token, initializing } = useAuth()
+  const { token, sessionReady } = useAuth()
 
-  if (token && !initializing) return <Navigate to="/dashboard" replace />
-  if (token && initializing) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
-        <p className="text-sm">Checking session…</p>
-      </div>
-    )
-  }
+  // After /auth/session succeeds, send signed-in users to the app (validation runs in background on this page).
+  if (token && sessionReady) return <Navigate to="/dashboard" replace />
 
   return (
     <div
