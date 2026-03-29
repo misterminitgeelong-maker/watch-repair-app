@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
+import { MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { nearestNeighborOrder } from '@/lib/mobileRouteUtils'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
@@ -32,6 +34,8 @@ interface Props {
   /** Shown above the map (e.g. selected date range) */
   rangeLabel?: string
 }
+
+type JobWithAddr = Job & { _addressForMap: string }
 
 const GEOCODE_CACHE_KEY = 'geocode_cache'
 
@@ -96,23 +100,69 @@ function vehicleLabel(job: Job): string {
   return parts.join(' · ') || '—'
 }
 
+function isMobileVisitJob(j: Job): boolean {
+  const t = j.job_type?.trim()
+  if (!t) return !!j.job_address?.trim()
+  return MOBILE_JOB_TYPES.has(t)
+}
+
+function attachAddress(j: Job, customers: Customer[]): JobWithAddr | null {
+  const address = j.job_address?.trim() || customers.find((c) => c.id === j.customer_id)?.address?.trim()
+  if (!address) return null
+  return { ...j, _addressForMap: address }
+}
+
+function sortJobsBySchedule(jobs: JobWithAddr[]): JobWithAddr[] {
+  return [...jobs].sort((a, b) => {
+    const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+    const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+    if (ta !== tb) return ta - tb
+    return a.job_number.localeCompare(b.job_number, undefined, { numeric: true })
+  })
+}
+
+function buildGoogleMapsDirUrl(addresses: string[]): string {
+  if (addresses.length === 0) return 'https://www.google.com/maps'
+  const path = addresses.map((a) => encodeURIComponent(a)).join('/')
+  return `https://www.google.com/maps/dir/${path}`
+}
+
+function RoutePolyline({ path }: { path: google.maps.LatLngLiteral[] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!map || path.length < 2) return
+    const poly = new google.maps.Polyline({
+      path,
+      strokeColor: '#C9772A',
+      strokeOpacity: 0.88,
+      strokeWeight: 3,
+      geodesic: true,
+      map,
+    })
+    return () => poly.setMap(null)
+  }, [map, path])
+  return null
+}
+
 function MarkerWithInfoWindow({
   job,
   position,
   customers,
   displayAddress,
+  stopNumber,
 }: {
   job: Job
   position: { lat: number; lng: number }
   customers: Customer[]
   displayAddress: string
+  stopNumber: number
 }) {
   const [markerRef, marker] = useMarkerRef()
   const [infoWindowShown, setInfoWindowShown] = useState(false)
   const handleMarkerClick = useCallback(() => setInfoWindowShown((s) => !s), [])
   const handleClose = useCallback(() => setInfoWindowShown(false), [])
 
-  const labelText = job.job_number || job.title || '?'
+  const labelText = `${stopNumber}. ${job.job_number || job.title || '?'}`
   return (
     <>
       <Marker
@@ -121,7 +171,7 @@ function MarkerWithInfoWindow({
         label={{
           text: labelText,
           color: '#2C1810',
-          fontSize: '14px',
+          fontSize: '13px',
           fontWeight: 'bold',
         }}
         onClick={handleMarkerClick}
@@ -130,7 +180,7 @@ function MarkerWithInfoWindow({
         <InfoWindow anchor={marker} onClose={handleClose} disableAutoPan shouldFocus={false}>
           <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>
             <p className="font-semibold" style={{ color: 'var(--cafe-amber)' }}>
-              #{job.job_number}
+              Stop {stopNumber} · #{job.job_number}
             </p>
             <p className="mt-1 font-medium">{vehicleLabel(job)}</p>
             <p className="mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -160,13 +210,15 @@ function MarkerWithInfoWindow({
 }
 
 function MapContent({
-  jobs,
+  orderedJobs,
   customers,
   geocoded,
+  routePath,
 }: {
-  jobs: Job[]
+  orderedJobs: JobWithAddr[]
   customers: Customer[]
   geocoded: Map<string, { lat: number; lng: number }>
+  routePath: google.maps.LatLngLiteral[]
 }) {
   const map = useMap()
 
@@ -191,12 +243,20 @@ function MapContent({
 
   return (
     <>
-      {jobs.map((job) => {
+      {routePath.length >= 2 && <RoutePolyline path={routePath} />}
+      {orderedJobs.map((job, idx) => {
         const coords = geocoded.get(job.id)
-        const displayAddress = (job as { _addressForMap?: string })._addressForMap ?? job.job_address ?? ''
+        const displayAddress = job._addressForMap ?? job.job_address ?? ''
         if (!coords) return null
         return (
-          <MarkerWithInfoWindow key={job.id} job={job} position={coords} customers={customers} displayAddress={displayAddress} />
+          <MarkerWithInfoWindow
+            key={job.id}
+            job={job}
+            position={coords}
+            customers={customers}
+            displayAddress={displayAddress}
+            stopNumber={idx + 1}
+          />
         )
       })}
     </>
@@ -206,48 +266,88 @@ function MapContent({
 function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [mapFilter, setMapFilter] = useState<'mobile_visits' | 'all_addresses'>('mobile_visits')
+  const [routeOrder, setRouteOrder] = useState<'scheduled' | 'optimized'>('scheduled')
   const abortedRef = useRef(false)
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
-  const mobileJobs = useMemo(() => {
+
+  const jobsWithAddresses = useMemo(() => {
     return jobs
-      .map((j) => {
-        const address = j.job_address?.trim() || (customers.find((c) => c.id === j.customer_id)?.address?.trim())
-        return address ? { ...j, _addressForMap: address } : null
-      })
-      .filter((j): j is NonNullable<typeof j> => !!j)
+      .map((j) => attachAddress(j, customers))
+      .filter((j): j is JobWithAddr => !!j)
   }, [jobs, customers])
+
+  const filteredJobs = useMemo(() => {
+    if (mapFilter === 'all_addresses') return jobsWithAddresses
+    return jobsWithAddresses.filter(isMobileVisitJob)
+  }, [jobsWithAddresses, mapFilter])
+
   const jobsKey = useMemo(
-    () => mobileJobs.map((j) => `${j.id}:${j._addressForMap}`).sort().join('|'),
-    [mobileJobs]
+    () => filteredJobs.map((j) => `${j.id}:${j._addressForMap}`).sort().join('|'),
+    [filteredJobs]
   )
+
+  const sortedBySchedule = useMemo(() => sortJobsBySchedule(filteredJobs), [filteredJobs])
+
+  const optimizedIndices = useMemo(() => {
+    if (sortedBySchedule.length === 0) return []
+    return nearestNeighborOrder(
+      sortedBySchedule,
+      (j) => geocoded.get(j.id) ?? null,
+      0,
+    )
+  }, [sortedBySchedule, geocoded])
+
+  const orderedJobs: JobWithAddr[] = useMemo(() => {
+    if (sortedBySchedule.length === 0) return []
+    if (routeOrder === 'scheduled') return sortedBySchedule
+    return optimizedIndices.map((i) => sortedBySchedule[i])
+  }, [sortedBySchedule, routeOrder, optimizedIndices])
+
+  const routePath = useMemo(() => {
+    const pts: google.maps.LatLngLiteral[] = []
+    for (const j of orderedJobs) {
+      const c = geocoded.get(j.id)
+      if (c) pts.push(c)
+    }
+    return pts
+  }, [orderedJobs, geocoded])
+
+  const mapsDirUrl = useMemo(
+    () => buildGoogleMapsDirUrl(orderedJobs.map((j) => j._addressForMap).filter(Boolean)),
+    [orderedJobs],
+  )
+
   const ungeocodedJobs = useMemo(
-    () => mobileJobs.filter((j) => !geocoded.has(j.id)),
-    [mobileJobs, geocoded]
+    () => filteredJobs.filter((j) => !geocoded.has(j.id)),
+    [filteredJobs, geocoded],
   )
 
   const lastJobsKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
+    setRouteOrder('scheduled')
+  }, [jobsKey])
+
+  useEffect(() => {
     abortedRef.current = false
     const run = async () => {
-      if (!apiKey || mobileJobs.length === 0) {
+      if (!apiKey || filteredJobs.length === 0) {
         setGeocoded(new Map())
         setLoading(false)
         return
       }
-      // Skip if we already completed for this exact jobsKey (prevents duplicate runs from parent re-renders)
       if (lastJobsKeyRef.current === jobsKey) {
         setLoading(false)
         return
       }
       setLoading(true)
       const results = new Map<string, { lat: number; lng: number }>()
-      // Fast path: if all addresses are cached, resolve synchronously (0 API calls)
-      const cacheKeys = mobileJobs.map((j) => j._addressForMap.trim().toLowerCase())
+      const cacheKeys = filteredJobs.map((j) => j._addressForMap.trim().toLowerCase())
       const allCached = cacheKeys.every((ck) => geocodeCache.has(ck))
       if (allCached) {
-        for (const j of mobileJobs) {
+        for (const j of filteredJobs) {
           const ck = j._addressForMap.trim().toLowerCase()
           const c = geocodeCache.get(ck)
           if (c) results.set(j.id, c)
@@ -257,13 +357,13 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
         setLoading(false)
         return
       }
-      for (let i = 0; i < mobileJobs.length; i++) {
+      for (let i = 0; i < filteredJobs.length; i++) {
         if (abortedRef.current) return
-        const j = mobileJobs[i]
+        const j = filteredJobs[i]
         const coords = await geocodeWithGoogle(j._addressForMap, apiKey)
         if (abortedRef.current) return
         if (coords) results.set(j.id, coords)
-        if (i < mobileJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
+        if (i < filteredJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
       }
       if (!abortedRef.current) {
         lastJobsKeyRef.current = jobsKey
@@ -273,15 +373,41 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     }
     void run()
     return () => { abortedRef.current = true }
-  }, [apiKey, date, jobsKey, mobileJobs])
+  }, [apiKey, date, jobsKey, filteredJobs])
 
-  if (mobileJobs.length === 0) {
+  if (jobsWithAddresses.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
-        <p style={{ color: 'var(--cafe-text-muted)' }}>No jobs with addresses for this date.</p>
+        <p style={{ color: 'var(--cafe-text-muted)' }}>No jobs with addresses in this range.</p>
         <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-          Add job addresses (or customer addresses) to see them on the map.
+          Add job or customer addresses to see them on the map.
         </p>
+      </div>
+    )
+  }
+
+  if (mapFilter === 'mobile_visits' && filteredJobs.length === 0) {
+    return (
+      <div className="space-y-4">
+        {rangeLabel && (
+          <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+            {rangeLabel}
+          </p>
+        )}
+        <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
+          <p style={{ color: 'var(--cafe-text-muted)' }}>No on-site / mobile visits with addresses for this range.</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            Mobile visit job types include lockouts, roadside, all keys lost, ignition work, and similar. In-shop jobs are hidden unless you widen the filter.
+          </p>
+          <button
+            type="button"
+            className="mt-4 px-4 py-2 rounded-lg text-sm font-medium touch-manipulation"
+            style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+            onClick={() => setMapFilter('all_addresses')}
+          >
+            Show all jobs with addresses
+          </button>
+        </div>
       </div>
     )
   }
@@ -297,11 +423,83 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     )
   }
 
+  const canOptimize = sortedBySchedule.length >= 2 && sortedBySchedule.every((j) => geocoded.has(j.id))
+
   return (
     <div className="space-y-3">
       {rangeLabel && (
         <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
           {rangeLabel}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Show</span>
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <button
+            type="button"
+            onClick={() => setMapFilter('mobile_visits')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
+            style={{
+              backgroundColor: mapFilter === 'mobile_visits' ? 'var(--cafe-paper)' : 'transparent',
+              color: mapFilter === 'mobile_visits' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+          >
+            Mobile visits
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapFilter('all_addresses')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
+            style={{
+              backgroundColor: mapFilter === 'all_addresses' ? 'var(--cafe-paper)' : 'transparent',
+              color: mapFilter === 'all_addresses' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+          >
+            All with address
+          </button>
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-wide ml-1" style={{ color: 'var(--cafe-text-muted)' }}>Route</span>
+        <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+          <button
+            type="button"
+            onClick={() => setRouteOrder('scheduled')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
+            style={{
+              backgroundColor: routeOrder === 'scheduled' ? 'var(--cafe-paper)' : 'transparent',
+              color: routeOrder === 'scheduled' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+          >
+            By time
+          </button>
+          <button
+            type="button"
+            disabled={!canOptimize || loading}
+            onClick={() => setRouteOrder('optimized')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation disabled:opacity-45"
+            style={{
+              backgroundColor: routeOrder === 'optimized' ? 'var(--cafe-paper)' : 'transparent',
+              color: routeOrder === 'optimized' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            title={!canOptimize ? 'Geocode all stops first (wait for loading to finish).' : 'Reorder by nearest-neighbor from the first scheduled stop'}
+          >
+            Optimized
+          </button>
+        </div>
+        {orderedJobs.length >= 2 && (
+          <a
+            href={mapsDirUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold hover:underline touch-manipulation"
+            style={{ color: 'var(--cafe-amber)' }}
+          >
+            Open in Google Maps →
+          </a>
+        )}
+      </div>
+      {routeOrder === 'optimized' && canOptimize && (
+        <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          Line shows a straight path between stops (not driving directions). Use Open in Google Maps for turn-by-turn.
         </p>
       )}
       {loading && (
@@ -333,7 +531,7 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
           </div>
         </div>
       )}
-      <div className="h-[400px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
+      <div className="h-[min(520px,70vh)] min-h-[320px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
         <APIProvider apiKey={apiKey}>
           <GoogleMap
             defaultCenter={MELBOURNE_CENTRE}
@@ -341,15 +539,15 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
             gestureHandling="greedy"
             style={{ width: '100%', height: '100%' }}
           >
-            <MapContent jobs={mobileJobs} customers={customers} geocoded={geocoded} />
+            <MapContent orderedJobs={orderedJobs} customers={customers} geocoded={geocoded} routePath={routePath} />
           </GoogleMap>
         </APIProvider>
       </div>
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
-          Jobs on map:
+          Stops ({routeOrder === 'optimized' ? 'optimized' : 'by appointment time'}):
         </span>
-        {mobileJobs.map((j, i) => (
+        {orderedJobs.map((j, i) => (
           <span key={j.id} className="text-sm">
             <a
               href={`/auto-key/${j.id}`}
