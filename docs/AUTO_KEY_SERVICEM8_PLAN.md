@@ -88,7 +88,7 @@
 ## Phase 7: Maps & routes (later)
 
 - [x] Map view of today’s mobile jobs (Mobile Services → Map; default **Mobile visits** filter)
-- [x] Route order / optimisation (**By time** vs **Optimized** nearest-neighbor from first stop; polyline + Open in Google Maps)
+- [x] Route order / optimisation (**By time**, **Optimized** straight-line nearest-neighbor, **Driving** via Google Directions with fixed first/last appointment; polyline + Open in Google Maps)
 - [ ] Tech live location (GoFar integration)
 
 ---

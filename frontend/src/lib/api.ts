@@ -1319,6 +1319,14 @@ export interface VehicleLookupResult {
 }
 export const vehicleLookup = (plate: string, state: string) =>
   api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
+
+export type DrivingStop = { lat: number; lng: number }
+
+/** Reorder stops for shorter driving (Google Directions). Stops must be in appointment-time order; first/last stay fixed. */
+export const optimizeDrivingRoute = (stops: DrivingStop[]) =>
+  api.post<{ visit_order: number[]; source: 'trivial' | 'directions' }>('/maps/optimize-driving-route', {
+    stops,
+  })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type' | 'visit_order' | 'key_type' | 'blade_code' | 'chip_type' | 'tech_notes'> {

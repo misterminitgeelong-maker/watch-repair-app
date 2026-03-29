@@ -82,6 +82,9 @@ class Settings(BaseSettings):
 
     # Google Places API (for Prospects search; leave blank to disable)
     google_places_api_key: str = ""
+    # Google Maps Directions API (server-side; Mobile Services driving-order on map). Enable "Directions API" for this key.
+    # If empty, falls back to GOOGLE_PLACES_API_KEY when that key also has Directions enabled.
+    google_maps_web_services_key: str = ""
 
     # Vehicle registration lookup (Blue Flag NEVDIS; leave blank to disable)
     rego_lookup_api_key: str = ""

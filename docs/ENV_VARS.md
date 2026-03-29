@@ -29,6 +29,7 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `SENTRY_DSN` | (empty) | No | Sentry DSN for backend error reporting. Leave blank to disable. |
 | `SENDGRID_API_KEY` / `POSTMARK_API_KEY` | (empty) | No | Optional email provider API key when `enable_email_notifications` is true. |
 | `GOOGLE_PLACES_API_KEY` | (empty) | No | Google Places API key for Prospects search (/prospects). Leave blank to disable; endpoints return 500 if key is missing. |
+| `GOOGLE_MAPS_WEB_SERVICES_KEY` | (empty) | No | Google Maps **Directions** API (server). Enables Mobile Services map **Driving** stop order (`POST /v1/maps/optimize-driving-route`). If unset, the backend may fall back to `GOOGLE_PLACES_API_KEY` when that key has Directions enabled. |
 
 ## Health and readiness
 

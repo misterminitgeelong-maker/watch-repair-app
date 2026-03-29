@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
 import { MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { getApiErrorMessage, optimizeDrivingRoute } from '@/lib/api'
 import { nearestNeighborOrder } from '@/lib/mobileRouteUtils'
 import { STATUS_LABELS } from '@/lib/utils'
 
@@ -125,6 +126,12 @@ function buildGoogleMapsDirUrl(addresses: string[]): string {
   if (addresses.length === 0) return 'https://www.google.com/maps'
   const path = addresses.map((a) => encodeURIComponent(a)).join('/')
   return `https://www.google.com/maps/dir/${path}`
+}
+
+function isValidPermutation(order: number[], n: number): boolean {
+  if (order.length !== n) return false
+  if (new Set(order).size !== n) return false
+  return order.every((i) => i >= 0 && i < n)
 }
 
 function RoutePolyline({ path }: { path: google.maps.LatLngLiteral[] }) {
@@ -267,7 +274,11 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [mapFilter, setMapFilter] = useState<'mobile_visits' | 'all_addresses'>('mobile_visits')
-  const [routeOrder, setRouteOrder] = useState<'scheduled' | 'optimized'>('scheduled')
+  const [routeOrder, setRouteOrder] = useState<'scheduled' | 'optimized' | 'driving'>('scheduled')
+  const [drivingVisitOrder, setDrivingVisitOrder] = useState<number[] | null>(null)
+  const [drivingErr, setDrivingErr] = useState('')
+  const [drivingLoading, setDrivingLoading] = useState(false)
+  const lastDrivingFetchKey = useRef<string | null>(null)
   const abortedRef = useRef(false)
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
@@ -302,8 +313,17 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   const orderedJobs: JobWithAddr[] = useMemo(() => {
     if (sortedBySchedule.length === 0) return []
     if (routeOrder === 'scheduled') return sortedBySchedule
-    return optimizedIndices.map((i) => sortedBySchedule[i])
-  }, [sortedBySchedule, routeOrder, optimizedIndices])
+    if (routeOrder === 'optimized') {
+      return optimizedIndices.map((i) => sortedBySchedule[i])
+    }
+    if (
+      drivingVisitOrder &&
+      isValidPermutation(drivingVisitOrder, sortedBySchedule.length)
+    ) {
+      return drivingVisitOrder.map((i) => sortedBySchedule[i])
+    }
+    return sortedBySchedule
+  }, [sortedBySchedule, routeOrder, optimizedIndices, drivingVisitOrder])
 
   const routePath = useMemo(() => {
     const pts: google.maps.LatLngLiteral[] = []
@@ -328,7 +348,60 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
 
   useEffect(() => {
     setRouteOrder('scheduled')
+    setDrivingVisitOrder(null)
+    setDrivingErr('')
+    lastDrivingFetchKey.current = null
   }, [jobsKey])
+
+  useEffect(() => {
+    if (routeOrder !== 'driving') {
+      lastDrivingFetchKey.current = null
+      setDrivingLoading(false)
+      return
+    }
+    if (sortedBySchedule.length === 0) return
+    if (!sortedBySchedule.every((j) => geocoded.has(j.id))) return
+
+    const stops = sortedBySchedule.map((j) => geocoded.get(j.id)!)
+    const fp = `${jobsKey}|${stops.map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`).join(';')}`
+    if (lastDrivingFetchKey.current === fp) return
+    lastDrivingFetchKey.current = fp
+
+    if (stops.length <= 2) {
+      setDrivingVisitOrder(stops.map((_, i) => i))
+      setDrivingErr('')
+      setDrivingLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setDrivingLoading(true)
+    setDrivingErr('')
+    optimizeDrivingRoute(stops)
+      .then((res) => {
+        if (cancelled) return
+        const vo = res.data.visit_order
+        if (!isValidPermutation(vo, sortedBySchedule.length)) {
+          setDrivingErr('Unexpected route response from server.')
+          setDrivingVisitOrder(null)
+          lastDrivingFetchKey.current = null
+        } else {
+          setDrivingVisitOrder(vo)
+        }
+        setDrivingLoading(false)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        lastDrivingFetchKey.current = null
+        setDrivingErr(getApiErrorMessage(e, 'Could not compute driving route.'))
+        setDrivingVisitOrder(null)
+        setDrivingLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [routeOrder, jobsKey, sortedBySchedule, geocoded])
 
   useEffect(() => {
     abortedRef.current = false
@@ -423,7 +496,20 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     )
   }
 
-  const canOptimize = sortedBySchedule.length >= 2 && sortedBySchedule.every((j) => geocoded.has(j.id))
+  const allStopsGeocoded =
+    sortedBySchedule.length > 0 && sortedBySchedule.every((j) => geocoded.has(j.id))
+  const canOptimize = sortedBySchedule.length >= 2 && allStopsGeocoded
+
+  const routeStopsLegend =
+    routeOrder === 'scheduled'
+      ? 'by appointment time'
+      : routeOrder === 'optimized'
+        ? 'optimized (straight-line)'
+        : drivingLoading
+          ? 'driving (loading…)'
+          : drivingErr
+            ? 'by time (driving unavailable)'
+            : 'driving (Google Directions)'
 
   return (
     <div className="space-y-3">
@@ -484,6 +570,23 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
           >
             Optimized
           </button>
+          <button
+            type="button"
+            disabled={!allStopsGeocoded || loading}
+            onClick={() => setRouteOrder('driving')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation disabled:opacity-45"
+            style={{
+              backgroundColor: routeOrder === 'driving' ? 'var(--cafe-paper)' : 'transparent',
+              color: routeOrder === 'driving' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            title={
+              !allStopsGeocoded
+                ? 'Geocode every stop first.'
+                : 'Shortest driving order via Google (first & last appointment fixed). Requires server GOOGLE_MAPS_WEB_SERVICES_KEY.'
+            }
+          >
+            Driving
+          </button>
         </div>
         {orderedJobs.length >= 2 && (
           <a
@@ -500,6 +603,21 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
       {routeOrder === 'optimized' && canOptimize && (
         <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
           Line shows a straight path between stops (not driving directions). Use Open in Google Maps for turn-by-turn.
+        </p>
+      )}
+      {routeOrder === 'driving' && allStopsGeocoded && sortedBySchedule.length >= 3 && (
+        <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          First and last stops stay in appointment order; Google reorders the middle for driving distance. Map line is still straight between stops; use Open in Google Maps for roads.
+        </p>
+      )}
+      {routeOrder === 'driving' && drivingLoading && (
+        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Computing driving order…
+        </p>
+      )}
+      {routeOrder === 'driving' && drivingErr && (
+        <p className="text-sm" style={{ color: '#C96A5A' }}>
+          {drivingErr}
         </p>
       )}
       {loading && (
@@ -545,7 +663,7 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
       </div>
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
-          Stops ({routeOrder === 'optimized' ? 'optimized' : 'by appointment time'}):
+          Stops ({routeStopsLegend}):
         </span>
         {orderedJobs.map((j, i) => (
           <span key={j.id} className="text-sm">
