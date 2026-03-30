@@ -18,6 +18,7 @@ import {
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   uploadAutoKeyAttachment,
+  MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
   type AutoKeyJobUpdatePayload,
   type CustomerAccount,
   type JobStatus,
@@ -618,13 +619,14 @@ export default function AutoKeyJobDetailPage() {
           )}
 
           <Select
-            label='Commission: job source'
+            label='Job source (commission tier)'
             value={(job as { commission_lead_source?: string }).commission_lead_source ?? 'shop_referred'}
             onChange={e => leadSourceMut.mutate(e.target.value)}
             disabled={leadSourceMut.isPending}
           >
-            <option value='shop_referred'>Shop / referred work</option>
-            <option value='tech_sourced'>Technician sourced</option>
+            {MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </Select>
 
           <Select

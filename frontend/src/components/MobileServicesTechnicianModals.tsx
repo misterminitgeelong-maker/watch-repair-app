@@ -24,6 +24,7 @@ export function AddTechnicianModal({
   const [retainerDollars, setRetainerDollars] = useState('360')
   const [shopPct, setShopPct] = useState('30')
   const [selfPct, setSelfPct] = useState('50')
+  const [minitPct, setMinitPct] = useState('40')
   const [error, setError] = useState<string | 'duplicate_email' | null>(null)
   const mut = useMutation({
     mutationFn: () =>
@@ -38,6 +39,7 @@ export function AddTechnicianModal({
               retainerDollars: Math.max(0, parseFloat(retainerDollars) || 0),
               shopPercent: Math.max(0, parseFloat(shopPct) || 0),
               techSourcedPercent: Math.max(0, parseFloat(selfPct) || 0),
+              minitSourcedPercent: Math.max(0, parseFloat(minitPct) || 0),
             })
           : undefined,
       }),
@@ -73,10 +75,13 @@ export function AddTechnicianModal({
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                 First portion of commission each period counts toward salary (retainer); only the amount above that is bonus. Percentages apply to invoice total. You can change keys or add tiers later under Commission rules.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input label="Retainer ($ / period)" value={retainerDollars} onChange={e => setRetainerDollars(e.target.value)} />
-                <Input label="Shop / referred %" value={shopPct} onChange={e => setShopPct(e.target.value)} />
-                <Input label="Tech sourced %" value={selfPct} onChange={e => setSelfPct(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Input label="Shop sourced %" value={shopPct} onChange={e => setShopPct(e.target.value)} />
+                <Input label="Technician sourced %" value={selfPct} onChange={e => setSelfPct(e.target.value)} />
+                <Input label="Minit sourced %" value={minitPct} onChange={e => setMinitPct(e.target.value)} />
               </div>
             </>
           )}
@@ -120,6 +125,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
   const [retainer, setRetainer] = useState('360')
   const [shop, setShop] = useState('30')
   const [self, setSelf] = useState('50')
+  const [minit, setMinit] = useState('40')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -134,18 +140,20 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
       setRetainer('360')
       setShop('30')
       setSelf('50')
+      setMinit('40')
       return
     }
     try {
       const r = JSON.parse(raw) as {
         enabled?: boolean
         retainer_cents_per_period?: number
-        rates_bp?: { shop_referred?: number; tech_sourced?: number }
+        rates_bp?: { shop_referred?: number; tech_sourced?: number; minit_sourced?: number }
       }
       setEnabled(Boolean(r.enabled))
       setRetainer(String((r.retainer_cents_per_period ?? 36_000) / 100))
       setShop(String((r.rates_bp?.shop_referred ?? 3000) / 100))
       setSelf(String((r.rates_bp?.tech_sourced ?? 5000) / 100))
+      setMinit(String((r.rates_bp?.minit_sourced ?? 4000) / 100))
     } catch {
       setEnabled(false)
     }
@@ -160,6 +168,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
           retainerDollars: Math.max(0, parseFloat(retainer) || 0),
           shopPercent: Math.max(0, parseFloat(shop) || 0),
           techSourcedPercent: Math.max(0, parseFloat(self) || 0),
+          minitSourcedPercent: Math.max(0, parseFloat(minit) || 0),
         })
         await updateUser(userId, { mobile_commission_rules_json: json })
       } else {
@@ -176,7 +185,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
   return (
     <Modal title="Mobile Services commission rules" onClose={onClose}>
       <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
-        Rules are stored as JSON on each technician (extend with custom <code className="text-xs">rates_bp</code> keys and matching job <strong>lead source</strong> on each job). Default keys: shop_referred, tech_sourced.
+        Job lead source on each ticket must match a key in <code className="text-xs">rates_bp</code> (Shop sourced, Technician sourced, Minit sourced). You can add custom keys in JSON on the user if needed.
       </p>
       {techs.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -194,11 +203,14 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
             Commission tracking enabled
           </label>
           {enabled && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <>
               <Input label="Retainer ($)" value={retainer} onChange={e => setRetainer(e.target.value)} />
-              <Input label="Shop / referred %" value={shop} onChange={e => setShop(e.target.value)} />
-              <Input label="Tech sourced %" value={self} onChange={e => setSelf(e.target.value)} />
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Input label="Shop sourced %" value={shop} onChange={e => setShop(e.target.value)} />
+                <Input label="Technician sourced %" value={self} onChange={e => setSelf(e.target.value)} />
+                <Input label="Minit sourced %" value={minit} onChange={e => setMinit(e.target.value)} />
+              </div>
+            </>
           )}
         </div>
       )}

@@ -1173,7 +1173,7 @@ class AutoKeyJob(SQLModel, table=True):
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    #: Revenue share tier key — must match keys in technician rates_bp (e.g. shop_referred, tech_sourced).
+    #: Revenue share tier key — must match keys in technician rates_bp (shop_referred, tech_sourced, minit_sourced).
     commission_lead_source: str = Field(default="shop_referred", max_length=64)
 
 

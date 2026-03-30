@@ -69,6 +69,15 @@ def _tech_with_commission(h: dict, suffix: str, shop_bp: int = 3000, self_bp: in
     return r.json()["id"]
 
 
+def test_commission_rate_minit_sourced_in_defaults():
+    from app.mobile_commission import default_mobile_commission_rules_json, parse_mobile_commission_rules, rate_for_lead_source
+
+    rules = parse_mobile_commission_rules(default_mobile_commission_rules_json())
+    assert rules is not None
+    assert rate_for_lead_source(rules, "minit_sourced") == 4000
+    assert rate_for_lead_source(rules, "shop_referred") == 3000
+
+
 def test_commission_report_retainer_and_rates():
     token, _ = _bootstrap()
     h = {"Authorization": f"Bearer {token}"}

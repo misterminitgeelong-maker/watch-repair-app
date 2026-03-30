@@ -24,6 +24,7 @@ import {
   getAutoKeyCommissionReport,
   getAutoKeyQuoteSuggestions,
   searchVehicleKeySpecs,
+  MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
   type VehicleKeySpecMatch,
   type AutoKeyJob,
   type Customer,
@@ -485,12 +486,13 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           ))}
         </Select>
         <Select
-          label="Commission: who sourced the job?"
+          label="Job source (commission tier)"
           value={form.commission_lead_source}
           onChange={e => setForm(f => ({ ...f, commission_lead_source: e.target.value }))}
         >
-          <option value="shop_referred">Shop / referred work (default rate)</option>
-          <option value="tech_sourced">Technician sourced (own customer)</option>
+          {MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </Select>
         <Input label="Job title (from customer + vehicle)" value={autoTitle} readOnly className="opacity-90" />
         <Textarea label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
@@ -2411,7 +2413,7 @@ export default function AutoKeyJobsPage() {
                   </h3>
                   <p className="text-xs mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
                     Uses the same date range as above. Revenue is attributed by <strong>invoice created</strong> time. Each job must match the technician&apos;s eligible statuses (default: completed, collected).
-                    Bonus = raw commission minus the per-period retainer (salary component). Advanced: edit JSON on the user or add extra <code className="text-[11px]">rates_bp</code> keys and set the job&apos;s lead source accordingly.
+                    Bonus = raw commission minus the per-period retainer (salary component). Each job uses one of three sources (Technician / Shop / Minit); matching percentages are under Commission rules per technician.
                   </p>
                   {commissionLoading && <Spinner />}
                   {commissionError && !commissionLoading && (

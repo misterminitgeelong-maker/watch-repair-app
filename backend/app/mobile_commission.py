@@ -7,15 +7,17 @@ from dataclasses import dataclass
 from typing import Any, Optional
 from uuid import UUID
 
-# Basis points: 3000 = 30%, 5000 = 50%
+# Basis points: 3000 = 30%, 5000 = 50%, 4000 = 40%
 DEFAULT_RATES_BP: dict[str, int] = {
     "shop_referred": 3000,
     "tech_sourced": 5000,
+    "minit_sourced": 4000,
 }
 
 DEFAULT_LABELS: dict[str, str] = {
-    "shop_referred": "Shop / referred work",
-    "tech_sourced": "Tech sourced (own lead)",
+    "shop_referred": "Shop sourced",
+    "tech_sourced": "Technician sourced",
+    "minit_sourced": "Minit sourced",
 }
 
 DEFAULT_ELIGIBLE_STATUSES = ("completed", "collected")

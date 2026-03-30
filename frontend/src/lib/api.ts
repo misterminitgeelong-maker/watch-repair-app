@@ -1039,12 +1039,22 @@ export interface TenantUser {
   mobile_commission_rules_json?: string | null
 }
 
+/** Keys stored on each job; rates are configured per technician in `rates_bp`. */
+export const MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS = [
+  { value: 'tech_sourced', label: 'Technician sourced' },
+  { value: 'shop_referred', label: 'Shop sourced' },
+  { value: 'minit_sourced', label: 'Minit sourced' },
+] as const
+
+export type MobileCommissionLeadSource = (typeof MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS)[number]['value']
+
 /** Build JSON for PATCH /users — basis points = percent × 100 (e.g. 30% → 3000). */
 export function buildMobileCommissionRulesJson(opts: {
   enabled: boolean
   retainerDollars: number
   shopPercent: number
   techSourcedPercent: number
+  minitSourcedPercent: number
 }): string {
   return JSON.stringify({
     enabled: opts.enabled,
@@ -1054,10 +1064,12 @@ export function buildMobileCommissionRulesJson(opts: {
     rates_bp: {
       shop_referred: Math.round(opts.shopPercent * 100),
       tech_sourced: Math.round(opts.techSourcedPercent * 100),
+      minit_sourced: Math.round(opts.minitSourcedPercent * 100),
     },
     labels: {
-      shop_referred: 'Shop / referred work',
-      tech_sourced: 'Tech sourced (own lead)',
+      shop_referred: 'Shop sourced',
+      tech_sourced: 'Technician sourced',
+      minit_sourced: 'Minit sourced',
     },
   })
 }
