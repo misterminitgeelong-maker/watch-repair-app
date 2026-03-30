@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 
 const tabs = [
   { to: '/auto-key', label: 'Jobs & dispatch', end: true },
+  { to: '/auto-key/team', label: 'Team', end: true },
   { to: '/auto-key/prospects', label: 'Prospects', end: true },
   { to: '/auto-key/toolkit', label: 'Toolkit', end: true },
 ] as const
@@ -46,6 +47,6 @@ export function isAutoKeyJobDetailPath(pathname: string): boolean {
   if (!pathname.startsWith('/auto-key/')) return false
   const rest = pathname.slice('/auto-key/'.length)
   if (!rest || rest.includes('/')) return false
-  if (rest === 'prospects' || rest === 'toolkit') return false
+  if (rest === 'prospects' || rest === 'toolkit' || rest === 'team') return false
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rest)
 }

@@ -163,6 +163,15 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
       nextStep: 'Update programming state, then test a quote-to-payment path.',
     }
   }
+  if (pathname === '/auto-key/team') {
+    return {
+      key: 'mobile-team',
+      title: 'Mobile Services Team',
+      intro: 'See who can be assigned to mobile jobs, add technicians, and open commission rules.',
+      features: ['Roster of technician logins', 'Add technician (owners)', 'Commission rules per tech (owners and managers)'],
+      nextStep: 'Add a technician if needed, then assign them from a job or dispatch view.',
+    }
+  }
   if (pathname === '/auto-key/prospects') {
     return {
       key: 'mobile-prospects',

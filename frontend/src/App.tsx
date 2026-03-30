@@ -43,6 +43,7 @@ import StocktakesPage from '@/pages/StocktakesPage'
 import StocktakeWorkspacePage from '@/pages/StocktakeWorkspacePage'
 import StocktakeSummaryPage from '@/pages/StocktakeSummaryPage'
 import ProspectsPage from '@/pages/ProspectsPage'
+import MobileServicesTeamPage from '@/pages/MobileServicesTeamPage'
 import SubscriptionRequiredPage from '@/pages/SubscriptionRequiredPage'
 import type { FeatureKey } from '@/lib/api'
 
@@ -109,12 +110,14 @@ export default function App() {
                 }
               >
                 <Route index element={<AutoKeyJobsPage />} />
+                <Route path="team" element={<MobileServicesTeamPage />} />
                 <Route path="prospects" element={<ProspectsPage />} />
                 <Route path="toolkit" element={<ToolkitPage />} />
                 <Route path=":id" element={<AutoKeyJobDetailPage />} />
               </Route>
               <Route path="prospects" element={<Navigate to="/auto-key/prospects" replace />} />
               <Route path="toolkit" element={<Navigate to="/auto-key/toolkit" replace />} />
+              <Route path="team" element={<Navigate to="/auto-key/team" replace />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />

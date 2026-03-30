@@ -195,6 +195,42 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 style={{ borderLeft: '2px solid rgba(200,168,130,0.4)' }}
               >
                 <NavLink
+                  to="/auto-key/team"
+                  title="Technicians and Mobile Services commission settings"
+                  end
+                  onClick={onNavigate}
+                  className={({ isActive }) => linkClasses(isActive, { indent: true })}
+                  style={({ isActive }) => linkStyle(isActive)}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '20%',
+                            bottom: '20%',
+                            width: 3,
+                            borderRadius: 4,
+                            backgroundColor: 'var(--cafe-gold)',
+                          }}
+                        />
+                      )}
+                      <Users size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      Team
+                    </>
+                  )}
+                </NavLink>
+                <NavLink
                   to="/auto-key/prospects"
                   title="B2B prospect search and lead lists"
                   end
