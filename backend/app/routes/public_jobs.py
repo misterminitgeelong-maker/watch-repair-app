@@ -13,6 +13,7 @@ from ..models import (
     AutoKeyJob,
     AutoKeyQuote,
     AutoKeyQuoteLineItem,
+    Customer,
     JobStatusHistory,
     RepairJob,
     Shoe,
@@ -248,6 +249,13 @@ def get_public_auto_key_invoice(token: str, session: Session = Depends(get_sessi
             }
         ]
 
+    pay_online = (
+        settings.enable_stripe_invoice_checkout
+        and bool((settings.stripe_secret_key or "").strip())
+        and invoice.status == "unpaid"
+        and invoice.total_cents > 0
+    )
+
     return {
         "shop_name": shop_name,
         "job_number": job.job_number,
@@ -260,4 +268,97 @@ def get_public_auto_key_invoice(token: str, session: Session = Depends(get_sessi
         "currency": invoice.currency,
         "line_items": line_payload,
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
+        "can_pay_online": pay_online,
     }
+
+
+def _stripe_checkout_client():
+    if not (settings.stripe_secret_key or "").strip():
+        return None
+    try:
+        import stripe as stripe_mod
+
+        stripe_mod.api_key = settings.stripe_secret_key.strip()
+        return stripe_mod
+    except ImportError:
+        return None
+
+
+@router.post("/auto-key-invoice/{token}/checkout")
+def create_public_auto_key_invoice_checkout(token: str, session: Session = Depends(get_session)):
+    """Start Stripe Checkout for a Mobile Services invoice (customer pays online)."""
+    if not settings.enable_stripe_invoice_checkout:
+        raise HTTPException(status_code=503, detail="Online invoice payment is disabled.")
+    stripe = _stripe_checkout_client()
+    if not stripe:
+        raise HTTPException(status_code=503, detail="Card payment is not configured for this shop.")
+
+    invoice = session.exec(
+        select(AutoKeyInvoice).where(AutoKeyInvoice.customer_view_token == token)
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    if invoice.status != "unpaid":
+        raise HTTPException(status_code=409, detail="This invoice is already paid or void.")
+    if invoice.total_cents <= 0:
+        raise HTTPException(status_code=400, detail="Nothing to pay on this invoice.")
+
+    job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    tenant = session.get(Tenant, invoice.tenant_id)
+    shop = (tenant.name if tenant else "Shop").strip() or "Shop"
+    currency = (invoice.currency or "AUD").lower().strip()[:3]
+    if len(currency) != 3:
+        raise HTTPException(status_code=400, detail="Invalid invoice currency.")
+
+    # Stripe minimum amounts (e.g. ~A$0.50); keep simple threshold
+    if invoice.total_cents < 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Amount is below the minimum for card payment. Pay the shop directly.",
+        )
+
+    base = settings.public_base_url.rstrip("/")
+    product_name = f"{shop} — Invoice {invoice.invoice_number} (total incl. tax)"
+    if len(product_name) > 120:
+        product_name = product_name[:117] + "…"
+
+    params: dict = {
+        "mode": "payment",
+        "line_items": [
+            {
+                "price_data": {
+                    "currency": currency,
+                    "unit_amount": invoice.total_cents,
+                    "product_data": {"name": product_name},
+                },
+                "quantity": 1,
+            }
+        ],
+        "metadata": {
+            "purpose": "auto_key_invoice",
+            "tenant_id": str(invoice.tenant_id),
+            "auto_key_invoice_id": str(invoice.id),
+            "customer_view_token": token,
+        },
+        "success_url": f"{base}/mobile-invoice/{token}?paid=1&session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{base}/mobile-invoice/{token}?canceled=1",
+    }
+
+    customer = session.get(Customer, job.customer_id)
+    if customer and (customer.email or "").strip():
+        params["customer_email"] = (customer.email or "").strip()
+
+    try:
+        checkout = stripe.checkout.Session.create(**params)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="Could not start payment. Try again later.") from exc
+
+    url = getattr(checkout, "url", None)
+    if not url:
+        raise HTTPException(status_code=502, detail="Could not start payment session.")
+
+    return {"checkout_url": url}

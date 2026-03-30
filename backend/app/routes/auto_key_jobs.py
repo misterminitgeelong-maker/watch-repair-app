@@ -726,7 +726,7 @@ def create_auto_key_invoice_from_quote(
 
 class AutoKeyInvoiceUpdate(SQLModel):
     status: str | None = None
-    payment_method: str | None = None  # cash, eftpos, bank
+    payment_method: str | None = None  # cash, eftpos, bank, stripe
 
 
 @router.patch("/{job_id}/invoices/{invoice_id}", response_model=AutoKeyInvoiceRead)
@@ -751,8 +751,8 @@ def update_auto_key_invoice(
             invoice.paid_at = None
     if payload.payment_method is not None:
         v = (payload.payment_method or "").strip().lower()
-        if v and v not in ("cash", "eftpos", "bank"):
-            raise HTTPException(status_code=400, detail="Invalid payment_method; use cash, eftpos, or bank")
+        if v and v not in ("cash", "eftpos", "bank", "stripe"):
+            raise HTTPException(status_code=400, detail="Invalid payment_method; use cash, eftpos, bank, or stripe")
         invoice.payment_method = v or None
     session.add(invoice)
     session.commit()

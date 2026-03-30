@@ -8,6 +8,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyInvoice
@@ -161,7 +162,8 @@ def test_auto_invoice_from_job_cost_when_no_quote():
     assert inv_list[0]["auto_key_quote_id"] is None
 
 
-def test_public_invoice_view_uses_customer_token_after_complete():
+def test_public_invoice_view_uses_customer_token_after_complete(monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "")
     suffix = uuid4().hex[:8]
     token = _bootstrap_and_login(
         tenant_slug=f"autokey-pubinv-{suffix}",
@@ -210,6 +212,10 @@ def test_public_invoice_view_uses_customer_token_after_complete():
     assert data["total_cents"] == 5000
     assert data["job_title"] == "Public invoice job"
     assert len(data["line_items"]) >= 1
+    assert data.get("can_pay_online") is False
+
+    co = client.post(f"/v1/public/auto-key-invoice/{view_token}/checkout")
+    assert co.status_code == 503
 
     bad = client.get("/v1/public/auto-key-invoice/not-a-real-token")
     assert bad.status_code == 404

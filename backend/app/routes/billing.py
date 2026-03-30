@@ -1,5 +1,6 @@
 """Billing, plan limits, and Stripe subscription management."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -11,6 +12,7 @@ from ..config import settings
 from ..database import get_session
 from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
 from ..models import (
+    AutoKeyInvoice,
     AutoKeyJob,
     BillingCheckoutPlanRequest,
     BillingCheckoutRequest,
@@ -347,5 +349,36 @@ async def stripe_webhook(
                 tenant.stripe_subscription_id = None
                 session.add(tenant)
                 session.commit()
+
+    elif event["type"] == "checkout.session.completed":
+        meta = obj.get("metadata") or {}
+        if meta.get("purpose") != "auto_key_invoice":
+            return {"status": "ok"}
+        inv_raw = meta.get("auto_key_invoice_id")
+        if not inv_raw:
+            return {"status": "ok"}
+        try:
+            inv_uuid = UUID(str(inv_raw))
+        except ValueError:
+            return {"status": "ok"}
+        invoice = session.get(AutoKeyInvoice, inv_uuid)
+        if not invoice or invoice.status != "unpaid":
+            return {"status": "ok"}
+        if (obj.get("payment_status") or "") != "paid":
+            return {"status": "ok"}
+        amount_total = obj.get("amount_total")
+        if amount_total is not None and int(amount_total) != int(invoice.total_cents):
+            logging.getLogger(__name__).warning(
+                "Stripe checkout amount_total %s != invoice.total_cents %s for invoice %s",
+                amount_total,
+                invoice.total_cents,
+                invoice.id,
+            )
+            return {"status": "ok"}
+        invoice.status = "paid"
+        invoice.payment_method = "stripe"
+        invoice.paid_at = datetime.now(timezone.utc)
+        session.add(invoice)
+        session.commit()
 
     return {"status": "ok"}

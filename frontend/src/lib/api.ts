@@ -659,10 +659,14 @@ export interface PublicAutoKeyInvoice {
     total_price_cents: number
   }>
   created_at?: string | null
+  can_pay_online?: boolean
 }
 
 export const getPublicAutoKeyInvoice = (token: string) =>
   axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoice/${token}`)
+
+export const createPublicAutoKeyInvoiceCheckout = (token: string) =>
+  axios.post<{ checkout_url: string }>(`/v1/public/auto-key-invoice/${token}/checkout`)
 
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
