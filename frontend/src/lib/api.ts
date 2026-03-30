@@ -997,6 +997,8 @@ export const importCsv = (
   const query = buildImportCsvQueryString(options)
   return api.post<CsvImportResult>(`/import/csv${query}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    // Large historic imports can run minutes; default axios timeout is 45s.
+    timeout: 600_000,
   })
 }
 

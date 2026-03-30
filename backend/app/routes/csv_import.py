@@ -410,10 +410,10 @@ def _allocate_import_job_number(usage: dict[str, int], ticket_stem: str | None, 
     return f"{base}-{n + 1}"
 
 
-def _resolve_import_job_number_against_db(session: Session, tenant_id, preferred: str) -> str:
+def _reserve_import_job_number(preferred: str, used_job_numbers: set[str]) -> str:
     """
-    Ensure job_number is free for this tenant (re-import / partial prior import / manual jobs).
-    Starts from the slot implied by preferred (e.g. IMP-123-2 → try 2, then 3, …).
+    Pick a job_number not in ``used_job_numbers``, starting from preferred (in-file slot).
+    Updates ``used_job_numbers`` with the chosen value (in-memory; avoids per-row DB round-trips).
     """
     m = re.match(r"^(IMP-\d+)(?:-(\d+))?$", preferred)
     if m:
@@ -424,10 +424,8 @@ def _resolve_import_job_number_against_db(session: Session, tenant_id, preferred
         k = 1
     while True:
         candidate = root if k == 1 else f"{root}-{k}"
-        hit = session.exec(
-            select(RepairJob.id).where(RepairJob.tenant_id == tenant_id, RepairJob.job_number == candidate)
-        ).first()
-        if hit is None:
+        if candidate not in used_job_numbers:
+            used_job_numbers.add(candidate)
             return candidate
         k += 1
 
@@ -554,6 +552,11 @@ async def import_csv(
             session.add(ImportLogDetail(import_log_id=import_log.id, row_number=row_number, skip_reason=reason))
 
     try:
+        existing_job_nums = session.exec(
+            select(RepairJob.job_number).where(RepairJob.tenant_id == tenant_id)
+        ).all()
+        used_job_numbers: set[str] = {jn for jn in existing_job_nums if jn}
+
         for idx, row in enumerate(rows, start=1):
             row = _normalize_row_keys(row)
             # Ticket: check unnamed first col (col0/_col0) first, then common headers. Omit "number" (often phone).
@@ -627,7 +630,7 @@ async def import_csv(
                 if ticket:
                     ticket_stem = ticket
             preferred_num = _allocate_import_job_number(job_number_usage, ticket_stem, job_seq)
-            job_number = _resolve_import_job_number_against_db(session, tenant_id, preferred_num)
+            job_number = _reserve_import_job_number(preferred_num, used_job_numbers)
 
             title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
             created_at = (
