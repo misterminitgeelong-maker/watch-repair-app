@@ -8,7 +8,7 @@ const tabs = [
   { to: '/auto-key/toolkit', label: 'Toolkit', end: true },
 ] as const
 
-/** Secondary navigation for Mobile Services (jobs board, prospects, toolkit). */
+/** Secondary navigation for Mobile Services (jobs, team, prospects, toolkit). */
 export default function MobileServicesSubNav({ className }: { className?: string }) {
   return (
     <div

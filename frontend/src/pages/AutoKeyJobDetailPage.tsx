@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
+import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
@@ -345,6 +346,7 @@ export default function AutoKeyJobDetailPage() {
         >
           <ChevronLeft size={14} /> Back to Mobile Services
         </Link>
+        <MobileServicesSubNav className='mt-4' />
       </div>
 
       <PageHeader title={`#${job.job_number} · ${job.title}`} />

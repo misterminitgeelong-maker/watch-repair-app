@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -1537,6 +1537,9 @@ export default function AutoKeyJobsPage() {
                   Commission rules
                 </Button>
               )}
+              <Button variant="secondary" onClick={() => navigate('/auto-key/team')} type="button">
+                <Users size={16} />Team
+              </Button>
               <Button onClick={() => setShowCreate(true)} type="button"><Plus size={16} />New Job</Button>
             </div>
           )}
