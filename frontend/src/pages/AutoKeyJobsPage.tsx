@@ -22,6 +22,7 @@ import {
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   getAutoKeyReports,
+  getAutoKeyQuoteSuggestions,
   vehicleLookup,
   searchVehicleKeySpecs,
   type VehicleKeySpecMatch,
@@ -37,10 +38,20 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spin
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
-const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER]
+const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER, 'en_route', 'on_site', 'pending_booking', 'booked']
 
 const AUTO_KEY_CLOSED_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
-const AUTO_KEY_ACTIVE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on', 'en_route', 'on_site', 'awaiting_parts'] as const
+const AUTO_KEY_ACTIVE_STATUSES = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'pending_booking',
+  'booked',
+  'go_ahead',
+  'working_on',
+  'en_route',
+  'on_site',
+  'awaiting_parts',
+] as const
 
 const PROGRAMMING_STATUSES: AutoKeyProgrammingStatus[] = ['pending', 'in_progress', 'programmed', 'failed', 'not_required']
 
@@ -82,6 +93,7 @@ function monthRangeFromYmd(ymd: string): { date_from: string; date_to: string } 
 }
 
 function nextMobileStatus(status: JobStatus): JobStatus | null {
+  if (status === 'booked') return 'en_route'
   if (status === 'awaiting_go_ahead' || status === 'go_ahead' || status === 'working_on') return 'en_route'
   if (status === 'en_route') return 'on_site'
   if (status === 'on_site') return 'completed'
@@ -278,6 +290,8 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const [regoLookupLoading, setRegoLookupLoading] = useState(false)
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
+  const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
+  const [sendBookingSms, setSendBookingSms] = useState(false)
   const [form, setForm] = useState({
     customer_id: '',
     customer_account_id: '',
@@ -320,6 +334,22 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
   })
+
+  const suggestionQty = Math.max(1, Number.parseInt(form.key_quantity, 10) || 1)
+  const { data: quoteSuggestion, isFetching: quoteSuggestionLoading } = useQuery({
+    queryKey: ['auto-key-quote-suggestions', form.job_type, suggestionQty],
+    queryFn: () =>
+      getAutoKeyQuoteSuggestions({
+        job_type: form.job_type.trim() || undefined,
+        key_quantity: suggestionQty,
+      }).then(r => r.data),
+  })
+
+  useEffect(() => {
+    if (!applySuggestedQuote || !quoteSuggestion) return
+    const dollars = (quoteSuggestion.total_cents / 100).toFixed(2)
+    setForm(f => ({ ...f, cost: dollars }))
+  }, [applySuggestedQuote, quoteSuggestion?.total_cents])
 
   const yearNum = form.vehicle_year.trim() ? Number.parseInt(form.vehicle_year, 10) : undefined
   const { data: specSearch } = useQuery({
@@ -368,6 +398,18 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
       } else if (!customerId) {
         throw new Error('Please select a customer.')
       }
+      const customerPhone =
+        customerMode === 'new'
+          ? newCustomer.phone
+          : customers.find(c => c.id === customerId)?.phone
+      if (sendBookingSms) {
+        if (!(customerPhone && customerPhone.trim())) {
+          throw new Error('Customer mobile number is required to send a booking confirmation SMS.')
+        }
+        if (!form.scheduled_datetime.trim()) {
+          throw new Error('Book date & time is required when texting the customer to confirm booking.')
+        }
+      }
       return createAutoKeyJob({
         customer_id: customerId,
         customer_account_id: form.customer_account_id || undefined,
@@ -394,6 +436,8 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         collection_date: form.collection_date.trim() || undefined,
         deposit_cents: form.deposit ? Math.round(parseFloat(form.deposit) * 100) : 0,
         cost_cents: form.cost ? Math.round(parseFloat(form.cost) * 100) : 0,
+        apply_suggested_quote: applySuggestedQuote,
+        send_booking_sms: sendBookingSms,
       })
     },
     onSuccess: () => {
@@ -404,7 +448,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   })
 
   return (
-    <Modal title="New Mobile Services Job" onClose={onClose}>
+    <Modal title="New Mobile Services Job" onClose={onClose} size="wide">
       <div className="space-y-3">
         <div className="flex gap-2 mb-1">
           <button
@@ -423,7 +467,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <Input label="Full Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Jane Smith" />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
               <Input label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" />
             </div>
@@ -455,19 +499,31 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </Select>
-        <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
-        <Input label="Book date & time (optional)" type="datetime-local" value={form.scheduled_datetime} onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+          <Input
+            label={sendBookingSms ? 'Book date & time *' : 'Book date & time (optional)'}
+            type="datetime-local"
+            value={form.scheduled_datetime}
+            onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))}
+          />
+        </div>
+        {sendBookingSms && (
+          <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+            The customer receives a text with job summary, quote total, and time. Status will be set to “Awaiting booking confirm” until they tap confirm.
+          </p>
+        )}
         <Input
           label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
           value={form.job_address}
           onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))}
           placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} placeholder="e.g. Toyota" />
           <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} placeholder="e.g. Hilux" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} placeholder="Filters database matches" />
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--cafe-text)' }}>Registration</label>
@@ -568,11 +624,11 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
           <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Blade / blank ref." value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
           <Input label="Chip / transponder" value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
         </div>
@@ -583,24 +639,88 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           rows={3}
           placeholder="Immobiliser notes, EEPROM warnings, etc."
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
           <Select label="Programming" value={form.programming_status} onChange={e => setForm(f => ({ ...f, programming_status: e.target.value as AutoKeyProgrammingStatus }))}>
             {PROGRAMMING_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        <div
+          className="rounded-lg border p-3 space-y-2"
+          style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+            Quote &amp; booking SMS
+          </p>
+          <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
+            <input
+              type="checkbox"
+              className="mt-1 rounded"
+              checked={applySuggestedQuote}
+              onChange={e => setApplySuggestedQuote(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Apply suggested quote</span>
+              <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                Draft quote from job type and qty (inc. GST). Fills cost below when checked.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
+            <input
+              type="checkbox"
+              className="mt-1 rounded"
+              checked={sendBookingSms}
+              onChange={e => {
+                setSendBookingSms(e.target.checked)
+                if (e.target.checked) setApplySuggestedQuote(true)
+              }}
+            />
+            <span>
+              <span className="font-medium">Text customer to confirm booking</span>
+              <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                Sends SMS with link to confirm. Requires customer mobile and book date &amp; time above.
+              </span>
+            </span>
+          </label>
+          {quoteSuggestion && (
+            <div className="text-sm pt-1 space-y-1" style={{ color: 'var(--cafe-text)' }}>
+              <div className="flex justify-between gap-2">
+                <span style={{ color: 'var(--cafe-text-muted)' }}>Suggested total (incl. GST)</span>
+                <span className="font-semibold tabular-nums">{formatCents(quoteSuggestion.total_cents)}</span>
+              </div>
+              {quoteSuggestionLoading && (
+                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Updating…</p>
+              )}
+              <ul className="text-xs space-y-0.5 mt-1 max-h-24 overflow-y-auto" style={{ color: 'var(--cafe-text-muted)' }}>
+                {quoteSuggestion.line_items.map((li, i) => (
+                  <li key={i}>
+                    {li.quantity}× {li.description} — {formatCents(li.unit_price_cents * li.quantity)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label="Priority" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' }))}>
             <option value="low">Low</option>
             <option value="normal">Normal</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </Select>
-          <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))}>
+          <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))} disabled={sendBookingSms}>
             {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        {sendBookingSms && (
+          <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+            Initial status is forced to awaiting confirmation while the SMS link is open.
+          </p>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
           <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
         </div>

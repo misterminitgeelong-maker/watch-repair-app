@@ -470,7 +470,7 @@ export const getProspectCollectorStatus = () =>
   api.get<{ total: number; by_category: { category: string; count: number }[] }>('/prospects/collector-status')
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
-export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site'
+export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site' | 'pending_booking' | 'booked'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
@@ -614,6 +614,33 @@ export interface PublicShoeJobStatus {
 
 export const getPublicShoeJobStatus = (token: string) =>
   axios.get<PublicShoeJobStatus>(`/v1/public/shoe-jobs/${token}`)
+
+export interface PublicAutoKeyBooking {
+  job_number: string
+  title: string
+  status: string
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  scheduled_at?: string | null
+  job_address?: string | null
+  quote_total_cents: number
+  subtotal_cents: number
+  tax_cents: number
+  currency: string
+  line_items: Array<{
+    description: string
+    quantity: number
+    unit_price_cents: number
+    total_price_cents: number
+  }>
+  already_confirmed: boolean
+}
+
+export const getPublicAutoKeyBooking = (token: string) =>
+  axios.get<PublicAutoKeyBooking>(`/v1/public/auto-key-booking/${token}`)
+
+export const confirmPublicAutoKeyBooking = (token: string) =>
+  axios.post<{ ok: boolean; status: string; message: string }>(`/v1/public/auto-key-booking/${token}/confirm`)
 
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
@@ -1346,7 +1373,24 @@ export interface AutoKeyJobCreatePayload {
   collection_date?: string
   deposit_cents: number
   cost_cents: number
+  apply_suggested_quote?: boolean
+  send_booking_sms?: boolean
 }
+
+export interface AutoKeyQuoteSuggestionResponse {
+  line_items: Array<{ description: string; quantity: number; unit_price_cents: number }>
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+}
+
+export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number }) =>
+  api.get<AutoKeyQuoteSuggestionResponse>('/auto-key-jobs/quote-suggestions', {
+    params: {
+      job_type: params.job_type?.trim() || undefined,
+      key_quantity: params.key_quantity,
+    },
+  })
 
 export const listAutoKeyJobs = (params?: {
   date_from?: string

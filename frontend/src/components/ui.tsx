@@ -162,24 +162,40 @@ export function EmptyState({ message }: { message: string }) {
   )
 }
 
-interface ModalProps { title: string; children: React.ReactNode; onClose: () => void }
-export function Modal({ title, children, onClose }: ModalProps) {
+interface ModalProps {
+  title: string
+  children: React.ReactNode
+  onClose: () => void
+  /** Wider panel on sm+ for dense forms (e.g. new Mobile Services job). */
+  size?: 'default' | 'wide'
+}
+export function Modal({ title, children, onClose, size = 'default' }: ModalProps) {
+  const maxWidth =
+    size === 'wide'
+      ? 'max-w-[min(100%,42rem)] sm:max-w-2xl lg:max-w-3xl'
+      : 'max-w-md'
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ backgroundColor: 'rgba(28,13,5,0.55)', backdropFilter: 'blur(4px)' }}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl shadow-2xl mx-2 sm:mx-4 sm:rounded-2xl" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+      <div
+        className={cn(
+          'max-h-[90vh] w-full overflow-y-auto rounded-t-2xl shadow-2xl mx-2 sm:mx-4 sm:rounded-2xl',
+          maxWidth
+        )}
+        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+      >
         <div
-          className="flex items-center justify-between px-6 py-4"
+          className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4"
           style={{ borderBottom: '1px solid var(--cafe-border)' }}
         >
           <h2
-            className="font-semibold text-lg"
+            className="font-semibold text-base sm:text-lg pr-2"
             style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
           >
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="text-xl leading-none transition-colors w-7 h-7 flex items-center justify-center rounded-full"
+            className="text-xl leading-none transition-colors w-7 h-7 flex shrink-0 items-center justify-center rounded-full"
             style={{ color: 'var(--cafe-text-muted)' }}
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-text)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
@@ -187,7 +203,7 @@ export function Modal({ title, children, onClose }: ModalProps) {
             &times;
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-4 py-4 sm:px-6 sm:py-5">{children}</div>
       </div>
     </div>
   )

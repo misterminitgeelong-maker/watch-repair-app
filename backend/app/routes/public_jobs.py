@@ -7,7 +7,17 @@ from sqlmodel import Session, select
 
 from ..config import settings
 from ..database import get_session
-from ..models import JobStatusHistory, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, Watch
+from ..models import (
+    AutoKeyJob,
+    AutoKeyQuote,
+    AutoKeyQuoteLineItem,
+    JobStatusHistory,
+    RepairJob,
+    Shoe,
+    ShoeRepairJob,
+    ShoeRepairJobItem,
+    Watch,
+)
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
 
@@ -118,3 +128,77 @@ def get_public_shoe_job_qr(status_token: str, session: Session = Depends(get_ses
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return Response(content=buffer.getvalue(), media_type="image/png")
+
+
+@router.get("/auto-key-booking/{token}")
+def get_public_auto_key_booking(token: str, session: Session = Depends(get_session)):
+    job = session.exec(select(AutoKeyJob).where(AutoKeyJob.booking_confirmation_token == token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    quote = session.exec(
+        select(AutoKeyQuote)
+        .where(AutoKeyQuote.auto_key_job_id == job.id)
+        .order_by(AutoKeyQuote.created_at.desc())
+    ).first()
+    line_payload: list[dict] = []
+    if quote:
+        items = session.exec(
+            select(AutoKeyQuoteLineItem)
+            .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
+            .order_by(AutoKeyQuoteLineItem.created_at)
+        ).all()
+        line_payload = [
+            {
+                "description": i.description,
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                "total_price_cents": i.total_price_cents,
+            }
+            for i in items
+        ]
+
+    return {
+        "job_number": job.job_number,
+        "title": job.title,
+        "status": job.status,
+        "vehicle_make": job.vehicle_make,
+        "vehicle_model": job.vehicle_model,
+        "scheduled_at": job.scheduled_at.isoformat() if job.scheduled_at else None,
+        "job_address": job.job_address,
+        "quote_total_cents": quote.total_cents if quote else 0,
+        "subtotal_cents": quote.subtotal_cents if quote else 0,
+        "tax_cents": quote.tax_cents if quote else 0,
+        "currency": quote.currency if quote else "AUD",
+        "line_items": line_payload,
+        "already_confirmed": job.status == "booked",
+    }
+
+
+@router.post("/auto-key-booking/{token}/confirm")
+def confirm_public_auto_key_booking(token: str, session: Session = Depends(get_session)):
+    job = session.exec(select(AutoKeyJob).where(AutoKeyJob.booking_confirmation_token == token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if job.status == "booked":
+        return {"ok": True, "status": "booked", "message": "Booking was already confirmed."}
+    if job.status != "pending_booking":
+        raise HTTPException(
+            status_code=400,
+            detail="This job is not awaiting booking confirmation.",
+        )
+    job.status = "booked"
+    session.add(job)
+
+    quote = session.exec(
+        select(AutoKeyQuote)
+        .where(AutoKeyQuote.auto_key_job_id == job.id)
+        .order_by(AutoKeyQuote.created_at.desc())
+    ).first()
+    if quote and quote.status == "draft":
+        quote.status = "approved"
+        session.add(quote)
+
+    session.commit()
+    session.refresh(job)
+    return {"ok": True, "status": "booked", "message": "Thanks — your booking is confirmed."}

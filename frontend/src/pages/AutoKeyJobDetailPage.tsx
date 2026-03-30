@@ -27,11 +27,13 @@ import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
   'awaiting_go_ahead',
+  'pending_booking',
+  'booked',
   'go_ahead',
   'working_on',
   'en_route',
@@ -323,7 +325,7 @@ export default function AutoKeyJobDetailPage() {
   const matchingAccounts = customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
 
   return (
-    <div>
+    <div className='max-w-7xl mx-auto w-full'>
       <div className='mb-5'>
         <Link
           to='/auto-key'
@@ -336,8 +338,8 @@ export default function AutoKeyJobDetailPage() {
 
       <PageHeader title={`#${job.job_number} · ${job.title}`} />
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-5'>
-        <Card className='p-5 space-y-4'>
+      <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
+        <Card className='p-5 space-y-4 xl:col-span-4'>
           {/* Customer section */}
           {customer && (
             <div className='pb-3' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
@@ -561,7 +563,9 @@ export default function AutoKeyJobDetailPage() {
             onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
             disabled={statusMut.isPending}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {STATUSES.map(s => (
+              <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+            ))}
           </Select>
           {statusFeedback && (
             <p className='text-xs rounded-md px-2 py-1.5' style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
@@ -650,7 +654,7 @@ export default function AutoKeyJobDetailPage() {
           </Modal>
         )}
 
-        <div className='lg:col-span-2 space-y-5'>
+        <div className='lg:col-span-2 xl:col-span-8 space-y-5'>
           <Card>
             <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Quotes</h2>

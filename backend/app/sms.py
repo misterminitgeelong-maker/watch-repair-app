@@ -337,6 +337,54 @@ def notify_auto_key_arrival_window(
     )
 
 
+def notify_auto_key_booking_request(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    job_number: str,
+    title: str,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    scheduled_at,
+    quote_total_cents: int,
+    currency: str,
+    shop_name: str,
+    confirm_url: str,
+) -> None:
+    """SMS after job creation: summary, quote total, booking time, link to confirm."""
+    from datetime import datetime
+
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x).strip()
+    veh_bit = f" ({veh})" if veh else ""
+    try:
+        dt = scheduled_at if isinstance(scheduled_at, datetime) else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+        when = f"{dt.strftime('%a %d %b %H:%M')}"
+    except (ValueError, TypeError):
+        when = str(scheduled_at)[:16] if scheduled_at else ""
+    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
+    total = quote_total_cents / 100
+    body = (
+        f"Hi {customer_name}, {shop_name} — job #{job_number}{veh_bit}: {title.strip()}. "
+        f"Quoted total {sym}{total:.2f} {currency}. Booked time: {when}. "
+        f"Please confirm: {confirm_url}"
+    )
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_booking_request",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_auto_key_schedule_changed(
     session: Session,
     *,

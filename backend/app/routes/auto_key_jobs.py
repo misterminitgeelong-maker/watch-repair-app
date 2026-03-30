@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, SQLModel, delete, func, select
 
+from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
+from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from .. import sms
@@ -23,6 +25,7 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    Tenant,
     User,
 )
 
@@ -78,6 +81,63 @@ def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
     )
 
 
+def _insert_suggested_quote_for_job(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    job_id: UUID,
+    job_type: str | None,
+    key_quantity: int,
+    currency: str,
+) -> AutoKeyQuote:
+    lines = suggest_line_items(job_type, key_quantity)
+    subtotal = 0
+    quote = AutoKeyQuote(tenant_id=tenant_id, auto_key_job_id=job_id, currency=currency.upper()[:3], tax_cents=0)
+    session.add(quote)
+    session.flush()
+    for desc, qty, unit in lines:
+        line_tot = int(round(qty * unit))
+        subtotal += line_tot
+        session.add(
+            AutoKeyQuoteLineItem(
+                tenant_id=tenant_id,
+                auto_key_quote_id=quote.id,
+                description=desc,
+                quantity=qty,
+                unit_price_cents=unit,
+                total_price_cents=line_tot,
+            )
+        )
+    tax = gst_tax_cents(subtotal)
+    quote.subtotal_cents = subtotal
+    quote.tax_cents = tax
+    quote.total_cents = subtotal + tax
+    session.add(quote)
+    session.flush()
+    return quote
+
+
+@router.get("/quote-suggestions")
+def get_auto_key_quote_suggestions(
+    job_type: str | None = Query(default=None, max_length=120),
+    key_quantity: int = Query(default=1, ge=1, le=99),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Retail-style line items + GST for the Mobile Services job type (for quote preview)."""
+    lines = suggest_line_items(job_type, key_quantity)
+    subtotal = int(round(sum(q * u for _, q, u in lines)))
+    tax = gst_tax_cents(subtotal)
+    return {
+        "line_items": [
+            {"description": d, "quantity": q, "unit_price_cents": u}
+            for d, q, u in lines
+        ],
+        "subtotal_cents": subtotal,
+        "tax_cents": tax,
+        "total_cents": subtotal + tax,
+    }
+
+
 @router.post("", response_model=AutoKeyJobRead, status_code=201)
 def create_auto_key_job(
     payload: AutoKeyJobCreate,
@@ -111,15 +171,77 @@ def create_auto_key_job(
         customer_account_id = inferred.customer_account_id if inferred else None
 
     data = payload.model_dump()
+    apply_suggested_quote = bool(data.pop("apply_suggested_quote", False))
+    send_booking_sms = bool(data.pop("send_booking_sms", False))
     data["key_quantity"] = max(1, int(data.get("key_quantity", 1)))
     data["customer_account_id"] = customer_account_id
+    if send_booking_sms:
+        data["status"] = "pending_booking"
 
     job = AutoKeyJob(
         tenant_id=auth.tenant_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
+        booking_confirmation_token=None,
         **data,
     )
     session.add(job)
+    session.flush()
+
+    tenant = session.get(Tenant, auth.tenant_id)
+    currency = (tenant.default_currency if tenant and tenant.default_currency else "AUD").upper()[:3]
+
+    need_quote = apply_suggested_quote or send_booking_sms
+    if need_quote:
+        _insert_suggested_quote_for_job(
+            session,
+            tenant_id=auth.tenant_id,
+            job_id=job.id,
+            job_type=job.job_type,
+            key_quantity=job.key_quantity,
+            currency=currency,
+        )
+
+    if send_booking_sms:
+        phone = (customer.phone or "").strip()
+        if not phone:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer mobile number is required to send a booking confirmation SMS.",
+            )
+        if not job.scheduled_at:
+            raise HTTPException(
+                status_code=400,
+                detail="Book date & time is required when sending a booking confirmation SMS.",
+            )
+        latest_quote = session.exec(
+            select(AutoKeyQuote)
+            .where(AutoKeyQuote.tenant_id == auth.tenant_id)
+            .where(AutoKeyQuote.auto_key_job_id == job.id)
+            .order_by(AutoKeyQuote.created_at.desc())
+        ).first()
+        if not latest_quote:
+            raise HTTPException(status_code=400, detail="Could not create quote for booking SMS.")
+        token = uuid4().hex
+        job.booking_confirmation_token = token
+        session.add(job)
+        session.flush()
+        confirm_url = f"{settings.public_base_url.rstrip('/')}/mobile-booking/{token}"
+        sms.notify_auto_key_booking_request(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=phone,
+            customer_name=customer.full_name or "there",
+            job_number=job.job_number,
+            title=job.title,
+            vehicle_make=job.vehicle_make,
+            vehicle_model=job.vehicle_model,
+            scheduled_at=job.scheduled_at,
+            quote_total_cents=latest_quote.total_cents,
+            currency=latest_quote.currency,
+            shop_name=(tenant.name if tenant else "Mainspring"),
+            confirm_url=confirm_url,
+        )
+
     session.commit()
     session.refresh(job)
     return job

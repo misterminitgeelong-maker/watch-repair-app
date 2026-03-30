@@ -25,6 +25,8 @@ JobStatus = Literal[
     "collected",
     "en_route",   # Auto key mobile: tech driving to job
     "on_site",    # Auto key mobile: tech arrived at location
+    "pending_booking",  # Mobile Services: quote + time sent; customer must confirm
+    "booked",  # Mobile Services: customer confirmed booking; on calendar
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
@@ -1140,6 +1142,7 @@ class AutoKeyJob(SQLModel, table=True):
     job_address: Optional[str] = None  # For mobile jobs; falls back to customer address
     job_type: Optional[str] = None  # e.g. Key Cutting (in-store), Lockout – Car, etc.
     visit_order: Optional[int] = None  # Route order for same-day jobs (lower = first)
+    booking_confirmation_token: Optional[str] = Field(default=None, index=True, unique=True)
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
@@ -1173,6 +1176,8 @@ class AutoKeyJobCreate(SQLModel):
     collection_date: Optional[date] = None
     deposit_cents: int = 0
     cost_cents: int = 0
+    apply_suggested_quote: bool = False
+    send_booking_sms: bool = False
 
 
 class AutoKeyJobRead(SQLModel):
