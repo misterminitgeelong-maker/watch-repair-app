@@ -1186,6 +1186,53 @@ export const listWatchMovements = () =>
 export const getWatchMovementQuote = (key: string) =>
   api.get<{ key: string; name: string; quote_cents: number }>(`/watch-catalogue/movements/${key}/quote`)
 
+// ── Watch bench toolkit (inventory + scenario recommendations) ─────────────────
+export interface ToolkitCatalogTool {
+  key: string
+  name: string
+  notes?: string
+}
+export interface ToolkitCatalogGroup {
+  id: string
+  label: string
+  tools: ToolkitCatalogTool[]
+}
+export interface ToolkitCatalogScenario {
+  id: string
+  label: string
+  tips: string
+}
+export interface ToolkitCatalog {
+  title: string
+  description: string
+  groups: ToolkitCatalogGroup[]
+  scenarios: ToolkitCatalogScenario[]
+}
+export const getToolkitCatalog = () => api.get<ToolkitCatalog>('/toolkit/catalog')
+export const getToolkitMySelection = () => api.get<{ tool_keys: string[] }>('/toolkit/my-selection')
+export const putToolkitMySelection = (tool_keys: string[]) =>
+  api.put<{ tool_keys: string[] }>('/toolkit/my-selection', { tool_keys })
+
+export interface ToolkitRecommendRow {
+  key: string
+  name: string
+  group_label: string
+  have: boolean
+  via_alternative: boolean
+}
+export interface ToolkitRecommendResponse {
+  scenario_id: string
+  label: string
+  tips: string
+  ready_for_required: boolean
+  required: ToolkitRecommendRow[]
+  nice_to_have: ToolkitRecommendRow[]
+  missing_required: ToolkitRecommendRow[]
+  missing_nice_to_have: ToolkitRecommendRow[]
+}
+export const postToolkitRecommend = (scenario_id: string) =>
+  api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
+
 // ── Custom Services (tenant-defined watch/shoe) ─────────────────────────────────
 export interface CustomServiceItem {
   key: string

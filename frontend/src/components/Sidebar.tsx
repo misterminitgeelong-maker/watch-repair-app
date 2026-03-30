@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2, ClipboardList, Sparkles, Inbox } from 'lucide-react'
+import { Users, Wrench, Receipt, LayoutDashboard, LogOut, Database, BarChart3, UserCog, Scissors, KeyRound, Building2, ClipboardList, Sparkles, Inbox, Toolbox } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ const nav = [
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/prospects', label: 'Prospects', icon: ClipboardList },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' as FeatureKey },
+  { to: '/toolkit', label: 'Toolkit', icon: Toolbox, feature: 'watch' as FeatureKey, title: 'Bench tool inventory and scenario recommendations' },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' as FeatureKey },
   { to: '/auto-key', label: 'Mobile Services', icon: KeyRound, feature: 'auto_key' as FeatureKey },
   { to: '/customer-accounts', label: 'Customer Accounts', icon: Building2, feature: 'customer_accounts' as FeatureKey },

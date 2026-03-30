@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "title": "Watch bench tools",
+  "description": "Starter catalogue for Mainspring. Replace or extend this file with your full tool database — keep the same shape: groups[].tools[], scenarios[].",
+  "groups": [
+    {
+      "id": "case_work",
+      "label": "Case & crystal",
+      "tools": [
+        { "key": "case_knife", "name": "Case knife / opener knife", "notes": "Thin blade for snap cases and gap work." },
+        { "key": "jaxa_case_wrench", "name": "Jaxa-style case wrench", "notes": "For screwed cases with notches." },
+        { "key": "friction_ball_case_opener", "name": "Friction ball / rubber case opener", "notes": "Twist-off cases without tool marks when used with care." },
+        { "key": "bench_case_vise", "name": "Bench case holder / vise", "notes": "Holds case steady while opening." },
+        { "key": "crystal_press", "name": "Crystal press with dies", "notes": "Install compression-fit crystals and bezels." },
+        { "key": "crystal_lift_lever", "name": "Crystal lift / lever tool", "notes": "Remove tension-ring or friction crystals." },
+        { "key": "hand_remover", "name": "Presto / hand puller", "notes": "Remove hour/minute hands without bending." },
+        { "key": "dial_protector", "name": "Dial protector discs", "notes": "Protect dial when pulling hands." }
+      ]
+    },
+    {
+      "id": "movement_work",
+      "label": "Movement & timing",
+      "tools": [
+        { "key": "movement_holder", "name": "Movement holder (generic / NM style)", "notes": "Secure plates for disassembly." },
+        { "key": "screwdrivers_watch", "name": "Watchmaker screwdriver set (hollow-ground)", "notes": "Matched blade widths for screws." },
+        { "key": "tweezers_anti_mag", "name": "Anti-magnetic tweezers (#3 / #5)", "notes": "Handling wheels, screws, springs." },
+        { "key": "oilers", "name": "Oil cups + fine oilers", "notes": "Mobil / Moebius-type precision lubrication." },
+        { "key": "pegwood_chips", "name": "Pegwood / pith wood", "notes": "Clean jewels and pivots." },
+        { "key": "loupes", "name": "Bench loupe / headset", "notes": "Inspection at 3×–10×." },
+        { "key": "timegrapher", "name": "Timegrapher", "notes": "Rate, beat error, amplitude checks." },
+        { "key": "demagnetiser", "name": "Demagnetiser coil", "notes": "After magnetised timing symptoms." }
+      ]
+    },
+    {
+      "id": "quartz_auto",
+      "label": "Quartz & auto basics",
+      "tools": [
+        { "key": "battery_tester", "name": "Cell tester", "notes": "Confirm cell under load." },
+        { "key": "case_back_knife_quartz", "name": "Small case knife", "notes": "Often enough for pressed quartz backs." },
+        { "key": "stem_crown_tools", "name": "Stem/crown fitting tools", "notes": "Cut/thread as needed for replacements." },
+        { "key": "rotor_ball_tool", "name": "Ball tool / case grip for autos", "notes": "Backs that need even torque." }
+      ]
+    },
+    {
+      "id": "cleaning",
+      "label": "Cleaning (optional bench)",
+      "tools": [
+        { "key": "ultrasonic", "name": "Ultrasonic bath", "notes": "Pre-clean bracelets and some parts per SOP." },
+        { "key": "manual_cleaning_jars", "name": "Cleaning jars + basket", "notes": "One-dip / rinse workflow without ultrasonic." }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "quartz_battery",
+      "label": "Quartz battery replace (snap / plate back)",
+      "required": ["case_knife", "hand_remover", "battery_tester"],
+      "nice_to_have": ["dial_protector", "case_back_knife_quartz"],
+      "alternatives": {
+        "case_knife": ["case_back_knife_quartz"],
+        "hand_remover": []
+      },
+      "tips": "Use dial protectors before lifting hands. Confirm cell voltage under load before closing."
+    },
+    {
+      "id": "screwed_case_service",
+      "label": "Screw-back case open & reseal",
+      "required": ["jaxa_case_wrench", "bench_case_vise"],
+      "nice_to_have": ["case_knife", "loupes"],
+      "alternatives": {
+        "jaxa_case_wrench": ["friction_ball_case_opener"],
+        "bench_case_vise": []
+      },
+      "tips": "Match die/notch size; avoid slipping which mars lugs. Friction ball suits some dress watches without notches."
+    },
+    {
+      "id": "crystal_replace_press",
+      "label": "Crystal replace (press-in)",
+      "required": ["crystal_press", "hand_remover", "dial_protector"],
+      "nice_to_have": ["crystal_lift_lever", "bench_case_vise"],
+      "alternatives": {},
+      "tips": "Pick die that clears bezel wall; check concentricity before final press."
+    },
+    {
+      "id": "full_service_mechanical",
+      "label": "Mechanical movement service (bench)",
+      "required": ["movement_holder", "screwdrivers_watch", "tweezers_anti_mag", "oilers", "loupes"],
+      "nice_to_have": ["timegrapher", "pegwood_chips", "demagnetiser", "ultrasonic"],
+      "alternatives": {},
+      "tips": "Timegrapher is required for regulated work in many shops — marked nice here for hobby bench workflow."
+    },
+    {
+      "id": "regulation_timing",
+      "label": "Regulation & timing check",
+      "required": ["timegrapher", "screwdrivers_watch", "tweezers_anti_mag"],
+      "nice_to_have": ["demagnetiser", "movement_holder", "loupes"],
+      "alternatives": {},
+      "tips": "Rule out magnetism before chasing beat error."
+    },
+    {
+      "id": "auto_rotor_noise",
+      "label": "Automatic — rotor / winding diagnosis",
+      "required": ["loupes", "screwdrivers_watch"],
+      "nice_to_have": ["movement_holder", "timegrapher", "rotor_ball_tool"],
+      "alternatives": {},
+      "tips": "Often case-related; verify power transmission before stripping."
+    }
+  ]
+}
