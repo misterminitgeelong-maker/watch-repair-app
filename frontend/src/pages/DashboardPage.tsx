@@ -226,12 +226,12 @@ export default function DashboardPage() {
       listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
     enabled: hasFeature('watch'),
   })
-  const { data: shoeJobs, isLoading: shoeJobsLoading } = useQuery({
+  const { data: shoeJobs } = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
     enabled: hasFeature('shoe'),
   })
-  const { data: autoKeyJobs, isLoading: autoKeyJobsLoading } = useQuery({
+  const { data: autoKeyJobs } = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
     enabled: hasFeature('auto_key'),
@@ -343,12 +343,9 @@ export default function DashboardPage() {
       .slice(0, 8)
   }, [autoKeyJobs, recentWatchJobs, shoeJobs])
 
-  if (
-    invoicesLoading ||
-    reportsLoading ||
-    (hasFeature('shoe') && shoeJobsLoading) ||
-    (hasFeature('auto_key') && autoKeyJobsLoading)
-  ) {
+  // Only block on core aggregates; shoe / mobile lists can resolve in the background so one slow
+  // module endpoint does not blank the whole dashboard (spinner forever if a request hangs).
+  if (invoicesLoading || reportsLoading) {
     return <Spinner />
   }
 
@@ -485,7 +482,12 @@ export default function DashboardPage() {
           summary: 'Business clients, account billing, and grouped jobs for recurring trade relationships.',
           metrics: [
             { label: 'Active', value: String((customerAccounts ?? []).filter((account) => account.is_active).length) },
-            { label: 'Linked Customers', value: String((customerAccounts ?? []).reduce((sum, account) => sum + account.customer_ids.length, 0)) },
+            {
+              label: 'Linked Customers',
+              value: String(
+                (customerAccounts ?? []).reduce((sum, account) => sum + (account.customer_ids?.length ?? 0), 0),
+              ),
+            },
           ],
         }]
       : []),

@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/v1' })
+/** Avoid indefinite hangs if an API call stalls (browser default is no timeout). */
+const api = axios.create({ baseURL: '/v1', timeout: 45_000 })
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
