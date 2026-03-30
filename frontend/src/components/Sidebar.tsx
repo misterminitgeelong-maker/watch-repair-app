@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
   Wrench,
@@ -22,7 +22,6 @@ import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
-import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
 
 type NavLinkItem = {
   to: string
@@ -38,22 +37,6 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' },
-]
-
-const navMobile: NavLinkItem[] = [
-  {
-    to: '/auto-key',
-    label: 'Jobs & dispatch',
-    icon: KeyRound,
-    title: 'Board, POS, dispatch, map, planner, reports',
-  },
-  { to: '/auto-key/prospects', label: 'Prospects', icon: Target, title: 'B2B prospect search and lead lists' },
-  {
-    to: '/auto-key/toolkit',
-    label: 'Toolkit',
-    icon: Toolbox,
-    title: 'Van tool inventory and scenario recommendations',
-  },
 ]
 
 const navAfterMobile: NavLinkItem[] = [
@@ -85,7 +68,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const filteredBefore = filterItems(navBeforeMobile)
   const filteredAfter = filterItems(navAfterMobile)
   const showMobile = hasFeature('auto_key')
-  const jobsBoardActive = pathname === '/auto-key' || isAutoKeyJobDetailPath(pathname)
+  const insideMobile = pathname.startsWith('/auto-key')
 
   function linkClasses(isActive: boolean, opts?: { indent?: boolean }) {
     return cn(
@@ -170,55 +153,50 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
         {showMobile && (
           <>
-            <div
-              className="px-3.5 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: 'rgba(200,168,130,0.75)' }}
+            <NavLink
+              to="/auto-key"
+              end={false}
+              title="Jobs, POS, dispatch, map, planner, reports — Prospects and Toolkit appear below when you are in this area"
+              onClick={onNavigate}
+              className={({ isActive }) => linkClasses(isActive)}
+              style={({ isActive }) => linkStyle(isActive)}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget
+                if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget
+                if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'transparent'
+              }}
             >
-              Mobile services
-            </div>
-            {navMobile.map((item) => {
-              if (item.to === '/auto-key') {
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    title={item.title}
-                    onClick={onNavigate}
-                    className={linkClasses(jobsBoardActive, { indent: true })}
-                    style={linkStyle(jobsBoardActive)}
-                    aria-current={jobsBoardActive ? 'page' : undefined}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget
-                      if (!jobsBoardActive) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget
-                      if (!jobsBoardActive) el.style.backgroundColor = 'transparent'
-                    }}
-                  >
-                    {jobsBoardActive && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '20%',
-                          bottom: '20%',
-                          width: 3,
-                          borderRadius: 4,
-                          backgroundColor: 'var(--cafe-gold)',
-                        }}
-                      />
-                    )}
-                    <item.icon size={16} style={{ color: jobsBoardActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
-                    {item.label}
-                  </Link>
-                )
-              }
-              return (
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '20%',
+                        bottom: '20%',
+                        width: 3,
+                        borderRadius: 4,
+                        backgroundColor: 'var(--cafe-gold)',
+                      }}
+                    />
+                  )}
+                  <KeyRound size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                  Mobile Services
+                </>
+              )}
+            </NavLink>
+            {insideMobile && (
+              <div
+                className="mt-0.5 mb-1 ml-2 pl-3 space-y-0.5"
+                style={{ borderLeft: '2px solid rgba(200,168,130,0.4)' }}
+              >
                 <NavLink
-                  key={item.to}
-                  to={item.to}
-                  title={item.title}
+                  to="/auto-key/prospects"
+                  title="B2B prospect search and lead lists"
                   end
                   onClick={onNavigate}
                   className={({ isActive }) => linkClasses(isActive, { indent: true })}
@@ -247,13 +225,49 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                           }}
                         />
                       )}
-                      <item.icon size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
-                      {item.label}
+                      <Target size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      Prospects
                     </>
                   )}
                 </NavLink>
-              )
-            })}
+                <NavLink
+                  to="/auto-key/toolkit"
+                  title="Van tool inventory and scenario recommendations"
+                  end
+                  onClick={onNavigate}
+                  className={({ isActive }) => linkClasses(isActive, { indent: true })}
+                  style={({ isActive }) => linkStyle(isActive)}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '20%',
+                            bottom: '20%',
+                            width: 3,
+                            borderRadius: 4,
+                            backgroundColor: 'var(--cafe-gold)',
+                          }}
+                        />
+                      )}
+                      <Toolbox size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      Toolkit
+                    </>
+                  )}
+                </NavLink>
+              </div>
+            )}
           </>
         )}
 
