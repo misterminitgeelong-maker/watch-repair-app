@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   createBillingCheckoutForPlan,
   createStripeConnectAccountLink,
   createUser,
+  deleteUser,
   getApiErrorMessage,
   getBillingLimits,
   isDuplicateTenantUserEmailError,
@@ -172,9 +173,10 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function AccountsPage() {
-  const { role, planCode, tenantId, refreshSession } = useAuth()
+  const { role, planCode, tenantId, refreshSession, sessionUserId } = useAuth()
   const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<TenantUser | null>(null)
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [drafts, setDrafts] = useState<Record<string, { role: UserRole; is_active: boolean }>>({})
@@ -193,6 +195,19 @@ export default function AccountsPage() {
     queryFn: () => getBillingLimits().then(r => r.data),
   })
 
+  const ownerCount = (users ?? []).filter((u) => u.role === 'owner').length
+
+  function rowIsOnlyRemainingOwner(u: TenantUser) {
+    return u.role === 'owner' && ownerCount <= 1
+  }
+
+  function canDeleteUserRow(u: TenantUser) {
+    if (!canManagePlan || !sessionUserId) return false
+    if (u.id === sessionUserId) return false
+    if (rowIsOnlyRemainingOwner(u)) return false
+    return true
+  }
+
   const mut = useMutation({
     mutationFn: ({ userId, payload }: { userId: string; payload: { role?: UserRole; is_active?: boolean } }) =>
       updateUser(userId, payload),
@@ -206,6 +221,27 @@ export default function AccountsPage() {
           ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
           : undefined
       setError(msg || 'Could not update account. Only owner accounts can manage users.')
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (userId: string) => deleteUser(userId),
+    onSuccess: (_, userId) => {
+      setError('')
+      setDeleteTarget(null)
+      setDrafts((m) => {
+        const next = { ...m }
+        delete next[userId]
+        return next
+      })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (err: unknown) => {
+      const msg =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(msg || 'Could not delete account. Only owner accounts can remove users.')
     },
   })
 
@@ -278,6 +314,21 @@ export default function AccountsPage() {
     <div>
       <PageHeader title="Team Accounts" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Account</Button>} />
       {showAdd && <AddUserModal onClose={() => setShowAdd(false)} />}
+      {deleteTarget && (
+        <Modal title="Delete team account" onClose={() => { if (!deleteMut.isPending) setDeleteTarget(null) }}>
+          <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            Permanently remove{' '}
+            <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{deleteTarget.full_name}</span>{' '}
+            ({deleteTarget.email})? Assigned jobs will show as unassigned; history may no longer name this user.
+          </p>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleteMut.isPending}>Cancel</Button>
+            <Button variant="danger" onClick={() => deleteMut.mutate(deleteTarget.id)} disabled={deleteMut.isPending}>
+              {deleteMut.isPending ? 'Deleting…' : 'Delete account'}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {atOrNearLimit && (
         <Card className="mb-4 p-4 border-amber-200" style={{ borderWidth: 1, backgroundColor: '#FFFBEB' }}>
@@ -466,9 +517,22 @@ export default function AccountsPage() {
                           <option value="inactive">Inactive</option>
                         </Select>
                       </div>
-                      <Button className="w-full justify-center" variant="secondary" onClick={() => saveUser(u)} disabled={mut.isPending}>
-                        {mut.isPending ? 'Saving…' : 'Save Changes'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button className="flex-1 justify-center" variant="secondary" onClick={() => saveUser(u)} disabled={mut.isPending}>
+                          {mut.isPending ? 'Saving…' : 'Save Changes'}
+                        </Button>
+                        {canDeleteUserRow(u) && (
+                          <Button
+                            variant="danger"
+                            className="justify-center px-3"
+                            aria-label={`Delete ${u.full_name}`}
+                            onClick={() => setDeleteTarget(u)}
+                            disabled={deleteMut.isPending}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -505,9 +569,21 @@ export default function AccountsPage() {
                           </Select>
                         </td>
                         <td className="px-5 py-3.5">
-                          <Button variant="secondary" onClick={() => saveUser(u)} disabled={mut.isPending}>
-                            {mut.isPending ? 'Saving…' : 'Save'}
-                          </Button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button variant="secondary" onClick={() => saveUser(u)} disabled={mut.isPending}>
+                              {mut.isPending ? 'Saving…' : 'Save'}
+                            </Button>
+                            {canDeleteUserRow(u) && (
+                              <Button
+                                variant="danger"
+                                onClick={() => setDeleteTarget(u)}
+                                disabled={deleteMut.isPending}
+                                aria-label={`Delete ${u.full_name}`}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )

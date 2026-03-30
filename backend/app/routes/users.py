@@ -1,13 +1,31 @@
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, func, select
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import update
+from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, require_owner
 from ..mobile_commission import normalize_mobile_commission_rules, parse_mobile_commission_rules, serialize_rules_for_storage
-from ..models import PublicUser, TenantEventLog, User, UserCreateRequest, UserUpdateRequest
+from ..models import (
+    Attachment,
+    AutoKeyJob,
+    ImportLog,
+    JobStatusHistory,
+    ParentAccountEventLog,
+    ParentAccountMembership,
+    PublicUser,
+    RepairJob,
+    ShoeRepairJob,
+    StocktakeLine,
+    StocktakeSession,
+    TenantEventLog,
+    User,
+    UserCreateRequest,
+    UserUpdateRequest,
+    WorkLog,
+)
 from ..security import hash_password
 
 router = APIRouter(prefix="/v1/users", tags=["users"])
@@ -37,6 +55,79 @@ def _validate_role(role: str) -> str:
         allowed = ", ".join(sorted(TENANT_MANAGED_ROLES))
         raise HTTPException(status_code=400, detail=f"Invalid role. Allowed: {allowed}")
     return normalized
+
+
+def _detach_user_references(session: Session, tenant_id: UUID, user_id: UUID) -> None:
+    """Clear or remove FKs pointing at *user_id* so the user row can be deleted."""
+    session.exec(
+        update(RepairJob)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(RepairJob.assigned_user_id == user_id)
+        .values(assigned_user_id=None)
+    )
+    session.exec(
+        update(ShoeRepairJob)
+        .where(ShoeRepairJob.tenant_id == tenant_id)
+        .where(ShoeRepairJob.assigned_user_id == user_id)
+        .values(assigned_user_id=None)
+    )
+    session.exec(
+        update(AutoKeyJob)
+        .where(AutoKeyJob.tenant_id == tenant_id)
+        .where(AutoKeyJob.assigned_user_id == user_id)
+        .values(assigned_user_id=None)
+    )
+    session.exec(
+        update(JobStatusHistory)
+        .where(JobStatusHistory.tenant_id == tenant_id)
+        .where(JobStatusHistory.changed_by_user_id == user_id)
+        .values(changed_by_user_id=None)
+    )
+    session.exec(
+        update(WorkLog).where(WorkLog.tenant_id == tenant_id).where(WorkLog.user_id == user_id).values(user_id=None)
+    )
+    session.exec(
+        update(Attachment)
+        .where(Attachment.tenant_id == tenant_id)
+        .where(Attachment.uploaded_by_user_id == user_id)
+        .values(uploaded_by_user_id=None)
+    )
+    session.exec(
+        update(ImportLog)
+        .where(ImportLog.tenant_id == tenant_id)
+        .where(ImportLog.uploaded_by_user_id == user_id)
+        .values(uploaded_by_user_id=None)
+    )
+    session.exec(
+        update(TenantEventLog)
+        .where(TenantEventLog.tenant_id == tenant_id)
+        .where(TenantEventLog.actor_user_id == user_id)
+        .values(actor_user_id=None)
+    )
+    session.exec(
+        update(ParentAccountEventLog)
+        .where(ParentAccountEventLog.actor_user_id == user_id)
+        .values(actor_user_id=None)
+    )
+    session.exec(
+        update(StocktakeSession)
+        .where(StocktakeSession.tenant_id == tenant_id)
+        .where(StocktakeSession.created_by_user_id == user_id)
+        .values(created_by_user_id=None)
+    )
+    session.exec(
+        update(StocktakeSession)
+        .where(StocktakeSession.tenant_id == tenant_id)
+        .where(StocktakeSession.completed_by_user_id == user_id)
+        .values(completed_by_user_id=None)
+    )
+    session.exec(
+        update(StocktakeLine)
+        .where(StocktakeLine.tenant_id == tenant_id)
+        .where(StocktakeLine.counted_by_user_id == user_id)
+        .values(counted_by_user_id=None)
+    )
+    session.exec(delete(ParentAccountMembership).where(ParentAccountMembership.user_id == user_id))
 
 
 @router.get("", response_model=list[PublicUser])
@@ -168,3 +259,48 @@ def update_user(
     session.commit()
     session.refresh(user)
     return _to_public_user(user)
+
+
+@router.delete("/{user_id}", status_code=204)
+def delete_user(
+    user_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+) -> Response:
+    if user_id == auth.user_id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account")
+
+    user = session.get(User, user_id)
+    if not user or user.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.role == "owner":
+        owner_count = int(
+            session.exec(
+                select(func.count())
+                .select_from(User)
+                .where(User.tenant_id == auth.tenant_id)
+                .where(User.role == "owner")
+            ).one()
+        )
+        if owner_count <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete the last owner for this workspace. Promote another user to owner first.",
+            )
+
+    email = user.email
+    _detach_user_references(session, auth.tenant_id, user_id)
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            entity_type="user",
+            entity_id=user_id,
+            event_type="user_deleted",
+            event_summary=f"User '{email}' deleted",
+        )
+    )
+    session.delete(user)
+    session.commit()
+    return Response(status_code=204)

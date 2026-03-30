@@ -1247,6 +1247,8 @@ export const updateUser = (
   },
 ) => api.patch<TenantUser>(`/users/${userId}`, data)
 
+export const deleteUser = (userId: string) => api.delete(`/users/${userId}`)
+
 export interface PlatformUser extends TenantUser {
   tenant_slug: string
   tenant_name: string

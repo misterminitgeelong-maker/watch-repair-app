@@ -7,6 +7,8 @@ interface AuthCtx {
   token: string | null
   role: string | null
   tenantId: string | null
+  /** Set after a successful `/auth/session` load; null when logged out or session not ready. */
+  sessionUserId: string | null
   activeSiteTenantId: string | null
   availableSites: SiteOption[]
   planCode: PlanCode
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(() => parseRoleFromToken(getStoredAccessToken()))
   const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
@@ -117,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!stored) {
       setRole(null)
       setTenantId(null)
+      setSessionUserId(null)
       setActiveSiteTenantId(null)
       setAvailableSites([])
       setPlanCode('pro')
@@ -128,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await getAuthSession()
     setRole(data.user.role)
     setTenantId(data.tenant_id)
+    setSessionUserId(data.user.id)
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
     setPlanCode(data.plan_code)
@@ -142,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(parseRoleFromToken(nextToken))
       if (!nextToken) {
         setTenantId(null)
+        setSessionUserId(null)
         setActiveSiteTenantId(null)
         setAvailableSites([])
         setPlanCode('pro')
@@ -172,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null)
           setRole(null)
           setTenantId(null)
+          setSessionUserId(null)
           setActiveSiteTenantId(null)
           setAvailableSites([])
           setPlanCode('pro')
@@ -191,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setToken(null)
             setRole(null)
             setTenantId(null)
+            setSessionUserId(null)
             setActiveSiteTenantId(null)
             setAvailableSites([])
             setPlanCode('pro')
@@ -228,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null)
         setRole(null)
         setTenantId(null)
+        setSessionUserId(null)
         setActiveSiteTenantId(null)
         setAvailableSites([])
         setPlanCode('pro')
@@ -252,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null)
           setRole(null)
           setTenantId(null)
+          setSessionUserId(null)
           setActiveSiteTenantId(null)
           setAvailableSites([])
           setPlanCode('pro')
@@ -285,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setRole(null)
     setTenantId(null)
+    setSessionUserId(null)
     setActiveSiteTenantId(null)
     setAvailableSites([])
     setPlanCode('pro')
@@ -313,6 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         role,
         tenantId,
+        sessionUserId,
         activeSiteTenantId,
         availableSites,
         planCode,
