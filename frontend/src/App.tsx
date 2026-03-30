@@ -24,6 +24,7 @@ import SignupCheckoutPage from '@/pages/SignupCheckoutPage'
 import StatusPage from '@/pages/StatusPage'
 import ShoeStatusPage from '@/pages/ShoeStatusPage'
 import MobileBookingPage from '@/pages/MobileBookingPage'
+import MobileInvoicePage from '@/pages/MobileInvoicePage'
 import LandingPage from '@/pages/LandingPage'
 import PricingPage from '@/pages/PricingPage'
 import AccountsPage from '@/pages/AccountsPage'
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/status/:token" element={<StatusPage />} />
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
             <Route path="/mobile-booking/:token" element={<MobileBookingPage />} />
+            <Route path="/mobile-invoice/:token" element={<MobileInvoicePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/signup/checkout" element={<SignupCheckoutPage />} />

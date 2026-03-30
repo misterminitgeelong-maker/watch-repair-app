@@ -313,6 +313,49 @@ def notify_auto_key_customer_day_before(
     )
 
 
+def notify_auto_key_en_route(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    job_address: str | None = None,
+    scheduled_at=None,
+) -> None:
+    """SMS when job status moves to en_route — technician is driving to the customer."""
+    from datetime import datetime
+
+    body = f"Hi {customer_name}, {shop_name} — your technician is on the way for mobile job #{job_number}."
+    if scheduled_at:
+        try:
+            dt = (
+                scheduled_at
+                if isinstance(scheduled_at, datetime)
+                else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+            )
+            body += f" Planned time: {dt.strftime('%a %d %b, %H:%M')}."
+        except (ValueError, TypeError):
+            pass
+    if job_address and job_address.strip():
+        a = job_address.strip()
+        body += f" Location: {a[:70]}{'…' if len(a) > 70 else ''}."
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_en_route",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_auto_key_arrival_window(
     session: Session,
     *,
@@ -332,6 +375,41 @@ def notify_auto_key_arrival_window(
         to_phone=to_phone,
         body=body,
         event="auto_key_arrival_window",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_auto_key_invoice_ready(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    invoice_number: str,
+    total_cents: int,
+    currency: str,
+    view_url: str,
+) -> None:
+    """SMS after job completed with link to customer invoice page."""
+    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
+    total = total_cents / 100
+    body = (
+        f"Hi {customer_name}, {shop_name} — job #{job_number} is complete. "
+        f"Invoice {invoice_number}: {sym}{total:.2f} {currency}. Details: {view_url}"
+    )
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_invoice_ready",
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )

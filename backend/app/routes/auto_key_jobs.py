@@ -50,6 +50,58 @@ def _next_auto_key_invoice_number(session: Session, tenant_id: UUID) -> str:
     return f"AKI-{int(count) + 1:05d}"
 
 
+def _ensure_auto_key_invoice_for_completed_job(session: Session, tenant_id: UUID, job: AutoKeyJob) -> AutoKeyInvoice | None:
+    """Create an invoice from the latest quote or job cost if the job has none yet."""
+    existing = session.exec(
+        select(AutoKeyInvoice)
+        .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .where(AutoKeyInvoice.auto_key_job_id == job.id)
+    ).first()
+    if existing:
+        return existing
+
+    latest_quote = session.exec(
+        select(AutoKeyQuote)
+        .where(AutoKeyQuote.tenant_id == tenant_id)
+        .where(AutoKeyQuote.auto_key_job_id == job.id)
+        .order_by(AutoKeyQuote.created_at.desc())
+    ).first()
+    if latest_quote and latest_quote.status != "declined":
+        inv = AutoKeyInvoice(
+            tenant_id=tenant_id,
+            auto_key_job_id=job.id,
+            auto_key_quote_id=latest_quote.id,
+            invoice_number=_next_auto_key_invoice_number(session, tenant_id),
+            subtotal_cents=latest_quote.subtotal_cents,
+            tax_cents=latest_quote.tax_cents,
+            total_cents=latest_quote.total_cents,
+            currency=latest_quote.currency,
+        )
+        session.add(inv)
+        return inv
+
+    cost = int(job.cost_cents or 0)
+    if cost <= 0:
+        return None
+
+    tenant = session.get(Tenant, tenant_id)
+    currency = (tenant.default_currency if tenant and tenant.default_currency else "AUD").upper()[:3]
+    subtotal = int(round(cost / 1.1))
+    tax = cost - subtotal
+    inv = AutoKeyInvoice(
+        tenant_id=tenant_id,
+        auto_key_job_id=job.id,
+        auto_key_quote_id=None,
+        invoice_number=_next_auto_key_invoice_number(session, tenant_id),
+        subtotal_cents=subtotal,
+        tax_cents=tax,
+        total_cents=cost,
+        currency=currency,
+    )
+    session.add(inv)
+    return inv
+
+
 def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
     items = session.exec(
         select(AutoKeyQuoteLineItem)
@@ -333,38 +385,51 @@ def update_auto_key_job_status(
     job.status = payload.status
     session.add(job)
 
-    # Auto-create invoice on completion when a quote exists and no invoice is present yet.
+    moved_to_en_route = previous_status != "en_route" and job.status == "en_route"
+    if moved_to_en_route:
+        customer = session.get(Customer, job.customer_id)
+        phone = (customer.phone or "").strip() if customer else ""
+        if customer and phone:
+            tenant = session.get(Tenant, auth.tenant_id)
+            shop_name = (tenant.name if tenant else None) or "We"
+            sms.notify_auto_key_en_route(
+                session,
+                tenant_id=auth.tenant_id,
+                to_phone=phone,
+                customer_name=customer.full_name or "there",
+                shop_name=shop_name,
+                job_number=str(job.job_number),
+                job_address=job.job_address,
+                scheduled_at=job.scheduled_at,
+            )
+
     moved_to_completed = previous_status != "completed" and job.status == "completed"
     if moved_to_completed:
-      existing_invoice = session.exec(
-          select(AutoKeyInvoice)
-          .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
-          .where(AutoKeyInvoice.auto_key_job_id == job.id)
-      ).first()
-
-      if not existing_invoice:
-          latest_quote = session.exec(
-              select(AutoKeyQuote)
-              .where(AutoKeyQuote.tenant_id == auth.tenant_id)
-              .where(AutoKeyQuote.auto_key_job_id == job.id)
-              .order_by(AutoKeyQuote.created_at.desc())
-          ).first()
-
-          # Permit auto-invoicing for any actionable quote state; only declined
-          # quotes should be blocked from creating an invoice on completion.
-          if latest_quote and latest_quote.status != "declined":
-              session.add(
-                  AutoKeyInvoice(
-                      tenant_id=auth.tenant_id,
-                      auto_key_job_id=job.id,
-                      auto_key_quote_id=latest_quote.id,
-                      invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
-                      subtotal_cents=latest_quote.subtotal_cents,
-                      tax_cents=latest_quote.tax_cents,
-                      total_cents=latest_quote.total_cents,
-                      currency=latest_quote.currency,
-                  )
-              )
+        invoice = _ensure_auto_key_invoice_for_completed_job(session, auth.tenant_id, job)
+        session.flush()
+        if invoice:
+            if not invoice.customer_view_token:
+                invoice.customer_view_token = uuid4().hex
+                session.add(invoice)
+            session.flush()
+            customer = session.get(Customer, job.customer_id)
+            phone = (customer.phone or "").strip() if customer else ""
+            if customer and phone:
+                tenant = session.get(Tenant, auth.tenant_id)
+                shop_name = (tenant.name if tenant else None) or "We"
+                view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
+                sms.notify_auto_key_invoice_ready(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    to_phone=phone,
+                    customer_name=customer.full_name or "there",
+                    shop_name=shop_name,
+                    job_number=str(job.job_number),
+                    invoice_number=invoice.invoice_number,
+                    total_cents=invoice.total_cents,
+                    currency=invoice.currency,
+                    view_url=view_url,
+                )
 
     session.commit()
     session.refresh(job)

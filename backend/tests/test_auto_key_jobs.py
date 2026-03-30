@@ -1,14 +1,16 @@
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 _TEST_DB = Path(__file__).with_name(f"test_auto_key_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
-from app.database import create_db_and_tables
+from app.database import create_db_and_tables, engine
 from app.main import app
+from app.models import AutoKeyInvoice
 
 create_db_and_tables()
 client = TestClient(app)
@@ -113,3 +115,138 @@ def test_auto_invoice_created_once_when_job_completed():
     invoices_after_second = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
     assert invoices_after_second.status_code == 200
     assert len(invoices_after_second.json()) == 1
+
+
+def test_auto_invoice_from_job_cost_when_no_quote():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-cost-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Roadside spare",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "booked",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 11000,
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    complete_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "completed", "note": "Done"},
+    )
+    assert complete_res.status_code == 200
+
+    invoices_res = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
+    assert invoices_res.status_code == 200
+    inv_list = invoices_res.json()
+    assert len(inv_list) == 1
+    assert inv_list[0]["total_cents"] == 11000
+    assert inv_list[0]["subtotal_cents"] == 10000
+    assert inv_list[0]["tax_cents"] == 1000
+    assert inv_list[0]["auto_key_quote_id"] is None
+
+
+def test_public_invoice_view_uses_customer_token_after_complete():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-pubinv-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Public invoice job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "on_site",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 5000,
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    r = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "completed", "note": "Done"},
+    )
+    assert r.status_code == 200
+
+    with Session(engine) as s:
+        row = s.exec(
+            select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_job_id == UUID(job_id))
+        ).first()
+        assert row is not None
+        assert row.customer_view_token
+        view_token = row.customer_view_token
+
+    pub = client.get(f"/v1/public/auto-key-invoice/{view_token}")
+    assert pub.status_code == 200
+    data = pub.json()
+    assert data["invoice_number"]
+    assert data["total_cents"] == 5000
+    assert data["job_title"] == "Public invoice job"
+    assert len(data["line_items"]) >= 1
+
+    bad = client.get("/v1/public/auto-key-invoice/not-a-real-token")
+    assert bad.status_code == 404
+
+
+def test_en_route_transition_succeeds():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-route-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "En route test",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "booked",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+            "job_address": "1 Test St",
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    route_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "en_route", "note": "Driving"},
+    )
+    assert route_res.status_code == 200
+    assert route_res.json()["status"] == "en_route"

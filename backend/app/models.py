@@ -1290,6 +1290,8 @@ class AutoKeyInvoice(SQLModel, table=True):
     payment_method: Optional[str] = None  # cash, eftpos, bank
     paid_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: Opaque token for customer-facing invoice page (SMS); not exposed on authenticated reads.
+    customer_view_token: Optional[str] = Field(default=None, index=True, unique=True)
 
 
 class AutoKeyQuoteLineItemCreate(SQLModel):

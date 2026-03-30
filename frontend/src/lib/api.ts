@@ -642,6 +642,28 @@ export const getPublicAutoKeyBooking = (token: string) =>
 export const confirmPublicAutoKeyBooking = (token: string) =>
   axios.post<{ ok: boolean; status: string; message: string }>(`/v1/public/auto-key-booking/${token}/confirm`)
 
+export interface PublicAutoKeyInvoice {
+  shop_name: string
+  job_number: string
+  job_title: string
+  invoice_number: string
+  status: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  currency: string
+  line_items: Array<{
+    description: string
+    quantity: number
+    unit_price_cents: number
+    total_price_cents: number
+  }>
+  created_at?: string | null
+}
+
+export const getPublicAutoKeyInvoice = (token: string) =>
+  axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoice/${token}`)
+
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
   id: string

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from ..config import settings
 from ..database import get_session
 from ..models import (
+    AutoKeyInvoice,
     AutoKeyJob,
     AutoKeyQuote,
     AutoKeyQuoteLineItem,
@@ -16,6 +17,7 @@ from ..models import (
     Shoe,
     ShoeRepairJob,
     ShoeRepairJobItem,
+    Tenant,
     Watch,
 )
 
@@ -202,3 +204,59 @@ def confirm_public_auto_key_booking(token: str, session: Session = Depends(get_s
     session.commit()
     session.refresh(job)
     return {"ok": True, "status": "booked", "message": "Thanks — your booking is confirmed."}
+
+
+@router.get("/auto-key-invoice/{token}")
+def get_public_auto_key_invoice(token: str, session: Session = Depends(get_session)):
+    invoice = session.exec(
+        select(AutoKeyInvoice).where(AutoKeyInvoice.customer_view_token == token)
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    tenant = session.get(Tenant, invoice.tenant_id)
+    shop_name = tenant.name if tenant else ""
+
+    line_payload: list[dict] = []
+    if invoice.auto_key_quote_id:
+        items = session.exec(
+            select(AutoKeyQuoteLineItem)
+            .where(AutoKeyQuoteLineItem.auto_key_quote_id == invoice.auto_key_quote_id)
+            .order_by(AutoKeyQuoteLineItem.created_at)
+        ).all()
+        line_payload = [
+            {
+                "description": i.description,
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                "total_price_cents": i.total_price_cents,
+            }
+            for i in items
+        ]
+    else:
+        line_payload = [
+            {
+                "description": job.title or "Mobile service",
+                "quantity": 1,
+                "unit_price_cents": invoice.subtotal_cents,
+                "total_price_cents": invoice.subtotal_cents,
+            }
+        ]
+
+    return {
+        "shop_name": shop_name,
+        "job_number": job.job_number,
+        "job_title": job.title,
+        "invoice_number": invoice.invoice_number,
+        "status": invoice.status,
+        "subtotal_cents": invoice.subtotal_cents,
+        "tax_cents": invoice.tax_cents,
+        "total_cents": invoice.total_cents,
+        "currency": invoice.currency,
+        "line_items": line_payload,
+        "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
+    }
