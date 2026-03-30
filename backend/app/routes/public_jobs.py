@@ -390,11 +390,17 @@ def get_public_auto_key_invoice(token: str, session: Session = Depends(get_sessi
             }
         ]
 
+    connect_ready = bool(
+        tenant
+        and (tenant.stripe_connect_account_id or "").strip()
+        and tenant.stripe_connect_charges_enabled
+    )
     pay_online = (
         settings.enable_stripe_invoice_checkout
         and bool((settings.stripe_secret_key or "").strip())
         and invoice.status == "unpaid"
         and invoice.total_cents > 0
+        and connect_ready
     )
 
     return {
@@ -450,6 +456,16 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
         raise HTTPException(status_code=404, detail="Invalid or expired link")
 
     tenant = session.get(Tenant, invoice.tenant_id)
+    if not tenant or not (tenant.stripe_connect_account_id or "").strip():
+        raise HTTPException(
+            status_code=503,
+            detail="This shop has not finished Stripe Connect setup; online card payment is unavailable.",
+        )
+    if not tenant.stripe_connect_charges_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="This shop cannot accept card payments yet. Complete Stripe Connect onboarding in workspace settings.",
+        )
     shop = (tenant.name if tenant else "Shop").strip() or "Shop"
     currency = (invoice.currency or "AUD").lower().strip()[:3]
     if len(currency) != 3:
@@ -487,6 +503,7 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
         },
         "success_url": f"{base}/mobile-invoice/{token}?paid=1&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base}/mobile-invoice/{token}?canceled=1",
+        "payment_intent_data": {"transfer_data": {"destination": tenant.stripe_connect_account_id.strip()}},
     }
 
     customer = session.get(Customer, job.customer_id)

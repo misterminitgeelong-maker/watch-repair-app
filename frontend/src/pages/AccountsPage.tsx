@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import {
   createBillingCheckoutForPlan,
+  createStripeConnectAccountLink,
   createUser,
   getApiErrorMessage,
   getBillingLimits,
   getBillingPortalUrl,
   listUsers,
+  refreshStripeConnectStatus,
   type PlanCode,
   type TenantUser,
   updateTenantPlan,
@@ -375,6 +378,8 @@ export default function AccountsPage() {
 
       <BillingCard />
 
+      <StripeConnectCard />
+
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
           Onboarding checklist
@@ -500,6 +505,104 @@ export default function AccountsPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+function StripeConnectCard() {
+  const { role } = useAuth()
+  const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { data: billing } = useQuery({
+    queryKey: ['billing-limits'],
+    queryFn: () => getBillingLimits().then((r) => r.data),
+  })
+
+  const isOwner = role === 'owner' || role === 'platform_admin'
+  const showMobilePayouts =
+    Boolean(billing?.stripe_configured) &&
+    (billing?.limits.max_auto_key_jobs ?? 0) > 0
+
+  const refreshMut = useMutation({
+    mutationFn: () => refreshStripeConnectStatus(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['billing-limits'] }),
+  })
+
+  const connectMut = useMutation({
+    mutationFn: () => createStripeConnectAccountLink(),
+    onSuccess: ({ data }) => {
+      if (data.url) window.location.assign(data.url)
+    },
+  })
+
+  useEffect(() => {
+    const c = searchParams.get('connect')
+    if (c !== 'return' && c !== 'refresh') return
+    let cancelled = false
+    void (async () => {
+      try {
+        await refreshStripeConnectStatus()
+        if (!cancelled) await qc.invalidateQueries({ queryKey: ['billing-limits'] })
+      } catch {
+        /* refresh is best-effort after Stripe redirect */
+      } finally {
+        if (!cancelled) {
+          const next = new URLSearchParams(searchParams)
+          next.delete('connect')
+          setSearchParams(next, { replace: true })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- sync once when returning from Stripe
+
+  if (!billing || !showMobilePayouts) return null
+
+  const present = Boolean(billing.stripe_connect_account_present)
+  const chargesOk = Boolean(billing.stripe_connect_charges_enabled)
+  const statusLine = !present
+    ? 'Connect your bank so customer invoice payments deposit to your workspace.'
+    : chargesOk
+      ? 'Card payments for Mobile Services invoices are enabled; funds route to your connected Stripe account.'
+      : 'Finish Stripe onboarding to accept card payments on customer invoices.'
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+        Mobile invoice payouts (Stripe Connect)
+      </p>
+      <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
+        {statusLine}
+      </p>
+      {isOwner && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            onClick={() => connectMut.mutate()}
+            disabled={connectMut.isPending || refreshMut.isPending}
+          >
+            {connectMut.isPending ? 'Opening Stripe…' : present ? 'Continue setup' : 'Connect bank account'}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => refreshMut.mutate()}
+            disabled={!present || refreshMut.isPending || connectMut.isPending}
+          >
+            {refreshMut.isPending ? 'Refreshing…' : 'Refresh status'}
+          </Button>
+        </div>
+      )}
+      {!isOwner && (
+        <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          Only an owner can complete Stripe Connect for this workspace.
+        </p>
+      )}
+      {(connectMut.isError || refreshMut.isError) && (
+        <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>
+          {getApiErrorMessage(connectMut.error ?? refreshMut.error, 'Could not reach Stripe. Try again.')}
+        </p>
+      )}
+    </Card>
   )
 }
 

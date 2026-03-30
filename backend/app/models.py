@@ -61,6 +61,11 @@ class Tenant(SQLModel, table=True):
     timezone: str = "Australia/Melbourne"
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
+    # Stripe Connect (Express): customer invoice card payments settle to this connected account
+    stripe_connect_account_id: Optional[str] = Field(default=None, index=True)
+    stripe_connect_charges_enabled: bool = False
+    stripe_connect_payouts_enabled: bool = False
+    stripe_connect_details_submitted: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # JSON array of tool keys from seed/mobile_services_tools.json (tenant van / kit inventory)
     toolkit_selected_keys: str = Field(default="[]")
@@ -600,6 +605,10 @@ class BillingLimitsResponse(SQLModel):
     stripe_configured: bool
     stripe_subscription_id: Optional[str] = None
     stripe_customer_id: Optional[str] = None
+    stripe_connect_account_present: bool = False
+    stripe_connect_charges_enabled: bool = False
+    stripe_connect_payouts_enabled: bool = False
+    stripe_connect_details_submitted: bool = False
 
 
 class BillingCheckoutRequest(SQLModel):

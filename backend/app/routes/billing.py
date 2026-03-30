@@ -147,6 +147,10 @@ def get_billing_limits(
     tenant = session.get(Tenant, auth.tenant_id)
     stripe_sub_id = tenant.stripe_subscription_id if tenant else None
     stripe_cust_id = tenant.stripe_customer_id if tenant else None
+    conn_present = bool(tenant and (tenant.stripe_connect_account_id or "").strip())
+    conn_charges = bool(tenant and tenant.stripe_connect_charges_enabled)
+    conn_payouts = bool(tenant and tenant.stripe_connect_payouts_enabled)
+    conn_details = bool(tenant and tenant.stripe_connect_details_submitted)
 
     return BillingLimitsResponse(
         plan_code=plan_code,
@@ -165,7 +169,96 @@ def get_billing_limits(
         stripe_configured=_stripe_configured(),
         stripe_subscription_id=stripe_sub_id,
         stripe_customer_id=stripe_cust_id,
+        stripe_connect_account_present=conn_present,
+        stripe_connect_charges_enabled=conn_charges,
+        stripe_connect_payouts_enabled=conn_payouts,
+        stripe_connect_details_submitted=conn_details,
     )
+
+
+def _refresh_tenant_connect_status(session: Session, tenant: Tenant) -> None:
+    if not tenant.stripe_connect_account_id:
+        return
+    try:
+        stripe = _get_stripe()
+        acct = stripe.Account.retrieve(tenant.stripe_connect_account_id)
+    except HTTPException:
+        return
+    except Exception:
+        logging.getLogger(__name__).exception("Stripe Connect retrieve failed for %s", tenant.stripe_connect_account_id)
+        return
+    tenant.stripe_connect_charges_enabled = bool(acct.get("charges_enabled"))
+    tenant.stripe_connect_payouts_enabled = bool(acct.get("payouts_enabled"))
+    tenant.stripe_connect_details_submitted = bool(acct.get("details_submitted"))
+    session.add(tenant)
+
+
+@router.post("/connect/account-link")
+def create_stripe_connect_account_link(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Create or continue Express Connect onboarding; returns Stripe-hosted onboarding URL."""
+    stripe = _get_stripe()
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    country = (settings.stripe_connect_default_country or "AU").strip().upper()[:2]
+    if len(country) != 2:
+        raise HTTPException(status_code=503, detail="Invalid STRIPE_CONNECT_DEFAULT_COUNTRY")
+
+    if not tenant.stripe_connect_account_id:
+        account = stripe.Account.create(
+            type="express",
+            country=country,
+            capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+            metadata={"tenant_id": str(tenant.id), "tenant_slug": tenant.slug},
+            business_profile={"name": (tenant.name or "Shop")[:100]},
+        )
+        tenant.stripe_connect_account_id = account.id
+        tenant.stripe_connect_charges_enabled = bool(account.get("charges_enabled"))
+        tenant.stripe_connect_payouts_enabled = bool(account.get("payouts_enabled"))
+        tenant.stripe_connect_details_submitted = bool(account.get("details_submitted"))
+        session.add(tenant)
+        session.add(
+            TenantEventLog(
+                tenant_id=tenant.id,
+                entity_type="tenant",
+                event_type="stripe_connect_account_created",
+                event_summary="Stripe Express connected account created for invoice payouts",
+            )
+        )
+        session.commit()
+        session.refresh(tenant)
+
+    base = settings.public_base_url.rstrip("/")
+    link = stripe.AccountLink.create(
+        account=tenant.stripe_connect_account_id,
+        refresh_url=f"{base}/accounts?connect=refresh",
+        return_url=f"{base}/accounts?connect=return",
+        type="account_onboarding",
+    )
+    return {"url": link.url}
+
+
+@router.post("/connect/refresh")
+def refresh_stripe_connect_status(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Pull latest Connect capability flags from Stripe (e.g. after returning from onboarding)."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant or not tenant.stripe_connect_account_id:
+        raise HTTPException(status_code=400, detail="No Stripe Connect account for this workspace.")
+    _refresh_tenant_connect_status(session, tenant)
+    session.commit()
+    session.refresh(tenant)
+    return {
+        "stripe_connect_charges_enabled": tenant.stripe_connect_charges_enabled,
+        "stripe_connect_payouts_enabled": tenant.stripe_connect_payouts_enabled,
+        "stripe_connect_details_submitted": tenant.stripe_connect_details_submitted,
+    }
 
 
 # ── Stripe Checkout ───────────────────────────────────────────────────────────
@@ -380,5 +473,28 @@ async def stripe_webhook(
         invoice.paid_at = datetime.now(timezone.utc)
         session.add(invoice)
         session.commit()
+
+    elif event["type"] == "account.updated":
+        acct_id = obj.get("id")
+        meta = obj.get("metadata") or {}
+        tenant = None
+        if acct_id:
+            tenant = session.exec(
+                select(Tenant).where(Tenant.stripe_connect_account_id == acct_id)
+            ).first()
+        if not tenant and meta.get("tenant_id"):
+            try:
+                tid = UUID(str(meta["tenant_id"]))
+                tenant = session.get(Tenant, tid)
+            except ValueError:
+                tenant = None
+        if tenant:
+            if acct_id and not (tenant.stripe_connect_account_id or "").strip():
+                tenant.stripe_connect_account_id = acct_id
+            tenant.stripe_connect_charges_enabled = bool(obj.get("charges_enabled"))
+            tenant.stripe_connect_payouts_enabled = bool(obj.get("payouts_enabled"))
+            tenant.stripe_connect_details_submitted = bool(obj.get("details_submitted"))
+            session.add(tenant)
+            session.commit()
 
     return {"status": "ok"}

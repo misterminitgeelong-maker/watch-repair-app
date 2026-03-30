@@ -103,8 +103,11 @@ class Settings(BaseSettings):
     stripe_price_shoe: str = ""
     stripe_price_auto_key: str = ""
     stripe_price_enterprise: str = ""
-    # When True and stripe_secret_key is set, customers can pay Mobile Services invoices via Stripe Checkout (same Stripe account as platform billing unless you use Connect).
+    # When True and stripe_secret_key is set, customers can pay Mobile Services invoices via Stripe Checkout
+    # using Stripe Connect (funds go to the tenant's connected Express account).
     enable_stripe_invoice_checkout: bool = True
+    # ISO country for new Express connected accounts (e.g. AU, US).
+    stripe_connect_default_country: str = "AU"
 
     # Rate limiting (slowapi format, e.g. "20/minute")
     rate_limit_auth_login: str = "20/minute"

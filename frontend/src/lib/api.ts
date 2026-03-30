@@ -1107,8 +1107,20 @@ export interface BillingLimitsResponse {
   stripe_configured: boolean
   stripe_subscription_id?: string | null
   stripe_customer_id?: string | null
+  stripe_connect_account_present?: boolean
+  stripe_connect_charges_enabled?: boolean
+  stripe_connect_payouts_enabled?: boolean
+  stripe_connect_details_submitted?: boolean
 }
 export const getBillingLimits = () => api.get<BillingLimitsResponse>('/billing/limits')
+export const createStripeConnectAccountLink = () =>
+  api.post<{ url: string }>('/billing/connect/account-link')
+export const refreshStripeConnectStatus = () =>
+  api.post<{
+    stripe_connect_charges_enabled: boolean
+    stripe_connect_payouts_enabled: boolean
+    stripe_connect_details_submitted: boolean
+  }>('/billing/connect/refresh')
 export const getBillingPortalUrl = () => api.get<{ url: string }>('/billing/portal-url')
 export const createBillingCheckout = (price_id: string) =>
   api.post<{ checkout_url: string }>('/billing/checkout', { price_id })

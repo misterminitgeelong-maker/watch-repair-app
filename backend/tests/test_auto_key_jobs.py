@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import AutoKeyInvoice
+from app.models import AutoKeyInvoice, Tenant
 
 create_db_and_tables()
 client = TestClient(app)
@@ -219,6 +219,72 @@ def test_public_invoice_view_uses_customer_token_after_complete(monkeypatch):
 
     bad = client.get("/v1/public/auto-key-invoice/not-a-real-token")
     assert bad.status_code == 404
+
+
+def test_public_invoice_pay_online_requires_stripe_connect(monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "enable_stripe_invoice_checkout", True)
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-connect-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Connect gate job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "on_site",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 6000,
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    r = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "completed", "note": "Done"},
+    )
+    assert r.status_code == 200
+
+    with Session(engine) as s:
+        row = s.exec(
+            select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_job_id == UUID(job_id))
+        ).first()
+        assert row is not None
+        tenant_id = row.tenant_id
+        view_token = row.customer_view_token
+
+    pub = client.get(f"/v1/public/auto-key-invoice/{view_token}")
+    assert pub.status_code == 200
+    assert pub.json().get("can_pay_online") is False
+
+    co = client.post(f"/v1/public/auto-key-invoice/{view_token}/checkout")
+    assert co.status_code == 503
+
+    with Session(engine) as s:
+        tenant = s.get(Tenant, tenant_id)
+        assert tenant is not None
+        tenant.stripe_connect_account_id = "acct_test_fake"
+        tenant.stripe_connect_charges_enabled = True
+        tenant.stripe_connect_payouts_enabled = True
+        tenant.stripe_connect_details_submitted = True
+        s.add(tenant)
+        s.commit()
+
+    pub2 = client.get(f"/v1/public/auto-key-invoice/{view_token}")
+    assert pub2.status_code == 200
+    assert pub2.json().get("can_pay_online") is True
 
 
 def test_en_route_transition_succeeds():
