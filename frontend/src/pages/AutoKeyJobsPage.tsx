@@ -1546,7 +1546,10 @@ export default function AutoKeyJobsPage() {
         />
       </div>
       <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
-        Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.
+        Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.{' '}
+        <Link to="/auto-key/team" className="font-semibold whitespace-nowrap" style={{ color: 'var(--cafe-amber)' }}>
+          Team roster →
+        </Link>
       </p>
       <MobileServicesSubNav className="mb-5" />
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
