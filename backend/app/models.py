@@ -1162,6 +1162,9 @@ class AutoKeyJobCreate(SQLModel):
     registration_plate: Optional[str] = None
     vin: Optional[str] = None
     key_type: Optional[str] = None
+    blade_code: Optional[str] = None
+    chip_type: Optional[str] = None
+    tech_notes: Optional[str] = None
     key_quantity: int = 1
     programming_status: AutoKeyProgrammingStatus = "pending"
     priority: Literal["low", "normal", "high", "urgent"] = "normal"

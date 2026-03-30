@@ -23,6 +23,8 @@ import {
   updateAutoKeyJobStatus,
   getAutoKeyReports,
   vehicleLookup,
+  searchVehicleKeySpecs,
+  type VehicleKeySpecMatch,
   type AutoKeyProgrammingStatus,
   type AutoKeyJob,
   type Customer,
@@ -293,6 +295,9 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     rego_state: 'NSW' as string,
     vin: '',
     key_type: '',
+    blade_code: '',
+    chip_type: '',
+    tech_notes: '',
     key_quantity: '1',
     programming_status: 'pending' as AutoKeyProgrammingStatus,
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
@@ -315,6 +320,33 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
   })
+
+  const yearNum = form.vehicle_year.trim() ? Number.parseInt(form.vehicle_year, 10) : undefined
+  const { data: specSearch } = useQuery({
+    queryKey: ['vehicle-key-specs', form.vehicle_make, form.vehicle_model, form.vehicle_year],
+    queryFn: () =>
+      searchVehicleKeySpecs({
+        make: form.vehicle_make,
+        model: form.vehicle_model,
+        year: Number.isFinite(yearNum) ? yearNum : undefined,
+      }).then(r => r.data),
+    enabled:
+      hasFeature('auto_key') &&
+      (form.vehicle_make.trim().length >= 2 || form.vehicle_model.trim().length >= 2),
+    staleTime: 60_000,
+  })
+
+  const applyVehicleSpec = (m: VehicleKeySpecMatch) => {
+    setForm(f => ({
+      ...f,
+      vehicle_make: m.vehicle_make,
+      vehicle_model: m.vehicle_model,
+      vehicle_year: f.vehicle_year.trim() || (m.year_from != null ? String(m.year_from) : ''),
+      key_type: m.key_type || f.key_type,
+      chip_type: m.chip_type || f.chip_type,
+      tech_notes: m.tech_notes || f.tech_notes,
+    }))
+  }
 
   const matchingAccounts = form.customer_id
     ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(form.customer_id))
@@ -350,6 +382,9 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         registration_plate: form.registration_plate.trim() || undefined,
         vin: form.vin.trim() || undefined,
         key_type: form.key_type.trim() || undefined,
+        blade_code: form.blade_code.trim() || undefined,
+        chip_type: form.chip_type.trim() || undefined,
+        tech_notes: form.tech_notes.trim() || undefined,
         key_quantity: Math.max(1, Number(form.key_quantity || '1')),
         programming_status: form.programming_status,
         priority: form.priority,
@@ -428,11 +463,11 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} />
-          <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} />
+          <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} placeholder="e.g. Toyota" />
+          <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} placeholder="e.g. Hilux" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} />
+          <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} placeholder="Filters database matches" />
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--cafe-text)' }}>Registration</label>
             <div className="flex gap-2">
@@ -495,10 +530,47 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             {regoLookupError && <p className="text-sm mt-1" style={{ color: '#C96A5A' }}>{regoLookupError}</p>}
           </div>
         </div>
+        {specSearch && specSearch.matches.length > 0 && (
+          <div
+            className="rounded-lg border p-2 text-sm"
+            style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+          >
+            <p className="font-medium mb-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              Vehicle database — tap a row to fill key details
+            </p>
+            <ul className="max-h-40 overflow-y-auto space-y-1">
+              {specSearch.matches.map((m, i) => (
+                <li key={`${m.label}-${i}`}>
+                  <button
+                    type="button"
+                    className="w-full text-left px-2 py-1.5 rounded transition"
+                    style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.92' }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+                    onClick={() => applyVehicleSpec(m)}
+                  >
+                    {m.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
           <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Blade / blank ref." value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
+          <Input label="Chip / transponder" value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
+        </div>
+        <Textarea
+          label="Workshop / tech notes"
+          value={form.tech_notes}
+          onChange={e => setForm(f => ({ ...f, tech_notes: e.target.value }))}
+          rows={3}
+          placeholder="Immobiliser notes, EEPROM warnings, etc."
+        />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
           <Select label="Programming" value={form.programming_status} onChange={e => setForm(f => ({ ...f, programming_status: e.target.value as AutoKeyProgrammingStatus }))}>

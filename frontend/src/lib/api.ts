@@ -1335,6 +1335,9 @@ export interface AutoKeyJobCreatePayload {
   registration_plate?: string
   vin?: string
   key_type?: string
+  blade_code?: string
+  chip_type?: string
+  tech_notes?: string
   key_quantity: number
   programming_status: AutoKeyProgrammingStatus
   priority: 'low' | 'normal' | 'high' | 'urgent'
@@ -1376,6 +1379,28 @@ export interface VehicleLookupResult {
 }
 export const vehicleLookup = (plate: string, state: string) =>
   api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
+
+export interface VehicleKeySpecMatch {
+  score: number
+  label: string
+  vehicle_make: string
+  vehicle_model: string
+  year_from?: number | null
+  year_to?: number | null
+  years_label?: string | null
+  key_type?: string | null
+  chip_type?: string | null
+  tech_notes?: string | null
+}
+
+export const searchVehicleKeySpecs = (params: { make?: string; model?: string; year?: number }) =>
+  api.get<{ matches: VehicleKeySpecMatch[] }>('/vehicle-key-specs/search', {
+    params: {
+      make: params.make?.trim() || undefined,
+      model: params.model?.trim() || undefined,
+      year: params.year,
+    },
+  })
 
 export type DrivingStop = { lat: number; lng: number }
 
