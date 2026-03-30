@@ -1,13 +1,16 @@
 import io
 import importlib
+import json
+from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlmodel import Session, select
+from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
 from ..database import get_session
-from ..datetime_utils import isoformat_z_utc
+from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
 from ..models import (
     AutoKeyInvoice,
     AutoKeyJob,
@@ -24,6 +27,53 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
+
+
+class PublicAutoKeyIntakeSubmit(SQLModel):
+    full_name: Optional[str] = Field(default=None, max_length=500)
+    vehicle_make: Optional[str] = Field(default=None, max_length=120)
+    vehicle_model: Optional[str] = Field(default=None, max_length=120)
+    vehicle_year: Optional[int] = Field(default=None, ge=1900, le=2100)
+    registration_plate: Optional[str] = Field(default=None, max_length=32)
+    vin: Optional[str] = Field(default=None, max_length=64)
+    job_address: Optional[str] = Field(default=None, max_length=500)
+    job_type: Optional[str] = Field(default=None, max_length=200)
+    additional_services: list[dict[str, Any]] = Field(default_factory=list)
+    scheduled_at: Optional[datetime] = None
+    description: Optional[str] = Field(default=None, max_length=4000)
+    key_quantity: int = Field(default=1, ge=1, le=99)
+    key_type: Optional[str] = Field(default=None, max_length=200)
+    blade_code: Optional[str] = Field(default=None, max_length=120)
+    chip_type: Optional[str] = Field(default=None, max_length=200)
+    tech_notes: Optional[str] = Field(default=None, max_length=4000)
+
+
+def _serialize_intake_services(items: list[Any] | None) -> str | None:
+    if not items:
+        return None
+    cleaned: list[dict[str, str | None]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        preset = (raw.get("preset") or "").strip() or None
+        custom = (raw.get("custom") or "").strip() or None
+        if preset or custom:
+            cleaned.append({"preset": preset, "custom": custom})
+    return json.dumps(cleaned) if cleaned else None
+
+
+def _customer_intake_title(customer_full_name: str, make: str | None, year: int | None, model: str | None) -> str:
+    parts = (customer_full_name or "").strip().split()
+    first = parts[0] if parts else "Customer"
+    bits: list[str] = []
+    if make and str(make).strip():
+        bits.append(str(make).strip())
+    if year is not None:
+        bits.append(str(year))
+    if model and str(model).strip():
+        bits.append(str(model).strip())
+    car = " ".join(bits)
+    return f"{first} - {car}" if car else f"{first} - Job"
 
 
 @router.get("/jobs/{status_token}")
@@ -206,6 +256,97 @@ def confirm_public_auto_key_booking(token: str, session: Session = Depends(get_s
     session.commit()
     session.refresh(job)
     return {"ok": True, "status": "booked", "message": "Thanks — your booking is confirmed."}
+
+
+@router.get("/auto-key-intake/{token}")
+def get_public_auto_key_intake(token: str, session: Session = Depends(get_session)):
+    job = session.exec(
+        select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
+    ).first()
+    if not job or job.status != "awaiting_customer_details":
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    tenant = session.get(Tenant, job.tenant_id)
+    customer = session.get(Customer, job.customer_id)
+    shop_name = (tenant.name if tenant else "") or "Shop"
+    hint = (customer.full_name or "").strip().split()[0] if customer and customer.full_name else None
+
+    return {
+        "shop_name": shop_name,
+        "job_number": job.job_number,
+        "customer_first_name_hint": hint,
+        "vehicle_make": job.vehicle_make,
+        "vehicle_model": job.vehicle_model,
+        "vehicle_year": job.vehicle_year,
+        "registration_plate": job.registration_plate,
+        "job_address": job.job_address,
+        "job_type": job.job_type,
+    }
+
+
+@router.post("/auto-key-intake/{token}/submit")
+def submit_public_auto_key_intake(
+    token: str,
+    payload: PublicAutoKeyIntakeSubmit,
+    session: Session = Depends(get_session),
+):
+    job = session.exec(
+        select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
+    ).first()
+    if not job or job.status != "awaiting_customer_details":
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    if not any(
+        [
+            (payload.job_type or "").strip(),
+            (payload.vehicle_make or "").strip(),
+            (payload.description or "").strip(),
+        ]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Please add at least a vehicle or describe what you need.",
+        )
+
+    customer = session.get(Customer, job.customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    if (payload.full_name or "").strip():
+        customer.full_name = (payload.full_name or "").strip()
+        session.add(customer)
+
+    job.vehicle_make = (payload.vehicle_make or "").strip() or None
+    job.vehicle_model = (payload.vehicle_model or "").strip() or None
+    job.vehicle_year = payload.vehicle_year
+    job.registration_plate = (payload.registration_plate or "").strip() or None
+    job.vin = (payload.vin or "").strip() or None
+    job.job_address = (payload.job_address or "").strip() or None
+    job.job_type = (payload.job_type or "").strip() or None
+    job.description = (payload.description or "").strip() or None
+    job.key_quantity = max(1, int(payload.key_quantity))
+    job.key_type = (payload.key_type or "").strip() or None
+    job.blade_code = (payload.blade_code or "").strip() or None
+    job.chip_type = (payload.chip_type or "").strip() or None
+    job.tech_notes = (payload.tech_notes or "").strip() or None
+    job.additional_services_json = _serialize_intake_services(payload.additional_services)
+
+    if payload.scheduled_at:
+        job.scheduled_at = naive_utc_from_any(payload.scheduled_at)
+    session.flush()
+
+    job.title = _customer_intake_title(
+        customer.full_name,
+        job.vehicle_make,
+        job.vehicle_year,
+        job.vehicle_model,
+    )
+    job.status = "awaiting_quote"
+    job.customer_intake_token = None
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return {"ok": True, "message": "Thanks — we have your details and will be in touch."}
 
 
 @router.get("/auto-key-invoice/{token}")

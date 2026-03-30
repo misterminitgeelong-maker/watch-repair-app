@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
   BarChart3,
@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
+  createAutoKeyQuickIntake,
+  getApiErrorMessage,
   getBillingLimits,
   getInbox,
   getReportsSummary,
@@ -29,7 +31,7 @@ import {
   listShoeRepairJobs,
   listUsers,
 } from '@/lib/api'
-import { Badge, Card, PageHeader, Spinner } from '@/components/ui'
+import { Badge, Button, Card, Input, Modal, PageHeader, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
@@ -71,6 +73,7 @@ type WorkspaceTileProps = {
   accent: string
   summary: string
   metrics: Array<{ label: string; value: string }>
+  footer?: ReactNode
 }
 
 type RecentItem = {
@@ -135,10 +138,10 @@ function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconC
   )
 }
 
-function WorkspaceTile({ to, title, icon: Icon, accent, summary, metrics }: WorkspaceTileProps) {
+function WorkspaceTile({ to, title, icon: Icon, accent, summary, metrics, footer }: WorkspaceTileProps) {
   return (
-    <Link to={to} className="block h-full">
-      <Card className="dashboard-panel h-full p-5">
+    <Card className="dashboard-panel h-full p-5 flex flex-col">
+      <Link to={to} className="block flex-1 min-h-0">
         <div className="flex h-full flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -164,14 +167,55 @@ function WorkspaceTile({ to, title, icon: Icon, accent, summary, metrics }: Work
             ))}
           </div>
         </div>
-      </Card>
-    </Link>
+      </Link>
+      {footer ? <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--cafe-border)' }}>{footer}</div> : null}
+    </Card>
+  )
+}
+
+function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [err, setErr] = useState('')
+  const mut = useMutation({
+    mutationFn: () => createAutoKeyQuickIntake({ full_name: fullName.trim(), phone: phone.trim() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dashboard'] })
+      onClose()
+    },
+    onError: (e: unknown) => setErr(getApiErrorMessage(e, 'Could not start quick job.')),
+  })
+  return (
+    <Modal title="Quick add — customer completes details" onClose={onClose}>
+      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        We create a draft job and text the customer a secure link to enter vehicle and service information. You will see the job update when they submit the form.
+      </p>
+      <div className="space-y-3">
+        <Input label="Customer full name *" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" autoFocus />
+        <Input label="Mobile *" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0412 345 678" />
+        {err ? <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p> : null}
+        <div className="flex gap-2 pt-2">
+          <Button variant="secondary" className="flex-1" type="button" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1"
+            type="button"
+            disabled={mut.isPending || !fullName.trim() || !phone.trim()}
+            onClick={() => { setErr(''); mut.mutate() }}
+          >
+            {mut.isPending ? 'Creating…' : 'Create & send SMS'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
 export default function DashboardPage() {
   const { tenantId, role, planCode, availableSites, activeSiteTenantId, hasFeature } = useAuth()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
+  const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then((r) => r.data) })
@@ -227,6 +271,10 @@ export default function DashboardPage() {
   const watchAwaitingGoAheadCount = reports?.jobs_by_status?.awaiting_go_ahead ?? 0
   const shoeOpenJobs = useMemo(() => (shoeJobs ?? []).filter((job) => isOpenStatus(job.status)), [shoeJobs])
   const autoOpenJobs = useMemo(() => (autoKeyJobs ?? []).filter((job) => isOpenStatus(job.status)), [autoKeyJobs])
+  const autoAwaitingCustomerIntake = useMemo(
+    () => (autoKeyJobs ?? []).filter((job) => job.status === 'awaiting_customer_details').length,
+    [autoKeyJobs],
+  )
   const quotesPendingCount = useMemo(() => {
     const q = reports?.quotes_by_status
     if (!q) return 0
@@ -411,11 +459,21 @@ export default function DashboardPage() {
           title: 'Mobile Services',
           icon: KeyRound,
           accent: '#5D4A9B',
-          summary: 'Programming queue, vehicle jobs, and key-cutting work that needs technical follow-through.',
+          summary: 'Vehicle key jobs, mobile visits, and scheduling in one place.',
           metrics: [
             { label: 'Open', value: String(autoOpenJobs.length) },
-            { label: 'Programming', value: String((autoKeyJobs ?? []).filter((job) => job.programming_status !== 'programmed' && job.programming_status !== 'not_required').length) },
+            { label: 'Awaiting customer form', value: String(autoAwaitingCustomerIntake) },
           ],
+          footer: (
+            <Button
+              variant="secondary"
+              className="w-full"
+              type="button"
+              onClick={() => setShowQuickMobileIntake(true)}
+            >
+              Quick add (SMS link)
+            </Button>
+          ),
         }]
       : []),
     ...(hasFeature('customer_accounts')
@@ -795,6 +853,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      {showQuickMobileIntake ? <QuickMobileIntakeModal onClose={() => setShowQuickMobileIntake(false)} /> : null}
     </div>
   )
 }

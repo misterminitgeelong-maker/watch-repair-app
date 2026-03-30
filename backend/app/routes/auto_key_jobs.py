@@ -1,4 +1,7 @@
+import json
+import re
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -14,6 +17,7 @@ from ..models import (
     AutoKeyJob,
     AutoKeyJobCreate,
     AutoKeyJobFieldUpdate,
+    AutoKeyQuickIntakeCreate,
     AutoKeyInvoice,
     AutoKeyInvoiceRead,
     AutoKeyJobRead,
@@ -35,6 +39,26 @@ router = APIRouter(
     tags=["auto-key-jobs"],
     dependencies=[Depends(require_feature("auto_key"))],
 )
+
+
+def _normalize_phone(value: str) -> str:
+    return re.sub(r"[\s\-\.]", "", (value or "").strip())
+
+
+def _serialize_additional_services(items: list[Any] | None) -> str | None:
+    if not items:
+        return None
+    cleaned: list[dict[str, str | None]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        preset = (raw.get("preset") or "").strip() or None
+        custom = (raw.get("custom") or "").strip() or None
+        if preset or custom:
+            cleaned.append({"preset": preset, "custom": custom})
+    if not cleaned:
+        return None
+    return json.dumps(cleaned)
 
 
 def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
@@ -226,6 +250,8 @@ def create_auto_key_job(
     data = payload.model_dump()
     apply_suggested_quote = bool(data.pop("apply_suggested_quote", False))
     send_booking_sms = bool(data.pop("send_booking_sms", False))
+    additional_services = data.pop("additional_services", None) or []
+    data["additional_services_json"] = _serialize_additional_services(additional_services)
     data["key_quantity"] = max(1, int(data.get("key_quantity", 1)))
     data["customer_account_id"] = customer_account_id
     if send_booking_sms:
@@ -298,6 +324,91 @@ def create_auto_key_job(
             confirm_url=confirm_url,
         )
 
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+@router.post("/quick-intake", response_model=AutoKeyJobRead, status_code=201)
+def create_auto_key_job_quick_intake(
+    payload: AutoKeyQuickIntakeCreate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Create a minimal job and SMS the customer a link to complete vehicle and job details."""
+    name = (payload.full_name or "").strip()
+    phone_raw = (payload.phone or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Customer name is required.")
+    if not phone_raw:
+        raise HTTPException(status_code=400, detail="Mobile number is required.")
+    norm = _normalize_phone(phone_raw)
+    if len(norm) < 8:
+        raise HTTPException(status_code=400, detail="Please enter a valid mobile number.")
+
+    ak_count = int(
+        session.exec(
+            select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
+        ).one()
+    )
+    enforce_plan_limit(auth, "auto_key_job", ak_count)
+
+    customer: Customer | None = None
+    for row in session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all():
+        if _normalize_phone(row.phone or "") == norm:
+            customer = row
+            break
+    if customer is None:
+        customer = Customer(tenant_id=auth.tenant_id, full_name=name, phone=phone_raw)
+        session.add(customer)
+        session.flush()
+    elif name and (not customer.full_name or len(name) > len(customer.full_name or "")):
+        customer.full_name = name
+        if phone_raw:
+            customer.phone = phone_raw
+        session.add(customer)
+        session.flush()
+
+    inferred = session.exec(
+        select(CustomerAccountMembership)
+        .where(CustomerAccountMembership.tenant_id == auth.tenant_id)
+        .where(CustomerAccountMembership.customer_id == customer.id)
+        .order_by(CustomerAccountMembership.created_at)
+    ).first()
+    customer_account_id = inferred.customer_account_id if inferred else None
+
+    first_token = name.split()[0] if name.split() else "Customer"
+    intake_token = uuid4().hex
+    job = AutoKeyJob(
+        tenant_id=auth.tenant_id,
+        customer_id=customer.id,
+        customer_account_id=customer_account_id,
+        job_number=_next_auto_key_job_number(session, auth.tenant_id),
+        status_token=uuid4().hex,
+        title=f"Pending — {first_token}",
+        status="awaiting_customer_details",
+        programming_status="not_required",
+        priority="normal",
+        key_quantity=1,
+        deposit_cents=0,
+        cost_cents=0,
+        customer_intake_token=intake_token,
+    )
+    session.add(job)
+    session.flush()
+
+    tenant = session.get(Tenant, auth.tenant_id)
+    shop_name = (tenant.name if tenant else None) or "Mainspring"
+    intake_url = f"{settings.public_base_url.rstrip('/')}/mobile-job-intake/{intake_token}"
+    sms.notify_auto_key_customer_intake(
+        session,
+        tenant_id=auth.tenant_id,
+        to_phone=phone_raw,
+        customer_name=customer.full_name or first_token,
+        shop_name=shop_name,
+        job_number=job.job_number,
+        intake_url=intake_url,
+    )
     session.commit()
     session.refresh(job)
     return job

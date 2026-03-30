@@ -1,5 +1,5 @@
 from datetime import date, datetime, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
 FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Corporate Fleet", "Car Auctions", "Other"]
@@ -30,6 +30,7 @@ JobStatus = Literal[
     "on_site",    # Auto key mobile: tech arrived at location
     "pending_booking",  # Mobile Services: quote + time sent; customer must confirm
     "booked",  # Mobile Services: customer confirmed booking; on calendar
+    "awaiting_customer_details",  # Mobile Services: quick-add; customer fills link
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
@@ -1137,7 +1138,7 @@ class AutoKeyJob(SQLModel, table=True):
     chip_type: Optional[str] = None
     tech_notes: Optional[str] = None
     key_quantity: int = 1
-    programming_status: str = "pending"
+    programming_status: str = "not_required"
     priority: str = "normal"
     status: str = "awaiting_quote"
     # ServiceM8-style scheduling and location
@@ -1146,6 +1147,8 @@ class AutoKeyJob(SQLModel, table=True):
     job_type: Optional[str] = None  # e.g. Key Cutting (in-store), Lockout – Car, etc.
     visit_order: Optional[int] = None  # Route order for same-day jobs (lower = first)
     booking_confirmation_token: Optional[str] = Field(default=None, index=True, unique=True)
+    customer_intake_token: Optional[str] = Field(default=None, index=True, unique=True)
+    additional_services_json: Optional[str] = None  # JSON array of {preset?, custom?}
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
@@ -1172,7 +1175,7 @@ class AutoKeyJobCreate(SQLModel):
     chip_type: Optional[str] = None
     tech_notes: Optional[str] = None
     key_quantity: int = 1
-    programming_status: AutoKeyProgrammingStatus = "pending"
+    programming_status: AutoKeyProgrammingStatus = "not_required"
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
     status: JobStatus = "awaiting_quote"
     salesperson: Optional[str] = None
@@ -1181,6 +1184,12 @@ class AutoKeyJobCreate(SQLModel):
     cost_cents: int = 0
     apply_suggested_quote: bool = False
     send_booking_sms: bool = False
+    additional_services: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class AutoKeyQuickIntakeCreate(SQLModel):
+    full_name: str = Field(max_length=500)
+    phone: str = Field(max_length=80)
 
 
 class AutoKeyJobRead(SQLModel):
@@ -1215,6 +1224,7 @@ class AutoKeyJobRead(SQLModel):
     job_address: Optional[str] = None
     job_type: Optional[str] = None
     visit_order: Optional[int] = None
+    additional_services_json: Optional[str] = None
 
     @field_serializer("scheduled_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
@@ -1252,6 +1262,7 @@ class AutoKeyJobFieldUpdate(SQLModel):
     salesperson: Optional[str] = None
     deposit_cents: Optional[int] = None
     cost_cents: Optional[int] = None
+    additional_services_json: Optional[str] = None
 
 
 class AutoKeyQuote(SQLModel, table=True):

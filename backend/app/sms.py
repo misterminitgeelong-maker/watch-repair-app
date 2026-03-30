@@ -418,6 +418,37 @@ def notify_auto_key_invoice_ready(
     )
 
 
+def notify_auto_key_customer_intake(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    intake_url: str,
+) -> None:
+    """SMS after quick-add: link for customer to complete vehicle / job details."""
+    first = (customer_name or "there").strip().split()[0] if (customer_name or "").strip() else "there"
+    body = (
+        f"Hi {first}, {shop_name} here — job #{job_number}. "
+        f"Please complete your details: {intake_url}"
+    )
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_customer_intake",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_auto_key_booking_request(
     session: Session,
     *,

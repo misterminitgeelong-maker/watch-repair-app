@@ -470,7 +470,7 @@ export const getProspectCollectorStatus = () =>
   api.get<{ total: number; by_category: { category: string; count: number }[] }>('/prospects/collector-status')
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
-export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site' | 'pending_booking' | 'booked'
+export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'en_route' | 'on_site' | 'pending_booking' | 'booked' | 'awaiting_customer_details'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
@@ -1371,6 +1371,7 @@ export interface AutoKeyJob {
   job_type?: string
   /** Route order for same-day jobs (lower = first) */
   visit_order?: number
+  additional_services_json?: string | null
 }
 
 export interface AutoKeyJobCreatePayload {
@@ -1392,7 +1393,7 @@ export interface AutoKeyJobCreatePayload {
   chip_type?: string
   tech_notes?: string
   key_quantity: number
-  programming_status: AutoKeyProgrammingStatus
+  programming_status?: AutoKeyProgrammingStatus
   priority: 'low' | 'normal' | 'high' | 'urgent'
   status: JobStatus
   salesperson?: string
@@ -1401,6 +1402,43 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
   apply_suggested_quote?: boolean
   send_booking_sms?: boolean
+  additional_services?: Array<{ preset?: string; custom?: string }>
+}
+
+export interface PublicAutoKeyIntake {
+  shop_name: string
+  job_number: string
+  customer_first_name_hint?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: number | null
+  registration_plate?: string | null
+  job_address?: string | null
+  job_type?: string | null
+}
+
+export type PublicAutoKeyIntakeSubmit = {
+  full_name?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  vin?: string
+  job_address?: string
+  job_type?: string
+  additional_services?: Array<{ preset?: string; custom?: string }>
+  scheduled_at?: string
+  description?: string
+  key_quantity?: number
+  key_type?: string
+  blade_code?: string
+  chip_type?: string
+  tech_notes?: string
+}
+
+export interface AutoKeyQuickIntakePayload {
+  full_name: string
+  phone: string
 }
 
 export interface AutoKeyQuoteSuggestionResponse {
@@ -1493,6 +1531,15 @@ export const optimizeDrivingRoute = (stops: DrivingStop[]) =>
   })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
+export const createAutoKeyQuickIntake = (data: AutoKeyQuickIntakePayload) =>
+  api.post<AutoKeyJob>('/auto-key-jobs/quick-intake', data)
+
+export const getPublicAutoKeyIntake = (token: string) =>
+  axios.get<PublicAutoKeyIntake>(`/v1/public/auto-key-intake/${token}`)
+
+export const submitPublicAutoKeyIntake = (token: string, data: PublicAutoKeyIntakeSubmit) =>
+  axios.post<{ ok: boolean; message: string }>(`/v1/public/auto-key-intake/${token}/submit`, data)
+
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id' | 'assigned_user_id' | 'scheduled_at' | 'job_address' | 'job_type' | 'visit_order' | 'key_type' | 'blade_code' | 'chip_type' | 'tech_notes'> {
   customer_account_id?: string | null
   assigned_user_id?: string | null
@@ -1504,6 +1551,7 @@ export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePa
   blade_code?: string | null
   chip_type?: string | null
   tech_notes?: string | null
+  additional_services_json?: string | null
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

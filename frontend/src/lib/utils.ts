@@ -55,6 +55,7 @@ export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'completed', 'awaiting_collec
 
 export const STATUS_LABELS: Record<string, string> = {
   awaiting_quote:      'Awaiting Quote',
+  awaiting_customer_details: 'Awaiting customer details',
   awaiting_go_ahead:   'Awaiting Go Ahead',
   go_ahead:            'Go Ahead Given',
   no_go:               'No Go',
@@ -92,6 +93,7 @@ export const STATUS_COLORS: Record<string, string> = {
   on_site:             'bg-[#E4F0E4] text-[#2F6A3D]',
   pending_booking:     'bg-[#FFF4E0] text-[#B86B00]',
   booked:              'bg-[#E0E8F5] text-[#2E4A7A]',
+  awaiting_customer_details: 'bg-[#EDE8F5] text-[#5A4580]',
   awaiting_parts:      'bg-[#FDE8E8] text-[#A53A3A]',
   parts_to_order:      'bg-[#F0EAF5] text-[#6B4A8B]',
   sent_to_labanda:     'bg-[#F0EBE0] text-[#6B5238]',

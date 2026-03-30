@@ -23,10 +23,8 @@ import {
   updateAutoKeyJobStatus,
   getAutoKeyReports,
   getAutoKeyQuoteSuggestions,
-  vehicleLookup,
   searchVehicleKeySpecs,
   type VehicleKeySpecMatch,
-  type AutoKeyProgrammingStatus,
   type AutoKeyJob,
   type Customer,
   type CustomerAccount,
@@ -38,7 +36,7 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spin
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
-const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER, 'en_route', 'on_site', 'pending_booking', 'booked']
+const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER, 'en_route', 'on_site', 'pending_booking', 'booked', 'awaiting_customer_details']
 
 const AUTO_KEY_CLOSED_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
 const AUTO_KEY_ACTIVE_STATUSES = [
@@ -46,16 +44,13 @@ const AUTO_KEY_ACTIVE_STATUSES = [
   'awaiting_go_ahead',
   'pending_booking',
   'booked',
+  'awaiting_customer_details',
   'go_ahead',
   'working_on',
   'en_route',
   'on_site',
   'awaiting_parts',
 ] as const
-
-const PROGRAMMING_STATUSES: AutoKeyProgrammingStatus[] = ['pending', 'in_progress', 'programmed', 'failed', 'not_required']
-
-const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const
 
 function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
@@ -183,7 +178,6 @@ function PlannerJobDetailModal({
               {row('Vehicle', [j.vehicle_make, j.vehicle_model, j.vehicle_year, j.registration_plate].filter(Boolean).join(' · ') || '—')}
               {row('Address', j.job_address ?? '—')}
               {row('Scheduled', j.scheduled_at ? new Date(j.scheduled_at).toLocaleString() : '—')}
-              {row('Programming', j.programming_status?.replace(/_/g, ' ') ?? '—')}
               {row('Priority', j.priority)}
               {row('Deposit', formatCents(j.deposit_cents))}
               {row('Cost / quote', formatCents(j.cost_cents))}
@@ -191,6 +185,24 @@ function PlannerJobDetailModal({
               {row('Blade / chip', [j.blade_code, j.chip_type].filter(Boolean).join(' · ') || '—')}
             </dl>
           </div>
+          {j.additional_services_json && (() => {
+              try {
+                const arr = JSON.parse(j.additional_services_json) as { preset?: string | null; custom?: string | null }[]
+                if (!Array.isArray(arr) || arr.length === 0) return null
+                const lines = arr.map(x => x.custom || x.preset).filter(Boolean)
+                if (!lines.length) return null
+                return (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Additional services</p>
+                    <ul className="text-sm list-disc pl-5 space-y-0.5" style={{ color: 'var(--cafe-text)' }}>
+                      {lines.map((t, i) => <li key={i}>{t}</li>)}
+                    </ul>
+                  </div>
+                )
+              } catch {
+                return null
+              }
+            })()}
           {j.description && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Description</p>
@@ -284,40 +296,33 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
 function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const { hasFeature } = useAuth()
-  const canLookupRego = hasFeature('rego_lookup')
   const [error, setError] = useState('')
-  const [regoLookupError, setRegoLookupError] = useState('')
-  const [regoLookupLoading, setRegoLookupLoading] = useState(false)
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
   const [sendBookingSms, setSendBookingSms] = useState(false)
+  const [extraServices, setExtraServices] = useState<Array<{ preset: string; custom: string }>>([])
   const [form, setForm] = useState({
     customer_id: '',
     customer_account_id: '',
     assigned_user_id: '',
-    title: '',
     description: '',
     job_type: '' as string,
     job_address: '',
-    scheduled_at: '',  // date only for display
-    scheduled_datetime: '',  // full datetime for booking
+    scheduled_at: '',
     vehicle_make: '',
     vehicle_model: '',
     vehicle_year: '',
     registration_plate: '',
-    rego_state: 'NSW' as string,
     vin: '',
     key_type: '',
     blade_code: '',
     chip_type: '',
     tech_notes: '',
     key_quantity: '1',
-    programming_status: 'pending' as AutoKeyProgrammingStatus,
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     status: 'awaiting_quote' as JobStatus,
     salesperson: '',
-    collection_date: '',
     deposit: '',
     cost: '',
   })
@@ -334,6 +339,23 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
   })
+
+  const customerFirstName = useMemo(() => {
+    const raw =
+      customerMode === 'new'
+        ? newCustomer.full_name
+        : (customers.find(c => c.id === form.customer_id)?.full_name ?? '')
+    return (raw || '').trim().split(/\s+/)[0] ?? ''
+  }, [customerMode, newCustomer.full_name, form.customer_id, customers])
+
+  const autoTitle = useMemo(() => {
+    const make = form.vehicle_make.trim()
+    const model = form.vehicle_model.trim()
+    const yearStr = form.vehicle_year.trim()
+    const car = [make, yearStr, model].filter(Boolean).join(' ')
+    if (!customerFirstName) return car || 'New job'
+    return car ? `${customerFirstName} - ${car}` : `${customerFirstName} - Job`
+  }, [customerFirstName, form.vehicle_make, form.vehicle_year, form.vehicle_model])
 
   const suggestionQty = Math.max(1, Number.parseInt(form.key_quantity, 10) || 1)
   const { data: quoteSuggestion, isFetching: quoteSuggestionLoading } = useQuery({
@@ -385,7 +407,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 
   const createMut = useMutation({
     mutationFn: async () => {
-      if (!form.title.trim()) throw new Error('Job title is required.')
+      if (!autoTitle.trim()) throw new Error('Job title could not be built — select or add a customer.')
       if (MOBILE_JOB_TYPES.has(form.job_type) && !form.job_address.trim()) {
         throw new Error('Address required for mobile jobs')
       }
@@ -406,23 +428,25 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         if (!(customerPhone && customerPhone.trim())) {
           throw new Error('Customer mobile number is required to send a booking confirmation SMS.')
         }
-        if (!form.scheduled_datetime.trim()) {
-          throw new Error('Book date & time is required when texting the customer to confirm booking.')
+        if (!form.scheduled_at.trim()) {
+          throw new Error('Scheduled date & time is required when texting the customer to confirm booking.')
         }
       }
+      const additional_services = extraServices
+        .map(r => ({
+          preset: r.preset.trim() || undefined,
+          custom: r.custom.trim() || undefined,
+        }))
+        .filter(r => r.preset || r.custom)
       return createAutoKeyJob({
         customer_id: customerId,
         customer_account_id: form.customer_account_id || undefined,
         assigned_user_id: form.assigned_user_id || undefined,
-        title: form.title.trim(),
+        title: autoTitle.trim(),
         description: form.description.trim() || undefined,
         job_type: form.job_type || undefined,
         job_address: form.job_address.trim() || undefined,
-        scheduled_at: form.scheduled_datetime
-          ? new Date(form.scheduled_datetime).toISOString()
-          : form.scheduled_at
-            ? new Date(`${form.scheduled_at}T09:00:00`).toISOString()
-            : undefined,
+        scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : undefined,
         vehicle_make: form.vehicle_make.trim() || undefined,
         vehicle_model: form.vehicle_model.trim() || undefined,
         vehicle_year: form.vehicle_year ? Number(form.vehicle_year) : undefined,
@@ -433,15 +457,15 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         chip_type: form.chip_type.trim() || undefined,
         tech_notes: form.tech_notes.trim() || undefined,
         key_quantity: Math.max(1, Number(form.key_quantity || '1')),
-        programming_status: form.programming_status,
+        programming_status: 'not_required',
         priority: form.priority,
         status: form.status,
         salesperson: form.salesperson.trim() || undefined,
-        collection_date: form.collection_date.trim() || undefined,
         deposit_cents: form.deposit ? Math.round(parseFloat(form.deposit) * 100) : 0,
         cost_cents: form.cost ? Math.round(parseFloat(form.cost) * 100) : 0,
         apply_suggested_quote: applySuggestedQuote,
         send_booking_sms: sendBookingSms,
+        additional_services: additional_services.length ? additional_services : undefined,
       })
     },
     onSuccess: () => {
@@ -495,23 +519,52 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <option key={u.id} value={u.id}>{u.full_name}</option>
           ))}
         </Select>
-        <Input label="Job title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Duplicate transponder key" />
+        <Input label="Job title (from customer + vehicle)" value={autoTitle} readOnly className="opacity-90" />
         <Textarea label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-        <Select label="Job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
+        <Select label="Primary job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
           <option value="">Not set</option>
           {AUTO_KEY_JOB_TYPES.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </Select>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Schedule date" type="date" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
-          <Input
-            label={sendBookingSms ? 'Book date & time *' : 'Book date & time (optional)'}
-            type="datetime-local"
-            value={form.scheduled_datetime}
-            onChange={e => setForm(f => ({ ...f, scheduled_datetime: e.target.value, scheduled_at: e.target.value ? e.target.value.slice(0, 10) : f.scheduled_at }))}
-          />
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Additional services (optional)</p>
+          {extraServices.map((row, idx) => (
+            <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+              <Select
+                label={idx === 0 ? 'Preset type' : ''}
+                value={row.preset}
+                onChange={e => {
+                  const v = e.target.value
+                  setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, preset: v } : r)))
+                }}
+              >
+                <option value="">— Choose type —</option>
+                {AUTO_KEY_JOB_TYPES.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+              <Input
+                label={idx === 0 ? 'Or custom note' : ''}
+                value={row.custom}
+                onChange={e => setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, custom: e.target.value } : r)))}
+                placeholder="Custom work…"
+              />
+              <Button type="button" variant="ghost" className="shrink-0" aria-label="Remove line" onClick={() => setExtraServices(xs => xs.filter((_, i) => i !== idx))}>
+                <Minus size={18} />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" variant="secondary" onClick={() => setExtraServices(xs => [...xs, { preset: '', custom: '' }])}>
+            Add another service line
+          </Button>
         </div>
+        <Input
+          label={sendBookingSms ? 'Scheduled (date & time) *' : 'Scheduled (date & time, optional)'}
+          type="datetime-local"
+          value={form.scheduled_at}
+          onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
+        />
         {sendBookingSms && (
           <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
             The customer receives a text with job summary, quote total, and time. Status will be set to “Awaiting booking confirm” until they tap confirm.
@@ -529,67 +582,12 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} placeholder="Filters database matches" />
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--cafe-text)' }}>Registration</label>
-            <div className="flex gap-2">
-              <Input
-                value={form.registration_plate}
-                onChange={e => { setForm(f => ({ ...f, registration_plate: e.target.value })); setRegoLookupError('') }}
-                placeholder="ABC123"
-                className="flex-1"
-              />
-              {canLookupRego ? (
-                <>
-                  <Select
-                    value={form.rego_state}
-                    onChange={e => setForm(f => ({ ...f, rego_state: e.target.value }))}
-                    className="w-20 shrink-0"
-                  >
-                    {AU_STATES.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={!form.registration_plate.trim() || regoLookupLoading}
-                    onClick={async () => {
-                      setRegoLookupError('')
-                      setRegoLookupLoading(true)
-                      try {
-                        const { data } = await vehicleLookup(form.registration_plate.trim(), form.rego_state)
-                        if (data.found) {
-                          setForm(f => ({
-                            ...f,
-                            vehicle_make: data.make ?? f.vehicle_make,
-                            vehicle_model: data.model ?? f.vehicle_model,
-                            vehicle_year: data.year ? String(data.year) : f.vehicle_year,
-                            vin: data.vin ?? f.vin,
-                          }))
-                        } else {
-                          setRegoLookupError('Registration not found')
-                        }
-                      } catch (err) {
-                        const status = (err as { response?: { status?: number } })?.response?.status
-                        if (status === 403) {
-                          setRegoLookupError('Upgrade to Pro for rego lookup')
-                        } else {
-                          setRegoLookupError(getApiErrorMessage(err, 'Lookup failed'))
-                        }
-                      } finally {
-                        setRegoLookupLoading(false)
-                      }
-                    }}
-                  >
-                    {regoLookupLoading ? 'Loading…' : 'Look up'}
-                  </Button>
-                </>
-              ) : (
-                <span className="flex items-center text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Upgrade for rego lookup</span>
-              )}
-            </div>
-            {regoLookupError && <p className="text-sm mt-1" style={{ color: '#C96A5A' }}>{regoLookupError}</p>}
-          </div>
+          <Input
+            label="Registration (reference only)"
+            value={form.registration_plate}
+            onChange={e => setForm(f => ({ ...f, registration_plate: e.target.value }))}
+            placeholder="e.g. ABC123"
+          />
         </div>
         {specSearch && specSearch.matches.length > 0 && (
           <div
@@ -643,12 +641,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           rows={3}
           placeholder="Immobiliser notes, EEPROM warnings, etc."
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
-          <Select label="Programming" value={form.programming_status} onChange={e => setForm(f => ({ ...f, programming_status: e.target.value as AutoKeyProgrammingStatus }))}>
-            {PROGRAMMING_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-          </Select>
-        </div>
+        <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
 
         <div
           className="rounded-lg border p-3 space-y-2"
@@ -684,7 +677,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <span>
               <span className="font-medium">Text customer to confirm booking</span>
               <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                Sends SMS with link to confirm. Requires customer mobile and book date &amp; time above.
+                Sends SMS with link to confirm. Requires customer mobile and scheduled time above.
               </span>
             </span>
           </label>
@@ -728,7 +721,6 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
           <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
         </div>
-        <Input label="Collection Date" type="date" value={form.collection_date} onChange={e => setForm(f => ({ ...f, collection_date: e.target.value }))} />
         <Input label="Salesperson" value={form.salesperson} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
 
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
@@ -1232,7 +1224,7 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             {job.job_address || 'No address set'}
           </p>
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-            Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity} · Programming {job.programming_status.replace(/_/g, ' ')}
+            Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity}
           </p>
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
             {formatDate(job.created_at)}{job.salesperson ? ` · ${job.salesperson}` : ''}

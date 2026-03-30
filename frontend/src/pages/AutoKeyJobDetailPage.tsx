@@ -31,6 +31,7 @@ import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
+  'awaiting_customer_details',
   'awaiting_go_ahead',
   'pending_booking',
   'booked',
@@ -370,9 +371,26 @@ export default function AutoKeyJobDetailPage() {
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Priority</span><span className='capitalize'>{job.priority}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Created</span><span>{formatDate(job.created_at)}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{job.vehicle_make || 'Unknown'} {job.vehicle_model || ''}</span></div>
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Programming</span><span>{job.programming_status.replace(/_/g, ' ')}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
             {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
+            {job.additional_services_json && (() => {
+              try {
+                const arr = JSON.parse(job.additional_services_json) as { preset?: string | null; custom?: string | null }[]
+                if (!Array.isArray(arr) || arr.length === 0) return null
+                const lines = arr.map(x => x.custom || x.preset).filter(Boolean)
+                if (!lines.length) return null
+                return (
+                  <div className='pt-1'>
+                    <div className='text-xs uppercase tracking-widest mb-1' style={{ color: 'var(--cafe-text-muted)' }}>Additional services</div>
+                    <ul className='text-sm list-disc pl-5 space-y-0.5' style={{ color: 'var(--cafe-text)' }}>
+                      {lines.map((t, i) => <li key={i}>{t}</li>)}
+                    </ul>
+                  </div>
+                )
+              } catch {
+                return null
+              }
+            })()}
             {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span></div>}
             {job.job_address && (
               <div>
