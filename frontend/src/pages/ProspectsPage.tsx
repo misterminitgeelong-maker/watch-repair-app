@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui'
+import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 
 export default function ProspectsPage() {
   const { data: catData } = useQuery<{ categories: { key: string; label: string }[] }>({
@@ -64,6 +65,7 @@ export default function ProspectsPage() {
 
   return (
     <div className="p-6">
+      <MobileServicesSubNav className="mb-4" />
       <PageHeader title="Prospects" />
       <Card className="p-5 mb-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>

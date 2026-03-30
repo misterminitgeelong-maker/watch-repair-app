@@ -31,7 +31,7 @@ import {
   listShoeRepairJobs,
   listUsers,
 } from '@/lib/api'
-import { Badge, Button, Card, Input, Modal, PageHeader, Spinner } from '@/components/ui'
+import { Badge, Button, Card, Input, Modal, PageHeader } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
@@ -218,8 +218,10 @@ export default function DashboardPage() {
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
-  const { data: invoices, isLoading: invoicesLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then((r) => r.data) })
-  const { data: reports, isLoading: reportsLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
+  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then((r) => r.data) })
+  const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
+  const invoices = invoicesQ.data ?? []
+  const reports = reportsQ.data
   const { data: recentWatchJobs } = useQuery({
     queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
     queryFn: () =>
@@ -280,7 +282,7 @@ export default function DashboardPage() {
     if (!q) return 0
     return (q.draft ?? 0) + (q.sent ?? 0)
   }, [reports?.quotes_by_status])
-  const invoicesOpen = useMemo(() => (invoices ?? []).filter((invoice) => invoice.status !== 'paid'), [invoices])
+  const invoicesOpen = useMemo(() => invoices.filter((invoice) => invoice.status !== 'paid'), [invoices])
   const invoicesOpenValue = useMemo(() => invoicesOpen.reduce((sum, invoice) => sum + invoice.total_cents, 0), [invoicesOpen])
   const totalServiceJobs = watchOpenJobsCount + shoeOpenJobs.length + autoOpenJobs.length
   const urgentWatchSample = useMemo(
@@ -342,12 +344,6 @@ export default function DashboardPage() {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 8)
   }, [autoKeyJobs, recentWatchJobs, shoeJobs])
-
-  // Only block on core aggregates; shoe / mobile lists can resolve in the background so one slow
-  // module endpoint does not blank the whole dashboard (spinner forever if a request hangs).
-  if (invoicesLoading || reportsLoading) {
-    return <Spinner />
-  }
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
 
@@ -570,6 +566,33 @@ export default function DashboardPage() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         <PageHeader title="Operations Dashboard" />
+
+        {(invoicesQ.isError || reportsQ.isError) && (
+          <Card className="mb-4 p-4" style={{ borderColor: '#E8B4AA', backgroundColor: '#FDF0EE' }}>
+            <p className="text-sm font-medium" style={{ color: '#8B3A3A' }}>
+              Part of the dashboard could not load. Other sections below may be incomplete.
+            </p>
+            <p className="text-xs mt-2" style={{ color: '#A2502E' }}>
+              {[
+                invoicesQ.isError && getApiErrorMessage(invoicesQ.error, 'Invoices request failed.'),
+                reportsQ.isError && getApiErrorMessage(reportsQ.error, 'Reports summary failed.'),
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            </p>
+          </Card>
+        )}
+
+        {(invoicesQ.isPending || reportsQ.isPending) && (
+          <div className="mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            <div
+              className="w-5 h-5 border-2 rounded-full animate-spin shrink-0"
+              style={{ borderColor: 'var(--cafe-border)', borderTopColor: 'var(--cafe-amber)' }}
+              aria-hidden
+            />
+            <span>Loading latest totals…</span>
+          </div>
+        )}
 
         <Card className="dashboard-panel mb-6 overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">

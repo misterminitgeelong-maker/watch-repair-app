@@ -22,6 +22,7 @@ import {
   setDemoTourStep,
   setPageTutorialSeen,
 } from '@/lib/onboarding'
+import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
 
 type PageTutorial = {
   key: string
@@ -149,7 +150,7 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
       nextStep: 'Open a key job and update programming status to see progress controls.',
     }
   }
-  if (/^\/auto-key\/[^/]+$/.test(pathname)) {
+  if (isAutoKeyJobDetailPath(pathname)) {
     return {
       key: 'job-auto-key-detail',
       title: 'Mobile Services Job Detail',
@@ -160,6 +161,24 @@ function getTutorialForPath(pathname: string): PageTutorial | null {
         'Prepare quote/invoice actions tied to this key job',
       ],
       nextStep: 'Update programming state, then test a quote-to-payment path.',
+    }
+  }
+  if (pathname === '/auto-key/prospects') {
+    return {
+      key: 'mobile-prospects',
+      title: 'Mobile Services Prospects',
+      intro: 'Search and shortlist businesses by category and geography for B2B outreach.',
+      features: ['Filter by trade category and state', 'Drill into suburbs before running a search', 'Optional live Places-backed search when configured'],
+      nextStep: 'Pick a category and state, then run a prospect search.',
+    }
+  }
+  if (pathname === '/auto-key/toolkit') {
+    return {
+      key: 'mobile-toolkit',
+      title: 'Mobile Services Toolkit',
+      intro: 'Track what you carry on the van and sanity-check scenarios before a job.',
+      features: ['Tick tools by group', 'Save your default kit per technician login', 'Run scenario checks for gaps and substitutes'],
+      nextStep: 'Save your tools, then try a scenario recommendation.',
     }
   }
   if (pathname === '/quotes') {
@@ -471,7 +490,7 @@ export default function AppShell() {
         title: 'The Mobile Services detail page shows why this is not just another repair template',
         label: 'Mobile Services detail',
         routePath: autoKeyDetailPath,
-        matcher: (pathname: string) => /^\/auto-key\/[^/]+$/.test(pathname),
+        matcher: (pathname: string) => isAutoKeyJobDetailPath(pathname),
         intro: 'VINs, plates, key type, and programming steps matter here, so the app gives that work its own structure.',
         task: 'Take note of the vehicle-specific fields, then move into the commercial side of the process with quotes.',
         highlights: [

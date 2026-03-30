@@ -32,6 +32,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import MobileServicesMap from '@/components/MobileServicesMap'
+import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
@@ -1553,9 +1554,10 @@ export default function AutoKeyJobsPage() {
           )}
         />
       </div>
-      <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
         Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.
       </p>
+      <MobileServicesSubNav className="mb-5" />
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
           <button

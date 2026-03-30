@@ -23,7 +23,8 @@ interface AuthCtx {
 }
 
 const AuthContext = createContext<AuthCtx | null>(null)
-const SESSION_INIT_TIMEOUT_MS = 5_000
+/** Must exceed `/auth/session` axios timeout so we do not clear the token while the request is still in flight. */
+const SESSION_INIT_TIMEOUT_MS = 30_000
 
 /** Parses role from JWT for optional optimistic UI before /auth/session loads. Session data is the source of truth for role and permissions. */
 function parseRoleFromToken(token: string | null): string | null {

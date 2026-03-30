@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
@@ -55,6 +55,10 @@ function FeatureGate({ feature, children }: { feature: FeatureKey; children: Rea
   return <Navigate to="/dashboard" replace />
 }
 
+function AutoKeySection() {
+  return <Outlet />
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
@@ -83,7 +87,6 @@ export default function App() {
               <Route path="jobs/:id" element={<FeatureGate feature="watch"><JobDetailPage /></FeatureGate>} />
               <Route path="jobs/:id/intake-print" element={<FeatureGate feature="watch"><PrintWatchIntakeTicketsPage /></FeatureGate>} />
               <Route path="catalogue" element={<FeatureGate feature="watch"><CataloguePage /></FeatureGate>} />
-              <Route path="toolkit" element={<FeatureGate feature="auto_key"><ToolkitPage /></FeatureGate>} />
               <Route path="quotes" element={<QuotesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
@@ -93,11 +96,23 @@ export default function App() {
               <Route path="stocktakes" element={<StocktakesPage />} />
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
               <Route path="stocktakes/:id/summary" element={<StocktakeSummaryPage />} />
-              <Route path="prospects" element={<ProspectsPage />} />
               <Route path="database" element={<DatabasePage />} />
               <Route path="accounts" element={<AccountsPage />} />
-              <Route path="auto-key" element={<FeatureGate feature="auto_key"><AutoKeyJobsPage /></FeatureGate>} />
-              <Route path="auto-key/:id" element={<FeatureGate feature="auto_key"><AutoKeyJobDetailPage /></FeatureGate>} />
+              <Route
+                path="auto-key"
+                element={
+                  <FeatureGate feature="auto_key">
+                    <AutoKeySection />
+                  </FeatureGate>
+                }
+              >
+                <Route index element={<AutoKeyJobsPage />} />
+                <Route path="prospects" element={<ProspectsPage />} />
+                <Route path="toolkit" element={<ToolkitPage />} />
+                <Route path=":id" element={<AutoKeyJobDetailPage />} />
+              </Route>
+              <Route path="prospects" element={<Navigate to="/auto-key/prospects" replace />} />
+              <Route path="toolkit" element={<Navigate to="/auto-key/toolkit" replace />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
