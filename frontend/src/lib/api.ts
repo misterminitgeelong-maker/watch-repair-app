@@ -987,9 +987,19 @@ export interface AutoKeyReports {
     mobile_pct: number
     shop_count: number
     shop_pct: number
+    mobile_revenue_cents: number
+    shop_revenue_cents: number
+    mobile_revenue_pct: number
+    shop_revenue_pct: number
   }
   jobs_by_type: { job_type: string; jobs: number; revenue_cents: number; avg_value_cents: number }[]
-  jobs_by_tech: { tech_id: string; tech_name: string; job_count: number; revenue_cents: number }[]
+  jobs_by_tech: {
+    tech_id: string
+    tech_name: string
+    job_count: number
+    revenue_cents: number
+    revenue_share_pct: number
+  }[]
   jobs_by_status: { status: string; label: string; count: number }[]
   week_on_week: { week_label: string; jobs: number; revenue_cents: number }[]
 }

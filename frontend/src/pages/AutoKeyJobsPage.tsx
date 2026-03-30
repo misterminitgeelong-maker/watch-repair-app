@@ -2099,8 +2099,15 @@ export default function AutoKeyJobsPage() {
                 </Card>
                 <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Mobile vs Shop</p>
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
-                    Mobile: {autoKeyReports.summary.mobile_count} ({autoKeyReports.summary.mobile_pct}%) · Shop: {autoKeyReports.summary.shop_count} ({autoKeyReports.summary.shop_pct}%)
+                  <p className="text-sm font-medium leading-snug" style={{ color: 'var(--cafe-text)' }}>
+                    <span className="block">
+                      Jobs — Mobile: {autoKeyReports.summary.mobile_count} ({autoKeyReports.summary.mobile_pct}%) · Shop:{' '}
+                      {autoKeyReports.summary.shop_count} ({autoKeyReports.summary.shop_pct}%)
+                    </span>
+                    <span className="block mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                      Revenue — Mobile: {formatCents(autoKeyReports.summary.mobile_revenue_cents)} ({autoKeyReports.summary.mobile_revenue_pct}%) · Shop:{' '}
+                      {formatCents(autoKeyReports.summary.shop_revenue_cents)} ({autoKeyReports.summary.shop_revenue_pct}%)
+                    </span>
                   </p>
                 </Card>
               </div>
@@ -2139,18 +2146,20 @@ export default function AutoKeyJobsPage() {
                         <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
                           <th className="py-2 pr-4 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Tech</th>
                           <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Jobs</th>
-                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
+                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Share</th>
                         </tr>
                       </thead>
                       <tbody>
                         {autoKeyReports.jobs_by_tech.length === 0 ? (
-                          <tr><td colSpan={3} className="py-4 text-center text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No data</td></tr>
+                          <tr><td colSpan={4} className="py-4 text-center text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No data</td></tr>
                         ) : (
                           autoKeyReports.jobs_by_tech.map(t => (
                             <tr key={t.tech_id} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
                               <td className="py-2 pr-4" style={{ color: 'var(--cafe-text)' }}>{t.tech_name}</td>
                               <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{t.job_count}</td>
-                              <td className="py-2 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(t.revenue_cents)}</td>
+                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(t.revenue_cents)}</td>
+                              <td className="py-2 text-right" style={{ color: 'var(--cafe-text-mid)' }}>{t.revenue_share_pct ?? 0}%</td>
                             </tr>
                           ))
                         )}

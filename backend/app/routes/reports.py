@@ -370,7 +370,7 @@ def get_auto_key_summary(
     }
 
 
-# Mobile job types (require job address)
+# Mobile job types (on-site visits) — align with frontend MOBILE_JOB_TYPES / map filter
 _MOBILE_JOB_TYPES = {
     "Lockout – Car",
     "Lockout – Boot/Trunk",
@@ -383,6 +383,15 @@ _MOBILE_JOB_TYPES = {
     "Door Lock Change",
     "Diagnostic",
 }
+
+
+def _is_mobile_auto_key_job(j: AutoKeyJob) -> bool:
+    """Mobile visit if job_type is a mobile category, or untyped job with a service address."""
+    t = (j.job_type or "").strip()
+    if not t:
+        return bool((j.job_address or "").strip())
+    return t in _MOBILE_JOB_TYPES
+
 
 # Full job type list for reports
 _AUTO_KEY_REPORT_JOB_TYPES = [
@@ -477,10 +486,25 @@ def get_auto_key_reports(
     completed_count = len(completed_jobs)
     avg_job_value_cents = int(total_revenue_cents / completed_count) if completed_count > 0 else 0
 
-    mobile_count = sum(1 for j in jobs_in_range if j.job_type in _MOBILE_JOB_TYPES)
+    mobile_count = sum(1 for j in jobs_in_range if _is_mobile_auto_key_job(j))
     shop_count = total_jobs - mobile_count
     mobile_pct = round(100 * mobile_count / total_jobs, 1) if total_jobs > 0 else 0
     shop_pct = round(100 * shop_count / total_jobs, 1) if total_jobs > 0 else 0
+
+    mobile_revenue_cents = 0
+    shop_revenue_cents = 0
+    for j in jobs_in_range:
+        rev = revenue_by_job.get(j.id, 0)
+        if _is_mobile_auto_key_job(j):
+            mobile_revenue_cents += rev
+        else:
+            shop_revenue_cents += rev
+    mobile_revenue_pct = (
+        round(100 * mobile_revenue_cents / total_revenue_cents, 1) if total_revenue_cents > 0 else 0.0
+    )
+    shop_revenue_pct = (
+        round(100 * shop_revenue_cents / total_revenue_cents, 1) if total_revenue_cents > 0 else 0.0
+    )
 
     job_type_rows: dict[str, dict] = {t: {"count": 0, "revenue_cents": 0} for t in _AUTO_KEY_REPORT_JOB_TYPES}
     for j in jobs_in_range:
@@ -515,6 +539,10 @@ def get_auto_key_reports(
         {"tech_id": k, "tech_name": v["tech_name"], "job_count": v["job_count"], "revenue_cents": v["revenue_cents"]}
         for k, v in sorted(jobs_by_tech_map.items(), key=lambda x: -x[1]["job_count"])
     ]
+    for row in jobs_by_tech:
+        row["revenue_share_pct"] = (
+            round(100 * row["revenue_cents"] / total_revenue_cents, 1) if total_revenue_cents > 0 else 0.0
+        )
 
     # Jobs by status - current pipeline (NOT date filtered)
     status_rows = session.exec(
@@ -591,6 +619,10 @@ def get_auto_key_reports(
             "mobile_pct": mobile_pct,
             "shop_count": shop_count,
             "shop_pct": shop_pct,
+            "mobile_revenue_cents": mobile_revenue_cents,
+            "shop_revenue_cents": shop_revenue_cents,
+            "mobile_revenue_pct": mobile_revenue_pct,
+            "shop_revenue_pct": shop_revenue_pct,
         },
         "jobs_by_type": jobs_by_type,
         "jobs_by_tech": jobs_by_tech,

@@ -95,9 +95,9 @@
 
 ## Phase 8: Reporting
 
-- [ ] Jobs per tech
-- [ ] Revenue by tech
-- [ ] Mobile vs shop split
+- [x] Jobs per tech (Mobile Services → Reports, **Jobs by Tech** table)
+- [x] Revenue per tech + **Share** % of mobile-services revenue in range
+- [x] Mobile vs shop split — job counts and **invoice revenue** split (summary tiles; classification matches map: mobile types or untyped job with address)
 
 ---
 
