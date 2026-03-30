@@ -15,6 +15,7 @@ from ..dependencies import (
     get_auth_context,
     normalize_plan_code,
     require_owner,
+    stripe_billing_configured,
 )
 from ..limiter import limiter
 from ..models import (
@@ -202,6 +203,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         enabled_features=enabled,
         active_site_tenant_id=tenant.id,
         available_sites=available_sites,
+        signup_payment_pending=bool(getattr(tenant, "signup_payment_pending", False)),
     )
 
 
@@ -710,7 +712,12 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
 
     plan_code = _normalize_plan_code(payload.plan_code, default_if_empty="basic_watch")
 
-    tenant = Tenant(name=tenant_name, slug=tenant_slug, plan_code=plan_code)
+    tenant = Tenant(
+        name=tenant_name,
+        slug=tenant_slug,
+        plan_code=plan_code,
+        signup_payment_pending=stripe_billing_configured(),
+    )
     session.add(tenant)
     session.flush()
 

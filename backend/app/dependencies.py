@@ -2,13 +2,36 @@ from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
+from .config import settings
 from .database import get_session
 from .models import Tenant, User
 from .security import decode_access_token
+
+
+def stripe_billing_configured() -> bool:
+    return bool(settings.stripe_secret_key)
+
+
+def _path_allowed_during_signup_payment_pending(url_path: str) -> bool:
+    """Routes that must keep working before the first subscription webhook."""
+    p = (url_path or "").rstrip("/") or "/"
+    if p == "/v1/auth/session":
+        return True
+    billing_allow = (
+        "/v1/billing/checkout",
+        "/v1/billing/limits",
+        "/v1/billing/portal-url",
+    )
+    for pref in billing_allow:
+        if p == pref or p.startswith(pref + "/"):
+            return True
+    if p.startswith("/v1/billing/connect/"):
+        return True
+    return False
 
 # ── Plan codes and aliases ────────────────────────────────────────────────────
 VALID_PLAN_CODES: set[str] = {
@@ -113,6 +136,7 @@ class AuthContext:
 
 
 def get_auth_context(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     session: Session = Depends(get_session),
 ) -> AuthContext:
@@ -136,7 +160,20 @@ def get_auth_context(
 
         plan_code = normalize_plan_code(tenant.plan_code, default_if_empty="pro")
 
+        if (
+            user.role != "platform_admin"
+            and getattr(tenant, "signup_payment_pending", False)
+            and stripe_billing_configured()
+            and not _path_allowed_during_signup_payment_pending(request.url.path)
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="subscription_required",
+            )
+
         return AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role, plan_code=plan_code)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 

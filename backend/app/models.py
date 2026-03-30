@@ -66,6 +66,8 @@ class Tenant(SQLModel, table=True):
     stripe_connect_charges_enabled: bool = False
     stripe_connect_payouts_enabled: bool = False
     stripe_connect_details_submitted: bool = False
+    # True when Stripe subscription is required after signup; cleared after first webhook confirms subscription.
+    signup_payment_pending: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # JSON array of tool keys from seed/mobile_services_tools.json (tenant van / kit inventory)
     toolkit_selected_keys: str = Field(default="[]")
@@ -516,6 +518,7 @@ class AuthSessionResponse(SQLModel):
     enabled_features: list[str]
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
+    signup_payment_pending: bool = False
 
 
 class MultiSiteLoginResponse(SQLModel):

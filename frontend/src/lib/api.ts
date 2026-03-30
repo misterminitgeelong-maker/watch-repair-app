@@ -255,6 +255,8 @@ export interface AuthSession {
   enabled_features: FeatureKey[]
   active_site_tenant_id: string
   available_sites: SiteOption[]
+  /** True until Stripe confirms a subscription (signup with live/test Stripe configured). */
+  signup_payment_pending?: boolean
 }
 
 export const getAuthSession = () => api.get<AuthSession>('/auth/session', { timeout: 25_000 })

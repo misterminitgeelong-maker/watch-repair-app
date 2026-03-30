@@ -429,6 +429,7 @@ async def stripe_webhook(
                         )
                 tenant.stripe_subscription_id = obj.get("id")
                 tenant.stripe_customer_id = obj.get("customer")
+                tenant.signup_payment_pending = False
                 session.add(tenant)
                 session.commit()
 
@@ -444,6 +445,32 @@ async def stripe_webhook(
                 session.commit()
 
     elif event["type"] == "checkout.session.completed":
+        # SaaS signup: unlock tenant as soon as Checkout completes (subscription.* may arrive slightly later).
+        if (obj.get("mode") or "") == "subscription":
+            sub_id = obj.get("subscription")
+            if sub_id:
+                try:
+                    _stripe.api_key = settings.stripe_secret_key
+                    sub = _stripe.Subscription.retrieve(sub_id)
+                    tenant_id_str = (sub.get("metadata") or {}).get("tenant_id")
+                    if tenant_id_str:
+                        try:
+                            tid = UUID(str(tenant_id_str))
+                        except ValueError:
+                            tid = None
+                        if tid:
+                            tenant = session.get(Tenant, tid)
+                            if tenant:
+                                tenant.signup_payment_pending = False
+                                tenant.stripe_subscription_id = str(sub_id)
+                                cust = obj.get("customer")
+                                if cust:
+                                    tenant.stripe_customer_id = str(cust)
+                                session.add(tenant)
+                                session.commit()
+                except Exception:
+                    logging.getLogger(__name__).exception("checkout.session.completed subscription unlock failed")
+            return {"status": "ok"}
         meta = obj.get("metadata") or {}
         if meta.get("purpose") != "auto_key_invoice":
             return {"status": "ok"}

@@ -43,6 +43,7 @@ import StocktakesPage from '@/pages/StocktakesPage'
 import StocktakeWorkspacePage from '@/pages/StocktakeWorkspacePage'
 import StocktakeSummaryPage from '@/pages/StocktakeSummaryPage'
 import ProspectsPage from '@/pages/ProspectsPage'
+import SubscriptionRequiredPage from '@/pages/SubscriptionRequiredPage'
 import type { FeatureKey } from '@/lib/api'
 
 const qc = new QueryClient({
@@ -97,6 +98,7 @@ export default function App() {
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
               <Route path="stocktakes/:id/summary" element={<StocktakeSummaryPage />} />
               <Route path="database" element={<DatabasePage />} />
+              <Route path="subscription-required" element={<SubscriptionRequiredPage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route
                 path="auto-key"

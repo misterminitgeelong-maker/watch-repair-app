@@ -11,6 +11,8 @@ interface AuthCtx {
   availableSites: SiteOption[]
   planCode: PlanCode
   enabledFeatures: FeatureKey[]
+  /** True when signup finished but Stripe subscription not confirmed yet (API returns subscription_required). */
+  signupPaymentPending: boolean
   /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
   sessionReady: boolean
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
+  const [signupPaymentPending, setSignupPaymentPending] = useState(false)
   const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
 
   const initializing = useMemo(
@@ -118,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAvailableSites([])
       setPlanCode('pro')
       setEnabledFeatures(defaultFeatures)
+      setSignupPaymentPending(false)
       clearStoredTokens()
       return
     }
@@ -128,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAvailableSites(data.available_sites ?? [])
     setPlanCode(data.plan_code)
     setEnabledFeatures(data.enabled_features)
+    setSignupPaymentPending(Boolean(data.signup_payment_pending))
   }
 
   useEffect(() => {
@@ -141,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAvailableSites([])
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
+        setSignupPaymentPending(false)
       }
     }
 
@@ -170,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAvailableSites([])
           setPlanCode('pro')
           setEnabledFeatures(defaultFeatures)
+          setSignupPaymentPending(false)
           setSessionReady(true)
         }
       }, SESSION_INIT_TIMEOUT_MS)
@@ -188,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAvailableSites([])
             setPlanCode('pro')
             setEnabledFeatures(defaultFeatures)
+            setSignupPaymentPending(false)
           }
         } finally {
           clearTimeout(timeoutId)
@@ -224,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAvailableSites([])
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
+        setSignupPaymentPending(false)
         setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
@@ -280,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAvailableSites([])
     setPlanCode('pro')
     setEnabledFeatures(defaultFeatures)
+    setSignupPaymentPending(false)
   }
 
   async function switchSite(nextTenantId: string) {
@@ -307,6 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         availableSites,
         planCode,
         enabledFeatures,
+        signupPaymentPending,
         sessionReady,
         initializing,
         login,

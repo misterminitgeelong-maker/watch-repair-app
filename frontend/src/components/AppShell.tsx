@@ -294,7 +294,18 @@ function exactMatcher(path: string) {
 }
 
 export default function AppShell() {
-  const { token, initializing, activeSiteTenantId, availableSites, switchSite, hasFeature } = useAuth()
+  const {
+    token,
+    initializing,
+    activeSiteTenantId,
+    availableSites,
+    switchSite,
+    hasFeature,
+    sessionReady,
+    signupPaymentPending,
+    role,
+    planCode,
+  } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const demoModeEnabled = isDemoModeEnabled()
@@ -683,6 +694,18 @@ export default function AppShell() {
 
   if (!token) {
     return <Navigate to="/" replace />
+  }
+
+  if (sessionReady && signupPaymentPending && role !== 'platform_admin' && location.pathname !== '/subscription-required') {
+    return <Navigate to={`/subscription-required?plan=${encodeURIComponent(planCode)}`} replace />
+  }
+
+  if (location.pathname === '/subscription-required') {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+        <Outlet />
+      </div>
+    )
   }
 
   const guidedIsLast = guidedStep >= guidedTourSteps.length - 1
