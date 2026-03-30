@@ -11,7 +11,9 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 
+from app.config import settings
 from app.database import create_db_and_tables, engine
+from app.limiter import limiter
 from app.main import app
 from app.models import Customer, ImportLog, RepairJob
 
@@ -150,3 +152,33 @@ def test_csv_import_duplicate_ticket_numbers_get_unique_job_numbers():
         jobs = session.exec(select(RepairJob)).all()
         nums = sorted(j.job_number for j in jobs if j.job_number.startswith("IMP-6000827"))
     assert nums == ["IMP-6000827", "IMP-6000827-2"]
+
+
+def test_csv_import_reuses_no_job_number_when_ticket_exists_in_db():
+    """Second import with same ticket as an existing job must suffix, not UniqueViolation."""
+    limiter.reset()
+    old_rl = settings.rate_limit_import_csv
+    settings.rate_limit_import_csv = "100/minute"
+    try:
+        token = _bootstrap_and_login("csv-safe-redo", "csvredo@example.com", "Admin123!")
+        headers = {"Authorization": f"Bearer {token}"}
+        first = (
+            "ticket_number,customer_name,phone,brand,quote,status,notes\n"
+            "9999999,Pat,0412000000,Seiko,49.95,collected,first import row\n"
+        )
+        r1 = client.post("/v1/import/csv", headers=headers, files=_csv_file(first))
+        assert r1.status_code == 200
+        second = (
+            "ticket_number,customer_name,phone,brand,quote,status,notes\n"
+            "9999999,Alex,0413111222,Omega,120,collected,re-import same ticket\n"
+        )
+        r2 = client.post("/v1/import/csv", headers=headers, files=_csv_file(second))
+        assert r2.status_code == 200
+        assert r2.json()["imported"] == 1
+        with Session(engine) as session:
+            jobs = session.exec(select(RepairJob)).all()
+            nums = sorted(j.job_number for j in jobs if j.job_number.startswith("IMP-9999999"))
+        assert nums == ["IMP-9999999", "IMP-9999999-2"]
+    finally:
+        settings.rate_limit_import_csv = old_rl
+        limiter.reset()

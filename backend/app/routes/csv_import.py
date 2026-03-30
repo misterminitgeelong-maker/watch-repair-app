@@ -410,6 +410,28 @@ def _allocate_import_job_number(usage: dict[str, int], ticket_stem: str | None, 
     return f"{base}-{n + 1}"
 
 
+def _resolve_import_job_number_against_db(session: Session, tenant_id, preferred: str) -> str:
+    """
+    Ensure job_number is free for this tenant (re-import / partial prior import / manual jobs).
+    Starts from the slot implied by preferred (e.g. IMP-123-2 → try 2, then 3, …).
+    """
+    m = re.match(r"^(IMP-\d+)(?:-(\d+))?$", preferred)
+    if m:
+        root = m.group(1)
+        k = int(m.group(2)) if m.group(2) else 1
+    else:
+        root = preferred
+        k = 1
+    while True:
+        candidate = root if k == 1 else f"{root}-{k}"
+        hit = session.exec(
+            select(RepairJob.id).where(RepairJob.tenant_id == tenant_id, RepairJob.job_number == candidate)
+        ).first()
+        if hit is None:
+            return candidate
+        k += 1
+
+
 def _infer_job_status(status_raw: str, notes_raw: str) -> str:
     status = (status_raw or "").strip().lower()
     notes = (notes_raw or "").strip().lower()
@@ -604,7 +626,8 @@ async def import_csv(
                     ticket = ticket[:-2]  # "29120.0" -> "29120"
                 if ticket:
                     ticket_stem = ticket
-            job_number = _allocate_import_job_number(job_number_usage, ticket_stem, job_seq)
+            preferred_num = _allocate_import_job_number(job_number_usage, ticket_stem, job_seq)
+            job_number = _resolve_import_job_number_against_db(session, tenant_id, preferred_num)
 
             title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
             created_at = (
