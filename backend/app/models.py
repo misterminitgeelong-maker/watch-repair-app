@@ -56,7 +56,7 @@ class Tenant(SQLModel, table=True):
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    # JSON array of tool keys from seed/watchmaker_tools.json (tenant bench inventory)
+    # JSON array of tool keys from seed/mobile_services_tools.json (tenant van / kit inventory)
     toolkit_selected_keys: str = Field(default="[]")
 
 

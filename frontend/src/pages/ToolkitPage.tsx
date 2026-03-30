@@ -72,7 +72,7 @@ export default function ToolkitPage() {
   if (catErr) {
     return (
       <div>
-        <PageHeader title="Bench toolkit" />
+        <PageHeader title="Mobile toolkit" />
         <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(catErrObj, 'Could not load toolkit.')}</p>
       </div>
     )
@@ -81,7 +81,7 @@ export default function ToolkitPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Bench toolkit"
+        title="Mobile toolkit"
         action={
           <Button type="button" onClick={() => saveMut.mutate()} disabled={!dirty || saveMut.isPending}>
             {saveMut.isPending ? 'Saving…' : 'Save my tools'}
@@ -89,26 +89,19 @@ export default function ToolkitPage() {
         }
       />
       <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-        Tick the tools your bench has. Pick a job scenario to see what you still need (including acceptable substitutes where defined). Data lives in{' '}
-        <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>backend/seed/watchmaker_tools.json</code>
-        — replace or extend that file to load your full database.
+        Tick the tools you carry for Mobile Services. Pick a scenario to see gaps and acceptable substitutes. The canonical list is{' '}
+        <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>backend/seed/mobile_services_tools.json</code>
+        — edit that file to match your full inventory.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
           <Link
-            to="/jobs"
+            to="/auto-key"
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', textDecoration: 'none' }}
           >
-            Jobs
-          </Link>
-          <Link
-            to="/catalogue"
-            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-            style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', textDecoration: 'none' }}
-          >
-            Catalogue
+            Mobile Services
           </Link>
           <span
             className="px-3 py-1.5 text-xs font-semibold rounded-md"

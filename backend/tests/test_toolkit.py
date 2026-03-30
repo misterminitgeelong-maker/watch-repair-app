@@ -14,7 +14,7 @@ create_db_and_tables()
 client = TestClient(app)
 
 
-def _bootstrap_watch() -> str:
+def _bootstrap_auto_key() -> str:
     suffix = uuid4().hex[:8]
     slug = f"tk-{suffix}"
     assert client.post(
@@ -25,7 +25,7 @@ def _bootstrap_watch() -> str:
             "owner_email": f"o{suffix}@tk.test",
             "owner_full_name": "Owner",
             "owner_password": "pass123456",
-            "plan_code": "basic_watch",
+            "plan_code": "basic_auto_key",
         },
     ).status_code == 200
     login = client.post(
@@ -36,19 +36,19 @@ def _bootstrap_watch() -> str:
     return login.json()["access_token"]
 
 
-def test_toolkit_catalog_requires_watch_plan():
-    token = _bootstrap_watch()
+def test_toolkit_catalog_requires_auto_key_plan():
+    token = _bootstrap_auto_key()
     headers = {"Authorization": f"Bearer {token}"}
     r = client.get("/v1/toolkit/catalog", headers=headers)
     assert r.status_code == 200
     data = r.json()
     assert "groups" in data
     assert len(data["groups"]) >= 1
-    assert any(s["id"] == "quartz_battery" for s in data["scenarios"])
+    assert any(s["id"] == "transponder_programming" for s in data["scenarios"])
 
 
 def test_toolkit_selection_and_recommend():
-    token = _bootstrap_watch()
+    token = _bootstrap_auto_key()
     headers = {"Authorization": f"Bearer {token}"}
 
     r0 = client.get("/v1/toolkit/my-selection", headers=headers)
@@ -58,52 +58,51 @@ def test_toolkit_selection_and_recommend():
     r1 = client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["case_knife", "hand_remover", "battery_tester", "unknown_x"]},
+        json={"tool_keys": ["key_programmer", "transponder_chip_inventory", "unknown_x"]},
     )
     assert r1.status_code == 400
 
     r2 = client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["case_knife", "hand_remover", "battery_tester"]},
+        json={"tool_keys": ["key_programmer", "transponder_chip_inventory"]},
     )
     assert r2.status_code == 200
-    assert r2.json()["tool_keys"] == ["case_knife", "hand_remover", "battery_tester"]
+    assert r2.json()["tool_keys"] == ["key_programmer", "transponder_chip_inventory"]
 
     r3 = client.get("/v1/toolkit/my-selection", headers=headers)
-    assert r3.json()["tool_keys"] == ["case_knife", "hand_remover", "battery_tester"]
+    assert r3.json()["tool_keys"] == ["key_programmer", "transponder_chip_inventory"]
 
     rec = client.post(
         "/v1/toolkit/recommend",
         headers=headers,
-        json={"scenario_id": "quartz_battery"},
+        json={"scenario_id": "transponder_programming"},
     )
     assert rec.status_code == 200
     body = rec.json()
-    assert body["scenario_id"] == "quartz_battery"
+    assert body["scenario_id"] == "transponder_programming"
     assert body["ready_for_required"] is True
     assert len(body["missing_required"]) == 0
 
-    # Drop battery_tester — required trio incomplete
-    client.put("/v1/toolkit/my-selection", headers=headers, json={"tool_keys": ["case_knife", "hand_remover"]})
-    rec2 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "quartz_battery"})
+    client.put("/v1/toolkit/my-selection", headers=headers, json={"tool_keys": ["key_programmer"]})
+    rec2 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "transponder_programming"})
     assert rec2.json()["ready_for_required"] is False
     missing = {x["key"] for x in rec2.json()["missing_required"]}
-    assert "battery_tester" in missing
+    assert "transponder_chip_inventory" in missing
 
-    # Jaxa scenario satisfied by friction ball substitute (not jaxa)
+    # Duplicator scenario satisfied by laser machine substitute
     client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["friction_ball_case_opener", "bench_case_vise"]},
+        json={"tool_keys": ["laser_key_machine", "jaw_vise_soft_jaws", "deburr_and_gauge"]},
     )
-    rec3 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "screwed_case_service"})
+    rec3 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "blade_cut_duplicate"})
     assert rec3.status_code == 200
     assert rec3.json()["ready_for_required"] is True
 
 
 def test_toolkit_unknown_scenario():
-    token = _bootstrap_watch()
+    token = _bootstrap_auto_key()
     headers = {"Authorization": f"Bearer {token}"}
     r = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "nope"})
     assert r.status_code == 404

@@ -1,4 +1,4 @@
-"""Watch bench toolkit: tool catalogue, per-tenant selections, scenario recommendations."""
+"""Mobile Services toolkit: tool catalogue, per-tenant selections, scenario recommendations."""
 from __future__ import annotations
 
 import json
@@ -15,7 +15,7 @@ from ..models import Tenant
 
 router = APIRouter(prefix="/v1/toolkit", tags=["toolkit"])
 
-_CATALOG_PATH = Path(__file__).parent.parent.parent / "seed" / "watchmaker_tools.json"
+_CATALOG_PATH = Path(__file__).parent.parent.parent / "seed" / "mobile_services_tools.json"
 with open(_CATALOG_PATH, encoding="utf-8") as _f:
     _CATALOG: dict[str, Any] = json.load(_f)
 
@@ -55,7 +55,7 @@ class ToolkitSelectionUpdate(BaseModel):
 
 
 @router.get("/catalog")
-def get_toolkit_catalog(_auth: AuthContext = Depends(get_auth_context), _f=Depends(require_feature("watch"))):
+def get_toolkit_catalog(_auth: AuthContext = Depends(get_auth_context), _f=Depends(require_feature("auto_key"))):
     """Full tool groups + scenarios (read-only)."""
     return {
         "title": _CATALOG.get("title", "Toolkit"),
@@ -68,7 +68,7 @@ def get_toolkit_catalog(_auth: AuthContext = Depends(get_auth_context), _f=Depen
 @router.get("/my-selection")
 def get_my_toolkit_selection(
     auth: AuthContext = Depends(get_auth_context),
-    _f=Depends(require_feature("watch")),
+    _f=Depends(require_feature("auto_key")),
     session: Session = Depends(get_session),
 ):
     tenant = session.get(Tenant, auth.tenant_id)
@@ -83,7 +83,7 @@ def get_my_toolkit_selection(
 def put_my_toolkit_selection(
     body: ToolkitSelectionUpdate,
     auth: AuthContext = Depends(get_auth_context),
-    _f=Depends(require_feature("watch")),
+    _f=Depends(require_feature("auto_key")),
     session: Session = Depends(get_session),
 ):
     unknown = [k for k in body.tool_keys if k not in _TOOL_INDEX]
@@ -113,7 +113,7 @@ class ToolkitRecommendBody(BaseModel):
 def recommend_tools_for_scenario(
     body: ToolkitRecommendBody,
     auth: AuthContext = Depends(get_auth_context),
-    _f=Depends(require_feature("watch")),
+    _f=Depends(require_feature("auto_key")),
     session: Session = Depends(get_session),
 ):
     scenario = _SCENARIO_BY_ID.get(body.scenario_id)

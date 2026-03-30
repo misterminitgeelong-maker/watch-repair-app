@@ -1,4 +1,4 @@
-"""add tenant.toolkit_selected_keys for watch bench tool inventory
+"""add tenant.toolkit_selected_keys for mobile services toolkit inventory
 
 Revision ID: t7u8v9w0x1y2
 Revises: 534bf5c52bfa

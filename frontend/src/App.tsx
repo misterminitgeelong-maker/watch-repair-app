@@ -77,7 +77,7 @@ export default function App() {
               <Route path="jobs/:id" element={<FeatureGate feature="watch"><JobDetailPage /></FeatureGate>} />
               <Route path="jobs/:id/intake-print" element={<FeatureGate feature="watch"><PrintWatchIntakeTicketsPage /></FeatureGate>} />
               <Route path="catalogue" element={<FeatureGate feature="watch"><CataloguePage /></FeatureGate>} />
-              <Route path="toolkit" element={<FeatureGate feature="watch"><ToolkitPage /></FeatureGate>} />
+              <Route path="toolkit" element={<FeatureGate feature="auto_key"><ToolkitPage /></FeatureGate>} />
               <Route path="quotes" element={<QuotesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />

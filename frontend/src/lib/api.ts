@@ -1186,7 +1186,7 @@ export const listWatchMovements = () =>
 export const getWatchMovementQuote = (key: string) =>
   api.get<{ key: string; name: string; quote_cents: number }>(`/watch-catalogue/movements/${key}/quote`)
 
-// ── Watch bench toolkit (inventory + scenario recommendations) ─────────────────
+// ── Mobile Services toolkit (van inventory + scenario recommendations) ────────
 export interface ToolkitCatalogTool {
   key: string
   name: string

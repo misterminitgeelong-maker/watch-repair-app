@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "title": "Mobile Services toolkit",
+  "description": "Locksmith / mobile key tools for Mainspring. Replace or extend with your full inventory — same shape: groups[].tools[], scenarios[] with required, nice_to_have, alternatives.",
+  "groups": [
+    {
+      "id": "programming",
+      "label": "Programming & diagnostics",
+      "tools": [
+        { "key": "key_programmer", "name": "Multi-brand key programmer (e.g. Autel / Xhorse class)", "notes": "OBD or bench programming for transponder & smart keys." },
+        { "key": "second_gen_programmer", "name": "Secondary / backup programmer", "notes": "Covers marques your primary tool does not." },
+        { "key": "proximity_tester", "name": "RF / proximity key tester", "notes": "Quick check of fob output before deeper diagnosis." },
+        { "key": "diagnostic_oem_scanner", "name": "OEM-level or deep diagnostic scan tool", "notes": "PIN pulls, module resets, immobiliser workflows." },
+        { "key": "transponder_chip_inventory", "name": "Organised chip & remote stock (ID433/7935/ASK, etc.)", "notes": "On-van stock matching your common coverage." },
+        { "key": "eeprom_bench_kit", "name": "EEPROM read/write bench (IR/clip + adapters)", "notes": "AKL and bruised-module recoveries where supported." }
+      ]
+    },
+    {
+      "id": "decoding_lishi",
+      "label": "Decoding & entry",
+      "tools": [
+        { "key": "lishi_set", "name": "Lishi-style or equivalent decode picks (core set)", "notes": "Decode and non-destructive entry where applicable." },
+        { "key": "air_wedge_kit", "name": "Air wedge + long-reach / reach tools", "notes": "Controlled gap for linkages / latches when policy allows." },
+        { "key": "scope_door_inspection", "name": "Borescope / slim inspection camera", "notes": "See wafers, broken keys, anti-slam pins." }
+      ]
+    },
+    {
+      "id": "cutting_bench",
+      "label": "Cutting & finishing",
+      "tools": [
+        { "key": "mechanical_key_duplicator", "name": "Mechanical key duplicator (voltage or hand)", "notes": "Standard edge-cut and many laser profiles." },
+        { "key": "laser_key_machine", "name": "Dedicated laser / dimple key machine", "notes": "High-security profiles your duplicator cannot cut." },
+        { "key": "jaw_vise_soft_jaws", "name": "Bench vise with soft jaws", "notes": "Hold heads and shells without marring." },
+        { "key": "deburr_and_gauge", "name": "Deburr files + micrometer / slot gauge", "notes": "Clean cuts and verify blade thickness." }
+      ]
+    },
+    {
+      "id": "ignition_steering",
+      "label": "Ignition & cylinder",
+      "tools": [
+        { "key": "ignition_puller_set", "name": "Ignition cylinder puller / press set", "notes": "Remove stuck or broken ignitions where applicable." },
+        { "key": "lock_lube_graphite_free", "name": "Graphite-free lock lubricant", "notes": "Electronics-safe service lubrication." }
+      ]
+    },
+    {
+      "id": "van_power",
+      "label": "Van / mobile power",
+      "tools": [
+        { "key": "inverter_or_power_station", "name": "Inverter or portable power station", "notes": "Run programmer and small machines on site." },
+        { "key": "battery_jump_pack", "name": "Jump pack / stable 12V maintain", "notes": "Programming voltage stability on weak batteries." }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "transponder_programming",
+      "label": "Transponder add / clone at vehicle",
+      "required": ["key_programmer", "transponder_chip_inventory"],
+      "nice_to_have": ["battery_jump_pack", "proximity_tester"],
+      "alternatives": {
+        "key_programmer": ["second_gen_programmer"]
+      },
+      "tips": "Confirm battery voltage before long writes. Match chip generation to vehicle immobiliser family."
+    },
+    {
+      "id": "blade_cut_duplicate",
+      "label": "Duplicate mechanical blade on site",
+      "required": ["mechanical_key_duplicator", "jaw_vise_soft_jaws", "deburr_and_gauge"],
+      "nice_to_have": ["laser_key_machine"],
+      "alternatives": {
+        "mechanical_key_duplicator": ["laser_key_machine"]
+      },
+      "tips": "Some laser profiles need the laser machine — your duplicator may be a substitute only for overlapping blanks."
+    },
+    {
+      "id": "vehicle_lockout_entry",
+      "label": "Non-destructive lockout (policy-compliant)",
+      "required": ["lishi_set", "air_wedge_kit"],
+      "nice_to_have": ["scope_door_inspection"],
+      "alternatives": {},
+      "tips": "Verify jurisdiction and client authorisation before entry tools."
+    },
+    {
+      "id": "proximity_smart_key",
+      "label": "Smart key / proximity add or sync",
+      "required": ["key_programmer", "proximity_tester"],
+      "nice_to_have": ["diagnostic_oem_scanner", "transponder_chip_inventory"],
+      "alternatives": {
+        "key_programmer": ["second_gen_programmer"]
+      },
+      "tips": "Many smart-key jobs need both RF check and immobiliser programming steps."
+    },
+    {
+      "id": "eeprom_bench_recovery",
+      "label": "EEPROM / module read–write (workshop style on van)",
+      "required": ["eeprom_bench_kit", "jaw_vise_soft_jaws"],
+      "nice_to_have": ["scope_door_inspection"],
+      "alternatives": {},
+      "tips": "Anti-static discipline and adapter fit are critical; confirm MCU family before power-on."
+    }
+  ]
+}
