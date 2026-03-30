@@ -418,7 +418,11 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         description: form.description.trim() || undefined,
         job_type: form.job_type || undefined,
         job_address: form.job_address.trim() || undefined,
-        scheduled_at: form.scheduled_datetime ? new Date(form.scheduled_datetime).toISOString() : (form.scheduled_at ? form.scheduled_at + 'T09:00:00Z' : undefined),
+        scheduled_at: form.scheduled_datetime
+          ? new Date(form.scheduled_datetime).toISOString()
+          : form.scheduled_at
+            ? new Date(`${form.scheduled_at}T09:00:00`).toISOString()
+            : undefined,
         vehicle_make: form.vehicle_make.trim() || undefined,
         vehicle_model: form.vehicle_model.trim() || undefined,
         vehicle_year: form.vehicle_year ? Number(form.vehicle_year) : undefined,

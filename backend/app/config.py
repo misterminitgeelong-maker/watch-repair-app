@@ -61,6 +61,8 @@ class Settings(BaseSettings):
 
     # Public base URL used to build approval links in SMS messages
     public_base_url: str = "https://mainspring.au"
+    # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
+    schedule_calendar_timezone: str = "Australia/Sydney"
 
     # CORS — comma-separated origins allowed in production
     cors_origins: str = "https://mainspring.au,https://www.mainspring.au"

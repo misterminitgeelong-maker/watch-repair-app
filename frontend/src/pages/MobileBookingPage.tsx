@@ -137,14 +137,14 @@ export default function MobileBookingPage() {
             <div>
               <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>Booking confirmed</p>
               <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-                Thank you. We have your appointment on file and will see you at the scheduled time.
+                Thank you. Your booking is confirmed; the shop will complete the service at the scheduled time (the job stays open for them until then).
               </p>
             </div>
           </div>
         ) : canConfirm ? (
           <div className="space-y-3">
             <p className="text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
-              Tap confirm to accept this booking time and quote.
+              Tap confirm to accept this time and the quoted price. This only confirms your booking — the job is not marked as finished until the work is done.
             </p>
             <Button
               type="button"

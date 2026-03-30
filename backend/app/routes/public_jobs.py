@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from ..config import settings
 from ..database import get_session
+from ..datetime_utils import isoformat_z_utc
 from ..models import (
     AutoKeyInvoice,
     AutoKeyJob,
@@ -166,7 +167,7 @@ def get_public_auto_key_booking(token: str, session: Session = Depends(get_sessi
         "status": job.status,
         "vehicle_make": job.vehicle_make,
         "vehicle_model": job.vehicle_model,
-        "scheduled_at": job.scheduled_at.isoformat() if job.scheduled_at else None,
+        "scheduled_at": isoformat_z_utc(job.scheduled_at),
         "job_address": job.job_address,
         "quote_total_cents": quote.total_cents if quote else 0,
         "subtotal_cents": quote.subtotal_cents if quote else 0,

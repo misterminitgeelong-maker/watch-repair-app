@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from .config import settings
+from .datetime_utils import format_in_timezone
 from .models import SmsLog
 
 logger = logging.getLogger(__name__)
@@ -257,8 +258,9 @@ def notify_auto_key_customer_scheduled(
         return
     try:
         from datetime import datetime
+
         dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-        when = f"{dt.strftime('%a %d %b')} around {dt.strftime('%H:%M')}"
+        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else ""
     body = f"Hi {customer_name}, your auto key technician is scheduled for {when}."
@@ -292,8 +294,9 @@ def notify_auto_key_customer_day_before(
         return
     try:
         from datetime import datetime
+
         dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-        when = f"{dt.strftime('%a %d %b')} around {dt.strftime('%H:%M')}"
+        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else "tomorrow"
     body = f"Hi {customer_name}, your technician is scheduled for {when}."
@@ -335,7 +338,7 @@ def notify_auto_key_en_route(
                 if isinstance(scheduled_at, datetime)
                 else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
             )
-            body += f" Planned time: {dt.strftime('%a %d %b, %H:%M')}."
+            body += f" Planned time: {format_in_timezone(dt, settings.schedule_calendar_timezone)}."
         except (ValueError, TypeError):
             pass
     if job_address and job_address.strip():
@@ -438,7 +441,7 @@ def notify_auto_key_booking_request(
     veh_bit = f" ({veh})" if veh else ""
     try:
         dt = scheduled_at if isinstance(scheduled_at, datetime) else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
-        when = f"{dt.strftime('%a %d %b %H:%M')}"
+        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b %H:%M")
     except (ValueError, TypeError):
         when = str(scheduled_at)[:16] if scheduled_at else ""
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
@@ -477,9 +480,10 @@ def notify_auto_key_schedule_changed(
     parts = [f"Auto key job #{job_number} schedule updated:"]
     if scheduled_at:
         from datetime import datetime
+
         try:
             dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-            parts.append(f" {dt.strftime('%a %d %b')} at {dt.strftime('%H:%M')}")
+            parts.append(f" {format_in_timezone(dt, settings.schedule_calendar_timezone, '%a %d %b at %H:%M')}")
         except (ValueError, TypeError):
             parts.append(f" {scheduled_at[:16]}")
     if job_type:

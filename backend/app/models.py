@@ -6,8 +6,11 @@ FleetAccountType = Literal["Dealership", "Rental Fleet", "Government Fleet", "Co
 FleetBillingCycle = Literal["Monthly", "Fortnightly", "Weekly"]
 SubscriptionPlan = Literal["starter", "pro", "fleet", "none"]
 
+from pydantic import field_serializer
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
+
+from .datetime_utils import as_utc_for_json
 
 JobStatus = Literal[
     "awaiting_quote",
@@ -1212,6 +1215,11 @@ class AutoKeyJobRead(SQLModel):
     job_address: Optional[str] = None
     job_type: Optional[str] = None
     visit_order: Optional[int] = None
+
+    @field_serializer("scheduled_at", "created_at")
+    def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        """Naive DB datetimes are UTC; expose as timezone-aware so JSON is unambiguous for browsers."""
+        return as_utc_for_json(v) if v is not None else None
 
 
 class AutoKeyJobStatusUpdate(SQLModel):

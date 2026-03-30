@@ -7,6 +7,7 @@ from sqlmodel import Session, SQLModel, delete, func, select
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..config import settings
 from ..database import get_session
+from ..datetime_utils import local_calendar_day_bounds_utc, naive_utc_from_any
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from .. import sms
 from ..models import (
@@ -230,6 +231,9 @@ def create_auto_key_job(
     if send_booking_sms:
         data["status"] = "pending_booking"
 
+    if data.get("scheduled_at"):
+        data["scheduled_at"] = naive_utc_from_any(data["scheduled_at"])
+
     job = AutoKeyJob(
         tenant_id=auth.tenant_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
@@ -311,9 +315,9 @@ def list_auto_key_jobs(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    from datetime import datetime as dt
     from sqlalchemy import or_
 
+    cal_tz = settings.schedule_calendar_timezone
     query = select(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(AutoKeyJob.status == status)
@@ -326,8 +330,9 @@ def list_auto_key_jobs(
     if date_from or date_to:
         if date_from and date_to and include_unscheduled:
             try:
-                start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                start, end = local_calendar_day_bounds_utc(cal_tz, date_from, date_to)
+                if start is None or end is None:
+                    raise ValueError("range")
                 query = query.where(
                     or_(
                         (AutoKeyJob.scheduled_at >= start) & (AutoKeyJob.scheduled_at <= end),
@@ -339,14 +344,16 @@ def list_auto_key_jobs(
         else:
             if date_from:
                 try:
-                    start = dt.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                    query = query.where(AutoKeyJob.scheduled_at >= start)
+                    start, _ = local_calendar_day_bounds_utc(cal_tz, date_from, date_from)
+                    if start is not None:
+                        query = query.where(AutoKeyJob.scheduled_at >= start)
                 except ValueError:
                     raise HTTPException(status_code=400, detail="Invalid date_from format. Use YYYY-MM-DD")
             if date_to:
                 try:
-                    end = dt.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-                    query = query.where(AutoKeyJob.scheduled_at <= end)
+                    _, end = local_calendar_day_bounds_utc(cal_tz, date_to, date_to)
+                    if end is not None:
+                        query = query.where(AutoKeyJob.scheduled_at <= end)
                 except ValueError:
                     raise HTTPException(status_code=400, detail="Invalid date_to format. Use YYYY-MM-DD")
     return session.exec(
@@ -458,6 +465,8 @@ def update_auto_key_job_fields(
         if not account or account.tenant_id != auth.tenant_id:
             raise HTTPException(status_code=404, detail="Customer account not found")
     for field, value in update_data.items():
+        if field == "scheduled_at" and value is not None:
+            value = naive_utc_from_any(value)
         setattr(job, field, value)
 
     if job.key_quantity < 1:
