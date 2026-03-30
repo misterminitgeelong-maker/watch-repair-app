@@ -1,3 +1,4 @@
+import json
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,6 +6,7 @@ from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, require_owner
+from ..mobile_commission import normalize_mobile_commission_rules, parse_mobile_commission_rules, serialize_rules_for_storage
 from ..models import PublicUser, TenantEventLog, User, UserCreateRequest, UserUpdateRequest
 from ..security import hash_password
 
@@ -25,6 +27,7 @@ def _to_public_user(user: User) -> PublicUser:
         full_name=user.full_name,
         role=user.role,
         is_active=user.is_active,
+        mobile_commission_rules_json=getattr(user, "mobile_commission_rules_json", None),
     )
 
 
@@ -82,6 +85,17 @@ def create_user(
     )
     enforce_plan_limit(auth, "user", user_count)
 
+    mc_rules = None
+    if payload.mobile_commission_rules_json is not None:
+        raw = payload.mobile_commission_rules_json.strip()
+        if raw:
+            parsed = parse_mobile_commission_rules(raw)
+            if parsed is None:
+                raise HTTPException(status_code=400, detail="Invalid mobile_commission_rules_json")
+            mc_rules = serialize_rules_for_storage(parsed)
+        else:
+            mc_rules = None
+
     user = User(
         tenant_id=auth.tenant_id,
         email=email,
@@ -89,6 +103,7 @@ def create_user(
         role=role,
         password_hash=hash_password(payload.password),
         is_active=True,
+        mobile_commission_rules_json=mc_rules,
     )
     session.add(user)
     session.flush()
@@ -135,6 +150,19 @@ def update_user(
 
     if payload.is_active is not None:
         user.is_active = payload.is_active
+
+    if payload.mobile_commission_rules_json is not None:
+        raw = payload.mobile_commission_rules_json.strip()
+        if not raw:
+            user.mobile_commission_rules_json = None
+        else:
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid mobile_commission_rules_json")
+            if not isinstance(data, dict):
+                raise HTTPException(status_code=400, detail="mobile_commission_rules_json must be a JSON object")
+            user.mobile_commission_rules_json = serialize_rules_for_storage(normalize_mobile_commission_rules(data))
 
     session.add(user)
     session.commit()

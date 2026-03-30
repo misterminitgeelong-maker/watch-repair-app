@@ -1018,6 +1018,31 @@ export interface TenantUser {
   full_name: string
   role: string
   is_active: boolean
+  /** JSON string: Mobile Services commission rules (enabled, retainer, rates_bp, …). */
+  mobile_commission_rules_json?: string | null
+}
+
+/** Build JSON for PATCH /users — basis points = percent × 100 (e.g. 30% → 3000). */
+export function buildMobileCommissionRulesJson(opts: {
+  enabled: boolean
+  retainerDollars: number
+  shopPercent: number
+  techSourcedPercent: number
+}): string {
+  return JSON.stringify({
+    enabled: opts.enabled,
+    retainer_cents_per_period: Math.round(opts.retainerDollars * 100),
+    revenue_basis: 'invoice_total',
+    eligible_job_statuses: ['completed', 'collected'],
+    rates_bp: {
+      shop_referred: Math.round(opts.shopPercent * 100),
+      tech_sourced: Math.round(opts.techSourcedPercent * 100),
+    },
+    labels: {
+      shop_referred: 'Shop / referred work',
+      tech_sourced: 'Tech sourced (own lead)',
+    },
+  })
 }
 // ── Reports Trends ────────────────────────────────────────────────────────────
 export interface ReportsTrendMonth {
@@ -1081,6 +1106,42 @@ export interface AutoKeyReports {
 }
 export const getAutoKeyReports = (params: { date_from?: string; date_to?: string }) =>
   api.get<AutoKeyReports>('/reports/auto-key-reports', { params })
+
+export interface AutoKeyCommissionLine {
+  job_id: string
+  job_number: string
+  invoice_id: string
+  revenue_cents: number
+  lead_source: string
+  lead_source_label: string
+  rate_bp: number
+  commission_cents: number
+  job_status: string
+}
+
+export interface AutoKeyCommissionTechRow {
+  user_id: string
+  full_name: string
+  rules: Record<string, unknown>
+  lines: AutoKeyCommissionLine[]
+  raw_commission_cents: number
+  retainer_cents: number
+  bonus_payable_cents: number
+}
+
+export interface AutoKeyCommissionReport {
+  date_from: string
+  date_to: string
+  attribution: string
+  technicians: AutoKeyCommissionTechRow[]
+  note?: string
+}
+
+export const getAutoKeyCommissionReport = (params: {
+  date_from?: string
+  date_to?: string
+  user_id?: string
+}) => api.get<AutoKeyCommissionReport>('/reports/auto-key-commission', { params })
 export const sendAutoKeyDayBeforeReminders = () =>
   api.post<{ techs_notified: number; customers_notified: number }>('/auto-key-jobs/send-day-before-reminders')
 
@@ -1155,6 +1216,7 @@ export const createUser = (data: {
   full_name: string
   password: string
   role?: 'owner' | 'manager' | 'tech' | 'intake'
+  mobile_commission_rules_json?: string | null
 }) => api.post<TenantUser>('/users', data)
 
 export const updateUser = (
@@ -1164,6 +1226,7 @@ export const updateUser = (
     role?: 'owner' | 'manager' | 'tech' | 'intake'
     password?: string
     is_active?: boolean
+    mobile_commission_rules_json?: string | null
   },
 ) => api.patch<TenantUser>(`/users/${userId}`, data)
 
@@ -1407,6 +1470,8 @@ export interface AutoKeyJob {
   /** Route order for same-day jobs (lower = first) */
   visit_order?: number
   additional_services_json?: string | null
+  /** Tier key for commission share (must match technician rates_bp keys, e.g. shop_referred, tech_sourced). */
+  commission_lead_source?: string
 }
 
 export interface AutoKeyJobCreatePayload {
@@ -1438,6 +1503,7 @@ export interface AutoKeyJobCreatePayload {
   apply_suggested_quote?: boolean
   send_booking_sms?: boolean
   additional_services?: Array<{ preset?: string; custom?: string }>
+  commission_lead_source?: string
 }
 
 export interface PublicAutoKeyIntake {
@@ -1587,6 +1653,7 @@ export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePa
   chip_type?: string | null
   tech_notes?: string | null
   additional_services_json?: string | null
+  commission_lead_source?: string
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

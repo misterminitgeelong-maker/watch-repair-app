@@ -86,6 +86,8 @@ class User(SQLModel, table=True):
     password_hash: str
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: JSON mobile commission rules (enabled, retainer_cents_per_period, rates_bp, eligible_job_statuses, …)
+    mobile_commission_rules_json: Optional[str] = None
 
 
 class ParentAccount(SQLModel, table=True):
@@ -500,6 +502,7 @@ class PublicUser(SQLModel):
     full_name: str
     role: str
     is_active: bool
+    mobile_commission_rules_json: Optional[str] = None
 
 
 class AuthSessionSiteOption(SQLModel):
@@ -689,6 +692,7 @@ class UserCreateRequest(SQLModel):
     full_name: str
     password: str
     role: str = "manager"
+    mobile_commission_rules_json: Optional[str] = None
 
 
 class UserUpdateRequest(SQLModel):
@@ -696,6 +700,7 @@ class UserUpdateRequest(SQLModel):
     role: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+    mobile_commission_rules_json: Optional[str] = None
 
 
 class ImportSummaryResponse(SQLModel):
@@ -1166,6 +1171,8 @@ class AutoKeyJob(SQLModel, table=True):
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: Revenue share tier key — must match keys in technician rates_bp (e.g. shop_referred, tech_sourced).
+    commission_lead_source: str = Field(default="shop_referred", max_length=64)
 
 
 class AutoKeyJobCreate(SQLModel):
@@ -1197,6 +1204,7 @@ class AutoKeyJobCreate(SQLModel):
     apply_suggested_quote: bool = False
     send_booking_sms: bool = False
     additional_services: list[dict[str, Any]] = Field(default_factory=list)
+    commission_lead_source: str = Field(default="shop_referred", max_length=64)
 
 
 class AutoKeyQuickIntakeCreate(SQLModel):
@@ -1237,6 +1245,7 @@ class AutoKeyJobRead(SQLModel):
     job_type: Optional[str] = None
     visit_order: Optional[int] = None
     additional_services_json: Optional[str] = None
+    commission_lead_source: str = "shop_referred"
 
     @field_serializer("scheduled_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
@@ -1275,6 +1284,7 @@ class AutoKeyJobFieldUpdate(SQLModel):
     deposit_cents: Optional[int] = None
     cost_cents: Optional[int] = None
     additional_services_json: Optional[str] = None
+    commission_lead_source: Optional[str] = Field(default=None, max_length=64)
 
 
 class AutoKeyQuote(SQLModel, table=True):

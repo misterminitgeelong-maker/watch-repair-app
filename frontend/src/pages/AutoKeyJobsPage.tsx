@@ -7,6 +7,7 @@ import {
   createAutoKeyJob,
   createAutoKeyQuote,
   createCustomer,
+  buildMobileCommissionRulesJson,
   createUser,
   deleteAutoKeyJob,
   getApiErrorMessage,
@@ -17,11 +18,13 @@ import {
   listAutoKeyQuotes,
   listCustomers,
   listUsers,
+  updateUser,
   sendAutoKeyQuote,
   sendAutoKeyDayBeforeReminders,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   getAutoKeyReports,
+  getAutoKeyCommissionReport,
   getAutoKeyQuoteSuggestions,
   searchVehicleKeySpecs,
   type VehicleKeySpecMatch,
@@ -99,9 +102,27 @@ function nextMobileStatus(status: JobStatus): JobStatus | null {
 function AddTechnicianModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({ full_name: '', email: '', password: '' })
+  const [commEnabled, setCommEnabled] = useState(true)
+  const [retainerDollars, setRetainerDollars] = useState('360')
+  const [shopPct, setShopPct] = useState('30')
+  const [selfPct, setSelfPct] = useState('50')
   const [error, setError] = useState('')
   const mut = useMutation({
-    mutationFn: () => createUser({ full_name: form.full_name.trim(), email: form.email.trim(), password: form.password, role: 'tech' }),
+    mutationFn: () =>
+      createUser({
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: 'tech',
+        mobile_commission_rules_json: commEnabled
+          ? buildMobileCommissionRulesJson({
+              enabled: true,
+              retainerDollars: Math.max(0, parseFloat(retainerDollars) || 0),
+              shopPercent: Math.max(0, parseFloat(shopPct) || 0),
+              techSourcedPercent: Math.max(0, parseFloat(selfPct) || 0),
+            })
+          : undefined,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
@@ -119,6 +140,24 @@ function AddTechnicianModal({ onClose }: { onClose: () => void }) {
         <Input label="Full name *" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Alex Smith" autoFocus />
         <Input label="Email *" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="alex@shop.com" />
         <Input label="Password *" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="At least 8 characters" />
+        <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
+          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text)' }}>
+            <input type="checkbox" checked={commEnabled} onChange={e => setCommEnabled(e.target.checked)} />
+            Mobile Services commission tracking (bonus above retainer)
+          </label>
+          {commEnabled && (
+            <>
+              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                First portion of commission each period counts toward salary (retainer); only the amount above that is bonus. Percentages apply to invoice total. You can change keys or add tiers later under Commission rules.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Input label="Retainer ($ / period)" value={retainerDollars} onChange={e => setRetainerDollars(e.target.value)} />
+                <Input label="Shop / referred %" value={shopPct} onChange={e => setShopPct(e.target.value)} />
+                <Input label="Tech sourced %" value={selfPct} onChange={e => setSelfPct(e.target.value)} />
+              </div>
+            </>
+          )}
+        </div>
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
@@ -130,6 +169,109 @@ function AddTechnicianModal({ onClose }: { onClose: () => void }) {
             {mut.isPending ? 'Adding…' : 'Add technician'}
           </Button>
         </div>
+      </div>
+    </Modal>
+  )
+}
+
+function MobileCommissionRulesModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => listUsers().then(r => r.data),
+  })
+  const techs = users.filter(u => u.role === 'tech')
+  const [userId, setUserId] = useState('')
+  const [enabled, setEnabled] = useState(false)
+  const [retainer, setRetainer] = useState('360')
+  const [shop, setShop] = useState('30')
+  const [self, setSelf] = useState('50')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!userId && techs.length) setUserId(techs[0].id)
+  }, [techs, userId])
+
+  useEffect(() => {
+    const u = techs.find(t => t.id === userId)
+    const raw = u?.mobile_commission_rules_json
+    if (!raw) {
+      setEnabled(false)
+      setRetainer('360')
+      setShop('30')
+      setSelf('50')
+      return
+    }
+    try {
+      const r = JSON.parse(raw) as {
+        enabled?: boolean
+        retainer_cents_per_period?: number
+        rates_bp?: { shop_referred?: number; tech_sourced?: number }
+      }
+      setEnabled(Boolean(r.enabled))
+      setRetainer(String((r.retainer_cents_per_period ?? 36_000) / 100))
+      setShop(String((r.rates_bp?.shop_referred ?? 3000) / 100))
+      setSelf(String((r.rates_bp?.tech_sourced ?? 5000) / 100))
+    } catch {
+      setEnabled(false)
+    }
+  }, [userId, techs])
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error('Select a technician.')
+      if (enabled) {
+        const json = buildMobileCommissionRulesJson({
+          enabled: true,
+          retainerDollars: Math.max(0, parseFloat(retainer) || 0),
+          shopPercent: Math.max(0, parseFloat(shop) || 0),
+          techSourcedPercent: Math.max(0, parseFloat(self) || 0),
+        })
+        await updateUser(userId, { mobile_commission_rules_json: json })
+      } else {
+        await updateUser(userId, { mobile_commission_rules_json: '' })
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      onClose()
+    },
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Could not save rules.')),
+  })
+
+  return (
+    <Modal title="Mobile Services commission rules" onClose={onClose}>
+      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        Rules are stored as JSON on each technician (extend with custom <code className="text-xs">rates_bp</code> keys and matching job <strong>lead source</strong> on each job). Default keys: shop_referred, tech_sourced.
+      </p>
+      {techs.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No technicians yet. Add one from this page first.</p>
+      ) : (
+        <div className="space-y-3">
+          <Select label="Technician" value={userId} onChange={e => setUserId(e.target.value)}>
+            {techs.map(t => (
+              <option key={t.id} value={t.id}>{t.full_name}</option>
+            ))}
+          </Select>
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text)' }}>
+            <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+            Commission tracking enabled
+          </label>
+          {enabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Input label="Retainer ($)" value={retainer} onChange={e => setRetainer(e.target.value)} />
+              <Input label="Shop / referred %" value={shop} onChange={e => setShop(e.target.value)} />
+              <Input label="Tech sourced %" value={self} onChange={e => setSelf(e.target.value)} />
+            </div>
+          )}
+        </div>
+      )}
+      {error && <p className="text-sm mt-2" style={{ color: '#C96A5A' }}>{error}</p>}
+      <div className="flex justify-end gap-2 pt-4">
+        <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+        <Button type="button" disabled={!techs.length || mut.isPending} onClick={() => { setError(''); mut.mutate() }}>
+          {mut.isPending ? 'Saving…' : 'Save'}
+        </Button>
       </div>
     </Modal>
   )
@@ -326,6 +468,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     salesperson: '',
     deposit: '',
     cost: '',
+    commission_lead_source: 'shop_referred',
   })
 
   const { data: customers = [] } = useQuery({
@@ -467,6 +610,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         apply_suggested_quote: applySuggestedQuote,
         send_booking_sms: sendBookingSms,
         additional_services: additional_services.length ? additional_services : undefined,
+        commission_lead_source: form.commission_lead_source || 'shop_referred',
       })
     },
     onSuccess: () => {
@@ -519,6 +663,14 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           {users.map((u: { id: string; full_name: string }) => (
             <option key={u.id} value={u.id}>{u.full_name}</option>
           ))}
+        </Select>
+        <Select
+          label="Commission: who sourced the job?"
+          value={form.commission_lead_source}
+          onChange={e => setForm(f => ({ ...f, commission_lead_source: e.target.value }))}
+        >
+          <option value="shop_referred">Shop / referred work (default rate)</option>
+          <option value="tech_sourced">Technician sourced (own customer)</option>
         </Select>
         <Input label="Job title (from customer + vehicle)" value={autoTitle} readOnly className="opacity-90" />
         <Textarea label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
@@ -1366,6 +1518,7 @@ export default function AutoKeyJobsPage() {
   const { role } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
   const [showAddTech, setShowAddTech] = useState(false)
+  const [showCommissionRules, setShowCommissionRules] = useState(false)
   const [plannerDetailJobId, setPlannerDetailJobId] = useState<string | null>(null)
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>('day')
   const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
@@ -1490,6 +1643,15 @@ export default function AutoKeyJobsPage() {
     queryFn: () => getAutoKeyReports(reportDateParams!).then(r => r.data),
     enabled: view === 'reports' && !!reportDateParams,
   })
+  const { data: commissionReport, isLoading: commissionLoading, isError: commissionError, error: commissionErr } = useQuery({
+    queryKey: ['auto-key-commission', reportDateParams?.date_from, reportDateParams?.date_to],
+    queryFn: () =>
+      getAutoKeyCommissionReport({
+        date_from: reportDateParams!.date_from,
+        date_to: reportDateParams!.date_to,
+      }).then(r => r.data),
+    enabled: view === 'reports' && !!reportDateParams && (role === 'owner' || role === 'manager'),
+  })
   const sendRemindersMut = useMutation({
     mutationFn: () => sendAutoKeyDayBeforeReminders().then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-reports'] }),
@@ -1547,6 +1709,11 @@ export default function AutoKeyJobsPage() {
               {role === 'owner' && (
                 <Button variant="secondary" onClick={() => setShowAddTech(true)} type="button">
                   <UserPlus size={16} />Add technician
+                </Button>
+              )}
+              {(role === 'owner' || role === 'manager') && (
+                <Button variant="secondary" onClick={() => setShowCommissionRules(true)} type="button">
+                  Commission rules
                 </Button>
               )}
               <Button onClick={() => setShowCreate(true)} type="button"><Plus size={16} />New Job</Button>
@@ -1621,6 +1788,9 @@ export default function AutoKeyJobsPage() {
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
       {showAddTech && <AddTechnicianModal onClose={() => setShowAddTech(false)} />}
+      {showCommissionRules && (
+        <MobileCommissionRulesModal onClose={() => setShowCommissionRules(false)} />
+      )}
       {plannerDetailJobId && (
         <PlannerJobDetailModal
           jobId={plannerDetailJobId}
@@ -2401,6 +2571,77 @@ export default function AutoKeyJobsPage() {
                   </div>
                 </Card>
               </div>
+
+              {(role === 'owner' || role === 'manager') && (
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                    Technician commission & weekly bonus
+                  </h3>
+                  <p className="text-xs mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+                    Uses the same date range as above. Revenue is attributed by <strong>invoice created</strong> time. Each job must match the technician&apos;s eligible statuses (default: completed, collected).
+                    Bonus = raw commission minus the per-period retainer (salary component). Advanced: edit JSON on the user or add extra <code className="text-[11px]">rates_bp</code> keys and set the job&apos;s lead source accordingly.
+                  </p>
+                  {commissionLoading && <Spinner />}
+                  {commissionError && !commissionLoading && (
+                    <p className="text-sm" style={{ color: '#C96A5A' }}>
+                      {getApiErrorMessage(commissionErr, 'Could not load commission report.')}
+                    </p>
+                  )}
+                  {!commissionLoading && !commissionError && commissionReport && (
+                    <div className="space-y-4">
+                      {commissionReport.technicians.length === 0 ? (
+                        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                          No technicians have commission tracking enabled. Use <strong>Commission rules</strong> or add a technician with commission enabled.
+                        </p>
+                      ) : (
+                        commissionReport.technicians.map(tech => (
+                          <div
+                            key={tech.user_id}
+                            className="rounded-xl border p-4"
+                            style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                          >
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                              <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{tech.full_name}</p>
+                              <p className="text-sm" style={{ color: 'var(--cafe-amber)' }}>
+                                Bonus payable: <strong>{formatCents(tech.bonus_payable_cents)}</strong>
+                                <span className="font-normal" style={{ color: 'var(--cafe-text-muted)' }}>
+                                  {' '}· Raw {formatCents(tech.raw_commission_cents)} · Retainer {formatCents(tech.retainer_cents)}
+                                </span>
+                              </p>
+                            </div>
+                            {tech.lines.length > 0 && (
+                              <div className="overflow-x-auto mt-3">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+                                      <th className="py-1 pr-2" style={{ color: 'var(--cafe-text-muted)' }}>Job</th>
+                                      <th className="py-1 pr-2" style={{ color: 'var(--cafe-text-muted)' }}>Source</th>
+                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
+                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Rate</th>
+                                      <th className="py-1 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Comm.</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {tech.lines.map(line => (
+                                      <tr key={`${line.job_id}-${line.invoice_id}`} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
+                                        <td className="py-1 pr-2" style={{ color: 'var(--cafe-text)' }}>#{line.job_number}</td>
+                                        <td className="py-1 pr-2" style={{ color: 'var(--cafe-text-mid)' }}>{line.lead_source_label}</td>
+                                        <td className="py-1 pr-2 text-right">{formatCents(line.revenue_cents)}</td>
+                                        <td className="py-1 pr-2 text-right">{line.rate_bp / 100}%</td>
+                                        <td className="py-1 text-right font-medium">{formatCents(line.commission_cents)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </Card>
+              )}
             </>
           ) : (
             <EmptyState message="No report data. Select a date range." />

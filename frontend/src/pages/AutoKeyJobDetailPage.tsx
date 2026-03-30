@@ -209,6 +209,16 @@ export default function AutoKeyJobDetailPage() {
     onError: err => setError(getApiErrorMessage(err, 'Failed to assign tech.')),
   })
 
+  const leadSourceMut = useMutation({
+    mutationFn: (commission_lead_source: string) => updateAutoKeyJob(id!, { commission_lead_source }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to update commission source.')),
+  })
+
   const recordPaymentMut = useMutation({
     mutationFn: ({ invId, method }: { invId: string; method: 'cash' | 'eftpos' | 'bank' }) =>
       updateAutoKeyInvoice(id!, invId, { status: 'paid', payment_method: method }),
@@ -604,6 +614,16 @@ export default function AutoKeyJobDetailPage() {
             ))}
           </Select>
           )}
+
+          <Select
+            label='Commission: job source'
+            value={(job as { commission_lead_source?: string }).commission_lead_source ?? 'shop_referred'}
+            onChange={e => leadSourceMut.mutate(e.target.value)}
+            disabled={leadSourceMut.isPending}
+          >
+            <option value='shop_referred'>Shop / referred work</option>
+            <option value='tech_sourced'>Technician sourced</option>
+          </Select>
 
           <Select
             label='Customer Account'

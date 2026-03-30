@@ -3,12 +3,13 @@ import io
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..dependencies import AuthContext, get_auth_context, require_feature, require_manager_or_above
+from ..mobile_commission import commission_for_period_lines, parse_mobile_commission_rules
 from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
@@ -628,6 +629,149 @@ def get_auto_key_reports(
         "jobs_by_tech": jobs_by_tech,
         "jobs_by_status": jobs_by_status,
         "week_on_week": week_on_week,
+    }
+
+
+@router.get(
+    "/auto-key-commission",
+    summary="Mobile Services technician commission (configurable rules, weekly-style ranges)",
+)
+def get_auto_key_commission_report(
+    date_from: str | None = Query(default=None, description="YYYY-MM-DD (invoice created_at in tenant range)"),
+    date_to: str | None = Query(default=None, description="YYYY-MM-DD"),
+    user_id: UUID | None = Query(default=None, description="Single technician; omit for all with commission enabled"),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+    _manager: AuthContext = Depends(require_manager_or_above),
+    _feat: AuthContext = Depends(require_feature("auto_key")),
+):
+    """
+    Attributes Mobile Services revenue to invoices created in the date range.
+    Include rows where the job is assigned to a technician with ``enabled`` commission rules,
+    job status is in that technician's ``eligible_job_statuses``, and invoice total > 0.
+
+    Bonus payable for the period = max(0, raw_commission_cents - retainer_cents_per_period).
+    Rules are stored per-user as JSON (rates_bp, retainer, labels, custom lead_source keys).
+    """
+    tenant_id = auth.tenant_id
+    now = datetime.now(timezone.utc)
+    if not date_from or not date_to:
+        day = now.weekday()
+        monday = now - timedelta(days=day)
+        monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+        sunday = monday + timedelta(days=6)
+        sunday = sunday.replace(hour=23, minute=59, second=59, microsecond=999999)
+        date_from = monday.strftime("%Y-%m-%d")
+        date_to = sunday.strftime("%Y-%m-%d")
+
+    try:
+        start_dt = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_dt = datetime.strptime(date_to + " 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date_from or date_to (use YYYY-MM-DD)") from None
+
+    all_users = list(session.exec(select(User).where(User.tenant_id == tenant_id)).all())
+    techs_with_rules: list[User] = []
+    for u in all_users:
+        rules = parse_mobile_commission_rules(getattr(u, "mobile_commission_rules_json", None))
+        if rules and rules.get("enabled"):
+            techs_with_rules.append(u)
+
+    if user_id is not None:
+        techs_with_rules = [u for u in techs_with_rules if u.id == user_id]
+        if not techs_with_rules:
+            return {
+                "date_from": date_from,
+                "date_to": date_to,
+                "attribution": "invoice_created_at",
+                "technicians": [],
+                "note": "No technician with commission enabled matches user_id in this workspace.",
+            }
+
+    invoices = list(
+        session.exec(
+            select(AutoKeyInvoice)
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.created_at >= start_dt)
+            .where(AutoKeyInvoice.created_at <= end_dt)
+            .where(AutoKeyInvoice.total_cents > 0)
+        ).all()
+    )
+    if not invoices:
+        zero_rows: list[dict] = []
+        for u in techs_with_rules:
+            r = parse_mobile_commission_rules(getattr(u, "mobile_commission_rules_json", None))
+            zero_rows.append(
+                {
+                    "user_id": str(u.id),
+                    "full_name": u.full_name,
+                    "rules": r,
+                    "lines": [],
+                    "raw_commission_cents": 0,
+                    "retainer_cents": int(r.get("retainer_cents_per_period", 0)) if r else 0,
+                    "bonus_payable_cents": 0,
+                }
+            )
+        return {
+            "date_from": date_from,
+            "date_to": date_to,
+            "attribution": "invoice_created_at",
+            "technicians": zero_rows,
+        }
+
+    job_ids = [i.auto_key_job_id for i in invoices]
+    jobs_list = list(session.exec(select(AutoKeyJob).where(AutoKeyJob.id.in_(job_ids))).all())
+    jobs_by_id = {j.id: j for j in jobs_list}
+
+    technicians_out: list[dict] = []
+    for tech in techs_with_rules:
+        rules = parse_mobile_commission_rules(getattr(tech, "mobile_commission_rules_json", None))
+        assert rules is not None
+        eligible = set(rules.get("eligible_job_statuses") or [])
+        lines_data: list[tuple[UUID, str, UUID, int, str, str]] = []
+        for inv in invoices:
+            job = jobs_by_id.get(inv.auto_key_job_id)
+            if not job or job.assigned_user_id != tech.id:
+                continue
+            if job.status not in eligible:
+                continue
+            ls = getattr(job, "commission_lead_source", None) or "shop_referred"
+            lines_data.append((job.id, job.job_number, inv.id, int(inv.total_cents), str(ls), job.status))
+
+        raw_total, comm_lines = commission_for_period_lines(rules=rules, lines_data=lines_data)
+        retainer = int(rules.get("retainer_cents_per_period", 0))
+        bonus = max(0, raw_total - retainer)
+        labels = rules.get("labels") or {}
+        technicians_out.append(
+            {
+                "user_id": str(tech.id),
+                "full_name": tech.full_name,
+                "rules": rules,
+                "lines": [
+                    {
+                        "job_id": str(line.job_id),
+                        "job_number": line.job_number,
+                        "invoice_id": str(line.invoice_id),
+                        "revenue_cents": line.revenue_cents,
+                        "lead_source": line.lead_source,
+                        "lead_source_label": labels.get(line.lead_source, line.lead_source.replace("_", " ")),
+                        "rate_bp": line.rate_bp,
+                        "commission_cents": line.commission_cents,
+                        "job_status": line.job_status,
+                    }
+                    for line in comm_lines
+                ],
+                "raw_commission_cents": raw_total,
+                "retainer_cents": retainer,
+                "bonus_payable_cents": bonus,
+            }
+        )
+
+    return {
+        "date_from": date_from,
+        "date_to": date_to,
+        "attribution": "invoice_created_at",
+        "technicians": technicians_out,
     }
 
 

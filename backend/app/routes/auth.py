@@ -97,6 +97,7 @@ def _build_public_user(user: User) -> PublicUser:
         full_name=user.full_name,
         role=user.role,
         is_active=user.is_active,
+        mobile_commission_rules_json=getattr(user, "mobile_commission_rules_json", None),
     )
 
 
