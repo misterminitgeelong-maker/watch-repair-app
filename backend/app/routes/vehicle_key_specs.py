@@ -1,7 +1,8 @@
-"""Vehicle key / immobiliser hints from seed data (Locksmith Master Vehicle_Systems derived)."""
+"""Vehicle key / immobiliser hints from seed data (Locksmith Master Vehicle_Systems + Cutting_Profiles)."""
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from pathlib import Path
 from typing import Any
@@ -14,10 +15,12 @@ router = APIRouter(prefix="/v1/vehicle-key-specs", tags=["vehicle-key-specs"])
 
 _SPEC_PATH = Path(__file__).parent.parent.parent / "seed" / "vehicle_key_specs.json"
 _ENTRIES: list[dict[str, Any]] = []
+_KEY_BLANKS: list[dict[str, Any]] = []
 if _SPEC_PATH.is_file():
     with open(_SPEC_PATH, encoding="utf-8") as _f:
         _RAW = json.load(_f)
         _ENTRIES = list(_RAW.get("entries") or [])
+        _KEY_BLANKS = list(_RAW.get("key_blanks") or [])
 
 
 def _norm(s: str | None) -> str:
@@ -50,6 +53,68 @@ def _display_model(e: dict[str, Any]) -> str:
     if isinstance(var, str) and var.strip():
         return f"{model} ({var.strip()})"
     return model
+
+
+def _primary_blank_ref(raw: str | None) -> str:
+    s = unicodedata.normalize("NFKC", (raw or "")).strip()
+    if not s:
+        return ""
+    part = s.split("/")[0].strip().split(",")[0].strip()
+    return part
+
+
+def _score_blank_for_entry(b: dict[str, Any], entry: dict[str, Any]) -> int:
+    hay = _norm(str(b.get("common_makes_models") or ""))
+    if not hay:
+        return 0
+    make = _norm(str(entry.get("make") or ""))
+    model = _norm(str(entry.get("model") or ""))
+    var_raw = str(entry.get("variant") or "")
+    variant = _norm(var_raw)
+
+    sc = 0
+    if make and make in hay:
+        sc += 65
+    if model and model in hay:
+        sc += 70
+    elif model:
+        for piece in hay.replace("/", " ").split():
+            if len(piece) > 3 and model in piece:
+                sc += 40
+                break
+
+    if variant:
+        for tok in re.split(r"[/\s,]+", var_raw):
+            t = _norm(tok)
+            if len(t) >= 2 and t in hay:
+                sc += 24
+
+    return sc
+
+
+def _key_blanks_for_entry(entry: dict[str, Any], limit: int = 5) -> tuple[list[dict[str, Any]], str | None]:
+    ranked: list[tuple[int, dict[str, Any]]] = []
+    for b in _KEY_BLANKS:
+        bs = _score_blank_for_entry(b, entry)
+        if bs >= 40:
+            ranked.append((bs, b))
+    ranked.sort(key=lambda x: -x[0])
+    out: list[dict[str, Any]] = []
+    for bs, b in ranked[:limit]:
+        br = str(b.get("blank_reference") or "").strip()
+        out.append(
+            {
+                "blank_reference": br,
+                "primary_code": _primary_blank_ref(br),
+                "description": b.get("description"),
+                "key_type": b.get("key_type"),
+                "machine_profiles": b.get("machine_profiles"),
+                "notes": b.get("notes"),
+                "match_score": bs,
+            }
+        )
+    suggested = out[0]["primary_code"] if out else None
+    return out, suggested
 
 
 def _label(e: dict[str, Any]) -> str:
@@ -123,6 +188,7 @@ def search_vehicle_key_specs(
         yf, yt = e.get("year_from"), e.get("year_to")
         vn = e.get("key_type")
         cs = e.get("transponder_system")
+        blanks, suggested_blade = _key_blanks_for_entry(e)
         matches.append(
             {
                 "score": sc,
@@ -135,6 +201,8 @@ def search_vehicle_key_specs(
                 "key_type": vn if isinstance(vn, str) else None,
                 "chip_type": cs if isinstance(cs, str) else None,
                 "tech_notes": _combine_tech_notes(e),
+                "key_blanks": blanks,
+                "suggested_blade_code": suggested_blade,
             }
         )
 

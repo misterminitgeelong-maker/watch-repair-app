@@ -345,6 +345,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
       key_type: m.key_type || f.key_type,
       chip_type: m.chip_type || f.chip_type,
       tech_notes: m.tech_notes || f.tech_notes,
+      blade_code: m.suggested_blade_code || f.blade_code,
     }))
   }
 
@@ -538,7 +539,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <p className="font-medium mb-1" style={{ color: 'var(--cafe-text-muted)' }}>
               Vehicle database — tap a row to fill key details
             </p>
-            <ul className="max-h-40 overflow-y-auto space-y-1">
+            <ul className="max-h-48 overflow-y-auto space-y-1">
               {specSearch.matches.map((m, i) => (
                 <li key={`${m.label}-${i}`}>
                   <button
@@ -549,7 +550,18 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                     onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
                     onClick={() => applyVehicleSpec(m)}
                   >
-                    {m.label}
+                    <span className="block">{m.label}</span>
+                    {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
+                      <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                        Blanks:
+                        {' '}
+                        {(m.key_blanks ?? [])
+                          .slice(0, 4)
+                          .map(b => b.primary_code || b.blank_reference)
+                          .filter(Boolean)
+                          .join(', ') || m.suggested_blade_code}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

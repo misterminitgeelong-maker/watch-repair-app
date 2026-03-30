@@ -1,5 +1,7 @@
 """
-Build backend/seed/vehicle_key_specs.json from Locksmith Master Database Vehicle_Systems sheet.
+Build backend/seed/vehicle_key_specs.json from Locksmith Master Database:
+- Vehicle_Systems (vehicle + immobiliser rows)
+- Cutting_Profiles (key blank references)
 
 Usage:
   python scripts/generate_vehicle_key_specs_from_xlsx.py --input path/to/Locksmith_Master_Database_v9_populated.xlsx
@@ -83,17 +85,54 @@ def main() -> None:
             }
         )
 
+    cp = pd.read_excel(in_path, sheet_name="Cutting_Profiles")
+    key_blanks: list[dict] = []
+
+    def cp_cell(row, k: str) -> str | None:
+        v = row.get(k)
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return None
+        t = str(v).strip()
+        return t or None
+
+    for _, row in cp.iterrows():
+        br = row.get("Blank Reference")
+        if pd.isna(br) or not str(br).strip():
+            continue
+        profiles: list[str] = []
+        for col, tag in (
+            ("Dolphin XP-005L Profile", "Dolphin XP-005L"),
+            ("Condor XC-Mini Plus II Profile", "Condor XC-Mini II"),
+            ("Silca Alpha Pro Profile", "Silca Alpha Pro"),
+            ("Silca Futura Pro Profile", "Silca Futura Pro"),
+        ):
+            pv = cp_cell(row, col)
+            if pv:
+                profiles.append(f"{tag}: {pv}")
+        key_blanks.append(
+            {
+                "blank_reference": str(br).strip(),
+                "description": cp_cell(row, "Description"),
+                "key_type": cp_cell(row, "Key Type"),
+                "common_makes_models": cp_cell(row, "Common Makes / Models"),
+                "machine_profiles": " · ".join(profiles) if profiles else None,
+                "notes": cp_cell(row, "Notes"),
+            }
+        )
+
     out = {
-        "version": 1,
-        "source_sheet": "Vehicle_Systems",
+        "version": 2,
+        "source_sheets": ["Vehicle_Systems", "Cutting_Profiles"],
         "entry_count": len(entries),
+        "key_blank_count": len(key_blanks),
         "entries": entries,
+        "key_blanks": key_blanks,
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
         f.write("\n")
-    print(f"Wrote {out_path} ({len(entries)} entries)")
+    print(f"Wrote {out_path} ({len(entries)} vehicles, {len(key_blanks)} key blanks)")
 
 
 if __name__ == "__main__":

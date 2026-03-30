@@ -48,6 +48,9 @@ def test_vehicle_key_specs_search_requires_auto_key():
     assert first["vehicle_make"] == "Toyota"
     assert "Hilux" in first["vehicle_model"]
     assert first.get("key_type") or first.get("chip_type") or first.get("tech_notes")
+    assert first.get("suggested_blade_code")
+    assert isinstance(first.get("key_blanks"), list)
+    assert len(first["key_blanks"]) >= 1
 
 
 def test_vehicle_key_specs_short_query_empty():

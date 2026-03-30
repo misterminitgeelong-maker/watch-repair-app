@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail } from 'lucide-react'
@@ -12,14 +12,18 @@ import {
   listAutoKeyQuotes,
   listCustomerAccounts,
   listUsers,
+  searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
   updateAutoKeyInvoice,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   uploadAutoKeyAttachment,
+  type AutoKeyJobUpdatePayload,
   type CustomerAccount,
   type JobStatus,
+  type VehicleKeySpecMatch,
 } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
@@ -46,7 +50,11 @@ function formatCents(value: number) {
 export default function AutoKeyJobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
+  const { hasFeature } = useAuth()
   const [error, setError] = useState('')
+  const [vLookupMake, setVLookupMake] = useState('')
+  const [vLookupModel, setVLookupModel] = useState('')
+  const [vLookupYear, setVLookupYear] = useState('')
   const [addressEdit, setAddressEdit] = useState<string | null>(null)
   const [keyTypeEdit, setKeyTypeEdit] = useState<string | null>(null)
   const [bladeCodeEdit, setBladeCodeEdit] = useState<string | null>(null)
@@ -62,6 +70,57 @@ export default function AutoKeyJobDetailPage() {
     queryKey: ['auto-key-job', id],
     queryFn: () => getAutoKeyJob(id!).then(r => r.data),
     enabled: !!id,
+  })
+
+  useEffect(() => {
+    if (!job) return
+    setVLookupMake(job.vehicle_make ?? '')
+    setVLookupModel(job.vehicle_model ?? '')
+    setVLookupYear(job.vehicle_year != null ? String(job.vehicle_year) : '')
+  }, [job?.id, job?.vehicle_make, job?.vehicle_model, job?.vehicle_year])
+
+  const parsedLookupYear = vLookupYear.trim() ? Number.parseInt(vLookupYear, 10) : NaN
+  const lookupYearParam = Number.isFinite(parsedLookupYear) ? parsedLookupYear : undefined
+  const { data: vehicleSpecSearch } = useQuery({
+    queryKey: ['vehicle-key-specs', 'job-detail', job?.id, vLookupMake, vLookupModel, vLookupYear],
+    queryFn: () =>
+      searchVehicleKeySpecs({
+        make: vLookupMake,
+        model: vLookupModel,
+        year: lookupYearParam,
+      }).then(r => r.data),
+    enabled:
+      !!job &&
+      hasFeature('auto_key') &&
+      (vLookupMake.trim().length >= 2 || vLookupModel.trim().length >= 2),
+    staleTime: 60_000,
+  })
+
+  const applyVehicleDbMut = useMutation({
+    mutationFn: (m: VehicleKeySpecMatch) => {
+      const yParsed = vLookupYear.trim() ? Number.parseInt(vLookupYear, 10) : NaN
+      const yearToSet = Number.isFinite(yParsed) ? yParsed : (m.year_from ?? undefined)
+      const patch: AutoKeyJobUpdatePayload = {
+        vehicle_make: m.vehicle_make,
+        vehicle_model: m.vehicle_model,
+      }
+      if (yearToSet !== undefined) patch.vehicle_year = yearToSet
+      if (m.key_type) patch.key_type = m.key_type
+      if (m.chip_type) patch.chip_type = m.chip_type
+      if (m.tech_notes) patch.tech_notes = m.tech_notes
+      if (m.suggested_blade_code) patch.blade_code = m.suggested_blade_code
+      return updateAutoKeyJob(id!, patch)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setKeyTypeEdit(null)
+      setBladeCodeEdit(null)
+      setChipTypeEdit(null)
+      setTechNotesEdit(null)
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not apply vehicle database row.')),
   })
 
   const { data: customer } = useQuery({
@@ -338,6 +397,66 @@ export default function AutoKeyJobDetailPage() {
               </button>
             )}
           </div>
+
+          {hasFeature('auto_key') && (
+            <>
+              <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>
+                Vehicle database
+              </h3>
+              <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>
+                Refine make, model, and year, then tap a match to fill vehicle, key type, chip, blade code, and tech notes.
+              </p>
+              <div className='space-y-2'>
+                <Input
+                  label='Search make'
+                  value={vLookupMake}
+                  onChange={e => setVLookupMake(e.target.value)}
+                  placeholder='e.g. Toyota'
+                />
+                <Input
+                  label='Search model'
+                  value={vLookupModel}
+                  onChange={e => setVLookupModel(e.target.value)}
+                  placeholder='e.g. Hilux'
+                />
+                <Input
+                  label='Year (optional)'
+                  type='number'
+                  value={vLookupYear}
+                  onChange={e => setVLookupYear(e.target.value)}
+                  placeholder='Narrows generation'
+                />
+              </div>
+              {vehicleSpecSearch && vehicleSpecSearch.matches.length > 0 && (
+                <ul className='max-h-44 overflow-y-auto space-y-1 rounded-lg border p-1.5' style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
+                  {vehicleSpecSearch.matches.map((m, i) => (
+                    <li key={`${m.label}-${i}`}>
+                      <button
+                        type='button'
+                        disabled={applyVehicleDbMut.isPending}
+                        className='w-full text-left px-2 py-1.5 rounded text-sm transition disabled:opacity-50'
+                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                        onClick={() => applyVehicleDbMut.mutate(m)}
+                      >
+                        <span className='block'>{m.label}</span>
+                        {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
+                          <span className='block text-xs mt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>
+                            Blanks:
+                            {' '}
+                            {(m.key_blanks ?? [])
+                              .slice(0, 4)
+                              .map(b => b.primary_code || b.blank_reference)
+                              .filter(Boolean)
+                              .join(', ') || m.suggested_blade_code}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
 
           <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Key Details</h3>
           <Input

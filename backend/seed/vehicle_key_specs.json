@@ -1,7 +1,11 @@
 {
-  "version": 1,
-  "source_sheet": "Vehicle_Systems",
+  "version": 2,
+  "source_sheets": [
+    "Vehicle_Systems",
+    "Cutting_Profiles"
+  ],
   "entry_count": 772,
+  "key_blank_count": 38,
   "entries": [
     {
       "make": "Alfa Romeo",
@@ -12354,6 +12358,312 @@
       "akl_complexity": "Very High",
       "likely_method": "Specialist / Refer",
       "typical_notes": "SPA platform. Abrites recommended for AKL."
+    }
+  ],
+  "key_blanks": [
+    {
+      "blank_reference": "TOY43",
+      "description": "Toyota standard double-sided blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Hilux N70/N140, Corolla E110-E150, Camry XV20-XV40, HiAce H100/H200, RAV4 XA20-XA40, Prado 90/120",
+      "machine_profiles": "Dolphin XP-005L: TOY43 / B series · Condor XC-Mini II: TOY43 · Silca Alpha Pro: TOY43 / B111 · Silca Futura Pro: TOY43",
+      "notes": "Most common Toyota blank in AU. High stock priority."
+    },
+    {
+      "blank_reference": "TOY48",
+      "description": "Toyota high-security laser blade",
+      "key_type": "Laser / track",
+      "common_makes_models": "LandCruiser 100 Series, Prado 90/120 (high-sec trim), Lexus LS XF30",
+      "machine_profiles": "Dolphin XP-005L: TOY48 / LD series · Condor XC-Mini II: TOY48 · Silca Alpha Pro: TOY48 · Silca Futura Pro: TOY48",
+      "notes": "Less common than TOY43 — confirm profile before cutting."
+    },
+    {
+      "blank_reference": "TOY12 / TOY-L",
+      "description": "Toyota smart key emergency blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Hilux Revo AN120, Camry XV50/XV70, Corolla E170/E210, Prado 150, LandCruiser 200/300, RAV4 XA40/XA50",
+      "machine_profiles": "Dolphin XP-005L: TOY-L / LD series · Condor XC-Mini II: TOY-L · Silca Alpha Pro: LD series · Silca Futura Pro: LD series",
+      "notes": "Blade insert for Toyota push-start smart keys. Confirm button count of shell."
+    },
+    {
+      "blank_reference": "FO21",
+      "description": "Ford AU standard blade (Falcon/Territory)",
+      "key_type": "Double-sided",
+      "common_makes_models": "Falcon AU/BA/BF/FG, Territory SX/SY/SZ, Focus LR/LS/LT, Fiesta WP/WQ/WS/WT",
+      "machine_profiles": "Dolphin XP-005L: FO21 / FO series · Condor XC-Mini II: FO21 · Silca Alpha Pro: FO21 · Silca Futura Pro: FO21",
+      "notes": "Highest-volume Ford AU blank. BA/BF/FG Falcon bread and butter."
+    },
+    {
+      "blank_reference": "FO38",
+      "description": "Ford global platform blade (Ranger/Transit/Mondeo)",
+      "key_type": "Double-sided / Track",
+      "common_makes_models": "Ranger PJ/PK/PX/PX2/PX3, Transit VM/VO, Mondeo MA/MB/MC/MD, Escape ZA/ZB/ZC/ZG, Everest UA",
+      "machine_profiles": "Dolphin XP-005L: FO38 / FO series · Condor XC-Mini II: FO38 · Silca Alpha Pro: FO38 · Silca Futura Pro: FO38",
+      "notes": "Global Ford platform. Increasingly common as Ranger volume grows."
+    },
+    {
+      "blank_reference": "FO-NEXT / FO116",
+      "description": "Ford Next-Gen smart key blade",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Ranger P703 Next-Gen, Everest UB, Transit Custom 2nd gen, Mustang S650",
+      "machine_profiles": "Dolphin XP-005L: FO116 / FO-NEXT · Condor XC-Mini II: FO116 · Silca Alpha Pro: FO116 · Silca Futura Pro: FO116",
+      "notes": "Newer Ford push-start blade. Confirm machine profile for Next-Gen Ranger."
+    },
+    {
+      "blank_reference": "HU100",
+      "description": "Holden/GM standard blade (Commodore/Colorado/Cruze)",
+      "key_type": "Double-sided",
+      "common_makes_models": "Commodore VT/VX/VY/VZ/VE, Cruze JG/JH, Captiva CG, Colorado RC/RG, Trax, Barina TK/TM",
+      "machine_profiles": "Dolphin XP-005L: HU100 / HU series · Condor XC-Mini II: HU100 · Silca Alpha Pro: HU100 · Silca Futura Pro: HU100",
+      "notes": "VE Commodore is highest volume. Same blank across most GM/Holden models."
+    },
+    {
+      "blank_reference": "B111 / HU100",
+      "description": "Holden/GM alternative profile",
+      "key_type": "Double-sided",
+      "common_makes_models": "Some Holden Astra/Barina variants — confirm by model",
+      "machine_profiles": "Dolphin XP-005L: B111 · Condor XC-Mini II: B111 · Silca Alpha Pro: B111 · Silca Futura Pro: B111",
+      "notes": "Check specific Astra/Barina model before assuming HU100."
+    },
+    {
+      "blank_reference": "NSN14",
+      "description": "Nissan standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Navara D22/D40, Patrol GU/Y61, X-Trail T30/T31/T32, Pulsar N14/N15/N16/B17, Tiida C11, Pathfinder R50/R51, Murano Z50/Z51",
+      "machine_profiles": "Dolphin XP-005L: NSN14 / NSN series · Condor XC-Mini II: NSN14 · Silca Alpha Pro: NSN14 · Silca Futura Pro: NSN14",
+      "notes": "Very high volume AU Nissan. Keep well stocked."
+    },
+    {
+      "blank_reference": "NSN11 / NSN-L",
+      "description": "Nissan smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Navara D23/NP300, X-Trail T32/T33, Patrol Y62, Qashqai J11/J12, Murano Z52",
+      "machine_profiles": "Dolphin XP-005L: NSN-L / NSN11 · Condor XC-Mini II: NSN11 · Silca Alpha Pro: NSN11 · Silca Futura Pro: NSN11",
+      "notes": "Nissan push-start smart key blade. Growing volume with newer Navara/X-Trail."
+    },
+    {
+      "blank_reference": "HY17 / HYN series",
+      "description": "Hyundai/Kia standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "i30 FD/GD, Tucson JM/LM/TL, Accent LC/MC/RB, Santa Fe SM/CM/DM, Elantra XD/HD/MD/AD, iLoad TQ, Cerato LD/TD/YD, Sportage KM/SL/QL, Sorento BL/XM/UM, Carnival KVII/VQ/YP",
+      "machine_profiles": "Dolphin XP-005L: HY17 / HYN series · Condor XC-Mini II: HY17 · Silca Alpha Pro: HY17 / HYN · Silca Futura Pro: HY17 / HYN",
+      "notes": "Very high volume Korean AU market. Single blank covers most."
+    },
+    {
+      "blank_reference": "HY-L / HYN22",
+      "description": "Hyundai/Kia smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Tucson NX4, Sportage NQ5, Santa Fe TM/MX5, i30 PD, Carnival KA4, Elantra CN7, Kona OS/SX2",
+      "machine_profiles": "Dolphin XP-005L: HYN22 / HY-L · Condor XC-Mini II: HYN22 · Silca Alpha Pro: HYN22 · Silca Futura Pro: HYN22",
+      "notes": "Korean push-start smart key blade. Fastest growing segment now."
+    },
+    {
+      "blank_reference": "MAZ24 / MAZ series",
+      "description": "Mazda standard blade",
+      "key_type": "Double-sided / Track",
+      "common_makes_models": "Mazda 3 BK/BL/BM/BN, Mazda 6 GG/GH/GJ, CX-5 KE, CX-7 ER, CX-9 TB/TC, BT-50 UP/UR, MX-5 NC, Mazda 2 DY/DE/DJ",
+      "machine_profiles": "Dolphin XP-005L: MAZ24 / MAZ series · Condor XC-Mini II: MAZ24 · Silca Alpha Pro: MAZ24 · Silca Futura Pro: MAZ24",
+      "notes": "High volume AU Mazda. BM/BN Mazda 3 and CX-5 KE are most common."
+    },
+    {
+      "blank_reference": "MAZ-L / MAZ smart",
+      "description": "Mazda smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Mazda 3 BP, CX-5 KF, CX-30 DM, CX-8 KG, CX-9 TC, MX-5 ND, CX-60 KH, BT-50 TF (Isuzu-based)",
+      "machine_profiles": "Dolphin XP-005L: MAZ-L · Condor XC-Mini II: MAZ-L · Silca Alpha Pro: MAZ-L · Silca Futura Pro: MAZ-L",
+      "notes": "Newer Mazda push-start. CX-5 KF is highest volume. BT-50 TF uses Isuzu profile."
+    },
+    {
+      "blank_reference": "MIT11 / MIT series",
+      "description": "Mitsubishi standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Lancer CF/CH/CG/CJ, Triton MK/ML/MN/MQ/MR, Pajero NJ/NK/NL/NM/NP/NS/NT/NW/NX, Outlander ZE/ZF/CW/ZJ/ZK, ASX XB/XC/XD, Magna TE/TF/TH",
+      "machine_profiles": "Dolphin XP-005L: MIT11 / MIT series · Condor XC-Mini II: MIT11 · Silca Alpha Pro: MIT11 · Silca Futura Pro: MIT11",
+      "notes": "Very common AU Mitsubishi. Covers most fleet utes and SUVs."
+    },
+    {
+      "blank_reference": "MIT-L / MIT-SMART",
+      "description": "Mitsubishi smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Outlander ZM, Eclipse Cross YA/YB, Pajero Sport QG, Triton MV",
+      "machine_profiles": "Dolphin XP-005L: MIT-L · Condor XC-Mini II: MIT-L · Silca Alpha Pro: MIT-L · Silca Futura Pro: MIT-L",
+      "notes": "Newer Mitsubishi push-start. Growing with Outlander ZM."
+    },
+    {
+      "blank_reference": "HON66 / HON series",
+      "description": "Honda standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Civic EK/EU/FD/FB, CR-V RD/RE/RM, Jazz GD/GE/GK, Accord CM, HR-V RU, Odyssey RA/RB, City GM/GN",
+      "machine_profiles": "Dolphin XP-005L: HON66 / HON series · Condor XC-Mini II: HON66 · Silca Alpha Pro: HON66 · Silca Futura Pro: HON66",
+      "notes": "High volume Honda AU. Civic FD/FB and CR-V RE/RM are most common."
+    },
+    {
+      "blank_reference": "HON-L / HON smart",
+      "description": "Honda smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "CR-V RW/RS, Civic 10th/11th gen, HR-V RZ, Jazz eHEV, ZR-V",
+      "machine_profiles": "Dolphin XP-005L: HON-L · Condor XC-Mini II: HON-L · Silca Alpha Pro: HON-L · Silca Futura Pro: HON-L",
+      "notes": "Newer Honda push-start. Growing volume with 10th/11th gen Civic."
+    },
+    {
+      "blank_reference": "SB22 / SUB series",
+      "description": "Subaru standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Forester SF/SG/SH/SJ, Liberty BD/BE/BL/BM/BN, Outback BG/BP/BR/BS, Impreza GC/GD/GE/GP/GK, WRX (most gen), XV GP/GT, Tribeca",
+      "machine_profiles": "Dolphin XP-005L: SB22 / SUB series · Condor XC-Mini II: SB22 · Silca Alpha Pro: SB22 · Silca Futura Pro: SB22",
+      "notes": "Standard AU Subaru blade. WRX/Forester/Outback are most common jobs."
+    },
+    {
+      "blank_reference": "SUB-L / SUB smart",
+      "description": "Subaru smart key blade insert",
+      "key_type": "Smart key blade insert",
+      "common_makes_models": "Forester SK/SL, Outback BT, Impreza GU, Crosstrek GU, BRZ ZD8, WRX VB, Legacy 2021+",
+      "machine_profiles": "Dolphin XP-005L: SUB-L · Condor XC-Mini II: SUB-L · Silca Alpha Pro: SUB-L · Silca Futura Pro: SUB-L",
+      "notes": "Newer Subaru push-start. Forester SK is highest volume."
+    },
+    {
+      "blank_reference": "SUZ22 / SU series",
+      "description": "Suzuki standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Swift FZ/NZ/AZ/RS, Jimny JB23/JB43/JB74, Grand Vitara JT, S-Cross JY, Vitara LY, Baleno WB, Ignis FF21S, APV GC",
+      "machine_profiles": "Dolphin XP-005L: SUZ22 / SU series · Condor XC-Mini II: SUZ22 · Silca Alpha Pro: SUZ22 · Silca Futura Pro: SUZ22",
+      "notes": "Jimny JB74 is currently highest demand Suzuki job."
+    },
+    {
+      "blank_reference": "HU66",
+      "description": "VAG laser blade — Golf/Passat/Tiguan/Amarok/Transporter/Audi older/Skoda",
+      "key_type": "Laser / track",
+      "common_makes_models": "Golf Mk4/5/6/7, Passat B5/B6/B7, Tiguan 5N/AD, Amarok 2H, Transporter T5/T6, Polo 9N/6R, Skoda Octavia 1Z/5E, Superb 3T, Audi A3 8P/8V, A4 B6/B7/B8, TT 8J",
+      "machine_profiles": "Dolphin XP-005L: HU66 / LD series · Condor XC-Mini II: HU66 · Silca Alpha Pro: HU66 · Silca Futura Pro: HU66",
+      "notes": "Highest volume Euro laser blank in AU. Keep deep stock. HU66 covers huge VAG range."
+    },
+    {
+      "blank_reference": "HU66 / HU162T",
+      "description": "VAG high-security laser (newer VAG MQB)",
+      "key_type": "Laser / track",
+      "common_makes_models": "Golf Mk7/8, Tiguan AD, Polo AW, Skoda Octavia NX, Audi A3 8V/8Y (some trims)",
+      "machine_profiles": "Dolphin XP-005L: HU162T · Condor XC-Mini II: HU162T · Silca Alpha Pro: HU162T · Silca Futura Pro: HU162T",
+      "notes": "Confirm HU66 vs HU162T for newer MQB vehicles — some require the 162T profile."
+    },
+    {
+      "blank_reference": "HU92",
+      "description": "BMW laser blade — E/F series",
+      "key_type": "Laser / track",
+      "common_makes_models": "BMW 3 Series E36/E46/E90, 5 Series E39/E60/F10, X3 E83/F25, X5 E53/E70/F15, X6 E71/F16, 1 Series E87/F20, Z3/Z4 E85/E89, Mini R50/R56/R55/R60",
+      "machine_profiles": "Dolphin XP-005L: HU92 / LD series · Condor XC-Mini II: HU92 · Silca Alpha Pro: HU92 · Silca Futura Pro: HU92",
+      "notes": "Most common BMW blank. E/F series covers a huge AU job volume. Keep stocked."
+    },
+    {
+      "blank_reference": "HU58",
+      "description": "BMW older blade (E34/E36 early)",
+      "key_type": "Double-sided / track",
+      "common_makes_models": "BMW 3 Series E36 early, 5 Series E34, older E-series",
+      "machine_profiles": "Dolphin XP-005L: HU58 · Condor XC-Mini II: HU58 · Silca Alpha Pro: HU58 · Silca Futura Pro: HU58",
+      "notes": "Less common — pre-2000 BMW. Worth carrying small qty."
+    },
+    {
+      "blank_reference": "HU64",
+      "description": "Mercedes laser blade — W203/W204/W211/W212",
+      "key_type": "Laser / track",
+      "common_makes_models": "C-Class W203/W204/W205, E-Class W211/W212/W213, GLA X156/H247, CLA C117/C118, A-Class W169/W176, B-Class W245/W246, M-Class W163/W164/W166",
+      "machine_profiles": "Dolphin XP-005L: HU64 / LD series · Condor XC-Mini II: HU64 · Silca Alpha Pro: HU64 · Silca Futura Pro: HU64",
+      "notes": "Primary Mercedes laser blank. W204/W212 era is most common AU Mercedes job."
+    },
+    {
+      "blank_reference": "YM28",
+      "description": "Mercedes older / Vito / Sprinter blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Vito W638/W639, Sprinter NCV3/W901-905, older C/E-Class W202/W210, SLK R170/R171",
+      "machine_profiles": "Dolphin XP-005L: YM28 · Condor XC-Mini II: YM28 · Silca Alpha Pro: YM28 · Silca Futura Pro: YM28",
+      "notes": "Commercial Mercedes and older models. Keep modest stock."
+    },
+    {
+      "blank_reference": "HU101",
+      "description": "Land Rover / Jaguar / Volvo laser blade",
+      "key_type": "Laser / track",
+      "common_makes_models": "Discovery 3/4/5, Range Rover L322/L405/L460, Freelander 2, Evoque L538/L551, Defender L663, Volvo S60/XC60/XC90/XC40/S80/V70, Jaguar XF/XJ/F-Pace",
+      "machine_profiles": "Dolphin XP-005L: HU101 / LD series · Condor XC-Mini II: HU101 · Silca Alpha Pro: HU101 · Silca Futura Pro: HU101",
+      "notes": "Covers JLR and Volvo. Single blank for large premium Euro segment."
+    },
+    {
+      "blank_reference": "HU66 / HU162",
+      "description": "Porsche laser blade (Cayenne VAG-based)",
+      "key_type": "Laser / track",
+      "common_makes_models": "Cayenne 9PA/92A (VAG platform)",
+      "machine_profiles": "Dolphin XP-005L: HU66 / HU162 · Condor XC-Mini II: HU66 / HU162 · Silca Alpha Pro: HU66 / HU162 · Silca Futura Pro: HU66 / HU162",
+      "notes": "Cayenne is VAG-based — HU66 profile. Confirm generation."
+    },
+    {
+      "blank_reference": "HU92 / HU58",
+      "description": "Mini laser blade (BMW-based)",
+      "key_type": "Laser / track",
+      "common_makes_models": "Mini Hatch R50/R56, Clubman R55, Countryman R60, Convertible R57 — all BMW CAS era",
+      "machine_profiles": "Dolphin XP-005L: HU92 · Condor XC-Mini II: HU92 · Silca Alpha Pro: HU92 · Silca Futura Pro: HU92",
+      "notes": "Mini uses BMW blank profiles. R-series = HU92."
+    },
+    {
+      "blank_reference": "ISU series / MIT variant",
+      "description": "Isuzu D-Max / MU-X blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "D-Max all gen, MU-X first/second gen, N-Series commercial",
+      "machine_profiles": "Dolphin XP-005L: ISU / MIT11 variant · Condor XC-Mini II: ISU series · Silca Alpha Pro: ISU series · Silca Futura Pro: ISU series",
+      "notes": "Confirm specific profile — some Isuzu share Mitsubishi profile. Trace original where possible."
+    },
+    {
+      "blank_reference": "VA2 / REN series",
+      "description": "Renault standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Megane I/II/III, Clio I/II/III/IV, Kangoo KC, Koleos HY, Master, Trafic, Scenic",
+      "machine_profiles": "Dolphin XP-005L: VA2 / REN series · Condor XC-Mini II: VA2 · Silca Alpha Pro: VA2 · Silca Futura Pro: VA2",
+      "notes": "Standard Renault AU and import range."
+    },
+    {
+      "blank_reference": "SX9 / PE series",
+      "description": "Peugeot/Citroen standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Peugeot 206/207/208 A9, 307/308 T7/T9, 3008 T84, 407/508, Partner, Expert, Boxer; Citroen C3/C4/C5, Berlingo, Dispatch",
+      "machine_profiles": "Dolphin XP-005L: SX9 / PE series · Condor XC-Mini II: SX9 · Silca Alpha Pro: SX9 · Silca Futura Pro: SX9",
+      "notes": "PSA platform — one blank covers large Peugeot/Citroen range."
+    },
+    {
+      "blank_reference": "GT10 / FI series",
+      "description": "Fiat standard blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "Fiat 500 312, Punto 176/188/199, Panda 169/319, Doblo, Ducato (shared with Peugeot Boxer)",
+      "machine_profiles": "Dolphin XP-005L: GT10 / FI series · Condor XC-Mini II: GT10 · Silca Alpha Pro: GT10 · Silca Futura Pro: GT10",
+      "notes": "Fiat/PSA shared platform on vans."
+    },
+    {
+      "blank_reference": "GT15 / AR series",
+      "description": "Alfa Romeo blade",
+      "key_type": "Double-sided / Track",
+      "common_makes_models": "Alfa Romeo 147, 156, 159, Giulietta — Fiat/Alfa Immo II/III era",
+      "machine_profiles": "Dolphin XP-005L: GT15 / AR series · Condor XC-Mini II: GT15 · Silca Alpha Pro: GT15 · Silca Futura Pro: GT15",
+      "notes": "Fiat/Alfa shared platform. Low volume in AU but worth carrying small qty."
+    },
+    {
+      "blank_reference": "LDV series / HYN variant",
+      "description": "LDV T60 / G10 blade",
+      "key_type": "Double-sided",
+      "common_makes_models": "LDV T60 SK8C, G10 SV7A, Deliver 9, D90",
+      "machine_profiles": "Dolphin XP-005L: LDV / HYN variant · Condor XC-Mini II: LDV series · Silca Alpha Pro: LDV series · Silca Futura Pro: LDV series",
+      "notes": "Confirm profile — some LDV share Korean blank profiles. Trace original."
+    },
+    {
+      "blank_reference": "GWM / HYN variant",
+      "description": "GWM/Haval blade (older models)",
+      "key_type": "Double-sided",
+      "common_makes_models": "Haval H2, Steed K2/K5, GWM Cannon older trims",
+      "machine_profiles": "Dolphin XP-005L: GWM variant · Condor XC-Mini II: GWM variant · Silca Alpha Pro: GWM variant · Silca Futura Pro: GWM variant",
+      "notes": "Older GWM/Haval often uses variant of Korean profile. Trace original on Dolphin."
+    },
+    {
+      "blank_reference": "HU66 (Skoda)",
+      "description": "Skoda blade — see VAG HU66",
+      "key_type": "Laser / track",
+      "common_makes_models": "Skoda Octavia 1Z/5E, Superb 3T, Fabia 5J/NJ, Yeti, Roomster — all VAG HU66 profile",
+      "machine_profiles": "Dolphin XP-005L: HU66 · Condor XC-Mini II: HU66 · Silca Alpha Pro: HU66 · Silca Futura Pro: HU66",
+      "notes": "Skoda uses same HU66 profile as VW/Audi. No separate blank needed."
     }
   ]
 }

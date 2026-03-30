@@ -1380,6 +1380,16 @@ export interface VehicleLookupResult {
 export const vehicleLookup = (plate: string, state: string) =>
   api.get<VehicleLookupResult>('/vehicle-lookup', { params: { plate, state } })
 
+export interface VehicleKeyBlankMatch {
+  blank_reference: string
+  primary_code: string
+  description?: string | null
+  key_type?: string | null
+  machine_profiles?: string | null
+  notes?: string | null
+  match_score: number
+}
+
 export interface VehicleKeySpecMatch {
   score: number
   label: string
@@ -1391,6 +1401,8 @@ export interface VehicleKeySpecMatch {
   key_type?: string | null
   chip_type?: string | null
   tech_notes?: string | null
+  key_blanks?: VehicleKeyBlankMatch[]
+  suggested_blade_code?: string | null
 }
 
 export const searchVehicleKeySpecs = (params: { make?: string; model?: string; year?: number }) =>
