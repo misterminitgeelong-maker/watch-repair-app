@@ -130,3 +130,23 @@ def test_csv_import_duplicate_like_rows_summarized():
     assert body["imported"] == 2
     assert body["customers_created"] == 1
     assert body["duplicate_customer_rows_in_file"] == 1
+
+
+def test_csv_import_duplicate_ticket_numbers_get_unique_job_numbers():
+    """Same docket/ticket twice in a file must not abort the import (unique job_number)."""
+    token = _bootstrap_and_login("csv-safe-dup-tix", "csvdup@example.com", "Admin123!")
+    headers = {"Authorization": f"Bearer {token}"}
+    csv_text = (
+        "ticket_number,customer_name,phone,brand,quote,status,notes\n"
+        "6000827,Alice,0411111111,Omega,100,collected,first\n"
+        "6000827,Bob,0412222222,Seiko,200,collected,second\n"
+    )
+    res = client.post("/v1/import/csv", headers=headers, files=_csv_file(csv_text))
+    assert res.status_code == 200
+    body = res.json()
+    assert body["imported"] == 2
+    assert body["source_sheet"] is None
+    with Session(engine) as session:
+        jobs = session.exec(select(RepairJob)).all()
+        nums = sorted(j.job_number for j in jobs if j.job_number.startswith("IMP-6000827"))
+    assert nums == ["IMP-6000827", "IMP-6000827-2"]

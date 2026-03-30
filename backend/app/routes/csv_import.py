@@ -230,13 +230,65 @@ def _load_csv_rows(raw_bytes: bytes) -> list[dict[str, str]]:
     return rows
 
 
-def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
+def _score_repair_header_row(header_row: tuple) -> int:
+    """Prefer worksheets that look like a repair/job log (flexible column names)."""
+    keys = {_normalize_key(_to_text(v) or f"_col{i}") for i, v in enumerate(header_row)}
+    score = 0
+    if {"name", "customer", "client_name", "customer_name"} & keys:
+        score += 2
+    if {"number", "phone", "phone_number", "mobile"} & keys:
+        score += 2
+    if {"brand", "brand_case_numbers", "make_model", "model"} & keys:
+        score += 1
+    if {"date", "date_in", "created_at", "date_recieved", "date_received"} & keys:
+        score += 1
+    if "quote" in keys or "quote_price" in keys:
+        score += 1
+    if {"repair_notes", "notes", "notes_on_job", "description"} & keys:
+        score += 1
+    if {"status", "ga_ng_collected", "job_status"} & keys:
+        score += 1
+    if {"docket_number", "ticket", "ticket_number", "col0", "_col0"} & keys or any(
+        k in keys for k in keys if k.startswith("col") and k[3:].isdigit()
+    ):
+        score += 1
+    return score
+
+
+def _pick_xlsx_sheet(workbook, sheet_name: str | None):
+    if sheet_name:
+        if sheet_name not in workbook.sheetnames:
+            names = ", ".join(workbook.sheetnames[:12])
+            more = f" (+{len(workbook.sheetnames) - 12} more)" if len(workbook.sheetnames) > 12 else ""
+            raise HTTPException(
+                status_code=400,
+                detail=f'Worksheet "{sheet_name}" not found. Available: {names}{more}',
+            )
+        return workbook[sheet_name]
+    best_ws = None
+    best_score = -1
+    for ws in workbook.worksheets:
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        sc = _score_repair_header_row(rows[0])
+        if sc > best_score:
+            best_score = sc
+            best_ws = ws
+    if best_ws is not None and best_score >= 3:
+        return best_ws
+    return workbook.active
+
+
+def _load_xlsx_rows(raw_bytes: bytes, sheet_name: str | None = None) -> tuple[list[dict[str, str]], str]:
     try:
         workbook = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True)
-        sheet = workbook.active
+        sheet = _pick_xlsx_sheet(workbook, sheet_name)
         if sheet is None:
             raise HTTPException(status_code=400, detail="Excel file has no worksheets.")
         all_rows = list(sheet.iter_rows(values_only=True))
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=400,
@@ -244,7 +296,7 @@ def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
         ) from exc
 
     if not all_rows:
-        return []
+        return [], sheet.title
 
     header_row = all_rows[0]
     header = [_to_text(v) or f"_col{i}" for i, v in enumerate(header_row)]
@@ -263,7 +315,7 @@ def _load_xlsx_rows(raw_bytes: bytes) -> list[dict[str, str]]:
         hdr_len = len(header)
         cells = [_to_text(row[idx]) if idx < row_len else "" for idx in range(hdr_len)]
         result.append({header[i]: cells[i] for i in range(hdr_len)})
-    return result
+    return result, sheet.title
 
 
 def _load_xls_rows(raw_bytes: bytes) -> list[dict[str, str]]:
@@ -282,23 +334,27 @@ def _load_xls_rows(raw_bytes: bytes) -> list[dict[str, str]]:
     return output
 
 
-def _load_rows(filename: str, raw_bytes: bytes) -> tuple[list[dict[str, str]], str]:
+def _load_rows(
+    filename: str, raw_bytes: bytes, sheet_name: str | None = None
+) -> tuple[list[dict[str, str]], str, str | None]:
     ext = Path(filename).suffix.lower()
     if ext == ".csv":
-        return _load_csv_rows(raw_bytes), "csv"
+        return _load_csv_rows(raw_bytes), "csv", None
     if ext in {".xlsx", ".xlsm"}:
-        return _load_xlsx_rows(raw_bytes), "xlsx"
+        rows, title = _load_xlsx_rows(raw_bytes, sheet_name)
+        return rows, "xlsx", title
     if ext == ".xls":
-        return _load_xls_rows(raw_bytes), "xls"
+        return _load_xls_rows(raw_bytes), "xls", None
 
     # Be tolerant of renamed/missing extensions by sniffing common formats.
     if raw_bytes.startswith(b"PK"):
-        return _load_xlsx_rows(raw_bytes), "xlsx"
+        rows, title = _load_xlsx_rows(raw_bytes, sheet_name)
+        return rows, "xlsx", title
     if raw_bytes.startswith(b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
-        return _load_xls_rows(raw_bytes), "xls"
+        return _load_xls_rows(raw_bytes), "xls", None
 
     try:
-        return _load_csv_rows(raw_bytes), "csv"
+        return _load_csv_rows(raw_bytes), "csv", None
     except Exception as exc:
         raise HTTPException(
             status_code=400,
@@ -328,11 +384,41 @@ _STATUS_MAP = {
     "approved": "go_ahead",
 }
 
+# Status cells like "Sent Back Completed" → slug sent_back_completed
+_SLUG_STATUS_ALIASES: dict[str, str] = {
+    "sent_back_completed": "completed",
+    "ready_for_collection": "awaiting_collection",
+}
+
+
+def _status_slug(status_raw: str) -> str:
+    s = (status_raw or "").strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "_", s)
+    return re.sub(r"_+", "_", s).strip("_")
+
+
+def _allocate_import_job_number(usage: dict[str, int], ticket_stem: str | None, job_seq: int) -> str:
+    """Assign IMP-{ticket} or IMP-{seq}; duplicate tickets become IMP-{ticket}-2, -3, …"""
+    if ticket_stem:
+        base = f"IMP-{ticket_stem}"
+    else:
+        base = f"IMP-{job_seq:05d}"
+    n = usage.get(base, 0)
+    usage[base] = n + 1
+    if n == 0:
+        return base
+    return f"{base}-{n + 1}"
+
 
 def _infer_job_status(status_raw: str, notes_raw: str) -> str:
     status = (status_raw or "").strip().lower()
     notes = (notes_raw or "").strip().lower()
+    slug = _status_slug(status_raw)
 
+    if slug in _SLUG_STATUS_ALIASES:
+        return _SLUG_STATUS_ALIASES[slug]
+    if slug in _STATUS_MAP:
+        return _STATUS_MAP[slug]
     if status in _STATUS_MAP:
         return _STATUS_MAP[status]
 
@@ -394,6 +480,10 @@ async def import_csv(
     file: UploadFile = File(...),
     replace_existing: bool = False,
     dry_run: bool = False,
+    sheet_name: str | None = Query(
+        None,
+        description='Excel worksheet name (optional). If omitted, the importer picks the sheet that best matches a repair log.',
+    ),
     clear_tabs: list[str] = Query(["watch", "shoe", "auto_key"], description="Tabs to clear: watch, shoe, auto_key"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
@@ -402,7 +492,7 @@ async def import_csv(
         raise HTTPException(status_code=400, detail="File name is required")
 
     raw_bytes = await file.read()
-    rows, file_type = _load_rows(file.filename, raw_bytes)
+    rows, file_type, source_sheet = _load_rows(file.filename, raw_bytes, sheet_name)
     if not rows:
         raise HTTPException(status_code=400, detail="Import file is empty.")
 
@@ -432,6 +522,7 @@ async def import_csv(
     job_seq = 0
     skipped_reasons: dict[str, int] = {}
     duplicate_customer_rows_in_file = 0
+    job_number_usage: dict[str, int] = {}
 
     def log_skip(row_number: int, reason: str) -> None:
         nonlocal skipped
@@ -445,18 +536,30 @@ async def import_csv(
             row = _normalize_row_keys(row)
             # Ticket: check unnamed first col (col0/_col0) first, then common headers. Omit "number" (often phone).
             original_job_id = _get_first(row, [
-                "col0", "_col0", "original_job_id", "job_id", "ticket", "ticket_number", "job_number",
-                "ticket_", "job_", "ref", "job_no", "ticket_no", "case_no", "no",
+                "col0", "_col0", "original_job_id", "job_id", "ticket", "ticket_number", "docket_number",
+                "docket", "job_number", "ticket_", "job_", "ref", "job_no", "ticket_no", "case_no", "no",
             ])
-            team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee"])
-            customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "name"])
-            date_in_raw = _get_first(row, ["date_in", "created_at", "created", "intake_date", "date"])
-            brand_case = _get_first(row, ["brand_case_numbers", "brand", "watch_brand", "make_model", "model"])
+            team_member = _get_first(row, ["team_member", "salesperson", "staff", "assignee", "store"])
+            customer_name_raw = _get_first(row, ["customer_name", "customer", "client", "client_name", "name"])
+            date_in_raw = _get_first(row, [
+                "date_in", "created_at", "created", "intake_date", "date", "date_received", "date_recieved",
+            ])
+            brand_case = _get_first(row, [
+                "brand_case_numbers", "brand", "watch_brand", "make_model", "model",
+                "to_do_on_job", "work_required",
+            ])
             phone_raw = _get_first(row, ["phone_number", "phone", "mobile", "contact_phone", "number"])
             quote_raw = _get_first(row, ["quote_price", "quote", "estimate", "amount", "total"])
-            cost_raw = _get_first(row, ["cost_to_business", "cost", "job_cost", "internal_cost"])
-            status_raw = _get_first(row, ["status", "job_status", "repair_status", "state", "ga_ng_collected"])
-            notes_raw = _get_first(row, ["repair_notes", "notes", "description", "job_notes", "being_done"])
+            cost_raw = _get_first(row, [
+                "cost_to_business", "our_cost", "cost", "job_cost", "internal_cost",
+            ])
+            status_raw = _get_first(row, [
+                "status", "job_status", "repair_status", "state", "ga_ng_collected",
+                "quote_sent_to_geelong",
+            ])
+            notes_raw = _get_first(row, [
+                "repair_notes", "notes_on_job", "notes", "description", "job_notes", "being_done",
+            ])
 
             customer_name = _clean_name(customer_name_raw)
             if not customer_name:
@@ -494,17 +597,14 @@ async def import_csv(
             session.flush()
 
             job_seq += 1
-            # Use ticket from file when present; strip Excel .0 suffix from numeric cells
+            ticket_stem: str | None = None
             if original_job_id:
                 ticket = original_job_id.strip()
                 if re.match(r"^[\d.]+$", ticket) and ticket.endswith(".0"):
                     ticket = ticket[:-2]  # "29120.0" -> "29120"
                 if ticket:
-                    job_number = f"IMP-{ticket}"
-                else:
-                    job_number = f"IMP-{job_seq:05d}"
-            else:
-                job_number = f"IMP-{job_seq:05d}"
+                    ticket_stem = ticket
+            job_number = _allocate_import_job_number(job_number_usage, ticket_stem, job_seq)
 
             title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
             created_at = (
@@ -566,6 +666,7 @@ async def import_csv(
                 skipped_reasons=skipped_reasons,
                 dry_run=True,
                 duplicate_customer_rows_in_file=duplicate_customer_rows_in_file,
+                source_sheet=source_sheet,
             )
 
         import_log.imported_count = imported
@@ -595,4 +696,5 @@ async def import_csv(
         skipped_reasons=skipped_reasons,
         dry_run=False,
         duplicate_customer_rows_in_file=duplicate_customer_rows_in_file,
+        source_sheet=source_sheet,
     )

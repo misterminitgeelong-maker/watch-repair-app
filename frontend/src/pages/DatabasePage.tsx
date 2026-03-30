@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
 import axios from 'axios'
 import { importCsv, getApiErrorMessage, type CsvImportResult } from '@/lib/api'
-import { PageHeader, Card, Button } from '@/components/ui'
+import { PageHeader, Card, Button, Input } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
 
 export default function DatabasePage() {
@@ -14,6 +14,7 @@ export default function DatabasePage() {
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const [error, setError] = useState('')
   const [clearTabs, setClearTabs] = useState<string[]>(['watch', 'shoe', 'auto_key'])
+  const [excelSheetName, setExcelSheetName] = useState('')
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -29,7 +30,12 @@ export default function DatabasePage() {
     setError('')
     setResult(null)
     try {
-      const { data } = await importCsv(file, { replaceExisting, clearTabs, dryRun: opts.dryRun })
+      const { data } = await importCsv(file, {
+        replaceExisting,
+        clearTabs,
+        dryRun: opts.dryRun,
+        sheetName: excelSheetName.trim() || undefined,
+      })
       setResult(data)
       if (!opts.dryRun) {
         setFile(null)
@@ -104,7 +110,9 @@ export default function DatabasePage() {
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote_price</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>repair_notes</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>ticket_number</code> (or first column if blank; aliases: Ticket #, Ref, Job No). Common aliases like{' '}
+                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>ticket_number</code> (or first column if blank; aliases: Ticket #, Ref, Job No).                 Duplicate ticket numbers in one file are OK — jobs become <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>IMP-1234567</code>,{' '}
+                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>IMP-1234567-2</code>, etc.
+                Excel workbooks: we auto-pick the worksheet that looks most like a repair log; override below if needed. Common aliases like{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
                 <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>created_at</code>,{' '}
@@ -144,6 +152,15 @@ export default function DatabasePage() {
               </div>
             )}
           </button>
+
+          <div className="mt-4">
+            <Input
+              label="Excel sheet name (optional)"
+              value={excelSheetName}
+              onChange={e => setExcelSheetName(e.target.value)}
+              placeholder="e.g. Repairs — leave blank to auto-detect"
+            />
+          </div>
 
           {/* Replace options */}
           <div className="mt-4 space-y-3">
@@ -222,6 +239,12 @@ export default function DatabasePage() {
                   <span className="font-medium text-green-900 break-all">{result.import_id}</span>
                   <span className="text-green-700">Total rows:</span>
                   <span className="font-medium text-green-900">{result.total_rows}</span>
+                  {result.source_sheet && (
+                    <>
+                      <span className="text-green-700">Excel sheet:</span>
+                      <span className="font-medium text-green-900">{result.source_sheet}</span>
+                    </>
+                  )}
                   <span className="text-green-700">Imported:</span>
                   <span className="font-medium text-green-900">{result.imported}</span>
                   <span className="text-green-700">Skipped:</span>

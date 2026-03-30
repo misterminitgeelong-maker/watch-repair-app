@@ -965,6 +965,8 @@ export interface CsvImportResult {
   skipped_reasons: Record<string, number>
   dry_run?: boolean
   duplicate_customer_rows_in_file?: number
+  /** Excel worksheet used; omitted for CSV. */
+  source_sheet?: string | null
 }
 
 /** Build query string for CSV import (used by importCsv and tests). */
@@ -972,10 +974,14 @@ export function buildImportCsvQueryString(options?: {
   replaceExisting?: boolean
   clearTabs?: string[]
   dryRun?: boolean
+  sheetName?: string
 }): string {
   const params: string[] = []
   if (options?.replaceExisting) params.push('replace_existing=true')
   if (options?.dryRun) params.push('dry_run=true')
+  if (options?.sheetName?.trim()) {
+    params.push(`sheet_name=${encodeURIComponent(options.sheetName.trim())}`)
+  }
   if (options?.clearTabs && options.clearTabs.length > 0) {
     for (const tab of options.clearTabs) params.push(`clear_tabs=${encodeURIComponent(tab)}`)
   }
@@ -984,7 +990,7 @@ export function buildImportCsvQueryString(options?: {
 
 export const importCsv = (
   file: File,
-  options?: { replaceExisting?: boolean; clearTabs?: string[]; dryRun?: boolean },
+  options?: { replaceExisting?: boolean; clearTabs?: string[]; dryRun?: boolean; sheetName?: string },
 ) => {
   const form = new FormData()
   form.append('file', file)

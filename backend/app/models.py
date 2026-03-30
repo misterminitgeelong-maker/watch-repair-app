@@ -712,6 +712,8 @@ class ImportSummaryResponse(SQLModel):
     skipped_reasons: dict[str, int] = Field(default_factory=dict)
     dry_run: bool = False
     duplicate_customer_rows_in_file: int = 0
+    # Excel only: worksheet used (auto-selected or from sheet_name query param).
+    source_sheet: Optional[str] = None
 
 
 class CustomerCreate(SQLModel):

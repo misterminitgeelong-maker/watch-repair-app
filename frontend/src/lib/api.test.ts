@@ -82,4 +82,10 @@ describe('buildImportCsvQueryString', () => {
     expect(q).toContain('dry_run=true')
     expect(q).toContain('replace_existing=true')
   })
+
+  it('adds sheet_name for Excel worksheet override', () => {
+    const q = buildImportCsvQueryString({ sheetName: 'Repairs', dryRun: true })
+    expect(q).toContain('dry_run=true')
+    expect(q).toContain('sheet_name=Repairs')
+  })
 })
