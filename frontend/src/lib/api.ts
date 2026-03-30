@@ -1,7 +1,21 @@
 import axios from 'axios'
+import type { InternalAxiosRequestConfig } from 'axios'
 
 /** Avoid indefinite hangs if an API call stalls (browser default is no timeout). */
 const api = axios.create({ baseURL: '/v1', timeout: 45_000 })
+
+/** Do not run the 401→refresh retry on these relative URLs — prevents deadlock when /auth/refresh returns 401 while interceptors await the in-flight refresh, and avoids refresh on bad login. */
+function shouldSkipAuthRefreshRetry(config: InternalAxiosRequestConfig): boolean {
+  const url = typeof config.url === 'string' ? config.url : ''
+  const path = url.startsWith('http') ? new URL(url).pathname : url
+  return (
+    path.includes('/auth/login') ||
+    path.includes('/auth/refresh') ||
+    path.includes('/auth/multi-site-login') ||
+    path.includes('/auth/bootstrap') ||
+    path.includes('/auth/signup')
+  )
+}
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
@@ -42,17 +56,23 @@ api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const status = err.response?.status
-    const config = err.config
-    if (status === 401 && config && !config._retried) {
+    const config = err.config as InternalAxiosRequestConfig & { _retried?: boolean }
+    if (status === 401 && config && !config._retried && !shouldSkipAuthRefreshRetry(config)) {
       config._retried = true
       const newToken = await doRefresh()
       if (newToken) {
+        config.headers = config.headers ?? {}
         config.headers.Authorization = `Bearer ${newToken}`
         return api.request(config)
       }
     } else if (status === 401) {
-      clearStoredTokens()
-      window.dispatchEvent(new Event('auth:token-cleared'))
+      const handshake = shouldSkipAuthRefreshRetry(config)
+      const isRefresh = Boolean(config?.url && String(config.url).includes('/auth/refresh'))
+      // Failed login/password: do not wipe another tab's session. Failed refresh or API 401: clear.
+      if (!handshake || isRefresh) {
+        clearStoredTokens()
+        window.dispatchEvent(new Event('auth:token-cleared'))
+      }
     }
     return Promise.reject(err)
   }
