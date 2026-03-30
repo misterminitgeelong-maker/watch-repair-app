@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   createBillingCheckoutForPlan,
   createStripeConnectAccountLink,
   createUser,
   getApiErrorMessage,
   getBillingLimits,
+  isDuplicateTenantUserEmailError,
   getBillingPortalUrl,
   listUsers,
   refreshStripeConnectStatus,
@@ -94,7 +95,7 @@ const PLAN_BUNDLES: PlanBundle[] = [
 function AddUserModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'manager' as UserRole })
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | 'duplicate_email' | null>(null)
 
   const mut = useMutation({
     mutationFn: () => createUser(form),
@@ -103,6 +104,10 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
       onClose()
     },
     onError: (err: unknown) => {
+      if (isDuplicateTenantUserEmailError(err)) {
+        setError('duplicate_email')
+        return
+      }
       setError(getApiErrorMessage(err, 'Could not create account. Only owner accounts can create users.'))
     },
   })
@@ -113,7 +118,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         <Input
           label="Full Name *"
           value={form.full_name}
-          onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+          onChange={(e) => { setError(null); setForm((f) => ({ ...f, full_name: e.target.value })) }}
           placeholder="Workshop Manager"
           autoFocus
         />
@@ -121,32 +126,41 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
           label="Email *"
           type="email"
           value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          onChange={(e) => { setError(null); setForm((f) => ({ ...f, email: e.target.value })) }}
           placeholder="manager@yourshop.com"
         />
         <Input
           label="Password *"
           type="password"
           value={form.password}
-          onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+          onChange={(e) => { setError(null); setForm((f) => ({ ...f, password: e.target.value })) }}
           placeholder="At least 8 characters"
         />
         <Select
           label="Role"
           value={form.role}
-          onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+          onChange={(e) => { setError(null); setForm((f) => ({ ...f, role: e.target.value as UserRole })) }}
         >
           {ROLE_OPTIONS.map((role) => (
             <option key={role} value={role}>{role}</option>
           ))}
         </Select>
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error === 'duplicate_email' && (
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cafe-border-2)', color: '#C96A5A' }}>
+            <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>This email is already on your team</p>
+            <p style={{ color: 'var(--cafe-text-muted)' }}>
+              Close this dialog and find them in the table on this page to edit role, password, or status. Technicians also appear under{' '}
+              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Mobile Services → Team</Link>.
+            </p>
+          </div>
+        )}
+        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
-            onClick={() => mut.mutate()}
+            onClick={() => { setError(null); mut.mutate() }}
             disabled={!form.full_name || !form.email || form.password.length < 8 || mut.isPending}
           >
             {mut.isPending ? 'Creating…' : 'Create Account'}

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   buildMobileCommissionRulesJson,
   createUser,
   getApiErrorMessage,
+  isDuplicateTenantUserEmailError,
   listUsers,
   updateUser,
 } from '@/lib/api'
@@ -22,7 +24,7 @@ export function AddTechnicianModal({
   const [retainerDollars, setRetainerDollars] = useState('360')
   const [shopPct, setShopPct] = useState('30')
   const [selfPct, setSelfPct] = useState('50')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | 'duplicate_email' | null>(null)
   const mut = useMutation({
     mutationFn: () =>
       createUser({
@@ -45,6 +47,10 @@ export function AddTechnicianModal({
       onClose()
     },
     onError: (err: unknown) => {
+      if (isDuplicateTenantUserEmailError(err)) {
+        setError('duplicate_email')
+        return
+      }
       setError(getApiErrorMessage(err, 'Could not add technician. Only owners can add accounts; check plan limits.'))
     },
   })
@@ -54,9 +60,9 @@ export function AddTechnicianModal({
         Creates a login they can use in the app. Assign them to jobs from the job page or dispatch views.
       </p>
       <div className="space-y-3">
-        <Input label="Full name *" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Alex Smith" autoFocus />
-        <Input label="Email *" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="alex@shop.com" />
-        <Input label="Password *" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="At least 8 characters" />
+        <Input label="Full name *" value={form.full_name} onChange={e => { setError(null); setForm(f => ({ ...f, full_name: e.target.value })) }} placeholder="Alex Smith" autoFocus />
+        <Input label="Email *" type="email" value={form.email} onChange={e => { setError(null); setForm(f => ({ ...f, email: e.target.value })) }} placeholder="alex@shop.com" />
+        <Input label="Password *" type="password" value={form.password} onChange={e => { setError(null); setForm(f => ({ ...f, password: e.target.value })) }} placeholder="At least 8 characters" />
         <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
           <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text)' }}>
             <input type="checkbox" checked={commEnabled} onChange={e => setCommEnabled(e.target.checked)} />
@@ -75,12 +81,23 @@ export function AddTechnicianModal({
             </>
           )}
         </div>
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error === 'duplicate_email' && (
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cafe-border-2)', color: '#C96A5A' }}>
+            <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>This email is already on your team</p>
+            <p style={{ color: 'var(--cafe-text-muted)' }}>
+              Each address can only be used once. If you already added this technician, open{' '}
+              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Team</Link>
+              {' to confirm they are listed. To change their password or role, use '}
+              <Link to="/accounts" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Team accounts</Link>.
+            </p>
+          </div>
+        )}
+        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button
             type="button"
-            onClick={() => { setError(''); mut.mutate() }}
+            onClick={() => { setError(null); mut.mutate() }}
             disabled={mut.isPending || !form.full_name.trim() || !form.email.trim() || form.password.length < 8}
           >
             {mut.isPending ? 'Adding…' : 'Add technician'}

@@ -103,6 +103,15 @@ export function isPlanLimitError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 402
 }
 
+/** True when POST /users failed because this tenant already has a user with that email. */
+export function isDuplicateTenantUserEmailError(error: unknown): boolean {
+  if (!axios.isAxiosError(error) || error.response?.status !== 409) return false
+  const d = error.response?.data?.detail
+  if (typeof d !== 'string') return false
+  const s = d.toLowerCase()
+  return s.includes('email') && (s.includes('already') || s.includes('exist'))
+}
+
 /** Default page size aligned with backend list endpoints (max 200). */
 export const DEFAULT_PAGE_SIZE = 50
 
