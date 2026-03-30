@@ -1,102 +1,1177 @@
 {
   "version": 1,
   "title": "Mobile Services toolkit",
-  "description": "Locksmith / mobile key tools for Mainspring. Replace or extend with your full inventory — same shape: groups[].tools[], scenarios[] with required, nice_to_have, alternatives.",
+  "description": "Generated from Locksmith_Master_Database_v9_populated.xlsx (Tool_Catalog + Job_Tool_Matrix). Regenerate with scripts/generate_mobile_services_tools_from_xlsx.py.",
   "groups": [
     {
-      "id": "programming",
-      "label": "Programming & diagnostics",
+      "id": "bench_programmer",
+      "label": "Bench programmer",
       "tools": [
-        { "key": "key_programmer", "name": "Multi-brand key programmer (e.g. Autel / Xhorse class)", "notes": "OBD or bench programming for transponder & smart keys." },
-        { "key": "second_gen_programmer", "name": "Secondary / backup programmer", "notes": "Covers marques your primary tool does not." },
-        { "key": "proximity_tester", "name": "RF / proximity key tester", "notes": "Quick check of fob output before deeper diagnosis." },
-        { "key": "diagnostic_oem_scanner", "name": "OEM-level or deep diagnostic scan tool", "notes": "PIN pulls, module resets, immobiliser workflows." },
-        { "key": "transponder_chip_inventory", "name": "Organised chip & remote stock (ID433/7935/ASK, etc.)", "notes": "On-van stock matching your common coverage." },
-        { "key": "eeprom_bench_kit", "name": "EEPROM read/write bench (IR/clip + adapters)", "notes": "AKL and bruised-module recoveries where supported." }
+        {
+          "key": "xhorse_multi_prog",
+          "name": "Xhorse Multi-PROG",
+          "notes": "Reads/writes chips via multiple interfaces · EEPROM/MCU/chip read-write work with adapters/clips · PC software; manual emphasises ESD/grounding. PDF p.8"
+        }
       ]
     },
     {
-      "id": "decoding_lishi",
-      "label": "Decoding & entry",
+      "id": "bench_programmer_ecosystem",
+      "label": "Bench programmer ecosystem",
       "tools": [
-        { "key": "lishi_set", "name": "Lishi-style or equivalent decode picks (core set)", "notes": "Decode and non-destructive entry where applicable." },
-        { "key": "air_wedge_kit", "name": "Air wedge + long-reach / reach tools", "notes": "Controlled gap for linkages / latches when policy allows." },
-        { "key": "scope_door_inspection", "name": "Borescope / slim inspection camera", "notes": "See wafers, broken keys, anti-slam pins." }
+        {
+          "key": "abrites_abprog_zn030_zn130_family",
+          "name": "Abrites ABPROG (ZN030/ZN130 family)",
+          "notes": "Bench procedures with multiple units and adapters · Lawful module repair, data migration, bench programming · Requires AVDI + adapters; Windows. PDF pp.7,14"
+        }
       ]
     },
     {
-      "id": "cutting_bench",
-      "label": "Cutting & finishing",
+      "id": "bench_programmer_system",
+      "label": "Bench programmer system",
       "tools": [
-        { "key": "mechanical_key_duplicator", "name": "Mechanical key duplicator (voltage or hand)", "notes": "Standard edge-cut and many laser profiles." },
-        { "key": "laser_key_machine", "name": "Dedicated laser / dimple key machine", "notes": "High-security profiles your duplicator cannot cut." },
-        { "key": "jaw_vise_soft_jaws", "name": "Bench vise with soft jaws", "notes": "Hold heads and shells without marring." },
-        { "key": "deburr_and_gauge", "name": "Deburr files + micrometer / slot gauge", "notes": "Clean cuts and verify blade thickness." }
+        {
+          "key": "obdstar_x300_dp_ecosystem_eeprom_adapters",
+          "name": "OBDSTAR X300 DP ecosystem (EEPROM adapters)",
+          "notes": "Model/package-dependent chip and EEPROM workflows · Bench programming with OBDSTAR adapters · Capabilities depend on purchased modules/adapters. PDF p.8"
+        }
       ]
     },
     {
-      "id": "ignition_steering",
-      "label": "Ignition & cylinder",
+      "id": "bench_spectrum_analyser",
+      "label": "Bench spectrum analyser",
       "tools": [
-        { "key": "ignition_puller_set", "name": "Ignition cylinder puller / press set", "notes": "Remove stuck or broken ignitions where applicable." },
-        { "key": "lock_lube_graphite_free", "name": "Graphite-free lock lubricant", "notes": "Electronics-safe service lubrication." }
+        {
+          "key": "rigol_dsa800_series",
+          "name": "Rigol DSA800 series",
+          "notes": "Bench RF troubleshooting across broad RF range · Workshop RF diagnosis and interference analysis · Example DSA815 9 kHz–1.5 GHz; options vary by model. PDF p.12"
+        }
       ]
     },
     {
-      "id": "van_power",
-      "label": "Van / mobile power",
+      "id": "can_fd_lin_interface",
+      "label": "CAN FD + LIN interface",
       "tools": [
-        { "key": "inverter_or_power_station", "name": "Inverter or portable power station", "notes": "Run programmer and small machines on site." },
-        { "key": "battery_jump_pack", "name": "Jump pack / stable 12V maintain", "notes": "Programming voltage stability on weak batteries." }
+        {
+          "key": "peak_pcan_usb_pro_fd",
+          "name": "PEAK PCAN-USB Pro FD",
+          "notes": "Dual CAN-FD + LIN interface with robust isolation · CAN-FD/LIN diagnostics and engineering analysis · Feature set depends on drivers/APIs. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "can_fd_interface",
+      "label": "CAN FD interface",
+      "tools": [
+        {
+          "key": "peak_pcan_usb_fd",
+          "name": "PEAK PCAN-USB FD",
+          "notes": "Single CAN-FD/CAN 2.0 interface · CAN-FD network diagnostics and logging · Bandwidth constraints depend on environment. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "can_interface_hardware",
+      "label": "CAN interface hardware",
+      "tools": [
+        {
+          "key": "kvaser_leaf_light_hs_v2",
+          "name": "Kvaser Leaf Light HS v2",
+          "notes": "USB-to-CAN with time-stamped messages · Classic CAN communication analysis · Channel/protocol specific. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "cloning_accessory",
+      "label": "Cloning accessory",
+      "tools": [
+        {
+          "key": "advanced_diagnostics_smart_aerial_2",
+          "name": "Advanced Diagnostics Smart Aerial+",
+          "notes": "Bluetooth-enabled cloning workflow enhancement · Updated cloning workflows in Smart Pro ecosystem · Vehicle/workflow dependent; MYKEYS Pro guidance. PDF p.7"
+        }
+      ]
+    },
+    {
+      "id": "diagnostics_immo_platform",
+      "label": "Diagnostics + IMMO platform",
+      "tools": [
+        {
+          "key": "abrites_avdi",
+          "name": "Abrites AVDI",
+          "notes": "Licensed diagnostics/programming platform with CAN-FD/Ethernet support · European IMMO, diagnostics, programming, pass-through-style workflows · Windows PC; functionality depends on licensed modules/peripherals. PDF p.5"
+        }
+      ]
+    },
+    {
+      "id": "ecu_programmer",
+      "label": "ECU programmer",
+      "tools": [
+        {
+          "key": "dimsport_new_genius",
+          "name": "Dimsport New Genius",
+          "notes": "Serial ECU communications over OBDII + connectors · ECU programming where connector/protocol support exists · Specific connectors needed when OBDII not available. PDF p.13"
+        },
+        {
+          "key": "cmdflash_flashtec",
+          "name": "CMDFlash (Flashtec)",
+          "notes": "OBD + Boot + Bench ECU programming · Authorised ECU programming and recovery work · Tuning-oriented product; correct protocols/discipline required. PDF p.13"
+        }
+      ]
+    },
+    {
+      "id": "ecu_tcu_programmer",
+      "label": "ECU/TCU programmer",
+      "tools": [
+        {
+          "key": "alientech_kess3",
+          "name": "Alientech KESS3",
+          "notes": "OBD + Bench + Boot ECU/TCU programming · Authorised module reflashing and calibration work in replacement scenarios · Coverage is protocol/update-dependent. PDF p.13"
+        },
+        {
+          "key": "magicmotorsport_flex",
+          "name": "Magicmotorsport Flex",
+          "notes": "OBD + Bench + Boot ECU/TCU programming · Authorised module reflashing and calibration work · Requires appropriate software packages/licences. PDF p.13"
+        }
+      ]
+    },
+    {
+      "id": "ecu_tcu_tool",
+      "label": "ECU/TCU tool",
+      "tools": [
+        {
+          "key": "autotuner_tool",
+          "name": "AutoTuner Tool",
+          "notes": "OBD/bench/boot reprogramming with online backup features · ECU/TCU reprogramming in module replacement workflows · Coverage list is proprietary. PDF p.13"
+        }
+      ]
+    },
+    {
+      "id": "eeprom_mcu_bench_add_on",
+      "label": "EEPROM / MCU bench add-on",
+      "tools": [
+        {
+          "key": "launch_x_prog_3_ecosystem",
+          "name": "LAUNCH X-PROG 3 ecosystem",
+          "notes": "EEPROM reading/writing within Launch IMMO/X-431 ecosystem · Bench EEPROM workflows paired with Launch scanners · Requires X-PROG 3 etc. PDF p.8"
+        }
+      ]
+    },
+    {
+      "id": "electronic_key_cutting_machine",
+      "label": "Electronic key cutting machine",
+      "tools": [
+        {
+          "key": "keyline_ninja_total",
+          "name": "Keyline Ninja Total",
+          "notes": "All-in-one edge-cut/laser/dimple cutting in Keyline ecosystem · Electronic duplication and code cutting · Liger software ecosystem; clamps/cutters and subscriptions matter. PDF p.9"
+        },
+        {
+          "key": "silca_futura_m600",
+          "name": "Silca Futura M600",
+          "notes": "Double cutting station for flat/cruciform/laser/dimple · Higher-capacity multi-key-type cutting · Model options vary. PDF p.10"
+        },
+        {
+          "key": "silca_futura_pro_family",
+          "name": "Silca Futura Pro family",
+          "notes": "Covers flat, laser, dimple and cruciform depending on model · Code cutting and duplication across multiple key formats · Tablet/USB typical; model differences and accessories matter. PDF p.9"
+        },
+        {
+          "key": "xhorse_condor_xc_mini_plus_ii",
+          "name": "Xhorse Condor XC-Mini Plus II",
+          "notes": "Automatic duplication with AI/reader claims · Automatic duplication/cutting with clamp-dependent capability · User manual via FCC filing; clamp dependent. PDF p.10"
+        }
+      ]
+    },
+    {
+      "id": "electronic_key_cutting_machines",
+      "label": "Electronic key cutting machines",
+      "tools": [
+        {
+          "key": "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "name": "Keyline ecosystem cutters (Ninja, Gymkana, etc.)",
+          "notes": "Additional cutter options within Liger ecosystem · Model-specific cutting workflows · Capability depends on model/subscription. PDF p.10"
+        }
+      ]
+    },
+    {
+      "id": "handheld_spectrum_analyser",
+      "label": "Handheld spectrum analyser",
+      "tools": [
+        {
+          "key": "rf_explorer_family",
+          "name": "RF Explorer family",
+          "notes": "Portable spectrum analysis for RF troubleshooting · Check remote carrier presence and RF interference · Model dependent; PC client exists. PDF pp.12,14"
+        },
+        {
+          "key": "tinysa_tinysa_ultra",
+          "name": "tinySA / tinySA Ultra",
+          "notes": "Compact spectrum analyser + signal generator · Budget RF troubleshooting for remotes/RKE · Sourcing matters due to poor copies. PDF pp.12,14"
+        }
+      ]
+    },
+    {
+      "id": "immo_bench_add_on_emulator",
+      "label": "IMMO bench add-on / emulator",
+      "tools": [
+        {
+          "key": "autel_apb112_smart_key_emulator",
+          "name": "Autel APB112 Smart Key Emulator",
+          "notes": "Data collection and some chip emulation in Autel ecosystem · Accessory for selected bench/IMMO workflows · Requires XP400 + MaxiIM tablet. PDF p.8"
+        }
+      ]
+    },
+    {
+      "id": "j2534_vci",
+      "label": "J2534 VCI",
+      "tools": [
+        {
+          "key": "bosch_kts_560",
+          "name": "Bosch KTS 560",
+          "notes": "Pass-through plus legacy protocol support · OEM pass-through and multi-brand diagnostics · J2534-1/-2, ISO 22900, K/L line, J1850. PDF p.10"
+        },
+        {
+          "key": "dg_technologies_vsi_2534",
+          "name": "DG Technologies VSI-2534",
+          "notes": "OEM software-compatible pass-through interface · OEM-site programming where supported · Requires OEM subscriptions + PC. PDF p.11"
+        },
+        {
+          "key": "launch_j_box_3",
+          "name": "LAUNCH J-Box 3",
+          "notes": "Pass-through with CAN-FD and DoIP claims · OEM programming via Launch J2534 hardware · Some vehicles may not be fully OBDII-compliant. PDF p.11"
+        },
+        {
+          "key": "drew_technologies_opus_cardaq_plus_3",
+          "name": "Drew Technologies / Opus CarDAQ-Plus 3",
+          "notes": "Multi-brand OEM pass-through with CAN-FD and DoIP claims · OEM diagnostics/programming through subscriptions · Needs OEM accounts, subscriptions, stable power. PDF pp.10,14"
+        },
+        {
+          "key": "topdon_rlink_j2534",
+          "name": "TOPDON RLink J2534",
+          "notes": "OE-software access across multiple brands · OEM programming and module work through subscriptions · J2534 + D-PDU; capability depends on OEM software. PDF p.11"
+        }
+      ]
+    },
+    {
+      "id": "j2534_interface",
+      "label": "J2534 interface",
+      "tools": [
+        {
+          "key": "tactrix_openport_2_0",
+          "name": "Tactrix OpenPort 2.0",
+          "notes": "Low-cost J2534/OBDII communication interface · Application-dependent reflashing and OBDII/J2534 communication · Vehicle coverage depends on software/application. PDF p.11"
+        }
+      ]
+    },
+    {
+      "id": "key_cutting_machine_software",
+      "label": "Key cutting machine software",
+      "tools": [
+        {
+          "key": "keyline_liger_software",
+          "name": "Keyline Liger software",
+          "notes": "Controls Keyline cutters and supplies frequent database updates · Database/software layer for Keyline cutting workflows · Subscription via KeyCoin. PDF p.9"
+        }
+      ]
+    },
+    {
+      "id": "key_profile_reader",
+      "label": "Key profile reader",
+      "tools": [
+        {
+          "key": "keyline_camillo_bianchi_reader",
+          "name": "Keyline Camillo Bianchi Reader",
+          "notes": "Identifies flat/dimple profiles from built-in database · Profile identification before cutting/cross-referencing · USB + LAN + internal scanning; Liger-linked. PDF p.9"
+        }
+      ]
+    },
+    {
+      "id": "key_programming_transponder_platform",
+      "label": "Key programming / transponder platform",
+      "tools": [
+        {
+          "key": "iea_zed_full_zed_full_plus",
+          "name": "IEA Zed-FULL / Zed-FULL Plus",
+          "notes": "Combines cloning, OBD, and EEPROM functions · Mixed transponder, OBD, and EEPROM workflows · Strongly options- and licence-dependent. PDF p.5"
+        }
+      ]
+    },
+    {
+      "id": "key_programming_adapter_bench_add_on",
+      "label": "Key programming adapter / bench add-on",
+      "tools": [
+        {
+          "key": "autel_g_box2",
+          "name": "Autel G-Box2",
+          "notes": "Mercedes/BMW-focused bench/boot support accessory · Specialised bench/boot support in supported Autel workflows · Works with IM508/IM608 + XP400. PDF p.8"
+        }
+      ]
+    },
+    {
+      "id": "network_analysis_software",
+      "label": "Network analysis software",
+      "tools": [
+        {
+          "key": "vector_canalyzer",
+          "name": "Vector CANalyzer",
+          "notes": "Analysis + stimulation of ECU/network communications · Lawful network diagnostics and validation of module communications · Works with Vector VN hardware; higher-level interpretation needs databases. PDF pp.12,14"
+        }
+      ]
+    },
+    {
+      "id": "network_test_simulation_software",
+      "label": "Network test / simulation software",
+      "tools": [
+        {
+          "key": "vector_canoe",
+          "name": "Vector CANoe",
+          "notes": "Simulation/testing/diagnostics for CAN/LIN/FlexRay/Ethernet · Advanced diagnostics, simulation and module integration testing · Powerful stimulation features; use within authorised testing. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "obd_immo_diagnostics_platform",
+      "label": "OBD IMMO / diagnostics platform",
+      "tools": [
+        {
+          "key": "launch_x_431_immo_elite",
+          "name": "LAUNCH X-431 IMMO Elite",
+          "notes": "Account-based OBD IMMO workflows via VCI · General OBD key programming and diagnostics · Requires activation/account; add-ons extend capability. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "obd_immo_tablet",
+      "label": "OBD IMMO tablet",
+      "tools": [
+        {
+          "key": "lonsdor_k518_pro",
+          "name": "Lonsdor K518 Pro",
+          "notes": "Chip generation/identify/copy, frequency functions, chip simulation references · General OBD key programming, Asian/Euro IMMO work, some chip simulation · OBD + accessories; manual includes chip simulation references. PDF pp.4,8"
+        },
+        {
+          "key": "obdstar_x300_dp",
+          "name": "OBDSTAR X300 DP",
+          "notes": "Key master platform with optional EEPROM ecosystem · General OBD key programming and some bench work with adapters · Detailed coverage depends on modules/packages. PDF pp.4,8"
+        },
+        {
+          "key": "topdon_t_ninja_pro",
+          "name": "TOPDON T-Ninja Pro",
+          "notes": "OBD key programming plus add-on transponder/frequency features · General key programming and mobile IMMO work · VCI-based; add-ons such as T-Kunai extend capability. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "obd_immo_tablet_diagnostics",
+      "label": "OBD IMMO tablet + diagnostics",
+      "tools": [
+        {
+          "key": "autel_maxiim_im508_im508s_im508s_pro",
+          "name": "Autel MaxiIM IM508 / IM508S / IM508S Pro",
+          "notes": "Mid-tier OBD IMMO with optional XP200/XP400 bench support · Add-key, guided IMMO work, entry-level EEPROM workflows · Variant-dependent accessories; Android 11 noted for IM508S. PDF p.3"
+        },
+        {
+          "key": "autel_maxiim_im608_pro_ii",
+          "name": "Autel MaxiIM IM608 Pro II",
+          "notes": "Flagship multi-brand OBD IMMO with bench ecosystem support · Primary OBD key programming, diagnostics, some bench workflows · OBD + bench ecosystem; kit-dependent XP400 Pro/JVCI; coverage update-dependent. PDF pp.3-4"
+        },
+        {
+          "key": "launch_x_431_immo_pad",
+          "name": "LAUNCH X-431 IMMO Pad",
+          "notes": "Key programming with transponder and EEPROM functions · OBD key programming plus bench/EEPROM workflows · OBD + bench (EEPROM); accessories kit-dependent. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "obd_key_programmer",
+      "label": "OBD key programmer",
+      "tools": [
+        {
+          "key": "advanced_diagnostics_smart_pro",
+          "name": "Advanced Diagnostics Smart Pro",
+          "notes": "Guided OBD programming for transponder, proximity and remote jobs · Spare keys, many AKL OBD jobs, PIN reads on supported makes · MYKEYS Pro DB over 5000 vehicle models vendor claim; accessories optional. PDF p.5"
+        }
+      ]
+    },
+    {
+      "id": "obd_key_programming_diagnostics",
+      "label": "OBD key programming + diagnostics",
+      "tools": [
+        {
+          "key": "topdon_t_ninja_box",
+          "name": "TOPDON T-Ninja Box",
+          "notes": "Anti-theft/key solution with programming functions · OBD key programming with USB add-ons · Works with T-Kunai ecosystem. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "obd_key_tool_remote_transponder_multi_tool",
+      "label": "OBD key tool + remote/transponder multi-tool",
+      "tools": [
+        {
+          "key": "xhorse_key_tool_max_pro",
+          "name": "Xhorse Key Tool Max Pro",
+          "notes": "Transponder and remote functions with frequency detection · Remote generation, transponder preparation, some OBD-linked key work · OBD + Bluetooth/Wi-Fi + device ports. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "obd_key_tool_tablet_ecosystem",
+      "label": "OBD key tool + tablet ecosystem",
+      "tools": [
+        {
+          "key": "xhorse_key_tool_plus",
+          "name": "Xhorse Key Tool Plus",
+          "notes": "Tablet-based Xhorse key/remote/IMMO ecosystem · General key programming, remote preparation, ecosystem workflows · Adapter ecosystem; exact limitations often in-app. PDF p.4"
+        }
+      ]
+    },
+    {
+      "id": "oem_vci",
+      "label": "OEM VCI",
+      "tools": [
+        {
+          "key": "ford_vcm3",
+          "name": "Ford VCM3",
+          "notes": "Recommended VCI for Ford IDS/FDRS/FJDS · Ford OEM diagnostics/programming · Portal/process varies by region; updates frequent. PDF p.11"
+        },
+        {
+          "key": "vag_vas_6154",
+          "name": "VAG VAS 6154",
+          "notes": "Official VAG interface for ODIS workflows · VAG dealer-level diagnostics/programming · Works with ODIS; licensing/procurement varies. PDF p.11"
+        }
+      ]
+    },
+    {
+      "id": "oem_diagnostic_programming_toolchain",
+      "label": "OEM diagnostic + programming toolchain",
+      "tools": [
+        {
+          "key": "vw_group_odis_via_erwin_passthru",
+          "name": "VW Group ODIS via erWin (PassThru)",
+          "notes": "Dealer-level VAG diagnostics/programming through ODIS · VW Group OEM pass-thru diagnostics/programming · J2534 PassThru + ODIS; multi-step licensing/tokens. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "oem_subscription_toolchain",
+      "label": "OEM subscription toolchain",
+      "tools": [
+        {
+          "key": "ford_motorcraft_service_fdrs",
+          "name": "Ford Motorcraft Service + FDRS",
+          "notes": "Official Ford diagnostics/programming environment · Ford OEM diagnostics, programming and updates · Uses VCM3/VCI; software updates frequently. PDF p.12"
+        },
+        {
+          "key": "gm_acdelco_tds",
+          "name": "GM ACDelco TDS",
+          "notes": "Official GM service information and programming portal · GM OEM service info and programming · Capability depends on subscription and region. PDF p.12"
+        },
+        {
+          "key": "toyota_tis_techstream_j2534",
+          "name": "Toyota TIS + Techstream/J2534",
+          "notes": "Official Toyota diagnostics and calibration updates · Toyota OEM programming and secure routines · Requires professional subscription; interruption can damage controller. PDF pp.11-12,14"
+        }
+      ]
+    },
+    {
+      "id": "portable_immo_remote_tool",
+      "label": "Portable IMMO / remote tool",
+      "tools": [
+        {
+          "key": "autel_maxiim_km100",
+          "name": "Autel MaxiIM KM100",
+          "notes": "Universal key generation, chip read/write/cloning, frequency detection · Light OBD programming, universal smart key preparation, mobile remote work · Uses Autel IKEY ecosystem; more than 700 vehicles vendor claim. PDF p.3"
+        }
+      ]
+    },
+    {
+      "id": "portable_electronic_key_cutting_machine",
+      "label": "Portable electronic key cutting machine",
+      "tools": [
+        {
+          "key": "xhorse_dolphin_xp_005l",
+          "name": "Xhorse Dolphin XP-005L",
+          "notes": "Portable automatic cutting with broad vehicle database claim · Mobile cutting/duplication of automotive keys · Bluetooth/Wi-Fi; clamp/cutter dependent. PDF p.9"
+        }
+      ]
+    },
+    {
+      "id": "pre_coding_cloning_accessory",
+      "label": "Pre-coding / cloning accessory",
+      "tools": [
+        {
+          "key": "advanced_diagnostics_smart_aerial",
+          "name": "Advanced Diagnostics Smart Aerial",
+          "notes": "Writes pre-coding data for Fiat and VW Group transponder workflows · Brand-specific transponder pre-coding with Smart Pro ecosystem · Requires Smart Dongle. PDF p.7"
+        }
+      ]
+    },
+    {
+      "id": "professional_handheld_analyser",
+      "label": "Professional handheld analyser",
+      "tools": [
+        {
+          "key": "keysight_fieldfox_family",
+          "name": "Keysight FieldFox family",
+          "notes": "High-end field RF analysis · Professional field RF diagnostics where budget justifies · Capability depends strongly on configuration. PDF p.12"
+        }
+      ]
+    },
+    {
+      "id": "remote_generation_multi_tool",
+      "label": "Remote generation multi-tool",
+      "tools": [
+        {
+          "key": "keydiy_kd_x2",
+          "name": "KeyDIY KD-X2",
+          "notes": "Remote/chip identification and frequency detection in KEYDIY ecosystem · Universal remote generation and supporting chip/remote identification · USB + Bluetooth + OTG; KD app. PDF p.6"
+        }
+      ]
+    },
+    {
+      "id": "remote_pre_coding_system",
+      "label": "Remote pre-coding system",
+      "tools": [
+        {
+          "key": "ilco_smart4car_smart_remote_programmer",
+          "name": "Ilco Smart4Car Smart Remote Programmer",
+          "notes": "Bench pre-sets Smart4Car remotes via NFC and Bluetooth · Universal/aftermarket remote pre-coding before lawful vehicle-side pairing · NFC 13.56 MHz, Bluetooth 2.45 GHz, ecosystem-based coverage. PDF pp.6,14"
+        }
+      ]
+    },
+    {
+      "id": "remote_programmer",
+      "label": "Remote programmer",
+      "tools": [
+        {
+          "key": "advanced_diagnostics_smart_pro_mini",
+          "name": "Advanced Diagnostics Smart Pro Mini",
+          "notes": "Token-free remote programming on popular vehicles · Remote-only programming on supported popular vehicles · Programs over 100 popular vehicles vendor claim. PDF p.5"
+        }
+      ]
+    },
+    {
+      "id": "restricted_ecosystem_obd_key_programmer",
+      "label": "Restricted-ecosystem OBD key programmer",
+      "tools": [
+        {
+          "key": "ilco_smart_pro_lite",
+          "name": "Ilco Smart Pro Lite",
+          "notes": "Guided OBD programming within Ilco key/remote ecosystem · Ilco ecosystem programming jobs · Requires Ilco transponder keys and Look-Alike Remotes. PDF p.5"
+        }
+      ]
+    },
+    {
+      "id": "security_credentialing_framework",
+      "label": "Security credentialing framework",
+      "tools": [
+        {
+          "key": "sermi",
+          "name": "SERMI",
+          "notes": "EU security-related RMI access credentialing · Credential prerequisite for EU security-related repair info access · Vetting/certification rather than programming hardware. PDF pp.2,12"
+        },
+        {
+          "key": "nastf_vsp",
+          "name": "NASTF VSP",
+          "notes": "US vehicle security access prerequisite framework · Credential prerequisite for some OEM security functions · Vetting/registry rather than programming hardware. PDF pp.1-2,12"
+        }
+      ]
+    },
+    {
+      "id": "transponder_cloning_device",
+      "label": "Transponder cloning device",
+      "tools": [
+        {
+          "key": "silca_rw4_plus",
+          "name": "Silca RW4 Plus",
+          "notes": "Reads/clones supported transponder families including ID46/ID48/ID49/Texas types · Transponder identification and cloning where the chip family permits · Stand-alone; can return 'cannot be copied' depending on chip/system. PDF p.6"
+        }
+      ]
+    },
+    {
+      "id": "transponder_programmer",
+      "label": "Transponder programmer",
+      "tools": [
+        {
+          "key": "abrites_protag_zn103",
+          "name": "Abrites PROTAG (ZN103)",
+          "notes": "Key/transponder operations for authentication systems · Bench-side key/transponder handling within Abrites ecosystem · Used with AVDI; TA31 etc. product-dependent. PDF p.7"
+        },
+        {
+          "key": "zed_bull_zed_bull_mini",
+          "name": "Zed-BULL / Zed-BULL Mini",
+          "notes": "Transponder cloning/programming device class · Transponder cloning and programming workflows · Public sources vary; treat outside authorised work as high legal-risk. PDF p.7"
+        },
+        {
+          "key": "jma_trs5000_tpx_ecosystem",
+          "name": "JMA TRS5000 + TPX ecosystem",
+          "notes": "Multiple chip-family support through TPX modules · Transponder programming/cloning workflows · Stand-alone plus modules; documentation often via resellers/manual archives. PDF p.6"
+        }
+      ]
+    },
+    {
+      "id": "transponder_programming_platform",
+      "label": "Transponder programming platform",
+      "tools": [
+        {
+          "key": "scorpio_lk_tango",
+          "name": "Scorpio-LK Tango",
+          "notes": "Wide transponder programming coverage across decades · RFID transponder programming and authorised module-based workflows · PC software; capabilities depend on authorisations/modules. PDF pp.5-6"
+        }
       ]
     }
   ],
   "scenarios": [
     {
-      "id": "transponder_programming",
-      "label": "Transponder add / clone at vehicle",
-      "required": ["key_programmer", "transponder_chip_inventory"],
-      "nice_to_have": ["battery_jump_pack", "proximity_tester"],
+      "id": "akl_blade_remote_head_obd",
+      "label": "AKL — Blade/Remote Head (OBD)",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
       "alternatives": {
-        "key_programmer": ["second_gen_programmer"]
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
       },
-      "tips": "Confirm battery voltage before long writes. Match chip generation to vehicle immobiliser family."
+      "tips": "AKL requires PIN extraction — not all vehicles support OBD PIN read. Check IM608 coverage before committing to job. On Toyota/Nissan: confirm NATS/smart key generation. If PIN read fails, escalate to EEPROM. PDF use-case mapping: all-keys-lost should prefer OEM security-access paths wherever available; aftermarket AKL workflows carry higher legal and bricking risk. Profile / reader support: Keyline Camillo Bianchi Reader Credential prerequisites often apply: NASTF VSP (US) and/or SERMI (EU) are listed in the PDF as security-access frameworks, not programming tools."
     },
     {
-      "id": "blade_cut_duplicate",
-      "label": "Duplicate mechanical blade on site",
-      "required": ["mechanical_key_duplicator", "jaw_vise_soft_jaws", "deburr_and_gauge"],
-      "nice_to_have": ["laser_key_machine"],
+      "id": "akl_eeprom_bench_method",
+      "label": "AKL — EEPROM / Bench Method",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
       "alternatives": {
-        "mechanical_key_duplicator": ["laser_key_machine"]
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "iea_zed_full_zed_full_plus",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
       },
-      "tips": "Some laser profiles need the laser machine — your duplicator may be a substitute only for overlapping blanks."
+      "tips": "EEPROM work on mobile van should be limited to accessible modules (BCM, instrument cluster, ECU). Do not attempt on encapsulated/potted modules on-site — tow to workshop. Always photograph module location and connector orientation before removal. Backup EEPROM image before writing. PDF use-case mapping: bench/EEPROM path is for authorised repair/data migration when OBD/OEM routines are unavailable or failed; highest bricking risk in this workbook. Profile / reader support: Keyline Camillo Bianchi Reader Credential prerequisites often apply: NASTF VSP (US) and/or SERMI (EU) are listed in the PDF as security-access frameworks, not programming tools. ECU/TCU escalation tools from the PDF: Alientech KESS3 | Magicmotorsport Flex | Dimsport New Genius | AutoTuner Tool | CMDFlash (Flashtec)."
     },
     {
-      "id": "vehicle_lockout_entry",
-      "label": "Non-destructive lockout (policy-compliant)",
-      "required": ["lishi_set", "air_wedge_kit"],
-      "nice_to_have": ["scope_door_inspection"],
-      "alternatives": {},
-      "tips": "Verify jurisdiction and client authorisation before entry tools."
-    },
-    {
-      "id": "proximity_smart_key",
-      "label": "Smart key / proximity add or sync",
-      "required": ["key_programmer", "proximity_tester"],
-      "nice_to_have": ["diagnostic_oem_scanner", "transponder_chip_inventory"],
+      "id": "akl_smart_proximity_obd",
+      "label": "AKL — Smart/Proximity (OBD)",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
       "alternatives": {
-        "key_programmer": ["second_gen_programmer"]
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
       },
-      "tips": "Many smart-key jobs need both RF check and immobiliser programming steps."
+      "tips": "High-risk job. Confirm vehicle is not in anti-theft lockout before starting. On Hyundai/Kia NX4/NQ5 era: confirm Immo V compatibility with IM608 before quoting. On Toyota DST AES (LC300, Prado 250): may require Lonsdor K518 backup or dealer escalation. PDF use-case mapping: all-keys-lost smart-key work should prefer OEM security access; remote prep and secure pairing remain core supporting layers. Profile / reader support: Keyline Camillo Bianchi Reader Credential prerequisites often apply: NASTF VSP (US) and/or SERMI (EU) are listed in the PDF as security-access frameworks, not programming tools."
     },
     {
-      "id": "eeprom_bench_recovery",
-      "label": "EEPROM / module read–write (workshop style on van)",
-      "required": ["eeprom_bench_kit", "jaw_vise_soft_jaws"],
-      "nice_to_have": ["scope_door_inspection"],
-      "alternatives": {},
-      "tips": "Anti-static discipline and adapter fit are critical; confirm MCU family before power-on."
+      "id": "add_key_blade_remote_head",
+      "label": "Add Key — Blade/Remote Head",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Always confirm key count and anti-theft status before cutting. On Ford PATS: check for max key limit (8 keys). On Toyota: confirm G-chip vs 4D before cutting — wrong chip = wasted blank. PDF use-case mapping: spare key addition is best served by OBD key programming tablets or OEM scan toolchains; transponder/remote prep and cutting tools are supporting layers. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "add_key_smart_proximity",
+      "label": "Add Key — Smart / Proximity",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Smart keys cannot be cloned — OBD programming only. Confirm immobiliser family before ordering blank — wrong shell will not program. Universal smart keys (VVDI XS series) are cost-effective but confirm fitment first. PDF use-case mapping: smart/proximity add-key jobs use OBD/OEM programming plus remote preparation and optional emergency-blade cutting. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "bcm_ecu_reset_key_relearn",
+      "label": "BCM / ECU Reset + Key Relearn",
+      "required": [
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Confirm new BCM/ECU is programmed to vehicle VIN before relearn — aftermarket modules often need VIN flash first. On GM/Holden VE-VF: BCM replacement is common — IM608 handles well but VIN must match. On Ford: PCM/BCM must be pre-configured to vehicle. On BMW: CAS replacement requires EEPROM transfer or dealer-level tool. PDF use-case mapping: module replacement/relearn work should prefer OEM toolchains first; bench/ECU tools are escalation paths for authorised repair contexts. Credential prerequisites often apply: NASTF VSP (US) and/or SERMI (EU) are listed in the PDF as security-access frameworks, not programming tools. Advanced validation tools from the PDF: Vector CANalyzer | Vector CANoe | Kvaser Leaf Light HS v2 | PEAK PCAN-USB Pro FD | PEAK PCAN-USB FD."
+    },
+    {
+      "id": "flip_key_switchblade_programming",
+      "label": "Flip Key / Switchblade Programming",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "ilco_smart_pro_lite",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Assembly order: chip first, then blade, then remote component, then close shell and test. Confirm spring tension before handing to customer — loose blade is a common comeback. Source shells from LSC or Xhorse VVDI shell range. PDF use-case mapping: flip-key work combines cutting, remote generation, transponder preparation, and vehicle-side pairing. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "high_security_laser_track_key",
+      "label": "High-Security Laser / Track Key",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "ilco_smart_pro_lite",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Futura Pro is the best tool for laser/track accuracy — always preferred over Dolphin for these profiles. On BMW: confirm CAS generation (EWS3 vs CAS2 vs CAS3+ vs FEM/BDC) before committing — different blank AND different programming workflow. HU66 cuts for VAG are very common — keep HU66 blank stock high. PDF use-case mapping: high-security blade work depends first on cutter/clamp/database capability, then on IMMO/remote programming if electronics are involved. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "immo_fault_diagnosis_no_start",
+      "label": "IMMO Fault Diagnosis (no-start)",
+      "required": [
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "bosch_kts_560",
+          "dg_technologies_vsi_2534",
+          "drew_technologies_opus_cardaq_plus_3",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_j_box_3",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_rlink_j2534",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "tactrix_openport_2_0",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Common fault tree: (1) Check chip type matches vehicle — wrong chip looks identical. (2) Test antenna ring continuity — breaks are common on steering column wear. (3) Confirm ECU/BCM is not in anti-theft lockout. (4) Check for water damage at BCM connector. Do not replace parts until fault is confirmed — antenna rings are cheap, ECUs are not. PDF use-case mapping: no-start diagnosis spans diagnostics, OEM/J2534 programming, network analysis, RF troubleshooting, and sometimes authorised bench verification. Credential prerequisites often apply: NASTF VSP (US) and/or SERMI (EU) are listed in the PDF as security-access frameworks, not programming tools. Advanced diagnostic tools from the PDF: Vector CANalyzer | Vector CANoe | Kvaser Leaf Light HS v2 | PEAK PCAN-USB Pro FD | PEAK PCAN-USB FD | RF Explorer family | tinySA / tinySA Ultra | Rigol DSA800 series | Keysight FieldFox family."
+    },
+    {
+      "id": "ignition_lock_barrel_replacement",
+      "label": "Ignition Lock / Barrel Replacement",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Always read/confirm transponder chip type BEFORE removing barrel — easier to verify with chip in place. Photograph barrel connector orientation before disconnection. On older vehicles (pre-2000): barrel replacement may solve immobiliser issues if chip embedded in barrel rather than key. PDF use-case mapping: barrel replacement is primarily a cutting/profile workflow, with IMMO relearn tools needed when an electronic key must be reintroduced. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "motorcycle_powersports_key",
+      "label": "Motorcycle / Powersports Key",
+      "required": [
+        "keyline_ninja_total",
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "ford_motorcraft_service_fdrs",
+          "ford_vcm3",
+          "gm_acdelco_tds",
+          "ilco_smart_pro_lite",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "toyota_tis_techstream_j2534",
+          "vag_vas_6154",
+          "vw_group_odis_via_erwin_passthru",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Motorcycle IMMO coverage is significantly thinner than automotive. Honda CBR/PCX/Africa Twin (smart key Honda) requires specialist approach. Always confirm IM608 MC coverage for specific model before quoting AKL on motorcycle. PDF is car-focused, so mapped tools here are generic IMMO/cutting candidates only; verify exact powersports support by make/model before committing. Profile / reader support: Keyline Camillo Bianchi Reader"
+    },
+    {
+      "id": "remote_fob_programming_only",
+      "label": "Remote / FOB Programming Only",
+      "required": [
+        "abrites_avdi"
+      ],
+      "nice_to_have": [
+        "abrites_protag_zn103"
+      ],
+      "alternatives": {
+        "abrites_avdi": [
+          "advanced_diagnostics_smart_pro",
+          "autel_maxiim_im508_im508s_im508s_pro",
+          "autel_maxiim_im608_pro_ii",
+          "autel_maxiim_km100",
+          "ilco_smart_pro_lite",
+          "launch_x_431_immo_elite",
+          "launch_x_431_immo_pad",
+          "lonsdor_k518_pro",
+          "obdstar_x300_dp",
+          "topdon_t_ninja_box",
+          "topdon_t_ninja_pro",
+          "xhorse_key_tool_max_pro",
+          "xhorse_key_tool_plus"
+        ]
+      },
+      "tips": "Confirm remote frequency before generating/ordering — AU-spec vs import vehicles differ (315MHz Japan imports vs 433MHz AU-delivered). Always test with Key Tool Max Pro first. VVDI universal remotes save on blank stock but confirm chip compatibility. PDF use-case mapping: remote-only jobs use remote pre-coding/generation tools plus vehicle-side pairing; RF analysers help diagnose interference/range problems. RF troubleshooting tools from the PDF: RF Explorer family | tinySA / tinySA Ultra | Rigol DSA800 series | Keysight FieldFox family."
+    },
+    {
+      "id": "transponder_clone_chip_copy",
+      "label": "Transponder Clone / Chip Copy",
+      "required": [
+        "keyline_ninja_total",
+        "autel_maxiim_km100"
+      ],
+      "nice_to_have": [
+        "advanced_diagnostics_smart_pro_mini",
+        "abrites_avdi",
+        "abrites_abprog_zn030_zn130_family"
+      ],
+      "alternatives": {
+        "keyline_ninja_total": [
+          "keyline_ecosystem_cutters_ninja_gymkana_etc",
+          "silca_futura_m600",
+          "silca_futura_pro_family",
+          "xhorse_condor_xc_mini_plus_ii",
+          "xhorse_dolphin_xp_005l",
+          "keyline_camillo_bianchi_reader"
+        ],
+        "autel_maxiim_km100": [
+          "iea_zed_full_zed_full_plus",
+          "lonsdor_k518_pro",
+          "xhorse_key_tool_max_pro"
+        ]
+      },
+      "tips": "ID46 (PCF7936) can be cloned in most cases. ID48 (PCF7941) requires crypto key — Zed-Full handles most. PCF7953/4A/8A (modern smart systems) CANNOT be cloned — must do OBD programming. Always verify chip family before quoting clone job. PDF use-case mapping: cloning is chip-family dependent; many tools will explicitly report when a chip cannot be copied. Profile / reader support: Keyline Camillo Bianchi Reader"
     }
   ]
 }

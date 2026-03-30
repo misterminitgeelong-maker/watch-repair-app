@@ -44,7 +44,7 @@ def test_toolkit_catalog_requires_auto_key_plan():
     data = r.json()
     assert "groups" in data
     assert len(data["groups"]) >= 1
-    assert any(s["id"] == "transponder_programming" for s in data["scenarios"])
+    assert any(s["id"] == "add_key_blade_remote_head" for s in data["scenarios"])
 
 
 def test_toolkit_selection_and_recommend():
@@ -58,45 +58,45 @@ def test_toolkit_selection_and_recommend():
     r1 = client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["key_programmer", "transponder_chip_inventory", "unknown_x"]},
+        json={"tool_keys": ["keyline_ninja_total", "abrites_avdi", "unknown_x"]},
     )
     assert r1.status_code == 400
 
     r2 = client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["key_programmer", "transponder_chip_inventory"]},
+        json={"tool_keys": ["keyline_ninja_total", "abrites_avdi"]},
     )
     assert r2.status_code == 200
-    assert r2.json()["tool_keys"] == ["key_programmer", "transponder_chip_inventory"]
+    assert r2.json()["tool_keys"] == ["keyline_ninja_total", "abrites_avdi"]
 
     r3 = client.get("/v1/toolkit/my-selection", headers=headers)
-    assert r3.json()["tool_keys"] == ["key_programmer", "transponder_chip_inventory"]
+    assert r3.json()["tool_keys"] == ["keyline_ninja_total", "abrites_avdi"]
 
     rec = client.post(
         "/v1/toolkit/recommend",
         headers=headers,
-        json={"scenario_id": "transponder_programming"},
+        json={"scenario_id": "add_key_blade_remote_head"},
     )
     assert rec.status_code == 200
     body = rec.json()
-    assert body["scenario_id"] == "transponder_programming"
+    assert body["scenario_id"] == "add_key_blade_remote_head"
     assert body["ready_for_required"] is True
     assert len(body["missing_required"]) == 0
 
-    client.put("/v1/toolkit/my-selection", headers=headers, json={"tool_keys": ["key_programmer"]})
-    rec2 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "transponder_programming"})
+    client.put("/v1/toolkit/my-selection", headers=headers, json={"tool_keys": ["keyline_ninja_total"]})
+    rec2 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "add_key_blade_remote_head"})
     assert rec2.json()["ready_for_required"] is False
     missing = {x["key"] for x in rec2.json()["missing_required"]}
-    assert "transponder_chip_inventory" in missing
+    assert "abrites_avdi" in missing
 
-    # Duplicator scenario satisfied by laser machine substitute
+    # Substitute cutter satisfies key-cutting slot (canonical is Keyline Ninja Total in seed)
     client.put(
         "/v1/toolkit/my-selection",
         headers=headers,
-        json={"tool_keys": ["laser_key_machine", "jaw_vise_soft_jaws", "deburr_and_gauge"]},
+        json={"tool_keys": ["silca_futura_m600", "abrites_avdi"]},
     )
-    rec3 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "blade_cut_duplicate"})
+    rec3 = client.post("/v1/toolkit/recommend", headers=headers, json={"scenario_id": "add_key_blade_remote_head"})
     assert rec3.status_code == 200
     assert rec3.json()["ready_for_required"] is True
 

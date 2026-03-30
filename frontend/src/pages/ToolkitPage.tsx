@@ -91,7 +91,9 @@ export default function ToolkitPage() {
       <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
         Tick the tools you carry for Mobile Services. Pick a scenario to see gaps and acceptable substitutes. The canonical list is{' '}
         <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>backend/seed/mobile_services_tools.json</code>
-        — edit that file to match your full inventory.
+        . Regenerate from your Locksmith Master workbook with{' '}
+        <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>backend/scripts/generate_mobile_services_tools_from_xlsx.py</code>
+        , or edit the JSON directly.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
