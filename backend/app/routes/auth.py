@@ -529,7 +529,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         ).one()
     )
     created_auto_key_jobs = 0
-    if auto_key_count < 12 and customers:
+    if auto_key_count < 18 and customers:
         vehicle_specs = [
             ("Toyota", "Hilux", "TRX-001", "45 Glenferrie Rd, Malvern VIC 3144"),
             ("Ford", "Ranger", "FRD-202", "12 Chapel St, Prahran VIC 3181"),
@@ -546,10 +546,16 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         ]
         programming = ["pending", "in_progress", "programmed"]
         today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
-        for idx in range(auto_key_count, 12):
+        for idx in range(auto_key_count, 18):
             make, model, plate, address = vehicle_specs[idx % len(vehicle_specs)]
             customer = customers[idx % len(customers)]
             scheduled = today_start + timedelta(hours=idx * 2)
+            if idx % 6 < 3:
+                demo_mobile_status = "awaiting_customer_details"
+            elif idx % 2:
+                demo_mobile_status = "working_on"
+            else:
+                demo_mobile_status = "awaiting_quote"
             job = AutoKeyJob(
                 tenant_id=tenant.id,
                 customer_id=customer.id,
@@ -564,7 +570,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 key_type="transponder",
                 key_quantity=1 + (idx % 2),
                 programming_status=programming[idx % len(programming)],
-                status="working_on" if idx % 2 else "awaiting_quote",
+                status=demo_mobile_status,
                 priority="normal",
                 salesperson=actor.full_name,
                 deposit_cents=2000 + (idx * 450),
@@ -575,6 +581,27 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             )
             session.add(job)
             created_auto_key_jobs += 1
+
+    session.flush()
+
+    # Dashboard demo: at least three mobile jobs awaiting customer SMS intake
+    acd_count = int(
+        session.exec(
+            select(func.count())
+            .select_from(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant.id, AutoKeyJob.status == "awaiting_customer_details")
+        ).one()
+    )
+    if acd_count < 3:
+        candidates = session.exec(
+            select(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant.id, AutoKeyJob.status != "awaiting_customer_details")
+            .order_by(AutoKeyJob.job_number)
+            .limit(3 - acd_count)
+        ).all()
+        for job in candidates:
+            job.status = "awaiting_customer_details"
+            session.add(job)
 
     # Backfill job_address for existing auto key jobs that don't have it (e.g. from before migration)
     existing_auto = session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant.id)).all()

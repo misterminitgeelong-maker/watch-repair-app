@@ -17,7 +17,10 @@ import {
   Wrench,
 } from 'lucide-react'
 import {
+  type AutoKeyJob,
   DEFAULT_PAGE_SIZE,
+  type RepairJob,
+  type ShoeRepairJob,
   createAutoKeyQuickIntake,
   getApiErrorMessage,
   getBillingLimits,
@@ -84,6 +87,68 @@ type RecentItem = {
   status: string
   typeLabel: string
   detail: string
+}
+
+const LIVE_QUEUE_MIN_PER_SERVICE = 3
+const LIVE_QUEUE_MAX_ITEMS = 12
+
+/** Merge recent jobs so each enabled service line shows at least a few rows (demo-friendly). */
+function buildBalancedLiveQueue(
+  recentWatchJobs: RepairJob[] | undefined,
+  shoeJobs: ShoeRepairJob[] | undefined,
+  autoKeyJobs: AutoKeyJob[] | undefined,
+  hasWatch: boolean,
+  hasShoe: boolean,
+  hasAutoKey: boolean,
+): RecentItem[] {
+  const watchItems = (recentWatchJobs ?? []).map((job) => ({
+    id: job.id,
+    title: job.title,
+    to: `/jobs/${job.id}`,
+    created_at: job.created_at,
+    status: job.status,
+    typeLabel: 'Watch repair',
+    detail: `#${job.job_number}`,
+  }))
+  const shoeItems = (shoeJobs ?? []).map((job) => ({
+    id: job.id,
+    title: job.title,
+    to: `/shoe-repairs/${job.id}`,
+    created_at: job.created_at,
+    status: job.status,
+    typeLabel: 'Shoe repair',
+    detail: `#${job.job_number}`,
+  }))
+  const autoItems = (autoKeyJobs ?? []).map((job) => ({
+    id: job.id,
+    title: job.title,
+    to: `/auto-key/${job.id}`,
+    created_at: job.created_at,
+    status: job.status,
+    typeLabel: 'Mobile Services',
+    detail: `#${job.job_number}`,
+  }))
+
+  const byDate = (a: RecentItem, b: RecentItem) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+  const w = hasWatch ? [...watchItems].sort(byDate) : []
+  const s = hasShoe ? [...shoeItems].sort(byDate) : []
+  const a = hasAutoKey ? [...autoItems].sort(byDate) : []
+
+  const rowKey = (item: RecentItem) => `${item.typeLabel}:${item.id}`
+
+  const picked: RecentItem[] = []
+  for (const x of w.slice(0, LIVE_QUEUE_MIN_PER_SERVICE)) picked.push(x)
+  for (const x of s.slice(0, LIVE_QUEUE_MIN_PER_SERVICE)) picked.push(x)
+  for (const x of a.slice(0, LIVE_QUEUE_MIN_PER_SERVICE)) picked.push(x)
+
+  const pickedKeys = new Set(picked.map(rowKey))
+  const remainder = [...w.slice(LIVE_QUEUE_MIN_PER_SERVICE), ...s.slice(LIVE_QUEUE_MIN_PER_SERVICE), ...a.slice(LIVE_QUEUE_MIN_PER_SERVICE)]
+    .filter((item) => !pickedKeys.has(rowKey(item)))
+    .sort(byDate)
+
+  return [...picked, ...remainder].slice(0, LIVE_QUEUE_MAX_ITEMS).sort(byDate)
 }
 
 function formatPlanName(planCode: string) {
@@ -311,39 +376,18 @@ export default function DashboardPage() {
   ]
   const checklistDone = checklist.filter((item) => item.done).length
 
-  const recentItems = useMemo<RecentItem[]>(() => {
-    const watchItems = (recentWatchJobs ?? []).map((job) => ({
-      id: job.id,
-      title: job.title,
-      to: `/jobs/${job.id}`,
-      created_at: job.created_at,
-      status: job.status,
-      typeLabel: 'Watch repair',
-      detail: `#${job.job_number}`,
-    }))
-    const shoeItems = (shoeJobs ?? []).map((job) => ({
-      id: job.id,
-      title: job.title,
-      to: `/shoe-repairs/${job.id}`,
-      created_at: job.created_at,
-      status: job.status,
-      typeLabel: 'Shoe repair',
-      detail: `#${job.job_number}`,
-    }))
-    const autoItems = (autoKeyJobs ?? []).map((job) => ({
-      id: job.id,
-      title: job.title,
-      to: `/auto-key/${job.id}`,
-      created_at: job.created_at,
-      status: job.status,
-      typeLabel: 'Mobile Services',
-      detail: `#${job.job_number}`,
-    }))
-
-    return [...watchItems, ...shoeItems, ...autoItems]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 8)
-  }, [autoKeyJobs, recentWatchJobs, shoeJobs])
+  const recentItems = useMemo<RecentItem[]>(
+    () =>
+      buildBalancedLiveQueue(
+        recentWatchJobs,
+        shoeJobs,
+        autoKeyJobs,
+        hasFeature('watch'),
+        hasFeature('shoe'),
+        hasFeature('auto_key'),
+      ),
+    [autoKeyJobs, recentWatchJobs, shoeJobs, hasFeature],
+  )
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
 
@@ -760,7 +804,7 @@ export default function DashboardPage() {
                   Live Service Queue
                 </h2>
                 <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-                  Newest repair activity merged from your latest watch batch (50), plus shoe and mobile lists.
+                  At least three rows per enabled service line (when data exists), then newest activity up to {LIVE_QUEUE_MAX_ITEMS} items.
                 </p>
               </div>
               <Link to="/jobs" className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-amber)' }}>
