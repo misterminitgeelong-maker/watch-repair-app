@@ -7,7 +7,7 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..database import get_session
-from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, ensure_demo_b2b_accounts
+from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, apply_demo_auto_key_dispatch_calendar, ensure_demo_b2b_accounts
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -545,17 +545,9 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
             ("Holden", "Commodore", "HLD-312", "78 Victoria St, Abbotsford VIC 3067"),
         ]
         programming = ["pending", "in_progress", "programmed"]
-        today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
         for idx in range(auto_key_count, 18):
             make, model, plate, address = vehicle_specs[idx % len(vehicle_specs)]
             customer = customers[idx % len(customers)]
-            scheduled = today_start + timedelta(hours=idx * 2)
-            if idx % 6 < 3:
-                demo_mobile_status = "awaiting_customer_details"
-            elif idx % 2:
-                demo_mobile_status = "working_on"
-            else:
-                demo_mobile_status = "awaiting_quote"
             job = AutoKeyJob(
                 tenant_id=tenant.id,
                 customer_id=customer.id,
@@ -570,38 +562,22 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
                 key_type="transponder",
                 key_quantity=1 + (idx % 2),
                 programming_status=programming[idx % len(programming)],
-                status=demo_mobile_status,
+                status="awaiting_quote",
                 priority="normal",
                 salesperson=actor.full_name,
                 deposit_cents=2000 + (idx * 450),
                 cost_cents=2500 + (idx * 500),
                 created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 70)),
                 job_address=address,
-                scheduled_at=scheduled,
+                scheduled_at=None,
             )
             session.add(job)
             created_auto_key_jobs += 1
 
     session.flush()
 
-    # Dashboard demo: at least three mobile jobs awaiting customer SMS intake
-    acd_count = int(
-        session.exec(
-            select(func.count())
-            .select_from(AutoKeyJob)
-            .where(AutoKeyJob.tenant_id == tenant.id, AutoKeyJob.status == "awaiting_customer_details")
-        ).one()
-    )
-    if acd_count < 3:
-        candidates = session.exec(
-            select(AutoKeyJob)
-            .where(AutoKeyJob.tenant_id == tenant.id, AutoKeyJob.status != "awaiting_customer_details")
-            .order_by(AutoKeyJob.job_number)
-            .limit(3 - acd_count)
-        ).all()
-        for job in candidates:
-            job.status = "awaiting_customer_details"
-            session.add(job)
+    # Same shop-local day as schedule_calendar_timezone: dispatch + map default date; booked / en_route / on_site for demos
+    apply_demo_auto_key_dispatch_calendar(session, tenant.id)
 
     # Backfill job_address for existing auto key jobs that don't have it (e.g. from before migration)
     existing_auto = session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant.id)).all()

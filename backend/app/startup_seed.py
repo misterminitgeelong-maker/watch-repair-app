@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from random import randint
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlmodel import Session, func, select
@@ -364,10 +365,76 @@ DEMO_AUTO_KEY_ADDRESSES: dict[str, str] = {
     "K-1018": "900 Dandenong Rd, Malvern East VIC 3145",
 }
 
+# Demo-seed mobile jobs: stages for dashboard kanban + dispatch/map (scheduled same shop-local day).
+DEMO_MOBILE_DISPATCH_STATUSES: tuple[str, ...] = (
+    "awaiting_customer_details",
+    "awaiting_customer_details",
+    "awaiting_customer_details",
+    "pending_booking",
+    "pending_booking",
+    "booked",
+    "booked",
+    "booked",
+    "booked",
+    "booked",
+    "en_route",
+    "en_route",
+    "on_site",
+    "go_ahead",
+    "working_on",
+    "awaiting_quote",
+    "working_on",
+    "awaiting_go_ahead",
+)
+
+
+def _naive_utc_for_shop_clock(cal_tz: str, y: int, mo: int, d: int, hour: int, minute: int) -> datetime:
+    local = datetime(y, mo, d, hour, minute, 0, tzinfo=ZoneInfo(cal_tz))
+    return local.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def apply_demo_auto_key_dispatch_calendar(session: Session, tenant_id) -> int:
+    """
+    Align demo job numbers K-1001.. with today's date in schedule_calendar_timezone so Dispatch/Map
+    default to today's date; populate confirmed-booking (booked) and field-work statuses for demos.
+    """
+    cal_tz = settings.schedule_calendar_timezone
+    now_local = datetime.now(ZoneInfo(cal_tz))
+    y, mo, d = now_local.year, now_local.month, now_local.day
+    demo_keys = sorted(DEMO_AUTO_KEY_ADDRESSES.keys(), key=lambda k: int(k.split("-")[1]))
+    updated = 0
+    for idx, job_number in enumerate(demo_keys):
+        job = session.exec(
+            select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id, AutoKeyJob.job_number == job_number)
+        ).first()
+        if not job:
+            continue
+        address = DEMO_AUTO_KEY_ADDRESSES.get(job_number)
+        if address:
+            job.job_address = address
+        status = (
+            DEMO_MOBILE_DISPATCH_STATUSES[idx]
+            if idx < len(DEMO_MOBILE_DISPATCH_STATUSES)
+            else "awaiting_quote"
+        )
+        job.status = status
+        job.job_type = "All Keys Lost"
+        job.visit_order = idx + 1
+        start_min = 8 * 60 + idx * 38
+        hour, minute = divmod(start_min, 60)
+        if hour > 18:
+            hour, minute = 18, min(minute, 45)
+        job.scheduled_at = _naive_utc_for_shop_clock(cal_tz, y, mo, d, hour, minute)
+        session.add(job)
+        updated += 1
+    return updated
+
 
 def ensure_demo_auto_key_addresses(session: Session, tenant_id) -> int:
     """Update existing demo auto_key_jobs (K-1001..K-1018) with Melbourne addresses and scheduled_at. Returns count updated."""
-    today_start = datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0)
+    cal_tz = settings.schedule_calendar_timezone
+    now_local = datetime.now(ZoneInfo(cal_tz))
+    y, mo, d = now_local.year, now_local.month, now_local.day
     updated = 0
     for job_number, address in DEMO_AUTO_KEY_ADDRESSES.items():
         job = session.exec(
@@ -378,7 +445,11 @@ def ensure_demo_auto_key_addresses(session: Session, tenant_id) -> int:
         if job and (not job.job_address or not job.scheduled_at):
             job.job_address = address
             idx = int(job_number.split("-")[1]) - 1001
-            job.scheduled_at = today_start + timedelta(hours=idx * 2)
+            start_min = 8 * 60 + idx * 38
+            hour, minute = divmod(start_min, 60)
+            if hour > 18:
+                hour, minute = 18, min(minute, 45)
+            job.scheduled_at = _naive_utc_for_shop_clock(cal_tz, y, mo, d, hour, minute)
             session.add(job)
             updated += 1
     return updated
