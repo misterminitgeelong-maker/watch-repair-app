@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from random import randint
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, func, select
@@ -196,6 +197,9 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
                 role=user.role,
             )
         ]
+    cal_tz = settings.schedule_calendar_timezone
+    now_shop = datetime.now(ZoneInfo(cal_tz))
+    shop_today = now_shop.strftime("%Y-%m-%d")
     return AuthSessionResponse(
         user=_build_public_user(user),
         tenant_id=tenant.id,
@@ -204,6 +208,8 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         enabled_features=enabled,
         active_site_tenant_id=tenant.id,
         available_sites=available_sites,
+        schedule_calendar_timezone=cal_tz,
+        shop_calendar_today_ymd=shop_today,
         signup_payment_pending=bool(getattr(tenant, "signup_payment_pending", False)),
     )
 

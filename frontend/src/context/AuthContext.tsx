@@ -15,6 +15,10 @@ interface AuthCtx {
   enabledFeatures: FeatureKey[]
   /** True when signup finished but Stripe subscription not confirmed yet (API returns subscription_required). */
   signupPaymentPending: boolean
+  /** Today's YYYY-MM-DD in the shop schedule timezone (aligns dispatch/map with seeded jobs). */
+  shopCalendarTodayYmd: string | null
+  /** IANA zone for shop calendar days (same as backend `schedule_calendar_timezone`). */
+  scheduleCalendarTimezone: string
   /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
   sessionReady: boolean
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
@@ -86,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
   const [signupPaymentPending, setSignupPaymentPending] = useState(false)
+  const [shopCalendarTodayYmd, setShopCalendarTodayYmd] = useState<string | null>(null)
+  const [scheduleCalendarTimezone, setScheduleCalendarTimezone] = useState('Australia/Sydney')
   const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
 
   const initializing = useMemo(
@@ -126,6 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPlanCode('pro')
       setEnabledFeatures(defaultFeatures)
       setSignupPaymentPending(false)
+      setShopCalendarTodayYmd(null)
+      setScheduleCalendarTimezone('Australia/Sydney')
       clearStoredTokens()
       return
     }
@@ -138,6 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode(data.plan_code)
     setEnabledFeatures(data.enabled_features)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
+    setShopCalendarTodayYmd(data.shop_calendar_today_ymd ?? null)
+    setScheduleCalendarTimezone(data.schedule_calendar_timezone ?? 'Australia/Sydney')
   }
 
   useEffect(() => {
@@ -153,6 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
         setSignupPaymentPending(false)
+        setShopCalendarTodayYmd(null)
+        setScheduleCalendarTimezone('Australia/Sydney')
       }
     }
 
@@ -184,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPlanCode('pro')
           setEnabledFeatures(defaultFeatures)
           setSignupPaymentPending(false)
+          setShopCalendarTodayYmd(null)
+          setScheduleCalendarTimezone('Australia/Sydney')
           setSessionReady(true)
         }
       }, SESSION_INIT_TIMEOUT_MS)
@@ -204,6 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setPlanCode('pro')
             setEnabledFeatures(defaultFeatures)
             setSignupPaymentPending(false)
+            setShopCalendarTodayYmd(null)
+            setScheduleCalendarTimezone('Australia/Sydney')
           }
         } finally {
           clearTimeout(timeoutId)
@@ -242,6 +258,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
         setSignupPaymentPending(false)
+        setShopCalendarTodayYmd(null)
+        setScheduleCalendarTimezone('Australia/Sydney')
         setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
@@ -266,6 +284,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAvailableSites([])
           setPlanCode('pro')
           setEnabledFeatures(defaultFeatures)
+          setSignupPaymentPending(false)
+          setShopCalendarTodayYmd(null)
+          setScheduleCalendarTimezone('Australia/Sydney')
         }
       } finally {
         clearTimeout(timeoutId)
@@ -301,6 +322,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode('pro')
     setEnabledFeatures(defaultFeatures)
     setSignupPaymentPending(false)
+    setShopCalendarTodayYmd(null)
+    setScheduleCalendarTimezone('Australia/Sydney')
   }
 
   async function switchSite(nextTenantId: string) {
@@ -330,6 +353,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         planCode,
         enabledFeatures,
         signupPaymentPending,
+        shopCalendarTodayYmd,
+        scheduleCalendarTimezone,
         sessionReady,
         initializing,
         login,

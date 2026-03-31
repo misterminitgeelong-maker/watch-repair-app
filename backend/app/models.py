@@ -521,6 +521,10 @@ class AuthSessionResponse(SQLModel):
     enabled_features: list[str]
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
+    #: IANA zone for schedule/SMS (same as backend settings.schedule_calendar_timezone).
+    schedule_calendar_timezone: str
+    #: Today's date YYYY-MM-DD in schedule_calendar_timezone (dispatch/map filters use this zone).
+    shop_calendar_today_ymd: str
     signup_payment_pending: bool = False
 
 

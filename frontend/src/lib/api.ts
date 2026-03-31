@@ -266,6 +266,10 @@ export interface AuthSession {
   available_sites: SiteOption[]
   /** True until Stripe confirms a subscription (signup with live/test Stripe configured). */
   signup_payment_pending?: boolean
+  /** IANA timezone used for schedule day boundaries (matches backend SMS / dispatch filters). */
+  schedule_calendar_timezone?: string
+  /** Today's date YYYY-MM-DD in `schedule_calendar_timezone` — use for dispatch/map default date. */
+  shop_calendar_today_ymd?: string
 }
 
 export const getAuthSession = () => api.get<AuthSession>('/auth/session', { timeout: 25_000 })

@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
+import L from 'leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 import { MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { getApiErrorMessage, optimizeDrivingRoute } from '@/lib/api'
 import { nearestNeighborOrder } from '@/lib/mobileRouteUtils'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
+
+/** Deterministic spread around Melbourne when Google geocoding is unavailable (no API key or API failure). */
+function approximateMelbourneCoords(address: string): { lat: number; lng: number } {
+  let h = 2166136261
+  for (let i = 0; i < address.length; i++) h = Math.imul(h ^ address.charCodeAt(i), 16777619)
+  const u = (h >>> 0) / 0xffffffff
+  const v = ((h >>> 16) >>> 0) / 0xffff
+  return { lat: -37.8136 + (u - 0.5) * 0.14, lng: 144.9631 + (v - 0.5) * 0.2 }
+}
 
 interface Customer {
   id: string
@@ -270,6 +282,89 @@ function MapContent({
   )
 }
 
+function LeafletFitBounds({ positions }: { positions: [number, number][] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (positions.length === 0) return
+    if (positions.length === 1) {
+      map.setView(positions[0], 13)
+    } else {
+      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
+    }
+  }, [map, positions])
+  return null
+}
+
+function LeafletDispatchMap({
+  orderedJobs,
+  customers,
+  geocoded,
+  routePath,
+}: {
+  orderedJobs: JobWithAddr[]
+  customers: Customer[]
+  geocoded: Map<string, { lat: number; lng: number }>
+  routePath: google.maps.LatLngLiteral[]
+}) {
+  const positions = useMemo(
+    () => routePath.map((p) => [p.lat, p.lng] as [number, number]),
+    [routePath],
+  )
+  return (
+    <MapContainer
+      center={[MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng]}
+      zoom={11}
+      style={{ width: '100%', height: '100%' }}
+      scrollWheelZoom
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <LeafletFitBounds positions={positions.length > 0 ? positions : [[MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng]]} />
+      {routePath.length >= 2 && (
+        <Polyline positions={positions} pathOptions={{ color: '#C9772A', weight: 3, opacity: 0.88 }} />
+      )}
+      {orderedJobs.map((job, idx) => {
+        const coords = geocoded.get(job.id)
+        if (!coords) return null
+        const displayAddress = job._addressForMap ?? job.job_address ?? ''
+        return (
+          <CircleMarker
+            key={job.id}
+            center={[coords.lat, coords.lng]}
+            radius={10}
+            pathOptions={{ color: '#8D6725', fillColor: '#FFF7EA', fillOpacity: 0.95, weight: 2 }}
+          >
+            <Popup>
+              <div className="min-w-[200px] text-sm" style={{ color: '#2C1810' }}>
+                <p className="font-semibold" style={{ color: '#B8860B' }}>
+                  Stop {idx + 1} · #{job.job_number}
+                </p>
+                <p className="mt-1 font-medium">{vehicleLabel(job)}</p>
+                <p className="mt-0.5 text-xs" style={{ color: '#5c4a3a' }}>
+                  {customerName(customers, job.customer_id)}
+                </p>
+                <p className="mt-0.5">
+                  <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: '#4a3d32' }}>
+                    {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs" style={{ color: '#6b5b4a' }}>
+                  {displayAddress}
+                </p>
+                <a href={`/auto-key/${job.id}`} className="mt-2 inline-block text-xs font-semibold" style={{ color: '#B8860B' }}>
+                  View job →
+                </a>
+              </div>
+            </Popup>
+          </CircleMarker>
+        )
+      })}
+    </MapContainer>
+  )
+}
+
 function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -406,7 +501,7 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   useEffect(() => {
     abortedRef.current = false
     const run = async () => {
-      if (!apiKey || filteredJobs.length === 0) {
+      if (filteredJobs.length === 0) {
         setGeocoded(new Map())
         setLoading(false)
         return
@@ -417,13 +512,26 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
       }
       setLoading(true)
       const results = new Map<string, { lat: number; lng: number }>()
+      const useGoogle = Boolean(apiKey?.trim())
+      const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
+
+      if (!useGoogle) {
+        for (const j of filteredJobs) {
+          results.set(j.id, fallbackFor(j._addressForMap))
+        }
+        lastJobsKeyRef.current = jobsKey
+        setGeocoded(results)
+        setLoading(false)
+        return
+      }
+
       const cacheKeys = filteredJobs.map((j) => j._addressForMap.trim().toLowerCase())
       const allCached = cacheKeys.every((ck) => geocodeCache.has(ck))
       if (allCached) {
         for (const j of filteredJobs) {
           const ck = j._addressForMap.trim().toLowerCase()
           const c = geocodeCache.get(ck)
-          if (c) results.set(j.id, c)
+          results.set(j.id, c ?? fallbackFor(j._addressForMap))
         }
         lastJobsKeyRef.current = jobsKey
         setGeocoded(results)
@@ -433,9 +541,9 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
       for (let i = 0; i < filteredJobs.length; i++) {
         if (abortedRef.current) return
         const j = filteredJobs[i]
-        const coords = await geocodeWithGoogle(j._addressForMap, apiKey)
+        const coords = await geocodeWithGoogle(j._addressForMap, apiKey!)
         if (abortedRef.current) return
-        if (coords) results.set(j.id, coords)
+        results.set(j.id, coords ?? fallbackFor(j._addressForMap))
         if (i < filteredJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
       }
       if (!abortedRef.current) {
@@ -485,17 +593,6 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     )
   }
 
-  if (!apiKey) {
-    return (
-      <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
-        <p style={{ color: 'var(--cafe-text-muted)' }}>Google Maps API key not configured.</p>
-        <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-          Set VITE_GOOGLE_MAPS_API_KEY in your environment to display the map.
-        </p>
-      </div>
-    )
-  }
-
   const allStopsGeocoded =
     sortedBySchedule.length > 0 && sortedBySchedule.every((j) => geocoded.has(j.id))
   const canOptimize = sortedBySchedule.length >= 2 && allStopsGeocoded
@@ -511,11 +608,19 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
             ? 'by time (driving unavailable)'
             : 'driving (Google Directions)'
 
+  const useGoogleTiles = Boolean(apiKey?.trim())
+
   return (
     <div className="space-y-3">
       {rangeLabel && (
         <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
           {rangeLabel}
+        </p>
+      )}
+      {!useGoogleTiles && (
+        <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text-mid)' }}>
+          OpenStreetMap with approximate pin positions (works without a browser key). Set{' '}
+          <span className="font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</span> for Google Maps and accurate geocoding.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
@@ -650,16 +755,20 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
         </div>
       )}
       <div className="h-[min(520px,70vh)] min-h-[320px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
-        <APIProvider apiKey={apiKey}>
-          <GoogleMap
-            defaultCenter={MELBOURNE_CENTRE}
-            defaultZoom={11}
-            gestureHandling="greedy"
-            style={{ width: '100%', height: '100%' }}
-          >
-            <MapContent orderedJobs={orderedJobs} customers={customers} geocoded={geocoded} routePath={routePath} />
-          </GoogleMap>
-        </APIProvider>
+        {useGoogleTiles ? (
+          <APIProvider apiKey={apiKey!}>
+            <GoogleMap
+              defaultCenter={MELBOURNE_CENTRE}
+              defaultZoom={11}
+              gestureHandling="greedy"
+              style={{ width: '100%', height: '100%' }}
+            >
+              <MapContent orderedJobs={orderedJobs} customers={customers} geocoded={geocoded} routePath={routePath} />
+            </GoogleMap>
+          </APIProvider>
+        ) : (
+          <LeafletDispatchMap orderedJobs={orderedJobs} customers={customers} geocoded={geocoded} routePath={routePath} />
+        )}
       </div>
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>

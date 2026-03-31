@@ -1338,7 +1338,8 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, shopCalendarTodayYmd, sessionReady } = useAuth()
+  const syncedShopCalendarDate = useRef(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showAddTech, setShowAddTech] = useState(false)
   const [showCommissionRules, setShowCommissionRules] = useState(false)
@@ -1361,6 +1362,12 @@ export default function AutoKeyJobsPage() {
   const [reportDateFrom, setReportDateFrom] = useState('')
   const [reportDateTo, setReportDateTo] = useState('')
   const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
+
+  useEffect(() => {
+    if (!sessionReady || !shopCalendarTodayYmd || syncedShopCalendarDate.current) return
+    setDispatchDate(shopCalendarTodayYmd)
+    syncedShopCalendarDate.current = true
+  }, [sessionReady, shopCalendarTodayYmd])
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['auto-key-jobs'],
