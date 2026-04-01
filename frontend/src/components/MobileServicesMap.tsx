@@ -374,7 +374,8 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   const [drivingErr, setDrivingErr] = useState('')
   const [drivingLoading, setDrivingLoading] = useState(false)
   const lastDrivingFetchKey = useRef<string | null>(null)
-  const abortedRef = useRef(false)
+  /** Bumps on geocode effect cleanup + each run so in-flight async cannot apply stale results. */
+  const geocodeGenerationRef = useRef(0)
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
 
@@ -439,8 +440,6 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     [filteredJobs, geocoded],
   )
 
-  const lastJobsKeyRef = useRef<string | null>(null)
-
   useEffect(() => {
     setRouteOrder('scheduled')
     setDrivingVisitOrder(null)
@@ -499,17 +498,18 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   }, [routeOrder, jobsKey, sortedBySchedule, geocoded])
 
   useEffect(() => {
-    abortedRef.current = false
+    const gen = ++geocodeGenerationRef.current
+    const isStale = () => gen !== geocodeGenerationRef.current
+
     const run = async () => {
       if (filteredJobs.length === 0) {
-        setGeocoded(new Map())
-        setLoading(false)
+        if (!isStale()) {
+          setGeocoded(new Map())
+          setLoading(false)
+        }
         return
       }
-      if (lastJobsKeyRef.current === jobsKey) {
-        setLoading(false)
-        return
-      }
+      if (isStale()) return
       setLoading(true)
       const results = new Map<string, { lat: number; lng: number }>()
       const useGoogle = Boolean(apiKey?.trim())
@@ -519,7 +519,7 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
         for (const j of filteredJobs) {
           results.set(j.id, fallbackFor(j._addressForMap))
         }
-        lastJobsKeyRef.current = jobsKey
+        if (isStale()) return
         setGeocoded(results)
         setLoading(false)
         return
@@ -533,27 +533,28 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
           const c = geocodeCache.get(ck)
           results.set(j.id, c ?? fallbackFor(j._addressForMap))
         }
-        lastJobsKeyRef.current = jobsKey
+        if (isStale()) return
         setGeocoded(results)
         setLoading(false)
         return
       }
       for (let i = 0; i < filteredJobs.length; i++) {
-        if (abortedRef.current) return
+        if (isStale()) return
         const j = filteredJobs[i]
         const coords = await geocodeWithGoogle(j._addressForMap, apiKey!)
-        if (abortedRef.current) return
+        if (isStale()) return
         results.set(j.id, coords ?? fallbackFor(j._addressForMap))
         if (i < filteredJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
       }
-      if (!abortedRef.current) {
-        lastJobsKeyRef.current = jobsKey
+      if (!isStale()) {
         setGeocoded(results)
         setLoading(false)
       }
     }
     void run()
-    return () => { abortedRef.current = true }
+    return () => {
+      geocodeGenerationRef.current += 1
+    }
   }, [apiKey, date, jobsKey, filteredJobs])
 
   if (jobsWithAddresses.length === 0) {
