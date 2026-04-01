@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap } from '@vis.gl/react-google-maps'
+import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap as useGoogleMap } from '@vis.gl/react-google-maps'
 import L from 'leaflet'
-import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap as useLeafletMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { getApiErrorMessage, optimizeDrivingRoute } from '@/lib/api'
@@ -147,7 +147,7 @@ function isValidPermutation(order: number[], n: number): boolean {
 }
 
 function RoutePolyline({ path }: { path: google.maps.LatLngLiteral[] }) {
-  const map = useMap()
+  const map = useGoogleMap()
   useEffect(() => {
     if (!map || path.length < 2) return
     const poly = new google.maps.Polyline({
@@ -239,7 +239,7 @@ function MapContent({
   geocoded: Map<string, { lat: number; lng: number }>
   routePath: google.maps.LatLngLiteral[]
 }) {
-  const map = useMap()
+  const map = useGoogleMap()
 
   useEffect(() => {
     if (!map || geocoded.size === 0) return
@@ -283,13 +283,13 @@ function MapContent({
 }
 
 function LeafletFitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap()
+  const map = useLeafletMap()
   useEffect(() => {
-    if (positions.length === 0) return
+    if (!map || positions.length === 0) return
     if (positions.length === 1) {
       map.setView(positions[0], 13)
     } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
+      map.fitBounds(L.latLngBounds(positions) as L.LatLngBoundsExpression, { padding: [40, 40] })
     }
   }, [map, positions])
   return null
