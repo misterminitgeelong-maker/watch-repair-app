@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Scale, Wallet, Download } from 'lucide-react'
+import { BarChart3, DollarSign, Scale, Wallet, ChevronDown } from 'lucide-react'
+import { useRef, useState } from 'react'
 import {
   getExportCustomersCsv,
   getExportInvoicesCsv,
@@ -62,6 +63,11 @@ export default function ReportsPage() {
     },
   })
 
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  const anyExporting = exportJobsMut.isPending || exportCustomersMut.isPending || exportInvoicesMut.isPending || exportMyDataMut.isPending
+
   if (isLoading) return <Spinner />
   if (!data) return <p style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p>
 
@@ -73,19 +79,38 @@ export default function ReportsPage() {
       <PageHeader
         title="Reports"
         action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" className="text-sm" onClick={() => exportJobsMut.mutate()} disabled={exportJobsMut.isPending}>
-              <Download size={14} className="mr-1" /> Jobs CSV
+          <div className="relative" ref={exportRef}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setExportOpen(o => !o)}
+              disabled={anyExporting}
+            >
+              Export <ChevronDown size={14} className="ml-1" />
             </Button>
-            <Button variant="secondary" className="text-sm" onClick={() => exportCustomersMut.mutate()} disabled={exportCustomersMut.isPending}>
-              <Download size={14} className="mr-1" /> Customers CSV
-            </Button>
-            <Button variant="secondary" className="text-sm" onClick={() => exportInvoicesMut.mutate()} disabled={exportInvoicesMut.isPending}>
-              <Download size={14} className="mr-1" /> Invoices CSV
-            </Button>
-            <Button variant="ghost" className="text-sm" onClick={() => exportMyDataMut.mutate()} disabled={exportMyDataMut.isPending}>
-              <Download size={14} className="mr-1" /> Export my data
-            </Button>
+            {exportOpen && (
+              <div
+                className="absolute right-0 mt-1 w-44 rounded-lg shadow-lg z-20 py-1"
+                style={{ backgroundColor: 'var(--cafe-card)', border: '1px solid var(--cafe-border)' }}
+                onBlur={() => setExportOpen(false)}
+              >
+                {[
+                  { label: 'Jobs CSV', action: () => exportJobsMut.mutate() },
+                  { label: 'Customers CSV', action: () => exportCustomersMut.mutate() },
+                  { label: 'Invoices CSV', action: () => exportInvoicesMut.mutate() },
+                  { label: 'My data (JSON)', action: () => exportMyDataMut.mutate() },
+                ].map(item => (
+                  <button
+                    key={item.label}
+                    className="w-full text-left px-4 py-2 text-sm hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--cafe-text)' }}
+                    onClick={() => { item.action(); setExportOpen(false) }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         }
       />
@@ -121,35 +146,23 @@ export default function ReportsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
         <Card className="p-5">
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Business KPIs</h2>
-          <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <p style={{ color: 'var(--cafe-text-mid)' }}>Jobs: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.jobs}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Customers: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.customers}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Watches: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.watches}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Quotes: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.quotes}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Invoices: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.invoices}</strong></p>
+            <p style={{ color: 'var(--cafe-text-mid)' }}>Billed: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.billed_cents)}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Approval rate: <strong style={{ color: 'var(--cafe-text)' }}>{data.sales_funnel.approval_rate_percent}%</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Gross margin: <strong style={{ color: 'var(--cafe-text)' }}>{data.financials.gross_margin_percent}%</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Avg revenue per job: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.operations.avg_revenue_per_job_cents)}</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Tracked work minutes: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.work_minutes}</strong></p>
+            <p style={{ color: 'var(--cafe-text-mid)' }}>Avg / job: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.operations.avg_revenue_per_job_cents)}</strong></p>
+            <p style={{ color: 'var(--cafe-text-mid)' }}>Work mins: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.work_minutes}</strong></p>
           </div>
         </Card>
 
-        <Card className="p-5">
-          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Financial Breakdown</h2>
-          <div className="space-y-2 text-sm">
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Billed total: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.billed_cents)}</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Revenue received: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.revenue_cents)}</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Internal cost tracked: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.cost_cents)}</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Gross profit: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.gross_profit_cents)}</strong></p>
-            <p style={{ color: 'var(--cafe-text-mid)' }}>Outstanding: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.financials.outstanding_cents)}</strong></p>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card className="p-5">
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Job Status Distribution</h2>
           <div className="space-y-2 text-sm">
@@ -163,13 +176,17 @@ export default function ReportsPage() {
 
         <Card className="p-5">
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Quote Status Distribution</h2>
-          <div className="space-y-2 text-sm">
-            {Object.entries(data.quotes_by_status).map(([status, count]) => (
-              <p key={status} style={{ color: 'var(--cafe-text-mid)' }}>
-                {status.replace(/_/g, ' ')}: <strong style={{ color: 'var(--cafe-text)' }}>{count}</strong>
-              </p>
-            ))}
-          </div>
+          {Object.keys(data.quotes_by_status).length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No quotes sent yet.</p>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {Object.entries(data.quotes_by_status).map(([status, count]) => (
+                <p key={status} style={{ color: 'var(--cafe-text-mid)' }}>
+                  {status.replace(/_/g, ' ')}: <strong style={{ color: 'var(--cafe-text)' }}>{count}</strong>
+                </p>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
