@@ -45,7 +45,7 @@ from .routes.vehicle_key_specs import router as vehicle_key_specs_router
 from .routes.maps_routing import router as maps_routing_router
 from .routes.custom_services import router as custom_services_router
 from .routes.toolkit import router as toolkit_router
-from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
+from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
 
 if getattr(settings, "sentry_dsn", "").strip():
@@ -78,6 +78,7 @@ async def lifespan(app: FastAPI):
             ensure_platform_admin_account(session)
             ensure_suburbs_seeded(session)
             seed_from_csv_if_empty(session)
+            ensure_demo_supplemental_data(session)
     except OperationalError as exc:
         raise RuntimeError(
             "Database schema is missing or out of date. Run 'alembic upgrade head' "

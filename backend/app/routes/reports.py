@@ -9,7 +9,7 @@ from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
-from ..models import AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, TenantEventLog, TenantEventLogRead, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -61,11 +61,25 @@ def get_reports_summary(
     ).all()
     quotes_by_status = {status: int(count) for status, count in quote_status_rows}
 
-    billed_cents = int(
+    # Billed: watch invoices + auto-key invoices + shoe service items
+    watch_billed = int(
         session.exec(
             select(func.coalesce(func.sum(Invoice.total_cents), 0)).where(Invoice.tenant_id == tenant_id)
         ).one()
     )
+    ak_billed = int(
+        session.exec(
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0)).where(AutoKeyInvoice.tenant_id == tenant_id)
+        ).one()
+    )
+    shoe_billed = int(
+        session.exec(
+            select(func.coalesce(func.sum(ShoeRepairJobItem.unit_price_cents * ShoeRepairJobItem.quantity), 0))
+            .where(ShoeRepairJobItem.tenant_id == tenant_id)
+            .where(ShoeRepairJobItem.unit_price_cents.isnot(None))
+        ).one() or 0
+    )
+    billed_cents = watch_billed + ak_billed + shoe_billed
     # Revenue = succeeded payments + paid invoices that have no payment record (seed / legacy data)
     payment_revenue = int(
         session.exec(
@@ -83,11 +97,31 @@ def get_reports_summary(
             .where(Invoice.id.not_in(invoiced_payment_ids))
         ).one()
     )
-    revenue_cents = payment_revenue + orphan_paid_cents
+    # Paid auto-key invoices (no Payment table for auto-key jobs)
+    ak_revenue = int(
+        session.exec(
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.status == "paid")
+        ).one()
+    )
+    # Shoe revenue = service items on collected/completed jobs
+    _SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
+    shoe_revenue = int(
+        session.exec(
+            select(func.coalesce(func.sum(ShoeRepairJobItem.unit_price_cents * ShoeRepairJobItem.quantity), 0))
+            .join(ShoeRepairJob, ShoeRepairJobItem.shoe_repair_job_id == ShoeRepairJob.id)
+            .where(ShoeRepairJobItem.tenant_id == tenant_id)
+            .where(ShoeRepairJobItem.unit_price_cents.isnot(None))
+            .where(ShoeRepairJob.status.in_(_SHOE_PAID_STATUSES))
+        ).one() or 0
+    )
+    revenue_cents = payment_revenue + orphan_paid_cents + ak_revenue + shoe_revenue
+    # Cost: watch + shoe + auto-key jobs
     watch_cost = int(session.exec(select(func.coalesce(func.sum(RepairJob.cost_cents), 0)).where(RepairJob.tenant_id == tenant_id)).one())
     shoe_cost = int(session.exec(select(func.coalesce(func.sum(ShoeRepairJob.cost_cents), 0)).where(ShoeRepairJob.tenant_id == tenant_id)).one())
-    mobile_cost = int(session.exec(select(func.coalesce(func.sum(AutoKeyJob.cost_cents), 0)).where(AutoKeyJob.tenant_id == tenant_id)).one())
-    cost_cents = watch_cost + shoe_cost + mobile_cost
+    ak_cost = int(session.exec(select(func.coalesce(func.sum(AutoKeyJob.cost_cents), 0)).where(AutoKeyJob.tenant_id == tenant_id)).one())
+    cost_cents = watch_cost + shoe_cost + ak_cost
     outstanding_cents = max(billed_cents - revenue_cents, 0)
     gross_profit_cents = revenue_cents - cost_cents
     gross_margin_percent = round((gross_profit_cents / revenue_cents) * 100, 2) if revenue_cents > 0 else 0.0
@@ -198,6 +232,13 @@ def get_reports_trends(
         .where(Invoice.id.not_in(orphan_ids_subq))
         .where(Invoice.created_at >= cutoff)
     ).all()
+    # Paid auto-key invoices (separate revenue stream, no Payment table)
+    ak_invoice_rows = session.exec(
+        select(AutoKeyInvoice.total_cents, AutoKeyInvoice.created_at)
+        .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .where(AutoKeyInvoice.status == "paid")
+        .where(AutoKeyInvoice.created_at >= cutoff)
+    ).all()
 
     labels = _month_labels(months)
     jobs_by_month: dict[str, int] = {m: 0 for m in labels}
@@ -223,10 +264,10 @@ def get_reports_trends(
         key = _ym(dt)
         if key in revenue_by_month:
             revenue_by_month[key] += amount
-    for amount, dt in orphan_invoice_rows:
+    for amount, dt in ak_invoice_rows:
         key = _ym(dt)
         if key in revenue_by_month:
-            revenue_by_month[key] += amount
+            revenue_by_month[key] += int(amount)
 
     return {
         "months": [

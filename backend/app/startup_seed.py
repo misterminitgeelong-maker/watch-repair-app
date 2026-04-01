@@ -11,7 +11,7 @@ import httpx
 from sqlmodel import Session, func, select
 
 from .config import settings
-from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, Suburb, Tenant, User, Watch
+from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
 from .security import hash_password
 
 # Victorian B2B demo accounts (used at startup and by demo-seed)
@@ -732,3 +732,136 @@ def seed_from_csv_if_empty(session: Session) -> None:
     _seed_status["imported_rows"] = imported
     _seed_status["skipped_rows"] = skipped
     _seed_status["finished_at"] = datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Demo data top-up — runs on every startup, idempotent
+# Fixes 3 demo-data gaps without wiping existing tenant data:
+#   1. Quote Status Distribution chart empty  → seed demo quotes
+#   2. Mobile Services "This Month" = 0       → refresh AutoKeyJob dates
+#   3. Shoe board "0 services · $0.00"        → seed ShoeRepairJobItem rows
+# ---------------------------------------------------------------------------
+
+_DEMO_SHOE_ITEMS = [
+    {
+        "catalogue_key": "heels__block_heels",
+        "catalogue_group": "Heels",
+        "item_name": "Block Heels",
+        "pricing_type": "pair",
+        "unit_price_cents": 3500,
+    },
+    {
+        "catalogue_key": "soles__half_sole_leather",
+        "catalogue_group": "Soles",
+        "item_name": "Half Sole — Leather",
+        "pricing_type": "pair",
+        "unit_price_cents": 5500,
+    },
+    {
+        "catalogue_key": "cleaning__full_clean_condition",
+        "catalogue_group": "Cleaning",
+        "item_name": "Full Clean & Condition",
+        "pricing_type": "fixed",
+        "unit_price_cents": 2500,
+    },
+    {
+        "catalogue_key": "stitching__stitch_resole",
+        "catalogue_group": "Stitching",
+        "item_name": "Stitch & Resole",
+        "pricing_type": "pair",
+        "unit_price_cents": 6500,
+    },
+    {
+        "catalogue_key": "heels__stiletto_tip_replacement",
+        "catalogue_group": "Heels",
+        "item_name": "Stiletto Tip Replacement",
+        "pricing_type": "pair",
+        "unit_price_cents": 2000,
+    },
+]
+
+_DEMO_QUOTE_AMOUNTS_CENTS = [18500, 25000, 9500, 14000, 32000, 8500, 21000, 11500, 16000, 27500]
+_DEMO_QUOTE_STATUSES = ["sent", "approved", "approved", "declined", "approved", "sent", "approved", "sent", "approved", "declined"]
+
+
+def ensure_demo_supplemental_data(session: Session) -> None:
+    """Idempotently top-up demo data so dashboards look realistic on every startup."""
+    tenant = session.exec(select(Tenant).where(Tenant.slug == settings.startup_seed_tenant_slug)).first()
+    if not tenant:
+        return
+    tenant_id = tenant.id
+
+    # ── 1. Demo quotes ────────────────────────────────────────────────────────
+    quote_count = int(session.exec(select(func.count()).select_from(Quote).where(Quote.tenant_id == tenant_id)).one())
+    if quote_count == 0:
+        # Pick up to 10 existing repair jobs to attach demo quotes to
+        sample_jobs = session.exec(
+            select(RepairJob)
+            .where(RepairJob.tenant_id == tenant_id)
+            .limit(10)
+        ).all()
+        now = datetime.now(timezone.utc)
+        for i, job in enumerate(sample_jobs):
+            amount = _DEMO_QUOTE_AMOUNTS_CENTS[i % len(_DEMO_QUOTE_AMOUNTS_CENTS)]
+            status = _DEMO_QUOTE_STATUSES[i % len(_DEMO_QUOTE_STATUSES)]
+            created_at = now - timedelta(days=30 - i * 3)
+            session.add(Quote(
+                tenant_id=tenant_id,
+                repair_job_id=job.id,
+                status=status,
+                subtotal_cents=amount,
+                tax_cents=0,
+                total_cents=amount,
+                currency="AUD",
+                created_at=created_at,
+            ))
+        session.flush()
+
+    # ── 2. Refresh stale AutoKeyJob dates ────────────────────────────────────
+    ak_jobs = session.exec(
+        select(AutoKeyJob)
+        .where(AutoKeyJob.tenant_id == tenant_id)
+        .order_by(AutoKeyJob.created_at.desc())  # type: ignore[arg-type]
+        .limit(5)
+    ).all()
+    if ak_jobs:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=45)
+        newest_date = max(j.created_at for j in ak_jobs)
+        if newest_date < cutoff:
+            # Spread the 5 most recent demo jobs across the last 28 days
+            now = datetime.now(timezone.utc)
+            for i, job in enumerate(ak_jobs):
+                job.created_at = now - timedelta(days=i * 6)
+                session.add(job)
+            session.flush()
+
+    # ── 3. Seed ShoeRepairJobItem rows for shoe job board cards ──────────────
+    shoe_item_count = int(
+        session.exec(select(func.count()).select_from(ShoeRepairJobItem).where(ShoeRepairJobItem.tenant_id == tenant_id)).one()
+    )
+    if shoe_item_count == 0:
+        shoe_jobs = session.exec(
+            select(ShoeRepairJob)
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .limit(5)
+        ).all()
+        if shoe_jobs:
+            items = _DEMO_SHOE_ITEMS
+            for idx, job in enumerate(shoe_jobs):
+                # Assign 1–3 items per job (rotate through the catalogue list)
+                num_items = (idx % 3) + 1
+                for k in range(num_items):
+                    item_def = items[(idx + k) % len(items)]
+                    session.add(ShoeRepairJobItem(
+                        tenant_id=tenant_id,
+                        shoe_repair_job_id=job.id,
+                        catalogue_key=item_def["catalogue_key"],
+                        catalogue_group=item_def["catalogue_group"],
+                        item_name=item_def["item_name"],
+                        pricing_type=item_def["pricing_type"],
+                        unit_price_cents=item_def["unit_price_cents"],
+                        quantity=1.0,
+                    ))
+            session.flush()
+
+    session.commit()
