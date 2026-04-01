@@ -485,7 +485,8 @@ def get_auto_key_reports(
 
     completed_jobs = [j for j in jobs_in_range if j.status in ("completed", "collected")]
     completed_count = len(completed_jobs)
-    avg_job_value_cents = int(total_revenue_cents / completed_count) if completed_count > 0 else 0
+    avg_denominator = completed_count if completed_count > 0 else total_jobs
+    avg_job_value_cents = int(total_revenue_cents / avg_denominator) if avg_denominator > 0 else 0
 
     mobile_count = sum(1 for j in jobs_in_range if _is_mobile_auto_key_job(j))
     shop_count = total_jobs - mobile_count

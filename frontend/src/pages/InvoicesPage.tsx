@@ -108,7 +108,7 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [showPay, setShowPay] = useState(false)
-  const { data: invoice, isLoading } = useQuery({ queryKey: ['invoice', id], queryFn: () => getInvoice(id!).then(r => r.data) })
+  const { data: invoice, isLoading } = useQuery({ queryKey: ['invoice', id], queryFn: () => getInvoice(id!).then(r => r.data?.invoice ?? r.data) })
 
   if (isLoading) return <Spinner />
   if (!invoice) return <p style={{ color: 'var(--cafe-text-muted)' }}>Invoice not found.</p>

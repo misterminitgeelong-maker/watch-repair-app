@@ -9,7 +9,7 @@ export default function PrintInvoicePage() {
   const { id } = useParams<{ id: string }>()
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
-    queryFn: () => getInvoice(id!).then(r => r.data),
+    queryFn: () => getInvoice(id!).then(r => r.data?.invoice ?? r.data),
     enabled: !!id,
   })
   const { data: job } = useQuery({

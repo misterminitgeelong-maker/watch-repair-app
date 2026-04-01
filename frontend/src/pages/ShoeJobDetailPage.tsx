@@ -1,20 +1,19 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
-  listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
+  listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
   listCustomerAccounts,
   listShoes, createShoe,
-  addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob,
+  addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
-import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
-import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -192,6 +191,125 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
   )
 }
 
+// ── Add services modal ───────────────────────────────────────────────────────
+function AddServicesModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [selectedItems, setSelectedItems] = useState<SelectedShoeService[]>([])
+  const mut = useMutation({
+    mutationFn: () => appendShoeRepairJobItems(job.id, buildShoeRepairJobItemsPayload(selectedItems)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-job', job.id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      onClose()
+    },
+  })
+  return (
+    <Modal title="Add Services" onClose={onClose}>
+      <div className="space-y-4">
+        <ShoeServicePicker selected={selectedItems} onChange={setSelectedItems} />
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={selectedItems.length === 0 || mut.isPending}>
+            {mut.isPending ? 'Adding…' : `Add ${selectedItems.length > 0 ? selectedItems.length : ''} Service${selectedItems.length !== 1 ? 's' : ''}`}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Services card ──────────────────────────────────────────────────────────────
+function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddServices: () => void }) {
+  const qc = useQueryClient()
+  const removeMut = useMutation({
+    mutationFn: (itemId: string) => removeShoeRepairJobItem(job.id, itemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-job', job.id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+    },
+  })
+  const total = job.items.reduce(
+    (sum, item) => sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0),
+    0,
+  )
+  return (
+    <Card>
+      <div
+        className="flex items-center gap-2 px-5 py-3.5"
+        style={{ borderBottom: '1px solid var(--cafe-border)' }}
+      >
+        <Tag size={14} style={{ color: 'var(--cafe-amber)' }} />
+        <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          Services
+        </h2>
+        {job.items.length > 0 && (
+          <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>
+            {job.items.length} item{job.items.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onAddServices}
+          className="ml-auto flex items-center gap-1 text-xs font-medium transition-colors"
+          style={{ color: 'var(--cafe-amber)' }}
+        >
+          <Plus size={13} /> Add service
+        </button>
+      </div>
+      {job.items.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
+          style={{ color: 'var(--cafe-text-muted)' }}
+          onClick={onAddServices}
+        >
+          <Tag size={24} style={{ opacity: 0.25 }} />
+          <p className="text-xs">No services yet. Tap to add from the shoe repair catalogue.</p>
+        </div>
+      ) : (
+        <div>
+          {job.items.map((item, i) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 px-5 py-3 text-sm"
+              style={{ borderBottom: i < job.items.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.item_name}</p>
+                <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {item.catalogue_group.replace(/_/g, ' ')}
+                  {item.quantity > 1 ? ` · qty ${item.quantity}` : ''}
+                  {item.notes ? ` · ${item.notes}` : ''}
+                </p>
+              </div>
+              <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>
+                {itemPriceDisplay(item)}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeMut.mutate(item.id)}
+                disabled={removeMut.isPending}
+                className="opacity-40 hover:opacity-100 transition-opacity"
+                title="Remove service"
+              >
+                <X size={13} style={{ color: '#C96A5A' }} />
+              </button>
+            </div>
+          ))}
+          {total > 0 && (
+            <div
+              className="flex justify-between px-5 py-3 text-sm font-semibold"
+              style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+            >
+              <span>Total</span>
+              <span style={{ color: 'var(--cafe-amber)' }}>${(total / 100).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // ── Shoe tab content ──────────────────────────────────────────────────────────
 function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
   if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No shoe details.</p>
@@ -219,19 +337,14 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function ShoeJobDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const [showStatus, setShowStatus] = useState(false)
   const [showAddPair, setShowAddPair] = useState(false)
+  const [showAddServices, setShowAddServices] = useState(false)
   const [activePairIdx, setActivePairIdx] = useState(0)
   const [editingCost, setEditingCost] = useState(false)
   const [costInput, setCostInput] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const parseDollarsToCents = (value: string) => {
-    const parsed = Number.parseFloat(value)
-    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0
-  }
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -282,12 +395,9 @@ export default function ShoeJobDetailPage() {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
-    setUploadError('')
     try {
       await Promise.all(files.map(f => uploadShoeAttachment(f, id!)))
       qc.invalidateQueries({ queryKey: ['shoe-attachments', id] })
-    } catch (err: unknown) {
-      setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -329,7 +439,7 @@ export default function ShoeJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => navigate(`/shoe-repairs/${job.id}/intake-print`)}>
+            <Button variant="secondary" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
               <Printer size={15} /> Print Intake Tickets
             </Button>
             <Button variant="ghost" onClick={() => setShowStatus(true)}>Change Status</Button>
@@ -339,6 +449,7 @@ export default function ShoeJobDetailPage() {
 
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
       {showAddPair && <AddPairModal job={job} onClose={() => setShowAddPair(false)} />}
+      {showAddServices && <AddServicesModal job={job} onClose={() => setShowAddServices(false)} />}
 
       {/* Summary strip */}
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
@@ -357,21 +468,6 @@ export default function ShoeJobDetailPage() {
         {total > 0 && (
           <span style={{ color: 'var(--cafe-text-muted)' }}>
             Estimated: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(total / 100).toFixed(2)}</span>
-          </span>
-        )}
-        {job.complexity && (
-          <span style={{ color: 'var(--cafe-text-muted)' }}>
-            Complexity: <span className="font-medium capitalize" style={{ color: job.complexity === 'complex' ? '#8B3A3A' : job.complexity === 'simple' ? '#2E7D32' : 'var(--cafe-text)' }}>{COMPLEXITY_LABELS[job.complexity] ?? job.complexity}</span>
-          </span>
-        )}
-        {job.estimated_days_min != null && job.estimated_days_max != null && (
-          <span style={{ color: 'var(--cafe-text-muted)' }}>
-            Est. turnaround: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{formatEstimatedTurnaround(job.estimated_days_min, job.estimated_days_max)}</span>
-          </span>
-        )}
-        {job.estimated_ready_by && (
-          <span style={{ color: 'var(--cafe-text-muted)' }}>
-            Est. ready by: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{formatDate(job.estimated_ready_by)}</span>
           </span>
         )}
         <span style={{ color: 'var(--cafe-text-muted)' }}>
@@ -520,7 +616,7 @@ export default function ShoeJobDetailPage() {
                       value={costInput}
                       onChange={e => setCostInput(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === 'Enter') updateCostMutation.mutate(parseDollarsToCents(costInput))
+                        if (e.key === 'Enter') updateCostMutation.mutate(Math.round(parseFloat(costInput || '0') * 100))
                         if (e.key === 'Escape') setEditingCost(false)
                       }}
                       autoFocus
@@ -528,7 +624,7 @@ export default function ShoeJobDetailPage() {
                       style={{ border: '1px solid var(--cafe-border)', background: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}
                     />
                     <button
-                      onClick={() => updateCostMutation.mutate(parseDollarsToCents(costInput))}
+                      onClick={() => updateCostMutation.mutate(Math.round(parseFloat(costInput || '0') * 100))}
                       disabled={updateCostMutation.isPending}
                       className="text-xs px-2 py-0.5 rounded font-medium"
                       style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text)' }}
@@ -605,10 +701,6 @@ export default function ShoeJobDetailPage() {
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
             <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
 
-            {uploadError && (
-              <p className="px-5 pt-2 text-sm" style={{ color: '#C96A5A' }}>{uploadError}</p>
-            )}
-
             {photos.length === 0 ? (
               <div
                 className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
@@ -621,62 +713,17 @@ export default function ShoeJobDetailPage() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-5">
                 {photos.map(photo => (
-                  <SecureAttachmentLink key={photo.id} storageKey={photo.storage_key} target="_blank" rel="noopener noreferrer" className="group">
-                    <SecureAttachmentImage storageKey={photo.storage_key} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
+                  <a key={photo.id} href={getAttachmentDownloadUrl(photo.storage_key)} target="_blank" rel="noopener noreferrer" className="group">
+                    <img src={getAttachmentDownloadUrl(photo.storage_key)} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
                     <p className="text-[10px] text-center mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{photo.label || 'Photo'}</p>
-                  </SecureAttachmentLink>
+                  </a>
                 ))}
               </div>
             )}
           </Card>
 
           {/* ── Services ──────────────────────────────────────────── */}
-          {job.items.length > 0 && (
-            <Card>
-              <div
-                className="flex items-center gap-2 px-5 py-3.5"
-                style={{ borderBottom: '1px solid var(--cafe-border)' }}
-              >
-                <Tag size={14} style={{ color: 'var(--cafe-amber)' }} />
-                <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
-                  Services
-                </h2>
-                <span className="text-xs ml-auto font-mono" style={{ color: 'var(--cafe-text-muted)' }}>
-                  {job.items.length} item{job.items.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div>
-                {job.items.map((item, i) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-3 px-5 py-3 text-sm"
-                    style={{ borderBottom: i < job.items.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.item_name}</p>
-                      <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                        {item.catalogue_group.replace(/_/g, ' ')}
-                        {item.quantity > 1 ? ` · qty ${item.quantity}` : ''}
-                        {item.notes ? ` · ${item.notes}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>
-                      {itemPriceDisplay(item)}
-                    </span>
-                  </div>
-                ))}
-                {total > 0 && (
-                  <div
-                    className="flex justify-between px-5 py-3 text-sm font-semibold"
-                    style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
-                  >
-                    <span>Total</span>
-                    <span style={{ color: 'var(--cafe-amber)' }}>${(total / 100).toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
+          <ServicesCard job={job} onAddServices={() => setShowAddServices(true)} />
 
           {/* ── Description ───────────────────────────────────────── */}
           {job.description && (

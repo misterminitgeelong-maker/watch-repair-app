@@ -1,4 +1,3 @@
-from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -8,7 +7,6 @@ from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
     Attachment,
-    CustomService,
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
@@ -66,107 +64,9 @@ def _create_job_items(
         )
 
 
-# Jobs considered "in queue" for FIFO estimated completion
-_ACTIVE_QUEUE_STATUSES = frozenset({
-    "awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on", "awaiting_parts",
-})
-
-
-def _get_catalogue_item(session: Session, tenant_id: UUID, catalogue_key: str) -> dict | None:
-    """Resolve catalogue item from built-in or custom services."""
-    if catalogue_key.startswith("custom__"):
-        try:
-            sid = UUID(catalogue_key.replace("custom__", "", 1))
-            cs = session.get(CustomService, sid)
-            if cs and cs.tenant_id == tenant_id and cs.service_type == "shoe":
-                return {
-                    "estimated_days_min": 3,
-                    "estimated_days_max": 7,
-                    "complexity": "standard",
-                }
-        except (ValueError, TypeError):
-            pass
-        return None
-    from .shoe_catalogue import _ITEM_INDEX
-    return _ITEM_INDEX.get(catalogue_key)
-
-
-def _get_job_estimated_days(session: Session, job: ShoeRepairJob) -> int:
-    """Return estimated_days_max for a job from its catalogue items. Default 5 if unknown."""
-    items = session.exec(
-        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
-    ).all()
-    days = 0
-    for item in items:
-        cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
-        if cat:
-            dmax = cat.get("estimated_days_max", 7)
-            days = max(days, dmax)
-    return days if days else 5
-
-
-def _compute_queue_estimated_ready_by(session: Session, tenant_id: UUID) -> dict[UUID, date]:
-    """FIFO queue: for each active job, compute estimated_ready_by from work ahead + own days."""
-    jobs = session.exec(
-        select(ShoeRepairJob)
-        .where(ShoeRepairJob.tenant_id == tenant_id)
-        .where(ShoeRepairJob.status.in_(_ACTIVE_QUEUE_STATUSES))
-        .order_by(ShoeRepairJob.created_at.asc())
-    ).all()
-    if not jobs:
-        return {}
-
-    job_ids = [j.id for j in jobs]
-    items = session.exec(
-        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id.in_(job_ids))
-    ).all()
-    items_by_job: dict[UUID, list[ShoeRepairJobItem]] = {job_id: [] for job_id in job_ids}
-    for item in items:
-        items_by_job.setdefault(item.shoe_repair_job_id, []).append(item)
-
-    result: dict = {}
-    cumulative_days = 0
-    for job in jobs:
-        # Estimate queue time from this job's slowest catalogue item.
-        job_days = 0
-        for item in items_by_job.get(job.id, []):
-            cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
-            if cat:
-                dmax = cat.get("estimated_days_max", 7)
-                job_days = max(job_days, dmax)
-        if job_days == 0:
-            job_days = 5
-        work_ahead = cumulative_days
-        total_days = work_ahead + job_days
-        ready = job.created_at + timedelta(days=int(total_days))
-        result[job.id] = ready.date()
-        cumulative_days += job_days
-    return result
-
-
-def _job_to_read(job: ShoeRepairJob, session: Session, queue_ready: dict | None = None) -> ShoeRepairJobRead:
+def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
     data = job.model_dump()
-    items = _load_items(session, job.id)
-    data["items"] = items
-
-    # Compute complexity and estimated turnaround from catalogue (built-in or custom)
-    complexity_order = {"simple": 0, "standard": 1, "complex": 2}
-    days_min, days_max = 0, 0
-    max_comp = "simple"
-    for item in items:
-        cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
-        if cat:
-            comp = cat.get("complexity", "standard")
-            max_comp = max(max_comp, comp, key=lambda c: complexity_order.get(c, 0))
-            dmin, dmax = cat.get("estimated_days_min", 3), cat.get("estimated_days_max", 7)
-            days_min = max(days_min, dmin)
-            days_max = max(days_max, dmax)
-    if items:
-        data["complexity"] = max_comp
-        data["estimated_days_min"] = days_min or 3
-        data["estimated_days_max"] = days_max or 7
-    if queue_ready is not None and job.id in queue_ready:
-        data["estimated_ready_by"] = queue_ready[job.id]
+    data["items"] = _load_items(session, job.id)
     # Primary shoe details
     primary_shoe = session.get(Shoe, job.shoe_id)
     data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
@@ -275,87 +175,16 @@ def create_shoe_repair_job(
 @router.get("", response_model=list[ShoeRepairJobRead])
 def list_shoe_repair_jobs(
     status: str | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(ShoeRepairJob.status == status)
-    jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc())).all()
-    queue_ready = _compute_queue_estimated_ready_by(session, auth.tenant_id)
-    if not jobs:
-        return []
-
-    job_ids = [j.id for j in jobs]
-    primary_shoe_ids = {j.shoe_id for j in jobs}
-
-    # Batch load items once for all jobs
-    all_items = session.exec(
-        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id.in_(job_ids))
-    ).all()
-    items_by_job: dict[UUID, list[ShoeRepairJobItemRead]] = {job_id: [] for job_id in job_ids}
-    for item in all_items:
-        items_by_job.setdefault(item.shoe_repair_job_id, []).append(ShoeRepairJobItemRead.model_validate(item))
-
-    # Batch load extra shoe links once for all jobs
-    all_extra_links = session.exec(
-        select(ShoeRepairJobShoe)
-        .where(ShoeRepairJobShoe.shoe_repair_job_id.in_(job_ids))
-        .order_by(ShoeRepairJobShoe.sort_order)
-    ).all()
-    extra_links_by_job: dict[UUID, list[ShoeRepairJobShoe]] = {job_id: [] for job_id in job_ids}
-    extra_shoe_ids: set[UUID] = set()
-    for link in all_extra_links:
-        extra_links_by_job.setdefault(link.shoe_repair_job_id, []).append(link)
-        extra_shoe_ids.add(link.shoe_id)
-
-    # Batch load all shoes needed for primary + extra references
-    all_shoe_ids = set(primary_shoe_ids) | extra_shoe_ids
-    shoes = session.exec(select(Shoe).where(Shoe.id.in_(all_shoe_ids))).all() if all_shoe_ids else []
-    shoes_by_id = {shoe.id: shoe for shoe in shoes}
-
-    result: list[ShoeRepairJobRead] = []
-    for job in jobs:
-        data = job.model_dump()
-        items = items_by_job.get(job.id, [])
-        data["items"] = items
-
-        # Compute complexity and estimated turnaround from catalogue (built-in or custom)
-        complexity_order = {"simple": 0, "standard": 1, "complex": 2}
-        days_min, days_max = 0, 0
-        max_comp = "simple"
-        for item in items:
-            cat = _get_catalogue_item(session, job.tenant_id, item.catalogue_key)
-            if cat:
-                comp = cat.get("complexity", "standard")
-                max_comp = max(max_comp, comp, key=lambda c: complexity_order.get(c, 0))
-                dmin, dmax = cat.get("estimated_days_min", 3), cat.get("estimated_days_max", 7)
-                days_min = max(days_min, dmin)
-                days_max = max(days_max, dmax)
-        if items:
-            data["complexity"] = max_comp
-            data["estimated_days_min"] = days_min or 3
-            data["estimated_days_max"] = days_max or 7
-        if queue_ready is not None and job.id in queue_ready:
-            data["estimated_ready_by"] = queue_ready[job.id]
-
-        primary_shoe = shoes_by_id.get(job.shoe_id)
-        data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
-
-        extra_links = extra_links_by_job.get(job.id, [])
-        data["extra_shoes"] = [
-            ShoeRepairJobShoeRead(
-                id=link.id,
-                shoe_id=link.shoe_id,
-                shoe=ShoeRead.model_validate(shoes_by_id[link.shoe_id]) if link.shoe_id in shoes_by_id else None,
-                sort_order=link.sort_order,
-            )
-            for link in extra_links
-        ]
-
-        result.append(ShoeRepairJobRead(**data))
-
-    return result
+    jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc()).offset(skip).limit(limit)).all()
+    return [_job_to_read(j, session) for j in jobs]
 
 
 @router.get("/{job_id}", response_model=ShoeRepairJobRead)
@@ -367,8 +196,7 @@ def get_shoe_repair_job(
     job = session.get(ShoeRepairJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
-    queue_ready = _compute_queue_estimated_ready_by(session, auth.tenant_id)
-    return _job_to_read(job, session, queue_ready)
+    return _job_to_read(job, session)
 
 
 @router.post("/{job_id}/status", response_model=ShoeRepairJobRead)
@@ -425,6 +253,24 @@ def append_shoe_repair_job_items(
         _create_job_items(session, tenant_id=auth.tenant_id, job_id=job.id, items=payload.items)
         session.commit()
         session.refresh(job)
+    return _job_to_read(job, session)
+
+
+@router.delete("/{job_id}/items/{item_id}", response_model=ShoeRepairJobRead)
+def remove_shoe_repair_job_item(
+    job_id: UUID,
+    item_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    item = session.get(ShoeRepairJobItem, item_id)
+    if not item or item.shoe_repair_job_id != job_id:
+        raise HTTPException(status_code=404, detail="Item not found")
+    session.delete(item)
+    session.commit()
     return _job_to_read(job, session)
 
 
