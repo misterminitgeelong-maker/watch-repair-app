@@ -69,6 +69,20 @@ function dateFromYmdLocal(ymd: string): Date {
   return new Date(y, m - 1, d)
 }
 
+const AUTOKEY_JOB_DRAG_MIME = 'application/x-autokey-job-id'
+
+function setAutoKeyDragData(dt: DataTransfer, jobId: string) {
+  dt.setData(AUTOKEY_JOB_DRAG_MIME, jobId)
+  dt.setData('text/plain', jobId)
+}
+
+function readAutoKeyDragJobId(dt: DataTransfer): string {
+  return (dt.getData(AUTOKEY_JOB_DRAG_MIME) || dt.getData('text/plain') || '').trim()
+}
+
+/** Local hour rows for week grid: 7:00–21:00 slots (7am–9pm). */
+const WEEK_SCHEDULE_HOURS = Array.from({ length: 15 }, (_, i) => 7 + i)
+
 /** Monday–Sunday week in local time containing YYYY-MM-DD anchor */
 function weekRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
   const anchor = dateFromYmdLocal(ymd)
@@ -1497,6 +1511,8 @@ export default function AutoKeyJobsPage() {
       updateAutoKeyJob(jobId, scheduled_at ? { scheduled_at } : { scheduled_at: null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dashboard'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
     },
   })
   const { data: weekJobs = [], isLoading: weekLoading, isError: weekError, error: weekErr, refetch: refetchWeek } = useQuery({
@@ -1985,12 +2001,20 @@ export default function AutoKeyJobsPage() {
                 <div
                     className="min-h-[52px] p-2 rounded border flex flex-wrap gap-2 content-start transition-colors"
                     style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)', borderStyle: 'dashed' }}
-                    onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0' }}
-                    onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)' }}
-                    onDrop={e => {
+                    onDragOverCapture={e => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      ;(e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0'
+                    }}
+                    onDragLeave={e => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
+                      }
+                    }}
+                    onDropCapture={e => {
                       e.preventDefault()
                       ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
-                      const jobId = e.dataTransfer.getData('application/x-autokey-job-id')
+                      const jobId = readAutoKeyDragJobId(e.dataTransfer)
                       if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: null })
                     }}
                   >
@@ -1999,19 +2023,24 @@ export default function AutoKeyJobsPage() {
                         key={(job as { id: string }).id}
                         draggable
                         onDragStart={e => {
-                          e.dataTransfer.setData('application/x-autokey-job-id', (job as { id: string }).id)
+                          setAutoKeyDragData(e.dataTransfer, (job as { id: string }).id)
                           e.dataTransfer.effectAllowed = 'move'
                         }}
                         className="cursor-grab active:cursor-grabbing shrink-0"
                       >
-                        <Link to={`/auto-key/${(job as { id: string }).id}`} className="block text-xs p-1.5 rounded hover:opacity-90" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)' }} onClick={e => e.stopPropagation()}>
+                        <Link
+                          to={`/auto-key/${(job as { id: string }).id}`}
+                          draggable={false}
+                          className="block text-xs p-1.5 rounded hover:opacity-90"
+                          style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)' }}
+                        >
                           #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
                         </Link>
                       </div>
                     ))}
                   </div>
                 </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[min(85vh,900px)] overflow-y-auto">
               <div className="grid gap-2" style={{ gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))' }}>
                 <div />
                 {[...Array(7)].map((_, i) => {
@@ -2028,7 +2057,7 @@ export default function AutoKeyJobsPage() {
                     </div>
                   )
                 })}
-                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map(hour => (
+                {WEEK_SCHEDULE_HOURS.map(hour => (
                   <Fragment key={hour}>
                     <div className="py-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                       {String(hour).padStart(2, '0')}:00
@@ -2051,12 +2080,20 @@ export default function AutoKeyJobsPage() {
                           key={`${dayStr}-${hour}`}
                           className="min-h-[44px] p-1 rounded border transition-colors"
                           style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)' }}
-                          onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0' }}
-                          onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)' }}
-                          onDrop={e => {
+                          onDragOverCapture={e => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                            ;(e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0'
+                          }}
+                          onDragLeave={e => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                              (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
+                            }
+                          }}
+                          onDropCapture={e => {
                             e.preventDefault()
                             ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--cafe-bg)'
-                            const jobId = e.dataTransfer.getData('application/x-autokey-job-id')
+                            const jobId = readAutoKeyDragJobId(e.dataTransfer)
                             if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: newScheduledAt })
                           }}
                         >
@@ -2065,12 +2102,17 @@ export default function AutoKeyJobsPage() {
                               key={(job as { id: string }).id}
                               draggable
                               onDragStart={e => {
-                                e.dataTransfer.setData('application/x-autokey-job-id', (job as { id: string }).id)
+                                setAutoKeyDragData(e.dataTransfer, (job as { id: string }).id)
                                 e.dataTransfer.effectAllowed = 'move'
                               }}
                               className="cursor-grab active:cursor-grabbing"
                             >
-                              <Link to={`/auto-key/${(job as { id: string }).id}`} className="block text-xs p-1.5 rounded mb-1 hover:opacity-90" style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }} onClick={e => e.stopPropagation()}>
+                              <Link
+                                to={`/auto-key/${(job as { id: string }).id}`}
+                                draggable={false}
+                                className="block text-xs p-1.5 rounded mb-1 hover:opacity-90"
+                                style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                              >
                                 #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
                               </Link>
                             </div>
