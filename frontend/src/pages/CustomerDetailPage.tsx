@@ -1,19 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Plus, ChevronLeft, Wrench } from 'lucide-react'
-import {
-  DEFAULT_PAGE_SIZE,
-  getCustomer,
-  listWatches,
-  createWatch,
-  listJobs,
-  getApiErrorMessage,
-  type Watch,
-} from '@/lib/api'
+import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, type Watch, type ShoeRepairJob, type AutoKeyJob } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textarea } from '@/components/ui'
-import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
-import BrandAutocomplete from '@/components/BrandAutocomplete'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 
@@ -35,7 +25,7 @@ function AddWatchModal({ customerId, onClose }: { customerId: string; onClose: (
   return (
     <Modal title="Add Watch" onClose={onClose}>
       <div className="space-y-3">
-        <BrandAutocomplete label="Brand" value={form.brand} onChange={v => setForm(f => ({ ...f, brand: v }))} placeholder="Rolex, Omega…" />
+        <Input label="Brand" value={form.brand} onChange={set('brand')} placeholder="Rolex, Omega…" />
         <Input label="Model" value={form.model} onChange={set('model')} placeholder="Submariner, Speedmaster…" />
         <Input label="Serial Number" value={form.serial_number} onChange={set('serial_number')} />
         <Select label="Movement Type" value={form.movement_type} onChange={set('movement_type')}>
@@ -63,37 +53,22 @@ export default function CustomerDetailPage() {
   const [showAddWatch, setShowAddWatch] = useState(false)
   const [showNewJob, setShowNewJob] = useState(false)
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
-  const [watchBrandFilter, setWatchBrandFilter] = useState('')
-
   const { data: customer, isLoading } = useQuery({ queryKey: ['customer', id], queryFn: () => getCustomer(id!).then(r => r.data) })
-
-  const watchesQuery = useOffsetPaginatedQuery({
-    queryKey: ['watches', id, 'paged', watchBrandFilter.trim() || null, 'created_at', 'desc'],
-    queryFn: (offset) =>
-      listWatches(id, {
-        limit: DEFAULT_PAGE_SIZE,
-        offset,
-        sort_by: 'created_at',
-        sort_dir: 'desc',
-        ...(watchBrandFilter.trim() ? { brand: watchBrandFilter.trim() } : {}),
-      }).then((r) => r.data),
+  const { data: watches } = useQuery({ queryKey: ['watches', id], queryFn: () => listWatches(id).then(r => r.data) })
+  const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
+  const { data: shoeJobs = [] } = useQuery({
+    queryKey: ['shoe-repair-jobs', 'customer', id],
+    queryFn: () => listShoeRepairJobs({ customer_id: id }).then(r => r.data),
     enabled: !!id,
   })
-  const watches = useMemo(() => flattenInfinitePages(watchesQuery.data), [watchesQuery.data])
-
-  const jobsQuery = useOffsetPaginatedQuery({
-    queryKey: ['jobs', 'customer', id, 'paged'],
-    queryFn: (offset) =>
-      listJobs({
-        customer_id: id!,
-        limit: DEFAULT_PAGE_SIZE,
-        offset,
-        sort_by: 'created_at',
-        sort_dir: 'desc',
-      }).then((r) => r.data),
+  const { data: autoKeyJobs = [] } = useQuery({
+    queryKey: ['auto-key-jobs', 'customer', id],
+    queryFn: () => listAutoKeyJobs({ customer_id: id }).then(r => r.data),
     enabled: !!id,
   })
-  const customerJobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
+
+  const customerWatchIds = new Set((watches ?? []).map(w => w.id))
+  const customerJobs = (jobs ?? []).filter(j => customerWatchIds.has(j.watch_id))
   const activeJobs = customerJobs.filter(j => !NON_ACTIVE_STATUSES.includes(j.status))
   const completedDirectoryJobs = customerJobs.filter(j => COMPLETED_DIRECTORY_STATUSES.includes(j.status))
   const noGoJobs = customerJobs.filter(j => j.status === 'no_go')
@@ -146,50 +121,21 @@ export default function CustomerDetailPage() {
             className="px-5 py-4 font-semibold"
             style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
           >
-            Watches ({watches.length}{watchesQuery.hasNextPage ? '+' : ''})
-          </div>
-          <div className="px-5 pt-3 pb-2" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-            <Input
-              label="Filter by brand (exact match)"
-              value={watchBrandFilter}
-              onChange={(e) => setWatchBrandFilter(e.target.value)}
-              placeholder="e.g. Omega"
-            />
-            {watchesQuery.error && (
-              <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>{getApiErrorMessage(watchesQuery.error)}</p>
-            )}
+            Watches ({watches?.length ?? 0})
           </div>
           <div>
-            {watchesQuery.isLoading && watches.length === 0 ? (
-              <div className="px-5 py-5"><Spinner /></div>
-            ) : (
-              <>
-                {watches.map((w: Watch, i) => (
-                  <div
-                    key={w.id}
-                    className="px-5 py-3.5"
-                    style={{ borderBottom: i < watches.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                  >
-                    <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{w.serial_number ? `S/N: ${w.serial_number}` : ''} {w.movement_type ?? ''}</p>
-                  </div>
-                ))}
-                {watches.length === 0 && !watchesQuery.isLoading && (
-                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No watches yet.</p>
-                )}
-                {watchesQuery.hasNextPage && (
-                  <div className="px-5 py-3 flex justify-center">
-                    <Button
-                      variant="secondary"
-                      className="text-xs"
-                      onClick={() => void watchesQuery.fetchNextPage()}
-                      disabled={watchesQuery.isFetchingNextPage}
-                    >
-                      {watchesQuery.isFetchingNextPage ? 'Loading…' : 'Load more watches'}
-                    </Button>
-                  </div>
-                )}
-              </>
+            {(watches ?? []).map((w: Watch, i) => (
+              <div
+                key={w.id}
+                className="px-5 py-3.5"
+                style={{ borderBottom: i < (watches ?? []).length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+              >
+                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{w.serial_number ? `S/N: ${w.serial_number}` : ''} {w.movement_type ?? ''}</p>
+              </div>
+            ))}
+            {(watches ?? []).length === 0 && (
+              <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No watches yet.</p>
             )}
           </div>
         </Card>
@@ -199,17 +145,9 @@ export default function CustomerDetailPage() {
             className="px-5 py-4 font-semibold"
             style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
           >
-            Repair Jobs ({customerJobs.length}{jobsQuery.hasNextPage ? '+' : ''})
+            Repair Jobs ({customerJobs.length})
           </div>
           <div>
-            {jobsQuery.error && (
-              <p className="px-5 pt-3 text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(jobsQuery.error)}</p>
-            )}
-            {jobsQuery.hasNextPage && (
-              <p className="px-5 pt-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                Totals below reflect loaded jobs only — use Load more for the full list.
-              </p>
-            )}
             <div className="px-5 pt-4 pb-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
               <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
                 <button
@@ -237,10 +175,6 @@ export default function CustomerDetailPage() {
               </div>
             </div>
 
-            {jobsQuery.isLoading && customerJobs.length === 0 ? (
-              <div className="px-5 py-8"><Spinner /></div>
-            ) : (
-            <>
             {jobDirectoryView === 'active' && (
               <>
                 {activeJobs.map((job, i) => (
@@ -259,7 +193,7 @@ export default function CustomerDetailPage() {
                     <Badge status={job.status} />
                   </Link>
                 ))}
-                {activeJobs.length === 0 && !jobsQuery.isLoading && (
+                {activeJobs.length === 0 && (
                   <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No active jobs.</p>
                 )}
               </>
@@ -313,31 +247,86 @@ export default function CustomerDetailPage() {
                   </>
                 )}
 
-                {closedJobsCount === 0 && !jobsQuery.isLoading && (
+                {closedJobsCount === 0 && (
                   <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No completed jobs.</p>
                 )}
               </>
             )}
-            {customerJobs.length === 0 && !jobsQuery.isLoading && (
+            {customerJobs.length === 0 && (
               <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No jobs yet.</p>
-            )}
-            {jobsQuery.hasNextPage && (
-              <div className="px-5 py-3 flex justify-center" style={{ borderTop: '1px solid var(--cafe-border)' }}>
-                <Button
-                  variant="secondary"
-                  className="text-xs"
-                  onClick={() => void jobsQuery.fetchNextPage()}
-                  disabled={jobsQuery.isFetchingNextPage}
-                >
-                  {jobsQuery.isFetchingNextPage ? 'Loading…' : 'Load more jobs'}
-                </Button>
-              </div>
-            )}
-            </>
             )}
           </div>
         </Card>
       </div>
+
+      {/* ── Shoe Repair Jobs ─────────────────────────────────────────── */}
+      {shoeJobs.length > 0 && (
+        <Card className="mt-6">
+          <div
+            className="px-5 py-4 font-semibold"
+            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          >
+            Shoe Repairs ({shoeJobs.length})
+          </div>
+          <div>
+            {(shoeJobs as ShoeRepairJob[]).map((job, i) => (
+              <Link
+                key={job.id}
+                to={`/shoe-repairs/${job.id}`}
+                className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                style={{ borderBottom: i < shoeJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    #{job.job_number}
+                    {job.shoe?.brand ? ` · ${job.shoe.brand}` : ''}
+                    {` · ${formatDate(job.created_at)}`}
+                  </p>
+                </div>
+                <Badge status={job.status} />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Auto / Mobile Key Jobs ────────────────────────────────────── */}
+      {autoKeyJobs.length > 0 && (
+        <Card className="mt-4">
+          <div
+            className="px-5 py-4 font-semibold"
+            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          >
+            Mobile Key Jobs ({autoKeyJobs.length})
+          </div>
+          <div>
+            {(autoKeyJobs as AutoKeyJob[]).map((job, i) => (
+              <Link
+                key={job.id}
+                to={`/auto-key/${job.id}`}
+                className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                style={{ borderBottom: i < autoKeyJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    #{job.job_number}
+                    {job.vehicle_make ? ` · ${job.vehicle_make}${job.vehicle_model ? ` ${job.vehicle_model}` : ''}` : ''}
+                    {` · ${formatDate(job.created_at)}`}
+                  </p>
+                </div>
+                <Badge status={job.status} />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
+
