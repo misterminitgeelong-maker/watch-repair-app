@@ -365,7 +365,7 @@ function LeafletDispatchMap({
   )
 }
 
-function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Props) {
+function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [mapFilter, setMapFilter] = useState<'mobile_visits' | 'all_addresses'>('mobile_visits')
