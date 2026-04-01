@@ -84,11 +84,10 @@ def get_reports_summary(
         ).one()
     )
     revenue_cents = payment_revenue + orphan_paid_cents
-    cost_cents = int(
-        session.exec(
-            select(func.coalesce(func.sum(RepairJob.cost_cents), 0)).where(RepairJob.tenant_id == tenant_id)
-        ).one()
-    )
+    watch_cost = int(session.exec(select(func.coalesce(func.sum(RepairJob.cost_cents), 0)).where(RepairJob.tenant_id == tenant_id)).one())
+    shoe_cost = int(session.exec(select(func.coalesce(func.sum(ShoeRepairJob.cost_cents), 0)).where(ShoeRepairJob.tenant_id == tenant_id)).one())
+    mobile_cost = int(session.exec(select(func.coalesce(func.sum(AutoKeyJob.cost_cents), 0)).where(AutoKeyJob.tenant_id == tenant_id)).one())
+    cost_cents = watch_cost + shoe_cost + mobile_cost
     outstanding_cents = max(billed_cents - revenue_cents, 0)
     gross_profit_cents = revenue_cents - cost_cents
     gross_margin_percent = round((gross_profit_cents / revenue_cents) * 100, 2) if revenue_cents > 0 else 0.0
