@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  ArrowRight,
-  BarChart3,
-  Building2,
   Clock3,
-  Database,
   DollarSign,
   FileText,
-  KeyRound,
   Receipt,
-  Scissors,
   UserCog,
   Users,
   Wrench,
@@ -75,15 +69,6 @@ type DashboardStatProps = {
   index: number
 }
 
-type WorkspaceTileProps = {
-  to: string
-  title: string
-  icon: React.ElementType
-  accent: string
-  summary: string
-  metrics: Array<{ label: string; value: string }>
-}
-
 type RecentItem = {
   id: string
   title: string
@@ -135,40 +120,6 @@ function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconC
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg, color: iconColor }}>
             <Icon size={20} />
-          </div>
-        </div>
-      </Card>
-    </Link>
-  )
-}
-
-function WorkspaceTile({ to, title, icon: Icon, accent, summary, metrics }: WorkspaceTileProps) {
-  return (
-    <Link to={to} className="block h-full">
-      <Card className="dashboard-panel h-full p-5">
-        <div className="flex h-full flex-col">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${accent}18`, color: accent }}>
-                  <Icon size={18} />
-                </div>
-                <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>{title}</h2>
-              </div>
-              <p className="mt-3 text-sm leading-6" style={{ color: 'var(--cafe-text-mid)' }}>{summary}</p>
-            </div>
-            <ArrowRight size={16} style={{ color: 'var(--cafe-text-muted)' }} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
-                  {metric.label}
-                </p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{metric.value}</p>
-              </div>
-            ))}
           </div>
         </div>
       </Card>
@@ -344,127 +295,6 @@ export default function DashboardPage() {
     },
   ]
 
-  const workspaceTiles: WorkspaceTileProps[] = [
-    {
-      to: '/customers',
-      title: 'Customers',
-      icon: Users,
-      accent: '#2A6B65',
-      summary: 'Your customer book, intake records, and repeat-client history all feed from here.',
-      metrics: [
-        { label: 'Total', value: String(customers?.length ?? 0) },
-        { label: 'Accounts', value: String(customerAccounts?.length ?? 0) },
-      ],
-    },
-    {
-      to: '/jobs',
-      title: 'Watch Repairs',
-      icon: Wrench,
-      accent: '#8D6725',
-      summary: 'Bench workload, approvals, and quote-ready watch jobs for the core repair pipeline.',
-      metrics: [
-        { label: 'Open', value: String(watchOpenJobs.length) },
-        { label: 'Awaiting OK', value: String(watchAwaitingGoAhead.length) },
-      ],
-    },
-    ...(hasFeature('shoe')
-      ? [{
-          to: '/shoe-repairs',
-          title: 'Shoe Repairs',
-          icon: Scissors,
-          accent: '#965934',
-          summary: 'Catalogue-based shoe work, grouped service items, and ready-for-pickup shoe jobs.',
-          metrics: [
-            { label: 'Open', value: String(shoeOpenJobs.length) },
-            { label: 'Value', value: formatCents(shoeOpenJobs.reduce((sum, job) => sum + job.cost_cents, 0)) },
-          ],
-        }]
-      : []),
-    ...(hasFeature('auto_key')
-      ? [{
-          to: '/auto-key',
-          title: 'Auto Key',
-          icon: KeyRound,
-          accent: '#5D4A9B',
-          summary: 'Programming queue, vehicle jobs, and key-cutting work that needs technical follow-through.',
-          metrics: [
-            { label: 'Open', value: String(autoOpenJobs.length) },
-            { label: 'Programming', value: String((autoKeyJobs ?? []).filter((job) => job.programming_status !== 'programmed' && job.programming_status !== 'not_required').length) },
-          ],
-        }]
-      : []),
-    ...(hasFeature('customer_accounts')
-      ? [{
-          to: '/customer-accounts',
-          title: 'Customer Accounts',
-          icon: Building2,
-          accent: '#4B6C5A',
-          summary: 'Business clients, account billing, and grouped jobs for recurring trade relationships.',
-          metrics: [
-            { label: 'Active', value: String((customerAccounts ?? []).filter((account) => account.is_active).length) },
-            { label: 'Linked Customers', value: String((customerAccounts ?? []).reduce((sum, account) => sum + account.customer_ids.length, 0)) },
-          ],
-        }]
-      : []),
-    {
-      to: '/invoices',
-      title: 'Invoices',
-      icon: Receipt,
-      accent: '#A2502E',
-      summary: 'What is billed, what is still open, and where cash collection is lagging behind work completed.',
-      metrics: [
-        { label: 'Open', value: String(invoicesOpen.length) },
-        { label: 'Outstanding', value: formatCents(invoicesOpenValue) },
-      ],
-    },
-    {
-      to: '/reports',
-      title: 'Reports',
-      icon: BarChart3,
-      accent: '#345B9C',
-      summary: 'Commercial performance, throughput, margin, and approval trends across the tenant.',
-      metrics: [
-        { label: 'Revenue', value: formatCents(reports?.financials.revenue_cents ?? 0) },
-        { label: 'Margin', value: `${reports?.financials.gross_margin_percent ?? 0}%` },
-      ],
-    },
-    {
-      to: '/database',
-      title: 'Database',
-      icon: Database,
-      accent: '#7A5A36',
-      summary: 'The data foundation behind imports, backups, and long-term record integrity.',
-      metrics: [
-        { label: 'Watches', value: String(reports?.counts.watches ?? 0) },
-        { label: 'Invoices', value: String(reports?.counts.invoices ?? 0) },
-      ],
-    },
-    {
-      to: '/accounts',
-      title: 'Accounts',
-      icon: UserCog,
-      accent: '#6A4C93',
-      summary: 'User access, plan limits, and billing capacity for the shop as it scales.',
-      metrics: [
-        { label: 'Plan', value: formatPlanName(planCode) },
-        { label: 'Users', value: canViewAccountMetrics && billing ? `${billing.usage.users}/${billing.limits.max_users}` : String(users?.length ?? 1) },
-      ],
-    },
-    ...(hasFeature('multi_site')
-      ? [{
-          to: '/parent-account',
-          title: 'Parent Account',
-          icon: Building2,
-          accent: '#8A6E3B',
-          summary: 'Cross-site visibility for linked tenants, active-site context, and owner-level control.',
-          metrics: [
-            { label: 'Sites', value: String(availableSites.length) },
-            { label: 'Active', value: availableSites.find((site) => site.tenant_id === activeSiteTenantId)?.tenant_name ?? 'Current site' },
-          ],
-        }]
-      : []),
-  ]
-
   return (
     <div style={{ position: 'relative' }}>
       <style>{DASHBOARD_CSS}</style>
@@ -493,11 +323,12 @@ export default function DashboardPage() {
                 Shop-wide overview
               </p>
               <h2 className="mt-3 text-3xl font-semibold leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#FFF7EA' }}>
-                The dashboard now reflects the whole business, not just one repair queue.
+                All your repairs, one place.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: '#E7D8C3' }}>
-                Use this page as the single entry point for workshop flow, customer activity, commercial health,
-                plan usage, and the service modules that sit across the sidebar.
+                {totalServiceJobs > 0
+                  ? `${totalServiceJobs} active ${totalServiceJobs === 1 ? 'job' : 'jobs'} across your service lines.`
+                  : 'No active jobs right now — ready for the next one.'}
               </p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
                 <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
@@ -607,22 +438,6 @@ export default function DashboardPage() {
           {statCards.map((card, index) => (
             <DashboardStatCard key={card.label} {...card} index={index} />
           ))}
-        </div>
-
-        <div className="mb-8">
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
-              Sidebar Modules At A Glance
-            </h2>
-            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-              Each card below reflects live data from the main sections of the app.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {workspaceTiles.map((tile) => (
-              <WorkspaceTile key={tile.title} {...tile} />
-            ))}
-          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">

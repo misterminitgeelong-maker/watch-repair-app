@@ -22,13 +22,13 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
           <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Total Due</span><span className="font-semibold">{formatCents(invoice.total_cents)}</span></div>
         </div>
         <Input
-          label="Amount (cents)"
+          label="Amount ($)"
           type="number"
-          min="1"
-          value={amount}
-          onChange={e => setAmount(parseInt(e.target.value))}
+          min="0.01"
+          step="0.01"
+          value={(amount / 100).toFixed(2)}
+          onChange={e => setAmount(Math.round(parseFloat(e.target.value || '0') * 100))}
         />
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>= {formatCents(amount)}</p>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
@@ -126,17 +126,28 @@ export function InvoiceDetailPage() {
       />
       {showPay && <PaymentModal invoice={invoice} onClose={() => setShowPay(false)} />}
 
-      <Card className="max-w-lg p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>Status</span>
-          <Badge status={invoice.status} />
-        </div>
-        <div className="flex justify-between text-sm"><span style={{ color: 'var(--cafe-text-muted)' }}>Date</span><span style={{ color: 'var(--cafe-text)' }}>{formatDate(invoice.created_at)}</span></div>
-        <div className="pt-4 space-y-2 text-sm" style={{ borderTop: '1px solid var(--cafe-border)' }}>
-          <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.subtotal_cents)}</span></div>
-          <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Tax</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.tax_cents)}</span></div>
-          <div className="flex justify-between font-bold text-base pt-2 mt-2" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}>
-            <span>Total</span><span>{formatCents(invoice.total_cents)}</span>
+      <Card className="max-w-2xl p-6">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center">
+              <span style={{ color: 'var(--cafe-text-muted)' }}>Status</span>
+              <Badge status={invoice.status} />
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--cafe-text-muted)' }}>Invoice #</span>
+              <span className="font-mono" style={{ color: 'var(--cafe-text)' }}>{invoice.invoice_number}</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--cafe-text-muted)' }}>Date</span>
+              <span style={{ color: 'var(--cafe-text)' }}>{formatDate(invoice.created_at)}</span>
+            </div>
+          </div>
+          <div className="space-y-2 text-sm border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6" style={{ borderColor: 'var(--cafe-border)' }}>
+            <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.subtotal_cents)}</span></div>
+            <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Tax</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.tax_cents)}</span></div>
+            <div className="flex justify-between font-bold text-base pt-2 mt-2" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}>
+              <span>Total</span><span>{formatCents(invoice.total_cents)}</span>
+            </div>
           </div>
         </div>
       </Card>
