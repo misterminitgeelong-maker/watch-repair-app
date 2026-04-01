@@ -440,6 +440,10 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     [filteredJobs, geocoded],
   )
 
+  /** Geocode effect keys off `jobsKey` only; `filteredJobs` gets new array refs without content changes (e.g. customers query). */
+  const filteredJobsRef = useRef(filteredJobs)
+  filteredJobsRef.current = filteredJobs
+
   useEffect(() => {
     setRouteOrder('scheduled')
     setDrivingVisitOrder(null)
@@ -500,54 +504,75 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
   useEffect(() => {
     const gen = ++geocodeGenerationRef.current
     const isStale = () => gen !== geocodeGenerationRef.current
+    const filteredJobsSnapshot = filteredJobsRef.current
 
     const run = async () => {
-      if (filteredJobs.length === 0) {
+      if (filteredJobsSnapshot.length === 0) {
         if (!isStale()) {
           setGeocoded(new Map())
           setLoading(false)
         }
         return
       }
-      if (isStale()) return
+
       setLoading(true)
+
+      if (isStale()) {
+        setLoading(false)
+        return
+      }
+
       const results = new Map<string, { lat: number; lng: number }>()
       const useGoogle = Boolean(apiKey?.trim())
       const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
 
       if (!useGoogle) {
-        for (const j of filteredJobs) {
+        for (const j of filteredJobsSnapshot) {
           results.set(j.id, fallbackFor(j._addressForMap))
         }
-        if (isStale()) return
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
         setGeocoded(results)
         setLoading(false)
         return
       }
 
-      const cacheKeys = filteredJobs.map((j) => j._addressForMap.trim().toLowerCase())
+      const cacheKeys = filteredJobsSnapshot.map((j) => j._addressForMap.trim().toLowerCase())
       const allCached = cacheKeys.every((ck) => geocodeCache.has(ck))
       if (allCached) {
-        for (const j of filteredJobs) {
+        for (const j of filteredJobsSnapshot) {
           const ck = j._addressForMap.trim().toLowerCase()
           const c = geocodeCache.get(ck)
           results.set(j.id, c ?? fallbackFor(j._addressForMap))
         }
-        if (isStale()) return
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
         setGeocoded(results)
         setLoading(false)
         return
       }
-      for (let i = 0; i < filteredJobs.length; i++) {
-        if (isStale()) return
-        const j = filteredJobs[i]
+      for (let i = 0; i < filteredJobsSnapshot.length; i++) {
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
+        const j = filteredJobsSnapshot[i]
         const coords = await geocodeWithGoogle(j._addressForMap, apiKey!)
-        if (isStale()) return
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
         results.set(j.id, coords ?? fallbackFor(j._addressForMap))
-        if (i < filteredJobs.length - 1) await new Promise((r) => setTimeout(r, 200))
+        if (i < filteredJobsSnapshot.length - 1) await new Promise((r) => setTimeout(r, 200))
       }
       if (!isStale()) {
         setGeocoded(results)
+        setLoading(false)
+      } else {
         setLoading(false)
       }
     }
@@ -555,7 +580,7 @@ function MobileServicesMapInner({ jobs, date, customers = [], rangeLabel }: Prop
     return () => {
       geocodeGenerationRef.current += 1
     }
-  }, [apiKey, date, jobsKey, filteredJobs])
+  }, [apiKey, jobsKey])
 
   if (jobsWithAddresses.length === 0) {
     return (
