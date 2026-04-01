@@ -80,6 +80,24 @@ function readAutoKeyDragJobId(dt: DataTransfer): string {
   return (dt.getData(AUTOKEY_JOB_DRAG_MIME) || dt.getData('text/plain') || '').trim()
 }
 
+/** Reschedule onto target YYYY-MM-DD (local) keeping the job's local time, or 09:00 if it had no time. */
+function isoScheduledOnDayKeepingLocalTime(
+  jobId: string,
+  targetDayYmd: string,
+  jobs: Array<{ id: string; scheduled_at?: string }>,
+): string {
+  const job = jobs.find((j) => j.id === jobId)
+  let hour = 9
+  let minute = 0
+  if (job?.scheduled_at) {
+    const prev = new Date(job.scheduled_at)
+    hour = prev.getHours()
+    minute = prev.getMinutes()
+  }
+  const [y, m, dayOfMonth] = targetDayYmd.split('-').map(Number)
+  return new Date(y, m - 1, dayOfMonth, hour, minute, 0).toISOString()
+}
+
 /** Local hour rows for week grid: 7:00–21:00 slots (7am–9pm). */
 const WEEK_SCHEDULE_HOURS = Array.from({ length: 15 }, (_, i) => 7 + i)
 
@@ -1988,7 +2006,9 @@ export default function AutoKeyJobsPage() {
           {weekLoading ? <Spinner /> : weekError ? null : (
             <div className="space-y-4">
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                {weekJobs.length === 0 ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.' : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view (scheduled + unscheduled).`}
+                {weekJobs.length === 0
+                  ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.'
+                  : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view (scheduled + unscheduled). Drag onto another day header to move the job to that date (same time of day), or onto any hourly slot to set a specific time.`}
               </p>
               {(() => {
                 const unscheduled = weekJobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at)
@@ -2050,8 +2070,33 @@ export default function AutoKeyJobsPage() {
                   const dayName = d.toLocaleDateString('en-AU', { weekday: 'short' })
                   const dayNum = d.getDate()
                   const isToday = dayStr === ymdLocal(new Date())
+                  const baseBg = isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--cafe-surface)'
                   return (
-                    <div key={dayStr} className="text-center py-2 rounded-lg" style={{ backgroundColor: isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+                    <div
+                      key={dayStr}
+                      className="text-center py-2 rounded-lg min-h-[56px] flex flex-col items-center justify-center transition-colors"
+                      style={{ backgroundColor: baseBg, border: '1px dashed var(--cafe-border)' }}
+                      title="Drop a job here to move it to this day (keeps the same clock time)"
+                      onDragOverCapture={(e) => {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(245, 158, 11, 0.28)'
+                      }}
+                      onDragLeave={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = baseBg
+                        }
+                      }}
+                      onDropCapture={(e) => {
+                        e.preventDefault()
+                        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = baseBg
+                        const jobId = readAutoKeyDragJobId(e.dataTransfer)
+                        if (jobId) {
+                          const next = isoScheduledOnDayKeepingLocalTime(jobId, dayStr, weekJobs)
+                          rescheduleMut.mutate({ jobId, scheduled_at: next })
+                        }
+                      }}
+                    >
                       <p className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>{dayName}</p>
                       <p className="text-sm font-bold" style={{ color: 'var(--cafe-text)' }}>{dayNum}</p>
                     </div>
