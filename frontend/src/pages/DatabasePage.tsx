@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
 import axios from 'axios'
 import { importCsv, getApiErrorMessage, type CsvImportResult } from '@/lib/api'
@@ -6,6 +7,7 @@ import { PageHeader, Card, Button, Input } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
 
 export default function DatabasePage() {
+  const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [replaceExisting, setReplaceExisting] = useState(false)
@@ -40,6 +42,18 @@ export default function DatabasePage() {
       if (!opts.dryRun) {
         setFile(null)
         if (fileRef.current) fileRef.current.value = ''
+        void qc.invalidateQueries({ queryKey: ['jobs'] })
+        void qc.invalidateQueries({ queryKey: ['quotes'] })
+        void qc.invalidateQueries({ queryKey: ['customers'] })
+        void qc.invalidateQueries({ queryKey: ['customer-accounts'] })
+        void qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+        void qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+        void qc.invalidateQueries({
+          predicate: (q) => {
+            const k = q.queryKey[0]
+            return typeof k === 'string' && k.startsWith('reports')
+          },
+        })
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {

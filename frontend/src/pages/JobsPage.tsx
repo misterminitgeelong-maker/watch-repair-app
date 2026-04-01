@@ -133,6 +133,14 @@ export default function JobsPage() {
   const showLoadMore = jobsQuery.hasNextPage ?? false
   const loadMoreBusy = jobsQuery.isFetchingNextPage || quotesQuery.isFetchingNextPage
 
+  const showSwitchToCompletedHint =
+    !isLoading &&
+    jobDirectoryView === 'active' &&
+    statusFilter === 'all' &&
+    !search.trim() &&
+    filtered.length === 0 &&
+    completedCount > 0
+
   return (
     <div>
       <PageHeader
@@ -302,7 +310,30 @@ export default function JobsPage() {
       {isLoading ? <Spinner /> : (
         filtered.length === 0 ? (
           <Card>
-            <EmptyState message="No jobs found." />
+            {showSwitchToCompletedHint ? (
+              <div className="py-10 px-4 text-center space-y-4 max-w-lg mx-auto">
+                <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  No jobs in the Active board.
+                </p>
+                <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                  Rows with status <strong className="font-medium">Ready for collection</strong>,{' '}
+                  <strong className="font-medium">Completed</strong>, or <strong className="font-medium">Collected</strong>{' '}
+                  (common in imports and old exports) are grouped under <strong className="font-medium">Completed</strong>.
+                </p>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    setJobDirectoryView('completed')
+                    setStatusFilter('all')
+                  }}
+                >
+                  Open Completed ({completedCount})
+                </Button>
+              </div>
+            ) : (
+              <EmptyState message="No jobs found." />
+            )}
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
