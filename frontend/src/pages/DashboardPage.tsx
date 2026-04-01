@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowRight,
-  BarChart3,
-  Building2,
   Clock3,
-  Database,
   DollarSign,
   FileText,
   Inbox,
   KeyRound,
   Receipt,
-  Scissors,
   UserCog,
   Users,
   Wrench,
@@ -645,11 +640,12 @@ export default function DashboardPage() {
                 Shop-wide overview
               </p>
               <h2 className="mt-3 text-3xl font-semibold leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#FFF7EA' }}>
-                The dashboard now reflects the whole business, not just one repair queue.
+                All your repairs, one place.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: '#E7D8C3' }}>
-                Use this page as the single entry point for workshop flow, customer activity, commercial health,
-                plan usage, and the service modules that sit across the sidebar.
+                {totalServiceJobs > 0
+                  ? `${totalServiceJobs} active ${totalServiceJobs === 1 ? 'job' : 'jobs'} across your service lines.`
+                  : 'No active jobs right now — ready for the next one.'}
               </p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
                 <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
@@ -778,22 +774,6 @@ export default function DashboardPage() {
           {statCards.map((card, index) => (
             <DashboardStatCard key={card.label} {...card} index={index} />
           ))}
-        </div>
-
-        <div className="mb-8">
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
-              Sidebar Modules At A Glance
-            </h2>
-            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-              Each card below reflects live data from the main sections of the app.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {workspaceTiles.map((tile) => (
-              <WorkspaceTile key={tile.title} {...tile} />
-            ))}
-          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">

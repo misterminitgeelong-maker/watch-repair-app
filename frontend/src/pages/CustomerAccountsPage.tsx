@@ -450,11 +450,7 @@ export default function CustomerAccountsPage() {
                     {account.notes && <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{account.notes}</p>}
                   </div>
                 </div>
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                  <div>Total jobs this month: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{summary.totalJobsThisMonth}</span></div>
-                  <div>Total invoiced this month: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{centsToCurrency(summary.totalInvoicedThisMonthCents)}</span></div>
-                  <div>Outstanding balance: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{centsToCurrency(summary.outstandingBalanceCents)}</span></div>
-                </div>
+
 
                 <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
