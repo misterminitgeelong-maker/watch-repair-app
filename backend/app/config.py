@@ -181,6 +181,3 @@ def validate_runtime_config() -> None:
             UserWarning,
             stacklevel=0,
         )
-
-
-validate_runtime_config()
