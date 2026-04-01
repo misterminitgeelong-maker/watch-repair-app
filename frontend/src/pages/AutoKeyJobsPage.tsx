@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -37,6 +37,12 @@ import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import {
+  civilAddDays,
+  civilMondayOfWeekContaining,
+  hourMinuteInTimeZone,
+  zonedWallTimeToUtcIso,
+} from '@/lib/shopCalendarTime'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER, 'en_route', 'on_site', 'pending_booking', 'booked', 'awaiting_customer_details']
@@ -80,22 +86,22 @@ function readAutoKeyDragJobId(dt: DataTransfer): string {
   return (dt.getData(AUTOKEY_JOB_DRAG_MIME) || dt.getData('text/plain') || '').trim()
 }
 
-/** Reschedule onto target YYYY-MM-DD (local) keeping the job's local time, or 09:00 if it had no time. */
-function isoScheduledOnDayKeepingLocalTime(
+/** Reschedule onto target civil YYYY-MM-DD in shop calendar, keeping wall time in `shopTimeZone`, or 09:00 if unscheduled. */
+function isoScheduledOnDayKeepingShopTime(
   jobId: string,
   targetDayYmd: string,
   jobs: Array<{ id: string; scheduled_at?: string }>,
+  shopTimeZone: string,
 ): string {
   const job = jobs.find((j) => j.id === jobId)
   let hour = 9
   let minute = 0
   if (job?.scheduled_at) {
-    const prev = new Date(job.scheduled_at)
-    hour = prev.getHours()
-    minute = prev.getMinutes()
+    const hm = hourMinuteInTimeZone(job.scheduled_at, shopTimeZone)
+    hour = hm.hour
+    minute = hm.minute
   }
-  const [y, m, dayOfMonth] = targetDayYmd.split('-').map(Number)
-  return new Date(y, m - 1, dayOfMonth, hour, minute, 0).toISOString()
+  return zonedWallTimeToUtcIso(targetDayYmd, hour, minute, shopTimeZone)
 }
 
 /** Local hour rows for week grid: 7:00–21:00 slots (7am–9pm). */
@@ -1370,8 +1376,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const { role, shopCalendarTodayYmd, sessionReady } = useAuth()
+  const { role, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
   const syncedShopCalendarDate = useRef(false)
+  const weekAnchorSynced = useRef(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showAddTech, setShowAddTech] = useState(false)
   const [showCommissionRules, setShowCommissionRules] = useState(false)
@@ -1383,14 +1390,10 @@ export default function AutoKeyJobsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dispatchDate, setDispatchDate] = useState(() => ymdLocal(new Date()))
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
-  const [weekStart, setWeekStart] = useState(() => {
-    const d = new Date()
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday
-    const mon = new Date(d)
-    mon.setDate(diff)
-    return ymdLocal(mon)
-  })
+  const [weekStart, setWeekStart] = useState(() => civilMondayOfWeekContaining(ymdLocal(new Date())))
+  /** Week grid: tap Move then tap a day/slot (HTML5 drag does not work on most touch devices). */
+  const [weekRelocateJobId, setWeekRelocateJobId] = useState<string | null>(null)
+  const [weekScheduleErr, setWeekScheduleErr] = useState<string | null>(null)
   const [reportDateFrom, setReportDateFrom] = useState('')
   const [reportDateTo, setReportDateTo] = useState('')
   const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
@@ -1399,6 +1402,12 @@ export default function AutoKeyJobsPage() {
     if (!sessionReady || !shopCalendarTodayYmd || syncedShopCalendarDate.current) return
     setDispatchDate(shopCalendarTodayYmd)
     syncedShopCalendarDate.current = true
+  }, [sessionReady, shopCalendarTodayYmd])
+
+  useEffect(() => {
+    if (!sessionReady || !shopCalendarTodayYmd || weekAnchorSynced.current) return
+    setWeekStart(civilMondayOfWeekContaining(shopCalendarTodayYmd))
+    weekAnchorSynced.current = true
   }, [sessionReady, shopCalendarTodayYmd])
 
   const { data: jobs = [], isLoading } = useQuery({
@@ -1453,11 +1462,7 @@ export default function AutoKeyJobsPage() {
     enabled: dispatchViews && !!dispatchParams,
   })
 
-  const weekEnd = (() => {
-    const d = dateFromYmdLocal(weekStart)
-    d.setDate(d.getDate() + 6)
-    return ymdLocal(d)
-  })()
+  const weekEnd = civilAddDays(weekStart, 6)
   const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
 
   const reportDateParams = (() => {
@@ -1528,9 +1533,14 @@ export default function AutoKeyJobsPage() {
     mutationFn: ({ jobId, scheduled_at }: { jobId: string; scheduled_at: string | null }) =>
       updateAutoKeyJob(jobId, scheduled_at ? { scheduled_at } : { scheduled_at: null }),
     onSuccess: () => {
+      setWeekScheduleErr(null)
+      setWeekRelocateJobId(null)
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
       qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dashboard'] })
       qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+    },
+    onError: (err: unknown) => {
+      setWeekScheduleErr(getApiErrorMessage(err, 'Could not update the job time. Check your connection and that you can edit jobs.'))
     },
   })
   const { data: weekJobs = [], isLoading: weekLoading, isError: weekError, error: weekErr, refetch: refetchWeek } = useQuery({
@@ -1983,17 +1993,13 @@ export default function AutoKeyJobsPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => {
-                const d = dateFromYmdLocal(weekStart)
-                d.setDate(d.getDate() - 7)
-                setWeekStart(ymdLocal(d))
+                setWeekStart(civilAddDays(weekStart, -7))
               }}><ChevronLeft size={16} /></Button>
               <span className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
                 {formatDate(weekStart)} – {formatDate(weekEnd)}
               </span>
               <Button variant="secondary" onClick={() => {
-                const d = dateFromYmdLocal(weekStart)
-                d.setDate(d.getDate() + 7)
-                setWeekStart(ymdLocal(d))
+                setWeekStart(civilAddDays(weekStart, 7))
               }}><ChevronRight size={16} /></Button>
             </div>
           </div>
@@ -2005,18 +2011,45 @@ export default function AutoKeyJobsPage() {
           )}
           {weekLoading ? <Spinner /> : weekError ? null : (
             <div className="space-y-4">
+              {weekScheduleErr && (
+                <Card className="p-3" style={{ borderColor: '#E7C6B7', backgroundColor: '#FFF7F3' }}>
+                  <p className="text-sm" style={{ color: '#8B3A3A' }}>{weekScheduleErr}</p>
+                  <Button variant="secondary" className="mt-2" type="button" onClick={() => setWeekScheduleErr(null)}>Dismiss</Button>
+                </Card>
+              )}
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                 {weekJobs.length === 0
                   ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.'
-                  : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view (scheduled + unscheduled). Drag onto another day header to move the job to that date (same time of day), or onto any hourly slot to set a specific time.`}
+                  : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view. Drag by the grip (⋮⋮) to a day header (same time) or an hour cell. On phones and tablets, tap Move on a job, then tap the destination. Links open the job if you tap the title.`}
               </p>
+              {weekRelocateJobId && (() => {
+                const j = weekJobs.find((x: { id: string }) => x.id === weekRelocateJobId)
+                const label = j ? `#${(j as { job_number: string }).job_number}` : 'Job'
+                return (
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'var(--cafe-amber)', color: 'var(--cafe-text)' }}>
+                    <span className="font-medium">Moving {label}</span>
+                    <span style={{ color: 'var(--cafe-text-muted)' }}>— tap a day or time below, or</span>
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      className="!py-1 !px-2 text-xs"
+                      onClick={() => {
+                        rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: null })
+                      }}
+                    >
+                      Clear time
+                    </Button>
+                    <Button variant="secondary" type="button" className="!py-1 !px-2 text-xs" onClick={() => setWeekRelocateJobId(null)}>Cancel</Button>
+                  </div>
+                )
+              })()}
               {(() => {
                 const unscheduled = weekJobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at)
                 return (
                   <>
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
-                  Unscheduled — {unscheduled.length > 0 ? 'drag onto a slot to schedule, or drop here to unschedule' : 'drop jobs here to unschedule'}
+                  Unscheduled — drag grip to a slot, or Move → tap destination; drop grip here to clear time
                 </h3>
                 <div
                     className="min-h-[52px] p-2 rounded border flex flex-wrap gap-2 content-start transition-colors"
@@ -2037,46 +2070,83 @@ export default function AutoKeyJobsPage() {
                       const jobId = readAutoKeyDragJobId(e.dataTransfer)
                       if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: null })
                     }}
+                    onClick={(ev) => {
+                      if (!weekRelocateJobId) return
+                      if ((ev.target as HTMLElement).closest('[data-week-job-chip]')) return
+                      rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: null })
+                    }}
                   >
-                    {unscheduled.map((job: object) => (
-                      <div
-                        key={(job as { id: string }).id}
-                        draggable
-                        onDragStart={e => {
-                          setAutoKeyDragData(e.dataTransfer, (job as { id: string }).id)
-                          e.dataTransfer.effectAllowed = 'move'
-                        }}
-                        className="cursor-grab active:cursor-grabbing shrink-0"
-                      >
-                        <Link
-                          to={`/auto-key/${(job as { id: string }).id}`}
-                          draggable={false}
-                          className="block text-xs p-1.5 rounded hover:opacity-90"
-                          style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)' }}
+                    {unscheduled.map((job: object) => {
+                      const j = job as { id: string; job_number: string; title: string }
+                      const selected = weekRelocateJobId === j.id
+                      return (
+                        <div
+                          key={j.id}
+                          data-week-job-chip
+                          className="flex items-stretch shrink-0 max-w-[min(260px,92vw)] rounded border overflow-hidden"
+                          style={{
+                            borderColor: selected ? 'var(--cafe-amber)' : 'var(--cafe-border)',
+                            boxShadow: selected ? '0 0 0 2px rgba(245,158,11,0.35)' : undefined,
+                          }}
                         >
-                          #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
-                        </Link>
-                      </div>
-                    ))}
+                          <div
+                            draggable
+                            onDragStart={(e) => {
+                              setAutoKeyDragData(e.dataTransfer, j.id)
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
+                            className="cursor-grab active:cursor-grabbing shrink-0 flex items-center px-1.5 touch-manipulation"
+                            style={{ backgroundColor: '#EDE6DC', color: 'var(--cafe-text-muted)' }}
+                            title="Drag from here to schedule"
+                          >
+                            <GripVertical size={14} aria-hidden />
+                          </div>
+                          <Link
+                            to={`/auto-key/${j.id}`}
+                            className="flex-1 min-w-0 text-xs p-1.5 hover:opacity-90"
+                            style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                          >
+                            #{j.job_number} · {j.title}
+                          </Link>
+                          <button
+                            type="button"
+                            className="shrink-0 px-2 text-[11px] font-semibold touch-manipulation"
+                            style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setWeekRelocateJobId((cur) => (cur === j.id ? null : j.id))
+                            }}
+                          >
+                            Move
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
             <div className="overflow-x-auto max-h-[min(85vh,900px)] overflow-y-auto">
               <div className="grid gap-2" style={{ gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))' }}>
                 <div />
                 {[...Array(7)].map((_, i) => {
-                  const d = dateFromYmdLocal(weekStart)
-                  d.setDate(d.getDate() + i)
-                  const dayStr = ymdLocal(d)
-                  const dayName = d.toLocaleDateString('en-AU', { weekday: 'short' })
-                  const dayNum = d.getDate()
-                  const isToday = dayStr === ymdLocal(new Date())
+                  const dayStr = civilAddDays(weekStart, i)
+                  const [cy, cm, cd] = dayStr.split('-').map(Number)
+                  const civilUtc = Date.UTC(cy, cm - 1, cd)
+                  const dayName = new Date(civilUtc).toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' })
+                  const dayNum = cd
+                  const isToday = Boolean(shopCalendarTodayYmd && dayStr === shopCalendarTodayYmd)
                   const baseBg = isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--cafe-surface)'
                   return (
                     <div
                       key={dayStr}
-                      className="text-center py-2 rounded-lg min-h-[56px] flex flex-col items-center justify-center transition-colors"
+                      className={`text-center py-2 rounded-lg min-h-[56px] flex flex-col items-center justify-center transition-colors ${weekRelocateJobId ? 'cursor-pointer' : ''}`}
                       style={{ backgroundColor: baseBg, border: '1px dashed var(--cafe-border)' }}
-                      title="Drop a job here to move it to this day (keeps the same clock time)"
+                      title={weekRelocateJobId ? 'Tap to place the selected job on this day' : 'Drag a job grip here to move it to this day (same clock time)'}
+                      onClick={() => {
+                        if (!weekRelocateJobId) return
+                        const next = isoScheduledOnDayKeepingShopTime(weekRelocateJobId, dayStr, weekJobs, scheduleCalendarTimezone)
+                        rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: next })
+                      }}
                       onDragOverCapture={(e) => {
                         e.preventDefault()
                         e.dataTransfer.dropEffect = 'move'
@@ -2092,7 +2162,7 @@ export default function AutoKeyJobsPage() {
                         ;(e.currentTarget as HTMLDivElement).style.backgroundColor = baseBg
                         const jobId = readAutoKeyDragJobId(e.dataTransfer)
                         if (jobId) {
-                          const next = isoScheduledOnDayKeepingLocalTime(jobId, dayStr, weekJobs)
+                          const next = isoScheduledOnDayKeepingShopTime(jobId, dayStr, weekJobs, scheduleCalendarTimezone)
                           rescheduleMut.mutate({ jobId, scheduled_at: next })
                         }
                       }}
@@ -2108,23 +2178,28 @@ export default function AutoKeyJobsPage() {
                       {String(hour).padStart(2, '0')}:00
                     </div>
                     {[...Array(7)].map((_, i) => {
-                      const d = dateFromYmdLocal(weekStart)
-                      d.setDate(d.getDate() + i)
-                      const dayStr = ymdLocal(d)
-                      const [y, m, dayOfMonth] = dayStr.split('-').map(Number)
-                      const slotStart = new Date(y, m - 1, dayOfMonth, hour, 0, 0)
-                      const slotEnd = new Date(y, m - 1, dayOfMonth, hour + 1, 0, 0)
+                      const dayStr = civilAddDays(weekStart, i)
+                      const slotStartMs = new Date(zonedWallTimeToUtcIso(dayStr, hour, 0, scheduleCalendarTimezone)).getTime()
+                      const slotEndMs = new Date(zonedWallTimeToUtcIso(dayStr, hour + 1, 0, scheduleCalendarTimezone)).getTime()
                       const inSlot = weekJobs.filter((j: { scheduled_at?: string }) => {
                         if (!j.scheduled_at) return false
                         const t = new Date(j.scheduled_at).getTime()
-                        return t >= slotStart.getTime() && t < slotEnd.getTime()
+                        return t >= slotStartMs && t < slotEndMs
                       })
-                      const newScheduledAt = slotStart.toISOString()
+                      const newScheduledAt = new Date(slotStartMs).toISOString()
                       return (
                         <div
                           key={`${dayStr}-${hour}`}
-                          className="min-h-[44px] p-1 rounded border transition-colors"
+                          className={`min-h-[44px] p-1 rounded border transition-colors ${weekRelocateJobId ? 'cursor-pointer' : ''}`}
                           style={{ backgroundColor: 'var(--cafe-bg)', borderColor: 'var(--cafe-border)' }}
+                          onClick={(ev) => {
+                            if (!weekRelocateJobId) return
+                            const t = ev.target as HTMLElement
+                            if (t.closest('a')) return
+                            if (t.closest('button')) return
+                            if (t.closest('[data-week-job-chip]')) return
+                            rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: newScheduledAt })
+                          }}
                           onDragOverCapture={e => {
                             e.preventDefault()
                             e.dataTransfer.dropEffect = 'move'
@@ -2142,26 +2217,54 @@ export default function AutoKeyJobsPage() {
                             if (jobId) rescheduleMut.mutate({ jobId, scheduled_at: newScheduledAt })
                           }}
                         >
-                          {inSlot.map((job: object) => (
-                            <div
-                              key={(job as { id: string }).id}
-                              draggable
-                              onDragStart={e => {
-                                setAutoKeyDragData(e.dataTransfer, (job as { id: string }).id)
-                                e.dataTransfer.effectAllowed = 'move'
-                              }}
-                              className="cursor-grab active:cursor-grabbing"
-                            >
-                              <Link
-                                to={`/auto-key/${(job as { id: string }).id}`}
-                                draggable={false}
-                                className="block text-xs p-1.5 rounded mb-1 hover:opacity-90"
-                                style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                          {inSlot.map((job: object) => {
+                            const j = job as { id: string; job_number: string; title: string }
+                            const selected = weekRelocateJobId === j.id
+                            return (
+                              <div
+                                key={j.id}
+                                data-week-job-chip
+                                className="flex gap-0.5 items-start mb-1 last:mb-0"
+                                style={{
+                                  outline: selected ? '2px solid var(--cafe-amber)' : undefined,
+                                  outlineOffset: 1,
+                                  borderRadius: 4,
+                                }}
                               >
-                                #{(job as { job_number: string }).job_number} · {(job as { title: string }).title}
-                              </Link>
-                            </div>
-                          ))}
+                                <div
+                                  draggable
+                                  onDragStart={(e) => {
+                                    setAutoKeyDragData(e.dataTransfer, j.id)
+                                    e.dataTransfer.effectAllowed = 'move'
+                                  }}
+                                  className="cursor-grab active:cursor-grabbing shrink-0 flex items-center justify-center p-0.5 rounded touch-manipulation"
+                                  style={{ backgroundColor: 'rgba(141, 103, 37, 0.2)', color: '#5c4a32' }}
+                                  title="Drag from here to reschedule"
+                                >
+                                  <GripVertical size={12} aria-hidden />
+                                </div>
+                                <Link
+                                  to={`/auto-key/${j.id}`}
+                                  className="flex-1 min-w-0 block text-xs p-1 rounded hover:opacity-90"
+                                  style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                                >
+                                  #{j.job_number} · {j.title}
+                                </Link>
+                                <button
+                                  type="button"
+                                  className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded touch-manipulation"
+                                  style={{ backgroundColor: '#E8DCC8', color: '#3d2f20' }}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setWeekRelocateJobId((cur) => (cur === j.id ? null : j.id))
+                                  }}
+                                >
+                                  Move
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
                       )
                     })}
