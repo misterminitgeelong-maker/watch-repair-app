@@ -1,7 +1,7 @@
 import io
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -15,13 +15,25 @@ from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.limiter import limiter
 from app.main import app
-from app.models import Customer, ImportLog, RepairJob
+from app.models import (
+    AutoKeyJob,
+    Customer,
+    CustomerAccount,
+    CustomerAccountMembership,
+    ImportLog,
+    RepairJob,
+)
 
 create_db_and_tables()
 client = TestClient(app)
 
 
 def _bootstrap_and_login(tenant_slug: str, email: str, password: str) -> str:
+    _token, _tid = _bootstrap_login_and_tenant(tenant_slug, email, password)
+    return _token
+
+
+def _bootstrap_login_and_tenant(tenant_slug: str, email: str, password: str) -> tuple[str, UUID]:
     bootstrap = client.post(
         "/v1/auth/bootstrap",
         json={
@@ -33,12 +45,13 @@ def _bootstrap_and_login(tenant_slug: str, email: str, password: str) -> str:
         },
     )
     assert bootstrap.status_code == 200
+    tenant_id = UUID(bootstrap.json()["tenant_id"])
     login = client.post(
         "/v1/auth/login",
         json={"tenant_slug": tenant_slug, "email": email, "password": password},
     )
     assert login.status_code == 200
-    return login.json()["access_token"]
+    return login.json()["access_token"], tenant_id
 
 
 def _csv_file(content: str):
@@ -182,3 +195,57 @@ def test_csv_import_reuses_no_job_number_when_ticket_exists_in_db():
     finally:
         settings.rate_limit_import_csv = old_rl
         limiter.reset()
+
+
+def test_csv_import_replace_existing_clears_memberships_and_auto_key_before_customers():
+    """Replace-import must delete FK dependents (memberships, auto-key jobs) before customers."""
+    token, tenant_id = _bootstrap_login_and_tenant(
+        "csv-replace-fk", "csvrepfk@example.com", "Admin123!"
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    with Session(engine) as session:
+        cust = Customer(tenant_id=tenant_id, full_name="Fleet Person", phone="0411888777")
+        session.add(cust)
+        acc = CustomerAccount(tenant_id=tenant_id, name="Fleet Co")
+        session.add(acc)
+        session.flush()
+        session.add(
+            CustomerAccountMembership(
+                tenant_id=tenant_id,
+                customer_account_id=acc.id,
+                customer_id=cust.id,
+            )
+        )
+        session.add(
+            AutoKeyJob(
+                tenant_id=tenant_id,
+                customer_id=cust.id,
+                job_number="AK-100",
+                title="Spare key",
+            )
+        )
+        session.commit()
+
+    csv_text = (
+        "customer_name,phone,brand,quote,status,notes\n"
+        "Imported,0411999000,Omega,50,ready,ok\n"
+    )
+    res = client.post(
+        "/v1/import/csv",
+        headers=headers,
+        params={"replace_existing": "true"},
+        files=_csv_file(csv_text),
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["imported"] == 1
+
+    with Session(engine) as session:
+        customers = session.exec(select(Customer).where(Customer.tenant_id == tenant_id)).all()
+        assert len(customers) == 1
+        assert customers[0].full_name == "Imported"
+        mems = session.exec(
+            select(CustomerAccountMembership).where(CustomerAccountMembership.tenant_id == tenant_id)
+        ).all()
+        assert len(mems) == 0
+        ajobs = session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).all()
+        assert len(ajobs) == 0

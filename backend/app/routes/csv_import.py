@@ -28,6 +28,7 @@ from ..models import (
     AutoKeyQuote,
     AutoKeyQuoteLineItem,
     Customer,
+    CustomerAccountMembership,
     ImportLog,
     ImportLogDetail,
     ImportSummaryResponse,
@@ -466,6 +467,13 @@ def _clear_tenant_importable_data(session: Session, tenant_id, clear_tabs: list[
         session.exec(sa_delete(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id))
         session.exec(sa_delete(Shoe).where(Shoe.tenant_id == tenant_id))
 
+    # --- AUTO KEY TABLES (before watch clear deletes Customer rows) ---
+    if "auto_key" in clear_tabs:
+        session.exec(sa_delete(AutoKeyInvoice).where(AutoKeyInvoice.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyQuoteLineItem).where(AutoKeyQuoteLineItem.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyQuote).where(AutoKeyQuote.tenant_id == tenant_id))
+        session.exec(sa_delete(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id))
+
     # --- WATCH REPAIR TABLES ---
     if "watch" in clear_tabs:
         session.exec(sa_delete(Attachment).where(Attachment.tenant_id == tenant_id))
@@ -479,14 +487,10 @@ def _clear_tenant_importable_data(session: Session, tenant_id, clear_tabs: list[
         session.exec(sa_delete(Quote).where(Quote.tenant_id == tenant_id))
         session.exec(sa_delete(RepairJob).where(RepairJob.tenant_id == tenant_id))
         session.exec(sa_delete(Watch).where(Watch.tenant_id == tenant_id))
+        session.exec(
+            sa_delete(CustomerAccountMembership).where(CustomerAccountMembership.tenant_id == tenant_id)
+        )
         session.exec(sa_delete(Customer).where(Customer.tenant_id == tenant_id))
-
-    # --- AUTO KEY TABLES ---
-    if "auto_key" in clear_tabs:
-        session.exec(sa_delete(AutoKeyInvoice).where(AutoKeyInvoice.tenant_id == tenant_id))
-        session.exec(sa_delete(AutoKeyQuoteLineItem).where(AutoKeyQuoteLineItem.tenant_id == tenant_id))
-        session.exec(sa_delete(AutoKeyQuote).where(AutoKeyQuote.tenant_id == tenant_id))
-        session.exec(sa_delete(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id))
 
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
@@ -520,8 +524,15 @@ async def import_csv(
     tenant = session.get(Tenant, tenant_id)
     tenant_currency = (tenant.default_currency if tenant and tenant.default_currency else "AUD").upper()
     if replace_existing and not dry_run:
-        _clear_tenant_importable_data(session, tenant_id, clear_tabs)
-        session.commit()
+        try:
+            _clear_tenant_importable_data(session, tenant_id, clear_tabs)
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not clear existing data before import: {exc}",
+            ) from exc
 
     import_log = None
     if not dry_run:
