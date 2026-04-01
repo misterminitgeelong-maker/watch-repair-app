@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useMarkerRef, useMap as useGoogleMap } from '@vis.gl/react-google-maps'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import {
+  APIProvider,
+  APILoadingStatus,
+  Map as GoogleMap,
+  Marker,
+  InfoWindow,
+  useApiLoadingStatus,
+  useMap as useGoogleMap,
+  useMapsLibrary,
+  useMarkerRef,
+} from '@vis.gl/react-google-maps'
 import L from 'leaflet'
 import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap as useLeafletMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -81,25 +91,133 @@ function saveGeocodeCache(map: Map<string, { lat: number; lng: number }>) {
 
 const geocodeCache = loadGeocodeCache()
 
-async function geocodeWithGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
-  const cacheKey = address.trim().toLowerCase()
-  const cached = geocodeCache.get(cacheKey)
-  if (cached) return cached
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=au&key=${apiKey}`
-    )
-    const data = await res.json()
-    if (data?.status === 'OK' && data?.results?.[0]?.geometry?.location) {
-      const loc = data.results[0].geometry.location
-      const coords = { lat: loc.lat, lng: loc.lng }
-      geocodeCache.set(cacheKey, coords)
-      saveGeocodeCache(geocodeCache)
-      return coords
+/** Geocode with Maps JavaScript API (same key/referrer rules as the map; avoids REST Geocoding restrictions). */
+function geocodeAddressWithJsApi(
+  geocoder: google.maps.Geocoder,
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    geocoder.geocode({ address, region: 'au' }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
+        const l = results[0].geometry.location
+        resolve({ lat: l.lat(), lng: l.lng() })
+        return
+      }
+      resolve(null)
+    })
+  })
+}
+
+/**
+ * Runs inside APIProvider — uses JS Geocoder + session cache. On API auth failure or load error, falls back to approximate coords.
+ */
+function GoogleMapsJsGeocodeEffect({
+  jobsKey,
+  filteredJobsRef,
+  setGeocoded,
+  setLoading,
+}: {
+  jobsKey: string
+  filteredJobsRef: MutableRefObject<JobWithAddr[]>
+  setGeocoded: Dispatch<SetStateAction<Map<string, { lat: number; lng: number }>>>
+  setLoading: Dispatch<SetStateAction<boolean>>
+}) {
+  const apiStatus = useApiLoadingStatus()
+  const geocodeGenRef = useRef(0)
+  const geocodingLib = useMapsLibrary('geocoding')
+  const geocoder = useMemo(() => (geocodingLib ? new geocodingLib.Geocoder() : null), [geocodingLib])
+
+  useEffect(() => {
+    const gen = ++geocodeGenRef.current
+    const isStale = () => gen !== geocodeGenRef.current
+
+    const setApproxForSnapshot = (snapshot: JobWithAddr[]) => {
+      if (snapshot.length === 0) {
+        if (!isStale()) {
+          setGeocoded(new Map())
+          setLoading(false)
+        }
+        return
+      }
+      const results = new Map<string, { lat: number; lng: number }>()
+      for (const j of snapshot) {
+        results.set(j.id, approximateMelbourneCoords(j._addressForMap))
+      }
+      if (!isStale()) {
+        setGeocoded(results)
+        setLoading(false)
+      }
     }
-  } catch {
-    // ignore
-  }
+
+    const snapshot = filteredJobsRef.current
+
+    if (apiStatus === APILoadingStatus.FAILED || apiStatus === APILoadingStatus.AUTH_FAILURE) {
+      setApproxForSnapshot(snapshot)
+      return () => {
+        geocodeGenRef.current += 1
+      }
+    }
+
+    if (apiStatus !== APILoadingStatus.LOADED || !geocoder) {
+      return () => {
+        geocodeGenRef.current += 1
+      }
+    }
+
+    const run = async () => {
+      if (snapshot.length === 0) {
+        if (!isStale()) {
+          setGeocoded(new Map())
+          setLoading(false)
+        }
+        return
+      }
+
+      setLoading(true)
+      if (isStale()) {
+        setLoading(false)
+        return
+      }
+
+      const results = new Map<string, { lat: number; lng: number }>()
+      const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
+
+      for (let i = 0; i < snapshot.length; i++) {
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
+        const j = snapshot[i]
+        const ck = j._addressForMap.trim().toLowerCase()
+        let coords = geocodeCache.get(ck) ?? null
+        if (!coords) {
+          coords = await geocodeAddressWithJsApi(geocoder, j._addressForMap)
+          if (coords) {
+            geocodeCache.set(ck, coords)
+            saveGeocodeCache(geocodeCache)
+          }
+        }
+        if (isStale()) {
+          setLoading(false)
+          return
+        }
+        results.set(j.id, coords ?? fallbackFor(j._addressForMap))
+        if (i < snapshot.length - 1) await new Promise((r) => setTimeout(r, 120))
+      }
+      if (!isStale()) {
+        setGeocoded(results)
+        setLoading(false)
+      } else {
+        setLoading(false)
+      }
+    }
+
+    void run()
+    return () => {
+      geocodeGenRef.current += 1
+    }
+  }, [apiStatus, geocoder, jobsKey, setGeocoded, setLoading])
+
   return null
 }
 
@@ -501,7 +619,10 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
     }
   }, [routeOrder, jobsKey, sortedBySchedule, geocoded])
 
+  /** OpenStreetMap / no-key path only; with `VITE_GOOGLE_MAPS_API_KEY`, geocoding runs in `GoogleMapsJsGeocodeEffect` inside `APIProvider`. */
   useEffect(() => {
+    if (apiKey?.trim()) return
+
     const gen = ++geocodeGenerationRef.current
     const isStale = () => gen !== geocodeGenerationRef.current
     const filteredJobsSnapshot = filteredJobsRef.current
@@ -523,58 +644,17 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
       }
 
       const results = new Map<string, { lat: number; lng: number }>()
-      const useGoogle = Boolean(apiKey?.trim())
       const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
 
-      if (!useGoogle) {
-        for (const j of filteredJobsSnapshot) {
-          results.set(j.id, fallbackFor(j._addressForMap))
-        }
-        if (isStale()) {
-          setLoading(false)
-          return
-        }
-        setGeocoded(results)
+      for (const j of filteredJobsSnapshot) {
+        results.set(j.id, fallbackFor(j._addressForMap))
+      }
+      if (isStale()) {
         setLoading(false)
         return
       }
-
-      const cacheKeys = filteredJobsSnapshot.map((j) => j._addressForMap.trim().toLowerCase())
-      const allCached = cacheKeys.every((ck) => geocodeCache.has(ck))
-      if (allCached) {
-        for (const j of filteredJobsSnapshot) {
-          const ck = j._addressForMap.trim().toLowerCase()
-          const c = geocodeCache.get(ck)
-          results.set(j.id, c ?? fallbackFor(j._addressForMap))
-        }
-        if (isStale()) {
-          setLoading(false)
-          return
-        }
-        setGeocoded(results)
-        setLoading(false)
-        return
-      }
-      for (let i = 0; i < filteredJobsSnapshot.length; i++) {
-        if (isStale()) {
-          setLoading(false)
-          return
-        }
-        const j = filteredJobsSnapshot[i]
-        const coords = await geocodeWithGoogle(j._addressForMap, apiKey!)
-        if (isStale()) {
-          setLoading(false)
-          return
-        }
-        results.set(j.id, coords ?? fallbackFor(j._addressForMap))
-        if (i < filteredJobsSnapshot.length - 1) await new Promise((r) => setTimeout(r, 200))
-      }
-      if (!isStale()) {
-        setGeocoded(results)
-        setLoading(false)
-      } else {
-        setLoading(false)
-      }
+      setGeocoded(results)
+      setLoading(false)
     }
     void run()
     return () => {
@@ -646,7 +726,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
       {!useGoogleTiles && (
         <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text-mid)' }}>
           OpenStreetMap with approximate pin positions (works without a browser key). Set{' '}
-          <span className="font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</span> for Google Maps and accurate geocoding.
+          <span className="font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</span> at <strong>build time</strong> (e.g. Docker/Railway build args) for Google Maps and JavaScript geocoding.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
@@ -783,6 +863,12 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
       <div className="h-[min(520px,70vh)] min-h-[320px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
         {useGoogleTiles ? (
           <APIProvider apiKey={apiKey!}>
+            <GoogleMapsJsGeocodeEffect
+              jobsKey={jobsKey}
+              filteredJobsRef={filteredJobsRef}
+              setGeocoded={setGeocoded}
+              setLoading={setLoading}
+            />
             <GoogleMap
               defaultCenter={MELBOURNE_CENTRE}
               defaultZoom={11}
