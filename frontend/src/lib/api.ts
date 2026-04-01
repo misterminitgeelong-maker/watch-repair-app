@@ -170,7 +170,7 @@ export type PlanCode =
   | 'basic_shoe_auto_key'
   | 'basic_all_tabs'
   | 'pro'
-export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site'
+export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site' | 'rego_lookup'
 
 export interface SiteOption {
   tenant_id: string
@@ -195,6 +195,9 @@ export interface AuthSession {
   enabled_features: FeatureKey[]
   active_site_tenant_id: string
   available_sites: SiteOption[]
+  signup_payment_pending?: boolean
+  shop_calendar_today_ymd?: string
+  schedule_calendar_timezone?: string
 }
 
 export const getAuthSession = () => api.get<AuthSession>('/auth/session')
@@ -254,6 +257,9 @@ export interface ParentAccountSummary {
   parent_account_name: string
   owner_email: string
   sites: ParentAccountSite[]
+  mobile_lead_ingest_public_id?: string | null
+  mobile_lead_webhook_secret_configured?: boolean
+  mobile_lead_default_tenant_id?: string | null
 }
 
 export interface ParentAccountActivityEvent {
@@ -333,7 +339,8 @@ export interface CustomerAccountCreate {
 export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
 export const createCustomerAccount = (data: CustomerAccountCreate) => api.post<CustomerAccount>('/customer-accounts', data)
 export const updateCustomerAccount = (id: string, data: Partial<CustomerAccountCreate>) => api.patch<CustomerAccount>(`/customer-accounts/${id}`, data)
-export const listCustomers = () => api.get<Customer[]>('/customers')
+export const listCustomers = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
+  api.get<Customer[]>('/customers', { params })
 export const getCustomer = (id: string) => api.get<Customer>(`/customers/${id}`)
 export const createCustomer = (data: Omit<Customer, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Customer>('/customers', data)
@@ -353,13 +360,14 @@ export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>
   api.post<Watch>('/watches', data)
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
-export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected'
+export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'awaiting_customer_details' | 'en_route' | 'on_site' | 'booked' | 'pending_booking'
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
-export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
+export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string }) =>
+  api.get<RepairJob[]>('/repair-jobs', { params })
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
 export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
 export interface RepairJobCreatePayload {
@@ -390,6 +398,7 @@ export const updateJob = (id: string, data: {
 }) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
+export const quickStatusAction = updateJobStatus
 
 
 export interface IntakePayload {
@@ -415,8 +424,8 @@ export interface Quote {
   subtotal_cents: number; tax_cents: number; total_cents: number; currency: string
   approval_token: string; sent_at?: string; created_at: string
 }
-export const listQuotes = (repairJobId?: string) =>
-  api.get<Quote[]>('/quotes', repairJobId ? { params: { repair_job_id: repairJobId } } : undefined)
+export const listQuotes = (repairJobId?: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
+  api.get<Quote[]>('/quotes', { params: { ...(repairJobId ? { repair_job_id: repairJobId } : {}), ...params } })
 export const createQuote = (data: { repair_job_id: string; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
   api.post<Quote>('/quotes', data)
 export const sendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/send`)
@@ -425,8 +434,8 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
   axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(`/v1/public/quotes/${token}`)
-export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined') =>
-  axios.post(`/v1/public/quotes/${token}/decision`, { decision })
+export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
+  axios.post(`/v1/public/quotes/${token}/decision`, { decision, signature })
 
 export interface PublicJobStatus {
   job_number: string
@@ -641,8 +650,8 @@ export interface Attachment {
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
   label?: string; created_at: string
 }
-export const listAttachments = (repairJobId: string) =>
-  api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId } })
+export const listAttachments = (repairJobId: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
+  api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId, ...params } })
 export const uploadAttachment = (file: File, repairJobId: string, label?: string) => {
   const form = new FormData()
   form.append('file', file)
@@ -700,6 +709,7 @@ export interface Invoice {
   id: string; tenant_id: string; repair_job_id: string; quote_id?: string
   invoice_number: string; status: string; subtotal_cents: number
   tax_cents: number; total_cents: number; currency: string; created_at: string
+  invoice?: Invoice
 }
 export const listInvoices = () => api.get<Invoice[]>('/invoices')
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${id}`)
@@ -711,12 +721,20 @@ export interface CsvImportResult {
   import_id: string
   imported: number; skipped: number; customers_created: number; total_rows: number
   skipped_reasons: Record<string, number>
+  dry_run?: boolean
+  source_sheet?: string | null
+  duplicate_customer_rows_in_file?: number
 }
-export const importCsv = (file: File, options?: { replaceExisting?: boolean }) => {
+export const importCsv = (file: File, options?: { replaceExisting?: boolean; clearTabs?: string[]; dryRun?: boolean; sheetName?: string }) => {
   const form = new FormData()
   form.append('file', file)
-  const params = options?.replaceExisting ? '?replace_existing=true' : ''
-  return api.post<CsvImportResult>(`/import/csv${params}`, form, {
+  const params = new URLSearchParams()
+  if (options?.replaceExisting) params.append('replace_existing', 'true')
+  if (options?.dryRun) params.append('dry_run', 'true')
+  if (options?.sheetName) params.append('sheet_name', options.sheetName)
+  if (options?.clearTabs?.length) params.append('clear_tabs', options.clearTabs.join(','))
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  return api.post<CsvImportResult>(`/import/csv${qs}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
@@ -754,6 +772,7 @@ export interface TenantUser {
   full_name: string
   role: string
   is_active: boolean
+  mobile_commission_rules_json?: string | null
 }
 // ── Reports Trends ────────────────────────────────────────────────────────────
 export interface ReportsTrendMonth {
@@ -816,6 +835,8 @@ export interface BillingLimitsResponse {
   stripe_configured: boolean
   stripe_subscription_id?: string | null
   stripe_customer_id?: string | null
+  stripe_connect_account_present?: boolean
+  stripe_connect_charges_enabled?: boolean
 }
 export const getBillingLimits = () => api.get<BillingLimitsResponse>('/billing/limits')
 export const getBillingPortalUrl = () => api.get<{ url: string }>('/billing/portal-url')
@@ -829,6 +850,7 @@ export const createUser = (data: {
   full_name: string
   password: string
   role?: 'owner' | 'manager' | 'tech' | 'intake'
+  mobile_commission_rules_json?: string | null
 }) => api.post<TenantUser>('/users', data)
 
 export const updateUser = (
@@ -838,6 +860,7 @@ export const updateUser = (
     role?: 'owner' | 'manager' | 'tech' | 'intake'
     password?: string
     is_active?: boolean
+    mobile_commission_rules_json?: string | null
   },
 ) => api.patch<TenantUser>(`/users/${userId}`, data)
 
@@ -870,6 +893,9 @@ export interface ShoeCatalogueItem {
   notes?: string
   includes?: string[]
   applicable_shoe_types?: string[]
+  complexity?: string
+  estimated_days_min?: number
+  estimated_days_max?: number
 }
 
 export interface ShoeCombo {
@@ -935,6 +961,14 @@ export interface AutoKeyJob {
   deposit_cents: number
   cost_cents: number
   created_at: string
+  blade_code?: string
+  chip_type?: string
+  tech_notes?: string
+  scheduled_at?: string
+  job_address?: string
+  job_type?: string
+  additional_services_json?: string
+  commission_lead_source?: string
 }
 
 export interface AutoKeyJobCreatePayload {
@@ -947,7 +981,7 @@ export interface AutoKeyJobCreatePayload {
   vehicle_year?: number
   registration_plate?: string
   vin?: string
-  key_type?: string
+  key_type?: string | null
   key_quantity: number
   programming_status: AutoKeyProgrammingStatus
   priority: 'low' | 'normal' | 'high' | 'urgent'
@@ -956,9 +990,20 @@ export interface AutoKeyJobCreatePayload {
   collection_date?: string
   deposit_cents: number
   cost_cents: number
+  assigned_user_id?: string | null
+  apply_suggested_quote?: boolean
+  send_booking_sms?: boolean
+  additional_services?: Array<{ preset?: string; custom?: string }>
+  blade_code?: string | null
+  chip_type?: string | null
+  tech_notes?: string | null
+  scheduled_at?: string | null
+  job_address?: string | null
+  job_type?: string | null
+  commission_lead_source?: string | null
 }
 
-export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string }) =>
+export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string; assigned_user_id?: string; date_from?: string; date_to?: string; include_unscheduled?: boolean; active_only?: boolean }) =>
   api.get<AutoKeyJob[]>('/auto-key-jobs', params && Object.keys(params).length ? { params } : undefined)
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
@@ -1006,6 +1051,7 @@ export interface AutoKeyInvoice {
   total_cents: number
   currency: string
   created_at: string
+  payment_method?: string | null
 }
 
 export interface AutoKeyQuoteCreatePayload {
@@ -1078,6 +1124,10 @@ export interface ShoeRepairJob {
   deposit_cents: number
   cost_cents: number
   created_at: string
+  estimated_ready_by?: string | null
+  complexity?: string | null
+  estimated_days_min?: number | null
+  estimated_days_max?: number | null
   items: ShoeRepairJobItem[]
 }
 
@@ -1201,3 +1251,449 @@ export const generateCustomerAccountMonthlyInvoice = (
   accountId: string,
   payload: CustomerAccountMonthlyInvoicePayload,
 ) => api.post<CustomerAccountInvoice>(`/customer-accounts/${accountId}/invoices/monthly`, payload)
+
+// ── Watch Catalogue ──────────────────────────────────────────────────────────
+export interface WatchCatalogueGroup {
+  id: string
+  label: string
+}
+
+export interface WatchCatalogueItem {
+  key: string
+  name: string
+  price: number | null
+  price_cents: number | null
+  pricing_type: string
+  group_id: string
+  group_label: string
+  notes?: string
+}
+
+export interface WatchMovement {
+  key: string
+  name: string
+  purchase_cost_cents?: number
+  quote_cents?: number
+}
+
+export interface WatchMovementsResponse {
+  movements: WatchMovement[]
+  currency?: string
+  default_margin_percent?: number
+  minimum_rrp_cents?: number
+}
+
+export interface WatchRepairsCombo {
+  keys?: string[]
+  total_cents?: number
+  battery_key?: string
+  band_keys?: string[]
+  band_discount_percent?: number
+}
+
+export interface WatchRepairsConfig {
+  combos: WatchRepairsCombo[]
+  currency: string
+}
+
+export const listWatchCatalogueGroups = () =>
+  api.get<WatchCatalogueGroup[]>('/watch-catalogue/groups')
+
+export const searchWatchCatalogueItems = (params?: { q?: string; group?: string }) =>
+  api.get<WatchCatalogueItem[]>('/watch-catalogue/items', { params })
+
+export const listWatchMovements = () =>
+  api.get<WatchMovementsResponse>('/watch-catalogue/movements')
+
+export const getWatchRepairsConfig = () =>
+  api.get<WatchRepairsConfig>('/watch-catalogue/repairs-config')
+
+// ── Custom Services ───────────────────────────────────────────────────────────
+export interface CustomServiceItem {
+  id: string
+  service_type: string
+  name: string
+  group_id: string
+  group_label: string
+  price_cents: number
+  price?: number | null
+  key?: string
+  pricing_type: string
+  notes?: string | null
+}
+
+export const listCustomServices = (service_type: 'watch' | 'shoe') =>
+  api.get<CustomServiceItem[]>('/custom-services', { params: { service_type } })
+
+export const createCustomService = (data: {
+  service_type: 'watch' | 'shoe'
+  name: string
+  group_id?: string
+  group_label?: string
+  price_cents: number
+  pricing_type?: string
+  notes?: string | null
+}) => api.post<CustomServiceItem>('/custom-services', data)
+
+// ── Attachment helpers ────────────────────────────────────────────────────────
+export async function resolveAttachmentDownloadUrl(storageKey: string): Promise<string> {
+  return getAttachmentDownloadUrl(storageKey)
+}
+
+export function getUploadErrorMessage(error: unknown, fallback = 'Upload failed.'): string {
+  return getApiErrorMessage(error, fallback)
+}
+
+// ── Route optimisation ────────────────────────────────────────────────────────
+export interface LatLng {
+  lat: number
+  lng: number
+}
+
+export interface OptimizeDrivingRouteResponse {
+  visit_order: number[]
+  source: 'trivial' | 'directions'
+}
+
+export const optimizeDrivingRoute = (stops: LatLng[]) =>
+  api.post<OptimizeDrivingRouteResponse>('/maps/optimize-driving-route', { stops })
+
+// ── Mobile commission helpers ─────────────────────────────────────────────────
+export function buildMobileCommissionRulesJson(opts: {
+  enabled: boolean
+  retainerDollars: number
+  shopPercent: number
+  techSourcedPercent: number
+  minitSourcedPercent: number
+}): string {
+  return JSON.stringify({
+    enabled: opts.enabled,
+    retainer_cents: Math.round(opts.retainerDollars * 100),
+    shop_percent: opts.shopPercent,
+    tech_sourced_percent: opts.techSourcedPercent,
+    minit_sourced_percent: opts.minitSourcedPercent,
+  })
+}
+
+export function isDuplicateTenantUserEmailError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false
+  return error.response?.status === 409
+}
+
+// ── Pagination / sorting constants ───────────────────────────────────────────
+export const DEFAULT_PAGE_SIZE = 50
+export type SortDir = 'asc' | 'desc'
+
+// ── Mobile commission lead source options ─────────────────────────────────────
+export const MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS = [
+  { value: 'shop', label: 'Shop (walk-in)' },
+  { value: 'tech_sourced', label: 'Tech sourced' },
+  { value: 'minit_sourced', label: 'Minit sourced' },
+  { value: 'shop_referred', label: 'Shop referred' },
+] as const
+
+// ── SMS Log ──────────────────────────────────────────────────────────────────
+export interface SmsLogEntry {
+  id: string
+  to_phone: string
+  body: string
+  event: string
+  status: string
+  created_at: string
+}
+export const getSmsLog = (jobId: string) =>
+  api.get<SmsLogEntry[]>(`/repair-jobs/${jobId}/sms-log`)
+
+// ── Inbox ─────────────────────────────────────────────────────────────────────
+export interface InboxEvent {
+  id: string
+  tenant_id: string
+  event_type: string
+  event_summary: string
+  entity_type?: string
+  entity_id?: string
+  created_at: string
+}
+export const getInbox = (limit?: number) => api.get<InboxEvent[]>('/inbox', limit ? { params: { limit } } : undefined)
+export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
+
+// ── Auto-key attachments & SMS ────────────────────────────────────────────────
+export const listAutoKeyAttachments = (jobId: string) =>
+  api.get<Attachment[]>(`/auto-key-jobs/${jobId}/attachments`)
+
+export const uploadAutoKeyAttachment = (file: File, jobId: string, label?: string) => {
+  const form = new FormData()
+  form.append('file', file)
+  if (label) form.append('label', label)
+  return api.post<Attachment>(`/auto-key-jobs/${jobId}/attachments`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export const sendAutoKeyArrivalSms = (jobId: string, time_window?: string) =>
+  api.post<{ ok: boolean }>(`/auto-key-jobs/${jobId}/arrival-sms`, time_window ? { time_window } : undefined)
+
+export const sendAutoKeyDayBeforeReminders = () =>
+  api.post<{ sent: number }>('/auto-key-jobs/day-before-reminders')
+
+export interface AutoKeyInvoiceUpdatePayload {
+  status?: string
+  notes?: string
+  payment_method?: string | null
+}
+export const updateAutoKeyInvoice = (_jobId: string, invoiceId: string, data: AutoKeyInvoiceUpdatePayload) =>
+  api.patch<AutoKeyInvoice>(`/auto-key-jobs/invoices/${invoiceId}`, data)
+
+export const createAutoKeyQuickIntake = (data: { full_name: string; phone: string }) =>
+  api.post<AutoKeyJob>('/auto-key-jobs/quick-intake', data)
+
+// ── Auto-key reports ──────────────────────────────────────────────────────────
+export interface AutoKeyReportSummary {
+  total_jobs: number
+  total_revenue_cents: number
+  avg_job_value_cents: number
+  mobile_count: number
+  mobile_pct: number
+  shop_count: number
+  shop_pct: number
+  mobile_revenue_cents: number
+  mobile_revenue_pct: number
+  shop_revenue_cents: number
+  shop_revenue_pct: number
+}
+
+export interface AutoKeyReports {
+  summary: AutoKeyReportSummary
+  jobs_by_type: Array<{ job_type: string; jobs: number; revenue_cents: number; avg_value_cents: number }>
+  jobs_by_tech: Array<{ tech_id: string; tech_name: string; job_count: number; revenue_cents: number; revenue_share_pct?: number }>
+  jobs_by_status: Array<{ status: string; count: number; label?: string }>
+  week_on_week: Array<{ week_start?: string; week_label?: string; jobs: number; revenue_cents: number }>
+}
+
+export interface AutoKeyCommissionTechLine {
+  job_id: string
+  invoice_id: string
+  job_number: string
+  lead_source_label: string
+  revenue_cents: number
+  rate_bp: number
+  commission_cents: number
+}
+
+export interface AutoKeyCommissionTech {
+  user_id: string
+  full_name: string
+  bonus_payable_cents: number
+  raw_commission_cents: number
+  retainer_cents: number
+  lines: AutoKeyCommissionTechLine[]
+}
+
+export interface AutoKeyCommissionReport {
+  technicians: AutoKeyCommissionTech[]
+}
+
+export const getAutoKeyReports = (params?: { date_from?: string; date_to?: string }) =>
+  api.get<AutoKeyReports>('/reports/auto-key', { params })
+
+export const getAutoKeyCommissionReport = (params?: { date_from?: string; date_to?: string }) =>
+  api.get<AutoKeyCommissionReport>('/reports/auto-key/commission', { params })
+
+export interface AutoKeyQuoteSuggestionResult {
+  total_cents: number
+  line_items: AutoKeyQuoteLineItem[]
+}
+export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number }) =>
+  api.get<AutoKeyQuoteSuggestionResult>('/auto-key-jobs/quote-suggestions', { params })
+
+// ── Vehicle key specs ─────────────────────────────────────────────────────────
+export interface VehicleKeySpecMatch {
+  score: number
+  label: string
+  vehicle_make: string
+  vehicle_model: string
+  year_from?: number | null
+  year_to?: number | null
+  years_label?: string
+  key_type?: string | null
+  chip_type?: string | null
+  tech_notes?: string
+  key_blanks?: Array<{ primary_code?: string; blank_reference?: string }>
+  suggested_blade_code?: string
+}
+export const searchVehicleKeySpecs = (params: { make?: string; model?: string; year?: number }) =>
+  api.get<{ matches: VehicleKeySpecMatch[] }>('/vehicle-key-specs/search', { params })
+
+// ── Billing — Stripe Connect ──────────────────────────────────────────────────
+export const refreshStripeConnectStatus = () =>
+  api.post<BillingLimitsResponse>('/billing/connect/refresh')
+export const createStripeConnectAccountLink = () =>
+  api.post<{ url: string }>('/billing/connect/account-link')
+
+// ── Users — delete ────────────────────────────────────────────────────────────
+export const deleteUser = (userId: string) => api.delete(`/users/${userId}`)
+
+// ── Prospects ─────────────────────────────────────────────────────────────────
+export interface Prospect {
+  name: string
+  address: string
+  phone?: string
+  website?: string
+  rating?: number
+  review_count?: number
+  category: string
+  place_id: string
+}
+export interface ProspectSearchResponse {
+  results: Prospect[]
+  total: number
+  category: string
+}
+export const getProspectCollectorStatus = () =>
+  api.get<{ enabled: boolean; remaining: number; total: number }>('/prospects/collector-status')
+export const listProspectCategories = () =>
+  api.get<{ categories: Array<{ key: string; label: string }> }>('/prospects/categories')
+export const listProspectRegions = () =>
+  api.get<{ states: Array<{ code: string; name: string }>; suburbs: Record<string, string[]> }>('/prospects/regions')
+export const searchProspects = (category: string, state: string, suburbs?: string[], live?: boolean) =>
+  api.get<ProspectSearchResponse>('/prospects/search', { params: { category, state, suburbs, live } })
+
+// ── Parent account — mobile lead ingest ──────────────────────────────────────
+export interface MobileSuburbRoute {
+  id: string
+  suburb_name?: string
+  suburb_normalized?: string
+  state_code: string
+  tenant_id?: string
+  target_tenant_id: string
+}
+export const listMobileSuburbRoutes = () =>
+  api.get<MobileSuburbRoute[]>('/parent-accounts/me/mobile-lead-routes')
+export const setParentMobileLeadDefaultTenant = (tenant_id: string | null) =>
+  api.put('/parent-accounts/me/mobile-lead-ingest/default-tenant', { tenant_id })
+export const setParentMobileLeadWebhookSecret = (secret: string) =>
+  api.put('/parent-accounts/me/mobile-lead-ingest/secret', { secret })
+export const clearParentMobileLeadWebhookSecret = () =>
+  api.delete('/parent-accounts/me/mobile-lead-ingest/secret')
+export const createMobileSuburbRoute = (data: { suburb: string; state_code: string; target_tenant_id: string }) =>
+  api.post<MobileSuburbRoute>('/parent-accounts/me/mobile-lead-routes', data)
+export const deleteMobileSuburbRoute = (id: string) =>
+  api.delete(`/parent-accounts/me/mobile-lead-routes/${id}`)
+export const enableParentMobileLeadIngest = (enabled = true) =>
+  api.put('/parent-accounts/me/mobile-lead-ingest/enabled', { enabled })
+
+// ── Toolkit ───────────────────────────────────────────────────────────────────
+export interface ToolkitTool {
+  key: string
+  name: string
+  notes?: string
+  group_label?: string
+}
+export interface ToolkitGroup {
+  id: string
+  label: string
+  tools: ToolkitTool[]
+}
+export interface ToolkitRecommendResponse {
+  scenario_id: string
+  label?: string
+  ready_for_required?: boolean
+  tips?: string
+  recommended_tool_keys: string[]
+  missing: string[]
+  have: string[]
+  missing_required: Array<{ key: string; name: string; group_label?: string }>
+  missing_nice_to_have: Array<{ key: string; name: string }>
+  required: Array<{ key: string; name: string; via_alternative?: boolean }>
+}
+export const getToolkitCatalog = () =>
+  api.get<{ groups: ToolkitGroup[]; scenarios: Array<{ id: string; label: string }> }>('/toolkit/catalog')
+export const getToolkitMySelection = () =>
+  api.get<{ tool_keys: string[] }>('/toolkit/my-selection')
+export const putToolkitMySelection = (tool_keys: string[]) =>
+  api.put('/toolkit/my-selection', { tool_keys })
+export const recommendToolkit = (scenario_id: string) =>
+  api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
+export const postToolkitRecommend = recommendToolkit
+
+// ── Watch movement quote ──────────────────────────────────────────────────────
+export const getWatchMovementQuote = (key: string) =>
+  api.get<{ quote_cents: number; cost_cents?: number }>(`/watch-catalogue/movements/${key}/quote`)
+
+// ── Public auto-key intake / invoice pages ─────────────────────────────────────
+export interface PublicAutoKeyIntake {
+  job_id: string
+  status_token: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  key_type?: string
+  description?: string
+  job_address?: string
+  job_type?: string
+  shop_name?: string
+  job_number?: string
+  customer_first_name_hint?: string
+}
+export const getPublicAutoKeyIntake = (token: string) =>
+  axios.get<PublicAutoKeyIntake>(`/v1/public/auto-key-intake/${token}`)
+export const submitPublicAutoKeyIntake = (token: string, data: {
+  full_name?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  vin?: string
+  job_address?: string
+  job_type?: string
+  additional_services?: Array<{ preset?: string; custom?: string }>
+  scheduled_at?: string
+  description?: string
+  key_quantity?: number
+  key_type?: string
+  blade_code?: string
+  chip_type?: string
+  tech_notes?: string
+}) => axios.post<{ message?: string }>(`/v1/public/auto-key-intake/${token}/submit`, data)
+
+export interface PublicAutoKeyInvoice {
+  invoice_number: string
+  total_cents: number
+  subtotal_cents: number
+  tax_cents: number
+  status: string
+  currency: string
+  created_at: string
+  line_items: AutoKeyQuoteLineItem[]
+  can_pay_online?: boolean
+  shop_name?: string
+  job_number?: string
+  job_title?: string
+}
+export const getPublicAutoKeyInvoice = (token: string) =>
+  axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoices/${token}`)
+export const createPublicAutoKeyInvoiceCheckout = (token: string) =>
+  axios.post<{ checkout_url: string }>(`/v1/public/auto-key-invoices/${token}/checkout`)
+
+export interface PublicAutoKeyBooking {
+  job_id: string
+  status_token: string
+  job_number: string
+  title: string
+  status: string
+  scheduled_at?: string
+  job_address?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  line_items: AutoKeyQuoteLineItem[]
+  currency: string
+  quote_total_cents: number
+  already_confirmed?: boolean
+}
+export const getPublicAutoKeyBooking = (token: string) =>
+  axios.get<PublicAutoKeyBooking>(`/v1/public/auto-key-bookings/${token}`)
+export const confirmPublicAutoKeyBooking = (token: string) =>
+  axios.post<PublicAutoKeyBooking>(`/v1/public/auto-key-bookings/${token}/confirm`)

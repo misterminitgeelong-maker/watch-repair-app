@@ -99,14 +99,15 @@ export default function ShoeServicePicker({
       qc.invalidateQueries({ queryKey: ['custom-services', 'shoe'] })
       setAddForm({ name: '', price: '' })
       setAddOpen(false)
-      addItem(data as ShoeCatalogueItem)
+      addItem({ ...data, key: data.id, price: data.price_cents / 100 } as ShoeCatalogueItem)
     },
     onError: (err) => setAddError(getApiErrorMessage(err, 'Failed to add service')),
   })
 
   const customAsShoe = customItems.map(c => ({
     ...c,
-    price: c.price ?? (c.price_cents ?? 0) / 100,
+    key: c.id,
+    price: (c.price_cents ?? 0) / 100,
     price_cents: c.price_cents,
     complexity: 'standard' as const,
     estimated_days_min: 3,

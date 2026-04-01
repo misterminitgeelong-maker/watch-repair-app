@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowRight,
   Clock3,
   DollarSign,
   FileText,
   Inbox,
-  KeyRound,
   Receipt,
   UserCog,
   Users,
@@ -18,7 +18,6 @@ import {
   type ShoeRepairJob,
   createAutoKeyQuickIntake,
   getApiErrorMessage,
-  getBillingLimits,
   getInbox,
   getReportsSummary,
   getReportsWidgets,
@@ -62,16 +61,6 @@ type DashboardStatProps = {
   iconBg: string
   iconColor: string
   index: number
-}
-
-type WorkspaceTileProps = {
-  to: string
-  title: string
-  icon: React.ElementType
-  accent: string
-  summary: string
-  metrics: Array<{ label: string; value: string }>
-  footer?: ReactNode
 }
 
 type RecentItem = {
@@ -198,41 +187,6 @@ function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconC
   )
 }
 
-function WorkspaceTile({ to, title, icon: Icon, accent, summary, metrics, footer }: WorkspaceTileProps) {
-  return (
-    <Card className="dashboard-panel h-full p-5 flex flex-col">
-      <Link to={to} className="block flex-1 min-h-0">
-        <div className="flex h-full flex-col">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${accent}18`, color: accent }}>
-                  <Icon size={18} />
-                </div>
-                <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>{title}</h2>
-              </div>
-              <p className="mt-3 text-sm leading-6" style={{ color: 'var(--cafe-text-mid)' }}>{summary}</p>
-            </div>
-            <ArrowRight size={16} style={{ color: 'var(--cafe-text-muted)' }} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
-                  {metric.label}
-                </p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{metric.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Link>
-      {footer ? <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--cafe-border)' }}>{footer}</div> : null}
-    </Card>
-  )
-}
-
 function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const [fullName, setFullName] = useState('')
@@ -273,7 +227,7 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function DashboardPage() {
-  const { tenantId, role, planCode, availableSites, activeSiteTenantId, hasFeature } = useAuth()
+  const { tenantId, role, planCode, availableSites, hasFeature } = useAuth()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
@@ -308,11 +262,6 @@ export default function DashboardPage() {
     queryFn: () => listUsers().then((r) => r.data),
     enabled: canViewAccountMetrics,
   })
-  const { data: billing } = useQuery({
-    queryKey: ['billing-limits', 'dashboard'],
-    queryFn: () => getBillingLimits().then((r) => r.data),
-    enabled: canViewAccountMetrics,
-  })
   const { data: widgets } = useQuery({
     queryKey: ['reports-widgets'],
     queryFn: () => getReportsWidgets().then((r) => r.data),
@@ -333,10 +282,6 @@ export default function DashboardPage() {
   const watchAwaitingGoAheadCount = reports?.jobs_by_status?.awaiting_go_ahead ?? 0
   const shoeOpenJobs = useMemo(() => (shoeJobs ?? []).filter((job) => isOpenStatus(job.status)), [shoeJobs])
   const autoOpenJobs = useMemo(() => (autoKeyJobs ?? []).filter((job) => isOpenStatus(job.status)), [autoKeyJobs])
-  const autoAwaitingCustomerIntake = useMemo(
-    () => (autoKeyJobs ?? []).filter((job) => job.status === 'awaiting_customer_details').length,
-    [autoKeyJobs],
-  )
   const quotesPendingCount = useMemo(() => {
     const q = reports?.quotes_by_status
     if (!q) return 0
@@ -447,142 +392,6 @@ export default function DashboardPage() {
       iconBg: '#E6EDF8',
       iconColor: '#345B9C',
     },
-  ]
-
-  const workspaceTiles: WorkspaceTileProps[] = [
-    {
-      to: '/customers',
-      title: 'Customers',
-      icon: Users,
-      accent: '#2A6B65',
-      summary: 'Your customer book, intake records, and repeat-client history all feed from here.',
-      metrics: [
-        { label: 'Total', value: String(reports?.counts.customers ?? 0) },
-        { label: 'Accounts', value: String(customerAccounts?.length ?? 0) },
-      ],
-    },
-    {
-      to: '/jobs',
-      title: 'Watch Repairs',
-      icon: Wrench,
-      accent: '#8D6725',
-      summary: 'Bench workload, approvals, and quote-ready watch jobs for the core repair pipeline.',
-      metrics: [
-        { label: 'Open', value: String(watchOpenJobsCount) },
-        { label: 'Awaiting OK', value: String(watchAwaitingGoAheadCount) },
-      ],
-    },
-    ...(hasFeature('shoe')
-      ? [{
-          to: '/shoe-repairs',
-          title: 'Shoe Repairs',
-          icon: Scissors,
-          accent: '#965934',
-          summary: 'Catalogue-based shoe work, grouped service items, and ready-for-pickup shoe jobs.',
-          metrics: [
-            { label: 'Open', value: String(shoeOpenJobs.length) },
-            { label: 'Value', value: formatCents(shoeOpenJobs.reduce((sum, job) => sum + job.cost_cents, 0)) },
-          ],
-        }]
-      : []),
-    ...(hasFeature('auto_key')
-      ? [{
-          to: '/auto-key',
-          title: 'Mobile Services',
-          icon: KeyRound,
-          accent: '#5D4A9B',
-          summary: 'Vehicle key jobs, mobile visits, and scheduling in one place.',
-          metrics: [
-            { label: 'Open', value: String(autoOpenJobs.length) },
-            { label: 'Awaiting customer form', value: String(autoAwaitingCustomerIntake) },
-          ],
-          footer: (
-            <Button
-              variant="secondary"
-              className="w-full"
-              type="button"
-              onClick={() => setShowQuickMobileIntake(true)}
-            >
-              Quick add (SMS link)
-            </Button>
-          ),
-        }]
-      : []),
-    ...(hasFeature('customer_accounts')
-      ? [{
-          to: '/customer-accounts',
-          title: 'Customer Accounts',
-          icon: Building2,
-          accent: '#4B6C5A',
-          summary: 'Business clients, account billing, and grouped jobs for recurring trade relationships.',
-          metrics: [
-            { label: 'Active', value: String((customerAccounts ?? []).filter((account) => account.is_active).length) },
-            {
-              label: 'Linked Customers',
-              value: String(
-                (customerAccounts ?? []).reduce((sum, account) => sum + (account.customer_ids?.length ?? 0), 0),
-              ),
-            },
-          ],
-        }]
-      : []),
-    {
-      to: '/invoices',
-      title: 'Invoices',
-      icon: Receipt,
-      accent: '#A2502E',
-      summary: 'What is billed, what is still open, and where cash collection is lagging behind work completed.',
-      metrics: [
-        { label: 'Open', value: String(invoicesOpen.length) },
-        { label: 'Outstanding', value: formatCents(invoicesOpenValue) },
-      ],
-    },
-    {
-      to: '/reports',
-      title: 'Reports',
-      icon: BarChart3,
-      accent: '#345B9C',
-      summary: 'Commercial performance, throughput, margin, and approval trends across the tenant.',
-      metrics: [
-        { label: 'Revenue', value: formatCents(reports?.financials.revenue_cents ?? 0) },
-        { label: 'Margin', value: `${reports?.financials.gross_margin_percent ?? 0}%` },
-      ],
-    },
-    {
-      to: '/database',
-      title: 'Database',
-      icon: Database,
-      accent: '#7A5A36',
-      summary: 'The data foundation behind imports, backups, and long-term record integrity.',
-      metrics: [
-        { label: 'Watches', value: String(reports?.counts.watches ?? 0) },
-        { label: 'Invoices', value: String(reports?.counts.invoices ?? 0) },
-      ],
-    },
-    {
-      to: '/accounts',
-      title: 'Accounts',
-      icon: UserCog,
-      accent: '#6A4C93',
-      summary: 'User access, plan limits, and billing capacity for the shop as it scales.',
-      metrics: [
-        { label: 'Plan', value: formatPlanName(planCode) },
-        { label: 'Users', value: canViewAccountMetrics && billing ? `${billing.usage.users}/${billing.limits.max_users}` : String(users?.length ?? 1) },
-      ],
-    },
-    ...(hasFeature('multi_site')
-      ? [{
-          to: '/parent-account',
-          title: 'Parent Account',
-          icon: Building2,
-          accent: '#8A6E3B',
-          summary: 'Cross-site visibility for linked tenants, active-site context, and owner-level control.',
-          metrics: [
-            { label: 'Sites', value: String(availableSites.length) },
-            { label: 'Active', value: availableSites.find((site) => site.tenant_id === activeSiteTenantId)?.tenant_name ?? 'Current site' },
-          ],
-        }]
-      : []),
   ]
 
   return (

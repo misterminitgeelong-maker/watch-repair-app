@@ -74,7 +74,7 @@ export default function WatchCatalogueTab() {
                   <tr key={item.key} style={{ borderTop: '1px solid var(--cafe-border)' }}>
                     <td className="px-4 py-2" style={{ color: 'var(--cafe-text)' }}>{item.name}</td>
                     <td className="px-4 py-2" style={{ color: 'var(--cafe-text-muted)' }}>{item.group_label}</td>
-                    <td className="px-4 py-2 text-right font-medium" style={{ color: 'var(--cafe-amber)' }}>${(item.price_cents / 100).toFixed(2)}</td>
+                    <td className="px-4 py-2 text-right font-medium" style={{ color: 'var(--cafe-amber)' }}>${((item.price_cents ?? 0) / 100).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

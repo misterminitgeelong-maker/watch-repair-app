@@ -343,30 +343,6 @@ export default function CustomerAccountsPage() {
     return `/jobs/${jobId}`
   }
 
-  function computeAccountSummary(invoices: CustomerAccountInvoice[]) {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth() + 1
-    const monthlyInvoices = invoices.filter(
-      (inv) => inv.period_year === currentYear && inv.period_month === currentMonth
-    )
-
-    const monthlyJobIds = new Set<string>()
-    for (const invoice of monthlyInvoices) {
-      for (const line of invoice.lines) monthlyJobIds.add(line.source_job_id)
-    }
-
-    const totalInvoicedThisMonthCents = monthlyInvoices.reduce((sum, inv) => sum + inv.total_cents, 0)
-    const outstandingBalanceCents = invoices
-      .filter((inv) => inv.status !== 'paid')
-      .reduce((sum, inv) => sum + inv.total_cents, 0)
-
-    return {
-      totalJobsThisMonth: monthlyJobIds.size,
-      totalInvoicedThisMonthCents,
-      outstandingBalanceCents,
-    }
-  }
 
   // Dashboard summary calculations
   const fleetAccounts = accounts.filter(a => a.account_type)
@@ -425,7 +401,6 @@ export default function CustomerAccountsPage() {
             const statement = statementByAccount[account.id]
             const latestInvoice = latestInvoiceByAccount[account.id]
             const history = invoiceListByAccount[account.id] ?? []
-            const summary = computeAccountSummary(history)
             const available = customers.filter(c => !account.customer_ids.includes(c.id))
             return (
               <Card key={account.id} className="p-4">

@@ -53,14 +53,15 @@ export default function WatchServicePicker({
       qc.invalidateQueries({ queryKey: ['custom-services', 'watch'] })
       setAddForm({ name: '', price: '' })
       setAddOpen(false)
-      addItem(data as WatchCatalogueItem)
+      addItem({ ...data, key: data.id, price: data.price_cents / 100 } as WatchCatalogueItem)
     },
     onError: (err) => setAddError(getApiErrorMessage(err, 'Failed to add service')),
   })
 
   const customAsWatch = customItems.map(c => ({
     ...c,
-    price: c.price ?? c.price_cents / 100,
+    key: c.id,
+    price: c.price_cents / 100,
     price_cents: c.price_cents,
   })) as WatchCatalogueItem[]
   const q = search.trim().toLowerCase()
@@ -196,7 +197,7 @@ export default function WatchServicePicker({
                   <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{item.group_label}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>${(item.price_cents / 100).toFixed(2)}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>${((item.price_cents ?? 0) / 100).toFixed(2)}</p>
                   {alreadyAdded && (
                     <span className="text-[10px] text-green-600 font-medium">Added</span>
                   )}
@@ -223,7 +224,7 @@ export default function WatchServicePicker({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
                   <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                    {item.group_label} · ${(item.price_cents / 100).toFixed(2)}
+                    {item.group_label} · ${((item.price_cents ?? 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <button

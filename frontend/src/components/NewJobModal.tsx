@@ -46,7 +46,7 @@ function calculateRepairsTotal(
 
   for (const { item } of items) {
     if (appliedKeys.has(item.key)) continue
-    let cents = item.price_cents
+    let cents = item.price_cents ?? 0
     if (hasBattery && bandSet.has(item.key) && bandDiscount > 0) {
       cents = Math.round(cents * (1 - bandDiscount))
     }
