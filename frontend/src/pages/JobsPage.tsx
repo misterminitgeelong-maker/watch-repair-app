@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
-import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
+import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJob, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
+import WeekScheduler from '@/components/WeekScheduler'
 
 const ALL_STATUS_OPTIONS: JobStatus[] = [...JOB_STATUS_ORDER]
 
@@ -16,7 +17,7 @@ export default function JobsPage() {
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'week'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const { data: jobs, isLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
@@ -37,7 +38,7 @@ export default function JobsPage() {
 
   const activeCount = (jobs ?? []).filter(j => !CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
   const completedCount = (jobs ?? []).filter(j => CLOSED_DIRECTORY_STATUSES.includes(j.status)).length
-  const statusOptions = jobDirectoryView === 'active' ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
+  const statusOptions = (jobDirectoryView === 'active' || jobDirectoryView === 'week') ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateJobStatus(jobId, status),
@@ -46,6 +47,12 @@ export default function JobsPage() {
       qc.invalidateQueries({ queryKey: ['jobs'] })
     },
     onSettled: () => setUpdatingJobId(null),
+  })
+
+  const scheduleMut = useMutation({
+    mutationFn: ({ jobId, date }: { jobId: string; date: string | null }) =>
+      updateJob(jobId, { collection_date: date ?? undefined }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   })
 
   const deleteMut = useMutation({
@@ -115,138 +122,167 @@ export default function JobsPage() {
           >
             Completed ({completedCount})
           </button>
-        </div>
-      </div>
-
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <div className="relative w-full sm:w-auto">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
-          <input
-            className="w-full sm:w-auto pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
-              backgroundColor: 'var(--cafe-surface)',
-              border: '1px solid var(--cafe-border-2)',
-              color: 'var(--cafe-text)',
+              backgroundColor: jobDirectoryView === 'week' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'week' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
             }}
-            placeholder="Search jobs…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+            onClick={() => {
+              setJobDirectoryView('week')
+              setStatusFilter('all')
+            }}
+          >
+            Week
+          </button>
         </div>
-        <select
-          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
-          <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
-          {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-        </select>
       </div>
 
-      {isLoading ? <Spinner /> : (
-        filtered.length === 0 ? (
-          <Card>
-            <EmptyState message="No jobs found." />
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {statusOptions
-              .filter(s => statusFilter === 'all' || s === statusFilter)
-              .map((status) => {
-                const jobsInStatus = filtered.filter(j => j.status === status)
-                return (
-                  <Card key={status} className="overflow-hidden">
-                    <div
-                      className="px-4 py-3.5 flex items-center justify-between"
-                      style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
-                    >
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-                        {STATUS_LABELS[status]}
-                      </p>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
-                        {jobsInStatus.length}
-                      </span>
-                    </div>
-
-                    <div>
-                      {jobsInStatus.length === 0 ? (
-                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
-                          No jobs in this stage.
-                        </p>
-                      ) : (
-                        jobsInStatus.map((j, i) => (
-                          <div
-                            key={j.id}
-                            className="px-4 py-3"
-                            style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <Link to={`/jobs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
-                                  {j.title}
-                                </Link>
-                                <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-                                  #{j.job_number} · {formatDate(j.created_at)}
-                                </p>
-                                {j.customer_account_id && (
-                                  <p className="text-[11px] mt-1 inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
-                                    B2B
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge status={j.status} />
-                                <button
-                                  type="button"
-                                  aria-label={`Delete job ${j.job_number}`}
-                                  onClick={() => {
-                                    setDeleteError('')
-                                    setJobToDelete(j)
-                                  }}
-                                  className="h-7 w-7 rounded-full flex items-center justify-center transition-colors"
-                                  style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
-                              <span className="capitalize">Priority: {j.priority}</span>
-                              <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
-                            </div>
-
-                            <div className="mt-2">
-                              <select
-                                className="w-full rounded-md px-2.5 py-2 text-xs outline-none transition"
-                                style={{
-                                  backgroundColor: 'var(--cafe-surface)',
-                                  border: '1px solid var(--cafe-border-2)',
-                                  color: 'var(--cafe-text-mid)',
-                                }}
-                                value={j.status}
-                                onChange={(e) => statusMut.mutate({ jobId: j.id, status: e.target.value as JobStatus })}
-                                disabled={updatingJobId === j.id}
-                              >
-                                {ALL_STATUS_OPTIONS.map(s => (
-                                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                )
-              })}
-          </div>
+      {/* Week scheduler view */}
+      {jobDirectoryView === 'week' && (
+        isLoading ? <Spinner /> : (
+          <WeekScheduler
+            jobs={jobs ?? []}
+            onUpdateCollectionDate={(jobId, date) => scheduleMut.mutate({ jobId, date })}
+          />
         )
+      )}
+
+      {/* Filters – hidden in week view */}
+      {jobDirectoryView !== 'week' && (
+        <>
+          <div className="flex gap-3 mb-5 flex-wrap">
+            <div className="relative w-full sm:w-auto">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+              <input
+                className="w-full sm:w-auto pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+                style={{
+                  backgroundColor: 'var(--cafe-surface)',
+                  border: '1px solid var(--cafe-border-2)',
+                  color: 'var(--cafe-text)',
+                }}
+                placeholder="Search jobs…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <select
+              className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+              style={{
+                backgroundColor: 'var(--cafe-surface)',
+                border: '1px solid var(--cafe-border-2)',
+                color: 'var(--cafe-text)',
+              }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
+              {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+            </select>
+          </div>
+
+          {isLoading ? <Spinner /> : (
+            filtered.length === 0 ? (
+              <Card>
+                <EmptyState message="No jobs found." />
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {statusOptions
+                  .filter(s => statusFilter === 'all' || s === statusFilter)
+                  .map((status) => {
+                    const jobsInStatus = filtered.filter(j => j.status === status)
+                    return (
+                      <Card key={status} className="overflow-hidden">
+                        <div
+                          className="px-4 py-3.5 flex items-center justify-between"
+                          style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                        >
+                          <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                            {STATUS_LABELS[status]}
+                          </p>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                            {jobsInStatus.length}
+                          </span>
+                        </div>
+
+                        <div>
+                          {jobsInStatus.length === 0 ? (
+                            <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+                              No jobs in this stage.
+                            </p>
+                          ) : (
+                            jobsInStatus.map((j, i) => (
+                              <div
+                                key={j.id}
+                                className="px-4 py-3"
+                                style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <Link to={`/jobs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                                      {j.title}
+                                    </Link>
+                                    <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                                      #{j.job_number} · {formatDate(j.created_at)}
+                                    </p>
+                                    {j.customer_account_id && (
+                                      <p className="text-[11px] mt-1 inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
+                                        B2B
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge status={j.status} />
+                                    <button
+                                      type="button"
+                                      aria-label={`Delete job ${j.job_number}`}
+                                      onClick={() => {
+                                        setDeleteError('')
+                                        setJobToDelete(j)
+                                      }}
+                                      className="h-7 w-7 rounded-full flex items-center justify-center transition-colors"
+                                      style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                                  <span className="capitalize">Priority: {j.priority}</span>
+                                  <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
+                                </div>
+
+                                <div className="mt-2">
+                                  <select
+                                    className="w-full rounded-md px-2.5 py-2 text-xs outline-none transition"
+                                    style={{
+                                      backgroundColor: 'var(--cafe-surface)',
+                                      border: '1px solid var(--cafe-border-2)',
+                                      color: 'var(--cafe-text-mid)',
+                                    }}
+                                    value={j.status}
+                                    onChange={(e) => statusMut.mutate({ jobId: j.id, status: e.target.value as JobStatus })}
+                                    disabled={updatingJobId === j.id}
+                                  >
+                                    {ALL_STATUS_OPTIONS.map(s => (
+                                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </Card>
+                    )
+                  })}
+              </div>
+            )
+          )}
+        </>
       )}
 
       {jobToDelete && (
