@@ -1619,6 +1619,18 @@ export default function AutoKeyJobsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showAddTech, setShowAddTech] = useState(false)
   const [showCommissionRules, setShowCommissionRules] = useState(false)
+  const [showMoreActions, setShowMoreActions] = useState(false)
+  const moreActionsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!showMoreActions) return
+    function handleOutside(e: MouseEvent) {
+      if (moreActionsRef.current && !moreActionsRef.current.contains(e.target as Node)) {
+        setShowMoreActions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showMoreActions])
   const [plannerDetailJobId, setPlannerDetailJobId] = useState<string | null>(null)
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>('day')
   const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
@@ -1869,21 +1881,47 @@ export default function AutoKeyJobsPage() {
         <PageHeader
           title="Mobile Services"
           action={(
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              {/* Mobile: ··· overflow menu + New Job */}
+              <div className="relative sm:hidden" ref={moreActionsRef}>
+                <Button variant="secondary" onClick={() => setShowMoreActions(m => !m)} type="button" aria-label="More actions">···</Button>
+                {showMoreActions && (
+                  <div
+                    className="absolute left-0 top-full mt-1 z-20 rounded-xl flex flex-col gap-1 p-2 shadow-xl"
+                    style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', minWidth: '180px' }}
+                  >
+                    {role === 'owner' && (
+                      <Button variant="secondary" onClick={() => { setShowAddTech(true); setShowMoreActions(false) }} type="button">
+                        <UserPlus size={16} />Add technician
+                      </Button>
+                    )}
+                    {(role === 'owner' || role === 'manager') && (
+                      <Button variant="secondary" onClick={() => { setShowCommissionRules(true); setShowMoreActions(false) }} type="button">
+                        Commission rules
+                      </Button>
+                    )}
+                    <Button variant="secondary" onClick={() => { navigate('/auto-key/team'); setShowMoreActions(false) }} type="button">
+                      <Users size={16} />Team
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Button onClick={() => setShowCreate(true)} type="button" className="sm:hidden"><Plus size={16} />New Job</Button>
+              {/* Desktop: show all buttons */}
               {role === 'owner' && (
-                <Button variant="secondary" onClick={() => setShowAddTech(true)} type="button">
+                <Button variant="secondary" onClick={() => setShowAddTech(true)} type="button" className="hidden sm:inline-flex">
                   <UserPlus size={16} />Add technician
                 </Button>
               )}
               {(role === 'owner' || role === 'manager') && (
-                <Button variant="secondary" onClick={() => setShowCommissionRules(true)} type="button">
+                <Button variant="secondary" onClick={() => setShowCommissionRules(true)} type="button" className="hidden sm:inline-flex">
                   Commission rules
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => navigate('/auto-key/team')} type="button">
+              <Button variant="secondary" onClick={() => navigate('/auto-key/team')} type="button" className="hidden sm:inline-flex">
                 <Users size={16} />Team
               </Button>
-              <Button onClick={() => setShowCreate(true)} type="button"><Plus size={16} />New Job</Button>
+              <Button onClick={() => setShowCreate(true)} type="button" className="hidden sm:inline-flex"><Plus size={16} />New Job</Button>
             </div>
           )}
         />
@@ -1895,60 +1933,60 @@ export default function AutoKeyJobsPage() {
         </Link>
       </p>
       <MobileServicesSubNav className="mb-5" />
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="mb-5 -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-2 flex-nowrap sm:flex-wrap">
           <button
             onClick={() => setView('dashboard')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
             style={view === 'dashboard' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <LayoutGrid size={16} /> Dashboard
           </button>
           <button
             onClick={() => setView('jobs')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
             style={view === 'jobs' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <List size={16} /> Jobs
           </button>
           <button
             onClick={() => setView('pos')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'pos' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'pos' ? 'bg-opacity-20' : ''}`}
             style={view === 'pos' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <CreditCard size={16} /> POS
           </button>
           <button
             onClick={() => setView('dispatch')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
             style={view === 'dispatch' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <Calendar size={16} /> Dispatch
           </button>
           <button
             onClick={() => setView('week')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'week' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'week' ? 'bg-opacity-20' : ''}`}
             style={view === 'week' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <CalendarDays size={16} /> Week
           </button>
           <button
             onClick={() => setView('map')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'map' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'map' ? 'bg-opacity-20' : ''}`}
             style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <MapIcon size={16} /> Map
           </button>
           <button
             onClick={() => setView('planner')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'planner' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'planner' ? 'bg-opacity-20' : ''}`}
             style={view === 'planner' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <Clock size={16} /> Day Planner
           </button>
           <button
             onClick={() => setView('reports')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation ${view === 'reports' ? 'bg-opacity-20' : ''}`}
+            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'reports' ? 'bg-opacity-20' : ''}`}
             style={view === 'reports' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
             <BarChart3 size={16} /> Reports
