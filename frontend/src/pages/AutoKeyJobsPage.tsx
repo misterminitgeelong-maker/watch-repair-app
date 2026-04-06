@@ -1150,6 +1150,7 @@ function WeekJobChip({
   compact?: boolean
   onMoveToggle?: () => void
 }) {
+  const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: isOverlay ? `week-job-overlay:${job.id}` : `week-job:${job.id}`,
     data: { jobId: job.id, job },
@@ -1197,19 +1198,9 @@ function WeekJobChip({
         className="min-w-0 flex-1 px-2 py-1.5"
         style={{ backgroundColor: compact ? 'rgba(245, 158, 11, 0.12)' : 'var(--cafe-surface)' }}
       >
-        {isOverlay ? (
-          <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold truncate`} style={{ color: 'var(--cafe-text)' }}>
-            #{job.job_number} · {job.title}
-          </p>
-        ) : (
-          <Link
-            to={`/auto-key/${job.id}`}
-            className={`${compact ? 'text-xs' : 'text-sm'} font-semibold block truncate hover:underline`}
-            style={{ color: 'var(--cafe-text)' }}
-          >
-            #{job.job_number} · {job.title}
-          </Link>
-        )}
+        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold truncate`} style={{ color: 'var(--cafe-text)' }}>
+          #{job.job_number} · {job.title}
+        </p>
         {!compact && (
           <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
             Pick up the whole card to place it on the week board.
@@ -1217,25 +1208,45 @@ function WeekJobChip({
         )}
       </div>
 
-      {!isOverlay && onMoveToggle && (
-        <button
-          type="button"
-          className={`shrink-0 font-semibold touch-manipulation ${compact ? 'px-1.5 py-0.5 text-[10px] rounded-none' : 'px-2 text-[11px]'}`}
-          style={{
-            backgroundColor: compact ? '#E8DCC8' : 'var(--cafe-amber)',
-            color: compact ? '#3d2f20' : '#2C1810',
-          }}
-          onPointerDown={stopDragControlPropagation}
-          onMouseDown={stopDragControlPropagation}
-          onTouchStart={stopDragControlPropagation}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onMoveToggle()
-          }}
-        >
-          Move
-        </button>
+      {!isOverlay && (
+        <div className={`shrink-0 flex ${compact ? 'flex-col' : 'flex-col'} border-l`} style={{ borderColor: 'var(--cafe-border)' }}>
+          <button
+            type="button"
+            className={`font-semibold touch-manipulation ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]'}`}
+            style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text)' }}
+            onPointerDown={stopDragControlPropagation}
+            onMouseDown={stopDragControlPropagation}
+            onTouchStart={stopDragControlPropagation}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigate(`/auto-key/${job.id}`)
+            }}
+          >
+            Open
+          </button>
+          {onMoveToggle && (
+            <button
+              type="button"
+              className={`font-semibold touch-manipulation ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]'}`}
+              style={{
+                backgroundColor: compact ? '#E8DCC8' : 'var(--cafe-amber)',
+                color: compact ? '#3d2f20' : '#2C1810',
+                borderTop: '1px solid rgba(44,24,16,0.08)',
+              }}
+              onPointerDown={stopDragControlPropagation}
+              onMouseDown={stopDragControlPropagation}
+              onTouchStart={stopDragControlPropagation}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onMoveToggle()
+              }}
+            >
+              Move
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -2299,7 +2310,7 @@ export default function AutoKeyJobsPage() {
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                 {weekJobs.length === 0
                   ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.'
-                  : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view. Drag the whole booking card to a day header (same time) or an hour cell. On phones and tablets, tap Move on a job, then tap the destination. A lifted card preview follows your cursor while you drag.`}
+                  : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view. Drag the whole booking card to a day header (same time) or an hour cell. Use Open to jump into a job, and Move on phones/tablets for tap-to-place scheduling.`}
               </p>
               {weekRelocateJobId && (() => {
                 const j = weekJobs.find((x: { id: string }) => x.id === weekRelocateJobId)
