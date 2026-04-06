@@ -958,7 +958,8 @@ export interface AutoKeyJobCreatePayload {
   cost_cents: number
 }
 
-export const listAutoKeyJobs = () => api.get<AutoKeyJob[]>('/auto-key-jobs')
+export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string }) =>
+  api.get<AutoKeyJob[]>('/auto-key-jobs', params && Object.keys(params).length ? { params } : undefined)
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
@@ -1094,8 +1095,8 @@ export interface ShoeRepairJobCreatePayload {
   items: ShoeRepairJobItemInput[]
 }
 
-export const listShoeRepairJobs = (status?: string) =>
-  api.get<ShoeRepairJob[]>('/shoe-repair-jobs', status ? { params: { status } } : undefined)
+export const listShoeRepairJobs = (params?: { status?: string; customer_id?: string }) =>
+  api.get<ShoeRepairJob[]>('/shoe-repair-jobs', params && Object.keys(params).length ? { params } : undefined)
 
 export const getShoeRepairJob = (id: string) =>
   api.get<ShoeRepairJob>(`/shoe-repair-jobs/${id}`)
@@ -1124,6 +1125,9 @@ export const appendShoeRepairJobItems = (jobId: string, items: ShoeRepairJobItem
 
 export const removeShoeFromJob = (jobId: string, entryId: string) =>
   api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes/${entryId}`)
+
+export const removeShoeRepairJobItem = (jobId: string, itemId: string) =>
+  api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/items/${itemId}`)
 
 // Pricing type display helper (used by both modal and page)
 export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {
