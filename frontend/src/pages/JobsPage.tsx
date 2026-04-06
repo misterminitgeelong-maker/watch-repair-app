@@ -36,6 +36,7 @@ export default function JobsPage() {
   const [sortBy, setSortBy] = useState<JobSortField>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [assignedUserId, setAssignedUserId] = useState<string>('')
+  const [showFilters, setShowFilters] = useState(false)
 
   const apiStatus = statusFilter === 'all' ? undefined : statusFilter
 
@@ -215,82 +216,104 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <div className="relative w-full sm:w-auto">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
-          <input
-            className="w-full sm:w-auto pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+      <div className="mb-5">
+        {/* Search + filter toggle row */}
+        <div className="flex gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+            <input
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+              style={{
+                backgroundColor: 'var(--cafe-surface)',
+                border: '1px solid var(--cafe-border-2)',
+                color: 'var(--cafe-text)',
+              }}
+              placeholder="Search jobs…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          {/* Filters toggle — mobile only */}
+          <button
+            type="button"
+            onClick={() => setShowFilters(f => !f)}
+            className="sm:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition"
+            style={{
+              backgroundColor: showFilters ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: showFilters ? '#2C1810' : 'var(--cafe-text-muted)',
+              whiteSpace: 'nowrap',
+            }}
+            aria-expanded={showFilters}
+          >
+            Filters{(statusFilter !== 'all' || sortBy !== 'created_at' || sortDir !== 'desc' || assignedUserId) ? ' ·' : ''}
+          </button>
+        </div>
+
+        {/* Secondary filters — always visible on sm+, toggle on mobile */}
+        <div className={`flex gap-3 flex-wrap ${showFilters ? 'flex' : 'hidden'} sm:flex`}>
+          <select
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
             style={{
               backgroundColor: 'var(--cafe-surface)',
               border: '1px solid var(--cafe-border-2)',
               color: 'var(--cafe-text)',
             }}
-            placeholder="Search jobs…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
+            {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          </select>
+          <select
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as JobSortField)}
+            aria-label="Sort jobs by"
+          >
+            <option value="created_at">Sort: Date in</option>
+            <option value="job_number">Sort: Job #</option>
+            <option value="status">Sort: Status</option>
+            <option value="priority">Sort: Priority</option>
+          </select>
+          <select
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+            value={sortDir}
+            onChange={(e) => setSortDir(e.target.value as SortDir)}
+            aria-label="Sort direction"
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+          <select
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+            value={assignedUserId}
+            onChange={(e) => setAssignedUserId(e.target.value)}
+            aria-label="Filter by assignee"
+          >
+            <option value="">All assignees</option>
+            {(usersForAssignee ?? []).map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name} ({u.email})
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
-          <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
-          {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-        </select>
-        <select
-          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as JobSortField)}
-          aria-label="Sort jobs by"
-        >
-          <option value="created_at">Sort: Date in</option>
-          <option value="job_number">Sort: Job #</option>
-          <option value="status">Sort: Status</option>
-          <option value="priority">Sort: Priority</option>
-        </select>
-        <select
-          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          value={sortDir}
-          onChange={(e) => setSortDir(e.target.value as SortDir)}
-          aria-label="Sort direction"
-        >
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
-        </select>
-        <select
-          className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          value={assignedUserId}
-          onChange={(e) => setAssignedUserId(e.target.value)}
-          aria-label="Filter by assignee"
-        >
-          <option value="">All assignees</option>
-          {(usersForAssignee ?? []).map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.full_name} ({u.email})
-            </option>
-          ))}
-        </select>
       </div>
 
       {(showLoadMore || jobs.length > 0) && (
@@ -438,6 +461,17 @@ export default function JobsPage() {
           </Button>
         </div>
       )}
+
+      {/* Mobile FAB */}
+      <button
+        type="button"
+        onClick={() => setShowAdd(true)}
+        className="sm:hidden fixed bottom-6 right-5 z-30 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold shadow-lg"
+        style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810', boxShadow: '0 4px 16px rgba(140,95,15,0.35)' }}
+        aria-label="New job ticket"
+      >
+        <Plus size={18} />New Job
+      </button>
 
       {jobToDelete && (
         <Modal

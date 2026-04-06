@@ -12,10 +12,11 @@ const tabs = [
 export default function MobileServicesSubNav({ className }: { className?: string }) {
   return (
     <div
-      className={cn('flex flex-wrap gap-2', className)}
+      className={cn('-mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0', className)}
       role="navigation"
       aria-label="Mobile services sections"
     >
+      <div className="flex gap-2 flex-nowrap sm:flex-wrap pb-0.5">
       {tabs.map((t) => (
         <NavLink
           key={t.to}
@@ -38,6 +39,7 @@ export default function MobileServicesSubNav({ className }: { className?: string
           {t.label}
         </NavLink>
       ))}
+      </div>
     </div>
   )
 }
