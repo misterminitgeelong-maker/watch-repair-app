@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
 import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJob, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
-import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
+import { Card, PageHeader, Button, Spinner, EmptyState, Modal } from '@/components/ui'
+import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER, PRIORITY_STYLES } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 import WeekScheduler from '@/components/WeekScheduler'
 
@@ -217,25 +217,31 @@ export default function JobsPage() {
                             jobsInStatus.map((j, i) => (
                               <div
                                 key={j.id}
-                                className="px-4 py-3"
-                                style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                                className="px-4 py-3 transition-colors"
+                                style={{
+                                  borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none',
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#F5EDE0' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '' }}
                               >
+                                {/* Row header: title + actions */}
                                 <div className="flex items-start justify-between gap-3">
-                                  <div>
+                                  <div className="flex-1 min-w-0">
                                     <Link to={`/jobs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
                                       {j.title}
                                     </Link>
-                                    <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-                                      #{j.job_number} · {formatDate(j.created_at)}
-                                    </p>
-                                    {j.customer_account_id && (
-                                      <p className="text-[11px] mt-1 inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
-                                        B2B
-                                      </p>
-                                    )}
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                      <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                                        #{j.job_number} · {formatDate(j.created_at)}
+                                      </span>
+                                      {j.customer_account_id && (
+                                        <span className="text-[10px] inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
+                                          B2B
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge status={j.status} />
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     <button
                                       type="button"
                                       aria-label={`Delete job ${j.job_number}`}
@@ -251,11 +257,25 @@ export default function JobsPage() {
                                   </div>
                                 </div>
 
-                                <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
-                                  <span className="capitalize">Priority: {j.priority}</span>
-                                  <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
+                                {/* Metadata strip: priority chip + quote */}
+                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                  {(() => {
+                                    const p = PRIORITY_STYLES[j.priority] ?? PRIORITY_STYLES.normal
+                                    return (
+                                      <span
+                                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                        style={{ backgroundColor: p.bg, color: p.text }}
+                                      >
+                                        {p.label}
+                                      </span>
+                                    )
+                                  })()}
+                                  <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                                    Quote: {displayQuoteCents(j) > 0 ? `$${(displayQuoteCents(j) / 100).toFixed(2)}` : '—'}
+                                  </span>
                                 </div>
 
+                                {/* Status selector */}
                                 <div className="mt-2">
                                   <select
                                     className="w-full rounded-md px-2.5 py-2 text-xs outline-none transition"

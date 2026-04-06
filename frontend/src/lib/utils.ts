@@ -61,6 +61,13 @@ export const STATUS_LABELS: Record<string, string> = {
   void:                'Void',
 }
 
+export const PRIORITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  low:    { bg: '#EEEBE5', text: '#7A6A5A', label: 'Low' },
+  normal: { bg: '#E8EEF8', text: '#3A508B', label: 'Normal' },
+  high:   { bg: '#FEF0DC', text: '#9B6820', label: 'High' },
+  urgent: { bg: '#F5E8E8', text: '#8B3A3A', label: 'Urgent' },
+}
+
 export const STATUS_COLORS: Record<string, string> = {
   awaiting_quote:      'bg-[#EEE8F5] text-[#6A4A8B]',
   awaiting_go_ahead:   'bg-[#FEF0DC] text-[#9B6820]',

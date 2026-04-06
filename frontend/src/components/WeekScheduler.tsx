@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, GripVertical, ExternalLink } from 'lucide-re
 import { Link } from 'react-router-dom'
 import type { RepairJob } from '@/lib/api'
 import { Badge } from '@/components/ui'
+import { PRIORITY_STYLES } from '@/lib/utils'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -52,15 +53,6 @@ function formatDayLabel(date: Date): { weekday: string; date: string } {
 
 function isToday(date: Date): boolean {
   return toISODate(date) === toISODate(new Date())
-}
-
-// ── Priority helpers ──────────────────────────────────────────────────────────
-
-const PRIORITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  low:    { bg: '#EEEBE5', text: '#7A6A5A', label: 'Low' },
-  normal: { bg: '#E8EEF8', text: '#3A508B', label: 'Normal' },
-  high:   { bg: '#FEF0DC', text: '#9B6820', label: 'High' },
-  urgent: { bg: '#F5E8E8', text: '#8B3A3A', label: 'Urgent' },
 }
 
 // ── Job card (draggable) ──────────────────────────────────────────────────────
