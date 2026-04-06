@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -56,7 +57,7 @@ interface DraggableJobCardProps {
 
 function DraggableJobCard({ job }: DraggableJobCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: job.id })
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.35 : 1,
     cursor: 'grab',
@@ -225,7 +226,7 @@ export default function WeekScheduler({ jobs, onUpdateCollectionDate }: WeekSche
 
   // Build array of 7 days for the current week
   const days = useMemo(() =>
-    Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    Array.from({ length: 7 }, (_v, i) => addDays(weekStart, i)),
     [weekStart]
   )
 
