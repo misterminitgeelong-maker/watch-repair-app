@@ -140,6 +140,8 @@ class RepairJob(SQLModel, table=True):
     status: str = "awaiting_go_ahead"
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
     deposit_cents: int = 0
     pre_quote_cents: int = 0
     cost_cents: int = 0
@@ -578,6 +580,8 @@ class RepairJobRead(SQLModel):
     status: JobStatus
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
     deposit_cents: int
     pre_quote_cents: int
     cost_cents: int
@@ -608,6 +612,13 @@ class RepairJobFieldUpdate(SQLModel):
     collection_date: Optional[date] = None
     deposit_cents: Optional[int] = None
     description: Optional[str] = None
+
+
+class RepairJobReschedulePayload(SQLModel):
+    start: datetime
+    end: datetime
+    resource_id: Optional[str] = None  # assigned_user_id UUID string, or None/"unassigned"
+    version: Optional[int] = None      # reserved for optimistic locking
 
 
 class JobStatusHistoryRead(SQLModel):

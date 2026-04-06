@@ -21,10 +21,12 @@ from ..models import (
     RepairJobFieldUpdate,
     RepairJobIntakeUpdate,
     RepairJobRead,
+    RepairJobReschedulePayload,
     RepairJobStatusUpdate,
     Quote,
     QuoteLineItem,
     SmsLog,
+    User,
     WorkLog,
     Watch,
 )
@@ -308,6 +310,79 @@ def update_repair_job_fields(
             if not account or account.tenant_id != auth.tenant_id:
                 raise HTTPException(status_code=404, detail="Customer account not found")
         job.customer_account_id = payload.customer_account_id
+
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+@router.patch("/{job_id}/reschedule", response_model=RepairJobRead)
+def reschedule_repair_job(
+    job_id: UUID,
+    payload: RepairJobReschedulePayload,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Reschedule a job to a new time slot and/or technician resource."""
+    from datetime import timezone as _tz
+
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    # Locked statuses cannot be rescheduled
+    if job.status in ("collected", "no_go"):
+        raise HTTPException(status_code=409, detail="Cannot reschedule a closed job")
+
+    start = payload.start.replace(tzinfo=None) if payload.start.tzinfo else payload.start
+    end = payload.end.replace(tzinfo=None) if payload.end.tzinfo else payload.end
+
+    if end <= start:
+        raise HTTPException(status_code=422, detail="end must be after start")
+
+    duration_min = (end - start).total_seconds() / 60
+    if duration_min < 15:
+        raise HTTPException(status_code=422, detail="Minimum booking duration is 15 minutes")
+
+    # Business hours check: 08:00–18:00
+    if start.hour < 8 or (end.hour > 18) or (end.hour == 18 and end.minute > 0):
+        raise HTTPException(status_code=409, detail="Booking falls outside business hours (08:00–18:00)")
+
+    # Resolve resource (technician)
+    new_assigned_user_id: UUID | None = None
+    resource_id = (payload.resource_id or "").strip()
+    if resource_id and resource_id != "unassigned":
+        try:
+            resource_uuid = UUID(resource_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid resource_id")
+        user = session.get(User, resource_uuid)
+        if not user or user.tenant_id != auth.tenant_id:
+            raise HTTPException(status_code=404, detail="Resource (user) not found")
+        new_assigned_user_id = resource_uuid
+
+    # Overlap check for the target technician
+    if new_assigned_user_id is not None:
+        overlapping = session.exec(
+            select(RepairJob)
+            .where(RepairJob.tenant_id == auth.tenant_id)
+            .where(RepairJob.id != job_id)
+            .where(RepairJob.assigned_user_id == new_assigned_user_id)
+            .where(RepairJob.scheduled_start.is_not(None))  # type: ignore[union-attr]
+            .where(RepairJob.scheduled_end.is_not(None))    # type: ignore[union-attr]
+            .where(RepairJob.scheduled_start < end)         # type: ignore[operator]
+            .where(RepairJob.scheduled_end > start)         # type: ignore[operator]
+        ).all()
+        if overlapping:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Time slot overlaps with job {overlapping[0].job_number}",
+            )
+
+    job.scheduled_start = start
+    job.scheduled_end = end
+    job.assigned_user_id = new_assigned_user_id
 
     session.add(job)
     session.commit()

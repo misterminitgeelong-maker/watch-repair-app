@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
-import { deleteJob, getApiErrorMessage, listJobs, listQuotes, updateJob, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
+import { deleteJob, getApiErrorMessage, listJobs, listQuotes, listUsers, rescheduleJob, updateJob, updateJobStatus, type JobStatus, type RepairJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState, Modal } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER, PRIORITY_STYLES } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 import WeekScheduler from '@/components/WeekScheduler'
+import ResourceCalendar from '@/components/ResourceCalendar'
 
 const ALL_STATUS_OPTIONS: JobStatus[] = [...JOB_STATUS_ORDER]
 
@@ -17,10 +18,11 @@ export default function JobsPage() {
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'week'>('active')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'week' | 'schedule'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const { data: jobs, isLoading } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
   const { data: quotes } = useQuery({ queryKey: ['quotes'], queryFn: () => listQuotes().then(r => r.data) })
+  const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => listUsers().then(r => r.data) })
 
   const latestQuoteByJob = new Map<string, number>()
   for (const q of quotes ?? []) {
@@ -39,7 +41,7 @@ export default function JobsPage() {
   const closedSet = new Set<string>(CLOSED_DIRECTORY_STATUSES)
   const activeCount = (jobs ?? []).filter(j => !closedSet.has(j.status)).length
   const completedCount = (jobs ?? []).filter(j => closedSet.has(j.status)).length
-  const statusOptions = (jobDirectoryView === 'active' || jobDirectoryView === 'week') ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
+  const statusOptions = (jobDirectoryView === 'active' || jobDirectoryView === 'week' || jobDirectoryView === 'schedule') ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateJobStatus(jobId, status),
@@ -137,6 +139,20 @@ export default function JobsPage() {
           >
             Week
           </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+            style={{
+              backgroundColor: jobDirectoryView === 'schedule' ? 'var(--cafe-paper)' : 'transparent',
+              color: jobDirectoryView === 'schedule' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            }}
+            onClick={() => {
+              setJobDirectoryView('schedule')
+              setStatusFilter('all')
+            }}
+          >
+            Schedule
+          </button>
         </div>
       </div>
 
@@ -150,8 +166,22 @@ export default function JobsPage() {
         )
       )}
 
-      {/* Filters – hidden in week view */}
-      {jobDirectoryView !== 'week' && (
+      {/* Time-grid resource calendar view */}
+      {jobDirectoryView === 'schedule' && (
+        isLoading ? <Spinner /> : (
+          <ResourceCalendar
+            jobs={jobs ?? []}
+            users={users}
+            onReschedule={async (jobId, start, end, resourceId) => {
+              await rescheduleJob(jobId, { start, end, resource_id: resourceId })
+              qc.invalidateQueries({ queryKey: ['jobs'] })
+            }}
+          />
+        )
+      )}
+
+      {/* Filters – hidden in week/schedule views */}
+      {jobDirectoryView !== 'week' && jobDirectoryView !== 'schedule' && (
         <>
           <div className="flex gap-3 mb-5 flex-wrap">
             <div className="relative w-full sm:w-auto">

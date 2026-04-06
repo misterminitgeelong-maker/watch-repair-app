@@ -357,7 +357,9 @@ export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'n
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
-  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
+  status: JobStatus; salesperson?: string; collection_date?: string
+  scheduled_start?: string; scheduled_end?: string
+  deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
 export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
@@ -390,6 +392,12 @@ export const updateJob = (id: string, data: {
 }) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
+
+export const rescheduleJob = (id: string, data: {
+  start: string
+  end: string
+  resource_id: string | null
+}) => api.patch<RepairJob>(`/repair-jobs/${id}/reschedule`, data)
 
 
 export interface IntakePayload {
