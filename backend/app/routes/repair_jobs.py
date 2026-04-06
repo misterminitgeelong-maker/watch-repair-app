@@ -383,6 +383,10 @@ def reschedule_repair_job(
     job.scheduled_start = start
     job.scheduled_end = end
     job.assigned_user_id = new_assigned_user_id
+    # Keep collection_date in sync with the scheduled date for day-based views
+    job.collection_date = start.date()
+    # Store computed duration so callers don't need to recalculate
+    job.duration_minutes = int(duration_min)
 
     session.add(job)
     session.commit()

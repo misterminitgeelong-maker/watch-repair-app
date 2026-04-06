@@ -161,7 +161,7 @@ export default function JobsPage() {
         isLoading ? <Spinner /> : (
           <WeekScheduler
             jobs={jobs ?? []}
-            onUpdateCollectionDate={(jobId, date) => scheduleMut.mutate({ jobId, date })}
+            onUpdateCollectionDate={(jobId, date) => scheduleMut.mutateAsync({ jobId, date }).then(() => {})}
           />
         )
       )}

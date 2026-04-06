@@ -358,7 +358,7 @@ export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string
-  scheduled_start?: string; scheduled_end?: string
+  scheduled_start?: string; scheduled_end?: string; duration_minutes?: number
   deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
 }
 export const listJobs = () => api.get<RepairJob[]>('/repair-jobs')

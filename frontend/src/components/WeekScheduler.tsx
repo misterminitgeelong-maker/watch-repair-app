@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { CSSProperties } from 'react'
 import {
   DndContext,
@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/core'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronLeft, ChevronRight, GripVertical, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GripVertical, ExternalLink, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { RepairJob } from '@/lib/api'
 import { Badge } from '@/components/ui'
@@ -57,15 +57,27 @@ function isToday(date: Date): boolean {
 
 // ── Job card (draggable) ──────────────────────────────────────────────────────
 
-function JobCard({ job, isOverlay = false }: { job: RepairJob; isOverlay?: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: job.id })
+function JobCard({
+  job,
+  isOverlay = false,
+  isPending = false,
+}: {
+  job: RepairJob
+  isOverlay?: boolean
+  isPending?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: job.id,
+    disabled: isPending,
+  })
 
   const priority = PRIORITY_STYLES[job.priority] ?? PRIORITY_STYLES.normal
 
   const cardStyle: CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging || isPending ? 0.5 : 1,
     touchAction: 'none',
+    transition: isPending ? 'opacity 0.15s' : undefined,
   }
 
   const inner = (
@@ -111,16 +123,18 @@ function JobCard({ job, isOverlay = false }: { job: RepairJob; isOverlay?: boole
             {!isOverlay && <ExternalLink size={10} className="mt-0.5 shrink-0 opacity-50" />}
           </Link>
         </div>
-        {/* Drag handle – only active element that triggers drag */}
+        {/* Drag handle / pending spinner */}
         {!isOverlay && (
           <div
-            {...listeners}
-            {...attributes}
-            className="shrink-0 flex items-center justify-center rounded p-0.5 cursor-grab active:cursor-grabbing mt-0.5"
+            {...(isPending ? {} : { ...listeners, ...attributes })}
+            className={`shrink-0 flex items-center justify-center rounded p-0.5 mt-0.5 ${isPending ? 'cursor-wait' : 'cursor-grab active:cursor-grabbing'}`}
             style={{ color: 'var(--cafe-text-muted)', touchAction: 'none' }}
-            aria-label="Drag to reschedule"
+            aria-label={isPending ? 'Saving…' : 'Drag to reschedule'}
           >
-            <GripVertical size={13} />
+            {isPending
+              ? <Loader2 size={13} className="animate-spin" />
+              : <GripVertical size={13} />
+            }
           </div>
         )}
       </div>
@@ -155,9 +169,10 @@ interface DayColumnProps {
   date: string
   today: boolean
   jobs: RepairJob[]
+  pendingJobId: string | null
 }
 
-function DayColumn({ columnId, weekday, date, today, jobs }: DayColumnProps) {
+function DayColumn({ columnId, weekday, date, today, jobs, pendingJobId }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
   return (
@@ -208,7 +223,7 @@ function DayColumn({ columnId, weekday, date, today, jobs }: DayColumnProps) {
             {isOver ? '↓ Drop here' : 'Empty'}
           </p>
         )}
-        {jobs.map(j => <JobCard key={j.id} job={j} />)}
+        {jobs.map(j => <JobCard key={j.id} job={j} isPending={pendingJobId === j.id} />)}
       </div>
     </div>
   )
@@ -216,7 +231,7 @@ function DayColumn({ columnId, weekday, date, today, jobs }: DayColumnProps) {
 
 // ── Unscheduled sidebar ───────────────────────────────────────────────────────
 
-function UnscheduledColumn({ jobs }: { jobs: RepairJob[] }) {
+function UnscheduledColumn({ jobs, pendingJobId }: { jobs: RepairJob[]; pendingJobId: string | null }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' })
 
   return (
@@ -257,7 +272,7 @@ function UnscheduledColumn({ jobs }: { jobs: RepairJob[] }) {
             All scheduled ✓
           </p>
         ) : (
-          jobs.map(j => <JobCard key={j.id} job={j} />)
+          jobs.map(j => <JobCard key={j.id} job={j} isPending={pendingJobId === j.id} />)
         )}
       </div>
     </div>
@@ -268,12 +283,21 @@ function UnscheduledColumn({ jobs }: { jobs: RepairJob[] }) {
 
 interface WeekSchedulerProps {
   jobs: RepairJob[]
-  onUpdateCollectionDate: (jobId: string, date: string | null) => void
+  onUpdateCollectionDate: (jobId: string, date: string | null) => Promise<void>
 }
 
 export default function WeekScheduler({ jobs, onUpdateCollectionDate }: WeekSchedulerProps) {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [activeJob, setActiveJob] = useState<RepairJob | null>(null)
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null)
+  const [optimisticDates, setOptimisticDates] = useState<Map<string, string | null>>(new Map())
+  const [toast, setToast] = useState<{ msg: string; key: number } | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -294,40 +318,70 @@ export default function WeekScheduler({ jobs, onUpdateCollectionDate }: WeekSche
   const weekStart_ISO = weekDayISOs[0]
   const weekEnd_ISO = weekDayISOs[6]
 
+  // Merge server state with optimistic overrides
+  const effectiveDate = (job: RepairJob): string | null => {
+    if (optimisticDates.has(job.id)) return optimisticDates.get(job.id) ?? null
+    return job.collection_date ?? null
+  }
+
   const jobsByDate = useMemo(() => {
     const map = new Map<string, RepairJob[]>()
     for (const iso of weekDayISOs) map.set(iso, [])
     for (const job of activeJobs) {
-      const cd = job.collection_date
+      const cd = effectiveDate(job)
       if (cd && cd >= weekStart_ISO && cd <= weekEnd_ISO) {
         map.get(cd)?.push(job)
       }
     }
     return map
-  }, [activeJobs, weekDayISOs, weekStart_ISO, weekEnd_ISO])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJobs, weekDayISOs, weekStart_ISO, weekEnd_ISO, optimisticDates])
 
   const unscheduledJobs = useMemo(() =>
     activeJobs.filter(j => {
-      const cd = j.collection_date
+      const cd = effectiveDate(j)
       return !cd || cd < weekStart_ISO || cd > weekEnd_ISO
     }),
-    [activeJobs, weekStart_ISO, weekEnd_ISO]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeJobs, weekStart_ISO, weekEnd_ISO, optimisticDates]
   )
 
   function handleDragStart(event: DragStartEvent) {
     setActiveJob(activeJobs.find(j => j.id === event.active.id) ?? null)
   }
 
-  function handleDragEnd(event: DragEndEvent) {
+  async function handleDragEnd(event: DragEndEvent) {
     setActiveJob(null)
     const { over, active } = event
     if (!over) return
+
     const targetId = over.id as string
     const newDate = targetId === 'unscheduled' ? null : targetId
     const job = activeJobs.find(j => j.id === active.id)
     if (!job) return
-    if (newDate === (job.collection_date ?? null)) return
-    onUpdateCollectionDate(job.id, newDate)
+
+    const currentDate = effectiveDate(job)
+    if (newDate === currentDate) return
+
+    // Prevent duplicate in-flight updates for the same job
+    if (pendingJobId === job.id) return
+
+    // Optimistic update
+    const originalDate = currentDate
+    setPendingJobId(job.id)
+    setOptimisticDates(prev => new Map(prev).set(job.id, newDate))
+
+    try {
+      await onUpdateCollectionDate(job.id, newDate)
+      // On success, remove override (server data will reflect truth after invalidation)
+      setOptimisticDates(prev => { const n = new Map(prev); n.delete(job.id); return n })
+    } catch {
+      // Revert to original position
+      setOptimisticDates(prev => new Map(prev).set(job.id, originalDate))
+      setToast({ msg: 'Failed to reschedule — changes reverted', key: Date.now() })
+    } finally {
+      setPendingJobId(null)
+    }
   }
 
   function prevWeek() { setWeekStart(d => addDays(d, -7)) }
@@ -337,69 +391,89 @@ export default function WeekScheduler({ jobs, onUpdateCollectionDate }: WeekSche
   const weekLabel = `${days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${days[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      {/* Week navigation */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <button
-          type="button"
-          onClick={prevWeek}
-          className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
-          style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)', backgroundColor: 'var(--cafe-surface)' }}
-          aria-label="Previous week"
-        >
-          <ChevronLeft size={15} />
-        </button>
-        <span
-          className="text-sm font-semibold px-3"
-          style={{ color: 'var(--cafe-text)', minWidth: 210, textAlign: 'center' }}
-        >
-          {weekLabel}
-        </span>
-        <button
-          type="button"
-          onClick={nextWeek}
-          className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
-          style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)', backgroundColor: 'var(--cafe-surface)' }}
-          aria-label="Next week"
-        >
-          <ChevronRight size={15} />
-        </button>
-        <button
-          type="button"
-          onClick={goToday}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ml-1"
-          style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-mid)', backgroundColor: 'var(--cafe-surface)' }}
-        >
-          Today
-        </button>
-        <p className="text-xs ml-auto" style={{ color: 'var(--cafe-text-muted)' }}>
-          Grab <GripVertical size={11} className="inline -mt-0.5" /> to reschedule
-        </p>
-      </div>
+    <div className="relative">
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        {/* Week navigation */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <button
+            type="button"
+            onClick={prevWeek}
+            className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)', backgroundColor: 'var(--cafe-surface)' }}
+            aria-label="Previous week"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <span
+            className="text-sm font-semibold px-3"
+            style={{ color: 'var(--cafe-text)', minWidth: 210, textAlign: 'center' }}
+          >
+            {weekLabel}
+          </span>
+          <button
+            type="button"
+            onClick={nextWeek}
+            className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)', backgroundColor: 'var(--cafe-surface)' }}
+            aria-label="Next week"
+          >
+            <ChevronRight size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={goToday}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ml-1"
+            style={{ border: '1px solid var(--cafe-border)', color: 'var(--cafe-text-mid)', backgroundColor: 'var(--cafe-surface)' }}
+          >
+            Today
+          </button>
+          <p className="text-xs ml-auto" style={{ color: 'var(--cafe-text-muted)' }}>
+            Grab <GripVertical size={11} className="inline -mt-0.5" /> to reschedule
+          </p>
+        </div>
 
-      {/* Grid */}
-      <div className="flex gap-2 items-start overflow-x-auto pb-4">
-        {days.map((day, i) => {
-          const iso = weekDayISOs[i]
-          const { weekday, date } = formatDayLabel(day)
-          return (
-            <DayColumn
-              key={iso}
-              columnId={iso}
-              weekday={weekday}
-              date={date}
-              today={isToday(day)}
-              jobs={jobsByDate.get(iso) ?? []}
-            />
-          )
-        })}
-        <UnscheduledColumn jobs={unscheduledJobs} />
-      </div>
+        {/* Grid */}
+        <div className="flex gap-2 items-start overflow-x-auto pb-4">
+          {days.map((day, i) => {
+            const iso = weekDayISOs[i]
+            const { weekday, date } = formatDayLabel(day)
+            return (
+              <DayColumn
+                key={iso}
+                columnId={iso}
+                weekday={weekday}
+                date={date}
+                today={isToday(day)}
+                jobs={jobsByDate.get(iso) ?? []}
+                pendingJobId={pendingJobId}
+              />
+            )
+          })}
+          <UnscheduledColumn jobs={unscheduledJobs} pendingJobId={pendingJobId} />
+        </div>
 
-      {/* Drag overlay */}
-      <DragOverlay dropAnimation={dropAnimation}>
-        {activeJob ? <JobCard job={activeJob} isOverlay /> : null}
-      </DragOverlay>
-    </DndContext>
+        {/* Drag overlay */}
+        <DragOverlay dropAnimation={dropAnimation}>
+          {activeJob ? <JobCard job={activeJob} isOverlay /> : null}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Error toast */}
+      {toast && (
+        <div
+          key={toast.key}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg"
+          style={{
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#991B1B',
+          }}
+          role="alert"
+        >
+          <span>⚠</span>
+          {toast.msg}
+        </div>
+      )}
+    </div>
   )
 }

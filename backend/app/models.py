@@ -142,6 +142,7 @@ class RepairJob(SQLModel, table=True):
     collection_date: Optional[date] = None
     scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
     deposit_cents: int = 0
     pre_quote_cents: int = 0
     cost_cents: int = 0
@@ -582,6 +583,7 @@ class RepairJobRead(SQLModel):
     collection_date: Optional[date] = None
     scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
     deposit_cents: int
     pre_quote_cents: int
     cost_cents: int
