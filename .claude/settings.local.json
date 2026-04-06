@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/samme/Dungeons-and-drivers-codex-outline-app-requirements-for-watch-repairs/.claude/worktrees/friendly-galileo -maxdepth 2 -type f -name package.json -o -name requirements.txt -o -name pyproject.toml -o -name .gitignore -o -name README.md -o -name tsconfig.json -o -name webpack.config.js -o -name babel.config.js -o -name .env*)",
+      "Bash(xargs ls:*)",
+      "Bash(git -C /c/Users/samme/Dungeons-and-drivers-codex-outline-app-requirements-for-watch-repairs/.claude/worktrees/friendly-galileo log --oneline)",
+      "Bash(find /c/Users/samme/Dungeons-and-drivers-codex-outline-app-requirements-for-watch-repairs/.claude/worktrees/friendly-galileo/backend/tests -type f -name *.py)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(where gh:*)",
+      "Bash(winget list:*)"
+    ]
+  }
+}
