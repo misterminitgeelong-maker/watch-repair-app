@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -58,16 +59,10 @@ if getattr(settings, "sentry_dsn", "").strip():
     )
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Fail fast on unsafe production config before any startup side effects.
-    validate_runtime_config()
-    if settings.auto_create_schema_on_startup:
-        create_db_and_tables()
+def _run_optional_startup_tasks() -> None:
+    """Run demo/bootstrap maintenance without blocking container health checks."""
+    startup_logger = logging.getLogger("mainspring.startup")
     try:
-        # Clear startup failure if schema is missing and AUTO_CREATE_SCHEMA_ON_STARTUP is off.
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
         with Session(engine) as session:
             demo_tenant = ensure_demo_tenant(session)
             ensure_demo_b2b_accounts(session, demo_tenant)
@@ -79,12 +74,37 @@ async def lifespan(app: FastAPI):
             ensure_suburbs_seeded(session)
             seed_from_csv_if_empty(session)
             ensure_demo_supplemental_data(session)
+            session.commit()
+        startup_logger.info("Optional startup tasks completed.")
+    except Exception:
+        startup_logger.exception("Optional startup tasks failed.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Fail fast on unsafe production config before any startup side effects.
+    validate_runtime_config()
+    if settings.auto_create_schema_on_startup:
+        create_db_and_tables()
+    try:
+        # Clear startup failure if schema is missing and AUTO_CREATE_SCHEMA_ON_STARTUP is off.
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
     except OperationalError as exc:
         raise RuntimeError(
             "Database schema is missing or out of date. Run 'alembic upgrade head' "
             "in backend/ before starting the app. "
             "For dev-only auto bootstrap, set AUTO_CREATE_SCHEMA_ON_STARTUP=true."
         ) from exc
+
+    logging.getLogger("mainspring.startup").info(
+        "Database schema check passed; scheduling optional startup tasks."
+    )
+    threading.Thread(
+        target=_run_optional_startup_tasks,
+        name="mainspring-startup-seed",
+        daemon=True,
+    ).start()
     yield
 
 
