@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Plus, ChevronLeft, Wrench } from 'lucide-react'
-import { getCustomer, listWatches, createWatch, listJobs, type Watch } from '@/lib/api'
+import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, type Watch, type ShoeRepairJob, type AutoKeyJob } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textarea } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
@@ -56,6 +56,16 @@ export default function CustomerDetailPage() {
   const { data: customer, isLoading } = useQuery({ queryKey: ['customer', id], queryFn: () => getCustomer(id!).then(r => r.data) })
   const { data: watches } = useQuery({ queryKey: ['watches', id], queryFn: () => listWatches(id).then(r => r.data) })
   const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
+  const { data: shoeJobs = [] } = useQuery({
+    queryKey: ['shoe-repair-jobs', 'customer', id],
+    queryFn: () => listShoeRepairJobs({ customer_id: id }).then(r => r.data),
+    enabled: !!id,
+  })
+  const { data: autoKeyJobs = [] } = useQuery({
+    queryKey: ['auto-key-jobs', 'customer', id],
+    queryFn: () => listAutoKeyJobs({ customer_id: id }).then(r => r.data),
+    enabled: !!id,
+  })
 
   const customerWatchIds = new Set((watches ?? []).map(w => w.id))
   const customerJobs = (jobs ?? []).filter(j => customerWatchIds.has(j.watch_id))
@@ -248,6 +258,75 @@ export default function CustomerDetailPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── Shoe Repair Jobs ─────────────────────────────────────────── */}
+      {shoeJobs.length > 0 && (
+        <Card className="mt-6">
+          <div
+            className="px-5 py-4 font-semibold"
+            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          >
+            Shoe Repairs ({shoeJobs.length})
+          </div>
+          <div>
+            {(shoeJobs as ShoeRepairJob[]).map((job, i) => (
+              <Link
+                key={job.id}
+                to={`/shoe-repairs/${job.id}`}
+                className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                style={{ borderBottom: i < shoeJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    #{job.job_number}
+                    {job.shoe?.brand ? ` · ${job.shoe.brand}` : ''}
+                    {` · ${formatDate(job.created_at)}`}
+                  </p>
+                </div>
+                <Badge status={job.status} />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Auto / Mobile Key Jobs ────────────────────────────────────── */}
+      {autoKeyJobs.length > 0 && (
+        <Card className="mt-4">
+          <div
+            className="px-5 py-4 font-semibold"
+            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          >
+            Mobile Key Jobs ({autoKeyJobs.length})
+          </div>
+          <div>
+            {(autoKeyJobs as AutoKeyJob[]).map((job, i) => (
+              <Link
+                key={job.id}
+                to={`/auto-key/${job.id}`}
+                className="flex items-center justify-between px-5 py-3.5 transition-colors"
+                style={{ borderBottom: i < autoKeyJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    #{job.job_number}
+                    {job.vehicle_make ? ` · ${job.vehicle_make}${job.vehicle_model ? ` ${job.vehicle_model}` : ''}` : ''}
+                    {` · ${formatDate(job.created_at)}`}
+                  </p>
+                </div>
+                <Badge status={job.status} />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
+

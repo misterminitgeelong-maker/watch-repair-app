@@ -175,6 +175,7 @@ def create_shoe_repair_job(
 @router.get("", response_model=list[ShoeRepairJobRead])
 def list_shoe_repair_jobs(
     status: str | None = Query(default=None),
+    customer_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
@@ -183,6 +184,9 @@ def list_shoe_repair_jobs(
     query = select(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(ShoeRepairJob.status == status)
+    if customer_id:
+        shoe_ids = select(Shoe.id).where(Shoe.tenant_id == auth.tenant_id).where(Shoe.customer_id == customer_id)
+        query = query.where(ShoeRepairJob.shoe_id.in_(shoe_ids))
     jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc()).offset(skip).limit(limit)).all()
     return [_job_to_read(j, session) for j in jobs]
 
@@ -253,6 +257,24 @@ def append_shoe_repair_job_items(
         _create_job_items(session, tenant_id=auth.tenant_id, job_id=job.id, items=payload.items)
         session.commit()
         session.refresh(job)
+    return _job_to_read(job, session)
+
+
+@router.delete("/{job_id}/items/{item_id}", response_model=ShoeRepairJobRead)
+def remove_shoe_repair_job_item(
+    job_id: UUID,
+    item_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    item = session.get(ShoeRepairJobItem, item_id)
+    if not item or item.shoe_repair_job_id != job_id:
+        raise HTTPException(status_code=404, detail="Item not found")
+    session.delete(item)
+    session.commit()
     return _job_to_read(job, session)
 
 
