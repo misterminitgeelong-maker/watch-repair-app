@@ -23,6 +23,8 @@ import {
   setPageTutorialSeen,
 } from '@/lib/onboarding'
 import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
+import { Search } from 'lucide-react'
+import GlobalSearch from './GlobalSearch'
 
 type PageTutorial = {
   key: string
@@ -320,6 +322,7 @@ export default function AppShell() {
   const demoModeEnabled = isDemoModeEnabled()
 
   const [switchingSite, setSwitchingSite] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [showGuidedModal, setShowGuidedModal] = useState(false)
@@ -655,6 +658,17 @@ export default function AppShell() {
     }
   }, [currentGuidedStep, lastGuidedModalKey, tourMode])
 
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(o => !o)
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [])
+
   function dismissTutorial() {
     if (activeTutorial) {
       setPageTutorialSeen(activeSiteTenantId, activeTutorial.key, true)
@@ -739,10 +753,19 @@ export default function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
-          className="md:hidden sticky top-0 z-20 flex items-center justify-center px-4 py-3"
+          className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3"
           style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}
         >
+          <div style={{ width: 34 }} />
           <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '130px', height: 'auto', display: 'block' }} />
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--cafe-text-muted)' }}
+            aria-label="Search"
+          >
+            <Search size={18} />
+          </button>
         </header>
 
         {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}
@@ -884,6 +907,8 @@ export default function AppShell() {
           </div>
         </Modal>
       )}
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {tourMode === 'guided' && !showWelcomeModal && currentGuidedStep && (
         <div

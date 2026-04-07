@@ -177,6 +177,23 @@ def get_reports_summary(
     converted = len(approved_job_ids & invoiced_job_ids)
     quote_to_invoice_pct = round((converted / max(len(approved_job_ids), 1)) * 100, 1)
 
+    # Avg hours from job creation to first quote sent
+    quote_pairs = session.exec(
+        select(RepairJob.created_at, Quote.sent_at)
+        .join(Quote, Quote.repair_job_id == RepairJob.id)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(Quote.sent_at.isnot(None))
+    ).all()
+    if quote_pairs:
+        hours_list = [
+            (sent - created).total_seconds() / 3600
+            for created, sent in quote_pairs
+            if sent and created and sent > created
+        ]
+        avg_quote_response_hours = round(sum(hours_list) / len(hours_list), 1) if hours_list else None
+    else:
+        avg_quote_response_hours = None
+
     return {
         "counts": {
             "jobs": jobs_total,
@@ -206,6 +223,7 @@ def get_reports_summary(
             "avg_revenue_per_job_cents": int(revenue_cents / jobs_total) if jobs_total > 0 else 0,
             "avg_turnaround_days": avg_turnaround_days,
             "quote_to_invoice_pct": quote_to_invoice_pct,
+            "avg_quote_response_hours": avg_quote_response_hours,
         },
     }
 
@@ -398,10 +416,23 @@ def get_dashboard_widgets(
     ).one()
     overdue_invoices_count = int(overdue_invoices)
 
+    # Jobs past their collection_date that haven't been collected or cancelled
+    today = now.date()
+    overdue_collection = session.exec(
+        select(func.count())
+        .select_from(RepairJob)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(RepairJob.collection_date.isnot(None))
+        .where(RepairJob.collection_date < today)
+        .where(RepairJob.status.not_in(["collected", "no_go"]))
+    ).one()
+    overdue_collection_count = int(overdue_collection)
+
     return {
         "overdue_jobs_count": overdue_jobs_count,
         "quotes_pending_7d_count": quotes_pending_7d_count,
         "overdue_invoices_count": overdue_invoices_count,
+        "overdue_collection_count": overdue_collection_count,
     }
 
 

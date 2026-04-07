@@ -147,6 +147,7 @@ def list_repair_jobs(
     status: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
     customer_id: UUID | None = Query(default=None, description="Filter jobs whose watch belongs to this customer"),
+    q: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
@@ -161,6 +162,11 @@ def list_repair_jobs(
         query = query.where(RepairJob.status == status)
     if assigned_user_id:
         query = query.where(RepairJob.assigned_user_id == assigned_user_id)
+    if q:
+        pattern = f"%{q.lower()}%"
+        query = query.where(
+            func.lower(RepairJob.title).like(pattern) | func.lower(RepairJob.job_number).like(pattern)
+        )
 
     sort_fields = {
         "created_at": RepairJob.created_at,

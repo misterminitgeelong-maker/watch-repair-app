@@ -97,6 +97,7 @@ def get_public_job_status(status_token: str, session: Session = Depends(get_sess
         "priority": job.priority,
         "pre_quote_cents": job.pre_quote_cents,
         "created_at": job.created_at,
+        "collection_date": job.collection_date.isoformat() if job.collection_date else None,
         "watch": {
             "brand": watch.brand if watch else None,
             "model": watch.model if watch else None,

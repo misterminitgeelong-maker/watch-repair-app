@@ -82,6 +82,12 @@ export default function StatusPage() {
           {job.description && (
             <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-mid)' }}>{job.description}</p>
           )}
+          {job.collection_date && (
+            <div className="flex items-center gap-2 text-sm mt-3 pt-3" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text-mid)' }}>
+              <span style={{ color: 'var(--cafe-text-muted)' }}>Expected ready:</span>
+              <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span>
+            </div>
+          )}
           <div className="mt-3 flex justify-end">
             <button
               type="button"

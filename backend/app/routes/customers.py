@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
@@ -30,10 +30,14 @@ def list_customers(
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc"),
+    q: str | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     query = select(Customer).where(Customer.tenant_id == auth.tenant_id)
+    if q:
+        pattern = f"%{q.lower()}%"
+        query = query.where(func.lower(Customer.full_name).like(pattern))
     sort_fields = {
         "created_at": Customer.created_at,
         "full_name": Customer.full_name,

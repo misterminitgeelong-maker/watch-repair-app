@@ -166,6 +166,9 @@ export default function ReportsPage() {
               <p style={{ color: 'var(--cafe-text-mid)' }}>Avg turnaround: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.avg_turnaround_days}d</strong></p>
             )}
             <p style={{ color: 'var(--cafe-text-mid)' }}>Quote→invoice: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.quote_to_invoice_pct}%</strong></p>
+            {data.operations.avg_quote_response_hours != null && (
+              <p style={{ color: 'var(--cafe-text-mid)' }}>Quote response: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.avg_quote_response_hours}h avg</strong></p>
+            )}
           </div>
         </Card>
 

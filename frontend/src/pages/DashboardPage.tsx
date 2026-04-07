@@ -332,7 +332,7 @@ export default function DashboardPage() {
     [autoKeyJobs, recentWatchJobs, shoeJobs, hasFeature],
   )
 
-  const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0)
+  const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0) + (widgets?.overdue_collection_count ?? 0)
 
   const serviceBreakdown = [
       hasFeature('watch') && `Watch: ${watchOpenJobsCount}`,
@@ -581,6 +581,15 @@ export default function DashboardPage() {
                   <Link to="/invoices" className="underline" style={{ color: '#B45309' }}>
                     {widgets.overdue_invoices_count} unpaid invoice(s)
                   </Link>
+                )}
+                {widgets.overdue_collection_count > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold" style={{ color: '#8B3A3A' }}>{widgets.overdue_collection_count}</span>
+                    <span style={{ color: 'var(--cafe-text-mid)' }}>
+                      job{widgets.overdue_collection_count !== 1 ? 's' : ''} past collection date —{' '}
+                      <Link to="/jobs" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
+                    </span>
+                  </div>
                 )}
               </div>
             )}

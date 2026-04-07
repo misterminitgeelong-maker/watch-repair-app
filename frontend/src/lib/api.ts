@@ -339,7 +339,7 @@ export interface CustomerAccountCreate {
 export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
 export const createCustomerAccount = (data: CustomerAccountCreate) => api.post<CustomerAccount>('/customer-accounts', data)
 export const updateCustomerAccount = (id: string, data: Partial<CustomerAccountCreate>) => api.patch<CustomerAccount>(`/customer-accounts/${id}`, data)
-export const listCustomers = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
+export const listCustomers = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; q?: string }) =>
   api.get<Customer[]>('/customers', { params })
 export const getCustomer = (id: string) => api.get<Customer>(`/customers/${id}`)
 export const createCustomer = (data: Omit<Customer, 'id' | 'tenant_id' | 'created_at'>) =>
@@ -367,7 +367,7 @@ export interface RepairJob {
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
   customer_name?: string | null
 }
-export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string }) =>
+export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string; q?: string }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
 export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
@@ -448,6 +448,7 @@ export interface PublicJobStatus {
   priority: string
   pre_quote_cents: number
   created_at: string
+  collection_date?: string | null
   watch: {
     brand?: string
     model?: string
@@ -765,6 +766,7 @@ export interface ReportsSummary {
     avg_revenue_per_job_cents: number
     avg_turnaround_days: number | null
     quote_to_invoice_pct: number
+    avg_quote_response_hours: number | null
   }
 }
 export const getReportsSummary = () => api.get<ReportsSummary>('/reports/summary')
@@ -804,6 +806,7 @@ export interface ReportsWidgets {
   overdue_jobs_count: number
   quotes_pending_7d_count: number
   overdue_invoices_count: number
+  overdue_collection_count: number
 }
 export const getReportsWidgets = () => api.get<ReportsWidgets>('/reports/widgets')
 

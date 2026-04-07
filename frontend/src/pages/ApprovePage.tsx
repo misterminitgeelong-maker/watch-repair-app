@@ -138,7 +138,8 @@ export default function ApprovePage() {
             <>
               <CheckCircle className="mx-auto mb-4 text-green-500" size={48} />
               <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>Quote Approved!</h1>
-              <p style={{ color: 'var(--cafe-text-muted)' }}>Thank you! We've received your approval and will be in touch shortly to confirm next steps.</p>
+              <p className="mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Thank you — we've received your approval and will begin work shortly.</p>
+              <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>You'll receive a message when your item is ready for collection. You can also track progress using the status link that was sent with your quote.</p>
             </>
           ) : (
             <>
