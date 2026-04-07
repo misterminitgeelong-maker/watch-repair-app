@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
+import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -134,6 +134,7 @@ interface WeekSchedulerJob {
   scheduled_at?: string
   customer_id?: string
   customer_name?: string | null
+  customer_phone?: string | null
   assigned_user_id?: string
   status?: JobStatus
   vehicle_make?: string
@@ -1434,7 +1435,7 @@ function WeekHourDropCell({
   )
 }
 
-function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
+function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
@@ -1556,6 +1557,16 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           </span>
           {job.customer_name && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name}</p>
+          )}
+          {job.customer_phone && (
+            <a
+              href={`tel:${job.customer_phone.replace(/\s/g, '')}`}
+              className="inline-flex items-center gap-1 text-xs font-medium mt-0.5 touch-manipulation"
+              style={{ color: 'var(--cafe-amber)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <Phone size={11} /> {job.customer_phone}
+            </a>
           )}
           {(() => {
             const scheduledLabel = job.scheduled_at

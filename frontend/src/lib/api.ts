@@ -991,6 +991,7 @@ export interface AutoKeyJob {
   additional_services_json?: string
   commission_lead_source?: string
   customer_name?: string | null
+  customer_phone?: string | null
 }
 
 export interface AutoKeyJobCreatePayload {

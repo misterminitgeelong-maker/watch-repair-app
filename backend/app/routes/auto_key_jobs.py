@@ -161,9 +161,10 @@ def list_auto_key_jobs(
         select(Customer).where(Customer.id.in_(customer_ids))
     ).all() if customer_ids else []
     cname_map = {c.id: c.full_name for c in customers}
+    cphone_map = {c.id: c.phone for c in customers}
 
     return [
-        AutoKeyJobRead(**j.model_dump(), customer_name=cname_map.get(j.customer_id))
+        AutoKeyJobRead(**j.model_dump(), customer_name=cname_map.get(j.customer_id), customer_phone=cphone_map.get(j.customer_id))
         for j in jobs
     ]
 

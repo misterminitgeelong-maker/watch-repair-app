@@ -1256,6 +1256,7 @@ class AutoKeyJobRead(SQLModel):
     additional_services_json: Optional[str] = None
     commission_lead_source: str = "shop_referred"
     customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
 
     @field_serializer("scheduled_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
