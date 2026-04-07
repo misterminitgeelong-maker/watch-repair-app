@@ -1,0 +1,65 @@
+<svg width="100%" viewBox="0 0 680 210" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- ── ICON MARK ── -->
+
+  <!-- Cream face fill -->
+  <circle cx="118" cy="105" r="74" fill="#FDFAF4" style="fill:rgb(253, 250, 244);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Outer bezel ring -->
+  <circle cx="118" cy="105" r="74" fill="none" stroke="#1B2B3E" stroke-width="2.5" style="fill:none;stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Inner dashed track ring -->
+  <circle cx="118" cy="105" r="63" fill="none" stroke="#1B2B3E" stroke-width="0.5" stroke-dasharray="2,5" opacity="0.35" style="fill:none;stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-dasharray:2px, 5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.35;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Cardinal tick marks (between inner track and outer ring) -->
+  <!-- 12 o'clock -->
+  <line x1="118" y1="31" x2="118" y2="42" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 3 o'clock -->
+  <line x1="181" y1="105" x2="192" y2="105" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 6 o'clock -->
+  <line x1="118" y1="168" x2="118" y2="179" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 9 o'clock -->
+  <line x1="44" y1="105" x2="55" y2="105" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Minor tick marks at 30° intervals (thin) -->
+  <!-- 1 o'clock (30°) -->
+  <line x1="155" y1="42" x2="150" y2="51" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 2 o'clock (60°) -->
+  <line x1="182" y1="68" x2="174" y2="73" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 4 o'clock (120°) -->
+  <line x1="182" y1="142" x2="174" y2="137" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 5 o'clock (150°) -->
+  <line x1="155" y1="168" x2="150" y2="159" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 7 o'clock (210°) -->
+  <line x1="81" y1="168" x2="86" y2="159" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 8 o'clock (240°) -->
+  <line x1="54" y1="142" x2="62" y2="137" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 10 o'clock (300°) -->
+  <line x1="54" y1="68" x2="62" y2="73" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- 11 o'clock (330°) -->
+  <line x1="81" y1="42" x2="86" y2="51" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(27, 43, 62);color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- ── MAINSPRING COIL SPIRAL ── -->
+  <!-- Alternating clockwise/counter-clockwise semicircles, each larger than last -->
+  <!-- Center: (118, 105). Radii: 15→20→28→36→46 -->
+  <path d="&#10;    M 118 90&#10;    A 15 15 0 0 1 118 120&#10;    L 118 125&#10;    A 20 20 0 0 0 118 85&#10;    L 118 77&#10;    A 28 28 0 0 1 118 133&#10;    L 118 141&#10;    A 36 36 0 0 0 118 69&#10;    L 118 59&#10;    A 46 46 0 0 1 118 151" fill="none" stroke="#C9922A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(201, 146, 42);color:rgb(0, 0, 0);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Arbor (centre pivot) -->
+  <circle cx="118" cy="105" r="7" fill="#1B2B3E" style="fill:rgb(27, 43, 62);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <circle cx="118" cy="105" r="3.5" fill="#C9922A" style="fill:rgb(201, 146, 42);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- ── WORDMARK ── -->
+
+  <!-- "Mainspring" -->
+  <text x="218" y="100" font-family="Georgia, 'Palatino Linotype', Palatino, serif" font-size="52" font-weight="700" fill="#1B2B3E" letter-spacing="-0.5" style="fill:rgb(27, 43, 62);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, &quot;Palatino Linotype&quot;, Palatino, serif;font-size:52px;font-weight:700;text-anchor:start;dominant-baseline:auto">Mainspring</text>
+
+  <!-- Gold rule -->
+  <line x1="220" y1="115" x2="650" y2="115" stroke="#C9922A" stroke-width="1.5" style="fill:rgb(0, 0, 0);stroke:rgb(201, 146, 42);color:rgb(0, 0, 0);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tagline -->
+  <text x="222" y="140" font-family="Georgia, 'Palatino Linotype', Palatino, serif" font-size="13" font-weight="400" fill="#6B7A8D" letter-spacing="5.5" style="fill:rgb(107, 122, 141);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, &quot;Palatino Linotype&quot;, Palatino, serif;font-size:13px;font-weight:400;text-anchor:start;dominant-baseline:auto">REPAIR BUSINESS PLATFORM</text>
+
+  <!-- URL anchor -->
+  <text x="222" y="168" font-family="Georgia, 'Palatino Linotype', Palatino, serif" font-size="12" font-weight="400" fill="#C9922A" letter-spacing="1" style="fill:rgb(201, 146, 42);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, &quot;Palatino Linotype&quot;, Palatino, serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">mainspring.au</text>
+
+</svg>

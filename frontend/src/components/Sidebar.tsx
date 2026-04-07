@@ -95,7 +95,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     >
       <div className="px-6 py-6" style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}>
         <div className="flex items-center justify-between gap-3">
-          <img src="/mainspring-logo.png" alt="Mainspring" className="h-9 w-auto rounded" style={{ maxWidth: '160px' }} />
+          <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '150px', height: 'auto', display: 'block' }} />
 
           {mobile && onClose && (
             <button

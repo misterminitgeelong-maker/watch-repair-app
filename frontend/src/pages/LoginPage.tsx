@@ -121,9 +121,9 @@ export default function LoginPage() {
               display: 'inline-block',
             }}>
               <img
-                src="/mainspring-logo.png"
+                src="/mainspring-logo.svg"
                 alt="Mainspring"
-                style={{ width: '386px', height: 'auto', display: 'block', borderRadius: '10px', maxWidth: '100%' }}
+                style={{ width: '386px', height: 'auto', display: 'block', maxWidth: '100%' }}
               />
             </div>
             <p style={{
