@@ -353,6 +353,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const { hasFeature } = useAuth()
   const [error, setError] = useState('')
+  const [step, setStep] = useState<1 | 2>(1)
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
@@ -534,269 +535,314 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   })
 
   return (
-    <Modal title="New Mobile Services Job" onClose={onClose} size="wide">
-      <div className="space-y-3">
-        <div className="flex gap-2 mb-1">
-          <button
-            onClick={() => setCustomerMode('existing')}
-            className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-            style={customerMode === 'existing' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
-          >Existing Customer</button>
-          <button
-            onClick={() => setCustomerMode('new')}
-            className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-            style={customerMode === 'new' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
-          >New Customer</button>
+    <Modal title=”New Mobile Services Job” onClose={onClose} size=”wide”>
+      {/* Step indicator */}
+      <div className=”flex items-center gap-2 mb-4”>
+        <div className=”flex items-center gap-1.5”>
+          <span
+            className=”w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold”
+            style={step === 1
+              ? { backgroundColor: 'var(--cafe-amber)', color: '#fff' }
+              : { backgroundColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+          >1</span>
+          <span className=”text-xs font-medium” style={{ color: step === 1 ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
+            Customer &amp; Vehicle
+          </span>
         </div>
-        {customerMode === 'existing' ? (
-          <CustomerSearchSelect customers={customers} value={form.customer_id} onChange={id => setForm(f => ({ ...f, customer_id: id }))} />
-        ) : (
+        <div className=”flex-1 h-px mx-1” style={{ backgroundColor: 'var(--cafe-border-2)' }} />
+        <div className=”flex items-center gap-1.5”>
+          <span
+            className=”w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold”
+            style={step === 2
+              ? { backgroundColor: 'var(--cafe-amber)', color: '#fff' }
+              : { backgroundColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+          >2</span>
+          <span className=”text-xs font-medium” style={{ color: step === 2 ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
+            Schedule &amp; Details
+          </span>
+        </div>
+      </div>
+
+      <div className=”space-y-3”>
+        {/* ── STEP 1: Customer & Vehicle ── */}
+        {step === 1 && (
           <>
-            <Input label="Full Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Jane Smith" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
-              <Input label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" />
+            <div className=”flex gap-2 mb-1”>
+              <button
+                onClick={() => setCustomerMode('existing')}
+                className=”flex-1 py-1.5 rounded text-sm font-medium border transition-colors”
+                style={customerMode === 'existing' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+              >Existing Customer</button>
+              <button
+                onClick={() => setCustomerMode('new')}
+                className=”flex-1 py-1.5 rounded text-sm font-medium border transition-colors”
+                style={customerMode === 'new' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+              >New Customer</button>
             </div>
-            <Input label="Address" value={newCustomer.address} onChange={e => setNewCustomer(f => ({ ...f, address: e.target.value }))} placeholder="Optional" />
-            <Textarea label="Notes" value={newCustomer.notes} onChange={e => setNewCustomer(f => ({ ...f, notes: e.target.value }))} rows={1} placeholder="Optional" />
-          </>
-        )}
-        {customerMode === 'existing' && form.customer_id && (
-          <Select label="Customer Account (optional)" value={form.customer_account_id} onChange={e => setForm(f => ({ ...f, customer_account_id: e.target.value }))}>
-            <option value="">No B2B account</option>
-            {matchingAccounts.map((account: CustomerAccount) => (
-              <option key={account.id} value={account.id}>
-                {account.name}{account.account_code ? ` (${account.account_code})` : ''}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Select label="Assign tech" value={form.assigned_user_id} onChange={e => setForm(f => ({ ...f, assigned_user_id: e.target.value }))}>
-          <option value="">Unassigned</option>
-          {users.map((u: { id: string; full_name: string }) => (
-            <option key={u.id} value={u.id}>{u.full_name}</option>
-          ))}
-        </Select>
-        <Select
-          label="Job source (commission tier)"
-          value={form.commission_lead_source}
-          onChange={e => setForm(f => ({ ...f, commission_lead_source: e.target.value }))}
-        >
-          {MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </Select>
-        <Input label="Job title (from customer + vehicle)" value={autoTitle} readOnly className="opacity-90" />
-        <Textarea label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-        <Select label="Primary job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
-          <option value="">Not set</option>
-          {AUTO_KEY_JOB_TYPES.map(t => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </Select>
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Additional services (optional)</p>
-          {extraServices.map((row, idx) => (
-            <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
-              <Select
-                label={idx === 0 ? 'Preset type' : ''}
-                value={row.preset}
-                onChange={e => {
-                  const v = e.target.value
-                  setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, preset: v } : r)))
-                }}
-              >
-                <option value="">— Choose type —</option>
-                {AUTO_KEY_JOB_TYPES.map(t => (
-                  <option key={t} value={t}>{t}</option>
+            {customerMode === 'existing' ? (
+              <CustomerSearchSelect customers={customers} value={form.customer_id} onChange={id => setForm(f => ({ ...f, customer_id: id }))} />
+            ) : (
+              <>
+                <Input label=”Full Name *” value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder=”Jane Smith” />
+                <div className=”grid grid-cols-1 sm:grid-cols-2 gap-2”>
+                  <Input label=”Phone” value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder=”0412 345 678” />
+                  <Input label=”Email” type=”email” value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder=”jane@example.com” />
+                </div>
+                <Input label=”Address” value={newCustomer.address} onChange={e => setNewCustomer(f => ({ ...f, address: e.target.value }))} placeholder=”Optional” />
+                <Textarea label=”Notes” value={newCustomer.notes} onChange={e => setNewCustomer(f => ({ ...f, notes: e.target.value }))} rows={1} placeholder=”Optional” />
+              </>
+            )}
+            {customerMode === 'existing' && form.customer_id && matchingAccounts.length > 0 && (
+              <Select label=”Customer Account (optional)” value={form.customer_account_id} onChange={e => setForm(f => ({ ...f, customer_account_id: e.target.value }))}>
+                <option value=””>No B2B account</option>
+                {matchingAccounts.map((account: CustomerAccount) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+                  </option>
                 ))}
               </Select>
-              <Input
-                label={idx === 0 ? 'Or custom note' : ''}
-                value={row.custom}
-                onChange={e => setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, custom: e.target.value } : r)))}
-                placeholder="Custom work…"
-              />
-              <Button type="button" variant="ghost" className="shrink-0" aria-label="Remove line" onClick={() => setExtraServices(xs => xs.filter((_, i) => i !== idx))}>
-                <Minus size={18} />
+            )}
+            <Select label=”Primary job type” value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
+              <option value=””>Not set</option>
+              {AUTO_KEY_JOB_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </Select>
+            <div className=”space-y-2”>
+              <p className=”text-xs font-semibold uppercase tracking-wide” style={{ color: 'var(--cafe-text-muted)' }}>Additional services (optional)</p>
+              {extraServices.map((row, idx) => (
+                <div key={idx} className=”grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end”>
+                  <Select
+                    label={idx === 0 ? 'Preset type' : ''}
+                    value={row.preset}
+                    onChange={e => {
+                      const v = e.target.value
+                      setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, preset: v } : r)))
+                    }}
+                  >
+                    <option value=””>— Choose type —</option>
+                    {AUTO_KEY_JOB_TYPES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </Select>
+                  <Input
+                    label={idx === 0 ? 'Or custom note' : ''}
+                    value={row.custom}
+                    onChange={e => setExtraServices(xs => xs.map((r, i) => (i === idx ? { ...r, custom: e.target.value } : r)))}
+                    placeholder=”Custom work…”
+                  />
+                  <Button type=”button” variant=”ghost” className=”shrink-0” aria-label=”Remove line” onClick={() => setExtraServices(xs => xs.filter((_, i) => i !== idx))}>
+                    <Minus size={18} />
+                  </Button>
+                </div>
+              ))}
+              <Button type=”button” variant=”secondary” onClick={() => setExtraServices(xs => [...xs, { preset: '', custom: '' }])}>
+                Add another service line
               </Button>
             </div>
-          ))}
-          <Button type="button" variant="secondary" onClick={() => setExtraServices(xs => [...xs, { preset: '', custom: '' }])}>
-            Add another service line
-          </Button>
-        </div>
-        <Input
-          label={sendBookingSms ? 'Scheduled (date & time) *' : 'Scheduled (date & time, optional)'}
-          type="datetime-local"
-          value={form.scheduled_at}
-          onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
-        />
-        {sendBookingSms && (
-          <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-            The customer receives a text with job summary, quote total, and time. Status will be set to “Awaiting booking confirm” until they tap confirm.
-          </p>
-        )}
-        <Input
-          label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
-          value={form.job_address}
-          onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))}
-          placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} placeholder="e.g. Toyota" />
-          <Input label="Vehicle model" value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} placeholder="e.g. Hilux" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Vehicle year" type="number" value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} placeholder="Filters database matches" />
-          <Input
-            label="Registration (reference only)"
-            value={form.registration_plate}
-            onChange={e => setForm(f => ({ ...f, registration_plate: e.target.value }))}
-            placeholder="e.g. ABC123"
-          />
-        </div>
-        {specSearch && specSearch.matches.length > 0 && (
-          <div
-            className="rounded-lg border p-2 text-sm"
-            style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
-          >
-            <p className="font-medium mb-1" style={{ color: 'var(--cafe-text-muted)' }}>
-              Vehicle database — tap a row to fill key details
-            </p>
-            <ul className="max-h-48 overflow-y-auto space-y-1">
-              {specSearch.matches.map((m, i) => (
-                <li key={`${m.label}-${i}`}>
-                  <button
-                    type="button"
-                    className="w-full text-left px-2 py-1.5 rounded transition"
-                    style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
-                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.92' }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-                    onClick={() => applyVehicleSpec(m)}
-                  >
-                    <span className="block">{m.label}</span>
-                    {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
-                      <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                        Blanks:
-                        {' '}
-                        {(m.key_blanks ?? [])
-                          .slice(0, 4)
-                          .map(b => b.primary_code || b.blank_reference)
-                          .filter(Boolean)
-                          .join(', ') || m.suggested_blade_code}
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
-          <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Blade / blank ref." value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
-          <Input label="Chip / transponder" value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
-        </div>
-        <Textarea
-          label="Workshop / tech notes"
-          value={form.tech_notes}
-          onChange={e => setForm(f => ({ ...f, tech_notes: e.target.value }))}
-          rows={3}
-          placeholder="Immobiliser notes, EEPROM warnings, etc."
-        />
-        <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
-
-        <div
-          className="rounded-lg border p-3 space-y-2"
-          style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
-            Quote &amp; booking SMS
-          </p>
-          <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
-            <input
-              type="checkbox"
-              className="mt-1 rounded"
-              checked={applySuggestedQuote}
-              onChange={e => setApplySuggestedQuote(e.target.checked)}
+            <Input
+              label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
+              value={form.job_address}
+              onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))}
+              placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
             />
-            <span>
-              <span className="font-medium">Apply suggested quote</span>
-              <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                Draft quote from job type and qty (inc. GST). Fills cost below when checked.
-              </span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
-            <input
-              type="checkbox"
-              className="mt-1 rounded"
-              checked={sendBookingSms}
-              onChange={e => {
-                setSendBookingSms(e.target.checked)
-                if (e.target.checked) setApplySuggestedQuote(true)
-              }}
-            />
-            <span>
-              <span className="font-medium">Text customer to confirm booking</span>
-              <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                Sends SMS with link to confirm. Requires customer mobile and scheduled time above.
-              </span>
-            </span>
-          </label>
-          {quoteSuggestion && (
-            <div className="text-sm pt-1 space-y-1" style={{ color: 'var(--cafe-text)' }}>
-              <div className="flex justify-between gap-2">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Suggested total (incl. GST)</span>
-                <span className="font-semibold tabular-nums">{formatCents(quoteSuggestion.total_cents)}</span>
-              </div>
-              {quoteSuggestionLoading && (
-                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Updating…</p>
-              )}
-              <ul className="text-xs space-y-0.5 mt-1 max-h-24 overflow-y-auto" style={{ color: 'var(--cafe-text-muted)' }}>
-                {quoteSuggestion.line_items.map((li, i) => (
-                  <li key={i}>
-                    {li.quantity}× {li.description} — {formatCents(li.unit_price_cents * li.quantity)}
-                  </li>
-                ))}
-              </ul>
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Input label=”Vehicle make” value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} placeholder=”e.g. Toyota” />
+              <Input label=”Vehicle model” value={form.vehicle_model} onChange={e => setForm(f => ({ ...f, vehicle_model: e.target.value }))} placeholder=”e.g. Hilux” />
             </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Select label="Priority" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' }))}>
-            <option value="low">Low</option>
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </Select>
-          <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))} disabled={sendBookingSms}>
-            {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
-          </Select>
-        </div>
-        {sendBookingSms && (
-          <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-            Initial status is forced to awaiting confirmation while the SMS link is open.
-          </p>
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Input label=”Vehicle year” type=”number” value={form.vehicle_year} onChange={e => setForm(f => ({ ...f, vehicle_year: e.target.value }))} placeholder=”Filters database matches” />
+              <Input
+                label=”Registration (reference only)”
+                value={form.registration_plate}
+                onChange={e => setForm(f => ({ ...f, registration_plate: e.target.value }))}
+                placeholder=”e.g. ABC123”
+              />
+            </div>
+            {specSearch && specSearch.matches.length > 0 && (
+              <div
+                className=”rounded-lg border p-2 text-sm”
+                style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+              >
+                <p className=”font-medium mb-1” style={{ color: 'var(--cafe-text-muted)' }}>
+                  Vehicle database — tap a row to fill key details
+                </p>
+                <ul className=”max-h-48 overflow-y-auto space-y-1”>
+                  {specSearch.matches.map((m, i) => (
+                    <li key={`${m.label}-${i}`}>
+                      <button
+                        type=”button”
+                        className=”w-full text-left px-2 py-1.5 rounded transition”
+                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '0.92' }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+                        onClick={() => applyVehicleSpec(m)}
+                      >
+                        <span className=”block”>{m.label}</span>
+                        {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
+                          <span className=”block text-xs mt-0.5” style={{ color: 'var(--cafe-text-muted)' }}>
+                            Blanks:
+                            {' '}
+                            {(m.key_blanks ?? [])
+                              .slice(0, 4)
+                              .map(b => b.primary_code || b.blank_reference)
+                              .filter(Boolean)
+                              .join(', ') || m.suggested_blade_code}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Input label=”VIN” value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
+              <Input label=”Key type” value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
+            </div>
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Input label=”Blade / blank ref.” value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
+              <Input label=”Chip / transponder” value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
+            </div>
+            <Input label=”Qty” type=”number” min=”1” value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
+          </>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
-          <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
-        </div>
-        <Input label="Salesperson" value={form.salesperson} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {/* ── STEP 2: Schedule & Details ── */}
+        {step === 2 && (
+          <>
+            <Input label=”Job title (auto-generated)” value={autoTitle} readOnly className=”opacity-90” />
+            <Select label=”Assign tech” value={form.assigned_user_id} onChange={e => setForm(f => ({ ...f, assigned_user_id: e.target.value }))}>
+              <option value=””>Unassigned</option>
+              {users.map((u: { id: string; full_name: string }) => (
+                <option key={u.id} value={u.id}>{u.full_name}</option>
+              ))}
+            </Select>
+            <Select
+              label=”Job source (commission tier)”
+              value={form.commission_lead_source}
+              onChange={e => setForm(f => ({ ...f, commission_lead_source: e.target.value }))}
+            >
+              {MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </Select>
+            <Input
+              label={sendBookingSms ? 'Scheduled (date & time) *' : 'Scheduled (date & time, optional)'}
+              type=”datetime-local”
+              value={form.scheduled_at}
+              onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
+            />
+            {sendBookingSms && (
+              <p className=”text-xs -mt-1” style={{ color: 'var(--cafe-text-muted)' }}>
+                The customer receives a text with job summary, quote total, and time. Status will be set to “Awaiting booking confirm” until they tap confirm.
+              </p>
+            )}
+            <Textarea label=”Description” value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+            <Textarea
+              label=”Workshop / tech notes”
+              value={form.tech_notes}
+              onChange={e => setForm(f => ({ ...f, tech_notes: e.target.value }))}
+              rows={3}
+              placeholder=”Immobiliser notes, EEPROM warnings, etc.”
+            />
+            <div
+              className=”rounded-lg border p-3 space-y-2”
+              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+            >
+              <p className=”text-xs font-semibold uppercase tracking-wide” style={{ color: 'var(--cafe-text-muted)' }}>
+                Quote &amp; booking SMS
+              </p>
+              <label className=”flex items-start gap-2 cursor-pointer text-sm” style={{ color: 'var(--cafe-text)' }}>
+                <input
+                  type=”checkbox”
+                  className=”mt-1 rounded”
+                  checked={applySuggestedQuote}
+                  onChange={e => setApplySuggestedQuote(e.target.checked)}
+                />
+                <span>
+                  <span className=”font-medium”>Apply suggested quote</span>
+                  <span className=”block text-xs mt-0.5” style={{ color: 'var(--cafe-text-muted)' }}>
+                    Draft quote from job type and qty (inc. GST). Fills cost below when checked.
+                  </span>
+                </span>
+              </label>
+              <label className=”flex items-start gap-2 cursor-pointer text-sm” style={{ color: 'var(--cafe-text)' }}>
+                <input
+                  type=”checkbox”
+                  className=”mt-1 rounded”
+                  checked={sendBookingSms}
+                  onChange={e => {
+                    setSendBookingSms(e.target.checked)
+                    if (e.target.checked) setApplySuggestedQuote(true)
+                  }}
+                />
+                <span>
+                  <span className=”font-medium”>Text customer to confirm booking</span>
+                  <span className=”block text-xs mt-0.5” style={{ color: 'var(--cafe-text-muted)' }}>
+                    Sends SMS with link to confirm. Requires customer mobile and scheduled time above.
+                  </span>
+                </span>
+              </label>
+              {quoteSuggestion && (
+                <div className=”text-sm pt-1 space-y-1” style={{ color: 'var(--cafe-text)' }}>
+                  <div className=”flex justify-between gap-2”>
+                    <span style={{ color: 'var(--cafe-text-muted)' }}>Suggested total (incl. GST)</span>
+                    <span className=”font-semibold tabular-nums”>{formatCents(quoteSuggestion.total_cents)}</span>
+                  </div>
+                  {quoteSuggestionLoading && (
+                    <p className=”text-xs” style={{ color: 'var(--cafe-text-muted)' }}>Updating…</p>
+                  )}
+                  <ul className=”text-xs space-y-0.5 mt-1 max-h-24 overflow-y-auto” style={{ color: 'var(--cafe-text-muted)' }}>
+                    {quoteSuggestion.line_items.map((li, i) => (
+                      <li key={i}>
+                        {li.quantity}× {li.description} — {formatCents(li.unit_price_cents * li.quantity)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Select label=”Priority” value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' }))}>
+                <option value=”low”>Low</option>
+                <option value=”normal”>Normal</option>
+                <option value=”high”>High</option>
+                <option value=”urgent”>Urgent</option>
+              </Select>
+              <Select label=”Status” value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))} disabled={sendBookingSms}>
+                {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
+              </Select>
+            </div>
+            {sendBookingSms && (
+              <p className=”text-xs -mt-1” style={{ color: 'var(--cafe-text-muted)' }}>
+                Initial status is forced to awaiting confirmation while the SMS link is open.
+              </p>
+            )}
+            <div className=”grid grid-cols-1 sm:grid-cols-2 gap-3”>
+              <Input label=”Deposit ($)” type=”number” step=”0.01” value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
+              <Input label=”Cost ($)” type=”number” step=”0.01” value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
+            </div>
+            <Input label=”Salesperson” value={form.salesperson} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
+          </>
+        )}
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
-            {createMut.isPending ? 'Creating…' : 'Create Job'}
-          </Button>
+        {error && <p className=”text-sm” style={{ color: '#C96A5A' }}>{error}</p>}
+
+        <div className=”flex gap-2 pt-2”>
+          {step === 1 ? (
+            <>
+              <Button variant=”secondary” className=”flex-1” onClick={onClose}>Cancel</Button>
+              <Button className=”flex-1” type=”button” onClick={() => { setError(''); setStep(2) }}>Next →</Button>
+            </>
+          ) : (
+            <>
+              <Button variant=”secondary” className=”flex-1” type=”button” onClick={() => { setError(''); setStep(1) }}>← Back</Button>
+              <Button className=”flex-1” onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+                {createMut.isPending ? 'Creating…' : 'Create Job'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Modal>
