@@ -1195,7 +1195,12 @@ function WeekJobChip({
     job.key_type ? `Key: ${job.key_type}` : undefined,
     typeof job.key_quantity === 'number' ? `Qty ${job.key_quantity}` : undefined,
   ].filter(Boolean).join(' · ')
-  const hoverTitle = [job.title, vehicleSummary, secondarySummary, job.job_address].filter(Boolean).join(' • ')
+  const metaTags = [
+    job.job_type || undefined,
+    assignedTechName ? `Tech: ${assignedTechName}` : undefined,
+    !compact && keySummary ? keySummary : undefined,
+  ].filter(Boolean)
+  const hoverTitle = [job.title, customerName, vehicleSummary, secondarySummary, job.job_address].filter(Boolean).join(' • ')
 
   return (
     <div
@@ -1203,7 +1208,7 @@ function WeekJobChip({
       {...(isOverlay ? {} : attributes)}
       {...(isOverlay ? {} : listeners)}
       data-week-job-chip
-      className={`group flex items-stretch shrink-0 rounded-md border overflow-hidden select-none transition-[box-shadow,transform,opacity] ${compact ? 'gap-1 mb-1 last:mb-0' : 'gap-1.5 max-w-[min(380px,96vw)]'}`}
+      className={`group flex items-stretch shrink-0 rounded-lg border overflow-hidden select-none transition-[box-shadow,transform,opacity] ${compact ? 'mb-1 last:mb-0' : 'max-w-[min(420px,96vw)]'}`}
       style={{
         borderColor: selected ? 'var(--cafe-amber)' : 'var(--cafe-border)',
         outline: selected ? '2px solid rgba(245,158,11,0.35)' : undefined,
@@ -1217,11 +1222,12 @@ function WeekJobChip({
             : '0 3px 10px rgba(44,24,16,0.06)',
         cursor: isOverlay ? 'grabbing' : 'grab',
         touchAction: 'none',
+        backgroundColor: compact ? 'rgba(245, 158, 11, 0.08)' : 'var(--cafe-surface)',
       }}
       title={isOverlay ? undefined : hoverTitle || 'Drag the whole booking card to reschedule'}
     >
       <div
-        className="flex items-center justify-center px-1.5 shrink-0"
+        className="flex items-center justify-center px-1.5 shrink-0 self-stretch"
         style={{
           backgroundColor: isOverlay ? 'rgba(245, 158, 11, 0.2)' : compact ? 'rgba(141, 103, 37, 0.16)' : '#EDE6DC',
           color: '#5c4a32',
@@ -1230,17 +1236,21 @@ function WeekJobChip({
         <GripVertical size={compact ? 12 : 14} aria-hidden />
       </div>
 
-      <div
-        className="min-w-0 flex-1 px-2 py-1.5"
-        style={{ backgroundColor: compact ? 'rgba(245, 158, 11, 0.12)' : 'var(--cafe-surface)' }}
-      >
+      <div className="min-w-0 flex-1 px-2.5 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-mono font-semibold tracking-wide" style={{ color: 'var(--cafe-amber)' }}>
-              #{job.job_number}
-            </p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-mono font-semibold" style={{ backgroundColor: '#F8EBDD', color: 'var(--cafe-amber)' }}>
+                #{job.job_number}
+              </span>
+              {job.status && (
+                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                  {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                </span>
+              )}
+            </div>
             <p
-              className={`${compact ? 'text-[11px]' : 'text-sm'} font-semibold leading-tight`}
+              className={`${compact ? 'text-[11px]' : 'text-sm'} mt-1 font-semibold leading-tight`}
               style={{
                 color: 'var(--cafe-text)',
                 display: '-webkit-box',
@@ -1252,75 +1262,80 @@ function WeekJobChip({
               {job.title}
             </p>
           </div>
-          {job.status && !compact && (
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
-              {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
-            </span>
-          )}
         </div>
 
-        {vehicleSummary && (
+        {customerName && (
           <p className="text-[11px] mt-1 font-medium" style={{ color: 'var(--cafe-text)' }}>
+            {customerName}
+          </p>
+        )}
+
+        {vehicleSummary && (
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
             {vehicleSummary}
           </p>
         )}
-        {secondarySummary && (
-          <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
-            {secondarySummary}
-          </p>
+
+        {metaTags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {metaTags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text-mid)' }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
-        {!compact && keySummary && (
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
-            {keySummary}
-          </p>
-        )}
+
         {!compact && job.job_address && (
-          <p className="text-[11px] mt-1 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
             <span className="inline-flex items-center gap-1"><MapPin size={11} /> {job.job_address}</span>
           </p>
         )}
-      </div>
 
-      {!isOverlay && (
-        <div className={`shrink-0 flex ${compact ? 'flex-col' : 'flex-col'} border-l`} style={{ borderColor: 'var(--cafe-border)' }}>
-          <button
-            type="button"
-            className={`font-semibold touch-manipulation ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]'}`}
-            style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text)' }}
-            onPointerDown={stopDragControlPropagation}
-            onMouseDown={stopDragControlPropagation}
-            onTouchStart={stopDragControlPropagation}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigate(`/auto-key/${job.id}`)
-            }}
-          >
-            Open
-          </button>
-          {onMoveToggle && (
+        {!isOverlay && (
+          <div className="mt-2 flex items-center justify-end gap-1.5 border-t pt-2" style={{ borderColor: 'rgba(44,24,16,0.08)' }}>
             <button
               type="button"
-              className={`font-semibold touch-manipulation ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]'}`}
-              style={{
-                backgroundColor: compact ? '#E8DCC8' : 'var(--cafe-amber)',
-                color: compact ? '#3d2f20' : '#2C1810',
-                borderTop: '1px solid rgba(44,24,16,0.08)',
-              }}
+              className={`rounded-md font-semibold touch-manipulation ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[11px]'}`}
+              style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text)' }}
               onPointerDown={stopDragControlPropagation}
               onMouseDown={stopDragControlPropagation}
               onTouchStart={stopDragControlPropagation}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                onMoveToggle()
+                navigate(`/auto-key/${job.id}`)
               }}
             >
-              Move
+              Open
             </button>
-          )}
-        </div>
-      )}
+            {onMoveToggle && (
+              <button
+                type="button"
+                className={`rounded-md font-semibold touch-manipulation ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[11px]'}`}
+                style={{
+                  backgroundColor: compact ? '#E8DCC8' : 'var(--cafe-amber)',
+                  color: compact ? '#3d2f20' : '#2C1810',
+                }}
+                onPointerDown={stopDragControlPropagation}
+                onMouseDown={stopDragControlPropagation}
+                onTouchStart={stopDragControlPropagation}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onMoveToggle()
+                }}
+              >
+                Move
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
