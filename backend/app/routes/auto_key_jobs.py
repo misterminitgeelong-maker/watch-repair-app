@@ -129,6 +129,10 @@ def list_auto_key_jobs(
     customer_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=2000),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    assigned_user_id: UUID | None = Query(default=None),
+    include_unscheduled: bool = Query(default=False),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -137,7 +141,31 @@ def list_auto_key_jobs(
         query = query.where(AutoKeyJob.status == status)
     if customer_id:
         query = query.where(AutoKeyJob.customer_id == customer_id)
-    return session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
+    if date_from or date_to:
+        from datetime import date as date_type, timedelta
+        if date_from:
+            df = date_type.fromisoformat(date_from)
+            query = query.where(AutoKeyJob.scheduled_at >= df)
+        if date_to:
+            dt = date_type.fromisoformat(date_to)
+            query = query.where(AutoKeyJob.scheduled_at < dt + timedelta(days=1))
+        if not include_unscheduled:
+            query = query.where(AutoKeyJob.scheduled_at.is_not(None))
+    if assigned_user_id:
+        query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
+    jobs = session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
+
+    # Batch enrich with customer names
+    customer_ids = list({j.customer_id for j in jobs})
+    customers = session.exec(
+        select(Customer).where(Customer.id.in_(customer_ids))
+    ).all() if customer_ids else []
+    cname_map = {c.id: c.full_name for c in customers}
+
+    return [
+        AutoKeyJobRead(**j.model_dump(), customer_name=cname_map.get(j.customer_id))
+        for j in jobs
+    ]
 
 
 @router.get("/{job_id}", response_model=AutoKeyJobRead)

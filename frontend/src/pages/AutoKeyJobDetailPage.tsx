@@ -70,6 +70,7 @@ export default function AutoKeyJobDetailPage() {
   const [invoiceToPay, setInvoiceToPay] = useState<{ id: string; invoice_number: string; total_cents: number } | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'eftpos' | 'bank'>('eftpos')
   const [statusFeedback, setStatusFeedback] = useState('')
+  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos'>('info')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -352,8 +353,35 @@ export default function AutoKeyJobDetailPage() {
 
       <PageHeader title={`#${job.job_number} · ${job.title}`} />
 
+      {/* Mobile tab bar */}
+      <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto">
+        <div className="flex gap-2 flex-nowrap pb-1">
+          {([
+            { key: 'info', label: 'Info' },
+            { key: 'vehicle', label: 'Vehicle & Key' },
+            { key: 'financial', label: 'Financial' },
+            { key: 'photos', label: 'Photos' },
+          ] as const).map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setDetailTab(tab.key)}
+              className="px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap touch-manipulation"
+              style={{
+                backgroundColor: detailTab === tab.key ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
+                color: detailTab === tab.key ? '#2C1810' : 'var(--cafe-text-muted)',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
         <Card className='p-5 space-y-4 xl:col-span-4'>
+          {/* Info tab: customer, job info, status, assign, schedule */}
+          <div className={detailTab !== 'info' ? 'hidden lg:contents' : ''}>
           {/* Customer section */}
           {customer && (
             <div className='pb-3' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
@@ -431,6 +459,10 @@ export default function AutoKeyJobDetailPage() {
             )}
           </div>
 
+          </div>{/* end info tab group */}
+
+          {/* Vehicle & Key tab: vehicle DB, key details, tech notes */}
+          <div className={detailTab !== 'vehicle' ? 'hidden lg:contents' : ''}>
           {hasFeature('auto_key') && (
             <>
               <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>
@@ -528,6 +560,10 @@ export default function AutoKeyJobDetailPage() {
             style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
           />
 
+          </div>{/* end vehicle tab group */}
+
+          {/* Photos tab */}
+          <div className={detailTab !== 'photos' ? 'hidden lg:contents' : ''}>
           <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Photo Attachments</h3>
           <div className='space-y-2'>
             {attachments.length > 0 && (
@@ -588,6 +624,10 @@ export default function AutoKeyJobDetailPage() {
             <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{attachments.length}/5 photos</p>
           </div>
 
+          </div>{/* end photos tab group */}
+
+          {/* Info tab continued: status, assign, lead source, account, schedule */}
+          <div className={detailTab !== 'info' ? 'hidden lg:contents' : ''}>
           <Select
             label='Status'
             value={job.status}
@@ -674,6 +714,7 @@ export default function AutoKeyJobDetailPage() {
           />
 
           {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
+          </div>{/* end info tab group (status/assign/schedule) */}
         </Card>
 
         {showArrivalSms && (
@@ -696,7 +737,7 @@ export default function AutoKeyJobDetailPage() {
           </Modal>
         )}
 
-        <div className='lg:col-span-2 xl:col-span-8 space-y-5'>
+        <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden lg:block' : ''}`}>
           <Card>
             <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Quotes</h2>

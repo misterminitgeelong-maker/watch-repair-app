@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
+import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -1433,7 +1433,7 @@ function WeekHourDropCell({
   )
 }
 
-function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
+function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
@@ -1553,6 +1553,18 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           <span className="text-sm font-semibold hover:underline block" style={{ color: 'var(--cafe-text)' }}>
             {job.title}
           </span>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name ?? 'Customer'}</p>
+          {(() => {
+            const scheduledLabel = job.scheduled_at
+              ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+              : null
+            return scheduledLabel ? (
+              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--cafe-amber)' }}>
+                <Clock size={11} />
+                {scheduledLabel}
+              </span>
+            ) : null
+          })()}
           <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
             {job.vehicle_make || 'Unknown make'} {job.vehicle_model || ''}
             {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
@@ -1643,13 +1655,15 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           </div>
           <div className="mt-2 space-y-2">
             {nextStatus && (
-              <Button
-                className="w-full"
+              <button
+                type="button"
+                className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2"
+                style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}
                 onClick={() => { void handleStatusChange(nextStatus) }}
                 disabled={statusMut.isPending}
               >
                 {statusMut.isPending ? 'Updating…' : quickStatusLabel}
-              </Button>
+              </button>
             )}
             <Button variant="secondary" className="w-full" onClick={() => setShowQuoteModal(true)}>
               New Quote
@@ -2122,6 +2136,62 @@ export default function AutoKeyJobsPage() {
 
       {view === 'dashboard' && (
         <>
+          {/* Today's summary */}
+          {(() => {
+            const todayYmd = ymdLocal(new Date())
+            const todayJobs = [...jobs].filter(j => {
+              if (!j.scheduled_at) return false
+              return ymdLocal(new Date(j.scheduled_at)) === todayYmd
+            })
+            const needsAttention = jobs.filter(j =>
+              ['awaiting_quote', 'awaiting_go_ahead', 'pending_booking', 'awaiting_customer_details'].includes(j.status)
+            )
+            if (todayJobs.length === 0 && needsAttention.length === 0) return null
+            return (
+              <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {todayJobs.length > 0 && (
+                  <div
+                    className="rounded-xl px-4 py-3 flex items-start gap-3"
+                    style={{ backgroundColor: 'rgba(201,162,72,0.12)', border: '1px solid rgba(201,162,72,0.35)' }}
+                  >
+                    <CalendarClock size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--cafe-amber)' }} />
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                        {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''} scheduled today
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {todayJobs.map(j => j.customer_name || j.title).slice(0, 3).join(', ')}{todayJobs.length > 3 ? ` +${todayJobs.length - 3} more` : ''}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-xs font-semibold mt-1.5 underline"
+                        style={{ color: 'var(--cafe-amber)' }}
+                        onClick={() => { setView('dispatch'); setDispatchDate(todayYmd) }}
+                      >
+                        View dispatch →
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {needsAttention.length > 0 && (
+                  <div
+                    className="rounded-xl px-4 py-3 flex items-start gap-3"
+                    style={{ backgroundColor: 'rgba(201,100,90,0.08)', border: '1px solid rgba(201,100,90,0.25)' }}
+                  >
+                    <AlertCircle size={18} className="shrink-0 mt-0.5" style={{ color: '#C96A5A' }} />
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                        {needsAttention.length} job{needsAttention.length !== 1 ? 's' : ''} need attention
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                        Awaiting quote, approval, or booking confirmation
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
             <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
               <button
@@ -2196,7 +2266,10 @@ export default function AutoKeyJobsPage() {
                         <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No jobs in this stage.</p>
                       ) : (
                         jobsInStatus.map((j: object, i: number) => {
-                          const job = j as { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; created_at: string; job_type?: string }
+                          const job = j as { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; created_at: string; job_type?: string; customer_name?: string; scheduled_at?: string }
+                          const kanbanScheduledLabel = job.scheduled_at
+                            ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                            : null
                           return (
                             <div
                               key={job.id}
@@ -2211,6 +2284,15 @@ export default function AutoKeyJobsPage() {
                                   <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
                                     #{job.job_number} · {formatDate(job.created_at)}
                                   </p>
+                                  {job.customer_name && (
+                                    <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name}</p>
+                                  )}
+                                  {kanbanScheduledLabel && (
+                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--cafe-amber)' }}>
+                                      <Clock size={10} />
+                                      {kanbanScheduledLabel}
+                                    </span>
+                                  )}
                                 </div>
                                 <Badge status={job.status} />
                               </div>
@@ -2301,7 +2383,20 @@ export default function AutoKeyJobsPage() {
               {filteredJobs.length === 0 ? (
                 <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
               ) : (
-                filteredJobs.map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
+                [...filteredJobs].sort((a: object, b: object) => {
+                  const ja = a as { scheduled_at?: string; created_at: string }
+                  const jb = b as { scheduled_at?: string; created_at: string }
+                  const todayYmd = ymdLocal(new Date())
+                  const aToday = ja.scheduled_at && ymdLocal(new Date(ja.scheduled_at)) === todayYmd ? 0 : 1
+                  const bToday = jb.scheduled_at && ymdLocal(new Date(jb.scheduled_at)) === todayYmd ? 0 : 1
+                  if (aToday !== bToday) return aToday - bToday
+                  if (ja.scheduled_at && jb.scheduled_at) {
+                    return new Date(ja.scheduled_at).getTime() - new Date(jb.scheduled_at).getTime()
+                  }
+                  if (ja.scheduled_at) return -1
+                  if (jb.scheduled_at) return 1
+                  return new Date(jb.created_at).getTime() - new Date(ja.created_at).getTime()
+                }).map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
               )}
             </div>
           )}
