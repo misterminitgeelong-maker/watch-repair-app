@@ -291,6 +291,12 @@ function HeroSection() {
             Log in
           </Link>
         </div>
+        <p className="mt-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Want to explore first?{' '}
+          <Link to="/login?demo=1" style={{ color: 'var(--cafe-amber)', fontWeight: 600 }}>
+            Try the demo &rarr;
+          </Link>
+        </p>
 
         {/* Social proof pills */}
         <div className="lp-reveal lp-reveal-delay-4 mt-6 flex flex-wrap gap-2">
