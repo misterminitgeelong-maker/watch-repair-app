@@ -133,6 +133,7 @@ interface WeekSchedulerJob {
   title: string
   scheduled_at?: string
   customer_id?: string
+  customer_name?: string | null
   assigned_user_id?: string
   status?: JobStatus
   vehicle_make?: string
@@ -1553,7 +1554,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           <span className="text-sm font-semibold hover:underline block" style={{ color: 'var(--cafe-text)' }}>
             {job.title}
           </span>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name ?? 'Customer'}</p>
+          {job.customer_name && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name}</p>
+          )}
           {(() => {
             const scheduledLabel = job.scheduled_at
               ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -2618,7 +2621,7 @@ export default function AutoKeyJobsPage() {
                           <WeekJobChip
                             key={job.id}
                             job={job}
-                            customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
+                            customerName={job.customer_name ?? (job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined)}
                             assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
                             selected={weekRelocateJobId === job.id}
                             isDragging={activeWeekJobId === job.id}
@@ -2727,7 +2730,7 @@ export default function AutoKeyJobsPage() {
                                           <WeekJobChip
                                             key={job.id}
                                             job={job}
-                                            customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
+                                            customerName={job.customer_name ?? (job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined)}
                                             assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
                                             compact
                                             selected={weekRelocateJobId === job.id}
@@ -2750,7 +2753,7 @@ export default function AutoKeyJobsPage() {
                       {activeWeekJob ? (
                         <WeekJobChip
                           job={activeWeekJob}
-                          customerName={activeWeekJob.customer_id ? customers.find((c: { id: string }) => c.id === activeWeekJob.customer_id)?.full_name : undefined}
+                          customerName={activeWeekJob.customer_name ?? (activeWeekJob.customer_id ? customers.find((c: { id: string }) => c.id === activeWeekJob.customer_id)?.full_name : undefined)}
                           assignedTechName={activeWeekJob.assigned_user_id ? users.find((u: { id: string }) => u.id === activeWeekJob.assigned_user_id)?.full_name : undefined}
                           compact={!!activeWeekJob.scheduled_at}
                           isOverlay
