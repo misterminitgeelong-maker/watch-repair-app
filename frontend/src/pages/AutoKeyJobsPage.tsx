@@ -1435,13 +1435,14 @@ function WeekHourDropCell({
   )
 }
 
-function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
+function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; priority?: string; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
+  const [confirmStatus, setConfirmStatus] = useState<JobStatus | null>(null)
 
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -1502,6 +1503,10 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   })
 
   const handleStatusChange = async (status: JobStatus) => {
+    if (['completed', 'collected', 'no_go'].includes(status)) {
+      setConfirmStatus(status)
+      return
+    }
     setStatusFeedback('')
     const invoicesBefore = invoices.length
     await statusMut.mutateAsync(status)
@@ -1546,6 +1551,16 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
                 {job.assigned_user_id ? (users.find(u => u.id === job.assigned_user_id)?.full_name ?? 'Assigned') : 'Unassigned'}
               </span>
             )}
+            {job.priority === 'urgent' && (
+              <span className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(201,100,90,0.15)', color: '#C96A5A' }}>
+                Urgent
+              </span>
+            )}
+            {job.priority === 'high' && (
+              <span className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(200,130,50,0.15)', color: '#B87030' }}>
+                High
+              </span>
+            )}
             {job.customer_account_id && (
               <span className="text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
                 B2B
@@ -1579,14 +1594,18 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
               </span>
             ) : null
           })()}
-          <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-            {job.vehicle_make || 'Unknown make'} {job.vehicle_model || ''}
-            {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
-            {job.registration_plate ? ` · ${job.registration_plate}` : ''}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: job.job_address ? 'var(--cafe-text-mid)' : 'var(--cafe-text-muted)' }}>
-            {job.job_address || 'No address set'}
-          </p>
+          {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
+            <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+              {[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}
+              {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
+              {job.registration_plate ? ` · ${job.registration_plate}` : ''}
+            </p>
+          )}
+          {job.job_address && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+              {job.job_address}
+            </p>
+          )}
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
             Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity}
           </p>
@@ -1649,20 +1668,22 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             </Select>
           </div>
           )}
-          <div className="mt-2">
-            <Select
-              value={job.customer_account_id ?? ''}
-              onChange={e => updateAccountMut.mutate(e.target.value || null)}
-              disabled={updateAccountMut.isPending}
-            >
-              <option value="">No B2B account</option>
-              {matchingAccounts.map((account: CustomerAccount) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}{account.account_code ? ` (${account.account_code})` : ''}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {(matchingAccounts.length > 0 || job.customer_account_id) && (
+            <div className="mt-2">
+              <Select
+                value={job.customer_account_id ?? ''}
+                onChange={e => updateAccountMut.mutate(e.target.value || null)}
+                disabled={updateAccountMut.isPending}
+              >
+                <option value="">No account</option>
+                {matchingAccounts.map((account: CustomerAccount) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}{account.account_code ? ` (${account.account_code})` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div className="mt-2 space-y-2">
             {nextStatus && (
               <button
@@ -1697,6 +1718,46 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
         </div>
       </div>
     </Card>
+      {confirmStatus && (
+        <Modal
+          title={`Mark as ${STATUS_LABELS[confirmStatus] ?? confirmStatus.replace(/_/g, ' ')}?`}
+          onClose={() => setConfirmStatus(null)}
+        >
+          <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+            {confirmStatus === 'no_go'
+              ? 'This will mark the job as no go. A quote or invoice will NOT be auto-created.'
+              : confirmStatus === 'completed'
+              ? 'This will mark the job as completed. An invoice will be auto-created if a quote exists.'
+              : 'This will mark the job as collected and close it out.'}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setConfirmStatus(null)}>Cancel</Button>
+            <Button
+              className="flex-1"
+              onClick={async () => {
+                const s = confirmStatus
+                setConfirmStatus(null)
+                setStatusFeedback('')
+                const invoicesBefore = invoices.length
+                await statusMut.mutateAsync(s)
+                if (s !== 'completed') return
+                const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
+                  listAutoKeyQuotes(job.id),
+                  listAutoKeyInvoices(job.id),
+                ])
+                const newestQuote = latestQuotes[0]
+                if (latestInvoices.length > invoicesBefore) { setStatusFeedback('Completed and invoice auto-created.'); return }
+                if (!newestQuote) { setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.'); return }
+                if (newestQuote.status === 'declined') { setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.'); return }
+                setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+              }}
+              disabled={statusMut.isPending}
+            >
+              {statusMut.isPending ? 'Updating…' : 'Confirm'}
+            </Button>
+          </div>
+        </Modal>
+      )}
     {showDeleteConfirm && (
       <Modal
         title="Delete Mobile Services Job"
@@ -1905,6 +1966,16 @@ export default function AutoKeyJobsPage() {
       }).then(r => r.data),
     enabled: view === 'reports' && !!reportDateParams && (role === 'owner' || role === 'manager'),
   })
+  const tomorrowYmd = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return ymdLocal(d)
+  }, [])
+  const { data: tomorrowJobs = [] } = useQuery({
+    queryKey: ['auto-key-jobs', 'tomorrow-count', tomorrowYmd],
+    queryFn: () => listAutoKeyJobs({ date_from: tomorrowYmd, date_to: tomorrowYmd }).then(r => r.data),
+    staleTime: 60_000,
+  })
   const sendRemindersMut = useMutation({
     mutationFn: () => sendAutoKeyDayBeforeReminders().then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-reports'] }),
@@ -2072,7 +2143,7 @@ export default function AutoKeyJobsPage() {
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
             style={view === 'dashboard' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
           >
-            <LayoutGrid size={16} /> Dashboard
+            <LayoutGrid size={16} /> Pipeline
           </button>
           <button
             onClick={() => setView('jobs')}
@@ -2457,7 +2528,11 @@ export default function AutoKeyJobsPage() {
               disabled={sendRemindersMut.isPending}
               className="ml-auto"
             >
-              {sendRemindersMut.isPending ? 'Sending…' : 'Send day-before reminders'}
+              {sendRemindersMut.isPending
+                ? 'Sending…'
+                : tomorrowJobs.length > 0
+                ? `Send reminders (${tomorrowJobs.length} job${tomorrowJobs.length !== 1 ? 's' : ''} tomorrow)`
+                : 'Send day-before reminders'}
             </Button>
           </div>
 
@@ -2981,7 +3056,11 @@ export default function AutoKeyJobsPage() {
               )}
             </div>
             <Button variant="secondary" onClick={() => sendRemindersMut.mutate()} disabled={sendRemindersMut.isPending}>
-              {sendRemindersMut.isPending ? 'Sending…' : 'Send day-before reminders now'}
+              {sendRemindersMut.isPending
+                ? 'Sending…'
+                : tomorrowJobs.length > 0
+                ? `Send reminders (${tomorrowJobs.length} tomorrow)`
+                : 'Send day-before reminders'}
             </Button>
           </div>
 
@@ -3128,7 +3207,7 @@ export default function AutoKeyJobsPage() {
                     <div className="space-y-4">
                       {commissionReport.technicians.length === 0 ? (
                         <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-                          No technicians have commission tracking enabled. Use <strong>Commission rules</strong> or add a technician with commission enabled.
+                          No commission data for this period. Enable commission tracking per technician under <strong>Team → Commission rules</strong>, then assign jobs with a lead source (Shop / Tech / Minit sourced).
                         </p>
                       ) : (
                         commissionReport.technicians.map(tech => (

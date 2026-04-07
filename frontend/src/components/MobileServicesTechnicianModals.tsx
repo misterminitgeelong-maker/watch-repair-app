@@ -53,7 +53,7 @@ export function AddTechnicianModal({
         setError('duplicate_email')
         return
       }
-      setError(getApiErrorMessage(err, 'Could not add technician. Only owners can add accounts; check plan limits.'))
+      setError(getApiErrorMessage(err, 'Could not add technician. Check you have an owner role and have not reached your plan limit.'))
     },
   })
   return (
@@ -185,7 +185,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
   return (
     <Modal title="Mobile Services commission rules" onClose={onClose}>
       <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
-        Job lead source on each ticket must match a key in <code className="text-xs">rates_bp</code> (Shop sourced, Technician sourced, Minit sourced). You can add custom keys in JSON on the user if needed.
+        Set the commission percentage earned for each job source. The retainer is a salary component — only earnings above it are paid as a bonus.
       </p>
       {techs.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
