@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { WatchIcon } from 'lucide-react'
 import {
   listAutoKeyJobs,
   listCustomers,
@@ -730,17 +729,7 @@ export default function AppShell() {
           className="md:hidden sticky top-0 z-20 flex items-center justify-center px-4 py-3"
           style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}
         >
-          <div className="flex items-center gap-2">
-            <div
-              className="h-7 w-7 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--cafe-espresso-2)', color: 'var(--cafe-gold)' }}
-            >
-              <WatchIcon size={14} strokeWidth={2.5} />
-            </div>
-            <span style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }} className="text-base font-semibold">
-              Mainspring
-            </span>
-          </div>
+          <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '130px', height: 'auto', display: 'block' }} />
         </header>
 
         {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}

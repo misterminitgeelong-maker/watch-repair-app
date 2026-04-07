@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { Check, WatchIcon } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { signup } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Input } from '@/components/ui'
@@ -146,13 +146,8 @@ export default function SignupPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col items-center mb-8 gap-3">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"
-                style={{ backgroundColor: 'var(--cafe-espresso)' }}
-              >
-                <WatchIcon size={28} style={{ color: 'var(--cafe-gold)' }} />
-              </div>
+            <div className="flex flex-col items-center mb-8 gap-4">
+              <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '200px', height: 'auto', display: 'block', maxWidth: '100%' }} />
               <div className="text-center">
                 <h1
                   className="text-3xl font-semibold"
