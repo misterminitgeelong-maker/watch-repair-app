@@ -353,6 +353,38 @@ export default function AutoKeyJobDetailPage() {
 
       <PageHeader title={`#${job.job_number} · ${job.title}`} />
 
+      {/* Mobile quick-action strip */}
+      <div className="lg:hidden mb-3 flex items-center gap-2 flex-wrap">
+        <Badge status={job.status} />
+        <select
+          className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
+          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+          value={job.status}
+          disabled={statusMut.isPending}
+          onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
+        >
+          {STATUSES.map(s => (
+            <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+          ))}
+        </select>
+        {job.job_address && (
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium touch-manipulation shrink-0"
+            style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: 'var(--cafe-amber)', border: '1px solid rgba(201,162,72,0.3)' }}
+          >
+            <MapPin size={14} /> Nav
+          </a>
+        )}
+      </div>
+      {statusFeedback && (
+        <p className='lg:hidden text-xs rounded-md px-2 py-1.5 mb-2' style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
+          {statusFeedback}
+        </p>
+      )}
+
       {/* Mobile tab bar */}
       <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto">
         <div className="flex gap-2 flex-nowrap pb-1">
@@ -411,7 +443,9 @@ export default function AutoKeyJobDetailPage() {
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Status</span><Badge status={job.status} /></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Priority</span><span className='capitalize'>{job.priority}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Created</span><span>{formatDate(job.created_at)}</span></div>
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{job.vehicle_make || 'Unknown'} {job.vehicle_model || ''}</span></div>
+            {(job.vehicle_make || job.vehicle_model) && (
+              <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}</span></div>
+            )}
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
             {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
             {job.additional_services_json && (() => {
@@ -639,7 +673,7 @@ export default function AutoKeyJobDetailPage() {
             ))}
           </Select>
           {statusFeedback && (
-            <p className='text-xs rounded-md px-2 py-1.5' style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
+            <p className='hidden lg:block text-xs rounded-md px-2 py-1.5' style={{ backgroundColor: '#F8EBDD', color: '#6A3D21' }}>
               {statusFeedback}
             </p>
           )}
