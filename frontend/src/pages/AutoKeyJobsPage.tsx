@@ -2440,6 +2440,14 @@ export default function AutoKeyJobsPage() {
               </Select>
             </div>
             )}
+            <Button
+              variant="secondary"
+              onClick={() => sendRemindersMut.mutate()}
+              disabled={sendRemindersMut.isPending}
+              className="ml-auto"
+            >
+              {sendRemindersMut.isPending ? 'Sending…' : 'Send day-before reminders'}
+            </Button>
           </div>
 
           {dispatchLoading ? <Spinner /> : (
