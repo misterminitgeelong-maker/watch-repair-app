@@ -1582,12 +1582,8 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
             {formatDate(job.created_at)}{job.salesperson ? ` · ${job.salesperson}` : ''}
           </p>
-          {(job.scheduled_at || job.job_type) && (
-            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-              {job.scheduled_at && <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span>}
-              {job.scheduled_at && job.job_type && ' · '}
-              {job.job_type}
-            </p>
+          {job.job_type && (
+            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
           )}
           {job.job_address && (
             <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
@@ -1985,12 +1981,13 @@ export default function AutoKeyJobsPage() {
     })
     : []
   const isSolo = users.length <= 1
-  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string }) => {
+  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
     const q = search.trim().toLowerCase()
     const matchSearch = !q || j.job_number.toLowerCase().includes(q) || j.title.toLowerCase().includes(q) ||
       (j.vehicle_make && j.vehicle_make.toLowerCase().includes(q)) ||
       (j.vehicle_model && j.vehicle_model.toLowerCase().includes(q)) ||
-      (j.registration_plate && j.registration_plate.toLowerCase().includes(q))
+      (j.registration_plate && j.registration_plate.toLowerCase().includes(q)) ||
+      (j.customer_name && j.customer_name.toLowerCase().includes(q))
     const inDirectory = jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     return matchSearch && inDirectory && matchStatus
@@ -2227,7 +2224,7 @@ export default function AutoKeyJobsPage() {
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Search…"
+                  placeholder="Search job, customer, rego…"
                   className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
                   style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
                 />
@@ -2340,7 +2337,7 @@ export default function AutoKeyJobsPage() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search jobs, vehicle, rego…"
+                placeholder="Search job, customer, vehicle, rego…"
                 className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
                 style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
               />
