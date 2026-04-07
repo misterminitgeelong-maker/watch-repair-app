@@ -71,28 +71,29 @@ export default function PricingPage() {
       <div className="mx-auto w-full max-w-6xl" style={{ position: 'relative', zIndex: 1 }}>
         <header className="flex items-center justify-between py-6 sm:py-7">
           <Link to="/" className="flex items-center gap-3">
-            <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
+            <img src="/mainspring-logo.svg" alt="Mainspring" className="w-28 sm:w-44" style={{ height: 'auto' }} />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <Link to="/pricing" className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
               Pricing
             </Link>
-            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap" style={{ color: 'var(--cafe-text)' }}>
               Log in
             </Link>
             <Link
               to="/login?demo=1"
-              className="rounded-lg px-3 py-2 text-sm font-medium"
+              className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap"
               style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}
             >
               Demo login
             </Link>
             <Link
               to="/signup"
-              className="rounded-lg px-3.5 py-2 text-sm font-semibold"
+              className="rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap"
               style={{ backgroundColor: '#F3ECE2', color: '#5F4734', border: '1px solid #DFD2C2' }}
             >
-              Start your shop
+              <span className="sm:hidden">Get started</span>
+              <span className="hidden sm:inline">Start your shop</span>
             </Link>
           </div>
         </header>

@@ -1732,6 +1732,9 @@ export default function AutoKeyJobsPage() {
   const [weekRelocateJobId, setWeekRelocateJobId] = useState<string | null>(null)
   const [activeWeekJobId, setActiveWeekJobId] = useState<string | null>(null)
   const [weekScheduleErr, setWeekScheduleErr] = useState<string | null>(null)
+  /** Mobile: which day index (0-6) starts the 3-day window */
+  const [mobileDayStart, setMobileDayStart] = useState(0)
+  const [isMobileWidth, setIsMobileWidth] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
   const weekDndSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -1740,6 +1743,19 @@ export default function AutoKeyJobsPage() {
   const [reportDateFrom, setReportDateFrom] = useState('')
   const [reportDateTo, setReportDateTo] = useState('')
   const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
+
+  useEffect(() => {
+    const handler = () => setIsMobileWidth(window.innerWidth < 640)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
+  useEffect(() => {
+    if (!shopCalendarTodayYmd || !weekStart) return
+    const days = Array.from({ length: 7 }, (_, i) => civilAddDays(weekStart, i))
+    const todayIdx = days.indexOf(shopCalendarTodayYmd)
+    setMobileDayStart(todayIdx >= 0 ? Math.min(todayIdx, 4) : 0)
+  }, [weekStart, shopCalendarTodayYmd])
 
   useEffect(() => {
     if (!sessionReady || !shopCalendarTodayYmd || syncedShopCalendarDate.current) return
@@ -2473,9 +2489,20 @@ export default function AutoKeyJobsPage() {
                     onDragEnd={handleWeekDragEnd}
                   >
                     <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
-                        Unscheduled — drag the whole card to a slot, or Move → tap destination; drop a card here to clear time
-                      </h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span className="hidden sm:inline">Unscheduled — drag the whole card to a slot, or Move → tap destination; drop a card here to clear time</span>
+                          <span className="sm:hidden">Unscheduled</span>
+                        </h3>
+                        <span
+                          className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold cursor-default select-none"
+                          style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}
+                          title="Tap Move on a card, then tap a time slot to schedule it. Drag cards on desktop."
+                          aria-label="Tap Move on a card then tap a time slot to schedule it"
+                        >
+                          ?
+                        </span>
+                      </div>
                       <WeekUnscheduledDropZone
                         canTapPlace={!!weekRelocateJobId}
                         onClick={(ev) => {
@@ -2498,80 +2525,123 @@ export default function AutoKeyJobsPage() {
                       </WeekUnscheduledDropZone>
                     </div>
 
-                    <div className="overflow-x-auto max-h-[min(85vh,900px)] overflow-y-auto">
-                      <div className="grid gap-2" style={{ gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))' }}>
-                        <div />
-                        {[...Array(7)].map((_, i) => {
-                          const dayStr = civilAddDays(weekStart, i)
-                          const [cy, cm, cd] = dayStr.split('-').map(Number)
-                          const civilUtc = Date.UTC(cy, cm - 1, cd)
-                          const dayName = new Date(civilUtc).toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' })
-                          const dayNum = cd
-                          const isToday = Boolean(shopCalendarTodayYmd && dayStr === shopCalendarTodayYmd)
-                          return (
-                            <WeekDayHeaderDrop
-                              key={dayStr}
-                              dayStr={dayStr}
-                              dayName={dayName}
-                              dayNum={dayNum}
-                              isToday={isToday}
-                              canTapPlace={!!weekRelocateJobId}
-                              onClick={() => {
-                                if (!weekRelocateJobId) return
-                                const next = isoScheduledOnDayKeepingShopTime(weekRelocateJobId, dayStr, weekJobs, scheduleCalendarTimezone)
-                                rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: next })
-                              }}
-                            />
-                          )
-                        })}
-                        {WEEK_SCHEDULE_HOURS.map(hour => (
-                          <Fragment key={hour}>
-                            <div className="py-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                              {String(hour).padStart(2, '0')}:00
+                    {(() => {
+                      const visibleDayIndices = isMobileWidth
+                        ? [mobileDayStart, mobileDayStart + 1, mobileDayStart + 2].filter(i => i < 7)
+                        : Array.from({ length: 7 }, (_, i) => i)
+                      const colTemplate = isMobileWidth
+                        ? `40px repeat(${visibleDayIndices.length}, 1fr)`
+                        : '80px repeat(7, minmax(120px, 1fr))'
+                      return (
+                        <>
+                          {isMobileWidth && (
+                            <div className="flex items-center justify-between mb-2 px-1">
+                              <button
+                                type="button"
+                                disabled={mobileDayStart === 0}
+                                onClick={() => setMobileDayStart(d => Math.max(0, d - 1))}
+                                className="p-2 rounded-lg disabled:opacity-30"
+                                style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}
+                              >
+                                <ChevronLeft size={16} style={{ color: 'var(--cafe-text-muted)' }} />
+                              </button>
+                              <span className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>
+                                {visibleDayIndices.map(i => {
+                                  const ds = civilAddDays(weekStart, i)
+                                  const [, , cd] = ds.split('-').map(Number)
+                                  const [cy, cm] = ds.split('-').map(Number)
+                                  const name = new Date(Date.UTC(cy, cm - 1, cd)).toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' })
+                                  return `${name} ${cd}`
+                                }).join(' · ')}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={mobileDayStart >= 4}
+                                onClick={() => setMobileDayStart(d => Math.min(4, d + 1))}
+                                className="p-2 rounded-lg disabled:opacity-30"
+                                style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}
+                              >
+                                <ChevronRight size={16} style={{ color: 'var(--cafe-text-muted)' }} />
+                              </button>
                             </div>
-                            {[...Array(7)].map((_, i) => {
-                              const dayStr = civilAddDays(weekStart, i)
-                              const slotStartMs = new Date(zonedWallTimeToUtcIso(dayStr, hour, 0, scheduleCalendarTimezone)).getTime()
-                              const slotEndMs = new Date(zonedWallTimeToUtcIso(dayStr, hour + 1, 0, scheduleCalendarTimezone)).getTime()
-                              const inSlot = weekJobs.filter((j: { scheduled_at?: string }) => {
-                                if (!j.scheduled_at) return false
-                                const t = new Date(j.scheduled_at).getTime()
-                                return t >= slotStartMs && t < slotEndMs
-                              }) as WeekSchedulerJob[]
-                              const newScheduledAt = weekSlotScheduledAt(dayStr, hour, scheduleCalendarTimezone)
-                              return (
-                                <WeekHourDropCell
-                                  key={`${dayStr}-${hour}`}
-                                  dropId={weekSlotDropId(dayStr, hour)}
-                                  canTapPlace={!!weekRelocateJobId}
-                                  onClick={(ev) => {
-                                    if (!weekRelocateJobId) return
-                                    const t = ev.target as HTMLElement
-                                    if (t.closest('a')) return
-                                    if (t.closest('button')) return
-                                    if (t.closest('[data-week-job-chip]')) return
-                                    rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: newScheduledAt })
-                                  }}
-                                >
-                                  {inSlot.map((job) => (
-                                    <WeekJobChip
-                                      key={job.id}
-                                      job={job}
-                                      customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
-                                      assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
-                                      compact
-                                      selected={weekRelocateJobId === job.id}
-                                      isDragging={activeWeekJobId === job.id}
-                                      onMoveToggle={() => setWeekRelocateJobId((cur) => (cur === job.id ? null : job.id))}
-                                    />
-                                  ))}
-                                </WeekHourDropCell>
-                              )
-                            })}
-                          </Fragment>
-                        ))}
-                      </div>
-                    </div>
+                          )}
+                          <div className="max-h-[min(85vh,900px)] overflow-y-auto">
+                            <div className="grid gap-2" style={{ gridTemplateColumns: colTemplate }}>
+                              <div />
+                              {visibleDayIndices.map((i) => {
+                                const dayStr = civilAddDays(weekStart, i)
+                                const [cy, cm, cd] = dayStr.split('-').map(Number)
+                                const civilUtc = Date.UTC(cy, cm - 1, cd)
+                                const dayName = new Date(civilUtc).toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' })
+                                const dayNum = cd
+                                const isToday = Boolean(shopCalendarTodayYmd && dayStr === shopCalendarTodayYmd)
+                                return (
+                                  <WeekDayHeaderDrop
+                                    key={dayStr}
+                                    dayStr={dayStr}
+                                    dayName={dayName}
+                                    dayNum={dayNum}
+                                    isToday={isToday}
+                                    canTapPlace={!!weekRelocateJobId}
+                                    onClick={() => {
+                                      if (!weekRelocateJobId) return
+                                      const next = isoScheduledOnDayKeepingShopTime(weekRelocateJobId, dayStr, weekJobs, scheduleCalendarTimezone)
+                                      rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: next })
+                                    }}
+                                  />
+                                )
+                              })}
+                              {WEEK_SCHEDULE_HOURS.map(hour => (
+                                <Fragment key={hour}>
+                                  <div className="py-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                                    {String(hour).padStart(2, '0')}:00
+                                  </div>
+                                  {visibleDayIndices.map((i) => {
+                                    const dayStr = civilAddDays(weekStart, i)
+                                    const slotStartMs = new Date(zonedWallTimeToUtcIso(dayStr, hour, 0, scheduleCalendarTimezone)).getTime()
+                                    const slotEndMs = new Date(zonedWallTimeToUtcIso(dayStr, hour + 1, 0, scheduleCalendarTimezone)).getTime()
+                                    const inSlot = weekJobs.filter((j: { scheduled_at?: string }) => {
+                                      if (!j.scheduled_at) return false
+                                      const t = new Date(j.scheduled_at).getTime()
+                                      return t >= slotStartMs && t < slotEndMs
+                                    }) as WeekSchedulerJob[]
+                                    const newScheduledAt = weekSlotScheduledAt(dayStr, hour, scheduleCalendarTimezone)
+                                    return (
+                                      <WeekHourDropCell
+                                        key={`${dayStr}-${hour}`}
+                                        dropId={weekSlotDropId(dayStr, hour)}
+                                        canTapPlace={!!weekRelocateJobId}
+                                        onClick={(ev) => {
+                                          if (!weekRelocateJobId) return
+                                          const t = ev.target as HTMLElement
+                                          if (t.closest('a')) return
+                                          if (t.closest('button')) return
+                                          if (t.closest('[data-week-job-chip]')) return
+                                          rescheduleMut.mutate({ jobId: weekRelocateJobId, scheduled_at: newScheduledAt })
+                                        }}
+                                      >
+                                        {inSlot.map((job) => (
+                                          <WeekJobChip
+                                            key={job.id}
+                                            job={job}
+                                            customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
+                                            assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
+                                            compact
+                                            selected={weekRelocateJobId === job.id}
+                                            isDragging={activeWeekJobId === job.id}
+                                            onMoveToggle={() => setWeekRelocateJobId((cur) => (cur === job.id ? null : job.id))}
+                                          />
+                                        ))}
+                                      </WeekHourDropCell>
+                                    )
+                                  })}
+                                </Fragment>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )
+                    })()}
 
                     <DragOverlay>
                       {activeWeekJob ? (

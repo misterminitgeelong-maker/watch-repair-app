@@ -16,70 +16,87 @@ import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Badge, Sel
 import { formatCents, formatDate } from '@/lib/utils'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
+const inputStyle = { border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }
+const labelStyle = { color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' as const }
+
 function AddLineItemRow({ item, index, onChange, onRemove }: {
   item: QuoteLineItemInput; index: number
   onChange: (i: number, key: keyof QuoteLineItemInput, value: string | number) => void
   onRemove: (i: number) => void
 }) {
+  const typeSelect = (
+    <select className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.item_type} onChange={e => onChange(index, 'item_type', e.target.value)}>
+      <option value="labor">Labor</option>
+      <option value="part">Part</option>
+      <option value="fee">Fee</option>
+    </select>
+  )
+  const descInput = (
+    <input className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.description} onChange={e => onChange(index, 'description', e.target.value)} placeholder="Movement service…" />
+  )
+  const qtyInput = (
+    <input type="number" min="0.01" step="0.01" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.quantity} onChange={e => { const n = Number.parseFloat(e.target.value); onChange(index, 'quantity', Number.isFinite(n) ? n : 0) }} />
+  )
+  const priceInput = (
+    <input type="number" min="0" step="1" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.unit_price_cents} placeholder="5000" onChange={e => { const n = Number.parseInt(e.target.value, 10); onChange(index, 'unit_price_cents', Number.isFinite(n) ? n : 0) }} />
+  )
+  const deleteBtn = (
+    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: '#C96A5A' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = '#C96A5A')}>
+      <Trash2 size={14} />
+    </button>
+  )
+
   return (
-    <div className="grid grid-cols-12 gap-2 items-end">
-      <div className="col-span-3">
-        {index === 0 && <label className="text-xs font-medium block mb-1" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Type</label>}
-        <select
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
-          value={item.item_type}
-          onChange={e => onChange(index, 'item_type', e.target.value)}
-        >
-          <option value="labor">Labor</option>
-          <option value="part">Part</option>
-          <option value="fee">Fee</option>
-        </select>
+    <>
+      {/* Mobile stacked layout */}
+      <div className="sm:hidden space-y-2 pb-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs font-medium block mb-1" style={labelStyle}>Type</label>
+            {typeSelect}
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1" style={labelStyle}>Qty</label>
+            {qtyInput}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium block mb-1" style={labelStyle}>Description</label>
+          {descInput}
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="text-xs font-medium block mb-1" style={labelStyle}>Unit Price (cents)</label>
+            {priceInput}
+          </div>
+          <div className="pb-0.5">{deleteBtn}</div>
+        </div>
       </div>
-      <div className="col-span-4">
-        {index === 0 && <label className="text-xs font-medium block mb-1" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Description</label>}
-        <input
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
-          value={item.description}
-          onChange={e => onChange(index, 'description', e.target.value)}
-          placeholder="Movement service…"
-        />
+
+      {/* Desktop 12-col layout */}
+      <div className="hidden sm:grid grid-cols-12 gap-2 items-end">
+        <div className="col-span-3">
+          {index === 0 && <label className="text-xs font-medium block mb-1" style={labelStyle}>Type</label>}
+          {typeSelect}
+        </div>
+        <div className="col-span-4">
+          {index === 0 && <label className="text-xs font-medium block mb-1" style={labelStyle}>Description</label>}
+          {descInput}
+        </div>
+        <div className="col-span-2">
+          {index === 0 && <label className="text-xs font-medium block mb-1" style={labelStyle}>Qty</label>}
+          {qtyInput}
+        </div>
+        <div className="col-span-2">
+          {index === 0 && <label className="text-xs font-medium block mb-1" style={labelStyle}>Unit Price</label>}
+          {priceInput}
+        </div>
+        <div className="col-span-1 flex justify-end">
+          {index === 0 && <div className="mb-1 h-4" />}
+          {deleteBtn}
+        </div>
       </div>
-      <div className="col-span-2">
-        {index === 0 && <label className="text-xs font-medium block mb-1" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Qty</label>}
-        <input
-          type="number" min="0.01" step="0.01"
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
-          value={item.quantity}
-          onChange={e => {
-            const next = Number.parseFloat(e.target.value)
-            onChange(index, 'quantity', Number.isFinite(next) ? next : 0)
-          }}
-        />
-      </div>
-      <div className="col-span-2">
-        {index === 0 && <label className="text-xs font-medium block mb-1" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Unit Price</label>}
-        <input
-          type="number" min="0" step="1"
-          className="w-full rounded px-2 py-1.5 text-sm"
-          style={{ border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
-          value={item.unit_price_cents}
-          placeholder="5000"
-          onChange={e => {
-            const next = Number.parseInt(e.target.value, 10)
-            onChange(index, 'unit_price_cents', Number.isFinite(next) ? next : 0)
-          }}
-        />
-      </div>
-      <div className="col-span-1 flex justify-end">
-        {index === 0 && <div className="mb-1 h-4" />}
-        <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: '#C96A5A' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = '#C96A5A')}>
-          <Trash2 size={14} />
-        </button>
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -281,71 +298,123 @@ export default function QuotesPage() {
       )}
 
       {isLoading ? <Spinner /> : (
-        <Card>
-          {quotes.length === 0 ? <EmptyState message="No quotes yet." /> : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
-
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Total</th>
-                  <th className="px-5 py-3 font-medium">Sent</th>
-                  <th className="px-5 py-3 font-medium">Created</th>
-                  <th className="px-5 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+        <>
+          {quotes.length === 0 ? (
+            <Card><EmptyState message="No quotes yet." /></Card>
+          ) : (
+            <>
+              {/* Mobile card list */}
+              <div className="md:hidden space-y-3">
                 {quotes.map(q => (
-                  <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
-
-                    <td className="px-5 py-3"><Badge status={q.status} /></td>
-                    <td className="px-5 py-3 font-semibold">{formatCents(q.total_cents)}</td>
-                    <td className="px-5 py-3">
-                      {q.sent_at ? (
-                        <span className="flex items-center gap-1 text-xs text-green-600">
-                          <MessageSquare size={12} /> {formatDate(q.sent_at)}
-                        </span>
-                      ) : (
-                        <span className="text-xs" style={{ color: 'var(--cafe-border-2)' }}>—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(q.created_at)}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
-                        {q.status === 'draft' && (
-                          <Button
-                            variant="secondary"
-                            onClick={() => sendMut.mutate(q.id)}
-                            disabled={sendMut.isPending}
-                            className="text-xs py-1 px-2"
-                          >
-                            <MessageSquare size={12} /> Send SMS
-                          </Button>
-                        )}
-                        {q.status === 'sent' && (
-                          <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
-                        )}
-                        {(q.status === 'sent' || q.status === 'draft') && (
-                          <button
-                            title="Copy approval link"
-                            onClick={() => copyApprovalLink(q.approval_token, q.id)}
-                            className="p-1 transition-colors"
-                            style={{ color: 'var(--cafe-text-muted)' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
-                          >
-                            {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
-                          </button>
-                        )}
+                  <Card key={q.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge status={q.status} />
+                          {q.sent_at && (
+                            <span className="flex items-center gap-1 text-xs text-green-600">
+                              <MessageSquare size={11} /> Sent {formatDate(q.sent_at)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                          Created {formatDate(q.created_at)}
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 flex-wrap">
+                          <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono underline" style={{ color: 'var(--cafe-amber)' }}>View Job</Link>
+                          {q.status === 'draft' && (
+                            <button
+                              className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
+                              style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+                              onClick={() => sendMut.mutate(q.id)}
+                              disabled={sendMut.isPending}
+                            >
+                              <MessageSquare size={11} /> Send SMS
+                            </button>
+                          )}
+                          {q.status === 'sent' && (
+                            <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                          )}
+                          {(q.status === 'sent' || q.status === 'draft') && (
+                            <button
+                              title="Copy approval link"
+                              onClick={() => copyApprovalLink(q.approval_token, q.id)}
+                              className="p-1 transition-colors"
+                              style={{ color: 'var(--cafe-text-muted)' }}
+                            >
+                              {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </td>
-                  </tr>
+                      <p className="text-lg font-semibold shrink-0" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                        {formatCents(q.total_cents)}
+                      </p>
+                    </div>
+                  </Card>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop table */}
+              <Card className="hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Total</th>
+                      <th className="px-5 py-3 font-medium">Sent</th>
+                      <th className="px-5 py-3 font-medium">Created</th>
+                      <th className="px-5 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotes.map(q => (
+                      <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                        <td className="px-5 py-3"><Badge status={q.status} /></td>
+                        <td className="px-5 py-3 font-semibold">{formatCents(q.total_cents)}</td>
+                        <td className="px-5 py-3">
+                          {q.sent_at ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600">
+                              <MessageSquare size={12} /> {formatDate(q.sent_at)}
+                            </span>
+                          ) : (
+                            <span className="text-xs" style={{ color: 'var(--cafe-border-2)' }}>—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(q.created_at)}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
+                            {q.status === 'draft' && (
+                              <Button variant="secondary" onClick={() => sendMut.mutate(q.id)} disabled={sendMut.isPending} className="text-xs py-1 px-2">
+                                <MessageSquare size={12} /> Send SMS
+                              </Button>
+                            )}
+                            {q.status === 'sent' && (
+                              <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                            )}
+                            {(q.status === 'sent' || q.status === 'draft') && (
+                              <button
+                                title="Copy approval link"
+                                onClick={() => copyApprovalLink(q.approval_token, q.id)}
+                                className="p-1 transition-colors"
+                                style={{ color: 'var(--cafe-text-muted)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+                              >
+                                {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </>
           )}
-        </Card>
+        </>
       )}
 
       {quotesQuery.hasNextPage && (

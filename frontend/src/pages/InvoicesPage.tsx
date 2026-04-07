@@ -50,52 +50,101 @@ export function InvoicesPage() {
       {payInvoice && <PaymentModal invoice={payInvoice} onClose={() => setPayInvoice(null)} />}
 
       {isLoading ? <Spinner /> : (
-        <Card>
-          {(invoices ?? []).length === 0 ? <EmptyState message="No invoices yet. They are created automatically when a quote is approved." /> : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
-                  <th className="px-5 py-3 font-medium">Source</th>
-                  <th className="px-5 py-3 font-medium">Invoice #</th>
-                  <th className="px-5 py-3 font-medium">Job</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Subtotal</th>
-                  <th className="px-5 py-3 font-medium">Tax</th>
-                  <th className="px-5 py-3 font-medium">Total</th>
-                  <th className="px-5 py-3 font-medium">Date</th>
-                  <th className="px-5 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+        <>
+          {(invoices ?? []).length === 0 ? (
+            <Card><EmptyState message="No invoices yet. They are created automatically when a quote is approved." /></Card>
+          ) : (
+            <>
+              {/* Mobile card list */}
+              <div className="md:hidden space-y-3">
                 {(invoices ?? []).map((inv: Invoice) => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
-                    <td className="px-5 py-3">
-                      <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <Link to={`/invoices/${inv.id}`} className="font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>#{inv.invoice_number}</Link>
-                    </td>
-                    <td className="px-5 py-3">
-                      <Link to={`/jobs/${inv.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
-                    </td>
-                    <td className="px-5 py-3"><Badge status={inv.status} /></td>
-                    <td className="px-5 py-3">{formatCents(inv.subtotal_cents)}</td>
-                    <td className="px-5 py-3">{formatCents(inv.tax_cents)}</td>
-                    <td className="px-5 py-3 font-semibold">{formatCents(inv.total_cents)}</td>
-                    <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(inv.created_at)}</td>
-                    <td className="px-5 py-3">
-                      {inv.status === 'unpaid' && (
-                        <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => setPayInvoice(inv)}>
-                          Record Payment
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
+                  <Card key={inv.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link to={`/invoices/${inv.id}`} className="font-mono font-semibold text-base" style={{ color: 'var(--cafe-amber)' }}>
+                            #{inv.invoice_number}
+                          </Link>
+                          <Badge status={inv.status} />
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span>{formatDate(inv.created_at)}</span>
+                          <Link to={`/jobs/${inv.repair_job_id}`} className="font-mono text-xs underline" style={{ color: 'var(--cafe-amber)' }}>View Job</Link>
+                        </div>
+                        <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                          <div className="flex gap-4">
+                            <span>Subtotal: {formatCents(inv.subtotal_cents)}</span>
+                            <span>Tax: {formatCents(inv.tax_cents)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                          {formatCents(inv.total_cents)}
+                        </p>
+                        {inv.status === 'unpaid' && (
+                          <button
+                            className="mt-2 text-xs font-semibold rounded-lg px-3 py-1.5"
+                            style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+                            onClick={() => setPayInvoice(inv)}
+                          >
+                            Record Payment
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop table */}
+              <Card className="hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                      <th className="px-5 py-3 font-medium">Source</th>
+                      <th className="px-5 py-3 font-medium">Invoice #</th>
+                      <th className="px-5 py-3 font-medium">Job</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Subtotal</th>
+                      <th className="px-5 py-3 font-medium">Tax</th>
+                      <th className="px-5 py-3 font-medium">Total</th>
+                      <th className="px-5 py-3 font-medium">Date</th>
+                      <th className="px-5 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(invoices ?? []).map((inv: Invoice) => (
+                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                        <td className="px-5 py-3">
+                          <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <Link to={`/invoices/${inv.id}`} className="font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>#{inv.invoice_number}</Link>
+                        </td>
+                        <td className="px-5 py-3">
+                          <Link to={`/jobs/${inv.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
+                        </td>
+                        <td className="px-5 py-3"><Badge status={inv.status} /></td>
+                        <td className="px-5 py-3">{formatCents(inv.subtotal_cents)}</td>
+                        <td className="px-5 py-3">{formatCents(inv.tax_cents)}</td>
+                        <td className="px-5 py-3 font-semibold">{formatCents(inv.total_cents)}</td>
+                        <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(inv.created_at)}</td>
+                        <td className="px-5 py-3">
+                          {inv.status === 'unpaid' && (
+                            <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => setPayInvoice(inv)}>
+                              Record Payment
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </>
           )}
-        </Card>
+        </>
       )}
     </div>
   )
