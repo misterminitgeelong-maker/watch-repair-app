@@ -2382,9 +2382,20 @@ export default function AutoKeyJobsPage() {
                     onDragEnd={handleWeekDragEnd}
                   >
                     <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
-                        Unscheduled — drag the whole card to a slot, or Move → tap destination; drop a card here to clear time
-                      </h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span className="hidden sm:inline">Unscheduled — drag the whole card to a slot, or Move → tap destination; drop a card here to clear time</span>
+                          <span className="sm:hidden">Unscheduled</span>
+                        </h3>
+                        <span
+                          className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold cursor-default select-none"
+                          style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}
+                          title="Tap Move on a card, then tap a time slot to schedule it. Drag cards on desktop."
+                          aria-label="Tap Move on a card then tap a time slot to schedule it"
+                        >
+                          ?
+                        </span>
+                      </div>
                       <WeekUnscheduledDropZone
                         canTapPlace={!!weekRelocateJobId}
                         onClick={(ev) => {

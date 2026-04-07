@@ -162,24 +162,25 @@ function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefin
 function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
   return (
     <Link to={to} className="dashboard-rise block" style={{ animationDelay: `${index * 0.06}s` }}>
-      <Card className="dashboard-panel h-full p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--cafe-text-muted)' }}>
+      <Card className="dashboard-panel h-full p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--cafe-text-muted)' }}>
               {label}
             </p>
             <p
-              className="mt-2 text-3xl font-semibold leading-none"
+              className="mt-1.5 sm:mt-2 text-2xl sm:text-3xl font-semibold leading-none"
               style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
             >
               {value}
             </p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm truncate" style={{ color: 'var(--cafe-text-mid)' }}>
               {helper}
             </p>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg, color: iconColor }}>
-            <Icon size={20} />
+          <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg, color: iconColor }}>
+            <Icon size={17} className="sm:hidden" />
+            <Icon size={20} className="hidden sm:block" />
           </div>
         </div>
       </Card>
@@ -466,27 +467,27 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              <div className="p-5" style={{ backgroundColor: '#F7F0E6' }}>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</p>
-                <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
                   {formatCents(reports?.financials.revenue_cents ?? 0)}
                 </p>
               </div>
-              <div className="p-5" style={{ backgroundColor: '#F4ECE2' }}>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Gross Profit</p>
-                <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Gross Profit</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
                   {formatCents(reports?.financials.gross_profit_cents ?? 0)}
                 </p>
               </div>
-              <div className="p-5" style={{ backgroundColor: '#F4ECE2' }}>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Approval Rate</p>
-                <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Approval Rate</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
                   {reports?.sales_funnel.approval_rate_percent ?? 0}%
                 </p>
               </div>
-              <div className="p-5" style={{ backgroundColor: '#F7F0E6' }}>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Avg / Job</p>
-                <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Avg / Job</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
                   {formatCents(reports?.operations.avg_revenue_per_job_cents ?? 0)}
                 </p>
               </div>
@@ -579,7 +580,7 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
           {statCards.map((card, index) => (
             <DashboardStatCard key={card.label} {...card} index={index} />
           ))}
