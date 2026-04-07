@@ -365,6 +365,7 @@ export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
+  customer_name?: string | null
 }
 export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
@@ -429,6 +430,8 @@ export const listQuotes = (repairJobId?: string, params?: { limit?: number; offs
 export const createQuote = (data: { repair_job_id: string; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
   api.post<Quote>('/quotes', data)
 export const sendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/send`)
+export const createInvoiceFromQuote = (quoteId: string) =>
+  api.post<{ invoice: { id: string; invoice_number: string; total_cents: number; status: string } }>(`/invoices/from-quote/${quoteId}`)
 export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineItemInput & { id: string; total_price_cents: number }>>(`/quotes/${quoteId}/line-items`)
 
 // Public (no auth)

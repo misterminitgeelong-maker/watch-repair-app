@@ -792,6 +792,7 @@ class RepairJobRead(SQLModel):
     pre_quote_cents: int
     cost_cents: int
     created_at: datetime
+    customer_name: Optional[str] = None
 
 
 class RepairJobStatusUpdate(SQLModel):

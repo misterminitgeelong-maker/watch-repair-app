@@ -175,7 +175,31 @@ def list_repair_jobs(
         raise HTTPException(status_code=400, detail="Invalid sort_dir")
     query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
     query = query.offset(offset).limit(limit)
-    return session.exec(query).all()
+    jobs = session.exec(query).all()
+
+    if not jobs:
+        return []
+
+    # Batch-fetch watches and customers to add customer_name to each job
+    watch_ids = [j.watch_id for j in jobs if j.watch_id]
+    watches: dict = {}
+    if watch_ids:
+        for w in session.exec(select(Watch).where(Watch.id.in_(watch_ids))).all():
+            watches[w.id] = w
+    customer_ids = list({w.customer_id for w in watches.values() if w.customer_id})
+    customer_names: dict = {}
+    if customer_ids:
+        for c in session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all():
+            customer_names[c.id] = c.full_name or ''
+
+    result = []
+    for j in jobs:
+        w = watches.get(j.watch_id)
+        cname = customer_names.get(w.customer_id) if w and w.customer_id else None
+        data = j.model_dump()
+        data['customer_name'] = cname
+        result.append(RepairJobRead(**data))
+    return result
 
 
 @router.get("/{job_id}", response_model=RepairJobRead)

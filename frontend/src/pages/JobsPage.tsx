@@ -120,7 +120,8 @@ export default function JobsPage() {
   })
 
   const filtered = jobs.filter(j => {
-    const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.includes(search)
+    const q = search.toLowerCase()
+    const matchSearch = !q || j.title.toLowerCase().includes(q) || j.job_number.includes(q) || (j.customer_name ?? '').toLowerCase().includes(q)
     const inDirectory = jobDirectoryView === 'active'
       ? !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
       : (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
@@ -232,7 +233,7 @@ export default function JobsPage() {
                 border: '1px solid var(--cafe-border-2)',
                 color: 'var(--cafe-text)',
               }}
-              placeholder="Search jobs…"
+              placeholder="Search by title, job #, or customer…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -399,6 +400,9 @@ export default function JobsPage() {
                                 <Link to={`/jobs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
                                   {j.title}
                                 </Link>
+                                {j.customer_name && (
+                                  <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--cafe-text-mid)' }}>{j.customer_name}</p>
+                                )}
                                 <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
                                   #{j.job_number} · {formatDate(j.created_at)}
                                 </p>
@@ -438,6 +442,11 @@ export default function JobsPage() {
                             <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
                               <span className="capitalize">Priority: {j.priority}</span>
                               <span>Quote: ${(displayQuoteCents(j) / 100).toFixed(2)}</span>
+                              {j.collection_date && (
+                                <span style={{ color: new Date(j.collection_date) < new Date() ? '#8B3A3A' : 'var(--cafe-text-mid)' }}>
+                                  Due: {j.collection_date}
+                                </span>
+                              )}
                             </div>
 
                             <div className="mt-2">

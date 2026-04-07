@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, MessageSquare, Copy, CheckCheck } from 'lucide-react'
+import { Plus, Trash2, MessageSquare, Copy, CheckCheck, FileText } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
   listQuotes,
   createQuote,
   sendQuote,
+  createInvoiceFromQuote,
   listJobs,
   getApiErrorMessage,
   type QuoteLineItemInput,
@@ -204,6 +205,8 @@ export default function QuotesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
+  const [invoiceCreated, setInvoiceCreated] = useState<string | null>(null)
+  const [invoiceError, setInvoiceError] = useState('')
   const [sortBy, setSortBy] = useState<'created_at' | 'sent_at' | 'status' | 'total_cents'>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
@@ -224,6 +227,14 @@ export default function QuotesPage() {
   const sendMut = useMutation({
     mutationFn: (id: string) => sendQuote(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['quotes'] }),
+  })
+
+  const invoiceMut = useMutation({
+    mutationFn: (quoteId: string) => createInvoiceFromQuote(quoteId).then(r => r.data),
+    onSuccess: (data) => {
+      setInvoiceCreated(data.invoice.invoice_number)
+    },
+    onError: (err) => setInvoiceError(getApiErrorMessage(err, 'Could not create invoice.')),
   })
 
   function copyApprovalLink(token: string, id: string) {
@@ -297,6 +308,19 @@ export default function QuotesPage() {
         </p>
       )}
 
+      {invoiceCreated && (
+        <div className="mb-3 rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ backgroundColor: '#E8F6EE', color: '#1F6D4C', border: '1px solid #B8DEC8' }}>
+          <span>Invoice <strong>{invoiceCreated}</strong> created successfully.</span>
+          <button onClick={() => setInvoiceCreated(null)} style={{ color: '#1F6D4C' }}>✕</button>
+        </div>
+      )}
+      {invoiceError && (
+        <div className="mb-3 rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ backgroundColor: '#FDF0EE', color: '#C96A5A', border: '1px solid #E8B4AA' }}>
+          <span>{invoiceError}</span>
+          <button onClick={() => setInvoiceError('')} style={{ color: '#C96A5A' }}>✕</button>
+        </div>
+      )}
+
       {isLoading ? <Spinner /> : (
         <>
           {quotes.length === 0 ? (
@@ -334,6 +358,16 @@ export default function QuotesPage() {
                           )}
                           {q.status === 'sent' && (
                             <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                          )}
+                          {q.status === 'approved' && (
+                            <button
+                              className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
+                              style={{ backgroundColor: '#E8F6EE', border: '1px solid #B8DEC8', color: '#1F6D4C' }}
+                              onClick={() => invoiceMut.mutate(q.id)}
+                              disabled={invoiceMut.isPending}
+                            >
+                              <FileText size={11} /> {invoiceMut.isPending ? 'Creating…' : 'Create Invoice'}
+                            </button>
                           )}
                           {(q.status === 'sent' || q.status === 'draft') && (
                             <button
@@ -392,6 +426,17 @@ export default function QuotesPage() {
                             )}
                             {q.status === 'sent' && (
                               <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                            )}
+                            {q.status === 'approved' && (
+                              <Button
+                                variant="secondary"
+                                className="text-xs py-1 px-2"
+                                style={{ backgroundColor: '#E8F6EE', borderColor: '#B8DEC8', color: '#1F6D4C' }}
+                                onClick={() => invoiceMut.mutate(q.id)}
+                                disabled={invoiceMut.isPending}
+                              >
+                                <FileText size={12} /> {invoiceMut.isPending ? 'Creating…' : 'Create Invoice'}
+                              </Button>
                             )}
                             {(q.status === 'sent' || q.status === 'draft') && (
                               <button
