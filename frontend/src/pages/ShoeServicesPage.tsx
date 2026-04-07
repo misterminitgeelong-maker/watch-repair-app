@@ -143,35 +143,55 @@ export default function ShoeServicesPage() {
           {items.length === 0 ? (
             <p className="px-5 py-8 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No services match your search.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
-                  <th className="px-4 py-3 font-medium">Service</th>
-                  <th className="px-4 py-3 font-medium">Group</th>
-                  <th className="px-4 py-3 font-medium text-right">Price</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
                 {items.map(item => (
-                  <tr key={item.key} style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                    <td className="px-4 py-2.5">
-                      <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</span>
+                  <div key={item.key} className="px-4 py-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
                       {item.notes && (
-                        <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{item.notes}</span>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{item.notes}</p>
                       )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs mt-1.5" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
                         <Tag size={10} />{item.group_label ?? item.group_id}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--cafe-amber)' }}>
-                      {formatPrice(item)}
-                    </td>
-                  </tr>
+                    </div>
+                    <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>{formatPrice(item)}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              {/* Desktop table */}
+              <table className="w-full text-sm hidden md:table">
+                <thead>
+                  <tr className="text-left text-xs uppercase" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                    <th className="px-4 py-3 font-medium">Service</th>
+                    <th className="px-4 py-3 font-medium">Group</th>
+                    <th className="px-4 py-3 font-medium text-right">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(item => (
+                    <tr key={item.key} style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</span>
+                        {item.notes && (
+                          <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{item.notes}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                          <Tag size={10} />{item.group_label ?? item.group_id}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--cafe-amber)' }}>
+                        {formatPrice(item)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
       </div>

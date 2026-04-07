@@ -101,27 +101,48 @@ export default function MobileServicesTeamPage() {
       )}
       {!isLoading && techs.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile card list */}
+          <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border-2)' }}>
+            {techs.map(t => (
+              <div key={t.id} className="p-4 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{t.full_name}</p>
+                  {t.is_active
+                    ? <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(90,140,90,0.15)', color: '#5a8c5a' }}>Active</span>
+                    : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}>Inactive</span>}
+                </div>
+                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{t.email}</p>
+                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Commission:{' '}
+                  {commissionEnabled(t.mobile_commission_rules_json)
+                    ? <span className="font-medium" style={{ color: '#1F5C24' }}>On</span>
+                    : <span>Off</span>}
+                </p>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
                   <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Name</th>
-                  <th className="text-left font-semibold px-4 py-3 hidden sm:table-cell" style={{ color: 'var(--cafe-text-muted)' }}>Email</th>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Email</th>
                   <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Status</th>
-                  <th className="text-left font-semibold px-4 py-3 hidden md:table-cell" style={{ color: 'var(--cafe-text-muted)' }}>Commission</th>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Commission</th>
                 </tr>
               </thead>
               <tbody>
                 {techs.map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid var(--cafe-border-2)' }}>
                     <td className="px-4 py-3 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.full_name}</td>
-                    <td className="px-4 py-3 hidden sm:table-cell" style={{ color: 'var(--cafe-text-muted)' }}>{t.email}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.email}</td>
                     <td className="px-4 py-3">
                       {t.is_active
                         ? <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(90,140,90,0.15)', color: '#5a8c5a' }}>Active</span>
                         : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}>Inactive</span>}
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-4 py-3">
                       {commissionEnabled(t.mobile_commission_rules_json)
                         ? <span className="font-medium" style={{ color: '#1F5C24' }}>On</span>
                         : <span style={{ color: 'var(--cafe-text-muted)' }}>Off</span>}
