@@ -1,55 +1,67 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import DashboardPage from '@/pages/DashboardPage'
-import CustomersPage from '@/pages/CustomersPage'
-import CustomerDetailPage from '@/pages/CustomerDetailPage'
-import JobsPage from '@/pages/JobsPage'
-import JobDetailPage from '@/pages/JobDetailPage'
-import QuotesPage from '@/pages/QuotesPage'
-import { InvoicesPage, InvoiceDetailPage } from '@/pages/InvoicesPage'
-import ApprovePage from '@/pages/ApprovePage'
-import PrintInvoicePage from '@/pages/PrintInvoicePage'
-import DatabasePage from '@/pages/DatabasePage'
-import CataloguePage from '@/pages/CataloguePage'
-import ToolkitPage from '@/pages/ToolkitPage'
-import ReportsPage from '@/pages/ReportsPage'
-import InboxPage from '@/pages/InboxPage'
-import LoginPage from '@/pages/LoginPage'
-import SignupPage from '@/pages/SignupPage'
-import SignupCheckoutPage from '@/pages/SignupCheckoutPage'
-import StatusPage from '@/pages/StatusPage'
-import ShoeStatusPage from '@/pages/ShoeStatusPage'
-import MobileBookingPage from '@/pages/MobileBookingPage'
-import MobileInvoicePage from '@/pages/MobileInvoicePage'
-import MobileJobIntakePage from '@/pages/MobileJobIntakePage'
-import LandingPage from '@/pages/LandingPage'
-import PricingPage from '@/pages/PricingPage'
-import AccountsPage from '@/pages/AccountsPage'
-import PlatformAdminUsersPage from '@/pages/PlatformAdminUsersPage'
-import ShoeRepairsPage from '@/pages/ShoeRepairsPage'
-import ShoeJobDetailPage from '@/pages/ShoeJobDetailPage'
-import ShoeServicesPage from '@/pages/ShoeServicesPage'
-import PrintWatchIntakeTicketsPage from '@/pages/PrintWatchIntakeTicketsPage'
-import PrintShoeIntakeTicketsPage from '@/pages/PrintShoeIntakeTicketsPage'
-import AutoKeyJobsPage from '@/pages/AutoKeyJobsPage'
-import AutoKeyJobDetailPage from '@/pages/AutoKeyJobDetailPage'
-import CustomerAccountsPage from '@/pages/CustomerAccountsPage'
-import ParentAccountPage from '@/pages/ParentAccountPage'
-import StocktakesPage from '@/pages/StocktakesPage'
-import StocktakeWorkspacePage from '@/pages/StocktakeWorkspacePage'
-import StocktakeSummaryPage from '@/pages/StocktakeSummaryPage'
-import ProspectsPage from '@/pages/ProspectsPage'
-import MobileServicesTeamPage from '@/pages/MobileServicesTeamPage'
-import SubscriptionRequiredPage from '@/pages/SubscriptionRequiredPage'
+import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 })
+
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const CustomersPage = lazy(() => import('@/pages/CustomersPage'))
+const CustomerDetailPage = lazy(() => import('@/pages/CustomerDetailPage'))
+const JobsPage = lazy(() => import('@/pages/JobsPage'))
+const JobDetailPage = lazy(() => import('@/pages/JobDetailPage'))
+const QuotesPage = lazy(() => import('@/pages/QuotesPage'))
+const InvoicesPage = lazy(() => import('@/pages/InvoicesPage').then((module) => ({ default: module.InvoicesPage })))
+const InvoiceDetailPage = lazy(() => import('@/pages/InvoicesPage').then((module) => ({ default: module.InvoiceDetailPage })))
+const ApprovePage = lazy(() => import('@/pages/ApprovePage'))
+const PrintInvoicePage = lazy(() => import('@/pages/PrintInvoicePage'))
+const DatabasePage = lazy(() => import('@/pages/DatabasePage'))
+const CataloguePage = lazy(() => import('@/pages/CataloguePage'))
+const ToolkitPage = lazy(() => import('@/pages/ToolkitPage'))
+const ReportsPage = lazy(() => import('@/pages/ReportsPage'))
+const InboxPage = lazy(() => import('@/pages/InboxPage'))
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const SignupPage = lazy(() => import('@/pages/SignupPage'))
+const SignupCheckoutPage = lazy(() => import('@/pages/SignupCheckoutPage'))
+const StatusPage = lazy(() => import('@/pages/StatusPage'))
+const ShoeStatusPage = lazy(() => import('@/pages/ShoeStatusPage'))
+const MobileBookingPage = lazy(() => import('@/pages/MobileBookingPage'))
+const MobileInvoicePage = lazy(() => import('@/pages/MobileInvoicePage'))
+const MobileJobIntakePage = lazy(() => import('@/pages/MobileJobIntakePage'))
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
+const PricingPage = lazy(() => import('@/pages/PricingPage'))
+const AccountsPage = lazy(() => import('@/pages/AccountsPage'))
+const PlatformAdminUsersPage = lazy(() => import('@/pages/PlatformAdminUsersPage'))
+const ShoeRepairsPage = lazy(() => import('@/pages/ShoeRepairsPage'))
+const ShoeJobDetailPage = lazy(() => import('@/pages/ShoeJobDetailPage'))
+const ShoeServicesPage = lazy(() => import('@/pages/ShoeServicesPage'))
+const PrintWatchIntakeTicketsPage = lazy(() => import('@/pages/PrintWatchIntakeTicketsPage'))
+const PrintShoeIntakeTicketsPage = lazy(() => import('@/pages/PrintShoeIntakeTicketsPage'))
+const AutoKeyJobsPage = lazy(() => import('@/pages/AutoKeyJobsPage'))
+const AutoKeyJobDetailPage = lazy(() => import('@/pages/AutoKeyJobDetailPage'))
+const CustomerAccountsPage = lazy(() => import('@/pages/CustomerAccountsPage'))
+const ParentAccountPage = lazy(() => import('@/pages/ParentAccountPage'))
+const StocktakesPage = lazy(() => import('@/pages/StocktakesPage'))
+const StocktakeWorkspacePage = lazy(() => import('@/pages/StocktakeWorkspacePage'))
+const StocktakeSummaryPage = lazy(() => import('@/pages/StocktakeSummaryPage'))
+const ProspectsPage = lazy(() => import('@/pages/ProspectsPage'))
+const MobileServicesTeamPage = lazy(() => import('@/pages/MobileServicesTeamPage'))
+const SubscriptionRequiredPage = lazy(() => import('@/pages/SubscriptionRequiredPage'))
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <Spinner />
+    </div>
+  )
+}
 
 function FeatureGate({ feature, children }: { feature: FeatureKey; children: React.ReactNode }) {
   const { hasFeature, role } = useAuth()
@@ -67,7 +79,8 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ErrorBoundary>
-            <Routes>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
             {/* Public — no auth required */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
@@ -127,7 +140,8 @@ export default function App() {
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>

@@ -331,36 +331,49 @@ export default function AppShell() {
   const [guidedStep, setGuidedStep] = useState(() =>
     demoModeEnabled ? getDemoTourStep() : 0,
   )
+  const guidedTourDataEnabled = demoModeEnabled && (tourMode === 'guided' || showGuidedModal || showWelcomeModal)
 
   const { data: customers } = useQuery({
     queryKey: ['customers', 'guided-tour'],
     queryFn: () => listCustomers().then((r) => r.data),
-    enabled: demoModeEnabled,
+    enabled: guidedTourDataEnabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
   const { data: jobs } = useQuery({
     queryKey: ['jobs', 'guided-tour'],
     queryFn: () => listJobs().then((r) => r.data),
-    enabled: demoModeEnabled,
+    enabled: guidedTourDataEnabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
   const { data: shoeJobs } = useQuery({
     queryKey: ['shoe-repair-jobs', 'guided-tour'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
-    enabled: demoModeEnabled && hasFeature('shoe'),
+    enabled: guidedTourDataEnabled && hasFeature('shoe'),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
   const { data: autoKeyJobs } = useQuery({
     queryKey: ['auto-key-jobs', 'guided-tour'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
-    enabled: demoModeEnabled && hasFeature('auto_key'),
+    enabled: guidedTourDataEnabled && hasFeature('auto_key'),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
   const { data: quotes } = useQuery({
     queryKey: ['quotes', 'guided-tour'],
     queryFn: () => listQuotes().then((r) => r.data),
-    enabled: demoModeEnabled,
+    enabled: guidedTourDataEnabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
   const { data: invoices } = useQuery({
     queryKey: ['invoices', 'guided-tour'],
     queryFn: () => listInvoices().then((r) => r.data),
-    enabled: demoModeEnabled,
+    enabled: guidedTourDataEnabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
 
   const guidedTourSteps = useMemo<GuidedTourStep[]>(() => {

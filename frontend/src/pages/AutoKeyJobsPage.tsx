@@ -1753,9 +1753,12 @@ export default function AutoKeyJobsPage() {
     weekAnchorSynced.current = true
   }, [sessionReady, shopCalendarTodayYmd])
 
+  const needsAllJobs = view === 'dashboard' || view === 'jobs' || view === 'dispatch'
+
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
+    enabled: needsAllJobs,
   })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
