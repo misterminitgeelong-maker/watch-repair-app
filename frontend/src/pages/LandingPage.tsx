@@ -9,7 +9,6 @@ import {
   Users,
   BarChart3,
   ArrowRight,
-  PackageOpen,
   Sparkles,
   MapPin,
   ShoppingCart,
