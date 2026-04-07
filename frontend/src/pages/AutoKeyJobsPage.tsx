@@ -132,6 +132,31 @@ interface WeekSchedulerJob {
   job_number: string
   title: string
   scheduled_at?: string
+  customer_id?: string
+  assigned_user_id?: string
+  status?: JobStatus
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: number
+  registration_plate?: string
+  key_type?: string
+  key_quantity?: number
+  job_type?: string
+  job_address?: string
+}
+
+function weekJobVehicleSummary(job: WeekSchedulerJob) {
+  const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
+  return [vehicle || undefined, job.registration_plate || undefined].filter(Boolean).join(' · ') || undefined
+}
+
+function weekJobSecondarySummary(job: WeekSchedulerJob, customerName?: string, assignedTechName?: string) {
+  const bits = [
+    customerName,
+    job.job_type || undefined,
+    assignedTechName ? `Tech: ${assignedTechName}` : undefined,
+  ].filter(Boolean)
+  return bits.length ? bits.join(' · ') : undefined
 }
 
 /** Monday–Sunday week in local time containing YYYY-MM-DD anchor */
@@ -1141,6 +1166,8 @@ function WeekJobChip({
   isDragging = false,
   isOverlay = false,
   compact = false,
+  customerName,
+  assignedTechName,
   onMoveToggle,
 }: {
   job: WeekSchedulerJob
@@ -1148,6 +1175,8 @@ function WeekJobChip({
   isDragging?: boolean
   isOverlay?: boolean
   compact?: boolean
+  customerName?: string
+  assignedTechName?: string
   onMoveToggle?: () => void
 }) {
   const navigate = useNavigate()
@@ -1160,6 +1189,13 @@ function WeekJobChip({
   const translated = transform && !isDragging && !isOverlay
     ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
     : undefined
+  const vehicleSummary = weekJobVehicleSummary(job)
+  const secondarySummary = weekJobSecondarySummary(job, customerName, assignedTechName)
+  const keySummary = [
+    job.key_type ? `Key: ${job.key_type}` : undefined,
+    typeof job.key_quantity === 'number' ? `Qty ${job.key_quantity}` : undefined,
+  ].filter(Boolean).join(' · ')
+  const hoverTitle = [job.title, vehicleSummary, secondarySummary, job.job_address].filter(Boolean).join(' • ')
 
   return (
     <div
@@ -1167,7 +1203,7 @@ function WeekJobChip({
       {...(isOverlay ? {} : attributes)}
       {...(isOverlay ? {} : listeners)}
       data-week-job-chip
-      className={`group flex items-stretch shrink-0 rounded-md border overflow-hidden select-none transition-[box-shadow,transform,opacity] ${compact ? 'gap-1 mb-1 last:mb-0' : 'gap-1.5 max-w-[min(320px,96vw)]'}`}
+      className={`group flex items-stretch shrink-0 rounded-md border overflow-hidden select-none transition-[box-shadow,transform,opacity] ${compact ? 'gap-1 mb-1 last:mb-0' : 'gap-1.5 max-w-[min(380px,96vw)]'}`}
       style={{
         borderColor: selected ? 'var(--cafe-amber)' : 'var(--cafe-border)',
         outline: selected ? '2px solid rgba(245,158,11,0.35)' : undefined,
@@ -1182,7 +1218,7 @@ function WeekJobChip({
         cursor: isOverlay ? 'grabbing' : 'grab',
         touchAction: 'none',
       }}
-      title={isOverlay ? undefined : 'Drag the whole booking card to reschedule'}
+      title={isOverlay ? undefined : hoverTitle || 'Drag the whole booking card to reschedule'}
     >
       <div
         className="flex items-center justify-center px-1.5 shrink-0"
@@ -1198,12 +1234,49 @@ function WeekJobChip({
         className="min-w-0 flex-1 px-2 py-1.5"
         style={{ backgroundColor: compact ? 'rgba(245, 158, 11, 0.12)' : 'var(--cafe-surface)' }}
       >
-        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold truncate`} style={{ color: 'var(--cafe-text)' }}>
-          #{job.job_number} · {job.title}
-        </p>
-        {!compact && (
-          <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
-            Pick up the whole card to place it on the week board.
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-mono font-semibold tracking-wide" style={{ color: 'var(--cafe-amber)' }}>
+              #{job.job_number}
+            </p>
+            <p
+              className={`${compact ? 'text-[11px]' : 'text-sm'} font-semibold leading-tight`}
+              style={{
+                color: 'var(--cafe-text)',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: compact ? 2 : 2,
+                overflow: 'hidden',
+              }}
+            >
+              {job.title}
+            </p>
+          </div>
+          {job.status && !compact && (
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+              {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
+
+        {vehicleSummary && (
+          <p className="text-[11px] mt-1 font-medium" style={{ color: 'var(--cafe-text)' }}>
+            {vehicleSummary}
+          </p>
+        )}
+        {secondarySummary && (
+          <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
+            {secondarySummary}
+          </p>
+        )}
+        {!compact && keySummary && (
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+            {keySummary}
+          </p>
+        )}
+        {!compact && job.job_address && (
+          <p className="text-[11px] mt-1 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
+            <span className="inline-flex items-center gap-1"><MapPin size={11} /> {job.job_address}</span>
           </p>
         )}
       </div>
@@ -1672,7 +1745,7 @@ export default function AutoKeyJobsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
-    enabled: view === 'pos' || view === 'map' || view === 'dispatch' || view === 'planner',
+    enabled: view === 'pos' || view === 'map' || view === 'dispatch' || view === 'planner' || view === 'week',
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -2397,6 +2470,8 @@ export default function AutoKeyJobsPage() {
                           <WeekJobChip
                             key={job.id}
                             job={job}
+                            customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
+                            assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
                             selected={weekRelocateJobId === job.id}
                             isDragging={activeWeekJobId === job.id}
                             onMoveToggle={() => setWeekRelocateJobId((cur) => (cur === job.id ? null : job.id))}
@@ -2464,6 +2539,8 @@ export default function AutoKeyJobsPage() {
                                     <WeekJobChip
                                       key={job.id}
                                       job={job}
+                                      customerName={job.customer_id ? customers.find((c: { id: string }) => c.id === job.customer_id)?.full_name : undefined}
+                                      assignedTechName={job.assigned_user_id ? users.find((u: { id: string }) => u.id === job.assigned_user_id)?.full_name : undefined}
                                       compact
                                       selected={weekRelocateJobId === job.id}
                                       isDragging={activeWeekJobId === job.id}
@@ -2482,6 +2559,8 @@ export default function AutoKeyJobsPage() {
                       {activeWeekJob ? (
                         <WeekJobChip
                           job={activeWeekJob}
+                          customerName={activeWeekJob.customer_id ? customers.find((c: { id: string }) => c.id === activeWeekJob.customer_id)?.full_name : undefined}
+                          assignedTechName={activeWeekJob.assigned_user_id ? users.find((u: { id: string }) => u.id === activeWeekJob.assigned_user_id)?.full_name : undefined}
                           compact={!!activeWeekJob.scheduled_at}
                           isOverlay
                         />
