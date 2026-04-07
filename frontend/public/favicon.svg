@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Dark espresso rounded background -->
+  <rect width="100" height="100" rx="20" fill="#1E1410"/>
+  <!-- Top end plate -->
+  <line x1="22" y1="11" x2="78" y2="11" stroke="#C9A248" stroke-width="7" stroke-linecap="round"/>
+  <!-- Spring coils: 3 full coils alternating right/left (bezier sine wave) -->
+  <path d="M 50,11 C 84,11 84,24 50,24 C 16,24 16,37 50,37 C 84,37 84,50 50,50 C 16,50 16,63 50,63 C 84,63 84,76 50,76 C 16,76 16,89 50,89"
+        fill="none" stroke="#C9A248" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom end plate -->
+  <line x1="22" y1="89" x2="78" y2="89" stroke="#C9A248" stroke-width="7" stroke-linecap="round"/>
+</svg>
