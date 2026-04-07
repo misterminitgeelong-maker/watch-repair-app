@@ -2873,8 +2873,9 @@ export default function AutoKeyJobsPage() {
                         const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
                         return ta - tb
                       })
-                      .map((job: { id: string; job_number: string; title: string; customer_id: string; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
                         const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
+                        const displayName = customer?.full_name ?? job.customer_name ?? '—'
                         const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
                         return (
                           <div
@@ -2897,15 +2898,24 @@ export default function AutoKeyJobsPage() {
                                 #{job.job_number} · {job.title}
                               </p>
                               <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                                {customer?.full_name ?? '—'}
+                                {displayName}
                                 {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
                               </p>
+                              {(customer?.phone || job.customer_phone) && (
+                                <a
+                                  href={`tel:${(customer?.phone || job.customer_phone)!.replace(/\s/g, '')}`}
+                                  className="text-xs mt-0.5 flex items-center gap-1 w-fit"
+                                  style={{ color: 'var(--cafe-amber)' }}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <Phone size={11} /> {customer?.phone || job.customer_phone}
+                                </a>
+                              )}
                               {job.job_address && (
                                 <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--cafe-text-mid)' }}>
                                   <MapPin size={12} /> {job.job_address}
                                 </p>
                               )}
-                              <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>Click for full details</p>
                             </div>
                             <span
                               className="shrink-0 px-3 py-1.5 rounded text-xs font-medium"
