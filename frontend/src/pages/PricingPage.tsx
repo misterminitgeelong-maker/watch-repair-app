@@ -71,7 +71,7 @@ export default function PricingPage() {
       <div className="mx-auto w-full max-w-6xl" style={{ position: 'relative', zIndex: 1 }}>
         <header className="flex items-center justify-between py-6 sm:py-7">
           <Link to="/" className="flex items-center gap-3">
-            <img src="/mainspring-logo.png" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
+            <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
