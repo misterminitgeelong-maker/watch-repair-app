@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
@@ -17,6 +18,7 @@ import {
   Inbox,
   Toolbox,
   Target,
+  Download,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
@@ -60,7 +62,10 @@ interface SidebarProps {
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature } = useAuth()
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(false)
   const { pathname } = useLocation()
+  const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt()
+  const showInstall = !isStandalone && (canInstall || isIos)
 
   const filterItems = (items: NavLinkItem[]) =>
     items.filter((item) => !item.feature || hasFeature(item.feature))
@@ -386,6 +391,23 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       </nav>
 
       <div className="px-3 pb-6">
+        {showInstall && (
+          <div className="mb-2 px-1">
+            <button
+              onClick={() => {
+                if (isIos) { setShowIosHint(true) } else { void promptInstall() }
+                onNavigate?.()
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150"
+              style={{ color: '#C8A882', backgroundColor: 'rgba(201,162,72,0.08)', border: '1px solid rgba(201,162,72,0.2)' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(201,162,72,0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(201,162,72,0.08)')}
+            >
+              <Download size={15} />
+              Install app
+            </button>
+          </div>
+        )}
         <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1.25rem' }}>
           <button
             onClick={() => {
@@ -416,6 +438,33 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         </div>
       </div>
       {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+      {showIosHint && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowIosHint(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 text-center space-y-3"
+            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              Add to Home Screen
+            </p>
+            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+              Tap the <strong>Share</strong> icon <span style={{ fontSize: '1.1em' }}>⎙</span> at the bottom of Safari, then choose <strong>"Add to Home Screen"</strong> to install Mainspring.
+            </p>
+            <button
+              className="mt-1 w-full rounded-xl py-2.5 text-sm font-semibold"
+              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+              onClick={() => setShowIosHint(false)}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
