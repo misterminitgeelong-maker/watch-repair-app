@@ -17,6 +17,7 @@ from ..models import (
     PaymentCreate,
     PaymentRead,
     Quote,
+    QuoteLineItem,
     TenantEventLog,
 )
 
@@ -180,6 +181,25 @@ def get_invoice(
             for p in payments
         ],
     )
+
+
+@router.get("/{invoice_id}/line-items")
+def get_invoice_line_items(
+    invoice_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    invoice = session.exec(
+        select(Invoice).where(Invoice.id == invoice_id).where(Invoice.tenant_id == auth.tenant_id)
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if not invoice.quote_id:
+        return []
+    items = session.exec(
+        select(QuoteLineItem).where(QuoteLineItem.quote_id == invoice.quote_id).order_by(QuoteLineItem.created_at)
+    ).all()
+    return items
 
 
 @router.post("/{invoice_id}/payments", response_model=PaymentRead, status_code=201)

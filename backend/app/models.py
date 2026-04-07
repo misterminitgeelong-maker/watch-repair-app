@@ -819,6 +819,8 @@ class RepairJobFieldUpdate(SQLModel):
     collection_date: Optional[date] = None
     deposit_cents: Optional[int] = None
     description: Optional[str] = None
+    assigned_user_id: Optional[UUID] = None
+    clear_assigned_user: bool = False
 
 
 class JobStatusHistoryRead(SQLModel):

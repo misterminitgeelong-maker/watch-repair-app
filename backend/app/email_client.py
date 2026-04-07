@@ -20,6 +20,7 @@ def send_quote_sent_email(
     total_cents: int,
     approval_token: str,
     job_number: str,
+    shop_name: str = "Your repair shop",
 ) -> None:
     """Send email when a quote is sent to the customer."""
     if not _enabled() or not (to_email or "").strip():
@@ -31,7 +32,7 @@ def send_quote_sent_email(
         f"Hi {customer_name},\n\n"
         f"Your watch repair quote for job #{job_number} is ${total:.2f}. "
         f"Reply YES to approve or NO to decline, or open this link to view details:\n{approval_url}\n\n"
-        "Thanks,\nYour watch repair shop"
+        f"Thanks,\n{shop_name}"
     )
     if getattr(settings, "sendgrid_api_key", "").strip():
         _send_via_sendgrid(to_email=to_email.strip(), subject=subject, body_plain=body_plain)
@@ -47,6 +48,7 @@ def send_job_ready_email(
     customer_name: str,
     job_number: str,
     status_token: str,
+    shop_name: str = "Your repair shop",
 ) -> None:
     """Send email when a job is ready for collection (completed / awaiting_collection)."""
     if not _enabled() or not (to_email or "").strip():
@@ -57,7 +59,7 @@ def send_job_ready_email(
         f"Hi {customer_name},\n\n"
         f"Your watch (job #{job_number}) is ready for collection. "
         f"Check status: {status_url}\n\n"
-        "Thanks,\nYour watch repair shop"
+        f"Thanks,\n{shop_name}"
     )
     if getattr(settings, "sendgrid_api_key", "").strip():
         _send_via_sendgrid(to_email=to_email.strip(), subject=subject, body_plain=body_plain)

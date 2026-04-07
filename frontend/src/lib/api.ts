@@ -396,6 +396,8 @@ export const updateJob = (id: string, data: {
   collection_date?: string
   deposit_cents?: number
   description?: string
+  assigned_user_id?: string | null
+  clear_assigned_user?: boolean
 }) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
@@ -717,6 +719,8 @@ export interface Invoice {
 }
 export const listInvoices = () => api.get<Invoice[]>('/invoices')
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${id}`)
+export const getInvoiceLineItems = (invoiceId: string) =>
+  api.get<Array<{ id: string; item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }>>(`/invoices/${invoiceId}/line-items`)
 export const recordPayment = (invoiceId: string, amount_cents: number) =>
   api.post(`/invoices/${invoiceId}/payments`, { amount_cents })
 

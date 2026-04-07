@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, Printer } from 'lucide-react'
-import { listInvoices, getInvoice, recordPayment, type Invoice } from '@/lib/api'
+import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 
@@ -155,6 +155,11 @@ export function InvoiceDetailPage() {
   const navigate = useNavigate()
   const [showPay, setShowPay] = useState(false)
   const { data: invoice, isLoading } = useQuery({ queryKey: ['invoice', id], queryFn: () => getInvoice(id!).then(r => r.data?.invoice ?? r.data) })
+  const { data: lineItems } = useQuery({
+    queryKey: ['invoice-line-items', id],
+    queryFn: () => getInvoiceLineItems(id!).then(r => r.data),
+    enabled: !!id,
+  })
 
   if (isLoading) return <Spinner />
   if (!invoice) return <p style={{ color: 'var(--cafe-text-muted)' }}>Invoice not found.</p>
@@ -183,6 +188,26 @@ export function InvoiceDetailPage() {
       />
       {showPay && <PaymentModal invoice={invoice} onClose={() => setShowPay(false)} />}
 
+      {lineItems && lineItems.length > 0 && (
+        <Card className="p-5 mb-4">
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Line Items</h2>
+          <div className="space-y-2">
+            {lineItems.map((item, i) => (
+              <div key={i} className="flex items-start justify-between gap-4 text-sm py-2" style={{ borderBottom: i < lineItems.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
+                <div className="min-w-0">
+                  <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.description}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    {item.item_type} · qty {item.quantity} × ${(item.unit_price_cents / 100).toFixed(2)}
+                  </p>
+                </div>
+                <span className="font-semibold shrink-0" style={{ color: 'var(--cafe-text)' }}>
+                  ${(item.total_price_cents / 100).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       <Card className="max-w-2xl p-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-3 text-sm">

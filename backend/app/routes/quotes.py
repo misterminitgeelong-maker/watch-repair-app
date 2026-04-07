@@ -191,12 +191,15 @@ def send_quote(
                 )
             if customer and customer.email:
                 from ..email_client import send_quote_sent_email
+                tenant = session.get(Tenant, auth.tenant_id)
+                shop_name = (tenant.name if tenant else None) or "Your repair shop"
                 send_quote_sent_email(
                     to_email=customer.email,
                     customer_name=customer.full_name,
                     total_cents=quote.total_cents,
                     approval_token=quote.approval_token,
                     job_number=job.job_number,
+                    shop_name=shop_name,
                 )
 
     session.commit()

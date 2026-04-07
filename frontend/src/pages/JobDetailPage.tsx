@@ -13,7 +13,8 @@ import {
   getWatchMovementQuote,
   getApiErrorMessage,
   getUploadErrorMessage,
-  type JobStatus, type RepairJob, type CustomerAccount,
+  listUsers,
+  type JobStatus, type RepairJob, type CustomerAccount, type TenantUser,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
@@ -201,6 +202,16 @@ export default function JobDetailPage() {
       qc.invalidateQueries({ queryKey: ['job', id] })
       qc.invalidateQueries({ queryKey: ['jobs'] })
     },
+  })
+
+  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => listUsers().then(r => r.data) })
+
+  const assignMutation = useMutation({
+    mutationFn: (userId: string | null) =>
+      userId
+        ? updateJob(id!, { assigned_user_id: userId })
+        : updateJob(id!, { clear_assigned_user: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['job', id] }),
   })
 
   const resendMut = useMutation({
@@ -391,6 +402,22 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span><span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
+              <div className="space-y-1">
+                <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Assigned Technician</span>
+                <Select
+                  value={job.assigned_user_id ?? ''}
+                  onChange={e => {
+                    const val = e.target.value
+                    assignMutation.mutate(val || null)
+                  }}
+                  disabled={assignMutation.isPending}
+                >
+                  <option value="">Unassigned</option>
+                  {(users ?? []).map((u: TenantUser) => (
+                    <option key={u.id} value={u.id}>{u.full_name} ({u.role})</option>
+                  ))}
+                </Select>
+              </div>
               <div className="space-y-1">
                 <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Customer Account</span>
                 <Select

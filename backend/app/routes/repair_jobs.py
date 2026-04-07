@@ -30,6 +30,7 @@ from ..models import (
     QuoteLineItem,
     RepairJobNumberCounter,
     SmsLog,
+    Tenant,
     WorkLog,
     Watch,
 )
@@ -260,11 +261,14 @@ def update_repair_job_status(
                 )
             if customer.email and job.status in ("completed", "awaiting_collection"):
                 from ..email_client import send_job_ready_email
+                tenant = session.get(Tenant, auth.tenant_id)
+                shop_name = (tenant.name if tenant else None) or "Your repair shop"
                 send_job_ready_email(
                     to_email=customer.email,
                     customer_name=customer.full_name,
                     job_number=job.job_number,
                     status_token=job.status_token,
+                    shop_name=shop_name,
                 )
 
     session.commit()
@@ -389,6 +393,10 @@ def update_repair_job_fields(
             if not account or account.tenant_id != auth.tenant_id:
                 raise HTTPException(status_code=404, detail="Customer account not found")
         job.customer_account_id = payload.customer_account_id
+    if payload.clear_assigned_user:
+        job.assigned_user_id = None
+    elif payload.assigned_user_id is not None:
+        job.assigned_user_id = payload.assigned_user_id
 
     session.add(job)
     session.commit()
