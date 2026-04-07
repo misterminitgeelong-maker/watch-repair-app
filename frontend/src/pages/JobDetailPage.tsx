@@ -296,9 +296,10 @@ export default function JobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
+            {/* Desktop: all buttons */}
             <Button
               variant="ghost"
-              className="text-sm"
+              className="hidden sm:inline-flex text-sm"
               onClick={() => {
                 const url = `${window.location.origin}/status/${job.status_token}`
                 void navigator.clipboard.writeText(url).then(() => { /* optional toast */ })
@@ -306,15 +307,15 @@ export default function JobDetailPage() {
             >
               Copy status link
             </Button>
-            <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/intake-print`)}>
+            <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => navigate(`/jobs/${job.id}/intake-print`)}>
               <Printer size={15} /> Print Intake Tickets
             </Button>
             {nextStatus && (
               <Button variant="secondary" onClick={() => setShowStatus(true)}>
-                <ArrowRight size={15} /> Move to {STATUS_LABELS[nextStatus]}
+                <ArrowRight size={15} /><span className="hidden sm:inline">Move to {STATUS_LABELS[nextStatus]}</span><span className="sm:hidden">{STATUS_LABELS[nextStatus]}</span>
               </Button>
             )}
-            <Button variant="ghost" onClick={() => setShowStatus(true)}>Change Status</Button>
+            <Button variant="ghost" onClick={() => setShowStatus(true)}>Status</Button>
           </div>
         }
       />
@@ -345,22 +346,24 @@ export default function JobDetailPage() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex gap-0.5 mb-6" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-all duration-150"
-            style={{
-              borderBottomColor: tab === t.key ? 'var(--cafe-gold)' : 'transparent',
-              color: tab === t.key ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)',
-            }}
-            onMouseEnter={e => { if (tab !== t.key) e.currentTarget.style.color = 'var(--cafe-text-mid)' }}
-            onMouseLeave={e => { if (tab !== t.key) e.currentTarget.style.color = 'var(--cafe-text-muted)' }}
-          >
-            {t.icon}{t.label}
-          </button>
-        ))}
+      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto mb-6" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+        <div className="flex gap-0.5 min-w-max">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-all duration-150 whitespace-nowrap"
+              style={{
+                borderBottomColor: tab === t.key ? 'var(--cafe-gold)' : 'transparent',
+                color: tab === t.key ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)',
+              }}
+              onMouseEnter={e => { if (tab !== t.key) e.currentTarget.style.color = 'var(--cafe-text-mid)' }}
+              onMouseLeave={e => { if (tab !== t.key) e.currentTarget.style.color = 'var(--cafe-text-muted)' }}
+            >
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Tab: Details ─────────────────────────────────────────── */}
