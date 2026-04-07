@@ -3069,7 +3069,7 @@ export default function AutoKeyJobsPage() {
                   key={preset}
                   type="button"
                   onClick={() => setReportPreset(preset)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${reportPreset === preset ? '' : ''}`}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                   style={reportPreset === preset ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
                 >
                   {preset === 'today' ? 'Today' : preset === 'week' ? 'This Week' : preset === 'month' ? 'This Month' : preset === 'last_month' ? 'Last Month' : 'All Time'}
