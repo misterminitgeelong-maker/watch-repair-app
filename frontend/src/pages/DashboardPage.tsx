@@ -54,6 +54,7 @@ const DASHBOARD_CSS = `
 
 type DashboardStatProps = {
   label: string
+  mobileLabel?: string
   value: string
   helper: string
   to: string
@@ -159,14 +160,15 @@ function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefin
   )
 }
 
-function DashboardStatCard({ label, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
+function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
   return (
     <Link to={to} className="dashboard-rise block" style={{ animationDelay: `${index * 0.06}s` }}>
       <Card className="dashboard-panel h-full p-4 sm:p-5">
         <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--cafe-text-muted)' }}>
-              {label}
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide sm:tracking-[0.2em] whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: 'var(--cafe-text-muted)' }}>
+              <span className="sm:hidden">{mobileLabel ?? label}</span>
+              <span className="hidden sm:inline">{label}</span>
             </p>
             <p
               className="mt-1.5 sm:mt-2 text-2xl sm:text-3xl font-semibold leading-none"
@@ -341,6 +343,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       label: 'All Active Jobs',
+      mobileLabel: 'Active Jobs',
       value: String(totalServiceJobs),
       helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across service lines`,
       to: '/jobs',
@@ -359,6 +362,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Quotes Awaiting Action',
+      mobileLabel: 'Quotes',
       value: String(quotesPendingCount),
       helper: `${reports?.sales_funnel.approval_rate_percent ?? 0}% approval rate`,
       to: '/quotes',
@@ -368,6 +372,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Open Invoices',
+      mobileLabel: 'Invoices',
       value: String(invoicesOpen.length),
       helper: `${formatCents(invoicesOpenValue)} awaiting payment`,
       to: '/invoices',
@@ -377,6 +382,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Outstanding Work Value',
+      mobileLabel: 'Work Value',
       value: formatCents(reports?.financials.outstanding_cents ?? 0),
       helper: `${watchAwaitingGoAheadCount} watch jobs waiting for approval`,
       to: '/reports',
@@ -386,6 +392,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Team & Sites',
+      mobileLabel: 'Team',
       value: `${users?.length ?? 1} / ${availableSites.length}`,
       helper: `${formatPlanName(planCode)} plan${availableSites.length > 1 ? ' with multi-site context' : ''}`,
       to: '/accounts',

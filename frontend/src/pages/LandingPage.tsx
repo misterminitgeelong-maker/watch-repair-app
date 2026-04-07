@@ -180,12 +180,12 @@ function ProductPreview() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           {[
             ['Open Jobs', '34'],
-            ['Awaiting Approval', '9'],
+            ['For Approval', '9'],
             ['Awaiting Parts', '6'],
             ['Outstanding', '$12,840'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl p-3.5" style={{ backgroundColor: '#FBF8F3', border: '1px solid #E7DDD0' }}>
-              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>{label}</p>
+              <p className="text-xs uppercase" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.04em' }}>{label}</p>
               <p className="mt-1 text-xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>{value}</p>
             </div>
           ))}
@@ -485,16 +485,17 @@ export default function LandingPage() {
       <div className="mx-auto w-full max-w-6xl" style={{ position: 'relative', zIndex: 1 }}>
         <header className="flex items-center justify-between py-6 sm:py-7">
           <div className="flex items-center gap-3">
-            <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: 170, height: 'auto' }} />
+            <img src="/mainspring-logo.svg" alt="Mainspring" className="w-28 sm:w-44" style={{ height: 'auto' }} />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/pricing" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Pricing</Link>
-            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
-            <Link to="/login?demo=1" className="rounded-lg px-3 py-2 text-sm font-medium" style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}>
+            <Link to="/pricing" className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Pricing</Link>
+            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap" style={{ color: 'var(--cafe-text)' }}>Log in</Link>
+            <Link to="/login?demo=1" className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap" style={{ color: '#6A513B', backgroundColor: '#F1E7D8', border: '1px solid #DFD2C2' }}>
               Demo
             </Link>
-            <Link to="/signup" className="rounded-lg px-3.5 py-2 text-sm font-semibold" style={{ backgroundColor: '#F3ECE2', color: '#5F4734', border: '1px solid #DFD2C2' }}>
-              Start your shop
+            <Link to="/signup" className="rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap" style={{ backgroundColor: '#F3ECE2', color: '#5F4734', border: '1px solid #DFD2C2' }}>
+              <span className="sm:hidden">Get started</span>
+              <span className="hidden sm:inline">Start your shop</span>
             </Link>
           </div>
         </header>

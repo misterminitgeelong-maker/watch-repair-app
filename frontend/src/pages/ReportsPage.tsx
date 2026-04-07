@@ -68,8 +68,8 @@ export default function ReportsPage() {
 
   const anyExporting = exportJobsMut.isPending || exportCustomersMut.isPending || exportInvoicesMut.isPending || exportMyDataMut.isPending
 
-  if (isLoading) return <Spinner />
-  if (!data) return <p style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p>
+  if (isLoading) return <div><PageHeader title="Reports" /><Spinner /></div>
+  if (!data) return <div><PageHeader title="Reports" /><p className="mt-4" style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p></div>
 
   const maxJobs = Math.max(...(trends?.months.map(m => m.jobs_opened) ?? [1]), 1)
   const maxRevenue = Math.max(...(trends?.months.map(m => m.revenue_cents) ?? [1]), 1)
