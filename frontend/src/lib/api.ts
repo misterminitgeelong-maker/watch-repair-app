@@ -760,6 +760,8 @@ export interface ReportsSummary {
   operations: {
     work_minutes: number
     avg_revenue_per_job_cents: number
+    avg_turnaround_days: number | null
+    quote_to_invoice_pct: number
   }
 }
 export const getReportsSummary = () => api.get<ReportsSummary>('/reports/summary')
@@ -785,6 +787,15 @@ export interface ReportsTrends {
 }
 export const getReportsTrends = (months = 6) =>
   api.get<ReportsTrends>('/reports/trends', { params: { months } })
+
+export interface ReportsTechBreakdownEntry {
+  user_id: string
+  user_name: string
+  total_minutes: number
+  jobs_count: number
+}
+export const getReportsTechBreakdown = () =>
+  api.get<ReportsTechBreakdownEntry[]>('/reports/tech-breakdown')
 
 export interface ReportsWidgets {
   overdue_jobs_count: number
@@ -1403,6 +1414,9 @@ export interface SmsLogEntry {
 }
 export const getSmsLog = (jobId: string) =>
   api.get<SmsLogEntry[]>(`/repair-jobs/${jobId}/sms-log`)
+
+export const resendJobNotification = (jobId: string, eventType: 'job_live' | 'job_ready' | 'quote_sent') =>
+  api.post<{ sent: { sms: boolean; email: boolean } }>(`/repair-jobs/${jobId}/resend-notification`, { event_type: eventType })
 
 // ── Inbox ─────────────────────────────────────────────────────────────────────
 export interface InboxEvent {

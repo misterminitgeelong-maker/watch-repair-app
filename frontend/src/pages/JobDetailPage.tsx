@@ -8,6 +8,7 @@ import {
   listWorkLogs, createWorkLog,
   listAttachments, uploadAttachment,
   getStatusHistory, getSmsLog,
+  resendJobNotification,
   listCustomerAccounts, getWatch,
   getWatchMovementQuote,
   getApiErrorMessage,
@@ -202,6 +203,12 @@ export default function JobDetailPage() {
     },
   })
 
+  const resendMut = useMutation({
+    mutationFn: (eventType: 'job_live' | 'job_ready' | 'quote_sent') =>
+      resendJobNotification(id!, eventType).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sms-log', id] }),
+  })
+
   const quotesQuery = useOffsetPaginatedQuery({
     queryKey: ['quotes', id, 'paged', 'created_at', 'desc'],
     queryFn: (offset) =>
@@ -328,6 +335,11 @@ export default function JobDetailPage() {
         <span style={{ color: 'var(--cafe-text-muted)' }}>Priority: <span className="font-medium capitalize" style={{ color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--cafe-text)' }}>{job.priority}</span></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Quote: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2)}</span></span>
         <span style={{ color: 'var(--cafe-text-muted)' }}>Created: <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span></span>
+        {(() => {
+          const days = Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86_400_000)
+          const color = days >= 14 ? '#8B3A3A' : days >= 7 ? '#9B4E0F' : 'var(--cafe-text-muted)'
+          return <span style={{ color: 'var(--cafe-text-muted)' }}>In shop: <span className="font-medium" style={{ color }}>{days} day{days !== 1 ? 's' : ''}</span></span>
+        })()}
       </div>
 
       <Card className="p-4 mb-5">
@@ -654,6 +666,26 @@ export default function JobDetailPage() {
       {tab === 'messages' && (
         <div>
           <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Texts sent to the customer for this job.</p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(['job_live', 'job_ready', 'quote_sent'] as const).map(evt => (
+              <Button
+                key={evt}
+                variant="secondary"
+                onClick={() => resendMut.mutate(evt)}
+                disabled={resendMut.isPending}
+              >
+                {evt === 'job_live' ? 'Resend: Job live SMS' : evt === 'job_ready' ? 'Resend: Job ready' : 'Resend: Quote'}
+              </Button>
+            ))}
+            {resendMut.isSuccess && resendMut.data && (
+              <p className="text-xs self-center" style={{ color: '#1F6D4C' }}>
+                Sent — SMS: {resendMut.data.sent.sms ? '✓' : '—'} · Email: {resendMut.data.sent.email ? '✓' : '—'}
+              </p>
+            )}
+            {resendMut.isError && (
+              <p className="text-xs self-center" style={{ color: '#C96A5A' }}>Failed to send</p>
+            )}
+          </div>
           {!smsLog ? <Spinner /> : smsLog.length === 0 ? <EmptyState message="No messages sent yet. The customer will receive a text when the job goes live and when a quote is sent." /> : (
             <div className="space-y-3">
               {smsLog.map(log => (

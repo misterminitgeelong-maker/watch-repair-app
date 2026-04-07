@@ -117,9 +117,18 @@ export default function MobileJobIntakePage() {
   if (submitMut.isSuccess) {
     return (
       <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)' }}>
-        <Card className="max-w-md p-6 text-center">
-          <p className="text-lg font-medium" style={{ color: 'var(--cafe-text)' }}>{submitMut.data?.message ?? 'Thanks!'}</p>
-          <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-muted)' }}>You can close this page.</p>
+        <Card className="max-w-md p-8 text-center space-y-3">
+          <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ backgroundColor: '#E8F6EE' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1F6D4C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <p className="text-xl font-semibold" style={{ color: 'var(--cafe-text)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+            {submitMut.data?.message ?? 'Request received!'}
+          </p>
+          <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            We'll be in touch shortly to confirm your booking. You can close this page.
+          </p>
         </Card>
       </div>
     )

@@ -8,6 +8,7 @@ import {
   getExportMyData,
   getReportsSummary,
   getReportsTrends,
+  getReportsTechBreakdown,
   getTenantActivity,
 } from '@/lib/api'
 import { Button, Card, PageHeader, Spinner } from '@/components/ui'
@@ -51,6 +52,7 @@ function downloadBlob(blob: Blob, filename: string) {
 export default function ReportsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
   const { data: trends } = useQuery({ queryKey: ['reports-trends'], queryFn: () => getReportsTrends(6).then(r => r.data) })
+  const { data: techBreakdown } = useQuery({ queryKey: ['reports-tech-breakdown'], queryFn: () => getReportsTechBreakdown().then(r => r.data) })
   const { data: activity } = useQuery({ queryKey: ['reports-activity'], queryFn: () => getTenantActivity(50).then(r => r.data) })
   const exportJobsMut = useMutation({ mutationFn: () => getExportJobsCsv().then(r => { downloadBlob(r.data, 'jobs.csv'); return r }) })
   const exportCustomersMut = useMutation({ mutationFn: () => getExportCustomersCsv().then(r => { downloadBlob(r.data, 'customers.csv'); return r }) })
@@ -160,6 +162,10 @@ export default function ReportsPage() {
             <p style={{ color: 'var(--cafe-text-mid)' }}>Gross margin: <strong style={{ color: 'var(--cafe-text)' }}>{data.financials.gross_margin_percent}%</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Avg / job: <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(data.operations.avg_revenue_per_job_cents)}</strong></p>
             <p style={{ color: 'var(--cafe-text-mid)' }}>Work mins: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.work_minutes}</strong></p>
+            {data.operations.avg_turnaround_days != null && (
+              <p style={{ color: 'var(--cafe-text-mid)' }}>Avg turnaround: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.avg_turnaround_days}d</strong></p>
+            )}
+            <p style={{ color: 'var(--cafe-text-mid)' }}>Quote→invoice: <strong style={{ color: 'var(--cafe-text)' }}>{data.operations.quote_to_invoice_pct}%</strong></p>
           </div>
         </Card>
 
@@ -236,6 +242,23 @@ export default function ReportsPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {techBreakdown && techBreakdown.length > 0 && (
+        <Card className="p-5 mb-6">
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Technician Breakdown</h2>
+          <div className="space-y-2">
+            {techBreakdown.map(t => (
+              <div key={t.user_id} className="flex items-center justify-between text-sm">
+                <span style={{ color: 'var(--cafe-text-mid)' }}>{t.user_name}</span>
+                <span className="flex gap-4">
+                  <span style={{ color: 'var(--cafe-text-muted)' }}>{t.jobs_count} job{t.jobs_count !== 1 ? 's' : ''}</span>
+                  <strong style={{ color: 'var(--cafe-text)' }}>{Math.floor(t.total_minutes / 60)}h {t.total_minutes % 60}m</strong>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {activity && activity.length > 0 && (

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select
@@ -392,6 +393,113 @@ def get_repair_job_sms_log(
         )
         for log in logs
     ]
+
+
+class ResendNotificationRequest(BaseModel):
+    event_type: str
+
+
+@router.post("/{job_id}/resend-notification")
+def resend_notification(
+    job_id: UUID,
+    payload: ResendNotificationRequest,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    from ..email_client import send_job_ready_email, send_quote_sent_email
+
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    watch = session.get(Watch, job.watch_id)
+    if not watch:
+        raise HTTPException(status_code=404, detail="Watch not found")
+
+    customer = session.get(Customer, watch.customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    sms_sent = False
+    email_sent = False
+
+    if payload.event_type == "job_live":
+        if not customer.phone and not customer.email:
+            raise HTTPException(status_code=400, detail="No phone or email found for customer")
+        if customer.phone:
+            sms.notify_job_live(
+                session,
+                tenant_id=auth.tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                status_token=job.status_token,
+                job_number=job.job_number,
+            )
+            sms_sent = True
+
+    elif payload.event_type == "job_ready":
+        if not customer.phone and not customer.email:
+            raise HTTPException(status_code=400, detail="No phone or email found for customer")
+        if customer.phone:
+            sms.notify_job_status_changed(
+                session,
+                tenant_id=auth.tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                job_number=job.job_number,
+                status_token=job.status_token,
+                new_status="awaiting_collection",
+            )
+            sms_sent = True
+        if customer.email:
+            send_job_ready_email(
+                to_email=customer.email,
+                customer_name=customer.full_name,
+                job_number=job.job_number,
+                status_token=job.status_token,
+            )
+            email_sent = True
+
+    elif payload.event_type == "quote_sent":
+        quote = session.exec(
+            select(Quote)
+            .where(Quote.tenant_id == auth.tenant_id)
+            .where(Quote.repair_job_id == job.id)
+            .where(Quote.status.in_(["sent", "approved"]))
+            .order_by(Quote.sent_at.desc())
+        ).first()
+        if not quote:
+            raise HTTPException(status_code=400, detail="No active quote (sent or approved) found for this job")
+        if not customer.phone and not customer.email:
+            raise HTTPException(status_code=400, detail="No phone or email found for customer")
+        if customer.phone:
+            sms.notify_quote_sent(
+                session,
+                tenant_id=auth.tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                total_cents=quote.total_cents,
+                approval_token=quote.approval_token,
+            )
+            sms_sent = True
+        if customer.email:
+            send_quote_sent_email(
+                to_email=customer.email,
+                customer_name=customer.full_name or "there",
+                total_cents=quote.total_cents,
+                approval_token=quote.approval_token,
+                job_number=job.job_number,
+            )
+            email_sent = True
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown event_type: {payload.event_type!r}")
+
+    session.commit()
+    return {"sent": {"sms": sms_sent, "email": email_sent}}
 
 
 @router.get("/{job_id}/status-history", response_model=list[JobStatusHistoryRead])

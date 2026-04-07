@@ -19,6 +19,10 @@ import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_
 import NewJobModal from '@/components/NewJobModal'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
+function daysInShop(createdAt: string): number {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
+}
+
 const ALL_STATUS_OPTIONS: JobStatus[] = [...JOB_STATUS_ORDER]
 
 const JOB_SORT_FIELDS = ['created_at', 'job_number', 'status', 'priority'] as const
@@ -398,6 +402,16 @@ export default function JobsPage() {
                                 <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
                                   #{j.job_number} · {formatDate(j.created_at)}
                                 </p>
+                                {(() => {
+                                  const days = daysInShop(j.created_at)
+                                  const color = days >= 14 ? '#8B3A3A' : days >= 7 ? '#9B4E0F' : 'var(--cafe-text-muted)'
+                                  const bg = days >= 14 ? '#FCE8E8' : days >= 7 ? '#FDE8D4' : 'var(--cafe-bg)'
+                                  return (
+                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: bg, color }}>
+                                      {days}d in shop
+                                    </span>
+                                  )
+                                })()}
                                 {j.customer_account_id && (
                                   <p className="text-[11px] mt-1 inline-flex items-center rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
                                     B2B

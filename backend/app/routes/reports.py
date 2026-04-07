@@ -5,11 +5,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, func, select
+from sqlmodel import Session, func, select, col
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
-from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -137,6 +137,46 @@ def get_reports_summary(
         ).one()
     )
 
+    # avg_turnaround_days: average days from job created_at to first 'collected' status history entry
+    collected_rows = session.exec(
+        select(RepairJob.id, RepairJob.created_at, JobStatusHistory.created_at)
+        .join(JobStatusHistory, JobStatusHistory.repair_job_id == RepairJob.id)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(JobStatusHistory.tenant_id == tenant_id)
+        .where(JobStatusHistory.new_status == "collected")
+        .order_by(RepairJob.id, JobStatusHistory.created_at.asc())
+    ).all()
+    # Keep only the first collected entry per job
+    seen_job_ids: set = set()
+    turnaround_days_list: list[float] = []
+    for row in collected_rows:
+        job_id_val, job_created, collected_at = row[0], row[1], row[2]
+        if job_id_val in seen_job_ids:
+            continue
+        seen_job_ids.add(job_id_val)
+        if job_created and collected_at:
+            delta = collected_at - job_created
+            turnaround_days_list.append(delta.total_seconds() / 86400)
+    avg_turnaround_days = round(sum(turnaround_days_list) / len(turnaround_days_list), 2) if turnaround_days_list else None
+
+    # quote_to_invoice_pct: percentage of approved quotes whose job also has an invoice
+    invoiced_job_ids = set(
+        session.exec(
+            select(Invoice.repair_job_id)
+            .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.repair_job_id.isnot(None))
+        ).all()
+    )
+    approved_job_ids = set(
+        session.exec(
+            select(Quote.repair_job_id)
+            .where(Quote.tenant_id == tenant_id)
+            .where(Quote.status == "approved")
+        ).all()
+    )
+    converted = len(approved_job_ids & invoiced_job_ids)
+    quote_to_invoice_pct = round((converted / max(len(approved_job_ids), 1)) * 100, 1)
+
     return {
         "counts": {
             "jobs": jobs_total,
@@ -164,8 +204,48 @@ def get_reports_summary(
         "operations": {
             "work_minutes": work_minutes,
             "avg_revenue_per_job_cents": int(revenue_cents / jobs_total) if jobs_total > 0 else 0,
+            "avg_turnaround_days": avg_turnaround_days,
+            "quote_to_invoice_pct": quote_to_invoice_pct,
         },
     }
+
+
+@router.get("/tech-breakdown")
+def get_tech_breakdown(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant_id = auth.tenant_id
+
+    rows = session.exec(
+        select(
+            WorkLog.user_id,
+            func.coalesce(func.sum(WorkLog.minutes_spent), 0).label("total_minutes"),
+            func.count(WorkLog.repair_job_id).label("jobs_count"),
+        )
+        .where(WorkLog.tenant_id == tenant_id)
+        .where(WorkLog.user_id.isnot(None))
+        .group_by(WorkLog.user_id)
+    ).all()
+
+    if not rows:
+        return []
+
+    user_ids = [row[0] for row in rows]
+    users = session.exec(select(User).where(User.id.in_(user_ids))).all()
+    user_name_map = {str(u.id): u.full_name for u in users}
+
+    result = [
+        {
+            "user_id": str(row[0]),
+            "user_name": user_name_map.get(str(row[0]), "Unknown"),
+            "total_minutes": int(row[1]),
+            "jobs_count": int(row[2]),
+        }
+        for row in rows
+    ]
+    result.sort(key=lambda x: x["total_minutes"], reverse=True)
+    return result
 
 
 def _ym(dt: datetime) -> str:
