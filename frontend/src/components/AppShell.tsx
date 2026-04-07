@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, WatchIcon, X } from 'lucide-react'
+import { WatchIcon } from 'lucide-react'
 import {
   listAutoKeyJobs,
   listCustomers,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import Sidebar from './Sidebar'
+import BottomTabBar from './BottomTabBar'
 import { Button, Modal } from '@/components/ui'
 import {
   getDemoTourMode,
@@ -319,7 +320,6 @@ export default function AppShell() {
   const navigate = useNavigate()
   const demoModeEnabled = isDemoModeEnabled()
 
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [switchingSite, setSwitchingSite] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
@@ -725,19 +725,11 @@ export default function AppShell() {
       <Sidebar className="hidden md:flex" />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
-          className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3"
+          className="md:hidden sticky top-0 z-20 flex items-center justify-center px-4 py-3"
           style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}
         >
-          <button
-            onClick={() => setMobileNavOpen(true)}
-            className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg -ml-1"
-            style={{ color: 'var(--cafe-text-mid)' }}
-            aria-label="Open navigation"
-          >
-            <Menu size={22} />
-          </button>
-
           <div className="flex items-center gap-2">
             <div
               className="h-7 w-7 rounded-full flex items-center justify-center"
@@ -749,11 +741,10 @@ export default function AppShell() {
               Mainspring
             </span>
           </div>
-
-          <span className="w-9" />
         </header>
 
-        <main className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
+        {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}
+        <main className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 pb-20 md:pb-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
           {availableSites.length > 1 && (
             <div className="mb-4 flex items-center justify-end gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -789,26 +780,7 @@ export default function AppShell() {
         </main>
       </div>
 
-      {mobileNavOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            className="absolute inset-0"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
-            onClick={() => setMobileNavOpen(false)}
-            aria-label="Close navigation overlay"
-          />
-
-          <div className="relative h-full w-[84vw] max-w-72">
-            <Sidebar
-              mobile
-              className="h-full"
-              onNavigate={() => setMobileNavOpen(false)}
-              onClose={() => setMobileNavOpen(false)}
-              closeIcon={<X size={18} />}
-            />
-          </div>
-        </div>
-      )}
+      <BottomTabBar />
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>

@@ -707,7 +707,7 @@ export default function ShoeRepairsPage() {
       <button
         type="button"
         onClick={() => setShowAdd(true)}
-        className="sm:hidden fixed bottom-6 right-5 z-30 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold shadow-lg"
+        className="sm:hidden fixed bottom-20 right-5 z-30 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold shadow-lg"
         style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810', boxShadow: '0 4px 16px rgba(140,95,15,0.35)' }}
         aria-label="New shoe repair job"
       >
