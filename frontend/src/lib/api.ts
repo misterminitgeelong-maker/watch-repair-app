@@ -1529,8 +1529,9 @@ export interface AutoKeyQuoteSuggestionResult {
   total_cents: number
   line_items: AutoKeyQuoteLineItem[]
 }
-export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number }) =>
-  api.get<AutoKeyQuoteSuggestionResult>('/auto-key-jobs/quote-suggestions', { params })
+export type AutoKeyPricingTier = 'retail' | 'b2b' | 'tier1' | 'tier2' | 'tier3'
+export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number; pricing_tier?: AutoKeyPricingTier }) =>
+  api.get<AutoKeyQuoteSuggestionResult & { pricing_tier: string }>('/auto-key-jobs/quote-suggestions', { params })
 
 // ── Vehicle key specs ─────────────────────────────────────────────────────────
 export interface VehicleKeySpecMatch {
@@ -1549,6 +1550,49 @@ export interface VehicleKeySpecMatch {
 }
 export const searchVehicleKeySpecs = (params: { make?: string; model?: string; year?: number }) =>
   api.get<{ matches: VehicleKeySpecMatch[] }>('/vehicle-key-specs/search', { params })
+
+export interface KnownIssue {
+  make?: string
+  model?: string
+  variant?: string
+  issue?: string
+  severity?: string
+  notes?: string
+  resolution?: string
+}
+
+export interface ToolRecommendation {
+  make?: string
+  model?: string
+  job_type?: string
+  primary_tool?: string
+  backup_tool?: string
+  escalation_tool?: string
+  risk_level?: string
+  notes?: string
+}
+
+export interface CuttingProfile {
+  blank_reference?: string
+  description?: string
+  key_type?: string
+  common_makes_models?: string
+  dolphin_xp005l?: string
+  condor_xc_mini_plus_ii?: string
+  silca_alpha_pro?: string
+  silca_futura_pro?: string
+  notes?: string
+}
+
+export interface VehicleJobContext {
+  complexity: string | null
+  known_issues: KnownIssue[]
+  tool_recommendations: ToolRecommendation[]
+  cutting_profiles: CuttingProfile[]
+}
+
+export const getVehicleJobContext = (params: { make?: string; model?: string; year?: number; job_type?: string; blade_code?: string }) =>
+  api.get<VehicleJobContext>('/vehicle-key-specs/job-context', { params })
 
 // ── Billing — Stripe Connect ──────────────────────────────────────────────────
 export const refreshStripeConnectStatus = () =>

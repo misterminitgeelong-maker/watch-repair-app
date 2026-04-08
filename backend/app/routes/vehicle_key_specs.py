@@ -13,7 +13,9 @@ from ..dependencies import AuthContext, get_auth_context, require_feature
 
 router = APIRouter(prefix="/v1/vehicle-key-specs", tags=["vehicle-key-specs"])
 
-_SPEC_PATH = Path(__file__).parent.parent.parent / "seed" / "vehicle_key_specs.json"
+_SEED = Path(__file__).parent.parent.parent / "seed"
+
+_SPEC_PATH = _SEED / "vehicle_key_specs.json"
 _ENTRIES: list[dict[str, Any]] = []
 _KEY_BLANKS: list[dict[str, Any]] = []
 if _SPEC_PATH.is_file():
@@ -21,6 +23,20 @@ if _SPEC_PATH.is_file():
         _RAW = json.load(_f)
         _ENTRIES = list(_RAW.get("entries") or [])
         _KEY_BLANKS = list(_RAW.get("key_blanks") or [])
+
+# ── Extra seed data from Locksmith Master Database ────────────────────────────
+_KNOWN_ISSUES: list[dict[str, Any]] = []
+_TOOL_RECS: list[dict[str, Any]] = []
+_CUTTING_PROFILES: list[dict[str, Any]] = []
+
+for _path, _target in [
+    (_SEED / "known_issues.json", _KNOWN_ISSUES),
+    (_SEED / "tool_recommendations.json", _TOOL_RECS),
+    (_SEED / "cutting_profiles.json", _CUTTING_PROFILES),
+]:
+    if _path.is_file():
+        with open(_path, encoding="utf-8") as _f:
+            _target.extend(json.load(_f).get("entries", []))
 
 
 def _norm(s: str | None) -> str:
@@ -207,3 +223,108 @@ def search_vehicle_key_specs(
         )
 
     return {"matches": matches}
+
+
+# ── Job context: complexity + known issues + tool recs + cutting profiles ──────
+
+def _best_entry_for_vehicle(make: str, model: str, year: int | None) -> dict[str, Any] | None:
+    make_q = _norm(make)
+    model_q = _norm(model)
+    if not make_q and not model_q:
+        return None
+    best_score = 0
+    best: dict[str, Any] | None = None
+    for e in _ENTRIES:
+        sc = _score(e, make_q, model_q, year)
+        if sc > best_score:
+            best_score = sc
+            best = e
+    return best if best_score > 60 else None
+
+
+def _match_known_issues(make: str, model: str) -> list[dict[str, Any]]:
+    make_n = _norm(make)
+    if not make_n:
+        return []
+    model_n = _norm(model)
+    results = []
+    for issue in _KNOWN_ISSUES:
+        im = _norm(str(issue.get("make") or ""))
+        if not im or (make_n not in im and im not in make_n):
+            continue
+        if model_n:
+            imod = _norm(str(issue.get("model") or ""))
+            if imod and (model_n not in imod and imod not in model_n):
+                continue
+        results.append({k: v for k, v in issue.items() if v is not None})
+    return results
+
+
+def _match_tool_recommendations(make: str, model: str, job_type: str | None) -> list[dict[str, Any]]:
+    make_n = _norm(make)
+    model_n = _norm(model)
+    job_n = _norm(job_type or "")
+    if not make_n and not model_n:
+        return []
+    results = []
+    for rec in _TOOL_RECS:
+        if rec.get("row_type") == "SUMMARY":
+            continue
+        rm = _norm(str(rec.get("make") or ""))
+        if make_n and rm and (make_n not in rm and rm not in make_n):
+            continue
+        if make_n and not rm:
+            continue
+        if model_n:
+            rmod = _norm(str(rec.get("model") or ""))
+            if rmod and (model_n not in rmod and rmod not in model_n):
+                continue
+        if job_n and rec.get("job_type"):
+            rjob = _norm(str(rec.get("job_type") or ""))
+            if rjob and (job_n not in rjob and rjob not in job_n):
+                continue
+        pt = rec.get("primary_tool")
+        if pt and str(pt).strip() and str(pt).strip() != "—":
+            results.append({k: v for k, v in rec.items() if v is not None and str(v).strip() not in ("", "—")})
+    return results[:8]
+
+
+def _match_cutting_profiles(blade_code: str | None) -> list[dict[str, Any]]:
+    if not blade_code or not blade_code.strip():
+        return []
+    # Try each token in the blade code against blank references
+    tokens = [_norm(t) for t in re.split(r"[\s/,]+", blade_code) if len(t.strip()) >= 2]
+    blade_n = _norm(blade_code)
+    results = []
+    for cp in _CUTTING_PROFILES:
+        br = _norm(str(cp.get("blank_reference") or ""))
+        if not br:
+            continue
+        if blade_n in br or br in blade_n or any(tok and tok in br for tok in tokens):
+            results.append({k: v for k, v in cp.items() if v is not None})
+    return results
+
+
+@router.get("/job-context")
+def get_vehicle_job_context(
+    make: str = Query("", max_length=80),
+    model: str = Query("", max_length=120),
+    year: int | None = Query(None, ge=1900, le=2100),
+    job_type: str | None = Query(None, max_length=120),
+    blade_code: str | None = Query(None, max_length=80),
+    _auth: AuthContext = Depends(get_auth_context),
+    _f=Depends(require_feature("auto_key")),
+):
+    """Return AKL complexity, known issues, tool recommendations, and cutting profiles for a vehicle."""
+    if not make.strip() and not model.strip():
+        return {"complexity": None, "known_issues": [], "tool_recommendations": [], "cutting_profiles": []}
+
+    best = _best_entry_for_vehicle(make, model, year)
+    complexity = str(best.get("akl_complexity") or "").strip() if best else None
+
+    return {
+        "complexity": complexity or None,
+        "known_issues": _match_known_issues(make, model),
+        "tool_recommendations": _match_tool_recommendations(make, model, job_type),
+        "cutting_profiles": _match_cutting_profiles(blade_code),
+    }

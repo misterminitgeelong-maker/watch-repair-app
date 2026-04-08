@@ -1,7 +1,7 @@
-"""Suggested retail line items for Mobile Services quotes by job type (editable defaults)."""
+"""Suggested retail line items for Mobile Services quotes by job type."""
 from __future__ import annotations
 
-# Unit prices AUD cents — adjust to your market; not sourced from xlsx in v1.
+# Unit prices AUD cents — retail baseline. Tiers apply a discount multiplier.
 _JOB_TYPE_DEFAULT_CENTS: dict[str, tuple[str, int]] = {
     "Key Cutting (in-store)": ("Key cutting (in-store)", 3500),
     "Transponder Programming": ("Transponder programming", 12000),
@@ -18,21 +18,42 @@ _JOB_TYPE_DEFAULT_CENTS: dict[str, tuple[str, int]] = {
     "Diagnostic": ("Automotive key / immobiliser diagnostic", 15900),
 }
 
+# Tier discount multipliers (from Locksmith Master Database Job_Pricing sheet)
+_TIER_MULTIPLIERS: dict[str, float] = {
+    "retail": 1.0,
+    "b2b":    0.80,  # B2B flat — 20% off
+    "tier1":  0.75,  # MinitKey T1 — 25% off
+    "tier2":  0.70,  # MinitKey T2 — 30% off
+    "tier3":  0.65,  # MinitKey T3 — 35% off
+}
+
 _FALLBACK_DESCRIPTION = "Mobile key service"
 _FALLBACK_UNIT_CENTS = 15000
 
 
-def suggest_line_items(job_type: str | None, key_quantity: int) -> list[tuple[str, float, int]]:
+def suggest_line_items(
+    job_type: str | None,
+    key_quantity: int,
+    pricing_tier: str = "retail",
+) -> list[tuple[str, float, int]]:
     """Return (description, quantity, unit_price_cents) per line."""
     qty = max(1, int(key_quantity))
+    multiplier = _TIER_MULTIPLIERS.get(pricing_tier, 1.0)
+
     if job_type and job_type in _JOB_TYPE_DEFAULT_CENTS:
-        desc, unit = _JOB_TYPE_DEFAULT_CENTS[job_type]
+        desc, base_unit = _JOB_TYPE_DEFAULT_CENTS[job_type]
+        unit = int(round(base_unit * multiplier))
         return [(desc, float(qty), unit)]
-    return [(_FALLBACK_DESCRIPTION, float(qty), _FALLBACK_UNIT_CENTS)]
+    unit = int(round(_FALLBACK_UNIT_CENTS * multiplier))
+    return [(_FALLBACK_DESCRIPTION, float(qty), unit)]
 
 
-def suggested_subtotal_cents(job_type: str | None, key_quantity: int) -> int:
-    return int(round(sum(q * p for _, q, p in suggest_line_items(job_type, key_quantity))))
+def suggested_subtotal_cents(
+    job_type: str | None,
+    key_quantity: int,
+    pricing_tier: str = "retail",
+) -> int:
+    return int(round(sum(q * p for _, q, p in suggest_line_items(job_type, key_quantity, pricing_tier))))
 
 
 def gst_tax_cents(subtotal: int) -> int:

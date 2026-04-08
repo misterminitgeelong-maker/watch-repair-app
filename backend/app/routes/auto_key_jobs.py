@@ -4,6 +4,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, delete, func, select
 
+from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
+
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
@@ -167,6 +169,35 @@ def list_auto_key_jobs(
         AutoKeyJobRead(**j.model_dump(), customer_name=cname_map.get(j.customer_id), customer_phone=cphone_map.get(j.customer_id))
         for j in jobs
     ]
+
+
+@router.get("/quote-suggestions")
+def get_quote_suggestions(
+    job_type: str | None = Query(default=None, max_length=120),
+    key_quantity: int = Query(default=1, ge=1, le=100),
+    pricing_tier: str = Query(default="retail", pattern="^(retail|b2b|tier1|tier2|tier3)$"),
+    _auth=Depends(get_auth_context),
+):
+    """Return suggested line items and total for a given job type and pricing tier."""
+    items = suggest_line_items(job_type, key_quantity, pricing_tier)
+    subtotal = sum(int(round(q * p)) for _, q, p in items)
+    tax = gst_tax_cents(subtotal)
+    return {
+        "pricing_tier": pricing_tier,
+        "total_cents": subtotal + tax,
+        "subtotal_cents": subtotal,
+        "tax_cents": tax,
+        "line_items": [
+            {
+                "id": str(i),
+                "description": desc,
+                "quantity": qty,
+                "unit_price_cents": unit,
+                "total_price_cents": int(round(qty * unit)),
+            }
+            for i, (desc, qty, unit) in enumerate(items)
+        ],
+    }
 
 
 @router.get("/{job_id}", response_model=AutoKeyJobRead)

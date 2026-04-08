@@ -77,6 +77,27 @@ function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
 }
 
+/** Parse AKL complexity from the stored tech_notes string (e.g. "AKL complexity: High"). */
+function parseAklComplexity(techNotes?: string | null): string | null {
+  if (!techNotes) return null
+  const m = techNotes.match(/AKL complexity:\s*([^\n]+)/i)
+  return m ? m[1].trim() : null
+}
+
+function AklComplexityPill({ complexity }: { complexity: string }) {
+  const c = complexity.toLowerCase()
+  let bg = 'rgba(120,180,120,0.15)', color = '#4A8A4A'
+  if (c.includes('very high') || c.includes('refer')) { bg = 'rgba(201,106,90,0.15)'; color = '#C96A5A' }
+  else if (c.includes('high'))   { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
+  else if (c.includes('medium')) { bg = 'rgba(201,162,72,0.12)';  color = '#9A7220' }
+  return (
+    <span className='inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold'
+      style={{ backgroundColor: bg, color }}>
+      {complexity}
+    </span>
+  )
+}
+
 function ymdLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -416,12 +437,14 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   }, [customerFirstName, form.vehicle_make, form.vehicle_year, form.vehicle_model])
 
   const suggestionQty = Math.max(1, Number.parseInt(form.key_quantity, 10) || 1)
+  const pricingTier = form.customer_account_id ? 'b2b' : 'retail'
   const { data: quoteSuggestion, isFetching: quoteSuggestionLoading } = useQuery({
-    queryKey: ['auto-key-quote-suggestions', form.job_type, suggestionQty],
+    queryKey: ['auto-key-quote-suggestions', form.job_type, suggestionQty, pricingTier],
     queryFn: () =>
       getAutoKeyQuoteSuggestions({
         job_type: form.job_type.trim() || undefined,
         key_quantity: suggestionQty,
+        pricing_tier: pricingTier,
       }).then(r => r.data),
   })
 
@@ -1380,9 +1403,15 @@ function WeekJobChip({
         )}
 
         {vehicleSummary && (
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
-            {vehicleSummary}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <p className="text-[11px]" style={{ color: 'var(--cafe-text-mid)' }}>
+              {vehicleSummary}
+            </p>
+            {(() => {
+              const complexity = parseAklComplexity(job.tech_notes)
+              return complexity ? <AklComplexityPill complexity={complexity} /> : null
+            })()}
+          </div>
         )}
 
         {metaTags.length > 0 && (
@@ -1702,11 +1731,17 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
             ) : null
           })()}
           {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
-            <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
-              {[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}
-              {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
-              {job.registration_plate ? ` · ${job.registration_plate}` : ''}
-            </p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                {[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}
+                {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
+                {job.registration_plate ? ` · ${job.registration_plate}` : ''}
+              </p>
+              {(() => {
+                const complexity = parseAklComplexity(job.tech_notes)
+                return complexity ? <AklComplexityPill complexity={complexity} /> : null
+              })()}
+            </div>
           )}
           {job.job_address && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>

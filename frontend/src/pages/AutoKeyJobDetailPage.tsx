@@ -7,6 +7,7 @@ import {
   getApiErrorMessage,
   getUploadErrorMessage,
   getCustomer,
+  getVehicleJobContext,
   listAutoKeyAttachments,
   listAutoKeyInvoices,
   listAutoKeyQuotes,
@@ -20,8 +21,11 @@ import {
   uploadAutoKeyAttachment,
   MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
   type AutoKeyJobUpdatePayload,
+  type CuttingProfile,
   type CustomerAccount,
   type JobStatus,
+  type KnownIssue,
+  type ToolRecommendation,
   type VehicleKeySpecMatch,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -30,6 +34,39 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spin
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+
+// ── Complexity / severity badge helpers ───────────────────────────────────────
+function aklComplexityStyle(complexity: string): { bg: string; color: string } {
+  const c = complexity.toLowerCase()
+  if (c.includes('very high') || c.includes('refer')) return { bg: 'rgba(201,106,90,0.15)', color: '#C96A5A' }
+  if (c.includes('high'))                               return { bg: 'rgba(201,162,72,0.15)',  color: '#B8882A' }
+  if (c.includes('medium'))                             return { bg: 'rgba(201,162,72,0.08)',  color: '#9A7220' }
+  return { bg: 'rgba(120,180,120,0.15)', color: '#4A8A4A' }
+}
+
+function AklComplexityBadge({ complexity }: { complexity: string }) {
+  const { bg, color } = aklComplexityStyle(complexity)
+  return (
+    <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap'
+      style={{ backgroundColor: bg, color }}>
+      {complexity}
+    </span>
+  )
+}
+
+function SeverityBadge({ severity }: { severity: string }) {
+  const s = severity.toLowerCase()
+  let bg = 'rgba(201,162,72,0.12)', color = '#9A7220'
+  if (s.includes('very high') || s.includes('critical')) { bg = 'rgba(201,106,90,0.15)'; color = '#C96A5A' }
+  else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
+  else if (s.includes('low'))   { bg = 'rgba(120,180,120,0.15)'; color = '#4A8A4A' }
+  return (
+    <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0'
+      style={{ backgroundColor: bg, color }}>
+      {severity}
+    </span>
+  )
+}
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
@@ -100,6 +137,21 @@ export default function AutoKeyJobDetailPage() {
       hasFeature('auto_key') &&
       (vLookupMake.trim().length >= 2 || vLookupModel.trim().length >= 2),
     staleTime: 60_000,
+  })
+
+  // ── Job context: complexity, known issues, tool recs, cutting profiles ─────
+  const { data: jobContext } = useQuery({
+    queryKey: ['vehicle-job-context', job?.vehicle_make, job?.vehicle_model, job?.vehicle_year, job?.job_type, job?.blade_code],
+    queryFn: () =>
+      getVehicleJobContext({
+        make: job!.vehicle_make ?? '',
+        model: job!.vehicle_model ?? '',
+        year: job!.vehicle_year ?? undefined,
+        job_type: job!.job_type ?? undefined,
+        blade_code: job!.blade_code ?? undefined,
+      }).then(r => r.data),
+    enabled: !!job && !!(job.vehicle_make || job.vehicle_model),
+    staleTime: 120_000,
   })
 
   const applyVehicleDbMut = useMutation({
@@ -444,7 +496,13 @@ export default function AutoKeyJobDetailPage() {
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Priority</span><span className='capitalize'>{job.priority}</span></div>
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Created</span><span>{formatDate(job.created_at)}</span></div>
             {(job.vehicle_make || job.vehicle_model) && (
-              <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span><span>{[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}</span></div>
+              <div className='flex justify-between items-center gap-2'>
+                <span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span>
+                <div className='flex items-center gap-1.5'>
+                  <span>{[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}</span>
+                  {jobContext?.complexity && <AklComplexityBadge complexity={jobContext.complexity} />}
+                </div>
+              </div>
             )}
             <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
             {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
@@ -593,6 +651,104 @@ export default function AutoKeyJobDetailPage() {
             className='w-full min-h-20 px-3 py-2 rounded-lg text-sm resize-y'
             style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
           />
+
+          {/* Known Issues warning */}
+          {jobContext?.known_issues && jobContext.known_issues.length > 0 && (
+            <div className='space-y-2 pt-2'>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: '#C96A5A' }}>⚠ Known Issues</h3>
+              {jobContext.known_issues.map((issue: KnownIssue, i: number) => (
+                <div key={i} className='rounded-lg border p-3 space-y-1 text-sm'
+                  style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.07)' }}>
+                  <div className='flex items-start justify-between gap-2'>
+                    <span className='font-medium' style={{ color: 'var(--cafe-text)' }}>{issue.issue}</span>
+                    {issue.severity && <SeverityBadge severity={issue.severity} />}
+                  </div>
+                  {issue.notes && <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{issue.notes}</p>}
+                  {issue.resolution && (
+                    <p className='text-xs font-medium' style={{ color: 'var(--cafe-text)' }}>
+                      Fix: {issue.resolution}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tool Recommendations */}
+          {jobContext?.tool_recommendations && jobContext.tool_recommendations.length > 0 && (
+            <div className='space-y-2 pt-2'>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Recommended Tools</h3>
+              {jobContext.tool_recommendations.map((rec: ToolRecommendation, i: number) => (
+                <div key={i} className='rounded-lg border p-3 text-sm space-y-1'
+                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
+                  <div className='flex items-center justify-between gap-2'>
+                    {rec.job_type && <span className='text-xs font-medium uppercase tracking-wide' style={{ color: 'var(--cafe-text-muted)' }}>{rec.job_type}</span>}
+                    {rec.risk_level && <SeverityBadge severity={rec.risk_level} />}
+                  </div>
+                  <div className='flex items-center gap-1.5'>
+                    <span className='font-semibold' style={{ color: 'var(--cafe-amber)' }}>Primary:</span>
+                    <span>{rec.primary_tool}</span>
+                  </div>
+                  {rec.backup_tool && (
+                    <div className='flex items-center gap-1.5'>
+                      <span style={{ color: 'var(--cafe-text-muted)' }}>Backup:</span>
+                      <span>{rec.backup_tool}</span>
+                    </div>
+                  )}
+                  {rec.escalation_tool && (
+                    <div className='flex items-center gap-1.5'>
+                      <span style={{ color: 'var(--cafe-text-muted)' }}>Escalate to:</span>
+                      <span>{rec.escalation_tool}</span>
+                    </div>
+                  )}
+                  {rec.notes && <p className='text-xs pt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>{rec.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Cutting Machine Profiles */}
+          {jobContext?.cutting_profiles && jobContext.cutting_profiles.length > 0 && (
+            <div className='space-y-2 pt-2'>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Cutting Machine Profiles</h3>
+              {jobContext.cutting_profiles.map((cp: CuttingProfile, i: number) => (
+                <div key={i} className='rounded-lg border p-3 text-sm space-y-2'
+                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
+                  <div className='font-medium' style={{ color: 'var(--cafe-text)' }}>
+                    {cp.blank_reference}
+                    {cp.description ? ` — ${cp.description}` : ''}
+                  </div>
+                  <div className='grid grid-cols-1 gap-1 text-xs'>
+                    {cp.dolphin_xp005l && (
+                      <div className='flex justify-between'>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>Dolphin XP-005L</span>
+                        <span className='font-mono font-medium'>{cp.dolphin_xp005l}</span>
+                      </div>
+                    )}
+                    {cp.condor_xc_mini_plus_ii && (
+                      <div className='flex justify-between'>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>Condor XC-Mini Plus II</span>
+                        <span className='font-mono font-medium'>{cp.condor_xc_mini_plus_ii}</span>
+                      </div>
+                    )}
+                    {cp.silca_alpha_pro && (
+                      <div className='flex justify-between'>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>Silca Alpha Pro</span>
+                        <span className='font-mono font-medium'>{cp.silca_alpha_pro}</span>
+                      </div>
+                    )}
+                    {cp.silca_futura_pro && (
+                      <div className='flex justify-between'>
+                        <span style={{ color: 'var(--cafe-text-muted)' }}>Silca Futura Pro</span>
+                        <span className='font-mono font-medium'>{cp.silca_futura_pro}</span>
+                      </div>
+                    )}
+                  </div>
+                  {cp.notes && <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{cp.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
 
           </div>{/* end vehicle tab group */}
 
