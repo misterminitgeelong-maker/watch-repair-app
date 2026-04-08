@@ -1026,7 +1026,7 @@ export interface AutoKeyJobCreatePayload {
   commission_lead_source?: string | null
 }
 
-export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string; assigned_user_id?: string; date_from?: string; date_to?: string; include_unscheduled?: boolean; active_only?: boolean }) =>
+export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string; assigned_user_id?: string; date_from?: string; date_to?: string; include_unscheduled?: boolean; active_only?: boolean; limit?: number }) =>
   api.get<AutoKeyJob[]>('/auto-key-jobs', params && Object.keys(params).length ? { params } : undefined)
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)

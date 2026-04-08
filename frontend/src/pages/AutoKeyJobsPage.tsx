@@ -459,6 +459,43 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     }))
   }
 
+  // ── Last job vehicle suggestion ─────────────────────────────────────────────
+  const [lastJobDismissed, setLastJobDismissed] = useState(false)
+  useEffect(() => { setLastJobDismissed(false) }, [form.customer_id])
+
+  const { data: customerLastJob } = useQuery({
+    queryKey: ['auto-key-last-job', form.customer_id],
+    queryFn: () =>
+      listAutoKeyJobs({ customer_id: form.customer_id, limit: 1 }).then(r => r.data[0] ?? null),
+    enabled: customerMode === 'existing' && !!form.customer_id,
+    staleTime: 30_000,
+  })
+
+  const lastJobHasVehicle = !!(customerLastJob?.vehicle_make || customerLastJob?.vehicle_model)
+  const showLastJobBanner =
+    customerMode === 'existing' &&
+    !lastJobDismissed &&
+    lastJobHasVehicle &&
+    !form.vehicle_make.trim() &&
+    !form.vehicle_model.trim()
+
+  const applyLastJobVehicle = () => {
+    if (!customerLastJob) return
+    setForm(f => ({
+      ...f,
+      vehicle_make: customerLastJob.vehicle_make || f.vehicle_make,
+      vehicle_model: customerLastJob.vehicle_model || f.vehicle_model,
+      vehicle_year: customerLastJob.vehicle_year ? String(customerLastJob.vehicle_year) : f.vehicle_year,
+      registration_plate: customerLastJob.registration_plate || f.registration_plate,
+      vin: customerLastJob.vin || f.vin,
+      key_type: customerLastJob.key_type || f.key_type,
+      blade_code: customerLastJob.blade_code || f.blade_code,
+      chip_type: customerLastJob.chip_type || f.chip_type,
+      tech_notes: customerLastJob.tech_notes || f.tech_notes,
+    }))
+    setLastJobDismissed(true)
+  }
+
   const matchingAccounts = form.customer_id
     ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(form.customer_id))
     : customerAccounts
@@ -602,6 +639,30 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 ))}
               </Select>
             )}
+            {/* Last job vehicle suggestion banner */}
+            {showLastJobBanner && customerLastJob && (
+              <div
+                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm"
+                style={{ borderColor: 'var(--cafe-amber)', backgroundColor: 'rgba(201,162,72,0.08)' }}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'var(--cafe-amber)' }}>
+                    Last visit vehicle on file
+                  </p>
+                  <p className="truncate" style={{ color: 'var(--cafe-text)' }}>
+                    {[customerLastJob.vehicle_make, customerLastJob.vehicle_year, customerLastJob.vehicle_model]
+                      .filter(Boolean).join(' ')}
+                    {customerLastJob.registration_plate ? ` · ${customerLastJob.registration_plate}` : ''}
+                    {customerLastJob.key_type ? ` · ${customerLastJob.key_type}` : ''}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button variant="ghost" onClick={() => setLastJobDismissed(true)}>Skip</Button>
+                  <Button variant="primary" onClick={applyLastJobVehicle}>Use this</Button>
+                </div>
+              </div>
+            )}
+
             <Select label="Primary job type" value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}>
               <option value="">Not set</option>
               {AUTO_KEY_JOB_TYPES.map(t => (
