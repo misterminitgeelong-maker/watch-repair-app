@@ -166,6 +166,7 @@ interface WeekSchedulerJob {
   key_quantity?: number
   job_type?: string
   job_address?: string
+  tech_notes?: string
 }
 
 function weekJobVehicleSummary(job: WeekSchedulerJob) {
@@ -1572,7 +1573,7 @@ function WeekHourDropCell({
   )
 }
 
-function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; priority?: string; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
+function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; priority?: string; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string; tech_notes?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
