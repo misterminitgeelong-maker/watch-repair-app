@@ -765,15 +765,16 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                         <span className="block">{m.label}</span>
                         {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
                           <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                            Blanks:
-                            {' '}
-                            {(m.key_blanks ?? [])
-                              .slice(0, 4)
-                              .map(b => b.primary_code || b.blank_reference)
-                              .filter(Boolean)
-                              .join(', ') || m.suggested_blade_code}
+                            Blanks: {(m.key_blanks ?? []).slice(0, 4).map(b => b.primary_code || b.blank_reference).filter(Boolean).join(', ') || m.suggested_blade_code}
                           </span>
                         )}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {m.akl_complexity && <AklComplexityPill complexity={m.akl_complexity} />}
+                          {m.bsu_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,162,72,0.15)', color: '#9A7220' }}>BSU required</span>}
+                          {m.pin_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: '#C96A5A' }}>PIN required</span>}
+                          {m.dealer_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: '#C96A5A' }}>Dealer only</span>}
+                          {m.eeprom_required && !m.obd_programmable && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(120,100,180,0.15)', color: '#7060B0' }}>EEPROM</span>}
+                        </div>
                       </button>
                     </li>
                   ))}

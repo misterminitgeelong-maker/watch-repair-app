@@ -219,6 +219,13 @@ def search_vehicle_key_specs(
                 "tech_notes": _combine_tech_notes(e),
                 "key_blanks": blanks,
                 "suggested_blade_code": suggested_blade,
+                # Structured flags (v3)
+                "akl_complexity": e.get("akl_complexity"),
+                "bsu_required": e.get("bsu_required", False),
+                "pin_required": e.get("pin_required", False),
+                "eeprom_required": e.get("eeprom_required", False),
+                "obd_programmable": e.get("obd_programmable", True),
+                "dealer_required": e.get("dealer_required", False),
             }
         )
 

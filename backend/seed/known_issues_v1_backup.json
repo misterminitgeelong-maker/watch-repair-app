@@ -1,0 +1,418 @@
+{
+  "entries": [
+    {
+      "make": "Toyota",
+      "model": "Hilux N70 / HiAce H200 / Corolla E140",
+      "variant": "2005-2015",
+      "issue": "Chip mismatch",
+      "notes": "4D67 vs G-chip confusion on same platform. Vehicles look identical but require different chip. Wrong chip = key cuts fine but vehicle will not start.",
+      "resolution": "Always read existing chip with Zed-Full or Key Tool Max Pro BEFORE cutting. Confirm 4D67 vs G-chip before ordering blank.",
+      "severity": "High"
+    },
+    {
+      "make": "Toyota",
+      "model": "Camry XV50+ / Corolla E170+ / Prado 150",
+      "variant": "2011-2023",
+      "issue": "Smart key antenna fault",
+      "notes": "DST80 smart key antenna ring can fail on high-mileage vehicles. Symptoms: intermittent no-start, key not detected. IM608 may show no IMMO fault.",
+      "resolution": "Check antenna ring resistance (should be 3-6 ohms) with multimeter before blaming key. Replace ring first — cheap fix vs ECU.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Toyota",
+      "model": "LandCruiser 200 / Prado 150 (late)",
+      "variant": "2018-2021",
+      "issue": "Low battery programming failure",
+      "notes": "Programming fails or key count corrupts if battery below 12.4V during DST80 programming. Can result in all keys locked out.",
+      "resolution": "ALWAYS connect battery support unit (BSU) before any programming on 200 Series. Check battery health first.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Toyota",
+      "model": "Hilux AN120/AN130 Revo",
+      "variant": "2015-2020",
+      "issue": "Key count limit",
+      "notes": "Maximum 5 keys on DST80 smart system. If 5 keys already registered, programming 6th will fail silently or error.",
+      "resolution": "Check key count via IM608 live data before starting. Advise customer to erase old/lost keys if at limit.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Toyota",
+      "model": "GR Supra A90",
+      "variant": "2019-2026",
+      "issue": "BMW FEM platform confusion",
+      "notes": "GR Supra uses BMW FEM architecture — not Toyota IMMO. Attempting Toyota workflow will fail completely.",
+      "resolution": "Always confirm Supra A90 requires BMW FEM workflow (VVDI Pad Pro). Quote as BMW-level job.",
+      "severity": "High"
+    },
+    {
+      "make": "Ford",
+      "model": "Falcon BA/BF/FG — all",
+      "variant": "2002-2016",
+      "issue": "PATS max key limit",
+      "notes": "Ford PATS has an 8-key maximum. Adding a 9th key will fail. System does not always give clear error — job appears to work then key does not start car.",
+      "resolution": "Check current key count via IM608 before cutting. If at 8, customer must decide which keys to delete first.",
+      "severity": "High"
+    },
+    {
+      "make": "Ford",
+      "model": "Falcon FG / Territory SZ",
+      "variant": "2008-2016",
+      "issue": "BCM security lockout",
+      "notes": "Excessive failed programming attempts trigger a 10-minute lockout. Rushing through errors can stack lockouts up to 30 minutes.",
+      "resolution": "Wait full lockout period before retrying. Do not cycle ignition rapidly. One clean attempt beats three rushed ones.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Ford",
+      "model": "Ranger PX/PX2/PX3",
+      "variant": "2011-2022",
+      "issue": "Aftermarket remote interference",
+      "notes": "Aftermarket keyless entry modules (common on used Ranger) can block PATS programming. Symptom: key programs but intermittently fails to start.",
+      "resolution": "Check for aftermarket alarm/keyless modules under dash before programming. Disconnect if found.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Ford",
+      "model": "Ranger Next-Gen P703",
+      "variant": "2022-2026",
+      "issue": "Gateway module (SGW) restriction",
+      "notes": "Some Next-Gen Ranger builds have SGW restricting OBD access. IM608 may not connect on first attempt.",
+      "resolution": "Try IM608 first. If gateway blocked, Smart Pro as backup. Document and escalate if both fail.",
+      "severity": "Medium-High"
+    },
+    {
+      "make": "Holden",
+      "model": "Commodore VE (all)",
+      "variant": "2006-2013",
+      "issue": "Battery voltage sensitivity",
+      "notes": "VE BCM is extremely voltage-sensitive during programming. Drop below 12.2V and programming fails, potentially corrupting BCM key data.",
+      "resolution": "Mandatory BSU connection on all VE jobs. Test battery health before starting. Non-negotiable.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Holden",
+      "model": "Commodore VF push-start",
+      "variant": "2013-2017",
+      "issue": "Anti-theft lockout state",
+      "notes": "VF can enter anti-theft lockout if wrong key attempts exceed threshold. Lockout can be 15-60 minutes and is not always visible in fault codes.",
+      "resolution": "Check anti-theft status via IM608 live data first. If in lockout, wait before attempting programming.",
+      "severity": "High"
+    },
+    {
+      "make": "Holden",
+      "model": "Commodore ZB (Opel Insignia)",
+      "variant": "2018-2020",
+      "issue": "Platform confusion",
+      "notes": "ZB Commodore is Opel Insignia — not GM/Holden BCM. Technicians applying VF workflow will fail completely.",
+      "resolution": "Always confirm ZB requires Opel/GM European workflow. Treat as European GM, not AU Holden.",
+      "severity": "High"
+    },
+    {
+      "make": "Holden",
+      "model": "Colorado RG",
+      "variant": "2012-2020",
+      "issue": "VIN mismatch on replacement BCM",
+      "notes": "Replacement BCMs must have VIN flashed before key programming. Aftermarket BCMs often arrive blank.",
+      "resolution": "Confirm BCM VIN matches vehicle before starting key work. Flash VIN first if mismatched.",
+      "severity": "High"
+    },
+    {
+      "make": "Hyundai / Kia",
+      "model": "iLoad/iMax TQ",
+      "variant": "2008-2021",
+      "issue": "PIN code required for AKL",
+      "notes": "iLoad TQ AKL requires PIN code — OBD PIN read works on most but some require dealer PIN. Without PIN, all keys lost job cannot proceed.",
+      "resolution": "Always attempt OBD PIN read first (IM608). If PIN read fails, source from dealer before cutting any keys.",
+      "severity": "High"
+    },
+    {
+      "make": "Hyundai / Kia",
+      "model": "Tucson NX4 / Sportage NQ5",
+      "variant": "2021-2026",
+      "issue": "Immo V complexity",
+      "notes": "Immo V architecture significantly raises AKL risk. Some builds require Lonsdor K518 where IM608 coverage is incomplete.",
+      "resolution": "Always try IM608 first but have Lonsdor K518 ready. Do not quote fixed price for NX4/NQ5 AKL without confirming tool coverage first.",
+      "severity": "High"
+    },
+    {
+      "make": "Hyundai / Kia",
+      "model": "All models (smart key era)",
+      "variant": "2016-2026",
+      "issue": "Proximity sensor pairing",
+      "notes": "After programming new smart key, proximity (passive entry) function occasionally does not pair correctly even when start function works.",
+      "resolution": "After programming: test start, lock/unlock, AND walk-away lock separately. Re-run remote programming sequence if proximity fails.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Nissan",
+      "model": "Patrol GU/Y61",
+      "variant": "1997-2016",
+      "issue": "NATS antenna ring wear",
+      "notes": "High-mileage GU Patrols frequently have worn antenna rings causing intermittent no-start. Often misdiagnosed as transponder or ECU fault.",
+      "resolution": "Always test antenna ring resistance before programming. 3-6 ohm is normal. Open circuit = ring failure, not chip fault.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Nissan",
+      "model": "Patrol Y62",
+      "variant": "2013-2026",
+      "issue": "NATS V AKL risk",
+      "notes": "Y62 Patrol AKL is high-value and high-risk. NATS V requires careful tool selection. Failure mid-sequence can lock out system.",
+      "resolution": "Always run IM608 first on Y62. Have Lonsdor K518 staged and ready. Do not attempt without BSU connected. Quote as high-risk job.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Nissan",
+      "model": "Navara D23/NP300",
+      "variant": "2015-2026",
+      "issue": "Smart key blade compatibility",
+      "notes": "Some D23 builds use different blade profiles across model years. NSN14 works on most but confirm before cutting.",
+      "resolution": "Verify blade profile by decoding original key before cutting replacement. Trace on Dolphin if existing key available.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Mazda",
+      "model": "BT-50 TF (new gen)",
+      "variant": "2020-2026",
+      "issue": "Isuzu D-Max platform",
+      "notes": "New BT-50 TF is based on Isuzu D-Max — not Mazda. Applying Mazda workflow will fail completely.",
+      "resolution": "Always confirm BT-50 TF requires Isuzu D-Max workflow on IM608. Quote and treat as Isuzu job.",
+      "severity": "High"
+    },
+    {
+      "make": "Mazda",
+      "model": "CX-5 KF / Mazda 3 BP / CX-30",
+      "variant": "2019-2026",
+      "issue": "Immo III smart key clone attempt",
+      "notes": "PCF7941/7953 chips on Immo III cannot be cloned. Customers sometimes request clone — impossible on these.",
+      "resolution": "Advise customer upfront: Immo III smart keys require OBD programming — no clone option. Quote accordingly.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Outlander PHEV (all)",
+      "variant": "2013-2026",
+      "issue": "Hybrid system interference",
+      "notes": "PHEV high-voltage system can interfere with OBD programming. Some builds require hybrid system to be in specific state before IMMO access.",
+      "resolution": "Follow Mitsubishi PHEV-specific procedure: ensure vehicle is in READY mode off before connecting. Do not attempt with hybrid system active.",
+      "severity": "High"
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Pajero NS/NT/NW/NX",
+      "variant": "2006-2021",
+      "issue": "Key count verification",
+      "notes": "Pajero NS+ can hold up to 4 keys. Reaching limit causes programming to fail silently.",
+      "resolution": "Always check key count before programming. Erase old keys if at limit.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Golf Mk7 / Tiguan AD / Amarok",
+      "variant": "2013-2024",
+      "issue": "MQB Evo PIN extraction",
+      "notes": "VAG MQB Evo PIN extraction requires VVDI Pad Pro or Abrites — IM608 alone often cannot extract PIN on these platforms.",
+      "resolution": "Always use VVDI Pad Pro as primary on MQB Evo VAG. Have Abrites contact ready for escalation. Do not commit to fixed price without confirming PIN read capability.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Golf Mk5/Mk6 / Passat B6/B7 / Tiguan 5N",
+      "variant": "2004-2016",
+      "issue": "ID48 Crypto clone complexity",
+      "notes": "ID48 (PCF7941) requires crypto key calculation for cloning. Zed-Full handles most but some builds have locked chips.",
+      "resolution": "Attempt Zed-Full clone first. If locked chip detected, switch to OBD programming workflow with VVDI Pad Pro.",
+      "severity": "High"
+    },
+    {
+      "make": "Volkswagen / Audi",
+      "model": "Any VAG Immo 5 / MQB",
+      "variant": "2009-2024",
+      "issue": "Wrong tool choice = ECU damage risk",
+      "notes": "Attempting VAG Immo 5 work with IM608 alone (without VVDI or Abrites) risks partial writes that can corrupt ECU/IMMO module.",
+      "resolution": "VVDI Pad Pro is mandatory primary for all VAG Immo 5+ work. Never attempt full AKL on VAG with IM608 alone.",
+      "severity": "Very High"
+    },
+    {
+      "make": "BMW",
+      "model": "All CAS-era vehicles (E/F series)",
+      "variant": "2004-2019",
+      "issue": "CAS generation mismatch",
+      "notes": "CAS1, CAS2, CAS3, CAS3+ all look similar externally but require different workflows. Wrong CAS version selected = failed programming or module damage.",
+      "resolution": "Always confirm CAS generation via IM608 or VVDI Pad Pro read-before-write. Do not guess from year alone — some late E-series had early FEM.",
+      "severity": "Very High"
+    },
+    {
+      "make": "BMW",
+      "model": "F-series / G-series (FEM/BDC era)",
+      "variant": "2012-2026",
+      "issue": "Soldered battery in FEM module",
+      "notes": "FEM module has soldered internal battery that degrades over time. Dead FEM battery causes key programming failures unrelated to tool choice.",
+      "resolution": "If FEM programming fails despite correct tools and good car battery, suspect FEM internal battery. Specialist bench replacement required.",
+      "severity": "High"
+    },
+    {
+      "make": "BMW",
+      "model": "All EWS/CAS vehicles",
+      "variant": "1995-2019",
+      "issue": "ISN mismatch after ECU swap",
+      "notes": "BMW ISN (Immobiliser Serial Number) must match between ECU and CAS/EWS. After ECU replacement, keys will not start car until ISN is synchronised.",
+      "resolution": "Confirm ISN sync is required before cutting new keys post-ECU swap. CGDI BMW or VVDI2 required for ISN read/write.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "All W204/W211/W212 (EIS III era)",
+      "variant": "2007-2016",
+      "issue": "EIS replacement procedure",
+      "notes": "Replacing EIS module on these vehicles requires specific synchronisation sequence with ECU and gearbox module. Simply swapping EIS = non-start.",
+      "resolution": "Always advise customer of EIS sync requirement before quoting module replacement jobs. CGDI MB or Abrites required.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "W205/W213+ (KESSY era)",
+      "variant": "2014-2026",
+      "issue": "Steering column lock (ESL) coupling",
+      "notes": "KESSY-era Mercedes have electronic steering lock (ESL) that must be functioning for start. Failed ESL prevents start even with correct key.",
+      "resolution": "Diagnose ESL fault separately from IMMO fault. ESL failure is common on W204/W205. Advise customer — ESL repair is separate job.",
+      "severity": "High"
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "Sprinter VS30",
+      "variant": "2018-2026",
+      "issue": "SGW gateway restriction",
+      "notes": "Latest Sprinter has SGW module restricting OBD access. IM608 may connect but AKL functions blocked.",
+      "resolution": "Test IM608 first. If SGW blocks, escalate to specialist. Do not force — partial writes on VS30 can be expensive.",
+      "severity": "High"
+    },
+    {
+      "make": "Jeep / FCA",
+      "model": "Grand Cherokee WK2 / Cherokee KL / Compass MP",
+      "variant": "2011-2026",
+      "issue": "SGW (Secure Gateway) blocking",
+      "notes": "FCA SGW module prevents OBD access for key programming on later builds. IM608 may connect to diagnostics but IMMO functions are blocked.",
+      "resolution": "Always test for SGW presence before quoting AKL. If blocked, Abrites or specialist required. Quote as high-risk with possible escalation surcharge.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Jeep",
+      "model": "Wrangler JL",
+      "variant": "2019-2026",
+      "issue": "SGW trim variability",
+      "notes": "Not all JL Wranglers have SGW — depends on spec level and build date. Cannot confirm without testing.",
+      "resolution": "Always test IM608 first on JL. If SGW present, escalate. If not, proceed normally.",
+      "severity": "High"
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover L405 / Discovery 5 / Defender L663",
+      "variant": "2013-2026",
+      "issue": "JLR Pivi/SPA architecture",
+      "notes": "Modern JLR SPA/Pivi platform AKL is extremely high risk without Abrites. Partial programming attempts can lock out vehicle permanently.",
+      "resolution": "Never attempt AKL on L405/L462/L663 without Abrites or confirmed JLR specialist tool. Quote as refer-out or specialist surcharge job.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover L322 / Discovery 3-4",
+      "variant": "2002-2016",
+      "issue": "BECM and BJB module dependency",
+      "notes": "L322 and Discovery 3/4 have multiple body modules (BECM, BJB) that all need to be in correct state for key programming. Module faults cause cryptic failures.",
+      "resolution": "Run full diagnostic scan before any key work. Resolve body module faults first. Do not attempt key programming on vehicles with multiple BECM/BJB DTCs.",
+      "severity": "High"
+    },
+    {
+      "make": "Subaru",
+      "model": "WRX / STI (all)",
+      "variant": "1993-2026",
+      "issue": "Performance tune ECU incompatibility",
+      "notes": "Tuned/modified WRX/STI frequently have aftermarket ECUs or piggyback tunes that break standard IMMO workflow.",
+      "resolution": "Always ask customer if vehicle is tuned before starting. Tuned ECUs often require reverting to stock ECU for key work. Advise accordingly.",
+      "severity": "High"
+    },
+    {
+      "make": "Subaru",
+      "model": "Forester SK / Outback BT (smart key era)",
+      "variant": "2018-2026",
+      "issue": "Push-start proximity pairing",
+      "notes": "After programming new smart key, passive entry function occasionally requires a second pairing cycle.",
+      "resolution": "Standard fix: complete programming sequence, then run remote learning cycle via IM608. Test all smart key functions before leaving.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Honda",
+      "model": "Civic FD / CR-V RE / Jazz GE (ID46 era)",
+      "variant": "2006-2014",
+      "issue": "ID46 clone vs OBD decision",
+      "notes": "Some Honda ID46 chips from this era are locked and cannot be cloned. Attempting clone on locked chip wastes time and a chip.",
+      "resolution": "Always read chip type with Zed-Full first. If locked ID46 detected, switch to OBD programming immediately.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Honda",
+      "model": "HR-V GH imports (1999-2006)",
+      "variant": "1999-2006",
+      "issue": "Import spec key profile variation",
+      "notes": "JDM-import HR-V occasionally has different key profiles to AU-delivered models. NSN or HON profile may vary.",
+      "resolution": "Always trace original key on Dolphin for import vehicles rather than cutting from code. Eliminates profile guesswork.",
+      "severity": "Medium"
+    },
+    {
+      "make": "Volvo",
+      "model": "XC60 second gen / XC90 second gen / S60 third gen (SPA)",
+      "variant": "2015-2026",
+      "issue": "SPA platform AKL risk",
+      "notes": "Volvo SPA AKL without Abrites is extremely high risk. Partial key programming can lock vehicle permanently.",
+      "resolution": "Treat all SPA Volvo AKL as refer-out unless Abrites is available. Quote accordingly — do not attempt with IM608 alone.",
+      "severity": "Very High"
+    },
+    {
+      "make": "Porsche",
+      "model": "Cayenne 9PA (VAG-based)",
+      "variant": "2003-2010",
+      "issue": "VAG vs Porsche workflow",
+      "notes": "Cayenne 9PA shares VAG platform but Porsche-specific IMMO adds complexity beyond standard VAG workflow.",
+      "resolution": "Use VVDI Pad Pro as primary (VAG strength) but be prepared to escalate to Abrites if standard VAG workflow fails.",
+      "severity": "High"
+    },
+    {
+      "make": "ALL MAKES",
+      "model": "Any vehicle with aftermarket alarm",
+      "variant": "All years",
+      "issue": "Aftermarket alarm interference",
+      "notes": "Aftermarket alarms (Clifford, Mongoose, Python etc) frequently interfere with IMMO programming. Symptoms: key programs but intermittently fails, or programming fails entirely.",
+      "resolution": "Always ask about aftermarket alarms before starting. Disconnect alarm system before attempting programming. Re-enable after programming complete and tested.",
+      "severity": "High"
+    },
+    {
+      "make": "ALL MAKES",
+      "model": "Any push-start vehicle",
+      "variant": "2010-2026",
+      "issue": "Battery voltage during programming",
+      "notes": "Smart key systems are more voltage-sensitive than blade key systems. Programming at low voltage can corrupt key data or cause partial writes.",
+      "resolution": "BSU mandatory on all push-start/smart key programming jobs. No exceptions.",
+      "severity": "Very High"
+    },
+    {
+      "make": "ALL MAKES",
+      "model": "Any vehicle — post-accident",
+      "variant": "All years",
+      "issue": "Damaged IMMO components",
+      "notes": "Post-accident vehicles frequently have damaged antenna rings, BCM water ingress, or IMMO module damage that causes cryptic failures during key work.",
+      "resolution": "Ask about accident history. Inspect BCM/ECU connector for water/corrosion before programming. Run full diagnostic scan first.",
+      "severity": "High"
+    },
+    {
+      "make": "ALL MAKES",
+      "model": "Any Chinese-brand vehicle (BYD/GWM/Chery/LDV)",
+      "variant": "2015-2026",
+      "issue": "Limited tool coverage and firmware gaps",
+      "notes": "Chinese-brand vehicle IMMO coverage in mainstream tools is updated more slowly than Japanese/Euro makes. Coverage that works today may not work after firmware updates.",
+      "resolution": "Always confirm specific model year in tool coverage list before quoting. Do not rely on make-level coverage claims for AKL on newer Chinese brands.",
+      "severity": "Medium-High"
+    }
+  ]
+}

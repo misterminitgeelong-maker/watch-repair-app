@@ -1547,6 +1547,13 @@ export interface VehicleKeySpecMatch {
   tech_notes?: string
   key_blanks?: Array<{ primary_code?: string; blank_reference?: string }>
   suggested_blade_code?: string
+  // v3 structured flags
+  akl_complexity?: string | null
+  bsu_required?: boolean
+  pin_required?: boolean
+  eeprom_required?: boolean
+  obd_programmable?: boolean
+  dealer_required?: boolean
 }
 export const searchVehicleKeySpecs = (params: { make?: string; model?: string; year?: number }) =>
   api.get<{ matches: VehicleKeySpecMatch[] }>('/vehicle-key-specs/search', { params })

@@ -9,7 +9,13 @@
       "condor_xc_mini_plus_ii": "TOY43",
       "silca_alpha_pro": "TOY43 / B111",
       "silca_futura_pro": "TOY43",
-      "notes": "Most common Toyota blank in AU. High stock priority."
+      "notes": "Most common Toyota blank in AU. High stock priority.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "TOY43 / B series",
+        "Condor XC-Mini Plus II": "TOY43",
+        "Silca Alpha Pro": "TOY43 / B111",
+        "Silca Futura Pro": "TOY43"
+      }
     },
     {
       "blank_reference": "TOY48",
@@ -20,7 +26,13 @@
       "condor_xc_mini_plus_ii": "TOY48",
       "silca_alpha_pro": "TOY48",
       "silca_futura_pro": "TOY48",
-      "notes": "Less common than TOY43 — confirm profile before cutting."
+      "notes": "Less common than TOY43 — confirm profile before cutting.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "TOY48 / LD series",
+        "Condor XC-Mini Plus II": "TOY48",
+        "Silca Alpha Pro": "TOY48",
+        "Silca Futura Pro": "TOY48"
+      }
     },
     {
       "blank_reference": "TOY12 / TOY-L",
@@ -31,7 +43,13 @@
       "condor_xc_mini_plus_ii": "TOY-L",
       "silca_alpha_pro": "LD series",
       "silca_futura_pro": "LD series",
-      "notes": "Blade insert for Toyota push-start smart keys. Confirm button count of shell."
+      "notes": "Blade insert for Toyota push-start smart keys. Confirm button count of shell.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "TOY-L / LD series",
+        "Condor XC-Mini Plus II": "TOY-L",
+        "Silca Alpha Pro": "LD series",
+        "Silca Futura Pro": "LD series"
+      }
     },
     {
       "blank_reference": "FO21",
@@ -42,7 +60,13 @@
       "condor_xc_mini_plus_ii": "FO21",
       "silca_alpha_pro": "FO21",
       "silca_futura_pro": "FO21",
-      "notes": "Highest-volume Ford AU blank. BA/BF/FG Falcon bread and butter."
+      "notes": "Highest-volume Ford AU blank. BA/BF/FG Falcon bread and butter.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "FO21 / FO series",
+        "Condor XC-Mini Plus II": "FO21",
+        "Silca Alpha Pro": "FO21",
+        "Silca Futura Pro": "FO21"
+      }
     },
     {
       "blank_reference": "FO38",
@@ -53,7 +77,13 @@
       "condor_xc_mini_plus_ii": "FO38",
       "silca_alpha_pro": "FO38",
       "silca_futura_pro": "FO38",
-      "notes": "Global Ford platform. Increasingly common as Ranger volume grows."
+      "notes": "Global Ford platform. Increasingly common as Ranger volume grows.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "FO38 / FO series",
+        "Condor XC-Mini Plus II": "FO38",
+        "Silca Alpha Pro": "FO38",
+        "Silca Futura Pro": "FO38"
+      }
     },
     {
       "blank_reference": "FO-NEXT / FO116",
@@ -64,7 +94,13 @@
       "condor_xc_mini_plus_ii": "FO116",
       "silca_alpha_pro": "FO116",
       "silca_futura_pro": "FO116",
-      "notes": "Newer Ford push-start blade. Confirm machine profile for Next-Gen Ranger."
+      "notes": "Newer Ford push-start blade. Confirm machine profile for Next-Gen Ranger.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "FO116 / FO-NEXT",
+        "Condor XC-Mini Plus II": "FO116",
+        "Silca Alpha Pro": "FO116",
+        "Silca Futura Pro": "FO116"
+      }
     },
     {
       "blank_reference": "HU100",
@@ -75,7 +111,13 @@
       "condor_xc_mini_plus_ii": "HU100",
       "silca_alpha_pro": "HU100",
       "silca_futura_pro": "HU100",
-      "notes": "VE Commodore is highest volume. Same blank across most GM/Holden models."
+      "notes": "VE Commodore is highest volume. Same blank across most GM/Holden models.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU100 / HU series",
+        "Condor XC-Mini Plus II": "HU100",
+        "Silca Alpha Pro": "HU100",
+        "Silca Futura Pro": "HU100"
+      }
     },
     {
       "blank_reference": "B111 / HU100",
@@ -86,7 +128,13 @@
       "condor_xc_mini_plus_ii": "B111",
       "silca_alpha_pro": "B111",
       "silca_futura_pro": "B111",
-      "notes": "Check specific Astra/Barina model before assuming HU100."
+      "notes": "Check specific Astra/Barina model before assuming HU100.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "B111",
+        "Condor XC-Mini Plus II": "B111",
+        "Silca Alpha Pro": "B111",
+        "Silca Futura Pro": "B111"
+      }
     },
     {
       "blank_reference": "NSN14",
@@ -97,7 +145,13 @@
       "condor_xc_mini_plus_ii": "NSN14",
       "silca_alpha_pro": "NSN14",
       "silca_futura_pro": "NSN14",
-      "notes": "Very high volume AU Nissan. Keep well stocked."
+      "notes": "Very high volume AU Nissan. Keep well stocked.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "NSN14 / NSN series",
+        "Condor XC-Mini Plus II": "NSN14",
+        "Silca Alpha Pro": "NSN14",
+        "Silca Futura Pro": "NSN14"
+      }
     },
     {
       "blank_reference": "NSN11 / NSN-L",
@@ -108,7 +162,13 @@
       "condor_xc_mini_plus_ii": "NSN11",
       "silca_alpha_pro": "NSN11",
       "silca_futura_pro": "NSN11",
-      "notes": "Nissan push-start smart key blade. Growing volume with newer Navara/X-Trail."
+      "notes": "Nissan push-start smart key blade. Growing volume with newer Navara/X-Trail.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "NSN-L / NSN11",
+        "Condor XC-Mini Plus II": "NSN11",
+        "Silca Alpha Pro": "NSN11",
+        "Silca Futura Pro": "NSN11"
+      }
     },
     {
       "blank_reference": "HY17 / HYN series",
@@ -119,7 +179,13 @@
       "condor_xc_mini_plus_ii": "HY17",
       "silca_alpha_pro": "HY17 / HYN",
       "silca_futura_pro": "HY17 / HYN",
-      "notes": "Very high volume Korean AU market. Single blank covers most."
+      "notes": "Very high volume Korean AU market. Single blank covers most.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HY17 / HYN series",
+        "Condor XC-Mini Plus II": "HY17",
+        "Silca Alpha Pro": "HY17 / HYN",
+        "Silca Futura Pro": "HY17 / HYN"
+      }
     },
     {
       "blank_reference": "HY-L / HYN22",
@@ -130,7 +196,13 @@
       "condor_xc_mini_plus_ii": "HYN22",
       "silca_alpha_pro": "HYN22",
       "silca_futura_pro": "HYN22",
-      "notes": "Korean push-start smart key blade. Fastest growing segment now."
+      "notes": "Korean push-start smart key blade. Fastest growing segment now.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HYN22 / HY-L",
+        "Condor XC-Mini Plus II": "HYN22",
+        "Silca Alpha Pro": "HYN22",
+        "Silca Futura Pro": "HYN22"
+      }
     },
     {
       "blank_reference": "MAZ24 / MAZ series",
@@ -141,7 +213,13 @@
       "condor_xc_mini_plus_ii": "MAZ24",
       "silca_alpha_pro": "MAZ24",
       "silca_futura_pro": "MAZ24",
-      "notes": "High volume AU Mazda. BM/BN Mazda 3 and CX-5 KE are most common."
+      "notes": "High volume AU Mazda. BM/BN Mazda 3 and CX-5 KE are most common.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "MAZ24 / MAZ series",
+        "Condor XC-Mini Plus II": "MAZ24",
+        "Silca Alpha Pro": "MAZ24",
+        "Silca Futura Pro": "MAZ24"
+      }
     },
     {
       "blank_reference": "MAZ-L / MAZ smart",
@@ -152,7 +230,13 @@
       "condor_xc_mini_plus_ii": "MAZ-L",
       "silca_alpha_pro": "MAZ-L",
       "silca_futura_pro": "MAZ-L",
-      "notes": "Newer Mazda push-start. CX-5 KF is highest volume. BT-50 TF uses Isuzu profile."
+      "notes": "Newer Mazda push-start. CX-5 KF is highest volume. BT-50 TF uses Isuzu profile.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "MAZ-L",
+        "Condor XC-Mini Plus II": "MAZ-L",
+        "Silca Alpha Pro": "MAZ-L",
+        "Silca Futura Pro": "MAZ-L"
+      }
     },
     {
       "blank_reference": "MIT11 / MIT series",
@@ -163,7 +247,13 @@
       "condor_xc_mini_plus_ii": "MIT11",
       "silca_alpha_pro": "MIT11",
       "silca_futura_pro": "MIT11",
-      "notes": "Very common AU Mitsubishi. Covers most fleet utes and SUVs."
+      "notes": "Very common AU Mitsubishi. Covers most fleet utes and SUVs.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "MIT11 / MIT series",
+        "Condor XC-Mini Plus II": "MIT11",
+        "Silca Alpha Pro": "MIT11",
+        "Silca Futura Pro": "MIT11"
+      }
     },
     {
       "blank_reference": "MIT-L / MIT-SMART",
@@ -174,7 +264,13 @@
       "condor_xc_mini_plus_ii": "MIT-L",
       "silca_alpha_pro": "MIT-L",
       "silca_futura_pro": "MIT-L",
-      "notes": "Newer Mitsubishi push-start. Growing with Outlander ZM."
+      "notes": "Newer Mitsubishi push-start. Growing with Outlander ZM.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "MIT-L",
+        "Condor XC-Mini Plus II": "MIT-L",
+        "Silca Alpha Pro": "MIT-L",
+        "Silca Futura Pro": "MIT-L"
+      }
     },
     {
       "blank_reference": "HON66 / HON series",
@@ -185,7 +281,13 @@
       "condor_xc_mini_plus_ii": "HON66",
       "silca_alpha_pro": "HON66",
       "silca_futura_pro": "HON66",
-      "notes": "High volume Honda AU. Civic FD/FB and CR-V RE/RM are most common."
+      "notes": "High volume Honda AU. Civic FD/FB and CR-V RE/RM are most common.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HON66 / HON series",
+        "Condor XC-Mini Plus II": "HON66",
+        "Silca Alpha Pro": "HON66",
+        "Silca Futura Pro": "HON66"
+      }
     },
     {
       "blank_reference": "HON-L / HON smart",
@@ -196,7 +298,13 @@
       "condor_xc_mini_plus_ii": "HON-L",
       "silca_alpha_pro": "HON-L",
       "silca_futura_pro": "HON-L",
-      "notes": "Newer Honda push-start. Growing volume with 10th/11th gen Civic."
+      "notes": "Newer Honda push-start. Growing volume with 10th/11th gen Civic.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HON-L",
+        "Condor XC-Mini Plus II": "HON-L",
+        "Silca Alpha Pro": "HON-L",
+        "Silca Futura Pro": "HON-L"
+      }
     },
     {
       "blank_reference": "SB22 / SUB series",
@@ -207,7 +315,13 @@
       "condor_xc_mini_plus_ii": "SB22",
       "silca_alpha_pro": "SB22",
       "silca_futura_pro": "SB22",
-      "notes": "Standard AU Subaru blade. WRX/Forester/Outback are most common jobs."
+      "notes": "Standard AU Subaru blade. WRX/Forester/Outback are most common jobs.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "SB22 / SUB series",
+        "Condor XC-Mini Plus II": "SB22",
+        "Silca Alpha Pro": "SB22",
+        "Silca Futura Pro": "SB22"
+      }
     },
     {
       "blank_reference": "SUB-L / SUB smart",
@@ -218,7 +332,13 @@
       "condor_xc_mini_plus_ii": "SUB-L",
       "silca_alpha_pro": "SUB-L",
       "silca_futura_pro": "SUB-L",
-      "notes": "Newer Subaru push-start. Forester SK is highest volume."
+      "notes": "Newer Subaru push-start. Forester SK is highest volume.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "SUB-L",
+        "Condor XC-Mini Plus II": "SUB-L",
+        "Silca Alpha Pro": "SUB-L",
+        "Silca Futura Pro": "SUB-L"
+      }
     },
     {
       "blank_reference": "SUZ22 / SU series",
@@ -229,7 +349,13 @@
       "condor_xc_mini_plus_ii": "SUZ22",
       "silca_alpha_pro": "SUZ22",
       "silca_futura_pro": "SUZ22",
-      "notes": "Jimny JB74 is currently highest demand Suzuki job."
+      "notes": "Jimny JB74 is currently highest demand Suzuki job.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "SUZ22 / SU series",
+        "Condor XC-Mini Plus II": "SUZ22",
+        "Silca Alpha Pro": "SUZ22",
+        "Silca Futura Pro": "SUZ22"
+      }
     },
     {
       "blank_reference": "HU66",
@@ -240,7 +366,13 @@
       "condor_xc_mini_plus_ii": "HU66",
       "silca_alpha_pro": "HU66",
       "silca_futura_pro": "HU66",
-      "notes": "Highest volume Euro laser blank in AU. Keep deep stock. HU66 covers huge VAG range."
+      "notes": "Highest volume Euro laser blank in AU. Keep deep stock. HU66 covers huge VAG range.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU66 / LD series",
+        "Condor XC-Mini Plus II": "HU66",
+        "Silca Alpha Pro": "HU66",
+        "Silca Futura Pro": "HU66"
+      }
     },
     {
       "blank_reference": "HU66 / HU162T",
@@ -251,7 +383,13 @@
       "condor_xc_mini_plus_ii": "HU162T",
       "silca_alpha_pro": "HU162T",
       "silca_futura_pro": "HU162T",
-      "notes": "Confirm HU66 vs HU162T for newer MQB vehicles — some require the 162T profile."
+      "notes": "Confirm HU66 vs HU162T for newer MQB vehicles — some require the 162T profile.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU162T",
+        "Condor XC-Mini Plus II": "HU162T",
+        "Silca Alpha Pro": "HU162T",
+        "Silca Futura Pro": "HU162T"
+      }
     },
     {
       "blank_reference": "HU92",
@@ -262,7 +400,13 @@
       "condor_xc_mini_plus_ii": "HU92",
       "silca_alpha_pro": "HU92",
       "silca_futura_pro": "HU92",
-      "notes": "Most common BMW blank. E/F series covers a huge AU job volume. Keep stocked."
+      "notes": "Most common BMW blank. E/F series covers a huge AU job volume. Keep stocked.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU92 / LD series",
+        "Condor XC-Mini Plus II": "HU92",
+        "Silca Alpha Pro": "HU92",
+        "Silca Futura Pro": "HU92"
+      }
     },
     {
       "blank_reference": "HU58",
@@ -273,7 +417,13 @@
       "condor_xc_mini_plus_ii": "HU58",
       "silca_alpha_pro": "HU58",
       "silca_futura_pro": "HU58",
-      "notes": "Less common — pre-2000 BMW. Worth carrying small qty."
+      "notes": "Less common — pre-2000 BMW. Worth carrying small qty.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU58",
+        "Condor XC-Mini Plus II": "HU58",
+        "Silca Alpha Pro": "HU58",
+        "Silca Futura Pro": "HU58"
+      }
     },
     {
       "blank_reference": "HU64",
@@ -284,7 +434,13 @@
       "condor_xc_mini_plus_ii": "HU64",
       "silca_alpha_pro": "HU64",
       "silca_futura_pro": "HU64",
-      "notes": "Primary Mercedes laser blank. W204/W212 era is most common AU Mercedes job."
+      "notes": "Primary Mercedes laser blank. W204/W212 era is most common AU Mercedes job.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU64 / LD series",
+        "Condor XC-Mini Plus II": "HU64",
+        "Silca Alpha Pro": "HU64",
+        "Silca Futura Pro": "HU64"
+      }
     },
     {
       "blank_reference": "YM28",
@@ -295,7 +451,13 @@
       "condor_xc_mini_plus_ii": "YM28",
       "silca_alpha_pro": "YM28",
       "silca_futura_pro": "YM28",
-      "notes": "Commercial Mercedes and older models. Keep modest stock."
+      "notes": "Commercial Mercedes and older models. Keep modest stock.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "YM28",
+        "Condor XC-Mini Plus II": "YM28",
+        "Silca Alpha Pro": "YM28",
+        "Silca Futura Pro": "YM28"
+      }
     },
     {
       "blank_reference": "HU101",
@@ -306,7 +468,13 @@
       "condor_xc_mini_plus_ii": "HU101",
       "silca_alpha_pro": "HU101",
       "silca_futura_pro": "HU101",
-      "notes": "Covers JLR and Volvo. Single blank for large premium Euro segment."
+      "notes": "Covers JLR and Volvo. Single blank for large premium Euro segment.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU101 / LD series",
+        "Condor XC-Mini Plus II": "HU101",
+        "Silca Alpha Pro": "HU101",
+        "Silca Futura Pro": "HU101"
+      }
     },
     {
       "blank_reference": "HU66 / HU162",
@@ -317,7 +485,13 @@
       "condor_xc_mini_plus_ii": "HU66 / HU162",
       "silca_alpha_pro": "HU66 / HU162",
       "silca_futura_pro": "HU66 / HU162",
-      "notes": "Cayenne is VAG-based — HU66 profile. Confirm generation."
+      "notes": "Cayenne is VAG-based — HU66 profile. Confirm generation.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU66 / HU162",
+        "Condor XC-Mini Plus II": "HU66 / HU162",
+        "Silca Alpha Pro": "HU66 / HU162",
+        "Silca Futura Pro": "HU66 / HU162"
+      }
     },
     {
       "blank_reference": "HU92 / HU58",
@@ -328,7 +502,13 @@
       "condor_xc_mini_plus_ii": "HU92",
       "silca_alpha_pro": "HU92",
       "silca_futura_pro": "HU92",
-      "notes": "Mini uses BMW blank profiles. R-series = HU92."
+      "notes": "Mini uses BMW blank profiles. R-series = HU92.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU92",
+        "Condor XC-Mini Plus II": "HU92",
+        "Silca Alpha Pro": "HU92",
+        "Silca Futura Pro": "HU92"
+      }
     },
     {
       "blank_reference": "ISU series / MIT variant",
@@ -339,7 +519,13 @@
       "condor_xc_mini_plus_ii": "ISU series",
       "silca_alpha_pro": "ISU series",
       "silca_futura_pro": "ISU series",
-      "notes": "Confirm specific profile — some Isuzu share Mitsubishi profile. Trace original where possible."
+      "notes": "Confirm specific profile — some Isuzu share Mitsubishi profile. Trace original where possible.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "ISU / MIT11 variant",
+        "Condor XC-Mini Plus II": "ISU series",
+        "Silca Alpha Pro": "ISU series",
+        "Silca Futura Pro": "ISU series"
+      }
     },
     {
       "blank_reference": "VA2 / REN series",
@@ -350,7 +536,13 @@
       "condor_xc_mini_plus_ii": "VA2",
       "silca_alpha_pro": "VA2",
       "silca_futura_pro": "VA2",
-      "notes": "Standard Renault AU and import range."
+      "notes": "Standard Renault AU and import range.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "VA2 / REN series",
+        "Condor XC-Mini Plus II": "VA2",
+        "Silca Alpha Pro": "VA2",
+        "Silca Futura Pro": "VA2"
+      }
     },
     {
       "blank_reference": "SX9 / PE series",
@@ -361,7 +553,13 @@
       "condor_xc_mini_plus_ii": "SX9",
       "silca_alpha_pro": "SX9",
       "silca_futura_pro": "SX9",
-      "notes": "PSA platform — one blank covers large Peugeot/Citroen range."
+      "notes": "PSA platform — one blank covers large Peugeot/Citroen range.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "SX9 / PE series",
+        "Condor XC-Mini Plus II": "SX9",
+        "Silca Alpha Pro": "SX9",
+        "Silca Futura Pro": "SX9"
+      }
     },
     {
       "blank_reference": "GT10 / FI series",
@@ -372,7 +570,13 @@
       "condor_xc_mini_plus_ii": "GT10",
       "silca_alpha_pro": "GT10",
       "silca_futura_pro": "GT10",
-      "notes": "Fiat/PSA shared platform on vans."
+      "notes": "Fiat/PSA shared platform on vans.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "GT10 / FI series",
+        "Condor XC-Mini Plus II": "GT10",
+        "Silca Alpha Pro": "GT10",
+        "Silca Futura Pro": "GT10"
+      }
     },
     {
       "blank_reference": "GT15 / AR series",
@@ -383,7 +587,13 @@
       "condor_xc_mini_plus_ii": "GT15",
       "silca_alpha_pro": "GT15",
       "silca_futura_pro": "GT15",
-      "notes": "Fiat/Alfa shared platform. Low volume in AU but worth carrying small qty."
+      "notes": "Fiat/Alfa shared platform. Low volume in AU but worth carrying small qty.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "GT15 / AR series",
+        "Condor XC-Mini Plus II": "GT15",
+        "Silca Alpha Pro": "GT15",
+        "Silca Futura Pro": "GT15"
+      }
     },
     {
       "blank_reference": "LDV series / HYN variant",
@@ -394,7 +604,13 @@
       "condor_xc_mini_plus_ii": "LDV series",
       "silca_alpha_pro": "LDV series",
       "silca_futura_pro": "LDV series",
-      "notes": "Confirm profile — some LDV share Korean blank profiles. Trace original."
+      "notes": "Confirm profile — some LDV share Korean blank profiles. Trace original.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "LDV / HYN variant",
+        "Condor XC-Mini Plus II": "LDV series",
+        "Silca Alpha Pro": "LDV series",
+        "Silca Futura Pro": "LDV series"
+      }
     },
     {
       "blank_reference": "GWM / HYN variant",
@@ -405,7 +621,13 @@
       "condor_xc_mini_plus_ii": "GWM variant",
       "silca_alpha_pro": "GWM variant",
       "silca_futura_pro": "GWM variant",
-      "notes": "Older GWM/Haval often uses variant of Korean profile. Trace original on Dolphin."
+      "notes": "Older GWM/Haval often uses variant of Korean profile. Trace original on Dolphin.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "GWM variant",
+        "Condor XC-Mini Plus II": "GWM variant",
+        "Silca Alpha Pro": "GWM variant",
+        "Silca Futura Pro": "GWM variant"
+      }
     },
     {
       "blank_reference": "HU66 (Skoda)",
@@ -416,7 +638,13 @@
       "condor_xc_mini_plus_ii": "HU66",
       "silca_alpha_pro": "HU66",
       "silca_futura_pro": "HU66",
-      "notes": "Skoda uses same HU66 profile as VW/Audi. No separate blank needed."
+      "notes": "Skoda uses same HU66 profile as VW/Audi. No separate blank needed.",
+      "machine_profiles": {
+        "Dolphin XP-005L": "HU66",
+        "Condor XC-Mini Plus II": "HU66",
+        "Silca Alpha Pro": "HU66",
+        "Silca Futura Pro": "HU66"
+      }
     }
   ]
 }
