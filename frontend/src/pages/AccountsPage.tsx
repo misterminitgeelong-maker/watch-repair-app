@@ -182,6 +182,7 @@ export default function AccountsPage() {
   const [drafts, setDrafts] = useState<Record<string, { role: UserRole; is_active: boolean }>>({})
   const [selectedPlanCode, setSelectedPlanCode] = useState<PlanCode>(planCode)
   const [checklistHidden, setChecklistHidden] = useState(false)
+  const [showAllPlans, setShowAllPlans] = useState(false)
 
   const canManagePlan = role === 'owner' || role === 'platform_admin'
 
@@ -312,7 +313,7 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <PageHeader title="Team Accounts" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Account</Button>} />
+      <PageHeader title="Account Settings" />
       {showAdd && <AddUserModal onClose={() => setShowAdd(false)} />}
       {deleteTarget && (
         <Modal title="Delete team account" onClose={() => { if (!deleteMut.isPending) setDeleteTarget(null) }}>
@@ -342,37 +343,6 @@ export default function AccountsPage() {
         </Card>
       )}
 
-      {billing && limits && (limits.max_users > 0 || limits.max_repair_jobs > 0 || limits.max_shoe_jobs > 0 || limits.max_auto_key_jobs > 0) && (
-        <Card className="mb-4 p-4">
-          <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>Usage</p>
-          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            {limits.max_users > 0 && (
-              <div>
-                <span style={{ color: 'var(--cafe-text-mid)' }}>Team accounts</span>
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.users ?? 0} / {limits.max_users}</p>
-              </div>
-            )}
-            {limits.max_repair_jobs > 0 && (
-              <div>
-                <span style={{ color: 'var(--cafe-text-mid)' }}>Watch jobs</span>
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.repair_jobs ?? 0} / {limits.max_repair_jobs}</p>
-              </div>
-            )}
-            {limits.max_shoe_jobs > 0 && (
-              <div>
-                <span style={{ color: 'var(--cafe-text-mid)' }}>Shoe jobs</span>
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.shoe_jobs ?? 0} / {limits.max_shoe_jobs}</p>
-              </div>
-            )}
-            {limits.max_auto_key_jobs > 0 && (
-              <div>
-                <span style={{ color: 'var(--cafe-text-mid)' }}>Mobile Services jobs</span>
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{usage?.auto_key_jobs ?? 0} / {limits.max_auto_key_jobs}</p>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
 
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -425,19 +395,30 @@ export default function AccountsPage() {
             Only owner accounts can change plans.
           </p>
         )}
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {PLAN_BUNDLES.map(bundle => (
-            <div
-              key={bundle.code}
-              className="rounded-xl border p-3"
-              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
-            >
-              <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{bundle.name}</p>
-              <p className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--cafe-text-mid)' }}>{bundle.monthlyLabel}</p>
-              <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.summary}</p>
-              <p className="mt-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.modules.join(' · ')}</p>
+        <div className="mt-3">
+          <button
+            className="text-xs font-medium underline"
+            style={{ color: 'var(--cafe-text-muted)' }}
+            onClick={() => setShowAllPlans(v => !v)}
+          >
+            {showAllPlans ? 'Hide plan comparison' : 'Compare all plans'}
+          </button>
+          {showAllPlans && (
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {PLAN_BUNDLES.map(bundle => (
+                <div
+                  key={bundle.code}
+                  className="rounded-xl border p-3"
+                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{bundle.name}</p>
+                  <p className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--cafe-text-mid)' }}>{bundle.monthlyLabel}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.summary}</p>
+                  <p className="mt-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.modules.join(' · ')}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </Card>
 
@@ -445,48 +426,22 @@ export default function AccountsPage() {
 
       <StripeConnectCard />
 
-      <Card className="mb-5 p-4 sm:p-5">
-        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-          Onboarding checklist
-        </p>
-        <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
-          Dashboard checklist is currently <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{checklistHidden ? 'hidden' : 'visible'}</span>.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setChecklistDismissed(tenantId, false)
-              setChecklistHidden(false)
+      <div className="mb-4 flex items-center justify-between">
+        <div className="relative w-full max-w-md">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+          <input
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
             }}
-          >
-            Reset / Show Checklist
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setChecklistDismissed(tenantId, true)
-              setChecklistHidden(true)
-            }}
-          >
-            Dismiss Checklist
-          </Button>
+            placeholder="Search accounts…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      </Card>
-
-      <div className="mb-5 relative w-full max-w-md">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
-        <input
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
-          }}
-          placeholder="Search accounts…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <Button onClick={() => setShowAdd(true)} className="ml-3 shrink-0"><Plus size={16} />Add Account</Button>
       </div>
 
       {error && (
@@ -496,7 +451,7 @@ export default function AccountsPage() {
       )}
 
       {isLoading ? <Spinner /> : (
-        <Card>
+        <Card className="mb-5">
           {filtered.length === 0 ? <EmptyState message="No team accounts found." /> : (
             <>
               <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
@@ -594,6 +549,35 @@ export default function AccountsPage() {
           )}
         </Card>
       )}
+
+      <Card className="mb-5 p-4 sm:p-5">
+        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+          Onboarding checklist
+        </p>
+        <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
+          Dashboard checklist is currently <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{checklistHidden ? 'hidden' : 'visible'}</span>.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setChecklistDismissed(tenantId, false)
+              setChecklistHidden(false)
+            }}
+          >
+            Reset / Show Checklist
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setChecklistDismissed(tenantId, true)
+              setChecklistHidden(true)
+            }}
+          >
+            Dismiss Checklist
+          </Button>
+        </div>
+      </Card>
     </div>
   )
 }
