@@ -9,11 +9,11 @@ import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 type Tab = 'shops' | 'users'
 
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
-const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh'
+const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
 
 export function useAdminEnterShop() {
   const navigate = useNavigate()
-  const { refreshSession } = useAuth()
+  const { login: authLogin, refreshSession } = useAuth()
   const [entering, setEntering] = useState('')
   const [error, setError] = useState('')
 
@@ -22,17 +22,15 @@ export function useAdminEnterShop() {
     setError('')
     try {
       // Save current admin tokens so we can return
-      const prevAccess = localStorage.getItem('access_token') ?? sessionStorage.getItem('access_token') ?? ''
+      const prevAccess = localStorage.getItem('token') ?? sessionStorage.getItem('token') ?? ''
       const prevRefresh = localStorage.getItem('refresh_token') ?? sessionStorage.getItem('refresh_token') ?? ''
       if (prevAccess) sessionStorage.setItem(ADMIN_PREV_TOKEN_KEY, prevAccess)
       if (prevRefresh) sessionStorage.setItem(ADMIN_PREV_REFRESH_KEY, prevRefresh)
 
       const { data } = await platformAdminEnterShop(tenantId)
 
-      // Store new tokens the same way the auth system expects
-      localStorage.setItem('access_token', data.access_token)
-      if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
-
+      // Use AuthContext login so tokens + role are set correctly
+      authLogin(data.access_token, data.refresh_token, data.expires_in_seconds)
       await refreshSession()
       navigate('/dashboard')
     } catch {
@@ -47,7 +45,7 @@ export function useAdminEnterShop() {
 
 export function AdminReturnBanner() {
   const navigate = useNavigate()
-  const { refreshSession } = useAuth()
+  const { login: authLogin, refreshSession } = useAuth()
   const prevToken = sessionStorage.getItem(ADMIN_PREV_TOKEN_KEY)
   if (!prevToken) return null
 
@@ -56,9 +54,10 @@ export function AdminReturnBanner() {
     const prevRefresh = sessionStorage.getItem(ADMIN_PREV_REFRESH_KEY) ?? ''
     sessionStorage.removeItem(ADMIN_PREV_TOKEN_KEY)
     sessionStorage.removeItem(ADMIN_PREV_REFRESH_KEY)
-    if (prevAccess) localStorage.setItem('access_token', prevAccess)
-    if (prevRefresh) localStorage.setItem('refresh_token', prevRefresh)
-    await refreshSession()
+    if (prevAccess) {
+      authLogin(prevAccess, prevRefresh || null)
+      await refreshSession()
+    }
     navigate('/platform-admin/users')
   }
 
