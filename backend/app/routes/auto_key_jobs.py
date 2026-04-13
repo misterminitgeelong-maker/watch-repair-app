@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import date as date_type
 from datetime import datetime, timedelta, timezone
@@ -10,11 +11,11 @@ from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
-from ..datetime_utils import format_in_timezone
 from ..models import (
     AutoKeyJob,
     AutoKeyJobCreate,
     AutoKeyJobFieldUpdate,
+    AutoKeyQuickIntakeCreate,
     AutoKeyInvoice,
     AutoKeyInvoiceRead,
     AutoKeyJobRead,
@@ -27,9 +28,8 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
-    User,
 )
-from ..sms import notify_auto_key_arrival_window, notify_auto_key_customer_day_before
+from ..sms import notify_auto_key_arrival_window, notify_auto_key_customer_day_before, notify_auto_key_customer_intake
 
 router = APIRouter(
     prefix="/v1/auto-key-jobs",
@@ -39,6 +39,7 @@ router = APIRouter(
 
 
 _AUTO_KEY_FINAL_STATUSES = {"completed", "collected", "cancelled", "no_go"}
+logger = logging.getLogger(__name__)
 
 
 def _next_prefixed_number(
@@ -187,7 +188,61 @@ def create_auto_key_job(
     session.add(job)
     session.commit()
     session.refresh(job)
+    logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
     return job
+
+
+@router.post("/quick-intake", response_model=AutoKeyJobRead, status_code=201)
+def create_auto_key_quick_intake(
+    payload: AutoKeyQuickIntakeCreate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    phone = (payload.phone or "").strip()
+    full_name = (payload.full_name or "").strip() or "Customer"
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+
+    customer = Customer(
+        tenant_id=auth.tenant_id,
+        full_name=full_name,
+        phone=phone,
+    )
+    session.add(customer)
+    session.flush()
+
+    job = AutoKeyJob(
+        tenant_id=auth.tenant_id,
+        customer_id=customer.id,
+        assigned_user_id=auth.user_id,
+        job_number=_next_auto_key_job_number(session, auth.tenant_id),
+        title=f"{full_name.split()[0]} - Job",
+        status="awaiting_customer_details",
+        programming_status="pending",
+        key_quantity=1,
+        customer_intake_token=uuid4().hex,
+    )
+    session.add(job)
+    session.flush()
+
+    intake_url = f"{settings.public_base_url.rstrip('/')}/mobile-intake/{job.customer_intake_token}"
+    try:
+        notify_auto_key_customer_intake(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=phone,
+            customer_name=full_name,
+            shop_name="Workshop",
+            job_number=job.job_number,
+            intake_url=intake_url,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("auto_key_job.quick_intake_sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
+
+    session.commit()
+    session.refresh(job)
+    logger.info("auto_key_job.quick_intake_created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, customer.id)
+    return AutoKeyJobRead(**job.model_dump(), customer_name=customer.full_name, customer_phone=customer.phone)
 
 
 @router.get("", response_model=list[AutoKeyJobRead])
@@ -291,6 +346,7 @@ def send_arrival_sms(
         time_window=window,
     )
     session.commit()
+    logger.info("auto_key_job.arrival_sms_sent tenant=%s job=%s", auth.tenant_id, job_id)
     return {"ok": True}
 
 
@@ -327,6 +383,7 @@ def send_day_before_reminders(
         )
         sent += 1
     session.commit()
+    logger.info("auto_key_job.day_before_reminders_sent tenant=%s count=%s", auth.tenant_id, sent)
     return {"sent": sent}
 
 
@@ -352,6 +409,7 @@ def update_auto_key_invoice(
     session.add(invoice)
     session.commit()
     session.refresh(invoice)
+    logger.info("auto_key_invoice.updated tenant=%s invoice=%s status=%s", auth.tenant_id, invoice_id, invoice.status)
     return _to_invoice_read(invoice)
 
 
@@ -400,6 +458,7 @@ def update_auto_key_job_status(
           ).first()
 
           if latest_quote:
+              logger.info("auto_key_invoice.auto_create_from_quote tenant=%s job=%s quote=%s", auth.tenant_id, job.id, latest_quote.id)
               session.add(
                   AutoKeyInvoice(
                       tenant_id=auth.tenant_id,
@@ -414,6 +473,7 @@ def update_auto_key_job_status(
                   )
               )
           else:
+              logger.info("auto_key_invoice.auto_create_from_cost tenant=%s job=%s total=%s", auth.tenant_id, job.id, job.cost_cents)
               subtotal = max(0, int(round(job.cost_cents / 1.1))) if job.cost_cents > 0 else 0
               tax = max(0, int(job.cost_cents - subtotal))
               session.add(

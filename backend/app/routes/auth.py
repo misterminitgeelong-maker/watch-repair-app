@@ -860,6 +860,18 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     selected = valid_sites[0]
+    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    if parent:
+        session.add(
+            ParentAccountEventLog(
+                parent_account_id=parent.id,
+                tenant_id=selected.tenant_id,
+                actor_user_id=selected.user_id,
+                actor_email=email,
+                event_type="multi_site_login",
+                event_summary=f"{email} logged in with {len(valid_sites)} accessible sites",
+            )
+        )
     # Log login event for the active site
     session.add(
         TenantEventLog(
@@ -1116,7 +1128,21 @@ def switch_active_site(
                 event_summary=f"Switched active site from '{source_label}' to '{target_label}'",
             )
         )
-        session.commit()
+    source_tenant = session.get(Tenant, auth.tenant_id)
+    target_tenant = session.get(Tenant, target.tenant_id)
+    source_label = source_tenant.slug if source_tenant else str(auth.tenant_id)
+    target_label = target_tenant.slug if target_tenant else str(target.tenant_id)
+    session.add(
+        TenantEventLog(
+            tenant_id=target.tenant_id,
+            actor_user_id=current_user.id,
+            actor_email=current_user.email,
+            entity_type="session",
+            event_type="switch_site",
+            event_summary=f"{current_user.email} switched active site from '{source_label}' to '{target_label}'",
+        )
+    )
+    session.commit()
 
     token, expires = create_access_token(target.tenant_id, target.user_id, target.role)
     refresh_token, refresh_expires = create_refresh_token(target.tenant_id, target.user_id, target.role)

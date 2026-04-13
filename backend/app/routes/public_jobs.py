@@ -214,6 +214,8 @@ def get_public_auto_key_booking(token: str, session: Session = Depends(get_sessi
         ]
 
     return {
+        "job_id": str(job.id),
+        "status_token": job.status_token,
         "job_number": job.job_number,
         "title": job.title,
         "status": job.status,
@@ -273,6 +275,8 @@ def get_public_auto_key_intake(token: str, session: Session = Depends(get_sessio
     hint = (customer.full_name or "").strip().split()[0] if customer and customer.full_name else None
 
     return {
+        "job_id": str(job.id),
+        "status_token": job.status_token,
         "shop_name": shop_name,
         "job_number": job.job_number,
         "customer_first_name_hint": hint,

@@ -29,7 +29,6 @@ import {
   listCustomers,
   listUsers,
   sendAutoKeyQuote,
-  sendAutoKeyDayBeforeReminders,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   getAutoKeyReports,
@@ -49,6 +48,7 @@ import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
+import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import {
   civilAddDays,
@@ -2090,20 +2090,7 @@ export default function AutoKeyJobsPage() {
       }).then(r => r.data),
     enabled: view === 'reports' && !!reportDateParams && (role === 'owner' || role === 'manager'),
   })
-  const tomorrowYmd = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    return ymdLocal(d)
-  }, [])
-  const { data: tomorrowJobs = [] } = useQuery({
-    queryKey: ['auto-key-jobs', 'tomorrow-count', tomorrowYmd],
-    queryFn: () => listAutoKeyJobs({ date_from: tomorrowYmd, date_to: tomorrowYmd }).then(r => r.data),
-    staleTime: 60_000,
-  })
-  const sendRemindersMut = useMutation({
-    mutationFn: () => sendAutoKeyDayBeforeReminders().then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-reports'] }),
-  })
+  const { tomorrowJobs, sendRemindersMut } = useAutoKeyDayBeforeReminders()
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
