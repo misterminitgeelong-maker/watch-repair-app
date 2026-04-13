@@ -11,6 +11,8 @@ type Tab = 'shops' | 'users' | 'activity'
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
 const ACTIVITY_PAGE_SIZE = 100
+const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
 
 export function useAdminEnterShop() {
   const navigate = useNavigate()
@@ -184,7 +186,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
               <table className="w-full text-sm hidden md:table">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                    {['Shop', 'Shop Number', 'Plan', 'Users', 'Created', ''].map(h => (
+                    {['Shop', 'Shop Number', 'Plan', 'Users', 'Created', 'Enter Shop'].map(h => (
                       <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
                         {h}
                       </th>
@@ -194,20 +196,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 <tbody>
                   {filtered.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>
-                        <div className="flex items-center justify-between gap-2">
-                          <span>{t.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => void enterShop(t.id)}
-                            disabled={!!entering}
-                            className="text-[11px] px-2 py-1 rounded-md font-semibold"
-                            style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
-                          >
-                            {entering === t.id ? 'Opening…' : 'Open'}
-                          </button>
-                        </div>
-                      </td>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>#{t.slug}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.user_count}</td>
@@ -306,6 +295,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
   const [dateToDraft, setDateToDraft] = useState('')
   const [dateFromApplied, setDateFromApplied] = useState('')
   const [dateToApplied, setDateToApplied] = useState('')
+  const [showTechnical, setShowTechnical] = useState(false)
   const {
     data: activityPages,
     isLoading,
@@ -474,18 +464,31 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
                 {filtered.map((e) => (
                   <div key={e.id} className="p-4 space-y-1">
-                    <p className="font-semibold text-sm capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</p>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{formatLabel(e.event_type)}</p>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</p>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: '#9A7220' }}>
+                        {formatLabel(e.entity_type)}
+                      </span>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}>
+                        ID {shortId(e.entity_id)}
+                      </span>
+                    </div>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                       {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
                     </p>
+                    {showTechnical && (
+                      <p className="text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>
+                        Actor ID: {e.actor_user_id ?? 'n/a'} · Entity ID: {e.entity_id ?? 'n/a'}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
               <table className="w-full text-sm hidden md:table">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                    {['When', 'Actor', 'Type', 'Shop', 'Summary'].map(h => (
+                    {['When', 'Actor', 'Event', 'Entity', 'Shop', 'Summary'].map(h => (
                       <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
                         {h}
                       </th>
@@ -502,9 +505,24 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                         </span>
                       </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.actor_email ?? 'System'}</td>
-                      <td className="px-5 py-3.5 capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text)' }}>{formatLabel(e.event_type)}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                        <div className="flex flex-col">
+                          <span>{formatLabel(e.entity_type)}</span>
+                          <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>ID {shortId(e.entity_id)}</span>
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                        <div className="flex flex-col">
+                          <span>{e.event_summary}</span>
+                          {showTechnical && (
+                            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                              actor_user_id={e.actor_user_id ?? 'n/a'} entity_id={e.entity_id ?? 'n/a'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -512,8 +530,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               </>
             )}
           </Card>
-          {hasNextPage && (
-            <div className="mt-3">
+          <div className="mt-3 flex items-center gap-2">
+            {hasNextPage && (
               <button
                 type="button"
                 className="rounded-lg px-3 py-2 text-xs font-semibold"
@@ -523,8 +541,16 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               >
                 {isFetchingNextPage ? 'Loading more…' : 'Load more activity'}
               </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              className="rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+              onClick={() => setShowTechnical((s) => !s)}
+            >
+              {showTechnical ? 'Hide technical fields' : 'Show technical fields'}
+            </button>
+          </div>
         </>
       )}
     </>
