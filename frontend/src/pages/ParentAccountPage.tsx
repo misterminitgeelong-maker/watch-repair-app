@@ -208,7 +208,7 @@ export default function ParentAccountPage() {
 
   function siteLabel(tenantId: string) {
     const s = data?.sites.find(x => x.tenant_id === tenantId)
-    return s ? `${s.tenant_name} (${s.tenant_slug})` : tenantId
+    return s ? `${s.tenant_name} (#${s.tenant_slug})` : tenantId
   }
 
   async function copyIngestUrl() {
@@ -229,10 +229,10 @@ export default function ParentAccountPage() {
           Link existing site
         </p>
         <p className='text-sm mt-2' style={{ color: 'var(--cafe-text-mid)' }}>
-          Add another tenant/site by supplying its tenant slug and owner email.
+          Add another site by supplying its shop number and owner email.
         </p>
         <div className='mt-3 grid gap-3 md:grid-cols-2'>
-          <Input label='Tenant slug' value={tenantSlug} onChange={e => setTenantSlug(e.target.value)} placeholder='site-b-1234' />
+          <Input label='Shop Number' value={tenantSlug} onChange={e => setTenantSlug(e.target.value)} placeholder='site-b-1234' />
           <Input label='Owner email' type='email' value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)} placeholder='owner@siteb.test' />
         </div>
         {error && <p className='mt-3 text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
@@ -255,7 +255,7 @@ export default function ParentAccountPage() {
         </p>
         <div className='mt-3 grid gap-3 md:grid-cols-3'>
           <Input label='Site name' value={newTenantName} onChange={e => setNewTenantName(e.target.value)} placeholder='Mainspring North' />
-          <Input label='Site slug' value={newTenantSlug} onChange={e => setNewTenantSlug(e.target.value)} placeholder='mainspring-north' />
+          <Input label='Shop Number' value={newTenantSlug} onChange={e => setNewTenantSlug(e.target.value)} placeholder='mainspring-north' />
           <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
             <option value='basic_watch'>Basic - Watch ($25/mo)</option>
             <option value='basic_shoe'>Basic - Shoe ($25/mo)</option>
@@ -296,7 +296,7 @@ export default function ParentAccountPage() {
               <div key={site.tenant_id} className='px-5 py-3 text-sm flex items-start justify-between gap-3' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
                 <div>
                   <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{site.tenant_name}</p>
-                  <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>Slug: {site.tenant_slug}</p>
+                  <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>Shop Number: {site.tenant_slug}</p>
                 </div>
                 <div className='text-right'>
                   <p className='text-xs font-semibold' style={{ color: 'var(--cafe-text)' }}>{site.owner_full_name}</p>
@@ -402,7 +402,7 @@ export default function ParentAccountPage() {
               <option value=''>None — require a route match</option>
               {(data?.sites ?? []).map(s => (
                 <option key={s.tenant_id} value={s.tenant_id}>
-                  {s.tenant_name} ({s.tenant_slug})
+                  {s.tenant_name} (#{s.tenant_slug})
                 </option>
               ))}
             </Select>
