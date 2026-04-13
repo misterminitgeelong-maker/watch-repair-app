@@ -11,6 +11,7 @@ from ..models import (
     Invoice,
     PlatformEnterShopResponse,
     PlatformTenantForceLogoutRequest,
+    PlatformTenantPlanUpdateRequest,
     PlatformTenantStatusUpdateRequest,
     PlatformTenantRead,
     PlatformUserRead,
@@ -163,6 +164,45 @@ def set_tenant_status(
     )
     session.commit()
 
+    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+    return PlatformTenantRead(
+        id=tenant.id,
+        slug=tenant.slug,
+        name=tenant.name,
+        plan_code=tenant.plan_code,
+        is_active=tenant.is_active,
+        user_count=user_count,
+        created_at=tenant.created_at,
+    )
+
+
+@router.patch("/tenants/{tenant_id}/plan", response_model=PlatformTenantRead)
+def set_tenant_plan(
+    tenant_id: UUID,
+    payload: PlatformTenantPlanUpdateRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    old_plan = tenant.plan_code
+    tenant.plan_code = payload.plan_code.strip()
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="tenant",
+            entity_id=tenant_id,
+            event_type="platform_admin_plan_changed",
+            event_summary=f"Platform admin changed plan from '{old_plan}' to '{tenant.plan_code}'. Reason: {(payload.reason or '').strip() or 'n/a'}",
+        )
+    )
+    session.commit()
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
         id=tenant.id,

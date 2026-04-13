@@ -706,6 +706,11 @@ class PlatformTenantForceLogoutRequest(SQLModel):
     reason: Optional[str] = None
 
 
+class PlatformTenantPlanUpdateRequest(SQLModel):
+    plan_code: str
+    reason: Optional[str] = None
+
+
 class BootstrapResponse(SQLModel):
     tenant_id: UUID
     owner_user: PublicUser

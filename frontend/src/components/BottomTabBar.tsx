@@ -23,6 +23,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import ChangelogModal from './ChangelogModal'
+import { useInboxCount } from '@/pages/InboxPage'
 
 /**
  * Mobile bottom tab bar — only shown on screens < md (768px).
@@ -33,6 +34,7 @@ export default function BottomTabBar() {
   const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
+  const inboxCount = useInboxCount()
 
   const hasWatch = hasFeature('watch')
   const hasShoe = hasFeature('shoe')
@@ -149,7 +151,14 @@ export default function BottomTabBar() {
         >
           {({ isActive }) => (
             <>
-              <Inbox size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+              <div className="relative">
+                <Inbox size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                {inboxCount > 0 && (
+                  <span className="absolute -top-1 -right-2 text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center leading-[14px]" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
+                    {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium">Inbox</span>
             </>
           )}

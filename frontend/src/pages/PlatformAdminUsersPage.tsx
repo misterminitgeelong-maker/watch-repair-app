@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { forcePlatformTenantLogout, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantStatus } from '@/lib/api'
+import { forcePlatformTenantLogout, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -199,6 +199,24 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: () => setAdminActionError('Could not force logout users. Try again.'),
   })
+  const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string } | null>(null)
+  const [planModalValue, setPlanModalValue] = useState('')
+  const [planModalReason, setPlanModalReason] = useState('')
+  const changePlan = useMutation({
+    mutationFn: ({ tenantId, plan_code, reason }: { tenantId: string; plan_code: string; reason?: string }) =>
+      setPlatformTenantPlan(tenantId, plan_code, reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-reports'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+      setPlanModal(null)
+      setPlanModalValue('')
+      setPlanModalReason('')
+      setAdminActionError('')
+    },
+    onError: () => setAdminActionError('Could not change plan. Try again.'),
+  })
+  const PLAN_OPTIONS = ['basic_watch', 'basic_shoe', 'basic_auto_key', 'basic_watch_shoe', 'basic_watch_auto_key', 'basic_shoe_auto_key', 'basic_all_tabs', 'pro']
   function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
     const typed = window.prompt(`Type shop slug "${shopSlug}" to ${actionLabel} ${shopName}:`, '') ?? ''
     if (typed.trim() !== shopSlug) {
@@ -336,6 +354,13 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         >
                           Force Logout
                         </button>
+                        <button
+                          onClick={() => { setPlanModal({ tenantId: t.id, name: t.name, currentPlan: t.plan_code }); setPlanModalValue(t.plan_code) }}
+                          className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+                        >
+                          Change Plan
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -344,6 +369,48 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
             </>
           )}
         </Card>
+      )}
+
+      {/* Change Plan Modal */}
+      {planModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <div className="rounded-2xl shadow-xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border-2)' }}>
+            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--cafe-text)' }}>Change Plan — {planModal.name}</h3>
+            <p className="text-xs mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Current: <strong>{planModal.currentPlan}</strong></p>
+            <select
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none"
+              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              value={planModalValue}
+              onChange={e => setPlanModalValue(e.target.value)}
+            >
+              {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <input
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-4 outline-none"
+              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              placeholder="Reason (optional)"
+              value={planModalReason}
+              onChange={e => setPlanModalReason(e.target.value)}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setPlanModal(null); setPlanModalReason('') }}
+                className="px-4 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={changePlan.isPending || planModalValue === planModal.currentPlan}
+                onClick={() => changePlan.mutate({ tenantId: planModal.tenantId, plan_code: planModalValue, reason: planModalReason.trim() || undefined })}
+                className="px-4 py-2 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: changePlan.isPending ? 0.6 : 1 }}
+              >
+                {changePlan.isPending ? 'Saving…' : 'Save Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

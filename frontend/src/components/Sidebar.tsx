@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useInboxCount } from '@/pages/InboxPage'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
@@ -61,6 +62,7 @@ interface SidebarProps {
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature } = useAuth()
+  const inboxCount = useInboxCount()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
   const { pathname } = useLocation()
@@ -151,6 +153,11 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 )}
                 <item.icon size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
                 {item.label}
+                {item.to === '/inbox' && inboxCount > 0 && (
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
+                    {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
               </>
             )}
           </NavLink>

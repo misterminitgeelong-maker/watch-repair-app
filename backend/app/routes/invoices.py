@@ -242,8 +242,21 @@ def create_payment(
     paid_total = session.exec(
         select(func.coalesce(func.sum(Payment.amount_cents), 0)).where(Payment.invoice_id == invoice.id)
     ).one()
+    newly_paid = int(paid_total) >= invoice.total_cents and invoice.status != "paid"
     invoice.status = "paid" if int(paid_total) >= invoice.total_cents else "unpaid"
     session.add(invoice)
+
+    if newly_paid:
+        session.add(
+            TenantEventLog(
+                tenant_id=auth.tenant_id,
+                actor_user_id=auth.user_id,
+                entity_type="invoice",
+                entity_id=invoice.id,
+                event_type="invoice_paid",
+                event_summary=f"Invoice {invoice.invoice_number} paid in full ({invoice.currency} {invoice.total_cents / 100:.2f})",
+            )
+        )
 
     session.commit()
     session.refresh(payment)

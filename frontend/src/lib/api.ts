@@ -987,6 +987,8 @@ export const setPlatformTenantStatus = (tenantId: string, is_active: boolean, re
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/status`, { is_active, reason })
 export const forcePlatformTenantLogout = (tenantId: string, reason?: string) =>
   api.post<{ ok: boolean; tenant_id: string; auth_revoked_at: string }>(`/platform-admin/tenants/${tenantId}/force-logout`, { reason })
+export const setPlatformTenantPlan = (tenantId: string, plan_code: string, reason?: string) =>
+  api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/plan`, { plan_code, reason })
 
 // ── Shoe Catalogue ────────────────────────────────────────────────────────────
 export interface ShoeCatalogueGroup {
@@ -1537,7 +1539,7 @@ export interface InboxEvent {
   entity_id?: string
   created_at: string
 }
-export const getInbox = (limit?: number) => api.get<InboxEvent[]>('/inbox', limit ? { params: { limit } } : undefined)
+export const getInbox = (limit = 50, offset = 0) => api.get<InboxEvent[]>('/inbox', { params: { limit, offset } })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
 // ── Auto-key attachments & SMS ────────────────────────────────────────────────

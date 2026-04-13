@@ -183,6 +183,20 @@ export default function AccountsPage() {
   const [selectedPlanCode, setSelectedPlanCode] = useState<PlanCode>(planCode)
   const [checklistHidden, setChecklistHidden] = useState(false)
   const [showAllPlans, setShowAllPlans] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const billingStatus = searchParams.get('billing') as 'success' | 'cancelled' | null
+
+  useEffect(() => {
+    if (billingStatus === 'success') {
+      void refreshSession()
+    }
+  }, [billingStatus])
+
+  function dismissBillingBanner() {
+    const next = new URLSearchParams(searchParams)
+    next.delete('billing')
+    setSearchParams(next, { replace: true })
+  }
 
   const canManagePlan = role === 'owner' || role === 'platform_admin'
 
@@ -329,6 +343,19 @@ export default function AccountsPage() {
             </Button>
           </div>
         </Modal>
+      )}
+
+      {billingStatus === 'success' && (
+        <div className="mb-4 flex items-center justify-between rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: '#EDF7F1', border: '1px solid #A8D5B8', color: '#1F6D4C' }}>
+          <span><strong>Subscription active.</strong> Your plan has been updated — welcome to Mainspring.</span>
+          <button onClick={dismissBillingBanner} className="ml-4 text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+        </div>
+      )}
+      {billingStatus === 'cancelled' && (
+        <div className="mb-4 flex items-center justify-between rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA', color: '#C96A5A' }}>
+          <span>Checkout was cancelled. Your plan has not changed.</span>
+          <button onClick={dismissBillingBanner} className="ml-4 text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+        </div>
       )}
 
       {atOrNearLimit && (
