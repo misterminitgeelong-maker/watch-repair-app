@@ -44,13 +44,12 @@ def list_all_tenants(
 ):
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
 
+    # Count users per tenant with a simple per-tenant query to avoid SQLModel aggregation issues
     user_counts: dict[UUID, int] = {}
-    counts = session.exec(
-        select(User.tenant_id, func.count(User.id))
-        .group_by(User.tenant_id)
-    ).all()
-    for tenant_id, count in counts:
-        user_counts[tenant_id] = count
+    for t in tenants:
+        user_counts[t.id] = session.exec(
+            select(func.count(User.id)).where(User.tenant_id == t.id)
+        ).one()
 
     return [
         PlatformTenantRead(

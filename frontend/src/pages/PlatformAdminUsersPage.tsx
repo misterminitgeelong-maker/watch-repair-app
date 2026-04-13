@@ -129,7 +129,7 @@ function SearchBar({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
-  const { data: tenants, isLoading } = useQuery({
+  const { data: tenants, isLoading, isError } = useQuery({
     queryKey: ['platform-tenants'],
     queryFn: () => listPlatformTenants().then(r => r.data),
   })
@@ -142,6 +142,11 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
   return (
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search shops or plan…" />
+      {isError && (
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+          Could not load shops. Check backend logs.
+        </div>
+      )}
       {error && (
         <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
