@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -367,7 +367,8 @@ def get_parent_account_summary(
 
 @router.get("/me/activity", response_model=list[ParentAccountEventLogRead])
 def list_parent_account_activity(
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -381,6 +382,7 @@ def list_parent_account_activity(
         select(ParentAccountEventLog)
         .where(ParentAccountEventLog.parent_account_id == parent.id)
         .order_by(ParentAccountEventLog.created_at.desc())
+        .offset(offset)
         .limit(safe_limit)
     ).all()
 

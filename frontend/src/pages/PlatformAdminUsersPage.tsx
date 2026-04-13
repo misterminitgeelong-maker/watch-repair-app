@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Clock, Download, Search } from 'lucide-react'
 import { listParentAccountActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -10,6 +10,7 @@ type Tab = 'shops' | 'users' | 'activity'
 
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
+const ACTIVITY_PAGE_SIZE = 100
 
 export function useAdminEnterShop() {
   const navigate = useNavigate()
@@ -287,15 +288,28 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
   const [shopFilter, setShopFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const { data: events, isLoading, isError } = useQuery({
+  const {
+    data: activityPages,
+    isLoading,
+    isError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
     queryKey: ['platform-parent-account-activity'],
-    queryFn: () => listParentAccountActivity(500).then(r => r.data),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => listParentAccountActivity(ACTIVITY_PAGE_SIZE, pageParam).then(r => r.data),
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.length < ACTIVITY_PAGE_SIZE) return undefined
+      return pages.reduce((count, page) => count + page.length, 0)
+    },
   })
   const { data: tenants = [] } = useQuery({
     queryKey: ['platform-tenants-for-activity'],
     queryFn: () => listPlatformTenants().then(r => r.data),
   })
 
+  const events = activityPages?.pages.flatMap((page) => page) ?? []
   const eventTypes = Array.from(new Set((events ?? []).map((e) => e.event_type))).sort((a, b) => a.localeCompare(b))
   const tenantNameById = new Map(tenants.map((t) => [t.id, t.name]))
 
@@ -411,9 +425,10 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         </div>
       )}
       {isLoading ? <Spinner /> : (
-        <Card>
-          {filtered.length === 0 ? <EmptyState message="No admin activity found." /> : (
-            <>
+        <>
+          <Card>
+            {filtered.length === 0 ? <EmptyState message="No admin activity found." /> : (
+              <>
               <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
                 {filtered.map((e) => (
                   <div key={e.id} className="p-4 space-y-1">
@@ -452,9 +467,23 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                   ))}
                 </tbody>
               </table>
-            </>
+              </>
+            )}
+          </Card>
+          {hasNextPage && (
+            <div className="mt-3">
+              <button
+                type="button"
+                className="rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? 'Loading more…' : 'Load more activity'}
+              </button>
+            </div>
           )}
-        </Card>
+        </>
       )}
     </>
   )

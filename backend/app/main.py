@@ -136,6 +136,22 @@ CRITICAL_ALERT_PATH_PREFIXES: tuple[str, ...] = (
 CRITICAL_ALERT_PATH_SUBSTRINGS: tuple[str, ...] = ("/v1/auto-key-jobs/invoices/",)
 
 
+def _classify_critical_workflow(path: str, method: str) -> str | None:
+    if path == "/v1/auto-key-jobs/day-before-reminders":
+        return "day_before_reminder_failure"
+    if path.startswith("/v1/public/auto-key-intake/"):
+        return "quick_intake_failure"
+    if path.startswith("/v1/public/auto-key-booking/"):
+        return "public_booking_failure"
+    if path.startswith("/v1/public/auto-key-invoice/"):
+        return "public_invoice_failure"
+    if "/v1/auto-key-jobs/invoices/" in path and method.upper() == "PATCH":
+        return "invoice_update_failure"
+    if "/v1/auto-key-jobs/invoices/" in path:
+        return "invoice_workflow_failure"
+    return None
+
+
 @app.middleware("http")
 async def request_id_and_log(request: Request, call_next):
     request_id = request.headers.get(REQUEST_ID_HEADER) or str(uuid.uuid4())
@@ -165,18 +181,26 @@ async def request_id_and_log(request: Request, call_next):
         path = request.url.path
         critical_path = path.startswith(CRITICAL_ALERT_PATH_PREFIXES) or any(part in path for part in CRITICAL_ALERT_PATH_SUBSTRINGS)
         if critical_path:
+            workflow_type = _classify_critical_workflow(path, request.method) or "critical_workflow_failure"
             logger.error(
-                "CRITICAL_WORKFLOW_FAILURE %s %s %s request_id=%s",
+                "CRITICAL_WORKFLOW_FAILURE type=%s %s %s %s request_id=%s",
+                workflow_type,
                 request.method,
                 path,
                 response.status_code,
                 request_id,
             )
-            if _SENTRY_ENABLED:
-                sentry_sdk.capture_message(
-                    f"Critical workflow failed: {request.method} {path} status={response.status_code} request_id={request_id}",
-                    level="error",
-                )
+            if _SENTRY_ENABLED and sentry_sdk is not None:
+                with sentry_sdk.push_scope() as scope:
+                    scope.set_tag("critical_workflow", workflow_type)
+                    scope.set_tag("http.status_code", str(response.status_code))
+                    scope.set_extra("request_id", request_id)
+                    scope.set_extra("request_path", path)
+                    scope.set_extra("request_method", request.method)
+                    sentry_sdk.capture_message(
+                        f"CRITICAL_WORKFLOW_FAILURE type={workflow_type} {request.method} {path} status={response.status_code} request_id={request_id}",
+                        level="error",
+                    )
     return response
 
 # CORS

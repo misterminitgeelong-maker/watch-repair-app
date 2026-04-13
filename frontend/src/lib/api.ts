@@ -274,8 +274,8 @@ export interface ParentAccountActivityEvent {
 }
 
 export const getMyParentAccount = () => api.get<ParentAccountSummary>('/parent-accounts/me')
-export const listParentAccountActivity = (limit = 50) =>
-  api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit } })
+export const listParentAccountActivity = (limit = 50, offset = 0) =>
+  api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit, offset } })
 export const linkTenantToParentAccount = (payload: { tenant_slug: string; owner_email: string }) =>
   api.post<ParentAccountSummary>('/parent-accounts/me/link-tenant', payload)
 export const createTenantFromParentAccount = (payload: { tenant_name: string; tenant_slug: string; plan_code?: PlanCode }) =>
