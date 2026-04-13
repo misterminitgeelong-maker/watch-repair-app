@@ -32,6 +32,24 @@ jobs:
           cd backend
           python -m pytest tests/ -v --tb=short
 
+      - name: Validate Alembic migrations (upgrade to head)
+        env:
+          DATABASE_URL: "sqlite:///./alembic_ci.db"
+          JWT_SECRET: "ci-secret-not-for-production"
+          APP_ENV: test
+        run: |
+          cd backend
+          python -m alembic upgrade head
+
+      - name: Run backend smoke checks
+        env:
+          DATABASE_URL: "sqlite:///./smoke_ci.db"
+          JWT_SECRET: "ci-secret-not-for-production"
+          APP_ENV: test
+        run: |
+          cd backend
+          python scripts/run_smoke_checks.py
+
   frontend:
     runs-on: ubuntu-latest
     steps:

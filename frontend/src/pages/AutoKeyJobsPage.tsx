@@ -31,8 +31,6 @@ import {
   sendAutoKeyQuote,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
-  getAutoKeyReports,
-  getAutoKeyCommissionReport,
   getAutoKeyQuoteSuggestions,
   searchVehicleKeySpecs,
   MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
@@ -49,6 +47,7 @@ import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/Mob
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
+import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import {
   civilAddDays,
@@ -2036,59 +2035,15 @@ export default function AutoKeyJobsPage() {
   const weekEnd = civilAddDays(weekStart, 6)
   const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
 
-  const reportDateParams = (() => {
-    if (view !== 'reports') return undefined
-    if (reportPreset === 'custom' && reportDateFrom && reportDateTo) {
-      return { date_from: reportDateFrom, date_to: reportDateTo }
-    }
-    const d = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    if (reportPreset === 'today') {
-      const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-      return { date_from: today, date_to: today }
-    }
-    if (reportPreset === 'week') {
-      const day = d.getDay()
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-      const mon = new Date(d)
-      mon.setDate(diff)
-      const sun = new Date(mon)
-      sun.setDate(mon.getDate() + 6)
-      return {
-        date_from: mon.toISOString().slice(0, 10),
-        date_to: sun.toISOString().slice(0, 10),
-      }
-    }
-    if (reportPreset === 'month') {
-      const start = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-      return { date_from: start, date_to: end.toISOString().slice(0, 10) }
-    }
-    if (reportPreset === 'last_month') {
-      const prev = new Date(d.getFullYear(), d.getMonth() - 1)
-      const start = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-01`
-      const end = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
-      return { date_from: start, date_to: end.toISOString().slice(0, 10) }
-    }
-    if (reportPreset === 'all') {
-      return { date_from: '2000-01-01', date_to: '2099-12-31' }
-    }
-    return undefined
-  })()
-
-  const { data: autoKeyReports, isLoading: reportsLoading, isError: reportsError, error: reportsErr } = useQuery({
-    queryKey: ['auto-key-reports', reportDateParams?.date_from, reportDateParams?.date_to],
-    queryFn: () => getAutoKeyReports(reportDateParams!).then(r => r.data),
-    enabled: view === 'reports' && !!reportDateParams,
-  })
-  const { data: commissionReport, isLoading: commissionLoading, isError: commissionError, error: commissionErr } = useQuery({
-    queryKey: ['auto-key-commission', reportDateParams?.date_from, reportDateParams?.date_to],
-    queryFn: () =>
-      getAutoKeyCommissionReport({
-        date_from: reportDateParams!.date_from,
-        date_to: reportDateParams!.date_to,
-      }).then(r => r.data),
-    enabled: view === 'reports' && !!reportDateParams && (role === 'owner' || role === 'manager'),
+  const {
+    reportsQuery: { data: autoKeyReports, isLoading: reportsLoading, isError: reportsError, error: reportsErr },
+    commissionQuery: { data: commissionReport, isLoading: commissionLoading, isError: commissionError, error: commissionErr },
+  } = useAutoKeyReportData({
+    view,
+    role,
+    preset: reportPreset,
+    customDateFrom: reportDateFrom,
+    customDateTo: reportDateTo,
   })
   const { tomorrowJobs, sendRemindersMut } = useAutoKeyDayBeforeReminders()
 

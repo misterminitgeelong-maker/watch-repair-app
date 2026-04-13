@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
-import { listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
+import { Clock, Search } from 'lucide-react'
+import { listParentAccountActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
-type Tab = 'shops' | 'users'
+type Tab = 'shops' | 'users' | 'activity'
 
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
@@ -91,7 +91,7 @@ export default function PlatformAdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
-        {(['shops', 'users'] as Tab[]).map(t => (
+        {(['shops', 'users', 'activity'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => { setTab(t); setSearch('') }}
@@ -109,6 +109,7 @@ export default function PlatformAdminPage() {
 
       {tab === 'shops' && <ShopsTab search={search} setSearch={setSearch} />}
       {tab === 'users' && <UsersTab search={search} setSearch={setSearch} />}
+      {tab === 'activity' && <ActivityTab search={search} setSearch={setSearch} />}
     </div>
   )
 }
@@ -269,6 +270,73 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                       <td className="px-5 py-3.5 font-medium" style={{ color: u.is_active ? '#497A59' : '#A06757' }}>
                         {u.is_active ? 'Active' : 'Inactive'}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </Card>
+      )}
+    </>
+  )
+}
+
+function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
+  const { data: events, isLoading, isError } = useQuery({
+    queryKey: ['platform-parent-account-activity'],
+    queryFn: () => listParentAccountActivity(200).then(r => r.data),
+  })
+
+  const filtered = (events ?? []).filter((e) =>
+    [e.event_type, e.event_summary, e.actor_email ?? '', e.tenant_id ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()),
+  )
+
+  return (
+    <>
+      <SearchBar value={search} onChange={setSearch} placeholder="Search activity type, actor, summary…" />
+      {isError && (
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+          Could not load activity log.
+        </div>
+      )}
+      {isLoading ? <Spinner /> : (
+        <Card>
+          {filtered.length === 0 ? <EmptyState message="No admin activity found." /> : (
+            <>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+                {filtered.map((e) => (
+                  <div key={e.id} className="p-4 space-y-1">
+                    <p className="font-semibold text-sm capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</p>
+                    <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</p>
+                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                      {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <table className="w-full text-sm hidden md:table">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                    {['When', 'Actor', 'Type', 'Summary'].map(h => (
+                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((e, i) => (
+                    <tr key={e.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
+                      <td className="px-5 py-3.5 whitespace-nowrap" style={{ color: 'var(--cafe-text-muted)' }}>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock size={12} />
+                          {new Date(e.created_at).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.actor_email ?? 'System'}</td>
+                      <td className="px-5 py-3.5 capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</td>
                     </tr>
                   ))}
                 </tbody>
