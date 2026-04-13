@@ -9,7 +9,6 @@ from ..dependencies import AuthContext, require_platform_admin
 from ..models import (
     AutoKeyJob,
     Invoice,
-    PlatformEnterShopRequest,
     PlatformEnterShopResponse,
     PlatformTenantForceLogoutRequest,
     PlatformTenantStatusUpdateRequest,
@@ -84,7 +83,6 @@ def list_all_tenants(
 @router.post("/enter-shop/{tenant_id}", response_model=PlatformEnterShopResponse)
 def enter_shop(
     tenant_id: UUID,
-    payload: PlatformEnterShopRequest,
     auth: AuthContext = Depends(require_platform_admin),
     session: Session = Depends(get_session),
 ):
@@ -93,9 +91,6 @@ def enter_shop(
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Shop not found.")
-    reason = (payload.reason or "").strip()
-    if len(reason) < 8:
-        raise HTTPException(status_code=400, detail="Reason is required (min 8 chars).")
     admin = session.get(User, auth.user_id)
     admin_email = admin.email if admin else "platform_admin"
 
@@ -118,7 +113,7 @@ def enter_shop(
             entity_type="session",
             entity_id=owner.id,
             event_type="platform_admin_enter_shop",
-            event_summary=f"Platform admin entered shop '{tenant.slug}' with reason: {reason}",
+            event_summary=f"Platform admin entered shop '{tenant.slug}'",
         )
     )
     session.commit()

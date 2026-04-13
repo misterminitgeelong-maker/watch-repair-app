@@ -688,10 +688,6 @@ class PlatformTenantRead(SQLModel):
     created_at: datetime
 
 
-class PlatformEnterShopRequest(SQLModel):
-    reason: str
-
-
 class PlatformEnterShopResponse(SQLModel):
     access_token: str
     refresh_token: str

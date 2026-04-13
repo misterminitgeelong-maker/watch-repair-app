@@ -15,24 +15,13 @@ const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g,
 const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
 const formatCents = (value: number) => `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-function askRequiredReason(actionLabel: string): string | null {
-  const value = window.prompt(`${actionLabel}\nReason is required (min 8 chars):`, '')
-  if (value == null) return null
-  const reason = value.trim()
-  if (reason.length < 8) {
-    window.alert('Reason must be at least 8 characters.')
-    return null
-  }
-  return reason
-}
-
 export function useAdminEnterShop() {
   const navigate = useNavigate()
   const { login: authLogin, refreshSession } = useAuth()
   const [entering, setEntering] = useState('')
   const [error, setError] = useState('')
 
-  async function enterShop(tenantId: string, reason: string) {
+  async function enterShop(tenantId: string) {
     setEntering(tenantId)
     setError('')
     try {
@@ -42,7 +31,7 @@ export function useAdminEnterShop() {
       if (prevAccess) sessionStorage.setItem(ADMIN_PREV_TOKEN_KEY, prevAccess)
       if (prevRefresh) sessionStorage.setItem(ADMIN_PREV_REFRESH_KEY, prevRefresh)
 
-      const { data } = await platformAdminEnterShop(tenantId, reason)
+      const { data } = await platformAdminEnterShop(tenantId)
 
       // Use AuthContext login so tokens + role are set correctly
       authLogin(data.access_token, data.refresh_token, data.expires_in_seconds)
@@ -213,10 +202,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                     </p>
                     <div className="pt-2">
                       <button
-                        onClick={() => {
-                          const reason = askRequiredReason(`Enter shop: ${t.name}`)
-                          if (reason) void enterShop(t.id, reason)
-                        }}
+                        onClick={() => void enterShop(t.id)}
                         disabled={!!entering}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
@@ -261,22 +247,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 <tbody>
                   {filtered.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>
-                        <div className="flex flex-col gap-2">
-                          <span>{t.name}</span>
-                          <button
-                            onClick={() => {
-                              const reason = askRequiredReason(`Enter shop: ${t.name}`)
-                              if (reason) void enterShop(t.id, reason)
-                            }}
-                            disabled={!!entering}
-                            className="w-fit text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
-                            style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
-                          >
-                            {entering === t.id ? 'Entering…' : 'Enter Shop'}
-                          </button>
-                        </div>
-                      </td>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>#{t.slug}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.user_count}</td>
@@ -286,10 +257,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       </td>
                       <td className="px-5 py-3.5">
                         <button
-                          onClick={() => {
-                            const reason = askRequiredReason(`Enter shop: ${t.name}`)
-                            if (reason) void enterShop(t.id, reason)
-                          }}
+                          onClick={() => void enterShop(t.id)}
                           disabled={!!entering}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
                           style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
@@ -364,10 +332,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                     </p>
                     <div className="pt-2">
                       <button
-                        onClick={() => {
-                          const reason = askRequiredReason(`Enter shop: ${u.tenant_name}`)
-                          if (reason) void enterShop(u.tenant_id, reason)
-                        }}
+                        onClick={() => void enterShop(u.tenant_id)}
                         disabled={!!entering}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
@@ -401,10 +366,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                       </td>
                       <td className="px-5 py-3.5">
                         <button
-                          onClick={() => {
-                            const reason = askRequiredReason(`Enter shop: ${u.tenant_name}`)
-                            if (reason) void enterShop(u.tenant_id, reason)
-                          }}
+                          onClick={() => void enterShop(u.tenant_id)}
                           disabled={!!entering}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
                           style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
@@ -864,10 +826,7 @@ function ReportsTab() {
                 Billed {formatCents(t.billed_total_cents)} · Paid {formatCents(t.paid_total_cents)}
               </p>
               <button
-                onClick={() => {
-                  const reason = askRequiredReason(`Enter shop: ${t.tenant_name}`)
-                  if (reason) void enterShop(t.tenant_id, reason)
-                }}
+                onClick={() => void enterShop(t.tenant_id)}
                 disabled={!!entering}
                 className="text-xs px-3 py-1.5 rounded-lg font-medium mt-1"
                 style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}
@@ -901,10 +860,7 @@ function ReportsTab() {
                 <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => {
-                      const reason = askRequiredReason(`Enter shop: ${t.tenant_name}`)
-                      if (reason) void enterShop(t.tenant_id, reason)
-                    }}
+                    onClick={() => void enterShop(t.tenant_id)}
                     disabled={!!entering}
                     className="text-xs px-3 py-1.5 rounded-lg font-medium"
                     style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}

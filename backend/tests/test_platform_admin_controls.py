@@ -51,7 +51,7 @@ def _promote_to_platform_admin(email: str) -> None:
         db.commit()
 
 
-def test_enter_shop_requires_reason_and_logs_event():
+def test_enter_shop_logs_event():
     suffix = uuid4().hex[:8]
     _, target_tenant_id = _bootstrap_and_login(f"target-{suffix}", f"target-{suffix}@test.com")
     _bootstrap_and_login(f"admin-{suffix}", f"admin-{suffix}@test.com")
@@ -63,17 +63,9 @@ def test_enter_shop_requires_reason_and_logs_event():
     admin_token = admin_login.json()["access_token"]
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
-    bad = client.post(
-        f"/v1/platform-admin/enter-shop/{target_tenant_id}",
-        headers=admin_headers,
-        json={"reason": "short"},
-    )
-    assert bad.status_code == 400
-
     ok = client.post(
         f"/v1/platform-admin/enter-shop/{target_tenant_id}",
         headers=admin_headers,
-        json={"reason": "Support verification"},
     )
     assert ok.status_code == 200
 
