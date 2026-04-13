@@ -918,6 +918,44 @@ export interface PlatformEnterShopResponse {
 }
 
 export const listPlatformTenants = () => api.get<PlatformTenant[]>('/platform-admin/tenants')
+export interface PlatformReportTenantRow {
+  tenant_id: string
+  tenant_name: string
+  tenant_slug: string
+  plan_code: string
+  users: number
+  active_users: number
+  repair_jobs: number
+  shoe_jobs: number
+  auto_key_jobs: number
+  jobs_total: number
+  jobs_last_30_days: number
+  invoices: number
+  paid_invoices: number
+  invoices_last_30_days: number
+  billed_total_cents: number
+  paid_total_cents: number
+  last_activity_at?: string
+}
+export interface PlatformReportsResponse {
+  generated_at: string
+  totals: {
+    tenants: number
+    users: number
+    active_users: number
+    repair_jobs: number
+    shoe_jobs: number
+    auto_key_jobs: number
+    invoices: number
+    paid_invoices: number
+    billed_total_cents: number
+    paid_total_cents: number
+    jobs_last_30_days: number
+    invoices_last_30_days: number
+  }
+  tenants: PlatformReportTenantRow[]
+}
+export const getPlatformReports = () => api.get<PlatformReportsResponse>('/platform-admin/reports')
 export interface PlatformActivityEvent {
   id: string
   tenant_id: string

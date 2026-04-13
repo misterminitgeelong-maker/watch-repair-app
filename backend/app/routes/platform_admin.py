@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,9 +7,13 @@ from sqlmodel import Session, func, select
 from ..database import get_session
 from ..dependencies import require_platform_admin
 from ..models import (
+    AutoKeyJob,
+    Invoice,
     PlatformEnterShopResponse,
     PlatformTenantRead,
     PlatformUserRead,
+    RepairJob,
+    ShoeRepairJob,
     Tenant,
     TenantEventLog,
     TenantEventLogRead,
@@ -136,3 +141,119 @@ def list_platform_activity(
         )
         for row in rows
     ]
+
+
+@router.get("/reports")
+def get_platform_reports(
+    _: object = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+
+    rows: list[dict] = []
+    totals = {
+        "tenants": len(tenants),
+        "users": 0,
+        "active_users": 0,
+        "repair_jobs": 0,
+        "shoe_jobs": 0,
+        "auto_key_jobs": 0,
+        "invoices": 0,
+        "paid_invoices": 0,
+        "billed_total_cents": 0,
+        "paid_total_cents": 0,
+        "jobs_last_30_days": 0,
+        "invoices_last_30_days": 0,
+    }
+
+    for tenant in tenants:
+        users = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+        active_users = int(
+            session.exec(
+                select(func.count(User.id))
+                .where(User.tenant_id == tenant.id)
+                .where(User.is_active == True)  # noqa: E712
+            ).one()
+        )
+        repair_jobs = int(session.exec(select(func.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id)).one())
+        shoe_jobs = int(session.exec(select(func.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id)).one())
+        auto_key_jobs = int(session.exec(select(func.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id)).one())
+        invoices = int(session.exec(select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant.id)).one())
+        paid_invoices = int(
+            session.exec(
+                select(func.count(Invoice.id))
+                .where(Invoice.tenant_id == tenant.id)
+                .where(Invoice.status == "paid")
+            ).one()
+        )
+        billed_total_cents = int(
+            session.exec(
+                select(func.coalesce(func.sum(Invoice.total_cents), 0))
+                .where(Invoice.tenant_id == tenant.id)
+            ).one()
+        )
+        paid_total_cents = int(
+            session.exec(
+                select(func.coalesce(func.sum(Invoice.total_cents), 0))
+                .where(Invoice.tenant_id == tenant.id)
+                .where(Invoice.status == "paid")
+            ).one()
+        )
+        # Count last-30 jobs separately to avoid cross-join inflation.
+        jobs_last_30_days = int(session.exec(select(func.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id).where(RepairJob.created_at >= thirty_days_ago)).one()) \
+            + int(session.exec(select(func.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id).where(ShoeRepairJob.created_at >= thirty_days_ago)).one()) \
+            + int(session.exec(select(func.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id).where(AutoKeyJob.created_at >= thirty_days_ago)).one())
+        invoices_last_30_days = int(
+            session.exec(
+                select(func.count(Invoice.id))
+                .where(Invoice.tenant_id == tenant.id)
+                .where(Invoice.created_at >= thirty_days_ago)
+            ).one()
+        )
+        last_activity_at = session.exec(
+            select(TenantEventLog.created_at)
+            .where(TenantEventLog.tenant_id == tenant.id)
+            .order_by(TenantEventLog.created_at.desc())
+            .limit(1)
+        ).first()
+
+        rows.append({
+            "tenant_id": str(tenant.id),
+            "tenant_name": tenant.name,
+            "tenant_slug": tenant.slug,
+            "plan_code": tenant.plan_code,
+            "users": users,
+            "active_users": active_users,
+            "repair_jobs": repair_jobs,
+            "shoe_jobs": shoe_jobs,
+            "auto_key_jobs": auto_key_jobs,
+            "jobs_total": repair_jobs + shoe_jobs + auto_key_jobs,
+            "jobs_last_30_days": jobs_last_30_days,
+            "invoices": invoices,
+            "paid_invoices": paid_invoices,
+            "invoices_last_30_days": invoices_last_30_days,
+            "billed_total_cents": billed_total_cents,
+            "paid_total_cents": paid_total_cents,
+            "last_activity_at": last_activity_at,
+        })
+
+        totals["users"] += users
+        totals["active_users"] += active_users
+        totals["repair_jobs"] += repair_jobs
+        totals["shoe_jobs"] += shoe_jobs
+        totals["auto_key_jobs"] += auto_key_jobs
+        totals["invoices"] += invoices
+        totals["paid_invoices"] += paid_invoices
+        totals["billed_total_cents"] += billed_total_cents
+        totals["paid_total_cents"] += paid_total_cents
+        totals["jobs_last_30_days"] += jobs_last_30_days
+        totals["invoices_last_30_days"] += invoices_last_30_days
+
+    rows.sort(key=lambda r: r["jobs_total"], reverse=True)
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "totals": totals,
+        "tenants": rows,
+    }

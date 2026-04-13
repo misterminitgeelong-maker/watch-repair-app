@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Clock, Download, Search } from 'lucide-react'
-import { listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
+import { BarChart3, Clock, Download, Search } from 'lucide-react'
+import { getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
-type Tab = 'shops' | 'users' | 'activity'
+type Tab = 'shops' | 'users' | 'activity' | 'reports'
 
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
+const formatCents = (value: number) => `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export function useAdminEnterShop() {
   const navigate = useNavigate()
@@ -94,7 +95,7 @@ export default function PlatformAdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
-        {(['shops', 'users', 'activity'] as Tab[]).map(t => (
+        {(['shops', 'users', 'activity', 'reports'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => { setTab(t); setSearch('') }}
@@ -113,6 +114,7 @@ export default function PlatformAdminPage() {
       {tab === 'shops' && <ShopsTab search={search} setSearch={setSearch} />}
       {tab === 'users' && <UsersTab search={search} setSearch={setSearch} />}
       {tab === 'activity' && <ActivityTab search={search} setSearch={setSearch} />}
+      {tab === 'reports' && <ReportsTab />}
     </div>
   )
 }
@@ -714,5 +716,114 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         </>
       )}
     </>
+  )
+}
+
+function ReportsTab() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['platform-reports'],
+    queryFn: () => getPlatformReports().then(r => r.data),
+  })
+  const { enterShop, entering, error } = useAdminEnterShop()
+
+  if (isLoading) return <Spinner />
+  if (isError || !data) {
+    return (
+      <div className="text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        Could not load platform reports.
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="mb-4 rounded-lg px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+        <BarChart3 size={16} />
+        <span className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+          Network snapshot generated {new Date(data.generated_at).toLocaleString()}
+        </span>
+      </div>
+      {error && (
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+          {error}
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+        <StatCard label="Shops" value={String(data.totals.tenants)} />
+        <StatCard label="Users (active)" value={`${data.totals.users} (${data.totals.active_users})`} />
+        <StatCard label="Jobs total" value={String(data.totals.repair_jobs + data.totals.shoe_jobs + data.totals.auto_key_jobs)} />
+        <StatCard label="Jobs last 30d" value={String(data.totals.jobs_last_30_days)} />
+        <StatCard label="Invoices total" value={String(data.totals.invoices)} />
+        <StatCard label="Paid invoices" value={String(data.totals.paid_invoices)} />
+        <StatCard label="Billed total" value={formatCents(data.totals.billed_total_cents)} />
+        <StatCard label="Paid total" value={formatCents(data.totals.paid_total_cents)} />
+      </div>
+      <Card>
+        <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+          {data.tenants.map((t) => (
+            <div key={t.tenant_id} className="p-4 space-y-1">
+              <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{t.tenant_name} (#{t.tenant_slug})</p>
+              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{t.plan_code} · {t.users} users · {t.jobs_total} jobs</p>
+              <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                Billed {formatCents(t.billed_total_cents)} · Paid {formatCents(t.paid_total_cents)}
+              </p>
+              <button
+                onClick={() => void enterShop(t.tenant_id)}
+                disabled={!!entering}
+                className="text-xs px-3 py-1.5 rounded-lg font-medium mt-1"
+                style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}
+              >
+                {entering === t.tenant_id ? 'Entering…' : 'Enter Shop'}
+              </button>
+            </div>
+          ))}
+        </div>
+        <table className="w-full text-sm hidden md:table">
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+              {['Shop', 'Plan', 'Users', 'Jobs', 'Jobs 30d', 'Invoices', 'Billed', 'Paid', 'Last activity', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.tenants.map((t, i) => (
+              <tr key={t.tenant_id} style={{ borderBottom: i < data.tenants.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text)' }}>{t.tenant_name} (#{t.tenant_slug})</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.active_users}/{t.users}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.jobs_total}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.jobs_last_30_days}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.paid_invoices}/{t.invoices}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.billed_total_cents)}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.paid_total_cents)}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => void enterShop(t.tenant_id)}
+                    disabled={!!entering}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                    style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}
+                  >
+                    {entering === t.tenant_id ? 'Entering…' : 'Enter Shop'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+      <p className="text-[11px] uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>{label}</p>
+      <p className="text-lg font-semibold mt-1" style={{ color: 'var(--cafe-text)' }}>{value}</p>
+    </div>
   )
 }
