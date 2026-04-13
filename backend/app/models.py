@@ -68,6 +68,8 @@ class Tenant(SQLModel, table=True):
     stripe_connect_details_submitted: bool = False
     # True when Stripe subscription is required after signup; cleared after first webhook confirms subscription.
     signup_payment_pending: bool = False
+    is_active: bool = True
+    auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # JSON array of tool keys from seed/mobile_services_tools.json (tenant van / kit inventory)
     toolkit_selected_keys: str = Field(default="[]")
@@ -681,8 +683,13 @@ class PlatformTenantRead(SQLModel):
     slug: str
     name: str
     plan_code: str
+    is_active: bool
     user_count: int
     created_at: datetime
+
+
+class PlatformEnterShopRequest(SQLModel):
+    reason: str
 
 
 class PlatformEnterShopResponse(SQLModel):
@@ -692,6 +699,15 @@ class PlatformEnterShopResponse(SQLModel):
     refresh_expires_in_seconds: int
     tenant_id: UUID
     tenant_name: str
+
+
+class PlatformTenantStatusUpdateRequest(SQLModel):
+    is_active: bool
+    reason: Optional[str] = None
+
+
+class PlatformTenantForceLogoutRequest(SQLModel):
+    reason: Optional[str] = None
 
 
 class BootstrapResponse(SQLModel):

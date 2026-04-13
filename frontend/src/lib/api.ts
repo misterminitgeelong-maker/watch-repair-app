@@ -904,6 +904,7 @@ export interface PlatformTenant {
   slug: string
   name: string
   plan_code: string
+  is_active: boolean
   user_count: number
   created_at: string
 }
@@ -969,8 +970,12 @@ export interface PlatformActivityEvent {
 }
 export const listPlatformActivity = (limit = 100, offset = 0) =>
   api.get<PlatformActivityEvent[]>('/platform-admin/activity', { params: { limit, offset } })
-export const platformAdminEnterShop = (tenantId: string) =>
-  api.post<PlatformEnterShopResponse>(`/platform-admin/enter-shop/${tenantId}`)
+export const platformAdminEnterShop = (tenantId: string, reason: string) =>
+  api.post<PlatformEnterShopResponse>(`/platform-admin/enter-shop/${tenantId}`, { reason })
+export const setPlatformTenantStatus = (tenantId: string, is_active: boolean, reason?: string) =>
+  api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/status`, { is_active, reason })
+export const forcePlatformTenantLogout = (tenantId: string, reason?: string) =>
+  api.post<{ ok: boolean; tenant_id: string; auth_revoked_at: string }>(`/platform-admin/tenants/${tenantId}/force-logout`, { reason })
 
 // ── Shoe Catalogue ────────────────────────────────────────────────────────────
 export interface ShoeCatalogueGroup {

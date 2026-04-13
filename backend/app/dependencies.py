@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import timezone
 from typing import Callable
 from uuid import UUID
 
@@ -157,6 +158,13 @@ def get_auth_context(
         tenant = session.get(Tenant, tenant_id)
         if not tenant:
             raise HTTPException(status_code=401, detail="Invalid token")
+        if not tenant.is_active and claims.role != "platform_admin":
+            raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
+        revoked_at = tenant.auth_revoked_at
+        if revoked_at and revoked_at.tzinfo is None:
+            revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+        if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
+            raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
         plan_code = normalize_plan_code(tenant.plan_code, default_if_empty="pro")
 

@@ -5,11 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import require_platform_admin
+from ..dependencies import AuthContext, require_platform_admin
 from ..models import (
     AutoKeyJob,
     Invoice,
+    PlatformEnterShopRequest,
     PlatformEnterShopResponse,
+    PlatformTenantForceLogoutRequest,
+    PlatformTenantStatusUpdateRequest,
     PlatformTenantRead,
     PlatformUserRead,
     RepairJob,
@@ -70,6 +73,7 @@ def list_all_tenants(
             slug=t.slug,
             name=t.name,
             plan_code=t.plan_code,
+            is_active=t.is_active,
             user_count=user_counts.get(t.id, 0),
             created_at=t.created_at,
         )
@@ -80,7 +84,8 @@ def list_all_tenants(
 @router.post("/enter-shop/{tenant_id}", response_model=PlatformEnterShopResponse)
 def enter_shop(
     tenant_id: UUID,
-    auth: object = Depends(require_platform_admin),
+    payload: PlatformEnterShopRequest,
+    auth: AuthContext = Depends(require_platform_admin),
     session: Session = Depends(get_session),
 ):
     """Issue a platform_admin-scoped token for any tenant, allowing the admin to
@@ -88,6 +93,11 @@ def enter_shop(
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Shop not found.")
+    reason = (payload.reason or "").strip()
+    if len(reason) < 8:
+        raise HTTPException(status_code=400, detail="Reason is required (min 8 chars).")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
 
     # Find first active owner in the target tenant to anchor the user_id
     owner = session.exec(
@@ -99,6 +109,19 @@ def enter_shop(
     ).first()
     if not owner:
         raise HTTPException(status_code=400, detail="This shop has no active owner account.")
+
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="session",
+            entity_id=owner.id,
+            event_type="platform_admin_enter_shop",
+            event_summary=f"Platform admin entered shop '{tenant.slug}' with reason: {reason}",
+        )
+    )
+    session.commit()
 
     # Issue tokens with platform_admin role but scoped to the target tenant
     access_token, expires = create_access_token(tenant_id, owner.id, "platform_admin")
@@ -112,6 +135,80 @@ def enter_shop(
         tenant_id=tenant_id,
         tenant_name=tenant.name,
     )
+
+
+@router.patch("/tenants/{tenant_id}/status", response_model=PlatformTenantRead)
+def set_tenant_status(
+    tenant_id: UUID,
+    payload: PlatformTenantStatusUpdateRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    reason = (payload.reason or "").strip()
+
+    tenant.is_active = bool(payload.is_active)
+    if not tenant.is_active:
+        tenant.auth_revoked_at = datetime.now(timezone.utc)
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="tenant",
+            entity_id=tenant_id,
+            event_type="platform_admin_tenant_status",
+            event_summary=f"Platform admin set tenant active={tenant.is_active}. Reason: {reason or 'n/a'}",
+        )
+    )
+    session.commit()
+
+    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+    return PlatformTenantRead(
+        id=tenant.id,
+        slug=tenant.slug,
+        name=tenant.name,
+        plan_code=tenant.plan_code,
+        is_active=tenant.is_active,
+        user_count=user_count,
+        created_at=tenant.created_at,
+    )
+
+
+@router.post("/tenants/{tenant_id}/force-logout")
+def force_tenant_logout(
+    tenant_id: UUID,
+    payload: PlatformTenantForceLogoutRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    reason = (payload.reason or "").strip()
+
+    tenant.auth_revoked_at = datetime.now(timezone.utc)
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="session",
+            entity_id=tenant_id,
+            event_type="platform_admin_force_logout",
+            event_summary=f"Platform admin forced logout for tenant users. Reason: {reason or 'n/a'}",
+        )
+    )
+    session.commit()
+    return {"ok": True, "tenant_id": str(tenant_id), "auth_revoked_at": tenant.auth_revoked_at}
 
 
 @router.get("/activity", response_model=list[TenantEventLogRead])

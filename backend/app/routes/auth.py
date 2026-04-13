@@ -809,6 +809,8 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
     tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
 
     user = session.exec(
         select(User).where(User.tenant_id == tenant.id).where(User.email == _normalize_email(payload.email))
@@ -1011,6 +1013,13 @@ def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_sessi
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+    if not tenant.is_active and claims.role != "platform_admin":
+        raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
+    revoked_at = tenant.auth_revoked_at
+    if revoked_at and revoked_at.tzinfo is None:
+        revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+    if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
     token, expires = create_access_token(tenant_id, user_id, user.role)
     refresh_token, refresh_expires = create_refresh_token(tenant_id, user_id, user.role)

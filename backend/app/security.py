@@ -16,6 +16,7 @@ class TokenClaims:
     tenant_id: UUID
     user_id: UUID
     role: str
+    issued_at: datetime | None = None
 
 
 def hash_password(password: str) -> str:
@@ -27,13 +28,15 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 
 def create_access_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -> tuple[str, int]:
+    now = datetime.now(timezone.utc)
     expires_delta = timedelta(minutes=settings.jwt_expire_minutes)
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = now + expires_delta
     payload = {
         "sub": str(user_id),
         "tenant_id": str(tenant_id),
         "user_id": str(user_id),
         "role": role,
+        "iat": now.timestamp(),
         "exp": expire,
     }
     encoded_jwt = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
@@ -41,13 +44,15 @@ def create_access_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -
 
 
 def create_refresh_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -> tuple[str, int]:
+    now = datetime.now(timezone.utc)
     expires_delta = timedelta(days=settings.jwt_refresh_expire_days)
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = now + expires_delta
     payload = {
         "sub": str(user_id),
         "tenant_id": str(tenant_id),
         "user_id": str(user_id),
         "role": role,
+        "iat": now.timestamp(),
         "exp": expire,
         "typ": REFRESH_TOKEN_TYP,
     }
@@ -80,7 +85,11 @@ def _parse_claims(payload: dict, *, expect_refresh: bool) -> TokenClaims:
     except Exception as exc:
         raise ValueError("Invalid token claims") from exc
 
-    return TokenClaims(sub=sub, tenant_id=tenant_id, user_id=user_id, role=role)
+    issued_at: datetime | None = None
+    iat_raw = payload.get("iat")
+    if isinstance(iat_raw, (int, float)):
+        issued_at = datetime.fromtimestamp(iat_raw, tz=timezone.utc)
+    return TokenClaims(sub=sub, tenant_id=tenant_id, user_id=user_id, role=role, issued_at=issued_at)
 
 
 def decode_access_token(token: str) -> TokenClaims:
