@@ -290,12 +290,16 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
 
 function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
   const [eventTypeFilter, setEventTypeFilter] = useState('all')
+  const [entityTypeFilter, setEntityTypeFilter] = useState('all')
+  const [actorEmailFilter, setActorEmailFilter] = useState('all')
   const [shopFilter, setShopFilter] = useState('all')
   const [dateFromDraft, setDateFromDraft] = useState('')
   const [dateToDraft, setDateToDraft] = useState('')
   const [dateFromApplied, setDateFromApplied] = useState('')
   const [dateToApplied, setDateToApplied] = useState('')
   const [showTechnical, setShowTechnical] = useState(false)
+  const [copiedValue, setCopiedValue] = useState('')
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const {
     data: activityPages,
     isLoading,
@@ -319,7 +323,10 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
 
   const events = activityPages?.pages.flatMap((page) => page) ?? []
   const eventTypes = Array.from(new Set((events ?? []).map((e) => e.event_type))).sort((a, b) => a.localeCompare(b))
+  const entityTypes = Array.from(new Set((events ?? []).map((e) => e.entity_type))).sort((a, b) => a.localeCompare(b))
+  const actorEmails = Array.from(new Set((events ?? []).map((e) => e.actor_email).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b))
   const tenantNameById = new Map(tenants.map((t) => [t.id, t.name]))
+  const selectedEvent = events.find((e) => e.id === selectedEventId) ?? null
 
   const filtered = (events ?? []).filter((e) => {
     const searchable = [e.event_type, e.event_summary, e.actor_email ?? '', e.tenant_id ?? '', tenantNameById.get(e.tenant_id ?? '') ?? '']
@@ -327,6 +334,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
       .toLowerCase()
     if (!searchable.includes(search.toLowerCase())) return false
     if (eventTypeFilter !== 'all' && e.event_type !== eventTypeFilter) return false
+    if (entityTypeFilter !== 'all' && e.entity_type !== entityTypeFilter) return false
+    if (actorEmailFilter !== 'all' && (e.actor_email ?? 'System') !== actorEmailFilter) return false
     if (shopFilter !== 'all' && (e.tenant_id ?? '') !== shopFilter) return false
     const eventDate = new Date(e.created_at)
     if (dateFromApplied) {
@@ -339,6 +348,13 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
     }
     return true
   })
+
+  async function copyValue(value?: string) {
+    if (!value) return
+    await navigator.clipboard.writeText(value)
+    setCopiedValue(value)
+    window.setTimeout(() => setCopiedValue(''), 1200)
+  }
 
   function csvCell(value: string) {
     return `"${value.replace(/"/g, '""')}"`
@@ -379,6 +395,35 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             <option value="all">All events</option>
             {eventTypes.map((type) => (
               <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          Entity
+          <select
+            className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={entityTypeFilter}
+            onChange={(e) => setEntityTypeFilter(e.target.value)}
+          >
+            <option value="all">All entities</option>
+            {entityTypes.map((type) => (
+              <option key={type} value={type}>{formatLabel(type)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          Actor
+          <select
+            className="mt-1 block min-w-52 rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={actorEmailFilter}
+            onChange={(e) => setActorEmailFilter(e.target.value)}
+          >
+            <option value="all">All actors</option>
+            <option value="System">System</option>
+            {actorEmails.map((email) => (
+              <option key={email} value={email}>{email}</option>
             ))}
           </select>
         </label>
@@ -473,6 +518,22 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}>
                         ID {shortId(e.entity_id)}
                       </span>
+                      <button
+                        type="button"
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+                        onClick={() => void copyValue(e.entity_id)}
+                      >
+                        {copiedValue === e.entity_id ? 'Copied' : 'Copy ID'}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+                        onClick={() => setSelectedEventId(e.id)}
+                      >
+                        Details
+                      </button>
                     </div>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
                       {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
@@ -509,7 +570,18 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>
                         <div className="flex flex-col">
                           <span>{formatLabel(e.entity_type)}</span>
-                          <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>ID {shortId(e.entity_id)}</span>
+                          <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                            ID {shortId(e.entity_id)}
+                            {' '}
+                            <button
+                              type="button"
+                              className="underline"
+                              style={{ color: 'var(--cafe-text-muted)' }}
+                              onClick={() => void copyValue(e.entity_id)}
+                            >
+                              {copiedValue === e.entity_id ? 'copied' : 'copy'}
+                            </button>
+                          </span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}</td>
@@ -521,6 +593,14 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                               actor_user_id={e.actor_user_id ?? 'n/a'} entity_id={e.entity_id ?? 'n/a'}
                             </span>
                           )}
+                          <button
+                            type="button"
+                            className="text-xs underline text-left mt-1"
+                            style={{ color: 'var(--cafe-text-muted)' }}
+                            onClick={() => setSelectedEventId(e.id)}
+                          >
+                            View details
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -551,6 +631,32 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               {showTechnical ? 'Hide technical fields' : 'Show technical fields'}
             </button>
           </div>
+          {selectedEvent && (
+            <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                  Activity details: {formatLabel(selectedEvent.event_type)}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs underline"
+                  style={{ color: 'var(--cafe-text-muted)' }}
+                  onClick={() => setSelectedEventId(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="grid gap-1 text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                <p><strong>Summary:</strong> {selectedEvent.event_summary}</p>
+                <p><strong>When:</strong> {new Date(selectedEvent.created_at).toLocaleString()}</p>
+                <p><strong>Shop:</strong> {tenantNameById.get(selectedEvent.tenant_id ?? '') ?? 'Platform'} ({selectedEvent.tenant_id ?? 'n/a'})</p>
+                <p><strong>Actor:</strong> {selectedEvent.actor_email ?? 'System'} ({selectedEvent.actor_user_id ?? 'n/a'})</p>
+                <p><strong>Entity:</strong> {formatLabel(selectedEvent.entity_type)} ({selectedEvent.entity_id ?? 'n/a'})</p>
+                <p><strong>Raw event type:</strong> {selectedEvent.event_type}</p>
+                <p><strong>Event id:</strong> {selectedEvent.id}</p>
+              </div>
+            </div>
+          )}
         </>
       )}
     </>
