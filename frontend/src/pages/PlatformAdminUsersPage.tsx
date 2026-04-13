@@ -261,7 +261,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         onClick={() => void enterShop(t.id)}
                         disabled={!!entering}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
+                        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)', opacity: entering === t.id ? 0.6 : 1 }}
                       >
                         {entering === t.id ? 'Entering…' : 'Enter Shop'}
                       </button>
@@ -314,7 +314,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           onClick={() => void enterShop(t.id)}
                           disabled={!!entering}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
-                          style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
+                          style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)', opacity: entering === t.id ? 0.6 : 1 }}
                         >
                           {entering === t.id ? 'Entering…' : 'Enter Shop'}
                         </button>
