@@ -23,6 +23,7 @@ import {
   setPageTutorialSeen,
 } from '@/lib/onboarding'
 import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
+import { AdminReturnBanner } from '@/pages/PlatformAdminUsersPage'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 
@@ -986,6 +987,7 @@ export default function AppShell() {
           </div>
         </div>
       )}
+      <AdminReturnBanner />
     </div>
   )
 }

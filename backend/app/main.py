@@ -46,7 +46,7 @@ from .routes.vehicle_key_specs import router as vehicle_key_specs_router
 from .routes.maps_routing import router as maps_routing_router
 from .routes.custom_services import router as custom_services_router
 from .routes.toolkit import router as toolkit_router
-from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
+from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
 
 if getattr(settings, "sentry_dsn", "").strip():
@@ -67,6 +67,7 @@ def _run_optional_startup_tasks() -> None:
             demo_tenant = ensure_demo_tenant(session)
             ensure_demo_b2b_accounts(session, demo_tenant)
             ensure_demo_auto_key_addresses(session, demo_tenant.id)
+            ensure_demo_parent_account(session, demo_tenant)
             # Demo mobile calendar/status refresh runs on demo-seed (auth), not every API restart, so local reschedules persist.
             session.commit()
             ensure_testing_tenant(session)

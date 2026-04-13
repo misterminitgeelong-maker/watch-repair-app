@@ -11,7 +11,7 @@ import httpx
 from sqlmodel import Session, func, select
 
 from .config import settings
-from .models import AutoKeyJob, Customer, CustomerAccount, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
+from .models import AutoKeyJob, Customer, CustomerAccount, MobileSuburbRoute, ParentAccount, ParentAccountMembership, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
 from .security import hash_password
 
 # Victorian B2B demo accounts (used at startup and by demo-seed)
@@ -553,6 +553,106 @@ def ensure_platform_admin_account(session: Session) -> None:
                 is_active=True,
             )
         )
+
+    session.commit()
+
+
+def ensure_demo_parent_account(session: Session, demo_tenant: Tenant) -> None:
+    """Create two extra demo shop tenants and a parent account linking all three.
+
+    All extra tenants share the demo owner email so the standard site-switcher
+    works out of the box — no extra credentials needed.
+    """
+    owner_email = settings.startup_seed_owner_email
+    owner_password = settings.startup_seed_owner_password
+
+    extra_sites = [
+        ("Mainspring North", "mainspring-north"),
+        ("Mainspring South", "mainspring-south"),
+    ]
+
+    extra_tenants: list[Tenant] = []
+    for name, slug in extra_sites:
+        tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
+        if not tenant:
+            tenant = Tenant(name=name, slug=slug, plan_code="pro")
+            session.add(tenant)
+            session.flush()
+        extra_tenants.append(tenant)
+
+        # Ensure an owner user with the same email as the demo owner exists
+        owner = session.exec(
+            select(User).where(User.tenant_id == tenant.id).where(User.email == owner_email)
+        ).first()
+        if not owner:
+            session.add(User(
+                tenant_id=tenant.id,
+                email=owner_email,
+                full_name="Demo Owner",
+                role="owner",
+                password_hash=hash_password(owner_password),
+                is_active=True,
+            ))
+            session.flush()
+
+    session.commit()
+
+    # Create (or find) parent account for the demo owner
+    parent = session.exec(
+        select(ParentAccount).where(ParentAccount.owner_email == owner_email)
+    ).first()
+    if not parent:
+        parent = ParentAccount(name="Mainspring Group", owner_email=owner_email)
+        session.add(parent)
+        session.flush()
+
+    # Link all three tenants via memberships
+    for tenant in [demo_tenant] + extra_tenants:
+        owner = session.exec(
+            select(User).where(User.tenant_id == tenant.id).where(User.email == owner_email)
+        ).first()
+        if not owner:
+            continue
+        existing = session.exec(
+            select(ParentAccountMembership)
+            .where(ParentAccountMembership.parent_account_id == parent.id)
+            .where(ParentAccountMembership.tenant_id == tenant.id)
+        ).first()
+        if not existing:
+            session.add(ParentAccountMembership(
+                parent_account_id=parent.id,
+                tenant_id=tenant.id,
+                user_id=owner.id,
+            ))
+
+    session.flush()
+
+    # Seed demo suburb routes
+    north_id = extra_tenants[0].id
+    south_id = extra_tenants[1].id
+    demo_routes = [
+        ("VIC", "richmond", demo_tenant.id),
+        ("VIC", "fitzroy", demo_tenant.id),
+        ("VIC", "collingwood", demo_tenant.id),
+        ("VIC", "bendigo", north_id),
+        ("VIC", "ballarat", north_id),
+        ("VIC", "frankston", south_id),
+        ("VIC", "dandenong", south_id),
+    ]
+    for state, suburb, target_id in demo_routes:
+        exists = session.exec(
+            select(MobileSuburbRoute)
+            .where(MobileSuburbRoute.parent_account_id == parent.id)
+            .where(MobileSuburbRoute.state_code == state)
+            .where(MobileSuburbRoute.suburb_normalized == suburb)
+        ).first()
+        if not exists:
+            session.add(MobileSuburbRoute(
+                parent_account_id=parent.id,
+                state_code=state,
+                suburb_normalized=suburb,
+                target_tenant_id=target_id,
+            ))
 
     session.commit()
 

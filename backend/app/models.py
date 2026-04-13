@@ -676,6 +676,24 @@ class PlatformUserRead(SQLModel):
     is_active: bool
 
 
+class PlatformTenantRead(SQLModel):
+    id: UUID
+    slug: str
+    name: str
+    plan_code: str
+    user_count: int
+    created_at: datetime
+
+
+class PlatformEnterShopResponse(SQLModel):
+    access_token: str
+    refresh_token: str
+    expires_in_seconds: int
+    refresh_expires_in_seconds: int
+    tenant_id: UUID
+    tenant_name: str
+
+
 class BootstrapResponse(SQLModel):
     tenant_id: UUID
     owner_user: PublicUser

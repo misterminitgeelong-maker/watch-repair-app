@@ -892,6 +892,28 @@ export interface PlatformUser extends TenantUser {
 
 export const listPlatformUsers = () => api.get<PlatformUser[]>('/platform-admin/users')
 
+export interface PlatformTenant {
+  id: string
+  slug: string
+  name: string
+  plan_code: string
+  user_count: number
+  created_at: string
+}
+
+export interface PlatformEnterShopResponse {
+  access_token: string
+  refresh_token: string
+  expires_in_seconds: number
+  refresh_expires_in_seconds: number
+  tenant_id: string
+  tenant_name: string
+}
+
+export const listPlatformTenants = () => api.get<PlatformTenant[]>('/platform-admin/tenants')
+export const platformAdminEnterShop = (tenantId: string) =>
+  api.post<PlatformEnterShopResponse>(`/platform-admin/enter-shop/${tenantId}`)
+
 // ── Shoe Catalogue ────────────────────────────────────────────────────────────
 export interface ShoeCatalogueGroup {
   id: string
