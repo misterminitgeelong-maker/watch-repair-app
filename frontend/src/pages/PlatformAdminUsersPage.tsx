@@ -144,6 +144,9 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
   return (
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search shops or plan…" />
+      <p className="mb-4 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        Use <strong>Enter Shop</strong> to open that shop account and view its full dashboard, jobs, customers, and settings.
+      </p>
       {isError && (
         <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           Could not load shops. Check backend logs.
@@ -191,7 +194,20 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 <tbody>
                   {filtered.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</td>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{t.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => void enterShop(t.id)}
+                            disabled={!!entering}
+                            className="text-[11px] px-2 py-1 rounded-md font-semibold"
+                            style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
+                          >
+                            {entering === t.id ? 'Opening…' : 'Open'}
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>#{t.slug}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.user_count}</td>
@@ -286,8 +302,10 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
 function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
   const [eventTypeFilter, setEventTypeFilter] = useState('all')
   const [shopFilter, setShopFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFromDraft, setDateFromDraft] = useState('')
+  const [dateToDraft, setDateToDraft] = useState('')
+  const [dateFromApplied, setDateFromApplied] = useState('')
+  const [dateToApplied, setDateToApplied] = useState('')
   const {
     data: activityPages,
     isLoading,
@@ -321,12 +339,12 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
     if (eventTypeFilter !== 'all' && e.event_type !== eventTypeFilter) return false
     if (shopFilter !== 'all' && (e.tenant_id ?? '') !== shopFilter) return false
     const eventDate = new Date(e.created_at)
-    if (dateFrom) {
-      const from = new Date(`${dateFrom}T00:00:00`)
+    if (dateFromApplied) {
+      const from = new Date(`${dateFromApplied}T00:00:00`)
       if (eventDate < from) return false
     }
-    if (dateTo) {
-      const to = new Date(`${dateTo}T23:59:59`)
+    if (dateToApplied) {
+      const to = new Date(`${dateToApplied}T23:59:59`)
       if (eventDate > to) return false
     }
     return true
@@ -394,8 +412,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             type="date"
             className="mt-1 block rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            value={dateFromDraft}
+            onChange={(e) => setDateFromDraft(e.target.value)}
           />
         </label>
         <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
@@ -404,10 +422,34 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             type="date"
             className="mt-1 block rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            value={dateToDraft}
+            onChange={(e) => setDateToDraft(e.target.value)}
           />
         </label>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+          style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+          onClick={() => {
+            setDateFromApplied(dateFromDraft)
+            setDateToApplied(dateToDraft)
+          }}
+        >
+          Show activity
+        </button>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+          style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+          onClick={() => {
+            setDateFromDraft('')
+            setDateToDraft('')
+            setDateFromApplied('')
+            setDateToApplied('')
+          }}
+        >
+          Clear dates
+        </button>
         <button
           type="button"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
