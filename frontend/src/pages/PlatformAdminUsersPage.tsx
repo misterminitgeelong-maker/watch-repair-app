@@ -230,6 +230,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
     queryKey: ['platform-users'],
     queryFn: () => listPlatformUsers().then(r => r.data),
   })
+  const { enterShop, entering, error } = useAdminEnterShop()
 
   const filtered = (users ?? []).filter(u =>
     [u.full_name, u.email, u.role, u.tenant_name, u.tenant_slug].join(' ').toLowerCase().includes(search.toLowerCase())
@@ -238,6 +239,11 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
   return (
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search users, roles, or shops…" />
+      {error && (
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+          {error}
+        </div>
+      )}
       {isLoading ? <Spinner /> : (
         <Card>
           {filtered.length === 0 ? <EmptyState message="No users found." /> : (
@@ -252,6 +258,16 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                     <p className="text-xs font-medium" style={{ color: u.is_active ? '#497A59' : '#A06757' }}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </p>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => void enterShop(u.tenant_id)}
+                        disabled={!!entering}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
+                      >
+                        {entering === u.tenant_id ? 'Entering…' : 'Enter Shop'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -259,7 +275,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
               <table className="w-full text-sm hidden md:table">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                    {['Name', 'Email', 'Role', 'Shop', 'Status'].map(h => (
+                    {['Name', 'Email', 'Role', 'Shop', 'Status', 'Enter Shop'].map(h => (
                       <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
                         {h}
                       </th>
@@ -275,6 +291,16 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{u.tenant_name} (#{u.tenant_slug})</td>
                       <td className="px-5 py-3.5 font-medium" style={{ color: u.is_active ? '#497A59' : '#A06757' }}>
                         {u.is_active ? 'Active' : 'Inactive'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <button
+                          onClick={() => void enterShop(u.tenant_id)}
+                          disabled={!!entering}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
+                          style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
+                        >
+                          {entering === u.tenant_id ? 'Entering…' : 'Enter Shop'}
+                        </button>
                       </td>
                     </tr>
                   ))}
