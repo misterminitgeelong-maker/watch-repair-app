@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/v1' })
+const api = axios.create({ baseURL: '/v1', timeout: 20000 })
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
@@ -744,6 +744,7 @@ export const importCsv = (file: File, options?: { replaceExisting?: boolean; cle
   const qs = params.toString() ? `?${params.toString()}` : ''
   return api.post<CsvImportResult>(`/import/csv${qs}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 600000, // 10 min for large imports
   })
 }
 
