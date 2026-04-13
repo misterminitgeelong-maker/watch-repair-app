@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
@@ -10,10 +10,20 @@ type Tab = 'shops' | 'users' | 'activity' | 'reports'
 
 const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
+const ADMIN_IMPERSONATION_STARTED_KEY = 'admin_impersonation_started_at'
+const ADMIN_IMPERSONATION_EXPIRES_KEY = 'admin_impersonation_expires_at'
+const ADMIN_IMPERSONATION_DURATION_MS = 20 * 60 * 1000
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
 const formatCents = (value: number) => `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+function formatCountdown(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const mins = Math.floor(total / 60)
+  const secs = total % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 export function useAdminEnterShop() {
   const navigate = useNavigate()
@@ -30,6 +40,8 @@ export function useAdminEnterShop() {
       const prevRefresh = localStorage.getItem('refresh_token') ?? sessionStorage.getItem('refresh_token') ?? ''
       if (prevAccess) sessionStorage.setItem(ADMIN_PREV_TOKEN_KEY, prevAccess)
       if (prevRefresh) sessionStorage.setItem(ADMIN_PREV_REFRESH_KEY, prevRefresh)
+      sessionStorage.setItem(ADMIN_IMPERSONATION_STARTED_KEY, String(Date.now()))
+      sessionStorage.setItem(ADMIN_IMPERSONATION_EXPIRES_KEY, String(Date.now() + ADMIN_IMPERSONATION_DURATION_MS))
 
       const { data } = await platformAdminEnterShop(tenantId)
 
@@ -51,13 +63,27 @@ export function AdminReturnBanner() {
   const navigate = useNavigate()
   const { login: authLogin, refreshSession } = useAuth()
   const prevToken = sessionStorage.getItem(ADMIN_PREV_TOKEN_KEY)
-  if (!prevToken) return null
+  const [nowMs, setNowMs] = useState(Date.now())
+  const [returning, setReturning] = useState(false)
+
+  const expiresAt = Number(sessionStorage.getItem(ADMIN_IMPERSONATION_EXPIRES_KEY) ?? '0')
+  const remainingMs = expiresAt > 0 ? expiresAt - nowMs : 0
+
+  useEffect(() => {
+    if (!prevToken) return
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [prevToken])
 
   async function returnToAdmin() {
+    if (returning) return
+    setReturning(true)
     const prevAccess = sessionStorage.getItem(ADMIN_PREV_TOKEN_KEY) ?? ''
     const prevRefresh = sessionStorage.getItem(ADMIN_PREV_REFRESH_KEY) ?? ''
     sessionStorage.removeItem(ADMIN_PREV_TOKEN_KEY)
     sessionStorage.removeItem(ADMIN_PREV_REFRESH_KEY)
+    sessionStorage.removeItem(ADMIN_IMPERSONATION_STARTED_KEY)
+    sessionStorage.removeItem(ADMIN_IMPERSONATION_EXPIRES_KEY)
     if (prevAccess) {
       authLogin(prevAccess, prevRefresh || null)
       await refreshSession()
@@ -65,12 +91,23 @@ export function AdminReturnBanner() {
     navigate('/platform-admin/users')
   }
 
+  useEffect(() => {
+    if (!prevToken) return
+    if (remainingMs <= 0 && expiresAt > 0 && !returning) {
+      void returnToAdmin()
+    }
+  }, [prevToken, remainingMs, expiresAt, returning])
+
+  if (!prevToken) return null
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-3 text-sm font-medium"
       style={{ backgroundColor: '#1F3A5F', color: '#E8F0FB' }}
     >
-      <span>Viewing as Platform Admin — you have full access to this shop.</span>
+      <span>
+        Viewing as Platform Admin. Session window {returning ? 'ending...' : formatCountdown(remainingMs)}.
+      </span>
       <button
         className="ml-4 px-3 py-1.5 rounded-lg text-xs font-semibold"
         style={{ backgroundColor: '#4A7FC1', color: '#fff' }}
@@ -162,6 +199,25 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: () => setAdminActionError('Could not force logout users. Try again.'),
   })
+  function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
+    const typed = window.prompt(`Type shop slug "${shopSlug}" to ${actionLabel} ${shopName}:`, '') ?? ''
+    if (typed.trim() !== shopSlug) {
+      window.alert(`Confirmation failed. You must type "${shopSlug}" exactly.`)
+      return false
+    }
+    return true
+  }
+  function handleToggleStatus(tenantId: string, name: string, slug: string, isActive: boolean) {
+    const actionLabel = isActive ? 'suspend' : 'reactivate'
+    if (!requireSlugConfirmation(name, slug, actionLabel)) return
+    const reason = window.prompt(`${isActive ? 'Suspend' : 'Reactivate'} ${name} (optional reason):`, '') ?? ''
+    setStatus.mutate({ tenantId, isActive: !isActive, reason: reason.trim() || undefined })
+  }
+  function handleForceLogout(tenantId: string, name: string, slug: string) {
+    if (!requireSlugConfirmation(name, slug, 'force logout users for')) return
+    const reason = window.prompt(`Force logout all users in ${name}? Optional reason:`, '') ?? ''
+    forceLogout.mutate({ tenantId, reason: reason.trim() || undefined })
+  }
 
   const filtered = (tenants ?? []).filter(t =>
     [t.name, t.slug, t.plan_code].join(' ').toLowerCase().includes(search.toLowerCase())
@@ -211,8 +267,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       </button>
                       <button
                         onClick={() => {
-                          const reason = window.prompt(`${t.is_active ? 'Suspend' : 'Reactivate'} ${t.name} (optional reason):`, '') ?? ''
-                          setStatus.mutate({ tenantId: t.id, isActive: !t.is_active, reason: reason.trim() || undefined })
+                          handleToggleStatus(t.id, t.name, t.slug, t.is_active)
                         }}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
@@ -221,8 +276,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       </button>
                       <button
                         onClick={() => {
-                          const reason = window.prompt(`Force logout all users in ${t.name}? Optional reason:`, '') ?? ''
-                          forceLogout.mutate({ tenantId: t.id, reason: reason.trim() || undefined })
+                          handleForceLogout(t.id, t.name, t.slug)
                         }}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
@@ -266,8 +320,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         </button>
                         <button
                           onClick={() => {
-                            const reason = window.prompt(`${t.is_active ? 'Suspend' : 'Reactivate'} ${t.name} (optional reason):`, '') ?? ''
-                            setStatus.mutate({ tenantId: t.id, isActive: !t.is_active, reason: reason.trim() || undefined })
+                            handleToggleStatus(t.id, t.name, t.slug, t.is_active)
                           }}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                           style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
@@ -276,8 +329,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         </button>
                         <button
                           onClick={() => {
-                            const reason = window.prompt(`Force logout all users in ${t.name}? Optional reason:`, '') ?? ''
-                            forceLogout.mutate({ tenantId: t.id, reason: reason.trim() || undefined })
+                            handleForceLogout(t.id, t.name, t.slug)
                           }}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                           style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
@@ -816,6 +868,13 @@ function ReportsTab() {
         <StatCard label="Billed total" value={formatCents(data.totals.billed_total_cents)} />
         <StatCard label="Paid total" value={formatCents(data.totals.paid_total_cents)} />
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-4">
+        <StatCard label="Healthy shops" value={String(data.totals.health.active_tenants)} />
+        <StatCard label="Suspended shops" value={String(data.totals.health.suspended_tenants)} />
+        <StatCard label="No activity 7d" value={String(data.totals.health.tenants_no_activity_7_days)} />
+        <StatCard label="No jobs 30d" value={String(data.totals.health.tenants_no_jobs_30_days)} />
+        <StatCard label="No active users" value={String(data.totals.health.tenants_no_active_users)} />
+      </div>
       <Card>
         <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
           {data.tenants.map((t) => (
@@ -824,6 +883,9 @@ function ReportsTab() {
               <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{t.plan_code} · {t.users} users · {t.jobs_total} jobs</p>
               <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
                 Billed {formatCents(t.billed_total_cents)} · Paid {formatCents(t.paid_total_cents)}
+              </p>
+              <p className="text-xs" style={{ color: t.health_status === 'healthy' ? '#497A59' : t.health_status === 'suspended' ? '#A06757' : '#9A7220' }}>
+                Health: {t.health_status} · Logins 7d: {t.logins_last_7_days} · Days since activity: {t.days_since_activity ?? 'n/a'}
               </p>
               <button
                 onClick={() => void enterShop(t.tenant_id)}
@@ -839,7 +901,7 @@ function ReportsTab() {
         <table className="w-full text-sm hidden md:table">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-              {['Shop', 'Plan', 'Users', 'Jobs', 'Jobs 30d', 'Invoices', 'Billed', 'Paid', 'Last activity', ''].map(h => (
+              {['Shop', 'Plan', 'Users', 'Jobs', 'Jobs 30d', 'Invoices', 'Billed', 'Paid', 'Health', 'Last activity', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
                   {h}
                 </th>
@@ -857,6 +919,9 @@ function ReportsTab() {
                 <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.paid_invoices}/{t.invoices}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.billed_total_cents)}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.paid_total_cents)}</td>
+                <td className="px-4 py-3" style={{ color: t.health_status === 'healthy' ? '#497A59' : t.health_status === 'suspended' ? '#A06757' : '#9A7220' }}>
+                  {t.health_status} · {t.logins_last_7_days} logins
+                </td>
                 <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
                 <td className="px-4 py-3">
                   <button

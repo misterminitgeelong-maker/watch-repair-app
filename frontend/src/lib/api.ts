@@ -924,6 +924,7 @@ export interface PlatformReportTenantRow {
   tenant_name: string
   tenant_slug: string
   plan_code: string
+  is_active: boolean
   users: number
   active_users: number
   repair_jobs: number
@@ -937,6 +938,9 @@ export interface PlatformReportTenantRow {
   billed_total_cents: number
   paid_total_cents: number
   last_activity_at?: string
+  logins_last_7_days: number
+  days_since_activity?: number | null
+  health_status: 'healthy' | 'attention' | 'suspended'
 }
 export interface PlatformReportsResponse {
   generated_at: string
@@ -953,6 +957,13 @@ export interface PlatformReportsResponse {
     paid_total_cents: number
     jobs_last_30_days: number
     invoices_last_30_days: number
+    health: {
+      active_tenants: number
+      suspended_tenants: number
+      tenants_no_activity_7_days: number
+      tenants_no_jobs_30_days: number
+      tenants_no_active_users: number
+    }
   }
   tenants: PlatformReportTenantRow[]
 }

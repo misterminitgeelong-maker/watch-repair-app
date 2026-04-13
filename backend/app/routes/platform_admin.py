@@ -257,7 +257,15 @@ def get_platform_reports(
         "paid_total_cents": 0,
         "jobs_last_30_days": 0,
         "invoices_last_30_days": 0,
+        "health": {
+            "active_tenants": 0,
+            "suspended_tenants": 0,
+            "tenants_no_activity_7_days": 0,
+            "tenants_no_jobs_30_days": 0,
+            "tenants_no_active_users": 0,
+        },
     }
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     for tenant in tenants:
         users = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
@@ -309,12 +317,34 @@ def get_platform_reports(
             .order_by(TenantEventLog.created_at.desc())
             .limit(1)
         ).first()
+        logins_last_7_days = int(
+            session.exec(
+                select(func.count(TenantEventLog.id))
+                .where(TenantEventLog.tenant_id == tenant.id)
+                .where(TenantEventLog.event_type == "login")
+                .where(TenantEventLog.created_at >= seven_days_ago)
+            ).one()
+        )
+        days_since_activity = None
+        if isinstance(last_activity_at, datetime):
+            normalized_last_activity = (
+                last_activity_at
+                if last_activity_at.tzinfo is not None
+                else last_activity_at.replace(tzinfo=timezone.utc)
+            )
+            days_since_activity = max(0, int((datetime.now(timezone.utc) - normalized_last_activity).days))
+        health_status = "healthy"
+        if not tenant.is_active:
+            health_status = "suspended"
+        elif active_users == 0 or jobs_last_30_days == 0 or (days_since_activity is not None and days_since_activity > 7):
+            health_status = "attention"
 
         rows.append({
             "tenant_id": str(tenant.id),
             "tenant_name": tenant.name,
             "tenant_slug": tenant.slug,
             "plan_code": tenant.plan_code,
+            "is_active": tenant.is_active,
             "users": users,
             "active_users": active_users,
             "repair_jobs": repair_jobs,
@@ -328,6 +358,9 @@ def get_platform_reports(
             "billed_total_cents": billed_total_cents,
             "paid_total_cents": paid_total_cents,
             "last_activity_at": last_activity_at,
+            "logins_last_7_days": logins_last_7_days,
+            "days_since_activity": days_since_activity,
+            "health_status": health_status,
         })
 
         totals["users"] += users
@@ -341,6 +374,16 @@ def get_platform_reports(
         totals["paid_total_cents"] += paid_total_cents
         totals["jobs_last_30_days"] += jobs_last_30_days
         totals["invoices_last_30_days"] += invoices_last_30_days
+        if tenant.is_active:
+            totals["health"]["active_tenants"] += 1
+        else:
+            totals["health"]["suspended_tenants"] += 1
+        if active_users == 0:
+            totals["health"]["tenants_no_active_users"] += 1
+        if jobs_last_30_days == 0:
+            totals["health"]["tenants_no_jobs_30_days"] += 1
+        if days_since_activity is None or days_since_activity > 7:
+            totals["health"]["tenants_no_activity_7_days"] += 1
 
     rows.sort(key=lambda r: r["jobs_total"], reverse=True)
 
