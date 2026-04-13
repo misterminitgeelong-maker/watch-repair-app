@@ -1,5 +1,11 @@
 # Post-Deploy Checklist
 
+## 0) One-command guardrails (recommended)
+
+- `cd backend`
+- `python scripts/run_deploy_guardrails.py`
+- If a step fails, resolve it and then continue with the detailed checklist below.
+
 ## 1) Run migrations
 
 - `cd backend`
@@ -36,6 +42,7 @@
   - `/v1/public/auto-key-booking/{token}`
   - `/v1/public/auto-key-booking/{token}/confirm`
   - `/v1/public/auto-key-invoice/{token}`
+- Verify Sentry alerts for critical workflow failures are arriving with `CRITICAL_WORKFLOW_FAILURE` in the message.
 
 ## 5) Manual flow checks
 

@@ -8,8 +8,6 @@ import {
   useDroppable,
   useSensor,
   useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
@@ -48,6 +46,8 @@ import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/Akl
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
 import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
+import { useMobileServicesModals } from '@/hooks/useMobileServicesModals'
+import { useWeekSchedulerDnD } from '@/hooks/useWeekSchedulerDnD'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import {
   civilAddDays,
@@ -1912,10 +1912,18 @@ export default function AutoKeyJobsPage() {
   const { role, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
   const syncedShopCalendarDate = useRef(false)
   const weekAnchorSynced = useRef(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [showAddTech, setShowAddTech] = useState(false)
-  const [showCommissionRules, setShowCommissionRules] = useState(false)
-  const [showMoreActions, setShowMoreActions] = useState(false)
+  const {
+    showCreate,
+    setShowCreate,
+    showAddTech,
+    setShowAddTech,
+    showCommissionRules,
+    setShowCommissionRules,
+    showMoreActions,
+    setShowMoreActions,
+    plannerDetailJobId,
+    setPlannerDetailJobId,
+  } = useMobileServicesModals()
   const moreActionsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!showMoreActions) return
@@ -1927,7 +1935,6 @@ export default function AutoKeyJobsPage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showMoreActions])
-  const [plannerDetailJobId, setPlannerDetailJobId] = useState<string | null>(null)
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>('day')
   const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
   const [search, setSearch] = useState('')
@@ -1937,9 +1944,6 @@ export default function AutoKeyJobsPage() {
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
   const [weekStart, setWeekStart] = useState(() => civilMondayOfWeekContaining(ymdLocal(new Date())))
   /** Week grid: tap Move then tap a day/slot if you do not want to drag. */
-  const [weekRelocateJobId, setWeekRelocateJobId] = useState<string | null>(null)
-  const [activeWeekJobId, setActiveWeekJobId] = useState<string | null>(null)
-  const [weekScheduleErr, setWeekScheduleErr] = useState<string | null>(null)
   /** Mobile: which day index (0-6) starts the 3-day window */
   const [mobileDayStart, setMobileDayStart] = useState(0)
   const [isMobileWidth, setIsMobileWidth] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
@@ -2071,53 +2075,26 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listAutoKeyJobs(weekParams!).then(r => r.data),
     enabled: view === 'week' && !!weekParams,
   })
+  const {
+    weekRelocateJobId,
+    setWeekRelocateJobId,
+    activeWeekJobId,
+    weekScheduleErr,
+    setWeekScheduleErr,
+    handleWeekDragStart,
+    handleWeekDragCancel,
+    handleWeekDragEnd,
+  } = useWeekSchedulerDnD({
+    onReschedule: (jobId, scheduledAt) => rescheduleMut.mutate({ jobId, scheduled_at: scheduledAt }),
+    scheduledForDay: (jobId, dayYmd) => isoScheduledOnDayKeepingShopTime(jobId, dayYmd, weekJobs, scheduleCalendarTimezone),
+    scheduledForSlot: (dayYmd, hour) => weekSlotScheduledAt(dayYmd, hour, scheduleCalendarTimezone),
+  })
 
   const activeWeekJob = useMemo<WeekSchedulerJob | null>(() => {
     if (!activeWeekJobId) return null
     const match = weekJobs.find((job: { id: string }) => job.id === activeWeekJobId) as WeekSchedulerJob | undefined
     return match ?? null
   }, [activeWeekJobId, weekJobs])
-
-  const handleWeekDragStart = (event: DragStartEvent) => {
-    const draggedJob = event.active.data.current?.job as WeekSchedulerJob | undefined
-    const jobId = draggedJob?.id ?? (event.active.data.current?.jobId as string | undefined)
-    if (!jobId) return
-    setActiveWeekJobId(jobId)
-    setWeekRelocateJobId(null)
-    setWeekScheduleErr(null)
-  }
-
-  const handleWeekDragCancel = () => {
-    setActiveWeekJobId(null)
-  }
-
-  const handleWeekDragEnd = (event: DragEndEvent) => {
-    const draggedJob = event.active.data.current?.job as WeekSchedulerJob | undefined
-    const jobId = draggedJob?.id ?? (event.active.data.current?.jobId as string | undefined)
-    const overId = event.over?.id ? String(event.over.id) : ''
-    setActiveWeekJobId(null)
-
-    if (!jobId || !overId) return
-
-    if (overId === WEEK_UNSCHEDULED_DROP_ID) {
-      rescheduleMut.mutate({ jobId, scheduled_at: null })
-      return
-    }
-
-    if (overId.startsWith(WEEK_DAY_DROP_PREFIX)) {
-      const dayStr = overId.slice(WEEK_DAY_DROP_PREFIX.length)
-      const next = isoScheduledOnDayKeepingShopTime(jobId, dayStr, weekJobs, scheduleCalendarTimezone)
-      rescheduleMut.mutate({ jobId, scheduled_at: next })
-      return
-    }
-
-    if (overId.startsWith(WEEK_SLOT_DROP_PREFIX)) {
-      const [dayStr, hourStr] = overId.slice(WEEK_SLOT_DROP_PREFIX.length).split(':')
-      const hour = Number(hourStr)
-      if (!dayStr || Number.isNaN(hour)) return
-      rescheduleMut.mutate({ jobId, scheduled_at: weekSlotScheduledAt(dayStr, hour, scheduleCalendarTimezone) })
-    }
-  }
 
   const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
   const isClosed = (status: JobStatus) => autoKeyClosedStatuses.has(status as typeof AUTO_KEY_CLOSED_STATUSES[number])

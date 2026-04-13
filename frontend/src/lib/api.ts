@@ -661,6 +661,14 @@ export interface AttachmentDownloadLinkResponse {
   download_url: string
   expires_in_seconds: number
 }
+export const API_ROUTES = {
+  attachmentDownload: (storageKey: string) => `/v1/attachments/download/${encodeURIComponent(storageKey)}`,
+  attachmentDownloadLink: (storageKey: string) => `/attachments/download-link/${encodeURIComponent(storageKey)}`,
+  publicAutoKeyInvoice: (token: string) => `/v1/public/auto-key-invoice/${token}`,
+  publicAutoKeyInvoiceCheckout: (token: string) => `/v1/public/auto-key-invoice/${token}/checkout`,
+  publicAutoKeyBooking: (token: string) => `/v1/public/auto-key-booking/${token}`,
+  publicAutoKeyBookingConfirm: (token: string) => `/v1/public/auto-key-booking/${token}/confirm`,
+} as const
 export const listAttachments = (repairJobId: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
   api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId, ...params } })
 export const uploadAttachment = (file: File, repairJobId: string, label?: string) => {
@@ -684,7 +692,7 @@ export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?
   })
 }
 export const getAttachmentDownloadUrl = (storageKey: string) => {
-  return `/v1/attachments/download/${encodeURIComponent(storageKey)}`
+  return API_ROUTES.attachmentDownload(storageKey)
 }
 
 /** Downloads an attachment using Authorization header (no token in URL). */
@@ -1381,7 +1389,7 @@ export const createCustomService = (data: {
 
 // ── Attachment helpers ────────────────────────────────────────────────────────
 export async function resolveAttachmentDownloadUrl(storageKey: string): Promise<string> {
-  const res = await api.get<AttachmentDownloadLinkResponse>(`/attachments/download-link/${encodeURIComponent(storageKey)}`)
+  const res = await api.get<AttachmentDownloadLinkResponse>(API_ROUTES.attachmentDownloadLink(storageKey))
   return res.data.download_url
 }
 
@@ -1772,9 +1780,9 @@ export interface PublicAutoKeyInvoice {
   job_title?: string
 }
 export const getPublicAutoKeyInvoice = (token: string) =>
-  axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoice/${token}`)
+  axios.get<PublicAutoKeyInvoice>(API_ROUTES.publicAutoKeyInvoice(token))
 export const createPublicAutoKeyInvoiceCheckout = (token: string) =>
-  axios.post<{ checkout_url: string }>(`/v1/public/auto-key-invoice/${token}/checkout`)
+  axios.post<{ checkout_url: string }>(API_ROUTES.publicAutoKeyInvoiceCheckout(token))
 
 export interface PublicAutoKeyBooking {
   job_id: string
@@ -1794,6 +1802,6 @@ export interface PublicAutoKeyBooking {
   already_confirmed?: boolean
 }
 export const getPublicAutoKeyBooking = (token: string) =>
-  axios.get<PublicAutoKeyBooking>(`/v1/public/auto-key-booking/${token}`)
+  axios.get<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBooking(token))
 export const confirmPublicAutoKeyBooking = (token: string) =>
-  axios.post<PublicAutoKeyBooking>(`/v1/public/auto-key-booking/${token}/confirm`)
+  axios.post<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBookingConfirm(token))

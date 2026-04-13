@@ -50,6 +50,11 @@ jobs:
           cd backend
           python scripts/run_smoke_checks.py
 
+      - name: Validate seed files
+        run: |
+          cd backend
+          python scripts/check_seed_sanity.py
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +76,11 @@ jobs:
         run: |
           cd frontend
           npm run lint
+
+      - name: Test frontend
+        run: |
+          cd frontend
+          npm test
 
       - name: Build frontend
         run: |

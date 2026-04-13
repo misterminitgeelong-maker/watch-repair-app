@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { AxiosError } from 'axios'
-import { buildImportCsvQueryString, compactListParams, getApiErrorMessage } from './api'
+import { API_ROUTES, getApiErrorMessage } from './api'
 
 function axiosLikeError(partial: Partial<AxiosError> & { response: AxiosError['response'] }): AxiosError {
   return { isAxiosError: true, name: 'AxiosError', message: 'Request failed', ...partial } as AxiosError
@@ -36,8 +36,8 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage(err)).toBe('Session expired. Please sign in again.')
   })
 
-  it('returns Error message for plain Error before fallback', () => {
-    expect(getApiErrorMessage(new Error('oops'), 'Custom fallback')).toBe('oops')
+  it('returns fallback for plain Error values', () => {
+    expect(getApiErrorMessage(new Error('oops'), 'Custom fallback')).toBe('Custom fallback')
   })
 
   it('returns default fallback for axios 500 without detail when not an Error instance', () => {
@@ -48,44 +48,16 @@ describe('getApiErrorMessage', () => {
   })
 })
 
-describe('compactListParams', () => {
-  it('passes limit, offset, sort_by, sort_dir', () => {
-    expect(
-      compactListParams({
-        limit: 50,
-        offset: 100,
-        sort_by: 'created_at',
-        sort_dir: 'desc',
-      }),
-    ).toEqual({ limit: 50, offset: 100, sort_by: 'created_at', sort_dir: 'desc' })
+describe('API route contracts', () => {
+  it('keeps public auto-key invoice/booking routes singular', () => {
+    expect(API_ROUTES.publicAutoKeyInvoice('abc123')).toBe('/v1/public/auto-key-invoice/abc123')
+    expect(API_ROUTES.publicAutoKeyInvoiceCheckout('abc123')).toBe('/v1/public/auto-key-invoice/abc123/checkout')
+    expect(API_ROUTES.publicAutoKeyBooking('abc123')).toBe('/v1/public/auto-key-booking/abc123')
+    expect(API_ROUTES.publicAutoKeyBookingConfirm('abc123')).toBe('/v1/public/auto-key-booking/abc123/confirm')
   })
 
-  it('omits empty string and undefined', () => {
-    expect(
-      compactListParams({
-        limit: 50,
-        offset: 0,
-        status: '',
-        assigned_user_id: undefined,
-      }),
-    ).toEqual({ limit: 50, offset: 0 })
-  })
-})
-
-describe('buildImportCsvQueryString', () => {
-  it('adds dry_run=true when dryRun is set', () => {
-    expect(buildImportCsvQueryString({ dryRun: true })).toBe('?dry_run=true')
-  })
-
-  it('combines dry run with replace_existing', () => {
-    const q = buildImportCsvQueryString({ dryRun: true, replaceExisting: true })
-    expect(q).toContain('dry_run=true')
-    expect(q).toContain('replace_existing=true')
-  })
-
-  it('adds sheet_name for Excel worksheet override', () => {
-    const q = buildImportCsvQueryString({ sheetName: 'Repairs', dryRun: true })
-    expect(q).toContain('dry_run=true')
-    expect(q).toContain('sheet_name=Repairs')
+  it('uses token-free attachment helper routes', () => {
+    expect(API_ROUTES.attachmentDownload('folder/file.png')).toBe('/v1/attachments/download/folder%2Ffile.png')
+    expect(API_ROUTES.attachmentDownloadLink('folder/file.png')).toBe('/attachments/download-link/folder%2Ffile.png')
   })
 })

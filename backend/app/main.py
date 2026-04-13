@@ -48,6 +48,9 @@ from .routes.custom_services import router as custom_services_router
 from .routes.toolkit import router as toolkit_router
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
+_SENTRY_ENABLED = False
+sentry_sdk = None
+
 
 if getattr(settings, "sentry_dsn", "").strip():
     import sentry_sdk
@@ -57,6 +60,7 @@ if getattr(settings, "sentry_dsn", "").strip():
         profiles_sample_rate=0.0,
         environment=getattr(settings, "app_env", "production"),
     )
+    _SENTRY_ENABLED = True
 
 
 def _run_optional_startup_tasks() -> None:
@@ -123,6 +127,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 logger = logging.getLogger("mainspring.requests")
 REQUEST_ID_HEADER = "X-Request-ID"
 SLOW_REQUEST_WARN_MS = 750.0
+CRITICAL_ALERT_PATH_PREFIXES: tuple[str, ...] = (
+    "/v1/public/auto-key-intake/",
+    "/v1/public/auto-key-booking/",
+    "/v1/public/auto-key-invoice/",
+    "/v1/auto-key-jobs/day-before-reminders",
+)
+CRITICAL_ALERT_PATH_SUBSTRINGS: tuple[str, ...] = ("/v1/auto-key-jobs/invoices/",)
 
 
 @app.middleware("http")
@@ -150,6 +161,22 @@ async def request_id_and_log(request: Request, call_next):
             duration_ms,
             request_id,
         )
+    if response.status_code >= 400:
+        path = request.url.path
+        critical_path = path.startswith(CRITICAL_ALERT_PATH_PREFIXES) or any(part in path for part in CRITICAL_ALERT_PATH_SUBSTRINGS)
+        if critical_path:
+            logger.error(
+                "CRITICAL_WORKFLOW_FAILURE %s %s %s request_id=%s",
+                request.method,
+                path,
+                response.status_code,
+                request_id,
+            )
+            if _SENTRY_ENABLED:
+                sentry_sdk.capture_message(
+                    f"Critical workflow failed: {request.method} {path} status={response.status_code} request_id={request_id}",
+                    level="error",
+                )
     return response
 
 # CORS

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Clock, Search } from 'lucide-react'
+import { Clock, Download, Search } from 'lucide-react'
 import { listParentAccountActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
@@ -283,18 +283,128 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
 }
 
 function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
+  const [eventTypeFilter, setEventTypeFilter] = useState('all')
+  const [shopFilter, setShopFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const { data: events, isLoading, isError } = useQuery({
     queryKey: ['platform-parent-account-activity'],
-    queryFn: () => listParentAccountActivity(200).then(r => r.data),
+    queryFn: () => listParentAccountActivity(500).then(r => r.data),
+  })
+  const { data: tenants = [] } = useQuery({
+    queryKey: ['platform-tenants-for-activity'],
+    queryFn: () => listPlatformTenants().then(r => r.data),
   })
 
-  const filtered = (events ?? []).filter((e) =>
-    [e.event_type, e.event_summary, e.actor_email ?? '', e.tenant_id ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()),
-  )
+  const eventTypes = Array.from(new Set((events ?? []).map((e) => e.event_type))).sort((a, b) => a.localeCompare(b))
+  const tenantNameById = new Map(tenants.map((t) => [t.id, t.name]))
+
+  const filtered = (events ?? []).filter((e) => {
+    const searchable = [e.event_type, e.event_summary, e.actor_email ?? '', e.tenant_id ?? '', tenantNameById.get(e.tenant_id ?? '') ?? '']
+      .join(' ')
+      .toLowerCase()
+    if (!searchable.includes(search.toLowerCase())) return false
+    if (eventTypeFilter !== 'all' && e.event_type !== eventTypeFilter) return false
+    if (shopFilter !== 'all' && (e.tenant_id ?? '') !== shopFilter) return false
+    const eventDate = new Date(e.created_at)
+    if (dateFrom) {
+      const from = new Date(`${dateFrom}T00:00:00`)
+      if (eventDate < from) return false
+    }
+    if (dateTo) {
+      const to = new Date(`${dateTo}T23:59:59`)
+      if (eventDate > to) return false
+    }
+    return true
+  })
+
+  function csvCell(value: string) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+
+  function exportCsv() {
+    const header = ['created_at', 'actor_email', 'event_type', 'shop_name', 'tenant_id', 'event_summary']
+    const lines = filtered.map((e) => [
+      e.created_at,
+      e.actor_email ?? 'System',
+      e.event_type,
+      tenantNameById.get(e.tenant_id ?? '') ?? '',
+      e.tenant_id ?? '',
+      e.event_summary ?? '',
+    ].map(csvCell).join(','))
+    const csv = [header.join(','), ...lines].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `platform-admin-activity-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search activity type, actor, summary…" />
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          Event type
+          <select
+            className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={eventTypeFilter}
+            onChange={(e) => setEventTypeFilter(e.target.value)}
+          >
+            <option value="all">All events</option>
+            {eventTypes.map((type) => (
+              <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          Shop
+          <select
+            className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={shopFilter}
+            onChange={(e) => setShopFilter(e.target.value)}
+          >
+            <option value="all">All shops</option>
+            {tenants.map((tenant) => (
+              <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          From
+          <input
+            type="date"
+            className="mt-1 block rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          To
+          <input
+            type="date"
+            className="mt-1 block rounded-lg px-2 py-2 text-sm"
+            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+          style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)' }}
+          onClick={exportCsv}
+          disabled={filtered.length === 0}
+        >
+          <Download size={14} />
+          Export CSV
+        </button>
+      </div>
       {isError && (
         <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           Could not load activity log.
@@ -310,7 +420,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                     <p className="font-semibold text-sm capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</p>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</p>
                     <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                      {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'}
+                      {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
                     </p>
                   </div>
                 ))}
@@ -318,7 +428,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               <table className="w-full text-sm hidden md:table">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                    {['When', 'Actor', 'Type', 'Summary'].map(h => (
+                    {['When', 'Actor', 'Type', 'Shop', 'Summary'].map(h => (
                       <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
                         {h}
                       </th>
@@ -336,6 +446,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.actor_email ?? 'System'}</td>
                       <td className="px-5 py-3.5 capitalize" style={{ color: 'var(--cafe-text)' }}>{e.event_type.replace(/_/g, ' ')}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</td>
                     </tr>
                   ))}
