@@ -322,3 +322,156 @@ def test_en_route_transition_succeeds():
     )
     assert route_res.status_code == 200
     assert route_res.json()["status"] == "en_route"
+
+
+def test_quote_suggestions_pricing_tier_applies_discount():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-tier-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    retail = client.get(
+        "/v1/auto-key-jobs/quote-suggestions",
+        headers=headers,
+        params={"job_type": "Diagnostic", "key_quantity": 1, "pricing_tier": "retail"},
+    )
+    assert retail.status_code == 200
+    retail_json = retail.json()
+    assert retail_json["pricing_tier"] == "retail"
+    assert retail_json["subtotal_cents"] == 15900
+    assert retail_json["tax_cents"] == 1590
+    assert retail_json["total_cents"] == 17490
+
+    b2b = client.get(
+        "/v1/auto-key-jobs/quote-suggestions",
+        headers=headers,
+        params={"job_type": "Diagnostic", "key_quantity": 1, "pricing_tier": "b2b"},
+    )
+    assert b2b.status_code == 200
+    b2b_json = b2b.json()
+    assert b2b_json["pricing_tier"] == "b2b"
+    assert b2b_json["subtotal_cents"] == 12720
+    assert b2b_json["tax_cents"] == 1272
+    assert b2b_json["total_cents"] == 13992
+
+
+def test_quote_suggestions_rejects_unknown_pricing_tier():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-tier-bad-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    bad = client.get(
+        "/v1/auto-key-jobs/quote-suggestions",
+        headers=headers,
+        params={"job_type": "Diagnostic", "pricing_tier": "vip"},
+    )
+    assert bad.status_code == 422
+
+
+def test_list_auto_key_jobs_active_only_filters_final_statuses():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-active-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    active_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Active job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "booked",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert active_res.status_code == 201
+
+    final_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Done job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "completed",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert final_res.status_code == 201
+
+    all_jobs = client.get("/v1/auto-key-jobs", headers=headers)
+    assert all_jobs.status_code == 200
+    assert len(all_jobs.json()) == 2
+
+    active_only = client.get("/v1/auto-key-jobs", headers=headers, params={"active_only": True})
+    assert active_only.status_code == 200
+    active_payload = active_only.json()
+    assert len(active_payload) == 1
+    assert active_payload[0]["title"] == "Active job"
+
+
+def test_update_auto_key_invoice_can_mark_paid():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-invupd-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Invoice update job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "booked",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 11000,
+        },
+    )
+    assert job_res.status_code == 201
+    job_id = job_res.json()["id"]
+
+    complete = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "completed", "note": "Done"},
+    )
+    assert complete.status_code == 200
+
+    invoices = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
+    assert invoices.status_code == 200
+    invoice_id = invoices.json()[0]["id"]
+
+    update = client.patch(
+        f"/v1/auto-key-jobs/invoices/{invoice_id}",
+        headers=headers,
+        json={"status": "paid", "payment_method": "eftpos"},
+    )
+    assert update.status_code == 200
+    data = update.json()
+    assert data["status"] == "paid"
+    assert data["payment_method"] == "eftpos"
+    assert data["paid_at"] is not None

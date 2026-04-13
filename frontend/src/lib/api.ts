@@ -653,8 +653,13 @@ export const createWorkLog = (data: { repair_job_id: string; note?: string; minu
 export interface Attachment {
   id: string; tenant_id: string; repair_job_id?: string; watch_id?: string
   shoe_repair_job_id?: string
+  auto_key_job_id?: string
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
   label?: string; created_at: string
+}
+export interface AttachmentDownloadLinkResponse {
+  download_url: string
+  expires_in_seconds: number
 }
 export const listAttachments = (repairJobId: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
   api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId, ...params } })
@@ -678,15 +683,8 @@ export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
-/**
- * Returns a URL with the access token in the query string.
- * This is only suitable for use in <img src> tags where the browser cannot
- * send an Authorization header. For programmatic downloads, use downloadAttachment().
- */
 export const getAttachmentDownloadUrl = (storageKey: string) => {
-  const token = getStoredAccessToken()
-  const base = `/v1/attachments/download/${encodeURIComponent(storageKey)}`
-  return token ? `${base}?access_token=${encodeURIComponent(token)}` : base
+  return `/v1/attachments/download/${encodeURIComponent(storageKey)}`
 }
 
 /** Downloads an attachment using Authorization header (no token in URL). */
@@ -1383,7 +1381,8 @@ export const createCustomService = (data: {
 
 // ── Attachment helpers ────────────────────────────────────────────────────────
 export async function resolveAttachmentDownloadUrl(storageKey: string): Promise<string> {
-  return getAttachmentDownloadUrl(storageKey)
+  const res = await api.get<AttachmentDownloadLinkResponse>(`/attachments/download-link/${encodeURIComponent(storageKey)}`)
+  return res.data.download_url
 }
 
 export function getUploadErrorMessage(error: unknown, fallback = 'Upload failed.'): string {
@@ -1468,13 +1467,14 @@ export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
 // ── Auto-key attachments & SMS ────────────────────────────────────────────────
 export const listAutoKeyAttachments = (jobId: string) =>
-  api.get<Attachment[]>(`/auto-key-jobs/${jobId}/attachments`)
+  api.get<Attachment[]>('/attachments', { params: { auto_key_job_id: jobId } })
 
 export const uploadAutoKeyAttachment = (file: File, jobId: string, label?: string) => {
   const form = new FormData()
   form.append('file', file)
-  if (label) form.append('label', label)
-  return api.post<Attachment>(`/auto-key-jobs/${jobId}/attachments`, form, {
+  const params = new URLSearchParams({ auto_key_job_id: jobId })
+  if (label) params.append('label', label)
+  return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
@@ -1772,9 +1772,9 @@ export interface PublicAutoKeyInvoice {
   job_title?: string
 }
 export const getPublicAutoKeyInvoice = (token: string) =>
-  axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoices/${token}`)
+  axios.get<PublicAutoKeyInvoice>(`/v1/public/auto-key-invoice/${token}`)
 export const createPublicAutoKeyInvoiceCheckout = (token: string) =>
-  axios.post<{ checkout_url: string }>(`/v1/public/auto-key-invoices/${token}/checkout`)
+  axios.post<{ checkout_url: string }>(`/v1/public/auto-key-invoice/${token}/checkout`)
 
 export interface PublicAutoKeyBooking {
   job_id: string
@@ -1794,6 +1794,6 @@ export interface PublicAutoKeyBooking {
   already_confirmed?: boolean
 }
 export const getPublicAutoKeyBooking = (token: string) =>
-  axios.get<PublicAutoKeyBooking>(`/v1/public/auto-key-bookings/${token}`)
+  axios.get<PublicAutoKeyBooking>(`/v1/public/auto-key-booking/${token}`)
 export const confirmPublicAutoKeyBooking = (token: string) =>
-  axios.post<PublicAutoKeyBooking>(`/v1/public/auto-key-bookings/${token}/confirm`)
+  axios.post<PublicAutoKeyBooking>(`/v1/public/auto-key-booking/${token}/confirm`)

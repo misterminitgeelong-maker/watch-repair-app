@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import update
 from sqlmodel import Session, delete, func, select
 
+from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, require_owner
 from ..mobile_commission import normalize_mobile_commission_rules, parse_mobile_commission_rules, serialize_rules_for_storage
@@ -55,6 +56,34 @@ def _validate_role(role: str) -> str:
         allowed = ", ".join(sorted(TENANT_MANAGED_ROLES))
         raise HTTPException(status_code=400, detail=f"Invalid role. Allowed: {allowed}")
     return normalized
+
+
+def _validate_password_strength(value: str) -> None:
+    password = value or ""
+    min_len = settings.password_min_length
+    if len(password) < min_len:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {min_len} characters")
+    if settings.password_require_number and not any(c.isdigit() for c in password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number")
+    if settings.password_require_special:
+        special = set("!@#$%^&*()_+-=[]{}|;':\",./<>?")
+        if not any(c in special for c in password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one special character (!@#$%^&* etc.)",
+            )
+
+
+def _owner_count(session: Session, tenant_id: UUID) -> int:
+    return int(
+        session.exec(
+            select(func.count())
+            .select_from(User)
+            .where(User.tenant_id == tenant_id)
+            .where(User.role == "owner")
+            .where(User.is_active == True)  # noqa: E712
+        ).one()
+    )
 
 
 def _detach_user_references(session: Session, tenant_id: UUID, user_id: UUID) -> None:
@@ -157,8 +186,7 @@ def create_user(
     if not full_name:
         raise HTTPException(status_code=400, detail="Full name is required")
 
-    if len(payload.password or "") < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    _validate_password_strength(payload.password or "")
 
     role = _validate_role(payload.role)
 
@@ -232,14 +260,24 @@ def update_user(
         user.full_name = full_name
 
     if payload.role is not None:
-        user.role = _validate_role(payload.role)
+        next_role = _validate_role(payload.role)
+        if user.role == "owner" and next_role != "owner" and _owner_count(session, auth.tenant_id) <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot demote the last owner for this workspace. Promote another user to owner first.",
+            )
+        user.role = next_role
 
     if payload.password is not None:
-        if len(payload.password) < 8:
-            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        _validate_password_strength(payload.password)
         user.password_hash = hash_password(payload.password)
 
     if payload.is_active is not None:
+        if user.role == "owner" and not payload.is_active and _owner_count(session, auth.tenant_id) <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot deactivate the last owner for this workspace. Promote another user to owner first.",
+            )
         user.is_active = payload.is_active
 
     if payload.mobile_commission_rules_json is not None:
@@ -275,14 +313,7 @@ def delete_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if user.role == "owner":
-        owner_count = int(
-            session.exec(
-                select(func.count())
-                .select_from(User)
-                .where(User.tenant_id == auth.tenant_id)
-                .where(User.role == "owner")
-            ).one()
-        )
+        owner_count = _owner_count(session, auth.tenant_id)
         if owner_count <= 1:
             raise HTTPException(
                 status_code=400,

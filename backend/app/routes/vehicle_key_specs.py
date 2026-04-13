@@ -299,17 +299,25 @@ def _match_tool_recommendations(make: str, model: str, job_type: str | None) -> 
 def _match_cutting_profiles(blade_code: str | None) -> list[dict[str, Any]]:
     if not blade_code or not blade_code.strip():
         return []
-    # Try each token in the blade code against blank references
-    tokens = [_norm(t) for t in re.split(r"[\s/,]+", blade_code) if len(t.strip()) >= 2]
+    # Match by stronger tokens first to avoid broad false positives.
+    tokens = [_norm(t) for t in re.split(r"[\s/,]+", blade_code) if len(t.strip()) >= 3]
     blade_n = _norm(blade_code)
-    results = []
+    dedup: dict[str, dict[str, Any]] = {}
     for cp in _CUTTING_PROFILES:
         br = _norm(str(cp.get("blank_reference") or ""))
         if not br:
             continue
-        if blade_n in br or br in blade_n or any(tok and tok in br for tok in tokens):
-            results.append({k: v for k, v in cp.items() if v is not None})
-    return results
+        matched = (
+            blade_n == br
+            or blade_n in br
+            or any(re.search(rf"\b{re.escape(tok)}\b", br) for tok in tokens if tok)
+        )
+        if matched:
+            item = {k: v for k, v in cp.items() if v is not None}
+            key = _norm(str(item.get("blank_reference") or "")) or str(len(dedup))
+            dedup[key] = item
+    # Cap response size for predictable payloads.
+    return list(dedup.values())[:20]
 
 
 @router.get("/job-context")

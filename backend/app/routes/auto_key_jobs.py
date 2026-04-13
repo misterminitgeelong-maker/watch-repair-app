@@ -1,13 +1,16 @@
-from datetime import datetime, timezone
-from uuid import UUID
+import re
+from datetime import date as date_type
+from datetime import datetime, timedelta, timezone
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlmodel import Session, delete, func, select
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
-
+from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
+from ..datetime_utils import format_in_timezone
 from ..models import (
     AutoKeyJob,
     AutoKeyJobCreate,
@@ -24,7 +27,9 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    User,
 )
+from ..sms import notify_auto_key_arrival_window, notify_auto_key_customer_day_before
 
 router = APIRouter(
     prefix="/v1/auto-key-jobs",
@@ -33,18 +38,60 @@ router = APIRouter(
 )
 
 
+_AUTO_KEY_FINAL_STATUSES = {"completed", "collected", "cancelled", "no_go"}
+
+
+def _next_prefixed_number(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    model: type[AutoKeyJob] | type[AutoKeyInvoice],
+    field_name: str,
+    prefix: str,
+) -> str:
+    field = getattr(model, field_name)
+    rows = session.exec(
+        select(field)
+        .where(model.tenant_id == tenant_id)
+        .where(field.like(f"{prefix}-%"))
+    ).all()
+    max_seq = 0
+    pat = re.compile(rf"^{re.escape(prefix)}-(\d+)$")
+    for raw in rows:
+        value = str(raw or "")
+        m = pat.match(value)
+        if not m:
+            continue
+        max_seq = max(max_seq, int(m.group(1)))
+    candidate = max_seq + 1
+    while True:
+        number = f"{prefix}-{candidate:05d}"
+        exists = session.exec(
+            select(model.id).where(model.tenant_id == tenant_id).where(field == number)
+        ).first()
+        if not exists:
+            return number
+        candidate += 1
+
+
 def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(
-        select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
-    ).one()
-    return f"AK-{int(count) + 1:05d}"
+    return _next_prefixed_number(
+        session,
+        tenant_id=tenant_id,
+        model=AutoKeyJob,
+        field_name="job_number",
+        prefix="AK",
+    )
 
 
 def _next_auto_key_invoice_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(
-        select(func.count()).select_from(AutoKeyInvoice).where(AutoKeyInvoice.tenant_id == tenant_id)
-    ).one()
-    return f"AKI-{int(count) + 1:05d}"
+    return _next_prefixed_number(
+        session,
+        tenant_id=tenant_id,
+        model=AutoKeyInvoice,
+        field_name="invoice_number",
+        prefix="AKI",
+    )
 
 
 def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
@@ -75,6 +122,24 @@ def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
             )
             for i in items
         ],
+    )
+
+
+def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
+    return AutoKeyInvoiceRead(
+        id=invoice.id,
+        tenant_id=invoice.tenant_id,
+        auto_key_job_id=invoice.auto_key_job_id,
+        auto_key_quote_id=invoice.auto_key_quote_id,
+        invoice_number=invoice.invoice_number,
+        status=invoice.status,
+        subtotal_cents=invoice.subtotal_cents,
+        tax_cents=invoice.tax_cents,
+        total_cents=invoice.total_cents,
+        currency=invoice.currency,
+        payment_method=invoice.payment_method,
+        paid_at=invoice.paid_at,
+        created_at=invoice.created_at,
     )
 
 
@@ -135,6 +200,7 @@ def list_auto_key_jobs(
     date_to: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
     include_unscheduled: bool = Query(default=False),
+    active_only: bool = Query(default=False),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -144,7 +210,6 @@ def list_auto_key_jobs(
     if customer_id:
         query = query.where(AutoKeyJob.customer_id == customer_id)
     if date_from or date_to:
-        from datetime import date as date_type, timedelta
         if date_from:
             df = date_type.fromisoformat(date_from)
             query = query.where(AutoKeyJob.scheduled_at >= df)
@@ -155,6 +220,8 @@ def list_auto_key_jobs(
             query = query.where(AutoKeyJob.scheduled_at.is_not(None))
     if assigned_user_id:
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
+    if active_only:
+        query = query.where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
     jobs = session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
 
     # Batch enrich with customer names
@@ -200,6 +267,94 @@ def get_quote_suggestions(
     }
 
 
+@router.post("/{job_id}/arrival-sms")
+def send_arrival_sms(
+    job_id: UUID,
+    time_window: str | None = Body(default=None, embed=True),
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Auto key job not found")
+    customer = session.get(Customer, job.customer_id)
+    if not customer or not (customer.phone or "").strip():
+        raise HTTPException(status_code=400, detail="Customer phone is required to send SMS")
+    first_name = ((customer.full_name or "").strip().split() or ["there"])[0]
+    window = (time_window or "").strip() or "the scheduled window"
+    notify_auto_key_arrival_window(
+        session,
+        tenant_id=auth.tenant_id,
+        to_phone=(customer.phone or "").strip(),
+        customer_name=first_name,
+        job_number=job.job_number,
+        time_window=window,
+    )
+    session.commit()
+    return {"ok": True}
+
+
+@router.post("/day-before-reminders")
+def send_day_before_reminders(
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
+    start = datetime.combine(tomorrow, datetime.min.time(), tzinfo=timezone.utc).replace(tzinfo=None)
+    end = start + timedelta(days=1)
+    jobs = session.exec(
+        select(AutoKeyJob)
+        .where(AutoKeyJob.tenant_id == auth.tenant_id)
+        .where(AutoKeyJob.scheduled_at.is_not(None))
+        .where(AutoKeyJob.scheduled_at >= start)
+        .where(AutoKeyJob.scheduled_at < end)
+        .where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+    ).all()
+    sent = 0
+    for job in jobs:
+        customer = session.get(Customer, job.customer_id)
+        if not customer or not (customer.phone or "").strip():
+            continue
+        first_name = ((customer.full_name or "").strip().split() or ["there"])[0]
+        notify_auto_key_customer_day_before(
+            session,
+            tenant_id=auth.tenant_id,
+            to_phone=(customer.phone or "").strip(),
+            customer_name=first_name,
+            job_number=job.job_number,
+            scheduled_at=job.scheduled_at.isoformat() if job.scheduled_at else None,
+            job_address=job.job_address,
+        )
+        sent += 1
+    session.commit()
+    return {"sent": sent}
+
+
+@router.patch("/invoices/{invoice_id}", response_model=AutoKeyInvoiceRead)
+def update_auto_key_invoice(
+    invoice_id: UUID,
+    status: str | None = Body(default=None),
+    payment_method: str | None = Body(default=None),
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    invoice = session.get(AutoKeyInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if status is not None:
+        next_status = status.strip().lower()
+        if next_status not in {"unpaid", "paid", "void"}:
+            raise HTTPException(status_code=400, detail="Invalid invoice status")
+        invoice.status = next_status
+        invoice.paid_at = datetime.now(timezone.utc) if next_status == "paid" else None
+    if payment_method is not None:
+        invoice.payment_method = payment_method.strip() or None
+    session.add(invoice)
+    session.commit()
+    session.refresh(invoice)
+    return _to_invoice_read(invoice)
+
+
 @router.get("/{job_id}", response_model=AutoKeyJobRead)
 def get_auto_key_job(
     job_id: UUID,
@@ -227,7 +382,7 @@ def update_auto_key_job_status(
     job.status = payload.status
     session.add(job)
 
-    # Auto-create invoice on completion when a quote exists and no invoice is present yet.
+    # Auto-create invoice on completion when no invoice is present yet.
     moved_to_completed = previous_status != "completed" and job.status == "completed"
     if moved_to_completed:
       existing_invoice = session.exec(
@@ -255,6 +410,22 @@ def update_auto_key_job_status(
                       tax_cents=latest_quote.tax_cents,
                       total_cents=latest_quote.total_cents,
                       currency=latest_quote.currency,
+                      customer_view_token=uuid4().hex,
+                  )
+              )
+          else:
+              subtotal = max(0, int(round(job.cost_cents / 1.1))) if job.cost_cents > 0 else 0
+              tax = max(0, int(job.cost_cents - subtotal))
+              session.add(
+                  AutoKeyInvoice(
+                      tenant_id=auth.tenant_id,
+                      auto_key_job_id=job.id,
+                      invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
+                      subtotal_cents=subtotal,
+                      tax_cents=tax,
+                      total_cents=max(0, int(job.cost_cents)),
+                      currency="AUD",
+                      customer_view_token=uuid4().hex,
                   )
               )
 
@@ -426,22 +597,7 @@ def list_auto_key_invoices(
         .where(AutoKeyInvoice.auto_key_job_id == job_id)
         .order_by(AutoKeyInvoice.created_at.desc())
     ).all()
-    return [
-        AutoKeyInvoiceRead(
-            id=i.id,
-            tenant_id=i.tenant_id,
-            auto_key_job_id=i.auto_key_job_id,
-            auto_key_quote_id=i.auto_key_quote_id,
-            invoice_number=i.invoice_number,
-            status=i.status,
-            subtotal_cents=i.subtotal_cents,
-            tax_cents=i.tax_cents,
-            total_cents=i.total_cents,
-            currency=i.currency,
-            created_at=i.created_at,
-        )
-        for i in invoices
-    ]
+    return [_to_invoice_read(i) for i in invoices]
 
 
 @router.post("/{job_id}/invoices/from-quote/{quote_id}", response_model=AutoKeyInvoiceRead, status_code=201)
@@ -476,20 +632,9 @@ def create_auto_key_invoice_from_quote(
         tax_cents=quote.tax_cents,
         total_cents=quote.total_cents,
         currency=quote.currency,
+        customer_view_token=uuid4().hex,
     )
     session.add(invoice)
     session.commit()
     session.refresh(invoice)
-    return AutoKeyInvoiceRead(
-        id=invoice.id,
-        tenant_id=invoice.tenant_id,
-        auto_key_job_id=invoice.auto_key_job_id,
-        auto_key_quote_id=invoice.auto_key_quote_id,
-        invoice_number=invoice.invoice_number,
-        status=invoice.status,
-        subtotal_cents=invoice.subtotal_cents,
-        tax_cents=invoice.tax_cents,
-        total_cents=invoice.total_cents,
-        currency=invoice.currency,
-        created_at=invoice.created_at,
-    )
+    return _to_invoice_read(invoice)

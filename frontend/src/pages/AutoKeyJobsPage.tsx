@@ -47,6 +47,7 @@ import { useAuth } from '@/context/AuthContext'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
+import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import {
@@ -75,27 +76,6 @@ const AUTO_KEY_ACTIVE_STATUSES = [
 
 function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
-}
-
-/** Parse AKL complexity from the stored tech_notes string (e.g. "AKL complexity: High"). */
-function parseAklComplexity(techNotes?: string | null): string | null {
-  if (!techNotes) return null
-  const m = techNotes.match(/AKL complexity:\s*([^\n]+)/i)
-  return m ? m[1].trim() : null
-}
-
-function AklComplexityPill({ complexity }: { complexity: string }) {
-  const c = complexity.toLowerCase()
-  let bg = 'rgba(120,180,120,0.15)', color = '#4A8A4A'
-  if (c.includes('very high') || c.includes('refer')) { bg = 'rgba(201,106,90,0.15)'; color = '#C96A5A' }
-  else if (c.includes('high'))   { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
-  else if (c.includes('medium')) { bg = 'rgba(201,162,72,0.12)';  color = '#9A7220' }
-  return (
-    <span className='inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold'
-      style={{ backgroundColor: bg, color }}>
-      {complexity}
-    </span>
-  )
 }
 
 function ymdLocal(d: Date): string {

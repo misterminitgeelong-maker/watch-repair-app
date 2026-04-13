@@ -4,13 +4,14 @@ import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
-  listShoeAttachments, uploadShoeAttachment, getAttachmentDownloadUrl,
+  listShoeAttachments, uploadShoeAttachment,
   listCustomerAccounts,
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount,
 } from '@/lib/api'
+import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
@@ -716,10 +717,10 @@ export default function ShoeJobDetailPage() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-5">
                 {photos.map(photo => (
-                  <a key={photo.id} href={getAttachmentDownloadUrl(photo.storage_key)} target="_blank" rel="noopener noreferrer" className="group">
-                    <img src={getAttachmentDownloadUrl(photo.storage_key)} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
+                  <SecureAttachmentLink key={photo.id} storageKey={photo.storage_key} target="_blank" rel="noopener noreferrer" className="group">
+                    <SecureAttachmentImage storageKey={photo.storage_key} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
                     <p className="text-[10px] text-center mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{photo.label || 'Photo'}</p>
-                  </a>
+                  </SecureAttachmentLink>
                 ))}
               </div>
             )}

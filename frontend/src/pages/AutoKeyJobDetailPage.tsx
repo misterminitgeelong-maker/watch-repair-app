@@ -31,28 +31,10 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
-
-// ── Complexity / severity badge helpers ───────────────────────────────────────
-function aklComplexityStyle(complexity: string): { bg: string; color: string } {
-  const c = complexity.toLowerCase()
-  if (c.includes('very high') || c.includes('refer')) return { bg: 'rgba(201,106,90,0.15)', color: '#C96A5A' }
-  if (c.includes('high'))                               return { bg: 'rgba(201,162,72,0.15)',  color: '#B8882A' }
-  if (c.includes('medium'))                             return { bg: 'rgba(201,162,72,0.08)',  color: '#9A7220' }
-  return { bg: 'rgba(120,180,120,0.15)', color: '#4A8A4A' }
-}
-
-function AklComplexityBadge({ complexity }: { complexity: string }) {
-  const { bg, color } = aklComplexityStyle(complexity)
-  return (
-    <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap'
-      style={{ backgroundColor: bg, color }}>
-      {complexity}
-    </span>
-  )
-}
 
 function SeverityBadge({ severity }: { severity: string }) {
   const s = severity.toLowerCase()
@@ -500,7 +482,7 @@ export default function AutoKeyJobDetailPage() {
                 <span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span>
                 <div className='flex items-center gap-1.5'>
                   <span>{[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}</span>
-                  {jobContext?.complexity && <AklComplexityBadge complexity={jobContext.complexity} />}
+                  {jobContext?.complexity && <AklComplexityPill complexity={jobContext.complexity} className='px-2 text-xs' />}
                 </div>
               </div>
             )}
@@ -602,7 +584,7 @@ export default function AutoKeyJobDetailPage() {
                           </span>
                         )}
                         <div className='flex flex-wrap gap-1 mt-1'>
-                          {m.akl_complexity && <AklComplexityBadge complexity={m.akl_complexity} />}
+                          {m.akl_complexity && <AklComplexityPill complexity={m.akl_complexity} className='px-2 text-xs' />}
                           {m.bsu_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,162,72,0.15)', color: '#9A7220' }}>BSU required</span>}
                           {m.pin_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: '#C96A5A' }}>PIN required</span>}
                           {m.dealer_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: '#C96A5A' }}>Dealer only</span>}

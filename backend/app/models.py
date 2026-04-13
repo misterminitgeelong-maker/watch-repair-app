@@ -1163,6 +1163,10 @@ AutoKeyProgrammingStatus = Literal["pending", "in_progress", "programmed", "fail
 
 
 class AutoKeyJob(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "job_number", name="uq_autokeyjob_tenant_job_number"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     customer_id: UUID = Field(index=True, foreign_key="customer.id")
@@ -1342,6 +1346,7 @@ class AutoKeyQuoteLineItem(SQLModel, table=True):
 
 class AutoKeyInvoice(SQLModel, table=True):
     __table_args__ = (
+        UniqueConstraint("tenant_id", "invoice_number", name="uq_autokeyinvoice_tenant_invoice_number"),
         CheckConstraint("subtotal_cents >= 0", name="ck_autokeyinvoice_subtotal_cents_non_negative"),
         CheckConstraint("tax_cents >= 0", name="ck_autokeyinvoice_tax_cents_non_negative"),
         CheckConstraint("total_cents >= 0", name="ck_autokeyinvoice_total_cents_non_negative"),

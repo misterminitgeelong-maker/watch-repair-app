@@ -59,3 +59,38 @@ def test_vehicle_key_specs_short_query_empty():
     r = client.get("/v1/vehicle-key-specs/search", params={"make": "T"}, headers=h)
     assert r.status_code == 200
     assert r.json()["matches"] == []
+
+
+def test_vehicle_job_context_returns_expected_shape():
+    token = _token()
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get(
+        "/v1/vehicle-key-specs/job-context",
+        params={
+            "make": "Toyota",
+            "model": "Hilux",
+            "year": 2015,
+            "job_type": "All Keys Lost (AKL)",
+            "blade_code": "TOY43",
+        },
+        headers=h,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert "complexity" in data
+    assert isinstance(data.get("known_issues"), list)
+    assert isinstance(data.get("tool_recommendations"), list)
+    assert isinstance(data.get("cutting_profiles"), list)
+
+
+def test_vehicle_job_context_cutting_profiles_capped():
+    token = _token()
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get(
+        "/v1/vehicle-key-specs/job-context",
+        params={"make": "Toyota", "model": "Hilux", "blade_code": "TOY"},
+        headers=h,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data.get("cutting_profiles", [])) <= 20

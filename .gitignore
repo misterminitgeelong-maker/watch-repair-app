@@ -17,6 +17,7 @@ labanda_scraper/browser_profile/
 
 # Local DB files
 *.db
+*.db.bak
 
 # Node
 node_modules/

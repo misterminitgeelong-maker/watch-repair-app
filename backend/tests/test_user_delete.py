@@ -5,6 +5,7 @@ from pathlib import Path
 
 _TEST_DB = Path(__file__).with_name(f"test_ud_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -13,9 +14,13 @@ from app.main import app  # noqa: E402
 
 create_db_and_tables()
 client = TestClient(app)
+_BOOTSTRAP_CACHE: tuple[str, str] | None = None
 
 
 def _bootstrap() -> tuple[str, str]:
+    global _BOOTSTRAP_CACHE
+    if _BOOTSTRAP_CACHE is not None:
+        return _BOOTSTRAP_CACHE
     suffix = uuid4().hex[:8]
     slug = f"ud-{suffix}"
     assert client.post(
@@ -34,7 +39,8 @@ def _bootstrap() -> tuple[str, str]:
         json={"tenant_slug": slug, "email": f"owner-{suffix}@test.com", "password": "pass123456"},
     )
     assert login.status_code == 200
-    return login.json()["access_token"], slug
+    _BOOTSTRAP_CACHE = (login.json()["access_token"], slug)
+    return _BOOTSTRAP_CACHE
 
 
 def _session_user_id(token: str) -> str:
@@ -159,3 +165,29 @@ def test_delete_unknown_user_404():
     fake = "00000000-0000-4000-8000-000000000001"
     r = client.delete(f"/v1/users/{fake}", headers=h)
     assert r.status_code == 404
+
+
+def test_update_cannot_demote_last_owner():
+    token, _ = _bootstrap()
+    h = {"Authorization": f"Bearer {token}"}
+    owner_id = _session_user_id(token)
+    res = client.patch(
+        f"/v1/users/{owner_id}",
+        headers=h,
+        json={"role": "manager"},
+    )
+    assert res.status_code == 400
+    assert "last owner" in res.json()["detail"].lower()
+
+
+def test_update_cannot_deactivate_last_owner():
+    token, _ = _bootstrap()
+    h = {"Authorization": f"Bearer {token}"}
+    owner_id = _session_user_id(token)
+    res = client.patch(
+        f"/v1/users/{owner_id}",
+        headers=h,
+        json={"is_active": False},
+    )
+    assert res.status_code == 400
+    assert "last owner" in res.json()["detail"].lower()
