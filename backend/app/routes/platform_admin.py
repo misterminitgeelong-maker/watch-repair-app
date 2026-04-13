@@ -1,11 +1,19 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import require_platform_admin
-from ..models import PlatformEnterShopResponse, PlatformTenantRead, PlatformUserRead, Tenant, User
+from ..models import (
+    PlatformEnterShopResponse,
+    PlatformTenantRead,
+    PlatformUserRead,
+    Tenant,
+    TenantEventLog,
+    TenantEventLogRead,
+    User,
+)
 from ..security import create_access_token, create_refresh_token
 
 router = APIRouter(prefix="/v1/platform-admin", tags=["platform-admin"])
@@ -99,3 +107,32 @@ def enter_shop(
         tenant_id=tenant_id,
         tenant_name=tenant.name,
     )
+
+
+@router.get("/activity", response_model=list[TenantEventLogRead])
+def list_platform_activity(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    _: object = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(
+        select(TenantEventLog)
+        .order_by(TenantEventLog.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return [
+        TenantEventLogRead(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            actor_user_id=row.actor_user_id,
+            actor_email=row.actor_email,
+            entity_type=row.entity_type,
+            entity_id=row.entity_id,
+            event_type=row.event_type,
+            event_summary=row.event_summary,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]

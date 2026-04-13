@@ -918,6 +918,19 @@ export interface PlatformEnterShopResponse {
 }
 
 export const listPlatformTenants = () => api.get<PlatformTenant[]>('/platform-admin/tenants')
+export interface PlatformActivityEvent {
+  id: string
+  tenant_id: string
+  actor_user_id?: string
+  actor_email?: string
+  entity_type: string
+  entity_id?: string
+  event_type: string
+  event_summary: string
+  created_at: string
+}
+export const listPlatformActivity = (limit = 100, offset = 0) =>
+  api.get<PlatformActivityEvent[]>('/platform-admin/activity', { params: { limit, offset } })
 export const platformAdminEnterShop = (tenantId: string) =>
   api.post<PlatformEnterShopResponse>(`/platform-admin/enter-shop/${tenantId}`)
 

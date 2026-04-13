@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Clock, Download, Search } from 'lucide-react'
-import { listParentAccountActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
+import { listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -296,9 +296,9 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ['platform-parent-account-activity'],
+    queryKey: ['platform-activity'],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => listParentAccountActivity(ACTIVITY_PAGE_SIZE, pageParam).then(r => r.data),
+    queryFn: ({ pageParam }) => listPlatformActivity(ACTIVITY_PAGE_SIZE, pageParam).then(r => r.data),
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.length < ACTIVITY_PAGE_SIZE) return undefined
       return pages.reduce((count, page) => count + page.length, 0)
