@@ -289,10 +289,14 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
 }
 
 function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
-  const [eventTypeFilter, setEventTypeFilter] = useState('all')
-  const [entityTypeFilter, setEntityTypeFilter] = useState('all')
-  const [actorEmailFilter, setActorEmailFilter] = useState('all')
-  const [shopFilter, setShopFilter] = useState('all')
+  const [eventTypeDraft, setEventTypeDraft] = useState('all')
+  const [entityTypeDraft, setEntityTypeDraft] = useState('all')
+  const [actorEmailDraft, setActorEmailDraft] = useState('all')
+  const [shopDraft, setShopDraft] = useState('all')
+  const [eventTypeApplied, setEventTypeApplied] = useState('all')
+  const [entityTypeApplied, setEntityTypeApplied] = useState('all')
+  const [actorEmailApplied, setActorEmailApplied] = useState('all')
+  const [shopApplied, setShopApplied] = useState('all')
   const [dateFromDraft, setDateFromDraft] = useState('')
   const [dateToDraft, setDateToDraft] = useState('')
   const [dateFromApplied, setDateFromApplied] = useState('')
@@ -333,10 +337,10 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
       .join(' ')
       .toLowerCase()
     if (!searchable.includes(search.toLowerCase())) return false
-    if (eventTypeFilter !== 'all' && e.event_type !== eventTypeFilter) return false
-    if (entityTypeFilter !== 'all' && e.entity_type !== entityTypeFilter) return false
-    if (actorEmailFilter !== 'all' && (e.actor_email ?? 'System') !== actorEmailFilter) return false
-    if (shopFilter !== 'all' && (e.tenant_id ?? '') !== shopFilter) return false
+    if (eventTypeApplied !== 'all' && e.event_type !== eventTypeApplied) return false
+    if (entityTypeApplied !== 'all' && e.entity_type !== entityTypeApplied) return false
+    if (actorEmailApplied !== 'all' && (e.actor_email ?? 'System') !== actorEmailApplied) return false
+    if (shopApplied !== 'all' && (e.tenant_id ?? '') !== shopApplied) return false
     const eventDate = new Date(e.created_at)
     if (dateFromApplied) {
       const from = new Date(`${dateFromApplied}T00:00:00`)
@@ -389,8 +393,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={eventTypeFilter}
-            onChange={(e) => setEventTypeFilter(e.target.value)}
+            value={eventTypeDraft}
+            onChange={(e) => setEventTypeDraft(e.target.value)}
           >
             <option value="all">All events</option>
             {eventTypes.map((type) => (
@@ -403,8 +407,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={entityTypeFilter}
-            onChange={(e) => setEntityTypeFilter(e.target.value)}
+            value={entityTypeDraft}
+            onChange={(e) => setEntityTypeDraft(e.target.value)}
           >
             <option value="all">All entities</option>
             {entityTypes.map((type) => (
@@ -417,8 +421,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           <select
             className="mt-1 block min-w-52 rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={actorEmailFilter}
-            onChange={(e) => setActorEmailFilter(e.target.value)}
+            value={actorEmailDraft}
+            onChange={(e) => setActorEmailDraft(e.target.value)}
           >
             <option value="all">All actors</option>
             <option value="System">System</option>
@@ -432,8 +436,8 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
             style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-            value={shopFilter}
-            onChange={(e) => setShopFilter(e.target.value)}
+            value={shopDraft}
+            onChange={(e) => setShopDraft(e.target.value)}
           >
             <option value="all">All shops</option>
             {tenants.map((tenant) => (
@@ -466,24 +470,36 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
           style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
           onClick={() => {
+            setEventTypeApplied(eventTypeDraft)
+            setEntityTypeApplied(entityTypeDraft)
+            setActorEmailApplied(actorEmailDraft)
+            setShopApplied(shopDraft)
             setDateFromApplied(dateFromDraft)
             setDateToApplied(dateToDraft)
           }}
         >
-          Show activity
+          Apply filters
         </button>
         <button
           type="button"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
           style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
           onClick={() => {
+            setEventTypeDraft('all')
+            setEntityTypeDraft('all')
+            setActorEmailDraft('all')
+            setShopDraft('all')
+            setEventTypeApplied('all')
+            setEntityTypeApplied('all')
+            setActorEmailApplied('all')
+            setShopApplied('all')
             setDateFromDraft('')
             setDateToDraft('')
             setDateFromApplied('')
             setDateToApplied('')
           }}
         >
-          Clear dates
+          Clear filters
         </button>
         <button
           type="button"
