@@ -196,7 +196,19 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 <tbody>
                   {filtered.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</td>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>
+                        <div className="flex flex-col gap-2">
+                          <span>{t.name}</span>
+                          <button
+                            onClick={() => void enterShop(t.id)}
+                            disabled={!!entering}
+                            className="w-fit text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
+                            style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.id ? 0.6 : 1 }}
+                          >
+                            {entering === t.id ? 'Entering…' : 'Enter Shop'}
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>#{t.slug}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.user_count}</td>
