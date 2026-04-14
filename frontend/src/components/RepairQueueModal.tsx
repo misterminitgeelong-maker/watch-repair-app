@@ -98,6 +98,18 @@ function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
+function formatLocalDateTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function RepairQueueModal({ mode, onClose }: Props) {
@@ -109,6 +121,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const [done, setDone] = useState<Set<string>>(new Set())
   // Confirm-advance panel state
   const [confirmAdvance, setConfirmAdvance] = useState(false)
+  const [showDocketDetails, setShowDocketDetails] = useState(false)
   const [selectedNote, setSelectedNote] = useState('')
   const [customNote, setCustomNote] = useState('')
   // Drag/swipe state
@@ -175,6 +188,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   function resetConfirm() {
     setConfirmAdvance(false)
+    setShowDocketDetails(false)
     setSelectedNote('')
     setCustomNote('')
     setDragX(0)
@@ -193,6 +207,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   function handleSkip() {
     if (!currentId) return
+    setShowDocketDetails(false)
     setQueueOrder(prev => {
       if (!prev) return prev
       const rest = prev.filter(id => id !== currentId)
@@ -236,6 +251,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const skipHint = dragX < -SWIPE_THRESHOLD * 0.4
   const nextStatus = current ? STATUS_NEXT[current.status] : null
   const noteChips = nextStatus ? (STATUS_STEP_NOTES[nextStatus] ?? []) : []
+  const docketPath = current ? (mode === 'watch' ? `/jobs/${current.id}` : `/shoe-repairs/${current.id}`) : null
 
   // ── Render: loading ────────────────────────────────────────────────────────
 
@@ -338,7 +354,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-6 relative overflow-hidden">
 
         {/* Skip label (drag left) */}
-        {skipHint && !confirmAdvance && (
+        {skipHint && !confirmAdvance && !showDocketDetails && (
           <div
             className="absolute left-5 top-1/2 z-20 pointer-events-none queue-hint-pop"
             style={{ transform: 'translateY(-50%) rotate(-12deg)', opacity: Math.min(1, Math.abs(dragX) / SWIPE_THRESHOLD) }}
@@ -350,7 +366,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         )}
 
         {/* Advance label (drag right) */}
-        {advanceHint && !confirmAdvance && (
+        {advanceHint && !confirmAdvance && !showDocketDetails && (
           <div
             className="absolute right-5 top-1/2 z-20 pointer-events-none queue-hint-pop"
             style={{ transform: 'translateY(-50%) rotate(12deg)', opacity: Math.min(1, dragX / SWIPE_THRESHOLD) }}
@@ -362,7 +378,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         )}
 
         {/* ── Job card (swipeable) ── */}
-        {!confirmAdvance && (
+        {!confirmAdvance && !showDocketDetails && (
           <div
             key={current.id}
             ref={cardRef}
@@ -382,6 +398,11 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onClick={() => {
+              if (Math.abs(dragX) < 8) {
+                setShowDocketDetails(true)
+              }
+            }}
           >
             {/* Priority colour bar */}
             <div
@@ -439,6 +460,56 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                     </span>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!confirmAdvance && showDocketDetails && (
+          <div
+            key={`${current.id}-details`}
+            className="w-full max-w-sm rounded-2xl shadow-2xl queue-card-in"
+            style={{
+              background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
+              border: '1px solid rgba(255,255,255,0.14)',
+              boxShadow: '0 22px 52px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: PRIORITY_COLORS[current.priority] ?? '#718096' }} />
+            <div className="p-5">
+              <h3 className="text-lg font-bold" style={{ color: '#F6F0E8' }}>
+                Docket Details
+              </h3>
+              <p className="text-xs mt-1 mb-4" style={{ color: 'rgba(246,240,232,0.66)' }}>
+                #{current.job_number} · {current.title}
+              </p>
+
+              <div className="space-y-2 text-sm">
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Customer:</strong> {current.customer_name || 'Not set'}</p>
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Priority:</strong> {current.priority}</p>
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Status:</strong> {STATUS_LABELS[current.status] ?? current.status}</p>
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Next Step:</strong> {nextStatus ? (STATUS_LABELS[nextStatus] ?? nextStatus) : 'No further status'}</p>
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Created:</strong> {formatLocalDateTime(current.created_at)}</p>
+                <p style={{ color: 'rgba(246,240,232,0.85)' }}><strong>Days in shop:</strong> {days}</p>
+              </div>
+
+              <div className="mt-5 flex gap-2">
+                <button
+                  onClick={() => setShowDocketDetails(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-transform duration-150 hover:-translate-y-0.5"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.09)', color: 'rgba(246,240,232,0.76)' }}
+                >
+                  Back to ticket
+                </button>
+                <button
+                  onClick={() => {
+                    if (docketPath) window.location.assign(docketPath)
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-transform duration-150 hover:-translate-y-0.5"
+                  style={{ backgroundColor: 'rgba(201,162,72,0.24)', color: '#F3D79E', border: '1px solid rgba(201,162,72,0.35)' }}
+                >
+                  Open full docket
+                </button>
               </div>
             </div>
           </div>
@@ -522,7 +593,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         )}
 
         {/* Swipe hint */}
-        {!confirmAdvance && (
+        {!confirmAdvance && !showDocketDetails && (
           <div
             className="mt-8 px-4 py-2 rounded-full text-xs text-center select-none queue-slide-in"
             style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.76)' }}
@@ -535,7 +606,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       </div>
 
       {/* Bottom buttons */}
-      {!confirmAdvance && (
+      {!confirmAdvance && !showDocketDetails && (
         <div className="px-5 pb-8 pt-2 flex gap-4 queue-slide-in">
           <button
             onClick={handleSkip}
