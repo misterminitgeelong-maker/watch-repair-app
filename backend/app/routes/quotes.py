@@ -51,7 +51,7 @@ def _quote_token_is_expired(quote: Quote) -> bool:
 def list_quotes(
     repair_job_id: UUID | None = None,
     status: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=20000),
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc"),

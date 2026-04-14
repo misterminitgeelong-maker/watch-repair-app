@@ -1572,6 +1572,8 @@ export function isDuplicateTenantUserEmailError(error: unknown): boolean {
 
 // ── Pagination / sorting constants ───────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 50
+/** Watch Repairs list page loads all jobs in one request (must stay within API max limit). */
+export const WATCH_JOBS_LIST_MAX = 20000
 export type SortDir = 'asc' | 'desc'
 
 // ── Mobile commission lead source options ─────────────────────────────────────

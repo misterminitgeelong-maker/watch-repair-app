@@ -149,7 +149,7 @@ def list_repair_jobs(
     assigned_user_id: UUID | None = Query(default=None),
     customer_id: UUID | None = Query(default=None, description="Filter jobs whose watch belongs to this customer"),
     q: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=20000),
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc"),

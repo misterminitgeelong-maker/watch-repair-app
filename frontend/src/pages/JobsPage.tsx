@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search, X } from 'lucide-react'
 import {
-  DEFAULT_PAGE_SIZE,
   deleteJob,
   getApiErrorMessage,
   listJobs,
   listQuotes,
   listUsers,
   updateJobStatus,
+  WATCH_JOBS_LIST_MAX,
   type JobStatus,
   type RepairJob,
   type SortDir,
@@ -17,7 +17,6 @@ import {
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
-import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
 function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
@@ -44,12 +43,12 @@ export default function JobsPage() {
 
   const apiStatus = statusFilter === 'all' ? undefined : statusFilter
 
-  const jobsQuery = useOffsetPaginatedQuery({
-    queryKey: ['jobs', 'paged', apiStatus, assignedUserId || null, sortBy, sortDir],
-    queryFn: (offset) =>
+  const jobsQuery = useQuery({
+    queryKey: ['jobs', 'all', apiStatus, assignedUserId || null, sortBy, sortDir],
+    queryFn: () =>
       listJobs({
-        limit: DEFAULT_PAGE_SIZE,
-        offset,
+        limit: WATCH_JOBS_LIST_MAX,
+        offset: 0,
         sort_by: sortBy,
         sort_dir: sortDir,
         ...(apiStatus ? { status: apiStatus } : {}),
@@ -57,12 +56,12 @@ export default function JobsPage() {
       }).then((r) => r.data),
   })
 
-  const quotesQuery = useOffsetPaginatedQuery({
-    queryKey: ['quotes', 'paged', 'jobs-page'],
-    queryFn: (offset) =>
+  const quotesQuery = useQuery({
+    queryKey: ['quotes', 'all', 'jobs-page'],
+    queryFn: () =>
       listQuotes(undefined, {
-        limit: DEFAULT_PAGE_SIZE,
-        offset,
+        limit: WATCH_JOBS_LIST_MAX,
+        offset: 0,
         sort_by: 'created_at',
         sort_dir: 'desc',
       }).then((r) => r.data),
@@ -73,8 +72,8 @@ export default function JobsPage() {
     queryFn: () => listUsers().then((r) => r.data),
   })
 
-  const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
-  const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
+  const jobs = jobsQuery.data ?? []
+  const quotes = quotesQuery.data ?? []
 
   const isLoading = jobsQuery.isLoading
   const listError = jobsQuery.error ?? quotesQuery.error
@@ -128,16 +127,6 @@ export default function JobsPage() {
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     return matchSearch && inDirectory && matchStatus
   })
-
-  async function handleLoadMore() {
-    const tasks: Promise<unknown>[] = []
-    if (jobsQuery.hasNextPage) tasks.push(jobsQuery.fetchNextPage())
-    if (quotesQuery.hasNextPage) tasks.push(quotesQuery.fetchNextPage())
-    await Promise.all(tasks)
-  }
-
-  const showLoadMore = jobsQuery.hasNextPage ?? false
-  const loadMoreBusy = jobsQuery.isFetchingNextPage || quotesQuery.isFetchingNextPage
 
   const showSwitchToCompletedHint =
     !isLoading &&
@@ -321,11 +310,9 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {(showLoadMore || jobs.length > 0) && (
+      {jobs.length > 0 && !isLoading && (
         <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
-          {showLoadMore
-            ? 'More jobs exist on the server — use Load more to fetch the next batch. Totals above reflect loaded rows only until you load everything.'
-            : 'All matching jobs loaded for this filter.'}
+          All matching jobs are loaded for this filter (up to {WATCH_JOBS_LIST_MAX.toLocaleString()} rows).
         </p>
       )}
 
@@ -475,14 +462,6 @@ export default function JobsPage() {
               })}
           </div>
         )
-      )}
-
-      {showLoadMore && (
-        <div className="mt-6 flex justify-center">
-          <Button variant="secondary" onClick={() => void handleLoadMore()} disabled={loadMoreBusy}>
-            {loadMoreBusy ? 'Loading…' : 'Load more jobs'}
-          </Button>
-        </div>
       )}
 
       {/* Mobile FAB */}
