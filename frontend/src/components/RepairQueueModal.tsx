@@ -60,6 +60,29 @@ const EXCLUDE_STATUSES = new Set(['collected', 'no_go'])
 
 const SWIPE_THRESHOLD = 80
 
+const QUEUE_MOTION_CSS = `
+@keyframes queueFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes queueCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes queueSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes queueHintPop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.queue-fade-in { animation: queueFadeIn 220ms ease-out; }
+.queue-card-in { animation: queueCardIn 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+.queue-slide-in { animation: queueSlideIn 240ms ease-out; }
+.queue-hint-pop { animation: queueHintPop 180ms ease-out; }
+`
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function sortQueue(jobs: QueueJob[]): QueueJob[] {
@@ -219,9 +242,10 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   if (isLoading) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
+        className="fixed inset-0 z-50 flex items-center justify-center queue-fade-in"
         style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
       >
+        <style>{QUEUE_MOTION_CSS}</style>
         <Spinner />
       </div>
     )
@@ -232,17 +256,18 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   if (!current) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-6"
+        className="fixed inset-0 z-50 flex items-center justify-center p-6 queue-fade-in"
         style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
       >
         <div
-          className="rounded-3xl p-8 text-center w-full max-w-sm"
+          className="rounded-3xl p-8 text-center w-full max-w-sm queue-card-in"
           style={{
             background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
             border: '1px solid rgba(255,255,255,0.14)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.38)',
           }}
         >
+          <style>{QUEUE_MOTION_CSS}</style>
           <CheckCircle size={54} className="mx-auto mb-4" style={{ color: '#63d99d' }} />
           <h2 className="text-xl font-bold mb-2" style={{ color: '#F6F0E8' }}>Queue Clear</h2>
           <p className="text-sm mb-6" style={{ color: 'rgba(246,240,232,0.72)' }}>
@@ -270,11 +295,12 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col queue-fade-in"
       style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
     >
+      <style>{QUEUE_MOTION_CSS}</style>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
+      <div className="flex items-center justify-between px-5 py-3.5 queue-slide-in" style={{ borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
         <div className="flex items-center gap-3">
           <div>
             <span className="text-white font-bold text-lg">{mode === 'watch' ? 'Watch' : 'Shoe'} Queue</span>
@@ -296,7 +322,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
       {/* Progress bar */}
       {progressTotal > 0 && (
-        <div className="h-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.09)' }}>
+        <div className="h-1.5 queue-slide-in" style={{ backgroundColor: 'rgba(255,255,255,0.09)' }}>
           <div
             className="h-full transition-all duration-300"
             style={{
@@ -314,7 +340,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* Skip label (drag left) */}
         {skipHint && !confirmAdvance && (
           <div
-            className="absolute left-5 top-1/2 z-20 pointer-events-none"
+            className="absolute left-5 top-1/2 z-20 pointer-events-none queue-hint-pop"
             style={{ transform: 'translateY(-50%) rotate(-12deg)', opacity: Math.min(1, Math.abs(dragX) / SWIPE_THRESHOLD) }}
           >
             <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#d14040', border: '3px solid #fa8f8f' }}>
@@ -326,7 +352,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* Advance label (drag right) */}
         {advanceHint && !confirmAdvance && (
           <div
-            className="absolute right-5 top-1/2 z-20 pointer-events-none"
+            className="absolute right-5 top-1/2 z-20 pointer-events-none queue-hint-pop"
             style={{ transform: 'translateY(-50%) rotate(12deg)', opacity: Math.min(1, dragX / SWIPE_THRESHOLD) }}
           >
             <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#2f9862', border: '3px solid #79dfaa' }}>
@@ -338,8 +364,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* ── Job card (swipeable) ── */}
         {!confirmAdvance && (
           <div
+            key={current.id}
             ref={cardRef}
-            className="w-full max-w-sm rounded-2xl shadow-2xl"
+            className="w-full max-w-sm rounded-2xl shadow-2xl queue-card-in"
             style={{
               background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
               border: '1px solid rgba(255,255,255,0.14)',
@@ -349,6 +376,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               userSelect: 'none',
               cursor: isDragging ? 'grabbing' : 'grab',
               boxShadow: '0 22px 52px rgba(0,0,0,0.4)',
+              willChange: 'transform',
             }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -418,7 +446,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {/* ── Advance confirm panel ── */}
         {confirmAdvance && (
-          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--cafe-bg-card)' }}>
+          <div key={`${current.id}-${nextStatus ?? 'next'}`} className="w-full max-w-sm rounded-2xl shadow-2xl queue-card-in" style={{ backgroundColor: 'var(--cafe-bg-card)' }}>
             <div className="h-2 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #2f9862 0%, #79dfaa 100%)' }} />
             <div className="p-5">
               <div className="font-bold text-base mb-0.5" style={{ color: '#F6F0E8' }}>
@@ -469,7 +497,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               <div className="flex gap-3">
                 <button
                   onClick={resetConfirm}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-transform duration-150 hover:-translate-y-0.5"
                   style={{ backgroundColor: 'rgba(255,255,255,0.09)', color: 'rgba(246,240,232,0.76)' }}
                 >
                   Cancel
@@ -477,7 +505,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 <button
                   onClick={handleAdvance}
                   disabled={advanceMutation.isPending}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-transform duration-150 hover:-translate-y-0.5"
                   style={{ backgroundColor: '#38a169', color: '#fff', opacity: advanceMutation.isPending ? 0.65 : 1 }}
                 >
                   {advanceMutation.isPending ? 'Saving…' : 'Confirm'}
@@ -496,7 +524,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* Swipe hint */}
         {!confirmAdvance && (
           <div
-            className="mt-8 px-4 py-2 rounded-full text-xs text-center select-none"
+            className="mt-8 px-4 py-2 rounded-full text-xs text-center select-none queue-slide-in"
             style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.76)' }}
           >
             <span style={{ color: '#fa8f8f' }}>← swipe to skip</span>
@@ -508,10 +536,10 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
       {/* Bottom buttons */}
       {!confirmAdvance && (
-        <div className="px-5 pb-8 pt-2 flex gap-4">
+        <div className="px-5 pb-8 pt-2 flex gap-4 queue-slide-in">
           <button
             onClick={handleSkip}
-            className="flex-1 py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
+            className="flex-1 py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm transition-transform duration-150 hover:-translate-y-0.5"
             style={{
               backgroundColor: 'rgba(209,64,64,0.18)',
               color: '#ffadad',
@@ -524,7 +552,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           <button
             onClick={() => setConfirmAdvance(true)}
             disabled={!nextStatus}
-            className="py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
+            className="py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm transition-transform duration-150 hover:-translate-y-0.5"
             style={{
               flex: 2,
               backgroundColor: nextStatus ? 'rgba(47,152,98,0.2)' : 'rgba(255,255,255,0.05)',
