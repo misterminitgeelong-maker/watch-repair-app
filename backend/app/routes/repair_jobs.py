@@ -26,6 +26,7 @@ from ..models import (
     RepairJobIntakeUpdate,
     RepairJobRead,
     RepairJobStatusUpdate,
+    JobNotePayload,
     Quote,
     QuoteLineItem,
     RepairJobNumberCounter,
@@ -558,7 +559,7 @@ def resend_notification(
 @router.post("/{job_id}/note", status_code=204, response_class=Response)
 def add_repair_job_note(
     job_id: UUID,
-    payload: RepairJobStatusUpdate,
+    payload: JobNotePayload,
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -566,7 +567,7 @@ def add_repair_job_note(
     job = get_tenant_repair_job(session, job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
-    if not payload.note or not payload.note.strip():
+    if not payload.note.strip():
         raise HTTPException(status_code=422, detail="note must not be empty")
     history = JobStatusHistory(
         tenant_id=auth.tenant_id,

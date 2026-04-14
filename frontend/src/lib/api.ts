@@ -410,7 +410,7 @@ export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
 export const quickStatusAction = updateJobStatus
 export const addJobNote = (id: string, note: string) =>
-  api.post(`/repair-jobs/${id}/note`, { status: '', note })
+  api.post(`/repair-jobs/${id}/note`, { note })
 
 
 export interface IntakePayload {
@@ -1331,7 +1331,7 @@ export const updateShoeRepairJob = (id: string, data: Partial<{
 export const updateShoeRepairJobStatus = (id: string, status: string, note?: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
 export const addShoeJobNote = (id: string, note: string) =>
-  api.post(`/shoe-repair-jobs/${id}/note`, { status: '', note })
+  api.post(`/shoe-repair-jobs/${id}/note`, { note })
 
 export const addShoeToJob = (jobId: string, shoeId: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes`, { shoe_id: shoeId })

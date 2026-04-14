@@ -25,6 +25,7 @@ from ..models import (
     ShoeRepairJobShoeRead,
     ShoeRepairJobStatusUpdate,
     ShoeJobStatusHistory,
+    JobNotePayload,
 )
 
 router = APIRouter(
@@ -224,7 +225,7 @@ def update_shoe_repair_job_status(
 @router.post("/{job_id}/note", status_code=204, response_class=Response)
 def add_shoe_repair_job_note(
     job_id: UUID,
-    payload: ShoeRepairJobStatusUpdate,
+    payload: JobNotePayload,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -232,7 +233,7 @@ def add_shoe_repair_job_note(
     job = session.get(ShoeRepairJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
-    if not payload.note or not payload.note.strip():
+    if not payload.note.strip():
         raise HTTPException(status_code=422, detail="note must not be empty")
     history = ShoeJobStatusHistory(
         tenant_id=auth.tenant_id,

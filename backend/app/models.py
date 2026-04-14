@@ -851,6 +851,11 @@ class RepairJobStatusUpdate(SQLModel):
     note: Optional[str] = None
 
 
+class JobNotePayload(SQLModel):
+    """Lightweight payload for adding a free-text note without changing status."""
+    note: str
+
+
 class RepairJobIntakeUpdate(SQLModel):
     intake_notes: Optional[str] = None
     pre_quote_cents: int = 0
