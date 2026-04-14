@@ -12,9 +12,18 @@ from sqlmodel import Session
 
 from .config import settings
 from .datetime_utils import format_in_timezone
-from .models import SmsLog
+from .models import SmsLog, Tenant
 
 logger = logging.getLogger(__name__)
+
+
+def mobile_services_customer_sms_enabled(session: Session, tenant_id: UUID) -> bool:
+    """When False, skip customer-facing SMS for mobile services (auto key); tech SMS may still send."""
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        return True
+    return bool(getattr(tenant, "mobile_services_customer_sms_enabled", True))
+
 
 # ---------------------------------------------------------------------------
 # Internal send helper
@@ -51,10 +60,12 @@ def _persist(
     event: str,
     provider_sid: str | None,
     status: str,
+    shoe_repair_job_id: UUID | None = None,
 ) -> None:
     log = SmsLog(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,
+        shoe_repair_job_id=shoe_repair_job_id,
         to_phone=to_phone,
         body=body,
         event=event,
@@ -254,6 +265,8 @@ def notify_auto_key_customer_scheduled(
     job_address: str | None,
 ) -> None:
     """Notify customer when their mobile Auto Key job is scheduled."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     if not scheduled_at:
         return
     try:
@@ -290,6 +303,8 @@ def notify_auto_key_customer_day_before(
     job_address: str | None,
 ) -> None:
     """Notify customer of tomorrow's scheduled mobile job."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     if not scheduled_at:
         return
     try:
@@ -328,6 +343,8 @@ def notify_auto_key_en_route(
     scheduled_at=None,
 ) -> None:
     """SMS when job status moves to en_route — technician is driving to the customer."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     from datetime import datetime
 
     body = f"Hi {customer_name}, {shop_name} — your technician is on the way for mobile job #{job_number}."
@@ -369,6 +386,8 @@ def notify_auto_key_arrival_window(
     time_window: str,
 ) -> None:
     """Notify customer: tech on the way, arriving in time window (e.g. 9–11am)."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     body = f"Hi {customer_name}, your technician is on the way and will arrive between {time_window}."
     sid = _send_sms(to_phone, body)
     _persist(
@@ -397,6 +416,8 @@ def notify_auto_key_invoice_ready(
     view_url: str,
 ) -> None:
     """SMS after job completed with link to customer invoice page."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = total_cents / 100
     body = (
@@ -429,6 +450,8 @@ def notify_auto_key_customer_intake(
     intake_url: str,
 ) -> None:
     """SMS after quick-add: link for customer to complete vehicle / job details."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     first = (customer_name or "there").strip().split()[0] if (customer_name or "").strip() else "there"
     body = (
         f"Hi {first}, {shop_name} here — job #{job_number}. "
@@ -466,6 +489,8 @@ def notify_auto_key_booking_request(
     confirm_url: str,
 ) -> None:
     """SMS after job creation: summary, quote total, booking time, link to confirm."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
     from datetime import datetime
 
     veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x).strip()
@@ -492,6 +517,127 @@ def notify_auto_key_booking_request(
         to_phone=to_phone,
         body=body,
         event="auto_key_booking_request",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shoe repair notification functions
+# ---------------------------------------------------------------------------
+
+def notify_shoe_job_live(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    shoe_repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    status_token: str,
+    job_number: str,
+) -> None:
+    """Send 'your shoe job is live' SMS with link to track status."""
+    status_url = f"{settings.public_base_url}/shoe-status/{status_token}"
+    body = (
+        f"Hi {customer_name}, your shoe repair job #{job_number} is now live! "
+        f"Track it here: {status_url}"
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        shoe_repair_job_id=shoe_repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="job_live",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_shoe_quote_sent(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    shoe_repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    total_cents: int,
+    approval_token: str,
+    shop_name: str = "your shoe repair shop",
+) -> None:
+    """Send the shoe quote approval SMS to the customer."""
+    total = total_cents / 100
+    currency_symbol = "$"
+    approval_url = f"{settings.public_base_url}/shoe-approve/{approval_token}"
+    body = (
+        f"Hi {customer_name}, your shoe repair quote from {shop_name} is {currency_symbol}{total:.2f}. "
+        f"Tap to approve or decline: {approval_url}"
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        shoe_repair_job_id=shoe_repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="quote_sent",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_shoe_job_status_changed(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    shoe_repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    job_number: str,
+    status_token: str,
+    new_status: str,
+) -> None:
+    """Send a status-update SMS on milestone shoe job transitions."""
+    message_map: dict[str, str] = {
+        "go_ahead": (
+            f"Hi {customer_name}, your shoe repair job #{job_number} has been approved — we'll get started soon."
+        ),
+        "working_on": (
+            f"Hi {customer_name}, great news — we've started work on your shoes (job #{job_number}). "
+            f"We'll let you know when they're ready."
+        ),
+        "completed": (
+            f"Hi {customer_name}, your shoes (job #{job_number}) are ready for collection! "
+            f"Please contact us to arrange pick-up."
+        ),
+        "awaiting_collection": (
+            f"Hi {customer_name}, your shoes (job #{job_number}) are ready and waiting for collection! "
+            f"Please contact us to arrange pick-up."
+        ),
+        "collected": (
+            f"Thank you {customer_name}! Your shoes (job #{job_number}) have been collected. "
+            f"We hope you enjoy them — don't hesitate to reach out if you need anything."
+        ),
+    }
+
+    body = message_map.get(new_status)
+    if not body:
+        return
+
+    body = f"{body} Track live status: {settings.public_base_url}/shoe-status/{status_token}"
+
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        shoe_repair_job_id=shoe_repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event=f"status_{new_status}",
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )

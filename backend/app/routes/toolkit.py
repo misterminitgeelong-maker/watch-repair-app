@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_feature
+from ..dependencies import AuthContext, get_auth_context, require_feature, require_tech_or_above
 from ..models import Tenant
 
 router = APIRouter(prefix="/v1/toolkit", tags=["toolkit"])
@@ -52,6 +52,47 @@ def _user_has_tool(selected: set[str], tool_key: str, alternatives_map: dict[str
 
 class ToolkitSelectionUpdate(BaseModel):
     tool_keys: list[str] = Field(default_factory=list, max_length=500)
+
+
+class MobileNotificationsRead(BaseModel):
+    customer_sms_enabled: bool
+
+
+class MobileNotificationsPatch(BaseModel):
+    customer_sms_enabled: bool
+
+
+@router.get("/mobile-notifications", response_model=MobileNotificationsRead)
+def get_mobile_notifications(
+    auth: AuthContext = Depends(get_auth_context),
+    _f=Depends(require_feature("auto_key")),
+    session: Session = Depends(get_session),
+):
+    """Whether this shop sends SMS to customers for mobile services (auto key) jobs."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return MobileNotificationsRead(
+        customer_sms_enabled=bool(getattr(tenant, "mobile_services_customer_sms_enabled", True)),
+    )
+
+
+@router.patch("/mobile-notifications", response_model=MobileNotificationsRead)
+def patch_mobile_notifications(
+    body: MobileNotificationsPatch,
+    auth: AuthContext = Depends(require_tech_or_above),
+    _f=Depends(require_feature("auto_key")),
+    session: Session = Depends(get_session),
+):
+    """Enable or disable customer-facing SMS for mobile services (does not affect tech reminders)."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    tenant.mobile_services_customer_sms_enabled = body.customer_sms_enabled
+    session.add(tenant)
+    session.commit()
+    session.refresh(tenant)
+    return MobileNotificationsRead(customer_sms_enabled=bool(tenant.mobile_services_customer_sms_enabled))
 
 
 @router.get("/catalog")

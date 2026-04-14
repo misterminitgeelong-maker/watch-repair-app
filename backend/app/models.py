@@ -73,6 +73,8 @@ class Tenant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # JSON array of tool keys from seed/mobile_services_tools.json (tenant van / kit inventory)
     toolkit_selected_keys: str = Field(default="[]")
+    # When False, customer-facing SMS for mobile services (auto key) is skipped; tech reminders unchanged.
+    mobile_services_customer_sms_enabled: bool = True
 
 
 class User(SQLModel, table=True):
@@ -529,6 +531,8 @@ class AuthSessionResponse(SQLModel):
     #: Today's date YYYY-MM-DD in schedule_calendar_timezone (dispatch/map filters use this zone).
     shop_calendar_today_ymd: str
     signup_payment_pending: bool = False
+    #: When False, the shop does not send SMS to customers for mobile services (auto key) jobs.
+    mobile_services_customer_sms_enabled: bool = True
 
 
 class MultiSiteLoginResponse(SQLModel):

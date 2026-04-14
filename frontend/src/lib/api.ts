@@ -198,6 +198,8 @@ export interface AuthSession {
   signup_payment_pending?: boolean
   shop_calendar_today_ymd?: string
   schedule_calendar_timezone?: string
+  /** When false, customer SMS for mobile services is off (session mirrors tenant setting). */
+  mobile_services_customer_sms_enabled?: boolean
 }
 
 export const getAuthSession = () => api.get<AuthSession>('/auth/session')
@@ -1855,6 +1857,10 @@ export const getToolkitMySelection = () =>
   api.get<{ tool_keys: string[] }>('/toolkit/my-selection')
 export const putToolkitMySelection = (tool_keys: string[]) =>
   api.put('/toolkit/my-selection', { tool_keys })
+export const getToolkitMobileNotifications = () =>
+  api.get<{ customer_sms_enabled: boolean }>('/toolkit/mobile-notifications')
+export const patchToolkitMobileNotifications = (customer_sms_enabled: boolean) =>
+  api.patch<{ customer_sms_enabled: boolean }>('/toolkit/mobile-notifications', { customer_sms_enabled })
 export const recommendToolkit = (scenario_id: string) =>
   api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
 export const postToolkitRecommend = recommendToolkit

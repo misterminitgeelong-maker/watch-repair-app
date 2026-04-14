@@ -5,14 +5,20 @@ import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import {
   getApiErrorMessage,
   getToolkitCatalog,
+  getToolkitMobileNotifications,
   getToolkitMySelection,
+  patchToolkitMobileNotifications,
   postToolkitRecommend,
   putToolkitMySelection,
   type ToolkitRecommendResponse,
 } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 
 export default function ToolkitPage() {
   const qc = useQueryClient()
+  const { role, refreshSession } = useAuth()
+  const canEditMobileCustomerSms =
+    role === 'tech' || role === 'manager' || role === 'owner' || role === 'platform_admin'
   const [localKeys, setLocalKeys] = useState<Set<string>>(new Set())
   const [scenarioId, setScenarioId] = useState('')
   const [recommend, setRecommend] = useState<ToolkitRecommendResponse | null>(null)
@@ -26,6 +32,18 @@ export default function ToolkitPage() {
   const { data: saved, isLoading: selLoading } = useQuery({
     queryKey: ['toolkit', 'my-selection'],
     queryFn: () => getToolkitMySelection().then((r) => r.data),
+  })
+  const { data: mobileNotif, isLoading: mobLoading } = useQuery({
+    queryKey: ['toolkit', 'mobile-notifications'],
+    queryFn: () => getToolkitMobileNotifications().then((r) => r.data),
+  })
+
+  const smsMut = useMutation({
+    mutationFn: (enabled: boolean) => patchToolkitMobileNotifications(enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['toolkit', 'mobile-notifications'] })
+      void refreshSession()
+    },
   })
 
   useEffect(() => {
@@ -86,7 +104,7 @@ export default function ToolkitPage() {
       .catch((e) => setRecErr(getApiErrorMessage(e, 'Could not load recommendation')))
   }
 
-  if (catLoading || selLoading) return <Spinner />
+  if (catLoading || selLoading || mobLoading) return <Spinner />
   if (catErr) {
     return (
       <div>
@@ -100,6 +118,37 @@ export default function ToolkitPage() {
   return (
     <div className="space-y-5">
       <MobileServicesSubNav />
+
+      <Card className="p-4">
+        <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+          Customer text messages (mobile jobs)
+        </p>
+        <p className="text-xs mt-1 max-w-2xl" style={{ color: 'var(--cafe-text-muted)' }}>
+          When enabled, customers receive SMS for mobile services (scheduling, on the way, arrival window, intake links,
+          invoices, booking confirmations). Tech-only reminders are not affected. Turn off if you contact customers
+          another way.
+        </p>
+        <label className="mt-3 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={mobileNotif?.customer_sms_enabled !== false}
+            disabled={!canEditMobileCustomerSms || smsMut.isPending}
+            onChange={(e) => {
+              if (!canEditMobileCustomerSms) return
+              smsMut.mutate(e.target.checked)
+            }}
+          />
+          <span className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            Send SMS to customers for mobile services
+            {!canEditMobileCustomerSms && (
+              <span className="block text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                Ask a technician or manager to change this setting.
+              </span>
+            )}
+          </span>
+        </label>
+      </Card>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
