@@ -218,7 +218,10 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
+      >
         <Spinner />
       </div>
     )
@@ -228,17 +231,27 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   if (!current) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15,15,30,0.97)' }}>
-        <div className="rounded-2xl p-8 text-center w-full max-w-sm" style={{ backgroundColor: 'var(--cafe-bg-card)' }}>
-          <CheckCircle size={52} className="mx-auto mb-4" style={{ color: '#68d391' }} />
-          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--cafe-text)' }}>Queue Clear!</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--cafe-text-muted)' }}>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-6"
+        style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
+      >
+        <div
+          className="rounded-3xl p-8 text-center w-full max-w-sm"
+          style={{
+            background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.38)',
+          }}
+        >
+          <CheckCircle size={54} className="mx-auto mb-4" style={{ color: '#63d99d' }} />
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#F6F0E8' }}>Queue Clear</h2>
+          <p className="text-sm mb-6" style={{ color: 'rgba(246,240,232,0.72)' }}>
             All {mode === 'watch' ? 'watch' : 'shoe'} repairs have been reviewed.
           </p>
           <button
             onClick={onClose}
             className="px-8 py-2.5 rounded-xl font-semibold"
-            style={{ backgroundColor: 'var(--cafe-accent)', color: '#fff' }}
+            style={{ backgroundColor: '#C9A248', color: '#fff' }}
           >
             Done
           </button>
@@ -250,32 +263,46 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const days = daysInShop(current.created_at)
   const totalQueued = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id]).length
   const doneCount = done.size
+  const progressTotal = doneCount + totalQueued
+  const progressPct = progressTotal > 0 ? Math.round((doneCount / progressTotal) * 100) : 0
 
   // ── Render: main ──────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#0f0f1e' }}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'radial-gradient(1200px 600px at 50% -20%, #2d2455 0%, #151326 48%, #0c0c18 100%)' }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
         <div className="flex items-center gap-3">
-          <span className="text-white font-bold text-lg">{mode === 'watch' ? 'Watch' : 'Shoe'} Queue</span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
+          <div>
+            <span className="text-white font-bold text-lg">{mode === 'watch' ? 'Watch' : 'Shoe'} Queue</span>
+            <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.62)' }}>
+              Swipe cards to triage or move jobs forward
+            </p>
+          </div>
+          <span
+            className="text-xs px-2.5 py-0.5 rounded-full"
+            style={{ backgroundColor: 'rgba(201,162,72,0.16)', color: '#F3D79E', border: '1px solid rgba(201,162,72,0.38)' }}
+          >
             {doneCount} done · {totalQueued} left
           </span>
         </div>
-        <button onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        <button onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.65)' }}>
           <X size={20} />
         </button>
       </div>
 
       {/* Progress bar */}
-      {(doneCount + totalQueued) > 0 && (
-        <div className="h-1" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
+      {progressTotal > 0 && (
+        <div className="h-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.09)' }}>
           <div
             className="h-full transition-all duration-300"
             style={{
-              width: `${(doneCount / (doneCount + totalQueued)) * 100}%`,
-              backgroundColor: '#68d391',
+              width: `${progressPct}%`,
+              background: 'linear-gradient(90deg, #63d99d 0%, #58c78f 100%)',
+              boxShadow: '0 0 10px rgba(99,217,157,0.45)',
             }}
           />
         </div>
@@ -290,7 +317,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             className="absolute left-5 top-1/2 z-20 pointer-events-none"
             style={{ transform: 'translateY(-50%) rotate(-12deg)', opacity: Math.min(1, Math.abs(dragX) / SWIPE_THRESHOLD) }}
           >
-            <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#e53e3e', border: '3px solid #fc8181' }}>
+            <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#d14040', border: '3px solid #fa8f8f' }}>
               SKIP
             </span>
           </div>
@@ -302,7 +329,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             className="absolute right-5 top-1/2 z-20 pointer-events-none"
             style={{ transform: 'translateY(-50%) rotate(12deg)', opacity: Math.min(1, dragX / SWIPE_THRESHOLD) }}
           >
-            <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#38a169', border: '3px solid #68d391' }}>
+            <span className="block px-4 py-2 rounded-xl font-black text-xl text-white tracking-wider" style={{ backgroundColor: '#2f9862', border: '3px solid #79dfaa' }}>
               ADVANCE
             </span>
           </div>
@@ -314,12 +341,14 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             ref={cardRef}
             className="w-full max-w-sm rounded-2xl shadow-2xl"
             style={{
-              backgroundColor: 'var(--cafe-bg-card)',
+              background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
+              border: '1px solid rgba(255,255,255,0.14)',
               transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
               transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)',
               touchAction: 'none',
               userSelect: 'none',
               cursor: isDragging ? 'grabbing' : 'grab',
+              boxShadow: '0 22px 52px rgba(0,0,0,0.4)',
             }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -329,17 +358,17 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             {/* Priority colour bar */}
             <div
               className="h-2 rounded-t-2xl"
-              style={{ backgroundColor: PRIORITY_COLORS[current.priority] ?? '#718096' }}
+              style={{ background: `linear-gradient(90deg, ${PRIORITY_COLORS[current.priority] ?? '#718096'} 0%, rgba(255,255,255,0.45) 100%)` }}
             />
 
             <div className="p-5">
               {/* Job number + priority */}
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--cafe-text)' }}>
+                  <div className="text-3xl font-black tracking-tight" style={{ color: '#F6F0E8' }}>
                     {current.job_number}
                   </div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <div className="text-xs mt-0.5" style={{ color: 'rgba(246,240,232,0.68)' }}>
                     {days === 0 ? 'Taken in today' : days === 1 ? '1 day in shop' : `${days} days in shop`}
                   </div>
                 </div>
@@ -352,13 +381,13 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               </div>
 
               {/* Title */}
-              <div className="text-lg font-semibold leading-snug mb-1" style={{ color: 'var(--cafe-text)' }}>
+              <div className="text-lg font-semibold leading-snug mb-1" style={{ color: '#F6F0E8' }}>
                 {current.title}
               </div>
 
               {/* Customer */}
               {current.customer_name && (
-                <div className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                <div className="text-sm mb-3" style={{ color: 'rgba(246,240,232,0.74)' }}>
                   {current.customer_name}
                 </div>
               )}
@@ -367,7 +396,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               <div className="mt-4 flex items-center gap-2 flex-wrap">
                 <span
                   className="text-xs px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'var(--cafe-text-muted)' }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(246,240,232,0.72)' }}
                 >
                   {STATUS_LABELS[current.status] ?? current.status}
                 </span>
@@ -390,9 +419,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* ── Advance confirm panel ── */}
         {confirmAdvance && (
           <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--cafe-bg-card)' }}>
-            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: '#38a169' }} />
+            <div className="h-2 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #2f9862 0%, #79dfaa 100%)' }} />
             <div className="p-5">
-              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--cafe-text)' }}>
+              <div className="font-bold text-base mb-0.5" style={{ color: '#F6F0E8' }}>
                 {current.job_number} — {current.title}
               </div>
               <div className="text-sm mb-4" style={{ color: '#68d391' }}>
@@ -401,7 +430,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
               {noteChips.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'rgba(246,240,232,0.66)' }}>
                     Add a note (optional)
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -430,9 +459,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }}
                 className="w-full px-3 py-2 rounded-lg text-sm mb-4"
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  color: 'var(--cafe-text)',
-                  border: '1px solid rgba(255,255,255,0.12)',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: '#F6F0E8',
+                  border: '1px solid rgba(255,255,255,0.16)',
                   outline: 'none',
                 }}
               />
@@ -441,7 +470,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 <button
                   onClick={resetConfirm}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'var(--cafe-text-muted)' }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.09)', color: 'rgba(246,240,232,0.76)' }}
                 >
                   Cancel
                 </button>
@@ -449,11 +478,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                   onClick={handleAdvance}
                   disabled={advanceMutation.isPending}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                  style={{
-                    backgroundColor: '#38a169',
-                    color: '#fff',
-                    opacity: advanceMutation.isPending ? 0.65 : 1,
-                  }}
+                  style={{ backgroundColor: '#38a169', color: '#fff', opacity: advanceMutation.isPending ? 0.65 : 1 }}
                 >
                   {advanceMutation.isPending ? 'Saving…' : 'Confirm'}
                 </button>
@@ -470,11 +495,14 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {/* Swipe hint */}
         {!confirmAdvance && (
-          <p className="mt-8 text-xs text-center select-none" style={{ color: 'rgba(255,255,255,0.2)' }}>
-            <span style={{ color: 'rgba(229,62,62,0.6)' }}>← swipe to skip</span>
+          <div
+            className="mt-8 px-4 py-2 rounded-full text-xs text-center select-none"
+            style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.76)' }}
+          >
+            <span style={{ color: '#fa8f8f' }}>← swipe to skip</span>
             {'  ·  '}
-            <span style={{ color: 'rgba(56,161,105,0.6)' }}>swipe to advance →</span>
-          </p>
+            <span style={{ color: '#79dfaa' }}>swipe to advance →</span>
+          </div>
         )}
       </div>
 
@@ -485,9 +513,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             onClick={handleSkip}
             className="flex-1 py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
             style={{
-              backgroundColor: 'rgba(229,62,62,0.12)',
-              color: '#fc8181',
-              border: '1px solid rgba(229,62,62,0.25)',
+              backgroundColor: 'rgba(209,64,64,0.18)',
+              color: '#ffadad',
+              border: '1px solid rgba(209,64,64,0.42)',
             }}
           >
             <SkipForward size={16} />
@@ -499,9 +527,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             className="py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
             style={{
               flex: 2,
-              backgroundColor: nextStatus ? 'rgba(56,161,105,0.18)' : 'rgba(255,255,255,0.05)',
-              color: nextStatus ? '#68d391' : 'rgba(255,255,255,0.25)',
-              border: `1px solid ${nextStatus ? 'rgba(56,161,105,0.35)' : 'rgba(255,255,255,0.08)'}`,
+              backgroundColor: nextStatus ? 'rgba(47,152,98,0.2)' : 'rgba(255,255,255,0.05)',
+              color: nextStatus ? '#79dfaa' : 'rgba(255,255,255,0.25)',
+              border: `1px solid ${nextStatus ? 'rgba(121,223,170,0.45)' : 'rgba(255,255,255,0.08)'}`,
             }}
           >
             <ChevronRight size={16} />
