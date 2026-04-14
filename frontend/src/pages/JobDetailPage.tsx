@@ -14,6 +14,7 @@ import {
   getApiErrorMessage,
   getUploadErrorMessage,
   listUsers,
+  createQuote, sendQuote,
   type JobStatus, type RepairJob, type CustomerAccount, type TenantUser,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
@@ -55,6 +56,256 @@ const QUICK_ACTION_STATUSES: JobStatus[] = [
   'completed',
   'awaiting_collection',
 ]
+
+// ── Image compression helper ──────────────────────────────────────────────────
+function compressImage(file: File, maxDim = 1500, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) { height = Math.round((height / width) * maxDim); width = maxDim }
+        else { width = Math.round((width / height) * maxDim); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+        'image/jpeg',
+        quality,
+      )
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
+// ── Step note suggestions per destination status ──────────────────────────────
+const STATUS_STEP_NOTES: Partial<Record<JobStatus, string[]>> = {
+  go_ahead: [
+    'Customer approved the quote — proceeding with repair.',
+    'Go ahead confirmed by customer.',
+    'Customer called to confirm approval.',
+  ],
+  working_on: [
+    'Movement disassembled for inspection.',
+    'Ultrasonic cleaning started.',
+    'Reassembly in progress.',
+    'Movement lubricated and timing underway.',
+    'Waiting on bench time — repair to start shortly.',
+  ],
+  awaiting_parts: [
+    'Awaiting mainspring from supplier.',
+    'Awaiting crown / stem.',
+    'Awaiting crystal replacement.',
+    'Service kit ordered — ETA to be confirmed.',
+    'Parts on backorder.',
+  ],
+  parts_to_order: [
+    'Parts identified and being ordered.',
+    'Sent parts list to supplier.',
+    'Awaiting supplier confirmation.',
+  ],
+  sent_to_labanda: [
+    'Movement sent to Labanda for specialist service.',
+    'Forwarded to Labanda — mainspring replacement required.',
+    'Sent to Labanda for full movement overhaul.',
+  ],
+  quoted_by_labanda: [
+    'Quote received from Labanda — awaiting customer approval.',
+    'Labanda quote in — will contact customer.',
+  ],
+  service: [
+    'Service started.',
+    'Routine service in progress.',
+  ],
+  completed: [
+    'Full service complete — movement cleaned, lubricated, and timed.',
+    'Crystal replacement complete — tested.',
+    'Crown / stem replacement complete.',
+    'Repair complete — movement running to specification.',
+    'Service complete — regulated to within +/- 10 sec/day.',
+  ],
+  awaiting_collection: [
+    'Job complete — customer notified for collection.',
+    'Ready for pickup.',
+    'SMS sent to customer.',
+  ],
+  collected: [
+    'Collected by customer — payment received.',
+    'Watch collected.',
+  ],
+}
+
+// ── Step-note modal ────────────────────────────────────────────────────────────
+function StepNoteModal({
+  targetStatus,
+  onConfirm,
+  onClose,
+  isPending,
+}: {
+  targetStatus: JobStatus
+  onConfirm: (note: string) => void
+  onClose: () => void
+  isPending: boolean
+}) {
+  const suggestions = STATUS_STEP_NOTES[targetStatus] ?? []
+  const [note, setNote] = useState(suggestions[0] ?? '')
+  return (
+    <Modal title={`Move to: ${STATUS_LABELS[targetStatus]}`} onClose={onClose}>
+      <div className="space-y-3">
+        {suggestions.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Quick notes</p>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setNote(s)}
+                  className="rounded-full px-3 py-1 text-xs transition-colors"
+                  style={{
+                    backgroundColor: note === s ? 'var(--cafe-gold)' : 'var(--cafe-surface)',
+                    color: note === s ? 'var(--cafe-espresso-1)' : 'var(--cafe-text-mid)',
+                    border: `1px solid ${note === s ? 'var(--cafe-gold)' : 'var(--cafe-border-2)'}`,
+                    fontWeight: note === s ? 600 : 400,
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <Textarea
+          label="Note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          placeholder="Add a note about this step…"
+        />
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onConfirm(note)} disabled={isPending}>
+            {isPending ? 'Updating…' : 'Confirm'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Create-and-send quote modal (awaiting_quote fast flow) ────────────────────
+function CreateSendQuoteModal({ jobId, onClose, onSent }: { jobId: string; onClose: () => void; onSent: () => void }) {
+  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState('')
+  const [taxPct, setTaxPct] = useState('0')
+  const [step, setStep] = useState<'form' | 'sending' | 'done'>('form')
+  const [error, setError] = useState('')
+  const [approvalToken, setApprovalToken] = useState('')
+
+  async function handleSubmit() {
+    const amountCents = Math.round(parseFloat(amount) * 100)
+    if (!description.trim() || !amountCents) { setError('Enter a description and amount.'); return }
+    setStep('sending')
+    setError('')
+    try {
+      const taxCents = Math.round(amountCents * (parseFloat(taxPct || '0') / 100))
+      const quote = await createQuote({
+        repair_job_id: jobId,
+        tax_cents: taxCents,
+        line_items: [{ item_type: 'labor', description: description.trim(), quantity: 1, unit_price_cents: amountCents }],
+      })
+      const sent = await sendQuote(quote.data.id)
+      setApprovalToken(sent.data.approval_token)
+      setStep('done')
+      onSent()
+    } catch {
+      setError('Failed to create or send the quote. Please try again.')
+      setStep('form')
+    }
+  }
+
+  if (step === 'done') {
+    const approvalUrl = `${window.location.origin}/approve/${approvalToken}`
+    return (
+      <Modal title="Quote Sent" onClose={onClose}>
+        <div className="space-y-4 text-sm">
+          <p style={{ color: 'var(--cafe-text)' }}>Quote created and sent to the customer for approval.</p>
+          <div className="rounded-xl p-3 space-y-1" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Approval link</p>
+            <p className="break-all text-xs font-mono" style={{ color: 'var(--cafe-text-mid)' }}>{approvalUrl}</p>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => void navigator.clipboard.writeText(approvalUrl)}
+            >
+              Copy link
+            </Button>
+            <Button className="flex-1" onClick={onClose}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal title="Create & Send Quote" onClose={onClose}>
+      <div className="space-y-3">
+        <Textarea
+          label="What's being repaired / serviced *"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Full service — movement clean, lubricate, and regulate…"
+          autoFocus
+        />
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input
+              label="Amount ($) *"
+              type="number"
+              min="0"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="195.00"
+            />
+          </div>
+          <div style={{ width: 90 }}>
+            <Input
+              label="Tax (%)"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={taxPct}
+              onChange={(e) => setTaxPct(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+        </div>
+        {amount && !isNaN(parseFloat(amount)) && (
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            Total: ${(parseFloat(amount) * (1 + parseFloat(taxPct || '0') / 100)).toFixed(2)}
+          </p>
+        )}
+        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void handleSubmit()} disabled={step === 'sending'}>
+            {step === 'sending' ? 'Sending…' : 'Create & Send Quote'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 // ── Status update modal ───────────────────────────────────────────────────────
 function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) {
@@ -138,6 +389,8 @@ export default function JobDetailPage() {
   const [tab, setTab] = useState<Tab>('details')
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
+  const [showCreateQuote, setShowCreateQuote] = useState(false)
+  const [pendingStepStatus, setPendingStepStatus] = useState<JobStatus | null>(null)
   const [editingQuote, setEditingQuote] = useState(false)
   const [quoteInput, setQuoteInput] = useState('')
   const [movementApplying, setMovementApplying] = useState(false)
@@ -257,7 +510,8 @@ export default function JobDetailPage() {
     setUploading(true)
     setUploadError('')
     try {
-      await uploadAttachment(file, id, label)
+      const toUpload = file.type.startsWith('image/') ? await compressImage(file) : file
+      await uploadAttachment(toUpload, id, label)
       qc.invalidateQueries({ queryKey: ['attachments', id] })
     } catch (err: unknown) {
       setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
@@ -339,6 +593,31 @@ export default function JobDetailPage() {
       />
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
       {showLogWork && <LogWorkModal jobId={id!} onClose={() => setShowLogWork(false)} />}
+      {showCreateQuote && (
+        <CreateSendQuoteModal
+          jobId={id!}
+          onClose={() => setShowCreateQuote(false)}
+          onSent={() => {
+            qc.invalidateQueries({ queryKey: ['job', id] })
+            qc.invalidateQueries({ queryKey: ['jobs'] })
+            qc.invalidateQueries({ queryKey: ['quotes', id] })
+            qc.invalidateQueries({ queryKey: ['history', id] })
+          }}
+        />
+      )}
+      {pendingStepStatus && (
+        <StepNoteModal
+          targetStatus={pendingStepStatus}
+          isPending={quickStatusMutation.isPending}
+          onClose={() => setPendingStepStatus(null)}
+          onConfirm={(note) => {
+            quickStatusMutation.mutate(
+              { status: pendingStepStatus, note: note || undefined },
+              { onSuccess: () => setPendingStepStatus(null) },
+            )
+          }}
+        />
+      )}
 
       {/* Summary strip */}
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
@@ -353,20 +632,37 @@ export default function JobDetailPage() {
         })()}
       </div>
 
-      <Card className="p-4 mb-5">
-        <div className="flex flex-wrap gap-2">
-          {QUICK_ACTION_STATUSES.map((status) => (
-            <Button
-              key={status}
-              variant="secondary"
-              onClick={() => quickStatusMutation.mutate({ status, note: `Quick action: ${STATUS_LABELS[status]}` })}
-              disabled={quickStatusMutation.isPending}
-            >
-              {STATUS_LABELS[status]}
+      {job.status === 'awaiting_quote' ? (
+        <Card className="p-5 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>Ready to quote this job?</p>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                Enter the repair description and price — the quote will be created and sent to the customer in one step.
+              </p>
+            </div>
+            <Button onClick={() => setShowCreateQuote(true)} className="flex-shrink-0">
+              Create &amp; Send Quote
             </Button>
-          ))}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4 mb-5">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Move job to</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACTION_STATUSES.filter(s => s !== 'awaiting_quote').map((status) => (
+              <Button
+                key={status}
+                variant={job.status === status ? 'primary' : 'secondary'}
+                onClick={() => setPendingStepStatus(status)}
+                disabled={quickStatusMutation.isPending}
+              >
+                {STATUS_LABELS[status]}
+              </Button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto mb-6" style={{ borderBottom: '1px solid var(--cafe-border)' }}>

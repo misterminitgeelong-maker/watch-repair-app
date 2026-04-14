@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Search, X } from 'lucide-react'
+import { Plus, Search, X, ListOrdered } from 'lucide-react'
 import {
   deleteJob,
   getApiErrorMessage,
@@ -17,6 +17,7 @@ import {
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES, JOB_STATUS_ORDER } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
+import RepairQueueModal from '@/components/RepairQueueModal'
 
 function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
@@ -30,6 +31,7 @@ type JobSortField = (typeof JOB_SORT_FIELDS)[number]
 export default function JobsPage() {
   const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
   const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
@@ -141,8 +143,11 @@ export default function JobsPage() {
       <PageHeader
         title="Watch Repairs"
         action={
-          <div className="flex flex-col items-end gap-1">
-            <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
+              <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
+            </div>
             <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
               After create, you can print tickets from the desktop flow.
             </span>
@@ -150,6 +155,7 @@ export default function JobsPage() {
         }
       />
       {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
+      {showQueue && <RepairQueueModal mode="watch" onClose={() => setShowQueue(false)} />}
 
       <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
         Movement services, batteries, pressure testing, and full servicing.

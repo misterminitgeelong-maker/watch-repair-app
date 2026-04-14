@@ -108,6 +108,8 @@ class Settings(BaseSettings):
     enable_stripe_invoice_checkout: bool = True
     # ISO country for new Express connected accounts (e.g. AU, US).
     stripe_connect_default_country: str = "AU"
+    # Number of trial days added to new Stripe subscriptions (0 = no trial).
+    stripe_trial_period_days: int = 14
 
     # Rate limiting (slowapi format, e.g. "20/minute")
     rate_limit_auth_login: str = "20/minute"

@@ -68,6 +68,10 @@ class Tenant(SQLModel, table=True):
     stripe_connect_details_submitted: bool = False
     # True when Stripe subscription is required after signup; cleared after first webhook confirms subscription.
     signup_payment_pending: bool = False
+    # Mirrors Stripe subscription status: "trialing", "active", "past_due", "canceled", or None.
+    subscription_status: Optional[str] = Field(default=None)
+    # UTC timestamp when the Stripe trial ends (populated for trialing subscriptions).
+    trial_end: Optional[datetime] = Field(default=None)
     is_active: bool = True
     auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -531,6 +535,10 @@ class AuthSessionResponse(SQLModel):
     #: Today's date YYYY-MM-DD in schedule_calendar_timezone (dispatch/map filters use this zone).
     shop_calendar_today_ymd: str
     signup_payment_pending: bool = False
+    #: Mirrors Stripe subscription status: "trialing", "active", "past_due", "canceled", or None.
+    subscription_status: Optional[str] = None
+    #: ISO-8601 UTC string when the trial ends; None when not on a trial.
+    trial_end: Optional[str] = None
     #: When False, the shop does not send SMS to customers for mobile services (auto key) jobs.
     mobile_services_customer_sms_enabled: bool = True
 
@@ -814,6 +822,7 @@ class RepairJobCreate(SQLModel):
     deposit_cents: int = 0
     pre_quote_cents: int = 0
     cost_cents: int = 0
+    job_number_override: Optional[str] = None
 
 
 class RepairJobRead(SQLModel):

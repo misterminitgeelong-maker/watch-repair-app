@@ -15,6 +15,10 @@ interface AuthCtx {
   enabledFeatures: FeatureKey[]
   /** True when signup finished but Stripe subscription not confirmed yet (API returns subscription_required). */
   signupPaymentPending: boolean
+  /** Mirrors Stripe subscription status: "trialing" | "active" | "past_due" | "canceled" | null */
+  subscriptionStatus: string | null
+  /** ISO-8601 UTC string when the trial ends; null when not on a trial */
+  trialEnd: string | null
   /** Today's YYYY-MM-DD in the shop schedule timezone (aligns dispatch/map with seeded jobs). */
   shopCalendarTodayYmd: string | null
   /** IANA zone for shop calendar days (same as backend `schedule_calendar_timezone`). */
@@ -90,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [planCode, setPlanCode] = useState<PlanCode>('pro')
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
   const [signupPaymentPending, setSignupPaymentPending] = useState(false)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [trialEnd, setTrialEnd] = useState<string | null>(null)
   const [shopCalendarTodayYmd, setShopCalendarTodayYmd] = useState<string | null>(null)
   const [scheduleCalendarTimezone, setScheduleCalendarTimezone] = useState('Australia/Sydney')
   const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
@@ -132,6 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPlanCode('pro')
       setEnabledFeatures(defaultFeatures)
       setSignupPaymentPending(false)
+      setSubscriptionStatus(null)
+      setTrialEnd(null)
       setShopCalendarTodayYmd(null)
       setScheduleCalendarTimezone('Australia/Sydney')
       clearStoredTokens()
@@ -146,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode(data.plan_code)
     setEnabledFeatures(data.enabled_features)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
+    setSubscriptionStatus(data.subscription_status ?? null)
+    setTrialEnd(data.trial_end ?? null)
     setShopCalendarTodayYmd(data.shop_calendar_today_ymd ?? null)
     setScheduleCalendarTimezone(data.schedule_calendar_timezone ?? 'Australia/Sydney')
   }
@@ -163,6 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPlanCode('pro')
         setEnabledFeatures(defaultFeatures)
         setSignupPaymentPending(false)
+        setSubscriptionStatus(null)
+        setTrialEnd(null)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
       }
@@ -322,6 +334,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode('pro')
     setEnabledFeatures(defaultFeatures)
     setSignupPaymentPending(false)
+    setSubscriptionStatus(null)
+    setTrialEnd(null)
     setShopCalendarTodayYmd(null)
     setScheduleCalendarTimezone('Australia/Sydney')
   }
@@ -353,6 +367,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         planCode,
         enabledFeatures,
         signupPaymentPending,
+        subscriptionStatus,
+        trialEnd,
         shopCalendarTodayYmd,
         scheduleCalendarTimezone,
         sessionReady,

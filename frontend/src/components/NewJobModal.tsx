@@ -109,7 +109,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [createdWatchId, setCreatedWatchId] = useState('')
 
   // Step 3 – Job
-  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '' })
+  const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '', job_number_override: '' })
   const [selectedRepairs, setSelectedRepairs] = useState<SelectedWatchService[]>([])
   const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
@@ -234,6 +234,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
         pre_quote_cents: job.pre_quote_cents ? Math.round(parseFloat(job.pre_quote_cents) * 100) : 0,
         cost_cents: 0,
+        job_number_override: job.job_number_override.trim() || undefined,
       })
       // Upload the two watch photos
       await Promise.all([
@@ -458,6 +459,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Your initials or name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>
+          <Input
+            label="Physical Ticket # (optional)"
+            value={job.job_number_override}
+            onChange={setJ('job_number_override')}
+            placeholder="e.g. 1234 — leave blank to auto-assign"
+          />
           <Select
             label="Customer Account (optional)"
             value={selectedCustomerAccountId}
