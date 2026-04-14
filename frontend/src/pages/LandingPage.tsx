@@ -937,8 +937,8 @@ export default function LandingPage() {
         style={{ position: 'relative', zIndex: 1 }}
       >
         {/* ── Header ── */}
-        <header className="flex items-center justify-between py-6 sm:py-7">
-          <div className="flex items-center">
+        <header className="flex items-center justify-between py-6 sm:py-7 lg:py-9">
+          <div className="flex items-center lg:py-1">
             <img
               src="/mainspring-logo.svg"
               alt="Mainspring"

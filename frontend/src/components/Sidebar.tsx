@@ -100,7 +100,10 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         ...(!mobile ? { borderRight: '1px solid rgba(160,130,90,0.15)' } : {}),
       }}
     >
-      <div className="px-6 py-6" style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}>
+      <div
+        className={mobile ? 'px-6 py-6' : 'px-6 pt-8 pb-7'}
+        style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}
+      >
         <div className="flex items-center justify-between gap-3">
           <img
             src="/mainspring-logo.svg"
