@@ -133,8 +133,6 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const visibleIds = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id])
   const currentId = visibleIds[0] ?? null
   const current = currentId ? jobMap[currentId] : null
-  const remaining = visibleIds.length
-  const position = remaining > 0 ? 1 : 0 // always showing first
 
   // ── Mutation ───────────────────────────────────────────────────────────────
 
