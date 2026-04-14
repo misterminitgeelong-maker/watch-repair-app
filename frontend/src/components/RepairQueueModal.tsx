@@ -137,16 +137,57 @@ function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
+/** Local calendar date for per-day queue persistence (shop timezone = browser). */
+function getLocalDateKey(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function dayQueueStorageKey(mode: 'watch' | 'shoe'): string {
+  return `repairQueueDay:v1:${mode}:${getLocalDateKey()}`
+}
+
+function readDayQueueState(mode: 'watch' | 'shoe'): { done: Set<string>; stats: SessionStats } {
+  const emptyStats: SessionStats = { advanced: 0, checkedIn: 0, skipped: 0 }
+  try {
+    const raw = localStorage.getItem(dayQueueStorageKey(mode))
+    if (!raw) return { done: new Set(), stats: emptyStats }
+    const o = JSON.parse(raw) as { doneIds?: string[]; stats?: Partial<SessionStats> }
+    const stats: SessionStats = {
+      advanced: typeof o.stats?.advanced === 'number' ? o.stats.advanced : 0,
+      checkedIn: typeof o.stats?.checkedIn === 'number' ? o.stats.checkedIn : 0,
+      skipped: typeof o.stats?.skipped === 'number' ? o.stats.skipped : 0,
+    }
+    return { done: new Set(Array.isArray(o.doneIds) ? o.doneIds : []), stats }
+  } catch {
+    return { done: new Set(), stats: emptyStats }
+  }
+}
+
+function writeDayQueueState(mode: 'watch' | 'shoe', done: Set<string>, stats: SessionStats) {
+  try {
+    localStorage.setItem(
+      dayQueueStorageKey(mode),
+      JSON.stringify({ doneIds: [...done], stats }),
+    )
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function RepairQueueModal({ mode, onClose }: Props) {
   const qc = useQueryClient()
   const { sessionUserId: userId } = useAuth()
 
-  // ── Queue state ───────────────────────────────────────────────────────────
+  // ── Queue state (persisted for the local calendar day so reopening resumes progress) ──
   const [queueOrder, setQueueOrder] = useState<string[] | null>(null)
-  const [done, setDone] = useState<Set<string>>(new Set())
-  const [stats, setStats] = useState<SessionStats>({ advanced: 0, checkedIn: 0, skipped: 0 })
+  const [done, setDone] = useState<Set<string>>(() => readDayQueueState(mode).done)
+  const [stats, setStats] = useState<SessionStats>(() => readDayQueueState(mode).stats)
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [showFilters, setShowFilters] = useState(false)
@@ -169,6 +210,21 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const pointerIdRef = useRef<number | null>(null)
   const capturedRef = useRef(false)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    writeDayQueueState(mode, done, stats)
+  }, [mode, done, stats])
+
+  function resetTodayQueueProgress() {
+    try {
+      localStorage.removeItem(dayQueueStorageKey(mode))
+    } catch {
+      /* ignore */
+    }
+    setDone(new Set())
+    setStats({ advanced: 0, checkedIn: 0, skipped: 0 })
+    setQueueOrder(null)
+  }
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const watchQuery = useQuery({
@@ -545,7 +601,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           <span className="font-bold text-lg" style={{ color: '#FCFAF6', fontFamily: "'Playfair Display', Georgia, serif" }}>
             {mode === 'watch' ? 'Watch' : 'Shoe'} Queue
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.15)', color: '#B89556' }}>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.15)', color: '#B89556' }} title="Progress is saved for today on this device. Resets at midnight.">
             {doneCount} done · {remaining} left
           </span>
         </div>
@@ -558,6 +614,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             <Filter size={12} />
             {filterCount > 0 ? `${filterCount} filter${filterCount > 1 ? 's' : ''}` : 'Filter'}
           </button>
+          {(doneCount > 0 || stats.skipped > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Clear today's saved queue progress on this device? Jobs you already cleared will show again.")) {
+                  resetTodayQueueProgress()
+                }
+              }}
+              className="text-xs px-2 py-1.5 rounded-lg"
+              style={{ color: '#8A7563', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              Reset day
+            </button>
+          )}
           <button onClick={onClose} className="p-2" style={{ color: '#8A7563' }}><X size={20} /></button>
         </div>
       </div>
@@ -607,6 +677,23 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 Clear all
               </button>
             )}
+          </div>
+          <div className="pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Jobs you advance or mark &quot;No update&quot; stay hidden for the rest of today if you close and reopen the queue.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Clear today's saved queue progress on this device? Jobs you already cleared will show again.")) {
+                  resetTodayQueueProgress()
+                }
+              }}
+              className="text-xs underline-offset-2 hover:underline"
+              style={{ color: '#8A7563' }}
+            >
+              {"Reset today's queue progress"}
+            </button>
           </div>
         </div>
       )}
