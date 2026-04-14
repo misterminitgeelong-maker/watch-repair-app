@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
@@ -140,7 +140,7 @@ function daysInShop(createdAt: string): number {
 
 export default function RepairQueueModal({ mode, onClose }: Props) {
   const qc = useQueryClient()
-  const { userId } = useAuth()
+  const { sessionUserId: userId } = useAuth()
 
   // ── Queue state ───────────────────────────────────────────────────────────
   const [queueOrder, setQueueOrder] = useState<string[] | null>(null)
@@ -256,7 +256,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     },
   })
 
-  const claimMutation = useMutation({
+  const claimMutation = useMutation<unknown, Error, { id: string; claim: boolean }>({
     mutationFn: (vars: { id: string; claim: boolean }) => {
       if (mode === 'watch') return vars.claim ? claimJob(vars.id) : releaseJob(vars.id)
       return vars.claim ? claimShoeJob(vars.id) : releaseShoeJob(vars.id)
