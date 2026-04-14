@@ -211,6 +211,12 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         schedule_calendar_timezone=cal_tz,
         shop_calendar_today_ymd=shop_today,
         signup_payment_pending=bool(getattr(tenant, "signup_payment_pending", False)),
+        subscription_status=getattr(tenant, "subscription_status", None),
+        trial_end=(
+            getattr(tenant, "trial_end", None).isoformat()
+            if getattr(tenant, "trial_end", None) is not None
+            else None
+        ),
         mobile_services_customer_sms_enabled=bool(getattr(tenant, "mobile_services_customer_sms_enabled", True)),
     )
 

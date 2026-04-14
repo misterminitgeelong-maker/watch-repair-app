@@ -106,10 +106,25 @@ def create_repair_job(
         customer_account_id = inferred.customer_account_id if inferred else None
 
     data = payload.model_dump(exclude_none=True)
+    data.pop("job_number_override", None)
     data["customer_account_id"] = customer_account_id
+
+    if payload.job_number_override:
+        override = payload.job_number_override.strip()
+        conflict = session.exec(
+            select(RepairJob)
+            .where(RepairJob.tenant_id == auth.tenant_id)
+            .where(RepairJob.job_number == override)
+        ).first()
+        if conflict:
+            raise HTTPException(status_code=409, detail=f"Ticket number '{override}' is already in use")
+        job_number = override
+    else:
+        job_number = _next_job_number(session, auth.tenant_id)
+
     job = RepairJob(
         tenant_id=auth.tenant_id,
-        job_number=_next_job_number(session, auth.tenant_id),
+        job_number=job_number,
         **data,
     )
     session.add(job)

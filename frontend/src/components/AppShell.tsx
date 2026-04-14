@@ -27,6 +27,68 @@ import { AdminReturnBanner } from '@/pages/PlatformAdminUsersPage'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 
+function SubscriptionBanner({
+  subscriptionStatus,
+  trialEnd,
+  role,
+  onManage,
+}: {
+  subscriptionStatus: string | null
+  trialEnd: string | null
+  role: string | null
+  onManage: () => void
+}) {
+  if (!subscriptionStatus || role === 'platform_admin') return null
+
+  if (subscriptionStatus === 'trialing' && trialEnd) {
+    const daysLeft = Math.ceil((new Date(trialEnd).getTime() - Date.now()) / 86_400_000)
+    if (daysLeft <= 0) return null
+    return (
+      <div
+        className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+        style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '1px solid var(--cafe-gold)' }}
+      >
+        <span style={{ color: 'var(--cafe-text)' }}>
+          <span className="font-semibold" style={{ color: 'var(--cafe-gold)' }}>
+            {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in your free trial.
+          </span>{' '}
+          Add a payment method to keep access after the trial ends.
+        </span>
+        <button
+          onClick={onManage}
+          className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+          style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso-1)' }}
+        >
+          Add card
+        </button>
+      </div>
+    )
+  }
+
+  if (subscriptionStatus === 'past_due') {
+    return (
+      <div
+        className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+        style={{ backgroundColor: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.4)' }}
+      >
+        <span style={{ color: 'var(--cafe-text)' }}>
+          <span className="font-semibold" style={{ color: '#f87171' }}>Payment failed.</span>{' '}
+          Update your billing details to avoid losing access.
+        </span>
+        <button
+          onClick={onManage}
+          className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+          style={{ backgroundColor: '#ef4444', color: '#fff' }}
+        >
+          Fix billing
+        </button>
+      </div>
+    )
+  }
+
+  return null
+}
+
 type PageTutorial = {
   key: string
   title: string
@@ -315,6 +377,8 @@ export default function AppShell() {
     hasFeature,
     sessionReady,
     signupPaymentPending,
+    subscriptionStatus,
+    trialEnd,
     role,
     planCode,
   } = useAuth()
@@ -812,6 +876,12 @@ export default function AppShell() {
               </select>
             </div>
           )}
+          <SubscriptionBanner
+            subscriptionStatus={subscriptionStatus}
+            trialEnd={trialEnd}
+            role={role}
+            onManage={() => navigate('/accounts')}
+          />
           <Outlet />
         </main>
       </div>

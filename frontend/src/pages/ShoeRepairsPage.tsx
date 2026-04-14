@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X } from 'lucide-react'
+import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X, ListOrdered } from 'lucide-react'
 import {
   deleteShoeRepairJob,
   getApiErrorMessage,
@@ -14,6 +14,7 @@ import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/c
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
+import RepairQueueModal from '@/components/RepairQueueModal'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -462,6 +463,7 @@ function ComboBanner() {
 export default function ShoeRepairsPage() {
   const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -504,11 +506,14 @@ export default function ShoeRepairsPage() {
       <PageHeader
         title="Shoe Repairs"
         action={
-          <div className="flex flex-col items-end gap-1">
-            <Button onClick={() => setShowAdd(true)}>
-              <Plus size={16} />
-              New Job
-            </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
+              <Button onClick={() => setShowAdd(true)}>
+                <Plus size={16} />
+                New Job
+              </Button>
+            </div>
             <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
               After create, you can print tickets from the desktop flow.
             </span>
@@ -702,6 +707,7 @@ export default function ShoeRepairsPage() {
       )}
 
       {showAdd && <NewShoeJobModal onClose={() => setShowAdd(false)} />}
+      {showQueue && <RepairQueueModal mode="shoe" onClose={() => setShowQueue(false)} />}
 
       {/* Mobile FAB */}
       <button

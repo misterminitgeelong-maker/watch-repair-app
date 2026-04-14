@@ -292,19 +292,22 @@ def create_checkout_session(
         session.refresh(tenant)
 
     return_url = f"{settings.public_base_url}/accounts"
+    subscription_data: dict = {
+        "metadata": {
+            "tenant_id": str(tenant.id),
+            "tenant_slug": tenant.slug,
+            "target_plan_code": plan_code,
+        }
+    }
+    if settings.stripe_trial_period_days > 0:
+        subscription_data["trial_period_days"] = settings.stripe_trial_period_days
     checkout_session = stripe.checkout.Session.create(
         customer=tenant.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": payload.price_id, "quantity": 1}],
         success_url=f"{return_url}?billing=success",
         cancel_url=f"{return_url}?billing=cancelled",
-        subscription_data={
-            "metadata": {
-                "tenant_id": str(tenant.id),
-                "tenant_slug": tenant.slug,
-                "target_plan_code": plan_code,
-            }
-        },
+        subscription_data=subscription_data,
     )
     return {"checkout_url": checkout_session.url}
 
@@ -338,19 +341,22 @@ def create_checkout_session_for_plan(
 
     line_items = _line_items_for_plan(plan_code)
     return_url = f"{settings.public_base_url}/accounts"
+    subscription_data_plan: dict = {
+        "metadata": {
+            "tenant_id": str(tenant.id),
+            "tenant_slug": tenant.slug,
+            "target_plan_code": plan_code,
+        }
+    }
+    if settings.stripe_trial_period_days > 0:
+        subscription_data_plan["trial_period_days"] = settings.stripe_trial_period_days
     checkout_session = stripe.checkout.Session.create(
         customer=tenant.stripe_customer_id,
         mode="subscription",
         line_items=line_items,
         success_url=f"{return_url}?billing=success",
         cancel_url=f"{return_url}?billing=cancelled",
-        subscription_data={
-            "metadata": {
-                "tenant_id": str(tenant.id),
-                "tenant_slug": tenant.slug,
-                "target_plan_code": plan_code,
-            }
-        },
+        subscription_data=subscription_data_plan,
     )
     return {"checkout_url": checkout_session.url}
 
@@ -430,6 +436,15 @@ async def stripe_webhook(
                 tenant.stripe_subscription_id = obj.get("id")
                 tenant.stripe_customer_id = obj.get("customer")
                 tenant.signup_payment_pending = False
+                # Sync subscription lifecycle status
+                stripe_status = obj.get("status")
+                if stripe_status in ("trialing", "active", "past_due", "canceled", "unpaid", "incomplete", "incomplete_expired"):
+                    tenant.subscription_status = stripe_status
+                raw_trial_end = obj.get("trial_end")
+                if raw_trial_end:
+                    tenant.trial_end = datetime.fromtimestamp(int(raw_trial_end), tz=timezone.utc)
+                elif stripe_status != "trialing":
+                    tenant.trial_end = None
                 session.add(tenant)
                 session.commit()
 
@@ -441,6 +456,31 @@ async def stripe_webhook(
             ).first()
             if tenant:
                 tenant.stripe_subscription_id = None
+                tenant.subscription_status = "canceled"
+                tenant.trial_end = None
+                tenant.signup_payment_pending = True
+                session.add(tenant)
+                session.commit()
+
+    elif event["type"] == "invoice.payment_failed":
+        sub_id = (obj.get("subscription") or "")
+        if sub_id:
+            tenant = session.exec(
+                select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
+            ).first()
+            if tenant:
+                tenant.subscription_status = "past_due"
+                session.add(tenant)
+                session.commit()
+
+    elif event["type"] == "invoice.paid":
+        sub_id = (obj.get("subscription") or "")
+        if sub_id:
+            tenant = session.exec(
+                select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
+            ).first()
+            if tenant and tenant.subscription_status == "past_due":
+                tenant.subscription_status = "active"
                 session.add(tenant)
                 session.commit()
 

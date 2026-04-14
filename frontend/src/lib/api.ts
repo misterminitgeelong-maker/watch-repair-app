@@ -196,6 +196,10 @@ export interface AuthSession {
   active_site_tenant_id: string
   available_sites: SiteOption[]
   signup_payment_pending?: boolean
+  /** Mirrors Stripe subscription status: "trialing" | "active" | "past_due" | "canceled" | null */
+  subscription_status?: string | null
+  /** ISO-8601 UTC string of when the trial ends; null when not trialing */
+  trial_end?: string | null
   shop_calendar_today_ymd?: string
   schedule_calendar_timezone?: string
   /** When false, customer SMS for mobile services is off (session mirrors tenant setting). */
@@ -386,6 +390,7 @@ export interface RepairJobCreatePayload {
   deposit_cents: number
   pre_quote_cents: number
   cost_cents: number
+  job_number_override?: string
 }
 export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
@@ -699,6 +704,7 @@ export const uploadAttachment = (file: File, repairJobId: string, label?: string
   if (label) params.append('label', label)
   return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 export const listShoeAttachments = (shoeRepairJobId: string) =>
