@@ -372,6 +372,8 @@ export interface RepairJob {
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
   customer_name?: string | null
+  claimed_by_user_id?: string | null
+  claimed_by_name?: string | null
 }
 export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string; q?: string }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
@@ -411,6 +413,10 @@ export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
 export const quickStatusAction = updateJobStatus
 export const addJobNote = (id: string, note: string) =>
   api.post(`/repair-jobs/${id}/note`, { note })
+export const claimJob = (id: string) =>
+  api.post<RepairJob>(`/repair-jobs/${id}/claim`)
+export const releaseJob = (id: string) =>
+  api.post<RepairJob>(`/repair-jobs/${id}/release`)
 
 
 export interface IntakePayload {
@@ -1271,6 +1277,8 @@ export interface ShoeRepairJob {
   tenant_id: string
   shoe_id: string
   customer_account_id?: string
+  claimed_by_user_id?: string | null
+  claimed_by_name?: string | null
   shoe?: Shoe
   extra_shoes: ShoeRepairJobShoe[]
   assigned_user_id?: string
@@ -1332,6 +1340,10 @@ export const updateShoeRepairJobStatus = (id: string, status: string, note?: str
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
 export const addShoeJobNote = (id: string, note: string) =>
   api.post(`/shoe-repair-jobs/${id}/note`, { note })
+export const claimShoeJob = (id: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/claim`)
+export const releaseShoeJob = (id: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/release`)
 
 export const addShoeToJob = (jobId: string, shoeId: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/shoes`, { shoe_id: shoeId })

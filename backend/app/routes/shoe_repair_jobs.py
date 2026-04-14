@@ -88,6 +88,13 @@ def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
             sort_order=ej.sort_order,
         ))
     data["extra_shoes"] = extra
+    # Resolve claimed_by_name
+    if job.claimed_by_user_id:
+        from ..models import User as UserModel
+        u = session.get(UserModel, job.claimed_by_user_id)
+        data["claimed_by_name"] = u.full_name if u else None
+    else:
+        data["claimed_by_name"] = None
     return ShoeRepairJobRead(**data)
 
 
@@ -246,6 +253,40 @@ def add_shoe_repair_job_note(
     session.add(history)
     session.commit()
     return Response(status_code=204)
+
+
+@router.post("/{job_id}/claim", response_model=ShoeRepairJobRead)
+def claim_shoe_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Mark this shoe job as claimed by the current user."""
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    job.claimed_by_user_id = auth.user_id
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return _job_to_read(job, session)
+
+
+@router.post("/{job_id}/release", response_model=ShoeRepairJobRead)
+def release_shoe_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Release a claim on this shoe job."""
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    job.claimed_by_user_id = None
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return _job_to_read(job, session)
 
 
 @router.patch("/{job_id}", response_model=ShoeRepairJobRead)

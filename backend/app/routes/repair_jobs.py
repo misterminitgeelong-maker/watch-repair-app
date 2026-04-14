@@ -215,12 +215,21 @@ def list_repair_jobs(
         for c in session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all():
             customer_names[c.id] = c.full_name or ''
 
+    # Batch-fetch claimed_by user names
+    claimed_ids = list({j.claimed_by_user_id for j in jobs if j.claimed_by_user_id})
+    claimed_names: dict = {}
+    if claimed_ids:
+        from ..models import User as UserModel
+        for u in session.exec(select(UserModel).where(UserModel.id.in_(claimed_ids))).all():
+            claimed_names[u.id] = u.full_name or ''
+
     result = []
     for j in jobs:
         w = watches.get(j.watch_id)
         cname = customer_names.get(w.customer_id) if w and w.customer_id else None
         data = j.model_dump()
         data['customer_name'] = cname
+        data['claimed_by_name'] = claimed_names.get(j.claimed_by_user_id) if j.claimed_by_user_id else None
         result.append(RepairJobRead(**data))
     return result
 
@@ -580,6 +589,50 @@ def add_repair_job_note(
     session.add(history)
     session.commit()
     return Response(status_code=204)
+
+
+@router.post("/{job_id}/claim", response_model=RepairJobRead)
+def claim_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Mark this job as claimed by the current user."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+    job.claimed_by_user_id = auth.user_id
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    data = job.model_dump()
+    data['customer_name'] = None
+    data['claimed_by_name'] = None
+    if auth.user_id:
+        from ..models import User as UserModel
+        u = session.get(UserModel, auth.user_id)
+        data['claimed_by_name'] = u.full_name if u else None
+    return RepairJobRead(**data)
+
+
+@router.post("/{job_id}/release", response_model=RepairJobRead)
+def release_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Release a claim on this job (any tech can release)."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+    job.claimed_by_user_id = None
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    data = job.model_dump()
+    data['customer_name'] = None
+    data['claimed_by_name'] = None
+    return RepairJobRead(**data)
 
 
 @router.get("/{job_id}/status-history", response_model=list[JobStatusHistoryRead])

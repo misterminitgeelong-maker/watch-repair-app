@@ -270,6 +270,7 @@ class RepairJob(SQLModel, table=True):
     deposit_cents: int = 0
     pre_quote_cents: int = 0
     cost_cents: int = 0
+    claimed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -843,6 +844,8 @@ class RepairJobRead(SQLModel):
     pre_quote_cents: int
     cost_cents: int
     created_at: datetime
+    claimed_by_user_id: Optional[UUID] = None
+    claimed_by_name: Optional[str] = None
     customer_name: Optional[str] = None
 
 
@@ -1058,6 +1061,7 @@ class ShoeRepairJob(SQLModel, table=True):
     quote_approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     quote_approval_token_expires_at: Optional[datetime] = Field(default=None, index=True)
     quote_status: str = "none"  # "none" | "sent" | "approved" | "declined"
+    claimed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -1184,6 +1188,8 @@ class ShoeRepairJobRead(SQLModel):
     estimated_days_max: Optional[int] = None
     # Queue-based: when this job expected to be ready (FIFO, derived from jobs ahead)
     estimated_ready_by: Optional[date] = None
+    claimed_by_user_id: Optional[UUID] = None
+    claimed_by_name: Optional[str] = None
 
 
 class ShoeRepairJobStatusUpdate(SQLModel):
