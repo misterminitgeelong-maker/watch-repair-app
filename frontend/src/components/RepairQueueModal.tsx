@@ -231,6 +231,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   })
 
   // ── Mutations ─────────────────────────────────────────────────────────────
+  function invalidateWatchJobCaches(jobId: string) {
+    qc.invalidateQueries({ queryKey: ['repair-jobs'] })
+    qc.invalidateQueries({ queryKey: ['jobs'] })
+    qc.invalidateQueries({ queryKey: ['job', jobId] })
+    qc.invalidateQueries({ queryKey: ['history', jobId] })
+    qc.invalidateQueries({ queryKey: ['job-detail'] })
+  }
+
+  function invalidateShoeJobCaches(jobId: string) {
+    qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+    qc.invalidateQueries({ queryKey: ['shoe-repair-job', jobId] })
+    qc.invalidateQueries({ queryKey: ['job-detail'] })
+  }
+
   /** Watch queue: status-only lane transitions (no SMS/email). Optional note after swipe. */
   const watchQueueSwipeMutation = useMutation({
     mutationFn: async (vars: { id: string; direction: 'left' | 'right'; note?: string; finishCard?: boolean }) => {
@@ -240,8 +254,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       return r.data
     },
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ['repair-jobs'] })
-      qc.invalidateQueries({ queryKey: ['jobs'] })
+      invalidateWatchJobCaches(vars.id)
       if (vars.direction === 'right' && vars.finishCard) {
         setStats(s => ({ ...s, advanced: s.advanced + 1 }))
         setDone(prev => new Set([...prev, vars.id]))
@@ -254,7 +267,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     mutationFn: (vars: { id: string; status: string; note?: string }) =>
       updateShoeRepairJobStatus(vars.id, vars.status, vars.note),
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      invalidateShoeJobCaches(vars.id)
       setStats(s => ({ ...s, advanced: s.advanced + 1 }))
       setDone(prev => new Set([...prev, vars.id]))
       resetPanel()
@@ -265,7 +278,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     mutationFn: (vars: { id: string; note: string }) =>
       mode === 'watch' ? addJobNote(vars.id, vars.note) : addShoeJobNote(vars.id, vars.note),
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: mode === 'watch' ? ['repair-jobs'] : ['shoe-repair-jobs'] })
+      if (mode === 'watch') invalidateWatchJobCaches(vars.id)
+      else invalidateShoeJobCaches(vars.id)
       if (cardState === 'noUpdate') {
         setStats(s => ({ ...s, checkedIn: s.checkedIn + 1 }))
         setDone(prev => new Set([...prev, vars.id]))
