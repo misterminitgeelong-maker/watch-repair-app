@@ -147,7 +147,17 @@ export default function SignupPage() {
         ) : (
           <>
             <div className="flex flex-col items-center mb-8 gap-4">
-              <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '200px', height: 'auto', display: 'block', maxWidth: '100%' }} />
+              <img
+                src="/mainspring-logo.svg"
+                alt="Mainspring"
+                style={{
+                  width: 'min(100%, 338px)',
+                  height: 'auto',
+                  display: 'block',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                }}
+              />
               <div className="text-center">
                 <h1
                   className="text-3xl font-semibold"

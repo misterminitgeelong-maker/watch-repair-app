@@ -74,7 +74,7 @@ export default function PricingPage() {
             <img
               src="/mainspring-logo.svg"
               alt="Mainspring"
-              style={{ width: 'clamp(124px, 36vw, 208px)', maxWidth: '100%', height: 'auto', objectFit: 'contain' }}
+              style={{ width: 'clamp(124px, 36vw, 270px)', maxWidth: '100%', height: 'auto', objectFit: 'contain' }}
             />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">

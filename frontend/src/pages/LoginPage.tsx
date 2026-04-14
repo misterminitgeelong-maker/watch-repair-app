@@ -124,7 +124,7 @@ export default function LoginPage() {
                 src="/mainspring-logo.svg"
                 alt="Mainspring"
                 style={{
-                  width: 'min(88vw, 352px)',
+                  width: 'min(88vw, 458px)',
                   height: 'auto',
                   display: 'block',
                   maxWidth: '100%',

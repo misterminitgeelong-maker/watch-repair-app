@@ -106,7 +106,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             src="/mainspring-logo.svg"
             alt="Mainspring"
             style={{
-              width: mobile ? 'min(100%, 152px)' : 'min(100%, 168px)',
+              width: mobile ? 'min(100%, 152px)' : 'min(100%, 236px)',
               maxWidth: '100%',
               height: 'auto',
               display: 'block',

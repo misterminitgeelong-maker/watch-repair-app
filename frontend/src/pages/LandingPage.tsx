@@ -942,7 +942,7 @@ export default function LandingPage() {
             <img
               src="/mainspring-logo.svg"
               alt="Mainspring"
-              style={{ width: 'clamp(120px, 34vw, 196px)', maxWidth: '100%', height: 'auto', objectFit: 'contain' }}
+              style={{ width: 'clamp(120px, 33vw, 282px)', maxWidth: '100%', height: 'auto', objectFit: 'contain' }}
             />
           </div>
           <nav className="flex items-center gap-2 sm:gap-3">
@@ -1000,7 +1000,7 @@ export default function LandingPage() {
             <img
               src="/mainspring-logo.svg"
               alt="Mainspring"
-              style={{ height: 28, width: 'auto', objectFit: 'contain' }}
+              style={{ height: 36, width: 'auto', objectFit: 'contain' }}
             />
             <span style={{ fontSize: '0.8rem', color: 'var(--cafe-text-muted)' }}>
               &copy; 2026 Mainspring
