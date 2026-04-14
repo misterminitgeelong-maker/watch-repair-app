@@ -555,6 +555,32 @@ def resend_notification(
     return {"sent": {"sms": sms_sent, "email": email_sent}}
 
 
+@router.post("/{job_id}/note", status_code=204, response_class=Response)
+def add_repair_job_note(
+    job_id: UUID,
+    payload: RepairJobStatusUpdate,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Add a free-text note to the job history without changing its status."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+    if not payload.note or not payload.note.strip():
+        raise HTTPException(status_code=422, detail="note must not be empty")
+    history = JobStatusHistory(
+        tenant_id=auth.tenant_id,
+        repair_job_id=job.id,
+        old_status=job.status,
+        new_status=job.status,
+        changed_by_user_id=auth.user_id,
+        change_note=payload.note.strip(),
+    )
+    session.add(history)
+    session.commit()
+    return Response(status_code=204)
+
+
 @router.get("/{job_id}/status-history", response_model=list[JobStatusHistoryRead])
 def get_repair_job_status_history(
     job_id: UUID,
