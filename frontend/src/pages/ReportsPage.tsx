@@ -199,6 +199,54 @@ export default function ReportsPage() {
         </Card>
       </div>
 
+      {/* Shoe repair section */}
+      {(data.counts.shoe_jobs ?? 0) > 0 && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Shoe Jobs</h2>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <p style={{ color: 'var(--cafe-text-mid)' }}>Total: <strong style={{ color: 'var(--cafe-text)' }}>{data.counts.shoe_jobs}</strong></p>
+              {data.shoe_quotes && (
+                <>
+                  <p style={{ color: 'var(--cafe-text-mid)' }}>Quote approval: <strong style={{ color: 'var(--cafe-text)' }}>{data.shoe_quotes.approval_rate_percent}%</strong></p>
+                  <p style={{ color: 'var(--cafe-text-mid)' }}>Quotes sent: <strong style={{ color: 'var(--cafe-text)' }}>{(data.shoe_quotes.by_status.sent ?? 0) + (data.shoe_quotes.by_status.approved ?? 0) + (data.shoe_quotes.by_status.declined ?? 0)}</strong></p>
+                </>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Shoe Job Status Distribution</h2>
+            {Object.keys(data.shoe_jobs_by_status ?? {}).length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No shoe jobs yet.</p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {Object.entries(data.shoe_jobs_by_status ?? {}).map(([status, count]) => (
+                  <p key={status} style={{ color: 'var(--cafe-text-mid)' }}>
+                    {status.replace(/_/g, ' ')}: <strong style={{ color: 'var(--cafe-text)' }}>{count as number}</strong>
+                  </p>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Shoe Quote Status</h2>
+            {Object.keys(data.shoe_quotes?.by_status ?? {}).length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No shoe quotes sent yet.</p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {Object.entries(data.shoe_quotes?.by_status ?? {}).map(([status, count]) => (
+                  <p key={status} style={{ color: 'var(--cafe-text-mid)' }}>
+                    {status.replace(/_/g, ' ')}: <strong style={{ color: 'var(--cafe-text)' }}>{count as number}</strong>
+                  </p>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       {trends && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card className="p-5">

@@ -148,3 +148,72 @@ def test_uniqueness_protection_on_tenant_and_job_number():
         session.add(duplicate)
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+def test_queue_swipe_right_advances_along_lane():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-qswipe-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id, "Queue test")
+    assert job["status"] == "awaiting_go_ahead"
+
+    res = client.post(
+        f"/v1/repair-jobs/{job['id']}/queue-swipe",
+        headers=headers,
+        json={"direction": "right"},
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "go_ahead"
+
+    back = client.post(
+        f"/v1/repair-jobs/{job['id']}/queue-swipe",
+        headers=headers,
+        json={"direction": "left"},
+    )
+    assert back.status_code == 200
+    assert back.json()["status"] == "awaiting_go_ahead"
+
+
+def test_queue_swipe_left_at_first_status_returns_400():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-qfirst-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id, "First status")
+    with Session(engine) as session:
+        row = session.get(RepairJob, UUID(job["id"]))
+        assert row is not None
+        row.status = "awaiting_quote"
+        session.add(row)
+        session.commit()
+
+    res = client.post(
+        f"/v1/repair-jobs/{job['id']}/queue-swipe",
+        headers=headers,
+        json={"direction": "left"},
+    )
+    assert res.status_code == 400
+    assert "first" in res.json()["detail"].lower()
+
+
+def test_queue_swipe_rejects_status_outside_lane():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-qofflane-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id, "Off lane")
+    with Session(engine) as session:
+        row = session.get(RepairJob, UUID(job["id"]))
+        assert row is not None
+        row.status = "no_go"
+        session.add(row)
+        session.commit()
+
+    res = client.post(
+        f"/v1/repair-jobs/{job['id']}/queue-swipe",
+        headers=headers,
+        json={"direction": "right"},
+    )
+    assert res.status_code == 400
+    assert "queue" in res.json()["detail"].lower() or "board" in res.json()["detail"].lower()

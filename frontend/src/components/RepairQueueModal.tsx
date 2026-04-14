@@ -5,14 +5,15 @@ import {
   MessageSquare, Filter, ExternalLink,
 } from 'lucide-react'
 import {
-  listJobs, updateJobStatus, addJobNote, claimJob, releaseJob, resendJobNotification,
+  listJobs, addJobNote, claimJob, releaseJob, resendJobNotification,
+  repairJobQueueSwipe,
   listShoeRepairJobs, updateShoeRepairJobStatus, addShoeJobNote, claimShoeJob, releaseShoeJob, resendShoeNotification,
   getJob, getShoeRepairJob,
-  type RepairJob, type ShoeRepairJob, type JobStatus,
+  type RepairJob, type ShoeRepairJob,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
-import { STATUS_LABELS } from '@/lib/utils'
+import { STATUS_LABELS, previewWatchQueueSwipe } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -230,13 +231,30 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   })
 
   // ── Mutations ─────────────────────────────────────────────────────────────
-  const advanceMutation = useMutation({
-    mutationFn: (vars: { id: string; status: string; note?: string }) =>
-      mode === 'watch'
-        ? updateJobStatus(vars.id, vars.status as JobStatus, vars.note)
-        : updateShoeRepairJobStatus(vars.id, vars.status, vars.note),
+  /** Watch queue: status-only lane transitions (no SMS/email). Optional note after swipe. */
+  const watchQueueSwipeMutation = useMutation({
+    mutationFn: async (vars: { id: string; direction: 'left' | 'right'; note?: string; finishCard?: boolean }) => {
+      const r = await repairJobQueueSwipe(vars.id, vars.direction)
+      const n = vars.note?.trim()
+      if (n) await addJobNote(vars.id, n)
+      return r.data
+    },
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: mode === 'watch' ? ['repair-jobs'] : ['shoe-repair-jobs'] })
+      qc.invalidateQueries({ queryKey: ['repair-jobs'] })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      if (vars.direction === 'right' && vars.finishCard) {
+        setStats(s => ({ ...s, advanced: s.advanced + 1 }))
+        setDone(prev => new Set([...prev, vars.id]))
+      }
+      resetPanel()
+    },
+  })
+
+  const shoeAdvanceMutation = useMutation({
+    mutationFn: (vars: { id: string; status: string; note?: string }) =>
+      updateShoeRepairJobStatus(vars.id, vars.status, vars.note),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       setStats(s => ({ ...s, advanced: s.advanced + 1 }))
       setDone(prev => new Set([...prev, vars.id]))
       resetPanel()
@@ -275,9 +293,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   function handleAdvance() {
     if (!current) return
+    if (mode === 'watch') {
+      const next = previewWatchQueueSwipe(current.status, 'right')
+      if (!next) return
+      watchQueueSwipeMutation.mutate({
+        id: current.id,
+        direction: 'right',
+        note: selectedNote || customNote || undefined,
+        finishCard: true,
+      })
+      return
+    }
     const nextStatus = STATUS_NEXT[current.status]
     if (!nextStatus) return
-    advanceMutation.mutate({ id: current.id, status: nextStatus, note: selectedNote || customNote || undefined })
+    shoeAdvanceMutation.mutate({ id: current.id, status: nextStatus, note: selectedNote || customNote || undefined })
   }
 
   function handleSaveNote() {
@@ -345,19 +374,36 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     dragStartX.current = null
     pointerIdRef.current = null
     capturedRef.current = false
-    if (dragX > SWIPE_THRESHOLD) { setDragX(0); setCardState('advance') }
-    else if (dragX < -SWIPE_THRESHOLD) { handleSkip() }
-    else setDragX(0)
+    if (dragX > SWIPE_THRESHOLD) {
+      setDragX(0)
+      setCardState('advance')
+    } else if (dragX < -SWIPE_THRESHOLD) {
+      if (mode === 'watch' && current && previewWatchQueueSwipe(current.status, 'left')) {
+        setDragX(0)
+        watchQueueSwipeMutation.mutate({ id: current.id, direction: 'left', finishCard: false })
+      } else {
+        handleSkip()
+      }
+    } else setDragX(0)
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const rotation = Math.min(Math.max(dragX / 18, -12), 12)
   const advanceHint = dragX > SWIPE_THRESHOLD * 0.4
   const skipHint = dragX < -SWIPE_THRESHOLD * 0.4
-  const nextStatus = current ? STATUS_NEXT[current.status] : null
+  const nextStatus = current
+    ? (mode === 'watch'
+      ? previewWatchQueueSwipe(current.status, 'right')
+      : STATUS_NEXT[current.status] ?? null)
+    : null
   const collectionUrgency = current ? getCollectionUrgency(current.collection_date) : 3
   const days = current ? daysInShop(current.created_at) : 0
-  const isPending = advanceMutation.isPending || noteMutation.isPending || claimMutation.isPending
+  const watchSwipeLeftTarget = current && mode === 'watch' ? previewWatchQueueSwipe(current.status, 'left') : null
+  const isPending =
+    watchQueueSwipeMutation.isPending ||
+    shoeAdvanceMutation.isPending ||
+    noteMutation.isPending ||
+    claimMutation.isPending
 
   const chipBase = 'px-3 py-1 rounded-full text-xs font-medium transition-all border'
   function chipStyle(active: boolean, ac = 'var(--cafe-gold)') {
@@ -564,7 +610,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         {/* Swipe hints */}
         {skipHint && cardState === 'view' && (
           <div className="absolute left-5 top-1/2 z-20 pointer-events-none" style={{ transform: 'translateY(-50%) rotate(-12deg)', opacity: Math.min(1, Math.abs(dragX) / SWIPE_THRESHOLD) }}>
-            <span className="block px-4 py-2 rounded-xl font-black text-base" style={{ backgroundColor: '#3B2F27', color: '#D3C8BA', border: '2px solid #5F4D3E' }}>SKIP</span>
+            <span className="block px-4 py-2 rounded-xl font-black text-base" style={{ backgroundColor: '#3B2F27', color: '#D3C8BA', border: '2px solid #5F4D3E' }}>
+              {watchSwipeLeftTarget ? 'BACK' : 'SKIP'}
+            </span>
           </div>
         )}
         {advanceHint && cardState === 'view' && (
@@ -657,8 +705,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 )}
               </div>
 
-              {/* SMS reminder */}
-              {SMS_REMIND_STATUSES.has(current.status) && (
+              {/* SMS reminder — shoe only; watch queue is status-only (no SMS from here). */}
+              {mode === 'shoe' && SMS_REMIND_STATUSES.has(current.status) && (
                 <div className="mb-3">
                   <button
                     onPointerDown={e => e.stopPropagation()}
@@ -697,11 +745,11 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             <div className="p-5">
               <div className="font-bold text-base mb-0.5" style={{ color: 'var(--cafe-text)' }}>{current.job_number} — {current.title}</div>
               <div className="text-sm mb-4" style={{ color: 'var(--cafe-amber)' }}>Advance to: <strong>{STATUS_LABELS[nextStatus!] ?? nextStatus}</strong></div>
-              {(ADVANCE_NOTE_CHIPS[nextStatus!] ?? []).length > 0 && (
+              {nextStatus && (ADVANCE_NOTE_CHIPS[nextStatus] ?? []).length > 0 && (
                 <div className="mb-3">
                   <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Add a note (optional)</div>
                   <div className="flex flex-wrap gap-2">
-                    {(ADVANCE_NOTE_CHIPS[nextStatus!] ?? []).map(chip => (
+                    {(ADVANCE_NOTE_CHIPS[nextStatus] ?? []).map(chip => (
                       <button key={chip} onClick={() => { setSelectedNote(p => p === chip ? '' : chip); setCustomNote('') }} className={chipBase} style={chipStyle(selectedNote === chip)}>{chip}</button>
                     ))}
                   </div>
@@ -712,7 +760,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>Cancel</button>
                 <button onClick={handleAdvance} disabled={isPending} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: 'var(--cafe-gold)', color: '#fff', opacity: isPending ? 0.65 : 1 }}>{isPending ? 'Saving…' : 'Confirm'}</button>
               </div>
-              {advanceMutation.isError && <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>}
+              {(watchQueueSwipeMutation.isError || shoeAdvanceMutation.isError) && (
+                <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>
+              )}
             </div>
           </div>
         )}
@@ -774,7 +824,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {cardState === 'view' && (
           <p className="mt-6 text-xs text-center select-none" style={{ color: 'rgba(184,149,86,0.3)' }}>
-            <span>← skip</span>{'  ·  '}<span>advance →</span>
+            <span>← {watchSwipeLeftTarget ? 'back' : 'skip'}</span>{'  ·  '}<span>advance →</span>
           </p>
         )}
       </div>

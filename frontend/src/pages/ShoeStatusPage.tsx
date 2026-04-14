@@ -120,6 +120,25 @@ export default function ShoeStatusPage() {
             Last updated {formatDate(job.created_at)}
           </p>
         </div>
+
+        {job.history && job.history.length > 0 && (
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+            <h2 className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+              Timeline
+            </h2>
+            <div className="space-y-3">
+              {job.history.map((entry, idx) => (
+                <div key={`${entry.created_at}-${idx}`} className="flex items-start justify-between gap-4 text-sm">
+                  <div>
+                    <p className="font-medium capitalize" style={{ color: 'var(--cafe-text)' }}>{readableStatus(entry.new_status)}</p>
+                    {entry.change_note && <p style={{ color: 'var(--cafe-text-mid)' }}>{entry.change_note}</p>}
+                  </div>
+                  <span className="text-xs whitespace-nowrap" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(entry.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

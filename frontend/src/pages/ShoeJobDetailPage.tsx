@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer } from 'lucide-react'
+import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment,
@@ -9,7 +9,8 @@ import {
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
-  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount,
+  getShoeJobSmsLog, resendShoeNotification, sendShoeQuote,
+  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry,
 } from '@/lib/api'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
@@ -311,6 +312,90 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
   )
 }
 
+// ── Messages card ──────────────────────────────────────────────────────────────
+function MessagesCard({ job }: { job: ShoeRepairJob }) {
+  const qc = useQueryClient()
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ['shoe-sms-log', job.id],
+    queryFn: () => getShoeJobSmsLog(job.id).then(r => r.data),
+  })
+  const resendMut = useMutation({
+    mutationFn: (event: string) => resendShoeNotification(job.id, event),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['shoe-sms-log', job.id] }) },
+  })
+
+  const RESEND_EVENTS = [
+    { label: 'Job live', event: 'job_live' },
+    { label: `Status: ${job.status}`, event: `status_${job.status}` },
+  ]
+
+  return (
+    <Card className="overflow-hidden">
+      <div
+        className="px-5 py-3.5 flex items-center justify-between"
+        style={{ borderBottom: '1px solid var(--cafe-border)' }}
+      >
+        <div className="flex items-center gap-2">
+          <MessageSquare size={14} style={{ color: 'var(--cafe-amber)' }} />
+          <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+            Messages
+          </h2>
+          {logs.length > 0 && (
+            <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>{logs.length}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Resend buttons */}
+        <div className="flex flex-wrap gap-2">
+          {RESEND_EVENTS.map(({ label, event }) => (
+            <button
+              key={event}
+              type="button"
+              onClick={() => resendMut.mutate(event)}
+              disabled={resendMut.isPending}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-amber)' }}
+            >
+              <RefreshCw size={11} className={resendMut.isPending ? 'animate-spin' : ''} />
+              Resend: {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Log */}
+        {isLoading ? (
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Loading…</p>
+        ) : logs.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>No messages sent yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {logs.map((log: SmsLogEntry) => (
+              <div key={log.id} className="text-xs rounded-lg p-3" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{log.event.replace(/_/g, ' ')}</span>
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                    style={{
+                      backgroundColor: log.status === 'sent' ? 'rgba(31,109,76,0.12)' : 'rgba(180,120,40,0.15)',
+                      color: log.status === 'sent' ? '#1F6D4C' : '#B47828',
+                    }}
+                  >
+                    {log.status}
+                  </span>
+                </div>
+                <p style={{ color: 'var(--cafe-text-mid)' }}>{log.body}</p>
+                <p className="mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{new Date(log.created_at).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 // ── Shoe tab content ──────────────────────────────────────────────────────────
 function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
   if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No shoe details.</p>
@@ -341,6 +426,10 @@ export default function ShoeJobDetailPage() {
   const qc = useQueryClient()
   const [showStatus, setShowStatus] = useState(false)
   const [showAddPair, setShowAddPair] = useState(false)
+  const sendQuoteMut = useMutation({
+    mutationFn: () => sendShoeQuote(id!),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['shoe-repair-job', id] }) },
+  })
   const [showAddServices, setShowAddServices] = useState(false)
   const [activePairIdx, setActivePairIdx] = useState(0)
   const [editingCost, setEditingCost] = useState(false)
@@ -443,6 +532,14 @@ export default function ShoeJobDetailPage() {
             <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
               <Printer size={15} /> Print Intake Tickets
             </Button>
+            <Button
+              variant="secondary"
+              onClick={() => sendQuoteMut.mutate()}
+              disabled={sendQuoteMut.isPending || job.quote_status === 'approved'}
+              title={job.quote_status === 'approved' ? 'Quote already approved' : 'Send quote approval SMS to customer'}
+            >
+              {sendQuoteMut.isPending ? 'Sending…' : job.quote_status === 'sent' ? 'Resend Quote' : job.quote_status === 'approved' ? 'Approved ✓' : 'Send Quote'}
+            </Button>
             <Button variant="ghost" onClick={() => setShowStatus(true)}>
               <span className="hidden sm:inline">Change Status</span>
               <span className="sm:hidden">Status</span>
@@ -458,6 +555,21 @@ export default function ShoeJobDetailPage() {
       {/* Summary strip */}
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
         <span style={{ color: 'var(--cafe-text-muted)' }}>Status: <Badge status={job.status} /></span>
+        {job.quote_status !== 'none' && (
+          <span style={{ color: 'var(--cafe-text-muted)' }}>
+            Quote:{' '}
+            <span
+              className="font-medium capitalize"
+              style={{
+                color: job.quote_status === 'approved' ? '#1F6D4C'
+                  : job.quote_status === 'declined' ? '#8B3A3A'
+                  : 'var(--cafe-amber)',
+              }}
+            >
+              {job.quote_status}
+            </span>
+          </span>
+        )}
         <span style={{ color: 'var(--cafe-text-muted)' }}>
           Priority:{' '}
           <span
@@ -740,6 +852,9 @@ export default function ShoeJobDetailPage() {
               </p>
             </Card>
           )}
+
+          {/* ── Messages ──────────────────────────────────────────── */}
+          <MessagesCard job={job} />
         </div>
       </div>
     </div>

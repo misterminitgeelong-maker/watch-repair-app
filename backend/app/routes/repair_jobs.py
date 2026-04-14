@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -42,6 +43,52 @@ router = APIRouter(
     tags=["repair-jobs"],
     dependencies=[Depends(require_feature("watch"))],
 )
+
+# Linear watch-repair lane for Tinder-style queue (no_go and mobile-only statuses excluded).
+_WATCH_QUEUE_SEQUENCE: tuple[str, ...] = (
+    "awaiting_quote",
+    "awaiting_go_ahead",
+    "go_ahead",
+    "parts_to_order",
+    "sent_to_labanda",
+    "quoted_by_labanda",
+    "awaiting_parts",
+    "working_on",
+    "service",
+    "completed",
+    "awaiting_collection",
+    "collected",
+)
+
+
+def _resolve_watch_queue_transition(current_status: str, direction: str) -> str:
+    if current_status not in _WATCH_QUEUE_SEQUENCE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Queue swipe is not available for status {current_status!r}. Use the job board.",
+        )
+    idx = _WATCH_QUEUE_SEQUENCE.index(current_status)
+    if direction == "right":
+        if idx >= len(_WATCH_QUEUE_SEQUENCE) - 1:
+            raise HTTPException(status_code=400, detail="Already at final status.")
+        return _WATCH_QUEUE_SEQUENCE[idx + 1]
+    if direction == "left":
+        if idx <= 0:
+            raise HTTPException(status_code=400, detail="Already at first status.")
+        return _WATCH_QUEUE_SEQUENCE[idx - 1]
+    raise HTTPException(status_code=400, detail="direction must be 'left' or 'right'")
+
+
+def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
+    watch = session.get(Watch, job.watch_id)
+    customer_name = None
+    if watch and watch.customer_id:
+        customer = session.get(Customer, watch.customer_id)
+        if customer:
+            customer_name = customer.full_name or ""
+    data = job.model_dump()
+    data["customer_name"] = customer_name
+    return RepairJobRead(**data)
 
 
 def _next_job_number(session: Session, tenant_id: UUID) -> str:
@@ -310,6 +357,41 @@ def quick_status_action(
 ):
     # Reuse the full status update behavior, including history and SMS.
     return update_repair_job_status(job_id=job_id, payload=payload, auth=auth, session=session)
+
+
+class RepairJobQueueSwipeRequest(BaseModel):
+    direction: Literal["left", "right"]
+
+
+@router.post("/{job_id}/queue-swipe", response_model=RepairJobRead)
+def repair_job_queue_swipe(
+    job_id: UUID,
+    payload: RepairJobQueueSwipeRequest,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Advance or rewind job status along the watch queue lane — no SMS or email."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    new_status = _resolve_watch_queue_transition(job.status, payload.direction)
+    previous_status = job.status
+    job.status = new_status
+    session.add(job)
+    session.add(
+        JobStatusHistory(
+            tenant_id=auth.tenant_id,
+            repair_job_id=job.id,
+            old_status=previous_status,
+            new_status=new_status,
+            changed_by_user_id=auth.user_id,
+            change_note=f"Queue swipe ({payload.direction})",
+        )
+    )
+    session.commit()
+    session.refresh(job)
+    return _repair_job_to_read(session, job)
 
 
 @router.post("/{job_id}/intake", response_model=RepairJobRead)

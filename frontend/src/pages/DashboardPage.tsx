@@ -244,16 +244,19 @@ export default function DashboardPage() {
     queryFn: () =>
       listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
     enabled: hasFeature('watch'),
+    refetchInterval: 30_000,
   })
   const { data: shoeJobs } = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
     enabled: hasFeature('shoe'),
+    refetchInterval: 30_000,
   })
   const { data: autoKeyJobs } = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
     enabled: hasFeature('auto_key'),
+    refetchInterval: 30_000,
   })
   const { data: customerAccounts } = useQuery({
     queryKey: ['customer-accounts', 'dashboard'],

@@ -418,6 +418,10 @@ export const claimJob = (id: string) =>
 export const releaseJob = (id: string) =>
   api.post<RepairJob>(`/repair-jobs/${id}/release`)
 
+/** Watch jobs board queue: status-only transition (no SMS/email). */
+export const repairJobQueueSwipe = (id: string, direction: 'left' | 'right') =>
+  api.post<RepairJob>(`/repair-jobs/${id}/queue-swipe`, { direction })
+
 
 export interface IntakePayload {
   intake_notes?: string
@@ -804,8 +808,14 @@ export const importCsv = (file: File, options?: {
 export interface ReportsSummary {
   counts: {
     jobs: number; customers: number; watches: number; quotes: number; invoices: number
+    shoe_jobs?: number
   }
   jobs_by_status: Record<string, number>
+  shoe_jobs_by_status?: Record<string, number>
+  shoe_quotes?: {
+    by_status: Record<string, number>
+    approval_rate_percent: number
+  }
   quotes_by_status: Record<string, number>
   sales_funnel: {
     approved_quotes: number; sent_quotes: number; declined_quotes: number; approval_rate_percent: number

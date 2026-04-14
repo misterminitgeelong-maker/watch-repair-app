@@ -41,11 +41,12 @@ export function PageHeader({ title, action }: { title: string; action?: React.Re
 }
 
 export function Button({
-  children, onClick, type = 'button', variant = 'primary', disabled, className, size: _size, style: styleProp,
+  children, onClick, type = 'button', variant = 'primary', disabled, className, size: _size, style: styleProp, title,
 }: {
   children: React.ReactNode; onClick?: () => void; type?: 'button' | 'submit' | 'reset'
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; disabled?: boolean; className?: string; size?: string
   style?: React.CSSProperties
+  title?: string
 }) {
   const base = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2'
   const variants = {
@@ -63,6 +64,7 @@ export function Button({
   return (
     <button
       type={type}
+      title={title}
       onClick={onClick}
       disabled={disabled}
       className={cn(base, variants[variant], className)}

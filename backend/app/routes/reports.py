@@ -194,6 +194,34 @@ def get_reports_summary(
     else:
         avg_quote_response_hours = None
 
+    # Shoe-specific metrics
+    shoe_jobs_total = int(
+        session.exec(
+            select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id)
+        ).one()
+    )
+    shoe_jobs_by_status_rows = session.exec(
+        select(ShoeRepairJob.status, func.count())
+        .where(ShoeRepairJob.tenant_id == tenant_id)
+        .group_by(ShoeRepairJob.status)
+    ).all()
+    shoe_jobs_by_status = {status: int(count) for status, count in shoe_jobs_by_status_rows}
+
+    shoe_quote_status_rows = session.exec(
+        select(ShoeRepairJob.quote_status, func.count())
+        .where(ShoeRepairJob.tenant_id == tenant_id)
+        .where(ShoeRepairJob.quote_status != "none")
+        .group_by(ShoeRepairJob.quote_status)
+    ).all()
+    shoe_quotes_by_status = {status: int(count) for status, count in shoe_quote_status_rows}
+
+    shoe_approved = shoe_quotes_by_status.get("approved", 0)
+    shoe_sent = shoe_quotes_by_status.get("sent", 0)
+    shoe_declined = shoe_quotes_by_status.get("declined", 0)
+    shoe_approval_rate = round(
+        (shoe_approved / max(shoe_approved + shoe_sent + shoe_declined, 1)) * 100, 1
+    )
+
     return {
         "counts": {
             "jobs": jobs_total,
@@ -201,8 +229,14 @@ def get_reports_summary(
             "watches": watches_total,
             "quotes": quotes_total,
             "invoices": invoices_total,
+            "shoe_jobs": shoe_jobs_total,
         },
         "jobs_by_status": jobs_by_status,
+        "shoe_jobs_by_status": shoe_jobs_by_status,
+        "shoe_quotes": {
+            "by_status": shoe_quotes_by_status,
+            "approval_rate_percent": shoe_approval_rate,
+        },
         "quotes_by_status": quotes_by_status,
         "sales_funnel": {
             "approved_quotes": approved_quotes,

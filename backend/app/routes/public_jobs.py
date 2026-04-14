@@ -1,7 +1,7 @@
 import io
 import importlib
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,11 +18,14 @@ from ..models import (
     AutoKeyQuoteLineItem,
     Customer,
     JobStatusHistory,
+    PortalSession,
     RepairJob,
     Shoe,
+    ShoeJobStatusHistory,
     ShoeRepairJob,
     ShoeRepairJobItem,
     Tenant,
+    TenantEventLog,
     Watch,
 )
 
@@ -141,6 +144,11 @@ def get_public_shoe_job_status(status_token: str, session: Session = Depends(get
         .where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
         .order_by(ShoeRepairJobItem.created_at)
     ).all()
+    history = session.exec(
+        select(ShoeJobStatusHistory)
+        .where(ShoeJobStatusHistory.shoe_repair_job_id == job.id)
+        .order_by(ShoeJobStatusHistory.created_at.asc())
+    ).all()
     estimated_total_cents = int(
         sum((item.unit_price_cents or 0) * item.quantity for item in items if item.unit_price_cents is not None)
     )
@@ -168,6 +176,16 @@ def get_public_shoe_job_status(status_token: str, session: Session = Depends(get
             }
             for item in items
         ],
+        "history": [
+            {
+                "old_status": h.old_status,
+                "new_status": h.new_status,
+                "change_note": h.change_note,
+                "created_at": isoformat_z_utc(naive_utc_from_any(h.created_at)),
+            }
+            for h in history
+            if h.new_status != (h.old_status or "")
+        ],
     }
 
 
@@ -183,6 +201,119 @@ def get_public_shoe_job_qr(status_token: str, session: Session = Depends(get_ses
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return Response(content=buffer.getvalue(), media_type="image/png")
+
+
+# ── Shoe quote approval (public) ────────────────────────────────────────────
+
+def _shoe_quote_token_is_expired(job: ShoeRepairJob) -> bool:
+    if not job.quote_approval_token_expires_at:
+        return False
+    exp = job.quote_approval_token_expires_at
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) > exp
+
+
+@router.get("/shoe-quotes/{token}")
+def get_public_shoe_quote(token: str, session: Session = Depends(get_session)):
+    job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.quote_approval_token == token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if _shoe_quote_token_is_expired(job):
+        raise HTTPException(status_code=410, detail="This quote link has expired. Please contact the shop for a new one.")
+
+    items = session.exec(
+        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id).order_by(ShoeRepairJobItem.created_at)
+    ).all()
+    shoe = session.get(Shoe, job.shoe_id)
+
+    subtotal_cents = int(sum((i.unit_price_cents or 0) * i.quantity for i in items if i.unit_price_cents is not None))
+
+    # Get shop name from tenant
+    tenant = session.get(Tenant, job.tenant_id)
+    shop_name = (tenant.name if tenant else None) or "Shoe Repair Shop"
+
+    return {
+        "job_number": job.job_number,
+        "title": job.title,
+        "description": job.description,
+        "quote_status": job.quote_status,
+        "quote_approval_token_expires_at": isoformat_z_utc(naive_utc_from_any(job.quote_approval_token_expires_at)) if job.quote_approval_token_expires_at else None,
+        "shop_name": shop_name,
+        "shoe": {
+            "shoe_type": shoe.shoe_type if shoe else None,
+            "brand": shoe.brand if shoe else None,
+            "color": shoe.color if shoe else None,
+        },
+        "items": [
+            {
+                "item_name": i.item_name,
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                "notes": i.notes,
+            }
+            for i in items
+        ],
+        "subtotal_cents": subtotal_cents,
+    }
+
+
+class ShoeQuoteDecisionRequest(SQLModel):
+    decision: str  # "approved" | "declined"
+    customer_signature_data_url: Optional[str] = None
+
+
+@router.post("/shoe-quotes/{token}/decision")
+def decide_shoe_quote(
+    token: str,
+    payload: ShoeQuoteDecisionRequest,
+    session: Session = Depends(get_session),
+):
+    job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.quote_approval_token == token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if _shoe_quote_token_is_expired(job):
+        raise HTTPException(status_code=410, detail="This quote link has expired.")
+    if job.quote_status in ("approved", "declined"):
+        raise HTTPException(status_code=409, detail=f"This quote has already been {job.quote_status}.")
+
+    decision = payload.decision.lower()
+    if decision not in ("approved", "declined"):
+        raise HTTPException(status_code=422, detail="decision must be 'approved' or 'declined'")
+
+    job.quote_status = decision
+    if decision == "approved":
+        job.status = "go_ahead"
+    else:
+        job.status = "no_go"
+    session.add(job)
+
+    # Status history
+    session.add(ShoeJobStatusHistory(
+        tenant_id=job.tenant_id,
+        shoe_repair_job_id=job.id,
+        old_status="awaiting_go_ahead",
+        new_status=job.status,
+        change_note=f"Customer {decision} quote via online link",
+    ))
+
+    # Inbox event
+    event_type = "quote_approved" if decision == "approved" else "quote_declined"
+    summary = (
+        f"Customer approved shoe repair quote for job #{job.job_number}"
+        if decision == "approved"
+        else f"Customer declined shoe repair quote for job #{job.job_number}"
+    )
+    session.add(TenantEventLog(
+        tenant_id=job.tenant_id,
+        entity_type="shoe_repair_job",
+        entity_id=job.id,
+        event_type=event_type,
+        event_summary=summary,
+    ))
+
+    session.commit()
+    return {"decision": decision, "job_number": job.job_number}
 
 
 @router.get("/auto-key-booking/{token}")
@@ -525,3 +656,180 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
         raise HTTPException(status_code=502, detail="Could not start payment session.")
 
     return {"checkout_url": url}
+
+
+# ── Customer portal lookup ───────────────────────────────────────────────────
+
+class CustomerLookupRequest(SQLModel):
+    email: str
+
+
+@router.post("/customer-lookup")
+def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(get_session)):
+    """Return all active jobs for a customer by email address (cross-tenant, public)."""
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+
+    customers = session.exec(
+        select(Customer).where(
+            Customer.email.ilike(email)  # type: ignore[attr-defined]
+        )
+    ).all()
+
+    if not customers:
+        return {"jobs": []}
+
+    results = []
+
+    for customer in customers:
+        # Watch repair jobs
+        watch_jobs = session.exec(
+            select(RepairJob)
+            .where(RepairJob.customer_id == customer.id)
+            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
+            .order_by(RepairJob.created_at.desc())
+            .limit(20)
+        ).all()
+        for j in watch_jobs:
+            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
+            results.append({
+                "type": "watch",
+                "job_number": j.job_number,
+                "title": j.title,
+                "status": j.status,
+                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
+                "status_url": f"/status/{j.status_token}",
+                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
+            })
+
+        # Shoe repair jobs
+        shoe_ids = session.exec(
+            select(Shoe.id).where(Shoe.customer_id == customer.id)
+        ).all()
+        if shoe_ids:
+            shoe_jobs = session.exec(
+                select(ShoeRepairJob)
+                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
+                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
+                .order_by(ShoeRepairJob.created_at.desc())
+                .limit(20)
+            ).all()
+            for j in shoe_jobs:
+                shoe = session.get(Shoe, j.shoe_id)
+                results.append({
+                    "type": "shoe",
+                    "job_number": j.job_number,
+                    "title": j.title,
+                    "status": j.status,
+                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
+                    "status_url": f"/shoe-status/{j.status_token}",
+                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
+                })
+
+    # Sort by created_at descending
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"jobs": results[:50]}
+
+
+# ── Customer portal sessions ─────────────────────────────────────────────────
+
+_PORTAL_SESSION_TTL_DAYS = 30
+
+
+class PortalSessionRequest(SQLModel):
+    email: str
+
+
+@router.post("/portal/create-session")
+def create_portal_session(payload: PortalSessionRequest, session: Session = Depends(get_session)):
+    """Create a 30-day bookmarkable portal session for the given email."""
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+
+    # Check at least one customer exists
+    customer = session.exec(
+        select(Customer).where(Customer.email.ilike(email))  # type: ignore[attr-defined]
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="No repairs found for this email address.")
+
+    portal_session = PortalSession(
+        email=email,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+    )
+    session.add(portal_session)
+    session.commit()
+    session.refresh(portal_session)
+
+    portal_url = f"{settings.public_base_url}/customer-portal/s/{portal_session.token}"
+    return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+
+@router.get("/portal/session/{token}")
+def get_portal_session_jobs(token: str, session: Session = Depends(get_session)):
+    """Return jobs for a portal session token (same as customer-lookup but token-auth)."""
+    portal = session.exec(select(PortalSession).where(PortalSession.token == token)).first()
+    if not portal:
+        raise HTTPException(status_code=404, detail="Session not found or expired.")
+
+    exp = portal.expires_at
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > exp:
+        raise HTTPException(status_code=410, detail="This portal link has expired. Please request a new one.")
+
+    # Reuse customer-lookup logic
+    customers = session.exec(
+        select(Customer).where(Customer.email.ilike(portal.email))  # type: ignore[attr-defined]
+    ).all()
+
+    if not customers:
+        return {"jobs": [], "email": portal.email}
+
+    results = []
+    for customer in customers:
+        watch_jobs = session.exec(
+            select(RepairJob)
+            .where(RepairJob.customer_id == customer.id)
+            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
+            .order_by(RepairJob.created_at.desc())
+            .limit(20)
+        ).all()
+        for j in watch_jobs:
+            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
+            results.append({
+                "type": "watch",
+                "job_number": j.job_number,
+                "title": j.title,
+                "status": j.status,
+                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
+                "status_url": f"/status/{j.status_token}",
+                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
+            })
+
+        shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
+        if shoe_ids:
+            shoe_jobs = session.exec(
+                select(ShoeRepairJob)
+                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
+                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
+                .order_by(ShoeRepairJob.created_at.desc())
+                .limit(20)
+            ).all()
+            for j in shoe_jobs:
+                shoe = session.get(Shoe, j.shoe_id)
+                results.append({
+                    "type": "shoe",
+                    "job_number": j.job_number,
+                    "title": j.title,
+                    "status": j.status,
+                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
+                    "status_url": f"/shoe-status/{j.status_token}",
+                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
+                })
+
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"jobs": results[:50], "email": portal.email}

@@ -53,6 +53,39 @@ export const ACTIVE_DIRECTORY_STATUSES = [
 
 export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
 
+/** Same order as backend `_WATCH_QUEUE_SEQUENCE` — watch Tinder queue only. */
+export const WATCH_QUEUE_SWIPE_SEQUENCE = [
+  'awaiting_quote',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
+  'awaiting_parts',
+  'working_on',
+  'service',
+  'completed',
+  'awaiting_collection',
+  'collected',
+] as const
+
+export type WatchQueueSwipeStatus = (typeof WATCH_QUEUE_SWIPE_SEQUENCE)[number]
+
+/** Next status after a queue swipe, or null if swipe is invalid for this status/direction. */
+export function previewWatchQueueSwipe(
+  current: string,
+  direction: 'left' | 'right',
+): WatchQueueSwipeStatus | null {
+  const idx = WATCH_QUEUE_SWIPE_SEQUENCE.indexOf(current as WatchQueueSwipeStatus)
+  if (idx < 0) return null
+  if (direction === 'right') {
+    if (idx >= WATCH_QUEUE_SWIPE_SEQUENCE.length - 1) return null
+    return WATCH_QUEUE_SWIPE_SEQUENCE[idx + 1]
+  }
+  if (idx <= 0) return null
+  return WATCH_QUEUE_SWIPE_SEQUENCE[idx - 1]
+}
+
 export const STATUS_LABELS: Record<string, string> = {
   awaiting_quote:      'Awaiting Quote',
   awaiting_customer_details: 'Awaiting customer details',

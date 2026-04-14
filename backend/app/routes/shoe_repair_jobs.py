@@ -1,3 +1,4 @@
+from datetime import timedelta, timezone, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -26,7 +27,13 @@ from ..models import (
     ShoeRepairJobStatusUpdate,
     ShoeJobStatusHistory,
     JobNotePayload,
+    ShoeJobStatusHistoryRead,
+    SmsLog,
+    SmsLogRead,
+    TenantEventLog,
 )
+from .. import sms as sms_service
+from ..config import settings
 
 router = APIRouter(
     prefix="/v1/shoe-repair-jobs",
@@ -176,8 +183,33 @@ def create_shoe_repair_job(
 
     _create_job_items(session, tenant_id=auth.tenant_id, job_id=job.id, items=items_data)
 
+    # Record initial status history
+    session.add(ShoeJobStatusHistory(
+        tenant_id=auth.tenant_id,
+        shoe_repair_job_id=job.id,
+        old_status=None,
+        new_status=job.status,
+        changed_by_user_id=auth.user_id,
+        change_note="Job created",
+    ))
+
     session.commit()
     session.refresh(job)
+
+    # Send "job live" SMS if customer has a phone
+    customer = session.get(Customer, shoe.customer_id)
+    if customer and customer.phone:
+        sms_service.notify_shoe_job_live(
+            session,
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            customer_name=customer.first_name or customer.name or "there",
+            to_phone=customer.phone,
+            status_token=job.status_token,
+            job_number=job.job_number,
+        )
+        session.commit()
+
     return _job_to_read(job, session)
 
 
@@ -222,10 +254,39 @@ def update_shoe_repair_job_status(
     job = session.get(ShoeRepairJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    old_status = job.status
     job.status = payload.status
     session.add(job)
+
+    # Record history
+    session.add(ShoeJobStatusHistory(
+        tenant_id=auth.tenant_id,
+        shoe_repair_job_id=job.id,
+        old_status=old_status,
+        new_status=payload.status,
+        changed_by_user_id=auth.user_id,
+        change_note=payload.note,
+    ))
+
     session.commit()
     session.refresh(job)
+
+    # SMS notification on milestone statuses
+    shoe = session.get(Shoe, job.shoe_id)
+    customer = session.get(Customer, shoe.customer_id) if shoe else None
+    if customer and customer.phone:
+        sms_service.notify_shoe_job_status_changed(
+            session,
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            customer_name=customer.first_name or customer.name or "there",
+            to_phone=customer.phone,
+            job_number=job.job_number,
+            status_token=job.status_token,
+            new_status=payload.status,
+        )
+        session.commit()
+
     return _job_to_read(job, session)
 
 
@@ -432,3 +493,145 @@ def delete_shoe_repair_job(
     session.delete(job)
     session.commit()
     return Response(status_code=204)
+
+
+# ── Quote approval ──────────────────────────────────────────────────────────
+
+QUOTE_TTL_HOURS = getattr(settings, "quote_approval_token_ttl_hours", 168)
+
+
+@router.post("/{job_id}/send-quote", response_model=ShoeRepairJobRead)
+def send_shoe_quote(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Send a quote approval SMS to the customer with approve/decline link."""
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+
+    # Calculate total from items
+    items = session.exec(
+        select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
+    ).all()
+    total_cents = int(sum((i.unit_price_cents or 0) * i.quantity for i in items if i.unit_price_cents is not None))
+
+    # Set expiry and mark quote as sent
+    job.quote_approval_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=QUOTE_TTL_HOURS)
+    job.quote_status = "sent"
+    session.add(job)
+
+    # Log the event
+    session.add(TenantEventLog(
+        tenant_id=auth.tenant_id,
+        entity_type="shoe_repair_job",
+        entity_id=job.id,
+        event_type="shoe_quote_sent",
+        event_summary=f"Quote sent for shoe job #{job.job_number} (${total_cents / 100:.2f})",
+        actor_user_id=auth.user_id,
+    ))
+
+    session.commit()
+    session.refresh(job)
+
+    # Send SMS if customer has phone
+    shoe = session.get(Shoe, job.shoe_id)
+    customer = session.get(Customer, shoe.customer_id) if shoe else None
+    if customer and customer.phone:
+        # Get tenant name for shop name
+        from ..models import Tenant
+        tenant = session.get(Tenant, auth.tenant_id)
+        shop_name = (tenant.name if tenant else None) or "your shoe repair shop"
+        sms_service.notify_shoe_quote_sent(
+            session,
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            customer_name=customer.first_name or customer.name or "there",
+            to_phone=customer.phone,
+            total_cents=total_cents,
+            approval_token=job.quote_approval_token,
+            shop_name=shop_name,
+        )
+        session.commit()
+    elif not (customer and customer.phone):
+        raise HTTPException(status_code=422, detail="Customer has no phone number. Update the customer record first.")
+
+    return _job_to_read(job, session)
+
+
+# ── SMS log & resend ──────────────────────────────────────────────────────────
+
+@router.get("/{job_id}/sms-log", response_model=list[SmsLogRead])
+def get_shoe_job_sms_log(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    logs = session.exec(
+        select(SmsLog)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+        .where(SmsLog.shoe_repair_job_id == job_id)
+        .order_by(SmsLog.created_at.asc())
+    ).all()
+    return logs
+
+
+class _ResendPayload(_BM):
+    event: str
+
+
+@router.post("/{job_id}/resend-notification", response_model=SmsLogRead, status_code=201)
+def resend_shoe_notification(
+    job_id: UUID,
+    payload: _ResendPayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    shoe = session.get(Shoe, job.shoe_id)
+    customer = session.get(Customer, shoe.customer_id) if shoe else None
+    if not customer or not customer.phone:
+        raise HTTPException(status_code=422, detail="No phone number on customer record")
+
+    event = payload.event
+    customer_name = customer.first_name or customer.name or "there"
+
+    if event == "job_live":
+        sms_service.notify_shoe_job_live(
+            session,
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            customer_name=customer_name,
+            to_phone=customer.phone,
+            status_token=job.status_token,
+            job_number=job.job_number,
+        )
+    elif event.startswith("status_"):
+        status_slug = event[len("status_"):]
+        sms_service.notify_shoe_job_status_changed(
+            session,
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            customer_name=customer_name,
+            to_phone=customer.phone,
+            job_number=job.job_number,
+            status_token=job.status_token,
+            new_status=status_slug,
+        )
+    else:
+        raise HTTPException(status_code=422, detail=f"Unknown event: {event}")
+
+    session.commit()
+    # Return the most recent log entry for this job
+    log = session.exec(
+        select(SmsLog)
+        .where(SmsLog.shoe_repair_job_id == job.id)
+        .order_by(SmsLog.created_at.desc())
+    ).first()
+    return log
