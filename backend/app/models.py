@@ -414,6 +414,7 @@ class SmsLog(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
     to_phone: str
     body: str
     event: str  # e.g. "quote_sent", "job_live", "status_ready"
@@ -753,6 +754,8 @@ class ImportSummaryResponse(SQLModel):
     duplicate_customer_rows_in_file: int = 0
     # Excel only: worksheet used (auto-selected or from sheet_name query param).
     source_sheet: Optional[str] = None
+    # Which product tab was targeted: watch | shoe | mobile
+    import_target: Optional[str] = None
 
 
 class CustomerCreate(SQLModel):
@@ -1033,6 +1036,10 @@ class ShoeRepairJob(SQLModel, table=True):
     collection_date: Optional[date] = None
     deposit_cents: int = 0
     cost_cents: int = 0
+    # Quote approval
+    quote_approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    quote_approval_token_expires_at: Optional[datetime] = Field(default=None, index=True)
+    quote_status: str = "none"  # "none" | "sent" | "approved" | "declined"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -1146,6 +1153,9 @@ class ShoeRepairJobRead(SQLModel):
     collection_date: Optional[date] = None
     deposit_cents: int
     cost_cents: int
+    quote_approval_token: str
+    quote_approval_token_expires_at: Optional[datetime] = None
+    quote_status: str
     created_at: datetime
     items: list[ShoeRepairJobItemRead] = []
     shoe: Optional[ShoeRead] = None
@@ -1161,6 +1171,27 @@ class ShoeRepairJobRead(SQLModel):
 class ShoeRepairJobStatusUpdate(SQLModel):
     status: str
     note: Optional[str] = None
+
+
+class ShoeJobStatusHistory(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
+    old_status: Optional[str] = None
+    new_status: str
+    changed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    change_note: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ShoeJobStatusHistoryRead(SQLModel):
+    id: UUID
+    shoe_repair_job_id: UUID
+    old_status: Optional[str] = None
+    new_status: str
+    changed_by_user_id: Optional[UUID] = None
+    change_note: Optional[str] = None
+    created_at: datetime
 
 
 class ShoeRepairJobFieldUpdate(SQLModel):
@@ -1814,3 +1845,13 @@ class StocktakeReportRead(SQLModel):
     total_variance_value_cents: int = 0
     groups: list[StocktakeGroupSummaryRead] = Field(default_factory=list)
 
+
+
+
+class PortalSession(SQLModel, table=True):
+    """Short-lived session token for the customer self-service portal."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    email: str = Field(index=True)
+    token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -197,8 +197,8 @@ def test_csv_import_reuses_no_job_number_when_ticket_exists_in_db():
         limiter.reset()
 
 
-def test_csv_import_replace_existing_clears_memberships_and_auto_key_before_customers():
-    """Replace-import must delete FK dependents (memberships, auto-key jobs) before customers."""
+def test_csv_import_replace_watch_only_preserves_mobile_customers():
+    """Watch-tab replace clears watch data only; customers linked to mobile jobs are kept."""
     token, tenant_id = _bootstrap_login_and_tenant(
         "csv-replace-fk", "csvrepfk@example.com", "Admin123!"
     )
@@ -241,11 +241,14 @@ def test_csv_import_replace_existing_clears_memberships_and_auto_key_before_cust
 
     with Session(engine) as session:
         customers = session.exec(select(Customer).where(Customer.tenant_id == tenant_id)).all()
-        assert len(customers) == 1
-        assert customers[0].full_name == "Imported"
+        assert len(customers) == 2
+        names = {c.full_name for c in customers}
+        assert "Fleet Person" in names and "Imported" in names
         mems = session.exec(
             select(CustomerAccountMembership).where(CustomerAccountMembership.tenant_id == tenant_id)
         ).all()
-        assert len(mems) == 0
+        assert len(mems) == 1
         ajobs = session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).all()
-        assert len(ajobs) == 0
+        assert len(ajobs) == 1
+        jobs = session.exec(select(RepairJob).where(RepairJob.tenant_id == tenant_id)).all()
+        assert len(jobs) == 1

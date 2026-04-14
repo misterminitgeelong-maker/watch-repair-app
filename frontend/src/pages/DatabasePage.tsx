@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
 import axios from 'axios'
-import { importCsv, getApiErrorMessage, type CsvImportResult } from '@/lib/api'
+import { importCsv, getApiErrorMessage, type CsvImportResult, type CsvImportTarget } from '@/lib/api'
 import { PageHeader, Card, Button, Input } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
 
@@ -15,8 +15,11 @@ export default function DatabasePage() {
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const [error, setError] = useState('')
-  const [clearTabs, setClearTabs] = useState<string[]>(['watch', 'shoe', 'auto_key'])
+  const [importTarget, setImportTarget] = useState<CsvImportTarget>('watch')
   const [excelSheetName, setExcelSheetName] = useState('')
+
+  const clearTabForTarget = (t: CsvImportTarget): string[] =>
+    t === 'watch' ? ['watch'] : t === 'shoe' ? ['shoe'] : ['auto_key']
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -34,9 +37,10 @@ export default function DatabasePage() {
     try {
       const { data } = await importCsv(file, {
         replaceExisting,
-        clearTabs,
+        clearTabs: clearTabForTarget(importTarget),
         dryRun: opts.dryRun,
         sheetName: excelSheetName.trim() || undefined,
+        importTarget,
       })
       setResult(data)
       if (!opts.dryRun) {
@@ -113,27 +117,82 @@ export default function DatabasePage() {
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#EEE6DA' }}>
               <FileSpreadsheet size={20} style={{ color: 'var(--cafe-gold-dark)' }} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>Import Data File</h2>
               <p className="text-sm mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                Upload a CSV or Excel file to bulk-import historical repair records. The file should include columns like{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer_name</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone_number</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_in</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand_case_numbers</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote_price</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>repair_notes</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>ticket_number</code> (or first column if blank; aliases: Ticket #, Ref, Job No).                 Duplicate ticket numbers in one file get <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>IMP-1234567-2</code>, etc.
-                If that job number already exists from a previous import, the next free suffix is used automatically (safe to re-run).
-                Excel workbooks: we auto-pick the worksheet that looks most like a repair log; override below if needed. Common aliases like{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>created_at</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>notes</code>,{' '}
-                <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>being done</code> are also accepted. Column names are flexible — e.g. Number → phone, GA/NG/Collected → status.
+                Choose which module receives the file. Rows only create records in that module (watch jobs, shoe jobs, or mobile services jobs).
               </p>
+              <div className="mt-3 inline-flex flex-wrap gap-1 rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
+                {(
+                  [
+                    { id: 'watch' as const, label: 'Watch repairs' },
+                    { id: 'shoe' as const, label: 'Shoe repairs' },
+                    { id: 'mobile' as const, label: 'Mobile services' },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="px-3 py-1.5 text-sm font-semibold rounded-md transition"
+                    style={{
+                      backgroundColor: importTarget === id ? 'var(--cafe-paper)' : 'transparent',
+                      color: importTarget === id ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                    }}
+                    onClick={() => {
+                      setImportTarget(id)
+                      setResult(null)
+                      setError('')
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {importTarget === 'watch' && (
+                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Expected columns include{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_in</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_time</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>notes</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>ticket_number</code>.
+                  Excel: we auto-pick the sheet that looks most like a job log; override below if needed.
+                </p>
+              )}
+              {importTarget === 'shoe' && (
+                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Creates customers, shoes, and shoe repair jobs. Useful headers:{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>shoe_type</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>color</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>notes</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>.
+                </p>
+              )}
+              {importTarget === 'mobile' && (
+                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                  Creates customers and mobile services (auto key) jobs. Useful headers:{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>address</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_address</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>vehicle_make</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>vehicle_model</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>source</code> (salesperson).
+                </p>
+              )}
             </div>
           </div>
 
@@ -200,34 +259,14 @@ export default function DatabasePage() {
                 className="mt-0.5"
               />
               <span>
-                Replace existing data before import
+                Replace existing data in this module before import
                 <span className="block text-xs" style={{ color: '#9B5A4A' }}>
-                  When enabled, selected tabs below will be cleared before importing.
+                  When enabled, all existing{' '}
+                  {importTarget === 'watch' ? 'watch repair jobs (and related quotes, watches for this shop)' : importTarget === 'shoe' ? 'shoe repair jobs and shoe records' : 'mobile services jobs, quotes, and invoices'}{' '}
+                  for your shop are removed, then the file is imported. Other modules are not cleared.
                 </span>
               </span>
             </label>
-            {replaceExisting && (
-              <div className="pl-6 space-y-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>Clear these tabs:</p>
-                {[
-                  { key: 'watch', label: 'Watch (customers, watches, jobs, quotes, invoices)' },
-                  { key: 'shoe', label: 'Shoe (shoes, shoe repair jobs)' },
-                  { key: 'auto_key', label: 'Mobile Services (mobile services jobs, quotes, invoices)' },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={clearTabs.includes(key)}
-                      onChange={(e) => {
-                        if (e.target.checked) setClearTabs((t) => [...t, key])
-                        else setClearTabs((t) => t.filter((x) => x !== key))
-                      }}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -253,6 +292,12 @@ export default function DatabasePage() {
                   <span className="font-medium text-green-900 break-all">{result.import_id}</span>
                   <span className="text-green-700">Total rows:</span>
                   <span className="font-medium text-green-900">{result.total_rows}</span>
+                  {result.import_target && (
+                    <>
+                      <span className="text-green-700">Import target:</span>
+                      <span className="font-medium text-green-900">{result.import_target}</span>
+                    </>
+                  )}
                   {result.source_sheet && (
                     <>
                       <span className="text-green-700">Excel sheet:</span>

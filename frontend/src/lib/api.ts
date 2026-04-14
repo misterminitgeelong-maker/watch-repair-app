@@ -489,10 +489,29 @@ export interface PublicShoeJobStatus {
     unit_price_cents: number | null
     notes?: string
   }>
+  history: Array<{
+    old_status: string | null
+    new_status: string
+    change_note: string | null
+    created_at: string
+  }>
 }
 
 export const getPublicShoeJobStatus = (token: string) =>
   axios.get<PublicShoeJobStatus>(`/v1/public/shoe-jobs/${token}`)
+
+export interface CustomerPortalJob {
+  type: 'watch' | 'shoe'
+  job_number: string
+  title: string
+  status: string
+  created_at: string
+  status_url: string
+  detail: string | null
+}
+
+export const customerPortalLookup = (email: string) =>
+  axios.post<{ jobs: CustomerPortalJob[] }>('/v1/public/customer-lookup', { email })
 
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
@@ -738,8 +757,18 @@ export interface CsvImportResult {
   dry_run?: boolean
   source_sheet?: string | null
   duplicate_customer_rows_in_file?: number
+  /** watch | shoe | mobile — which module received the import */
+  import_target?: string | null
 }
-export const importCsv = (file: File, options?: { replaceExisting?: boolean; clearTabs?: string[]; dryRun?: boolean; sheetName?: string }) => {
+export type CsvImportTarget = 'watch' | 'shoe' | 'mobile'
+
+export const importCsv = (file: File, options?: {
+  replaceExisting?: boolean
+  clearTabs?: string[]
+  dryRun?: boolean
+  sheetName?: string
+  importTarget?: CsvImportTarget
+}) => {
   const form = new FormData()
   form.append('file', file)
   const params = new URLSearchParams()
@@ -747,6 +776,7 @@ export const importCsv = (file: File, options?: { replaceExisting?: boolean; cle
   if (options?.dryRun) params.append('dry_run', 'true')
   if (options?.sheetName) params.append('sheet_name', options.sheetName)
   if (options?.clearTabs?.length) params.append('clear_tabs', options.clearTabs.join(','))
+  if (options?.importTarget) params.append('import_target', options.importTarget)
   const qs = params.toString() ? `?${params.toString()}` : ''
   return api.post<CsvImportResult>(`/import/csv${qs}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -1244,6 +1274,9 @@ export interface ShoeRepairJob {
   collection_date?: string
   deposit_cents: number
   cost_cents: number
+  quote_approval_token: string
+  quote_approval_token_expires_at?: string | null
+  quote_status: string
   created_at: string
   estimated_ready_by?: string | null
   complexity?: string | null
@@ -1299,6 +1332,39 @@ export const removeShoeFromJob = (jobId: string, entryId: string) =>
 
 export const removeShoeRepairJobItem = (jobId: string, itemId: string) =>
   api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/items/${itemId}`)
+
+export const getShoeJobSmsLog = (jobId: string) =>
+  api.get<SmsLogEntry[]>(`/shoe-repair-jobs/${jobId}/sms-log`)
+
+export const resendShoeNotification = (jobId: string, event: string) =>
+  api.post<SmsLogEntry>(`/shoe-repair-jobs/${jobId}/resend-notification`, { event })
+
+export const sendShoeQuote = (jobId: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/send-quote`)
+
+export interface PublicShoeQuote {
+  job_number: string
+  title: string
+  description?: string
+  quote_status: string
+  quote_approval_token_expires_at: string | null
+  shop_name: string
+  shoe: { shoe_type?: string; brand?: string; color?: string }
+  items: Array<{ item_name: string; quantity: number; unit_price_cents: number | null; notes?: string }>
+  subtotal_cents: number
+}
+
+export const getPublicShoeQuote = (token: string) =>
+  axios.get<PublicShoeQuote>(`/v1/public/shoe-quotes/${token}`)
+
+export const decideShoeQuote = (token: string, decision: 'approved' | 'declined', customer_signature_data_url?: string) =>
+  axios.post<{ decision: string; job_number: string }>(`/v1/public/shoe-quotes/${token}/decision`, { decision, customer_signature_data_url })
+
+export const createPortalSession = (email: string) =>
+  axios.post<{ session_token: string; portal_url: string; expires_days: number }>('/v1/public/portal/create-session', { email })
+
+export const getPortalSession = (token: string) =>
+  axios.get<{ jobs: CustomerPortalJob[]; email: string }>(`/v1/public/portal/session/${token}`)
 
 // Pricing type display helper (used by both modal and page)
 export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {
