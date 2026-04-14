@@ -259,21 +259,35 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   }
 
   // ── Pointer / swipe ────────────────────────────────────────────────────────
+  // We delay setPointerCapture until the user has actually moved horizontally
+  // so that taps on inner buttons still fire their click events normally.
+
+  const pointerIdRef = useRef<number | null>(null)
+  const capturedRef = useRef(false)
 
   function onPointerDown(e: React.PointerEvent) {
     if (cardState !== 'view') return
     dragStartX.current = e.clientX
+    pointerIdRef.current = e.pointerId
+    capturedRef.current = false
     setIsDragging(true)
-    cardRef.current?.setPointerCapture(e.pointerId)
   }
   function onPointerMove(e: React.PointerEvent) {
     if (!isDragging || dragStartX.current === null) return
-    setDragX(e.clientX - dragStartX.current)
+    const dx = e.clientX - dragStartX.current
+    // Only capture once a real horizontal drag is detected
+    if (!capturedRef.current && Math.abs(dx) > 6) {
+      cardRef.current?.setPointerCapture(e.pointerId)
+      capturedRef.current = true
+    }
+    if (capturedRef.current) setDragX(dx)
   }
   function onPointerUp() {
     if (!isDragging) return
     setIsDragging(false)
     dragStartX.current = null
+    pointerIdRef.current = null
+    capturedRef.current = false
     if (dragX > SWIPE_THRESHOLD) { setDragX(0); setCardState('advance') }
     else if (dragX < -SWIPE_THRESHOLD) { handleSkip() }
     else setDragX(0)
@@ -472,12 +486,16 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
               {/* Card action row */}
               <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--cafe-border)' }}>
-                <button onClick={() => { setCardState('note'); setSelectedNote(''); setCustomNote('') }}
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => { setCardState('note'); setSelectedNote(''); setCustomNote('') }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                   style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>
                   <StickyNote size={13} /> Add Note
                 </button>
-                <button onClick={toggleClaim}
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={toggleClaim}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                   style={{ backgroundColor: isClaimed ? 'rgba(184,149,86,0.12)' : 'var(--cafe-bg)', color: isClaimed ? 'var(--cafe-gold-dark)' : 'var(--cafe-text-muted)', border: `1px solid ${isClaimed ? 'rgba(184,149,86,0.4)' : 'var(--cafe-border)'}` }}>
                   <Wrench size={13} /> {isClaimed ? 'Release' : 'Claim'}
