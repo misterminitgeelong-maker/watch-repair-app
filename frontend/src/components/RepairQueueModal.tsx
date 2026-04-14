@@ -77,10 +77,21 @@ const QUEUE_MOTION_CSS = `
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+@keyframes queueTicketSwapPulse {
+  0% { box-shadow: 0 0 0 0 rgba(121,223,170,0.0); }
+  40% { box-shadow: 0 0 0 8px rgba(121,223,170,0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(121,223,170,0.0); }
+}
+@keyframes queueTicketToast {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .queue-fade-in { animation: queueFadeIn 220ms ease-out; }
 .queue-card-in { animation: queueCardIn 280ms cubic-bezier(0.22, 1, 0.36, 1); }
 .queue-slide-in { animation: queueSlideIn 240ms ease-out; }
 .queue-hint-pop { animation: queueHintPop 180ms ease-out; }
+.queue-ticket-flash { animation: queueTicketSwapPulse 720ms ease-out; }
+.queue-ticket-toast { animation: queueTicketToast 180ms ease-out; }
 `
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -127,7 +138,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   // Drag/swipe state
   const [dragX, setDragX] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [showTicketSwapCue, setShowTicketSwapCue] = useState(false)
   const dragStartX = useRef<number | null>(null)
+  const previousCurrentIdRef = useRef<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -169,6 +182,21 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const visibleIds = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id])
   const currentId = visibleIds[0] ?? null
   const current = currentId ? jobMap[currentId] : null
+
+  // Make it obvious when queue advances to a different ticket.
+  useEffect(() => {
+    if (!currentId) {
+      previousCurrentIdRef.current = null
+      return
+    }
+    if (previousCurrentIdRef.current && previousCurrentIdRef.current !== currentId) {
+      setShowTicketSwapCue(true)
+      const timer = window.setTimeout(() => setShowTicketSwapCue(false), 950)
+      previousCurrentIdRef.current = currentId
+      return () => window.clearTimeout(timer)
+    }
+    previousCurrentIdRef.current = currentId
+  }, [currentId])
 
   // ── Mutation ───────────────────────────────────────────────────────────────
 
@@ -352,6 +380,18 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
       {/* Card area */}
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-6 relative overflow-hidden">
+        {showTicketSwapCue && !confirmAdvance && !showDocketDetails && (
+          <div
+            className="absolute top-3 z-20 pointer-events-none queue-ticket-toast px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: 'rgba(121,223,170,0.18)',
+              color: '#bff3d6',
+              border: '1px solid rgba(121,223,170,0.45)',
+            }}
+          >
+            Next ticket loaded: #{current.job_number}
+          </div>
+        )}
 
         {/* Skip label (drag left) */}
         {skipHint && !confirmAdvance && !showDocketDetails && (
@@ -382,7 +422,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           <div
             key={current.id}
             ref={cardRef}
-            className="w-full max-w-sm rounded-2xl shadow-2xl queue-card-in"
+            className={`w-full max-w-sm rounded-2xl shadow-2xl queue-card-in${showTicketSwapCue ? ' queue-ticket-flash' : ''}`}
             style={{
               background: 'linear-gradient(160deg, rgba(31,28,53,0.95) 0%, rgba(18,17,33,0.96) 100%)',
               border: '1px solid rgba(255,255,255,0.14)',
