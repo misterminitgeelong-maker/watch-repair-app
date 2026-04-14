@@ -123,7 +123,13 @@ export default function LoginPage() {
               <img
                 src="/mainspring-logo.svg"
                 alt="Mainspring"
-                style={{ width: '386px', height: 'auto', display: 'block', maxWidth: '100%' }}
+                style={{
+                  width: 'min(88vw, 352px)',
+                  height: 'auto',
+                  display: 'block',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                }}
               />
             </div>
             <p style={{

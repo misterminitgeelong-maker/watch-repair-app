@@ -758,7 +758,17 @@ export default function AppShell() {
           style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}
         >
           <div style={{ width: 34 }} />
-          <img src="/mainspring-logo.svg" alt="Mainspring" style={{ width: '130px', height: 'auto', display: 'block' }} />
+          <img
+            src="/mainspring-logo.svg"
+            alt="Mainspring"
+            style={{
+              width: 'clamp(116px, 38vw, 172px)',
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              objectFit: 'contain',
+            }}
+          />
           <button
             onClick={() => setSearchOpen(true)}
             className="p-2 rounded-lg transition-colors"
