@@ -9,7 +9,8 @@ import {
   repairJobQueueSwipe,
   listShoeRepairJobs, updateShoeRepairJobStatus, addShoeJobNote, claimShoeJob, releaseShoeJob, resendShoeNotification,
   getJob, getShoeRepairJob,
-  type RepairJob, type ShoeRepairJob,
+  getRepairQueueDayState, putRepairQueueDayState, deleteRepairQueueDayState,
+  type RepairJob, type ShoeRepairJob, type RepairQueueDayStateResponse,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
@@ -137,7 +138,7 @@ function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
-/** Local calendar date for per-day queue persistence (shop timezone = browser). */
+/** Local calendar date for offline cache only (browser). Server uses tenant timezone). */
 function getLocalDateKey(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -211,19 +212,72 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const capturedRef = useRef(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
+  const [remoteReady, setRemoteReady] = useState(false)
+
+  const dayStateQuery = useQuery({
+    queryKey: ['repair-queue-day', mode],
+    queryFn: () => getRepairQueueDayState(mode).then((r) => r.data),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  function applyDayStatePayload(d: RepairQueueDayStateResponse) {
+    const nextDone = new Set(d.done_ids)
+    const nextStats: SessionStats = {
+      advanced: d.stats.advanced ?? 0,
+      checkedIn: d.stats.checkedIn ?? 0,
+      skipped: d.stats.skipped ?? 0,
+    }
+    setDone(nextDone)
+    setStats(nextStats)
+    writeDayQueueState(mode, nextDone, nextStats)
+  }
+
+  useEffect(() => {
+    if (!dayStateQuery.isFetched) return
+    if (dayStateQuery.isSuccess && dayStateQuery.data) {
+      applyDayStatePayload(dayStateQuery.data)
+    }
+    setRemoteReady(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply only when server payload reference changes
+  }, [dayStateQuery.isFetched, dayStateQuery.isSuccess, dayStateQuery.data, mode])
+
   useEffect(() => {
     writeDayQueueState(mode, done, stats)
   }, [mode, done, stats])
 
-  function resetTodayQueueProgress() {
+  useEffect(() => {
+    if (!remoteReady) return
+    const t = setTimeout(() => {
+      void putRepairQueueDayState(mode, {
+        done_ids: [...done],
+        stats: { ...stats },
+      }).catch(() => { /* offline or auth */ })
+    }, 450)
+    return () => clearTimeout(t)
+  }, [remoteReady, mode, done, stats])
+
+  async function resetTodayQueueProgress() {
+    setRemoteReady(false)
     try {
       localStorage.removeItem(dayQueueStorageKey(mode))
+    } catch {
+      /* ignore */
+    }
+    try {
+      await deleteRepairQueueDayState(mode)
     } catch {
       /* ignore */
     }
     setDone(new Set())
     setStats({ advanced: 0, checkedIn: 0, skipped: 0 })
     setQueueOrder(null)
+    const fresh = await qc.fetchQuery({
+      queryKey: ['repair-queue-day', mode],
+      queryFn: () => getRepairQueueDayState(mode).then((r) => r.data),
+    })
+    if (fresh) applyDayStatePayload(fresh)
+    setRemoteReady(true)
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -601,7 +655,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           <span className="font-bold text-lg" style={{ color: '#FCFAF6', fontFamily: "'Playfair Display', Georgia, serif" }}>
             {mode === 'watch' ? 'Watch' : 'Shoe'} Queue
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.15)', color: '#B89556' }} title="Progress is saved for today on this device. Resets at midnight.">
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.15)', color: '#B89556' }} title="Progress syncs to the server for your account. Shop day follows tenant timezone; this device also keeps an offline copy.">
             {doneCount} done · {remaining} left
           </span>
         </div>
@@ -680,7 +734,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           </div>
           <div className="pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Jobs you advance or mark &quot;No update&quot; stay hidden for the rest of today if you close and reopen the queue.
+              Jobs you advance or mark &quot;No update&quot; stay hidden for the rest of the shop day (tenant timezone), synced to your login. This device also caches progress if you are offline.
             </p>
             <button
               type="button"

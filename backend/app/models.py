@@ -293,6 +293,24 @@ class JobStatusHistory(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class RepairQueueDayState(SQLModel, table=True):
+    """Per-user, per-tenant repair queue progress for one calendar day (tenant timezone)."""
+
+    __tablename__ = "repairqueuedaystate"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", "mode", "shop_date", name="uq_repair_queue_day_state_scope"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    user_id: UUID = Field(index=True, foreign_key="user.id")
+    mode: str = Field(max_length=8)  # watch | shoe
+    shop_date: str = Field(max_length=10)  # YYYY-MM-DD in tenant TZ
+    done_ids_json: str = Field(default="[]")
+    stats_json: str = Field(default="{}")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class WorkLog(SQLModel, table=True):
     __table_args__ = (
         CheckConstraint("minutes_spent >= 0", name="ck_worklog_minutes_spent_non_negative"),

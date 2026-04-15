@@ -217,3 +217,53 @@ def test_queue_swipe_rejects_status_outside_lane():
     )
     assert res.status_code == 400
     assert "queue" in res.json()["detail"].lower() or "board" in res.json()["detail"].lower()
+
+
+def test_repair_queue_day_get_put_roundtrip():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-qday-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    g = client.get("/v1/me/repair-queue-day", params={"mode": "watch"}, headers=headers)
+    assert g.status_code == 200
+    body = g.json()
+    assert body["mode"] == "watch"
+    assert len(body["shop_date"]) == 10
+    assert body["done_ids"] == []
+    assert body["stats"]["advanced"] == 0
+
+    jid = str(uuid4())
+    p = client.put(
+        "/v1/me/repair-queue-day",
+        headers=headers,
+        json={
+            "mode": "watch",
+            "done_ids": [jid],
+            "stats": {"advanced": 2, "checkedIn": 1, "skipped": 0},
+        },
+    )
+    assert p.status_code == 200
+    assert p.json()["done_ids"] == [jid]
+    assert p.json()["stats"]["advanced"] == 2
+
+    g2 = client.get("/v1/me/repair-queue-day", params={"mode": "watch"}, headers=headers)
+    assert g2.status_code == 200
+    assert g2.json()["done_ids"] == [jid]
+
+    d = client.delete("/v1/me/repair-queue-day", params={"mode": "watch"}, headers=headers)
+    assert d.status_code == 204
+
+    g3 = client.get("/v1/me/repair-queue-day", params={"mode": "watch"}, headers=headers)
+    assert g3.json()["done_ids"] == []
+
+
+def test_repair_queue_day_rejects_bad_uuid():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-qdaybad-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    p = client.put(
+        "/v1/me/repair-queue-day",
+        headers=headers,
+        json={"mode": "shoe", "done_ids": ["not-a-uuid"], "stats": {"advanced": 0, "checkedIn": 0, "skipped": 0}},
+    )
+    assert p.status_code == 422

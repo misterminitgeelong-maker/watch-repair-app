@@ -422,6 +422,25 @@ export const releaseJob = (id: string) =>
 export const repairJobQueueSwipe = (id: string, direction: 'left' | 'right') =>
   api.post<RepairJob>(`/repair-jobs/${id}/queue-swipe`, { direction })
 
+/** Per-user repair queue progress for the tenant's current shop day (server; tenant timezone). */
+export interface RepairQueueDayStateResponse {
+  shop_date: string
+  mode: string
+  done_ids: string[]
+  stats: { advanced?: number; checkedIn?: number; skipped?: number }
+}
+
+export const getRepairQueueDayState = (mode: 'watch' | 'shoe') =>
+  api.get<RepairQueueDayStateResponse>('/me/repair-queue-day', { params: { mode } })
+
+export const putRepairQueueDayState = (
+  mode: 'watch' | 'shoe',
+  body: { done_ids: string[]; stats: { advanced: number; checkedIn: number; skipped: number } },
+) => api.put<RepairQueueDayStateResponse>('/me/repair-queue-day', { mode, ...body })
+
+export const deleteRepairQueueDayState = (mode: 'watch' | 'shoe') =>
+  api.delete('/me/repair-queue-day', { params: { mode } })
+
 
 export interface IntakePayload {
   intake_notes?: string

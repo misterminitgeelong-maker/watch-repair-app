@@ -19,6 +19,7 @@ from .config import settings, validate_runtime_config
 from .database import create_db_and_tables, engine
 from .limiter import limiter
 from .routes.auth import router as auth_router
+from .routes.me import router as me_router
 from .routes.customers import router as customer_router
 from .routes.repair_jobs import router as repair_job_router
 from .routes.quotes import router as quote_router
@@ -292,6 +293,7 @@ def seed_status():
 
 
 app.include_router(auth_router)
+app.include_router(me_router)
 app.include_router(customer_router)
 app.include_router(repair_job_router)
 app.include_router(quote_router)
