@@ -42,6 +42,13 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   pending_booking:     null,
   booked:              null,
   awaiting_customer_details: null,
+  quote_sent:                    null,
+  awaiting_booking_confirmation: null,
+  booking_confirmed:             null,
+  job_delayed:                   null,
+  work_completed:                null,
+  invoice_paid:                  null,
+  failed_job:                    null,
 }
 
 const QUICK_ACTION_STATUSES: JobStatus[] = [

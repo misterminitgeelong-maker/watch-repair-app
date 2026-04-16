@@ -55,7 +55,7 @@ import {
   hourMinuteInTimeZone,
   zonedWallTimeToUtcIso,
 } from '@/lib/shopCalendarTime'
-import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
