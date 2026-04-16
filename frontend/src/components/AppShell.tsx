@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
+  createStripeConnectAccountLink,
   getBillingLimits,
   listAutoKeyJobs,
   listCustomers,
@@ -90,12 +91,21 @@ function SubscriptionBanner({
   return null
 }
 
-function StripeConnectNudge({ role, hasAutoKey, onSetup }: { role: string | null; hasAutoKey: boolean; onSetup: () => void }) {
+function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAutoKey: boolean }) {
+  const qc = useQueryClient()
   const { data: billing } = useQuery({
     queryKey: ['billing-limits'],
     queryFn: () => getBillingLimits().then(r => r.data),
     enabled: role === 'owner' && hasAutoKey,
     staleTime: 60_000,
+  })
+
+  const connectMut = useMutation({
+    mutationFn: () => createStripeConnectAccountLink(),
+    onSuccess: ({ data }) => {
+      if (data.url) window.location.assign(data.url)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['billing-limits'] }),
   })
 
   if (!billing?.stripe_configured) return null
@@ -113,11 +123,12 @@ function StripeConnectNudge({ role, hasAutoKey, onSetup }: { role: string | null
       </span>
       <button
         type="button"
-        onClick={onSetup}
+        onClick={() => connectMut.mutate()}
+        disabled={connectMut.isPending}
         className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
         style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
       >
-        Set up payouts
+        {connectMut.isPending ? 'Opening Stripe…' : 'Set up payouts'}
       </button>
     </div>
   )
@@ -919,7 +930,6 @@ export default function AppShell() {
           <StripeConnectNudge
             role={role}
             hasAutoKey={hasFeature('auto_key')}
-            onSetup={() => navigate('/accounts')}
           />
           <Outlet />
         </main>
