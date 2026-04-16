@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from random import randint
 from uuid import UUID
@@ -752,6 +753,37 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
     parent = _get_or_create_parent_account(session, owner_email, owner_name)
     _ensure_parent_membership(session, parent, owner)
     session.commit()
+
+    # Auto-create a Stripe Connect Express account so invoice payments flow
+    # through the tenant's own Stripe account from day one.
+    if stripe_billing_configured():
+        try:
+            import stripe as _stripe  # type: ignore[import]
+            _stripe.api_key = settings.stripe_secret_key
+            country = (settings.stripe_connect_default_country or "AU").strip().upper()[:2]
+            connect_acct = _stripe.Account.create(
+                type="express",
+                country=country,
+                capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+                metadata={"tenant_id": str(tenant.id), "tenant_slug": tenant.slug},
+                business_profile={"name": (tenant.name or "Shop")[:100]},
+            )
+            tenant.stripe_connect_account_id = connect_acct["id"]
+            tenant.stripe_connect_charges_enabled = bool(connect_acct.get("charges_enabled"))
+            tenant.stripe_connect_payouts_enabled = bool(connect_acct.get("payouts_enabled"))
+            tenant.stripe_connect_details_submitted = bool(connect_acct.get("details_submitted"))
+            session.add(tenant)
+            session.add(TenantEventLog(
+                tenant_id=tenant.id,
+                entity_type="tenant",
+                event_type="stripe_connect_account_created",
+                event_summary="Stripe Express account auto-created at signup",
+            ))
+            session.commit()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "signup.stripe_connect_create_failed tenant=%s", tenant.id
+            )
 
     token, expires = create_access_token(tenant.id, owner.id, owner.role)
     refresh_token, refresh_expires = create_refresh_token(tenant.id, owner.id, owner.role)
