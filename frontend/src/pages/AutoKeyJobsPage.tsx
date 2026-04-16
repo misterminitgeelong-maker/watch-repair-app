@@ -1631,14 +1631,14 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   })
 
   const handleStatusChange = async (status: JobStatus) => {
-    if (['completed', 'collected', 'no_go'].includes(status)) {
+    if (['work_completed', 'failed_job'].includes(status)) {
       setConfirmStatus(status)
       return
     }
     setStatusFeedback('')
     const invoicesBefore = invoices.length
     await statusMut.mutateAsync(status)
-    if (status !== 'completed') return
+    if (status !== 'work_completed') return
 
     const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
       listAutoKeyQuotes(job.id),
@@ -1646,18 +1646,18 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
     ])
     const newestQuote = latestQuotes[0]
     if (latestInvoices.length > invoicesBefore) {
-      setStatusFeedback('Completed and invoice auto-created.')
+      setStatusFeedback('Work completed — invoice created and payment link sent to customer.')
       return
     }
     if (!newestQuote) {
-      setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.')
+      setStatusFeedback('Work completed. No invoice auto-created because no quote exists yet.')
       return
     }
     if (newestQuote.status === 'declined') {
-      setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.')
+      setStatusFeedback('Work completed. No invoice auto-created because the latest quote is declined.')
       return
     }
-    setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+    setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
 
   return (
@@ -1858,11 +1858,9 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
           onClose={() => setConfirmStatus(null)}
         >
           <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
-            {confirmStatus === 'no_go'
-              ? 'This will mark the job as no go. A quote or invoice will NOT be auto-created.'
-              : confirmStatus === 'completed'
-              ? 'This will mark the job as completed. An invoice will be auto-created if a quote exists.'
-              : 'This will mark the job as collected and close it out.'}
+            {confirmStatus === 'failed_job'
+              ? 'This will mark the job as failed. No invoice will be auto-created.'
+              : 'This will mark the job as work completed. An invoice will be auto-created and payment link sent to the customer.'}
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setConfirmStatus(null)}>Cancel</Button>
@@ -1874,16 +1872,16 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
                 setStatusFeedback('')
                 const invoicesBefore = invoices.length
                 await statusMut.mutateAsync(s)
-                if (s !== 'completed') return
+                if (s !== 'work_completed') return
                 const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
                   listAutoKeyQuotes(job.id),
                   listAutoKeyInvoices(job.id),
                 ])
                 const newestQuote = latestQuotes[0]
-                if (latestInvoices.length > invoicesBefore) { setStatusFeedback('Completed and invoice auto-created.'); return }
-                if (!newestQuote) { setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.'); return }
-                if (newestQuote.status === 'declined') { setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.'); return }
-                setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+                if (latestInvoices.length > invoicesBefore) { setStatusFeedback('Work completed — invoice created and payment link sent to customer.'); return }
+                if (!newestQuote) { setStatusFeedback('Work completed. No invoice auto-created because no quote exists yet.'); return }
+                if (newestQuote.status === 'declined') { setStatusFeedback('Work completed. No invoice auto-created because the latest quote is declined.'); return }
+                setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
               }}
               disabled={statusMut.isPending}
             >
@@ -2280,7 +2278,7 @@ export default function AutoKeyJobsPage() {
               return ymdLocal(new Date(j.scheduled_at)) === todayYmd
             })
             const needsAttention = jobs.filter(j =>
-              ['awaiting_quote', 'awaiting_go_ahead', 'pending_booking', 'awaiting_customer_details'].includes(j.status)
+              ['awaiting_quote', 'quote_sent', 'awaiting_booking_confirmation'].includes(j.status)
             )
             if (todayJobs.length === 0 && needsAttention.length === 0) return null
             return (
@@ -2350,7 +2348,7 @@ export default function AutoKeyJobsPage() {
                   color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
                 }}
               >
-                Completed ({completedCount})
+                Closed ({completedCount})
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -2499,7 +2497,7 @@ export default function AutoKeyJobsPage() {
                   color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
                 }}
               >
-                Completed ({completedCount})
+                Closed ({completedCount})
               </button>
             </div>
             <Select
