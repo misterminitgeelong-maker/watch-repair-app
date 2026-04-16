@@ -28,8 +28,15 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    Tenant,
 )
-from ..sms import notify_auto_key_arrival_window, notify_auto_key_customer_day_before, notify_auto_key_customer_intake
+from ..sms import (
+    notify_auto_key_arrival_window,
+    notify_auto_key_customer_day_before,
+    notify_auto_key_customer_intake,
+    notify_auto_key_en_route,
+    notify_auto_key_invoice_ready,
+)
 
 router = APIRouter(
     prefix="/v1/auto-key-jobs",
@@ -38,7 +45,7 @@ router = APIRouter(
 )
 
 
-_AUTO_KEY_FINAL_STATUSES = {"completed", "collected", "cancelled", "no_go"}
+_AUTO_KEY_FINAL_STATUSES = {"completed", "collected", "cancelled", "no_go", "work_completed", "invoice_paid", "failed_job"}
 logger = logging.getLogger(__name__)
 
 
@@ -440,8 +447,8 @@ def update_auto_key_job_status(
     job.status = payload.status
     session.add(job)
 
-    # Auto-create invoice on completion when no invoice is present yet.
-    moved_to_completed = previous_status != "completed" and job.status == "completed"
+    # Auto-create invoice on work_completed when no invoice is present yet.
+    moved_to_completed = previous_status != "work_completed" and job.status == "work_completed"
     if moved_to_completed:
       existing_invoice = session.exec(
           select(AutoKeyInvoice)
@@ -491,6 +498,60 @@ def update_auto_key_job_status(
 
     session.commit()
     session.refresh(job)
+
+    # ── Post-commit side-effects (SMS) ────────────────────────────────────────
+    moved_to_en_route = previous_status != "en_route" and job.status == "en_route"
+    if moved_to_en_route or moved_to_completed:
+        _customer = session.get(Customer, job.customer_id)
+        _tenant = session.get(Tenant, auth.tenant_id)
+        _shop_name = (_tenant.name if _tenant else None) or "Mobile Services"
+
+        if moved_to_en_route and _customer and (_customer.phone or "").strip():
+            try:
+                _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
+                notify_auto_key_en_route(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    to_phone=_customer.phone.strip(),
+                    customer_name=_first,
+                    shop_name=_shop_name,
+                    job_number=job.job_number,
+                    job_address=job.job_address,
+                    scheduled_at=job.scheduled_at,
+                )
+                session.commit()
+                logger.info("auto_key_job.en_route_sms_sent tenant=%s job=%s", auth.tenant_id, job.id)
+            except Exception:
+                logger.exception("auto_key_job.en_route_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
+
+        if moved_to_completed and _customer and (_customer.phone or "").strip():
+            try:
+                _invoice = session.exec(
+                    select(AutoKeyInvoice)
+                    .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
+                    .where(AutoKeyInvoice.auto_key_job_id == job.id)
+                    .order_by(AutoKeyInvoice.created_at.desc())
+                ).first()
+                if _invoice:
+                    _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
+                    _view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{_invoice.customer_view_token}"
+                    notify_auto_key_invoice_ready(
+                        session,
+                        tenant_id=auth.tenant_id,
+                        to_phone=_customer.phone.strip(),
+                        customer_name=_first,
+                        shop_name=_shop_name,
+                        job_number=job.job_number,
+                        invoice_number=_invoice.invoice_number,
+                        total_cents=_invoice.total_cents,
+                        currency=_invoice.currency or "AUD",
+                        view_url=_view_url,
+                    )
+                    session.commit()
+                    logger.info("auto_key_job.work_completed_sms_sent tenant=%s job=%s invoice=%s", auth.tenant_id, job.id, _invoice.id)
+            except Exception:
+                logger.exception("auto_key_job.work_completed_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
+
     return job
 
 

@@ -52,19 +52,15 @@ function SeverityBadge({ severity }: { severity: string }) {
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
-  'awaiting_customer_details',
-  'awaiting_go_ahead',
-  'pending_booking',
-  'booked',
-  'go_ahead',
-  'working_on',
+  'quote_sent',
+  'awaiting_booking_confirmation',
+  'booking_confirmed',
+  'job_delayed',
   'en_route',
   'on_site',
-  'awaiting_parts',
-  'completed',
-  'awaiting_collection',
-  'collected',
-  'no_go',
+  'work_completed',
+  'invoice_paid',
+  'failed_job',
 ]
 
 function formatCents(value: number) {
@@ -214,7 +210,7 @@ export default function AutoKeyJobDetailPage() {
     setStatusFeedback('')
     const invoicesBefore = invoices.length
     await statusMut.mutateAsync(status)
-    if (status !== 'completed') return
+    if (status !== 'work_completed') return
 
     const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
       listAutoKeyQuotes(id!),
@@ -222,18 +218,18 @@ export default function AutoKeyJobDetailPage() {
     ])
     const newestQuote = latestQuotes[0]
     if (latestInvoices.length > invoicesBefore) {
-      setStatusFeedback('Completed and invoice auto-created.')
+      setStatusFeedback('Work completed — invoice created and payment link sent to customer.')
       return
     }
     if (!newestQuote) {
-      setStatusFeedback('Completed. No invoice auto-created because no quote exists yet.')
+      setStatusFeedback('Work completed. No invoice auto-created because no quote exists yet.')
       return
     }
     if (newestQuote.status === 'declined') {
-      setStatusFeedback('Completed. No invoice auto-created because the latest quote is declined.')
+      setStatusFeedback('Work completed. No invoice auto-created because the latest quote is declined.')
       return
     }
-    setStatusFeedback('Completed. No new invoice was created (an invoice may already exist).')
+    setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
 
   const assignTechMut = useMutation({

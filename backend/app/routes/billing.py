@@ -539,6 +539,11 @@ async def stripe_webhook(
         invoice.payment_method = "stripe"
         invoice.paid_at = datetime.now(timezone.utc)
         session.add(invoice)
+        # Auto-advance job status to invoice_paid
+        job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+        if job and job.status != "invoice_paid":
+            job.status = "invoice_paid"
+            session.add(job)
         session.commit()
 
     elif event["type"] == "account.updated":
