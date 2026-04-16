@@ -57,20 +57,29 @@ import {
 } from '@/lib/shopCalendarTime'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 
-const STATUSES: JobStatus[] = [...JOB_STATUS_ORDER, 'en_route', 'on_site', 'pending_booking', 'booked', 'awaiting_customer_details']
-
-const AUTO_KEY_CLOSED_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
-const AUTO_KEY_ACTIVE_STATUSES = [
+const STATUSES: JobStatus[] = [
   'awaiting_quote',
-  'awaiting_go_ahead',
-  'pending_booking',
-  'booked',
-  'awaiting_customer_details',
-  'go_ahead',
-  'working_on',
+  'quote_sent',
+  'awaiting_booking_confirmation',
+  'booking_confirmed',
+  'job_delayed',
   'en_route',
   'on_site',
-  'awaiting_parts',
+  'work_completed',
+  'invoice_paid',
+  'failed_job',
+]
+
+const AUTO_KEY_CLOSED_STATUSES = ['invoice_paid', 'failed_job'] as const
+const AUTO_KEY_ACTIVE_STATUSES = [
+  'awaiting_quote',
+  'quote_sent',
+  'awaiting_booking_confirmation',
+  'booking_confirmed',
+  'job_delayed',
+  'en_route',
+  'on_site',
+  'work_completed',
 ] as const
 
 function formatCents(value: number) {
@@ -184,10 +193,12 @@ function monthRangeFromYmd(ymd: string): { date_from: string; date_to: string } 
 }
 
 function nextMobileStatus(status: JobStatus): JobStatus | null {
-  if (status === 'booked') return 'en_route'
-  if (status === 'awaiting_go_ahead' || status === 'go_ahead' || status === 'working_on') return 'en_route'
+  if (status === 'awaiting_quote') return 'quote_sent'
+  if (status === 'quote_sent') return 'awaiting_booking_confirmation'
+  if (status === 'awaiting_booking_confirmation') return 'booking_confirmed'
+  if (status === 'booking_confirmed') return 'en_route'
   if (status === 'en_route') return 'on_site'
-  if (status === 'on_site') return 'completed'
+  if (status === 'on_site') return 'work_completed'
   return null
 }
 

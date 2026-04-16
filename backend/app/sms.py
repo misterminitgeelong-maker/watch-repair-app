@@ -439,6 +439,41 @@ def notify_auto_key_invoice_ready(
     )
 
 
+def notify_auto_key_quote_sent(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    total_cents: int,
+    currency: str,
+) -> None:
+    """SMS when a quote is sent — lets the customer know the price and to reply to confirm."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
+    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
+    total = total_cents / 100
+    body = (
+        f"Hi {customer_name}, {shop_name} — your quote for mobile job #{job_number} "
+        f"is {sym}{total:.2f} {currency}. Reply YES to confirm your booking or call us with any questions."
+    )
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_quote_sent",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_auto_key_customer_intake(
     session: Session,
     *,

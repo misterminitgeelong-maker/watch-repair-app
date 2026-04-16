@@ -36,6 +36,7 @@ from ..sms import (
     notify_auto_key_customer_intake,
     notify_auto_key_en_route,
     notify_auto_key_invoice_ready,
+    notify_auto_key_quote_sent,
 )
 
 router = APIRouter(
@@ -697,8 +698,40 @@ def send_auto_key_quote(
     quote.status = "sent"
     quote.sent_at = datetime.now(timezone.utc)
     session.add(quote)
+
+    # Auto-advance job to quote_sent when not already past that stage
+    _QUOTE_ADVANCE_FROM = {"awaiting_quote"}
+    job = session.get(AutoKeyJob, quote.auto_key_job_id)
+    if job and job.tenant_id == auth.tenant_id and job.status in _QUOTE_ADVANCE_FROM:
+        job.status = "quote_sent"
+        session.add(job)
+
     session.commit()
     session.refresh(quote)
+
+    # Send quote SMS — wrapped so failures don't surface as errors
+    if job and job.status == "quote_sent":
+        try:
+            _customer = session.get(Customer, job.customer_id)
+            _tenant = session.get(Tenant, auth.tenant_id)
+            if _customer and (_customer.phone or "").strip():
+                _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
+                _shop = (_tenant.name if _tenant else None) or "Mobile Services"
+                notify_auto_key_quote_sent(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    to_phone=_customer.phone.strip(),
+                    customer_name=_first,
+                    shop_name=_shop,
+                    job_number=job.job_number,
+                    total_cents=quote.total_cents,
+                    currency=quote.currency or "AUD",
+                )
+                session.commit()
+                logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
+        except Exception:
+            logger.exception("auto_key_quote.quote_sent_sms_failed tenant=%s quote=%s", auth.tenant_id, quote_id)
+
     return _to_quote_read(session, quote)
 
 

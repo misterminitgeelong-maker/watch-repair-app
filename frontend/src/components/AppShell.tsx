@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
+  getBillingLimits,
   listAutoKeyJobs,
   listCustomers,
   listInvoices,
@@ -87,6 +88,39 @@ function SubscriptionBanner({
   }
 
   return null
+}
+
+function StripeConnectNudge({ role, hasAutoKey, onSetup }: { role: string | null; hasAutoKey: boolean; onSetup: () => void }) {
+  const { data: billing } = useQuery({
+    queryKey: ['billing-limits'],
+    queryFn: () => getBillingLimits().then(r => r.data),
+    enabled: role === 'owner' && hasAutoKey,
+    staleTime: 60_000,
+  })
+
+  if (!billing?.stripe_configured) return null
+  if (!hasAutoKey) return null
+  if (role !== 'owner') return null
+  if (billing.stripe_connect_charges_enabled) return null
+
+  return (
+    <div
+      className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+      style={{ backgroundColor: 'rgba(201,162,72,0.1)', border: '1px solid rgba(201,162,72,0.35)' }}
+    >
+      <span style={{ color: 'var(--cafe-text)' }}>
+        <strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.
+      </span>
+      <button
+        type="button"
+        onClick={onSetup}
+        className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+        style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+      >
+        Set up payouts
+      </button>
+    </div>
+  )
 }
 
 type PageTutorial = {
@@ -881,6 +915,11 @@ export default function AppShell() {
             trialEnd={trialEnd}
             role={role}
             onManage={() => navigate('/accounts')}
+          />
+          <StripeConnectNudge
+            role={role}
+            hasAutoKey={hasFeature('auto_key')}
+            onSetup={() => navigate('/accounts')}
           />
           <Outlet />
         </main>
