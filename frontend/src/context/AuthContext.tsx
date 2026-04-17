@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import axios from 'axios'
 import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
 interface AuthCtx {
@@ -197,41 +198,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const timeoutId = setTimeout(() => {
         timedOut = true
-        if (!canceled) {
-          clearStoredTokens()
-          setToken(null)
-          setRole(null)
-          setTenantId(null)
-          setSessionUserId(null)
-          setActiveSiteTenantId(null)
-          setAvailableSites([])
-          setPlanCode('pro')
-          setEnabledFeatures(defaultFeatures)
-          setSignupPaymentPending(false)
-          setShopCalendarTodayYmd(null)
-          setScheduleCalendarTimezone('Australia/Sydney')
-          setSessionReady(true)
-        }
+        // Backend took too long (e.g. cold start after deploy) — don't wipe the
+        // token. The user's role is already parsed from the JWT. Just unblock the
+        // UI; actual API calls will 401 and trigger refresh/logout if needed.
+        if (!canceled) setSessionReady(true)
       }, SESSION_INIT_TIMEOUT_MS)
 
       async function loadSession() {
         try {
           await refreshSession()
           if (canceled || timedOut) return
-        } catch {
+        } catch (err) {
           if (!canceled && !timedOut) {
-            clearStoredTokens()
-            setToken(null)
-            setRole(null)
-            setTenantId(null)
-            setSessionUserId(null)
-            setActiveSiteTenantId(null)
-            setAvailableSites([])
-            setPlanCode('pro')
-            setEnabledFeatures(defaultFeatures)
-            setSignupPaymentPending(false)
-            setShopCalendarTodayYmd(null)
-            setScheduleCalendarTimezone('Australia/Sydney')
+            // Only log out on a genuine 401 — the token is invalid or expired.
+            // Network errors / 5xx (e.g. backend cold-starting after a deploy)
+            // should not wipe the token; just unblock the UI so the user can
+            // continue. The existing 401 interceptor in api.ts will handle
+            // token expiry on the next real request.
+            if (axios.isAxiosError(err) && err.response?.status === 401) {
+              clearStoredTokens()
+              setToken(null)
+              setRole(null)
+              setTenantId(null)
+              setSessionUserId(null)
+              setActiveSiteTenantId(null)
+              setAvailableSites([])
+              setPlanCode('pro')
+              setEnabledFeatures(defaultFeatures)
+              setSignupPaymentPending(false)
+              setShopCalendarTodayYmd(null)
+              setScheduleCalendarTimezone('Australia/Sydney')
+            }
           }
         } finally {
           clearTimeout(timeoutId)
