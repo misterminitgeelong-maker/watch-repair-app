@@ -23,7 +23,7 @@ const CMD = {
   END_PAGE_PRINT: 0xe3,
   SET_DIMENSION: 0x13,
   SET_QUANTITY: 0x15,
-  WRITE_BITMAP: 0x85,
+  WRITE_IMAGE_LINE: 0x83,
   GET_PRINT_STATUS: 0xa3,
 }
 
@@ -136,13 +136,13 @@ export class NiimbotPrinter {
       (height >> 8) & 0xff, height & 0xff,
       (width >> 8) & 0xff, width & 0xff,
     ])
-    await this.send(CMD.SET_QUANTITY, [(quantity >> 8) & 0xff, quantity & 0xff])
+    // quantity is always a single byte; high byte is always 0x00
+    await this.send(CMD.SET_QUANTITY, [0x00, quantity & 0xff])
 
     for (let y = 0; y < rows.length; y++) {
       const rowData = rows[y]
-      // Packet: [rowIndex high, rowIndex low, ...row bytes]
       const data = [(y >> 8) & 0xff, y & 0xff, ...Array.from(rowData)]
-      await this.send(CMD.WRITE_BITMAP, data)
+      await this.send(CMD.WRITE_IMAGE_LINE, data)
     }
 
     await this.send(CMD.END_PAGE_PRINT, [0x01])
