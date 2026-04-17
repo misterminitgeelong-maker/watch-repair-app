@@ -1,19 +1,14 @@
 /**
  * Niimbot BLE protocol implementation for Web Bluetooth API.
- *
- * Protocol reverse-engineered from the open-source niimprint (Python) and
- * niimblue (TypeScript web) projects. Tested against the M2 model.
- *
- * BLE service UUID is the same across the B1/B21/B3/D11/M2 family.
- * If your M2 firmware is very new, scan the GATT services in nRF Connect
- * and update NIIMBOT_SERVICE_UUID if it differs.
+ * Protocol reverse-engineered from niimprint (Python) and community docs.
+ * Tested against M2 with 50x30mm labels.
  */
 
 const NIIMBOT_SERVICE_UUID = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+const DOTS_PER_MM = 203 / 25.4  // 203 DPI
 
-// Command bytes (from niimprint reverse engineering)
 const CMD = {
-  GET_INFO: 0x40,
+  GET_RFID: 0x1a,
   HEARTBEAT: 0xdc,
   SET_LABEL_TYPE: 0x23,
   SET_LABEL_DENSITY: 0x21,
@@ -24,8 +19,9 @@ const CMD = {
   SET_DIMENSION: 0x13,
   SET_QUANTITY: 0x15,
   WRITE_IMAGE_LINE: 0x83,
-  GET_PRINT_STATUS: 0xa3,
 }
+
+export interface LabelDots { width: number; height: number }
 
 function buildPacket(cmd: number, data: number[]): Uint8Array<ArrayBuffer> {
   const len = data.length
@@ -40,14 +36,13 @@ function buildPacket(cmd: number, data: number[]): Uint8Array<ArrayBuffer> {
 export class NiimbotPrinter {
   private device: BluetoothDevice | null = null
   private writeChar: BluetoothRemoteGATTCharacteristic | null = null
+  private notifyChar: BluetoothRemoteGATTCharacteristic | null = null
+  private responseResolvers: Array<(v: DataView) => void> = []
+  private _labelDots: LabelDots | null = null
 
-  get connected() {
-    return this.device?.gatt?.connected ?? false
-  }
-
-  get deviceName() {
-    return this.device?.name ?? null
-  }
+  get connected() { return this.device?.gatt?.connected ?? false }
+  get deviceName() { return this.device?.name ?? null }
+  get labelDots(): LabelDots | null { return this._labelDots }
 
   async connect(): Promise<void> {
     const device = await navigator.bluetooth.requestDevice({
@@ -57,9 +52,6 @@ export class NiimbotPrinter {
     await this.setupGatt(device)
   }
 
-  /** Silently reconnect to a previously paired M2 without showing a picker.
-   *  Returns true if reconnected, false if no paired device found.
-   *  Requires navigator.bluetooth.getDevices (Chrome 85+). */
   async reconnectIfPaired(): Promise<boolean> {
     if (!('getDevices' in navigator.bluetooth)) return false
     const devices = await (navigator.bluetooth as Bluetooth & { getDevices(): Promise<BluetoothDevice[]> }).getDevices()
@@ -69,171 +61,211 @@ export class NiimbotPrinter {
     return true
   }
 
+  private onNotification = (e: Event) => {
+    const char = e.target as BluetoothRemoteGATTCharacteristic
+    if (char.value && this.responseResolvers.length > 0) {
+      this.responseResolvers.shift()!(char.value)
+    }
+  }
+
   private async setupGatt(device: BluetoothDevice): Promise<void> {
     const server = await device.gatt!.connect()
     const service = await server.getPrimaryService(NIIMBOT_SERVICE_UUID)
     const chars = await service.getCharacteristics()
+
     const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write)
     if (!writable) throw new Error('No writable characteristic found on Niimbot service')
+
+    const notifiable = chars.find(c => c.properties.notify || c.properties.indicate)
+    if (notifiable) {
+      await notifiable.startNotifications()
+      notifiable.addEventListener('characteristicvaluechanged', this.onNotification)
+    }
+
     this.device = device
     this.writeChar = writable
+    this.notifyChar = notifiable ?? null
+    this._labelDots = null
+
     await this.send(CMD.HEARTBEAT, [0x00])
+    this._labelDots = await this.readLabelDots()
   }
 
   disconnect() {
+    if (this.notifyChar) {
+      this.notifyChar.removeEventListener('characteristicvaluechanged', this.onNotification)
+    }
     this.device?.gatt?.disconnect()
     this.device = null
     this.writeChar = null
+    this.notifyChar = null
+    this._labelDots = null
+  }
+
+  private waitForResponse(timeoutMs = 1500): Promise<DataView | null> {
+    if (!this.notifyChar) return Promise.resolve(null)
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        const i = this.responseResolvers.indexOf(resolve)
+        if (i >= 0) this.responseResolvers.splice(i, 1)
+        resolve(null)
+      }, timeoutMs)
+      this.responseResolvers.push(v => { clearTimeout(timer); resolve(v) })
+    })
   }
 
   private async send(cmd: number, data: number[]): Promise<void> {
     if (!this.writeChar) throw new Error('Not connected to printer')
     const packet = buildPacket(cmd, data)
-    const useResponse = this.writeChar.properties.write
-    if (useResponse) {
+    if (this.writeChar.properties.write) {
       await this.writeChar.writeValue(packet)
     } else {
       await this.writeChar.writeValueWithoutResponse(packet)
     }
-    // Small gap between commands to avoid buffer overrun
-    await sleep(10)
   }
 
-  /**
-   * Print a canvas element as a label.
-   * The canvas should be sized to the printer's dot resolution:
-   *   M2 at 203 DPI on 40x30mm labels → 320 wide × 240 tall
-   */
+  /** Query the label dimensions from the printer's RFID tag.
+   *  Response data layout (from niimprint): after 4-byte header,
+   *  skip 33 bytes (uuid+barcode+serial+lengths+type), then width_mm, height_mm. */
+  private async readLabelDots(): Promise<LabelDots | null> {
+    try {
+      await this.send(CMD.GET_RFID, [0x01])
+      const resp = await this.waitForResponse(2000)
+      if (!resp || resp.byteLength < 39) return null
+      const widthMm = resp.getUint8(4 + 33)
+      const heightMm = resp.getUint8(4 + 34)
+      if (!widthMm || !heightMm) return null
+      return {
+        width: Math.round(widthMm * DOTS_PER_MM),
+        height: Math.round(heightMm * DOTS_PER_MM),
+      }
+    } catch {
+      return null
+    }
+  }
+
   async printCanvas(canvas: HTMLCanvasElement, quantity = 1): Promise<void> {
     const ctx = canvas.getContext('2d')!
     const { width, height } = canvas
     const imageData = ctx.getImageData(0, 0, width, height)
 
-    // Convert RGBA pixels to 1-bit rows (black = set bit, white = unset)
-    const rows: Uint8Array[] = []
+    const rows: number[][] = []
     for (let y = 0; y < height; y++) {
       const bytesPerRow = Math.ceil(width / 8)
-      const row = new Uint8Array(bytesPerRow)
+      const row = new Array<number>(bytesPerRow).fill(0)
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4
-        const r = imageData.data[idx]
-        const g = imageData.data[idx + 1]
-        const b = imageData.data[idx + 2]
-        const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        if (luminance < 128) {
-          // Dark pixel → set bit (MSB first within each byte)
-          row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
-        }
+        const lum = 0.299 * imageData.data[idx] + 0.587 * imageData.data[idx + 1] + 0.114 * imageData.data[idx + 2]
+        if (lum < 128) row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
       }
       rows.push(row)
     }
 
     await this.send(CMD.SET_LABEL_TYPE, [0x01])
-    await this.send(CMD.SET_LABEL_DENSITY, [0x03]) // medium density
+    await sleep(30)
+    await this.send(CMD.SET_LABEL_DENSITY, [0x03])
+    await sleep(30)
     await this.send(CMD.START_PRINT, [0x01])
+    await sleep(200)   // printer needs time to initialise the print job
     await this.send(CMD.START_PAGE_PRINT, [0x01])
+    await sleep(30)
     await this.send(CMD.SET_DIMENSION, [
       (height >> 8) & 0xff, height & 0xff,
       (width >> 8) & 0xff, width & 0xff,
     ])
-    // quantity is always a single byte; high byte is always 0x00
+    await sleep(30)
     await this.send(CMD.SET_QUANTITY, [0x00, quantity & 0xff])
+    await sleep(30)
 
     for (let y = 0; y < rows.length; y++) {
-      const rowData = rows[y]
-      const data = [(y >> 8) & 0xff, y & 0xff, ...Array.from(rowData)]
-      await this.send(CMD.WRITE_IMAGE_LINE, data)
+      await this.send(CMD.WRITE_IMAGE_LINE, [(y >> 8) & 0xff, y & 0xff, ...rows[y]])
+      // Small throttle every 8 rows to avoid flooding the BLE buffer
+      if (y % 8 === 7) await sleep(5)
     }
 
+    await sleep(100)
     await this.send(CMD.END_PAGE_PRINT, [0x01])
+    await sleep(100)
     await this.send(CMD.END_PRINT, [0x01])
   }
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise<void>(resolve => setTimeout(resolve, ms))
 }
 
 // ---------------------------------------------------------------------------
 // Canvas label renderers
+// Dimensions default to 50x30mm at 203 DPI = 400x240 dots.
+// Pass labelDots from the connected printer to auto-fit any label size.
 // ---------------------------------------------------------------------------
 
-// M2 label dimensions at 203 DPI: 40mm × 30mm = 320 × 240 dots
-const LABEL_W = 320
-const LABEL_H = 240
-const PAD = 10
+const DEFAULT_DOTS: LabelDots = { width: 400, height: 240 }
+const PAD = 12
 
 export interface WatchLabelData {
   jobNumber: string
   customerName: string
   watchTitle: string
   dateIn: string
-  qrDataUrl: string    // small QR — generate with width:120, margin:1
+  qrDataUrl: string
   isCustomerCopy: boolean
   depositLabel?: string
   balanceLabel?: string
+  labelDots?: LabelDots
 }
 
 export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvasElement> {
+  const { width: W, height: H } = data.labelDots ?? DEFAULT_DOTS
+  const scale = W / 400  // scale fonts/positions relative to reference 400-wide
   const canvas = document.createElement('canvas')
-  canvas.width = LABEL_W
-  canvas.height = LABEL_H
+  canvas.width = W
+  canvas.height = H
   const ctx = canvas.getContext('2d')!
 
-  // White background
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, LABEL_W, LABEL_H)
-
-  // Border
+  ctx.fillRect(0, 0, W, H)
   ctx.strokeStyle = '#000000'
   ctx.lineWidth = 2
-  ctx.strokeRect(1, 1, LABEL_W - 2, LABEL_H - 2)
+  ctx.strokeRect(1, 1, W - 2, H - 2)
 
-  // Header strip
+  const headerH = Math.round(28 * scale)
   ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, LABEL_W, 28)
+  ctx.fillRect(0, 0, W, headerH)
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 13px sans-serif'
-  ctx.fillText('MAINSPRING', PAD, 18)
-  ctx.font = '11px sans-serif'
+  ctx.font = `bold ${Math.round(13 * scale)}px sans-serif`
+  ctx.fillText('MAINSPRING', PAD, Math.round(18 * scale))
   const copyLabel = data.isCustomerCopy ? 'CUSTOMER COPY' : 'WORKSHOP COPY'
+  ctx.font = `${Math.round(11 * scale)}px sans-serif`
   const copyW = ctx.measureText(copyLabel).width
-  ctx.fillText(copyLabel, LABEL_W - PAD - copyW, 18)
+  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(18 * scale))
 
   ctx.fillStyle = '#000000'
+  ctx.font = `bold ${Math.round(22 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(56 * scale))
 
-  // Ticket number — large
-  ctx.font = 'bold 22px monospace'
-  ctx.fillText(`#${data.jobNumber}`, PAD, 56)
+  ctx.font = `bold ${Math.round(12 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 30), PAD, Math.round(78 * scale))
+  ctx.font = `${Math.round(11 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.watchTitle, 32), PAD, Math.round(94 * scale))
+  ctx.fillText(data.dateIn, PAD, Math.round(110 * scale))
 
-  // Customer and item
-  ctx.font = 'bold 12px sans-serif'
-  ctx.fillText(truncate(data.customerName, 28), PAD, 78)
-  ctx.font = '11px sans-serif'
-  ctx.fillText(truncate(data.watchTitle, 30), PAD, 94)
-  ctx.fillText(data.dateIn, PAD, 110)
-
-  // Pricing (internal copy only)
   if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = '10px sans-serif'
-    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, 126)
-    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, 140)
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
+    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, Math.round(126 * scale))
+    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, Math.round(140 * scale))
   }
 
-  // Customer copy tagline
   if (data.isCustomerCopy) {
-    ctx.font = '10px sans-serif'
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
     ctx.fillStyle = '#555555'
-    ctx.fillText('Scan QR for live repair updates', PAD, 200)
+    ctx.fillText('Scan QR for live repair updates', PAD, H - 12)
     ctx.fillStyle = '#000000'
   }
 
-  // QR code image (right side)
   if (data.qrDataUrl) {
-    const qrSize = 100
-    const qrX = LABEL_W - PAD - qrSize
-    const qrY = 35
-    await drawImage(ctx, data.qrDataUrl, qrX, qrY, qrSize, qrSize)
+    const qrSize = Math.round(100 * scale)
+    await drawImage(ctx, data.qrDataUrl, W - PAD - qrSize, headerH + 4, qrSize, qrSize)
   }
 
   return canvas
@@ -248,75 +280,70 @@ export interface ShoeLabelData {
   isCustomerCopy: boolean
   depositLabel?: string
   balanceLabel?: string
+  labelDots?: LabelDots
 }
 
 export async function renderShoeLabel(data: ShoeLabelData): Promise<HTMLCanvasElement> {
+  const { width: W, height: H } = data.labelDots ?? DEFAULT_DOTS
+  const scale = W / 400
   const canvas = document.createElement('canvas')
-  canvas.width = LABEL_W
-  canvas.height = LABEL_H
+  canvas.width = W
+  canvas.height = H
   const ctx = canvas.getContext('2d')!
 
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, LABEL_W, LABEL_H)
+  ctx.fillRect(0, 0, W, H)
   ctx.strokeStyle = '#000000'
   ctx.lineWidth = 2
-  ctx.strokeRect(1, 1, LABEL_W - 2, LABEL_H - 2)
+  ctx.strokeRect(1, 1, W - 2, H - 2)
 
+  const headerH = Math.round(28 * scale)
   ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, LABEL_W, 28)
+  ctx.fillRect(0, 0, W, headerH)
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 13px sans-serif'
-  ctx.fillText('MAINSPRING', PAD, 18)
-  ctx.font = '11px sans-serif'
+  ctx.font = `bold ${Math.round(13 * scale)}px sans-serif`
+  ctx.fillText('MAINSPRING', PAD, Math.round(18 * scale))
   const copyLabel = data.isCustomerCopy ? 'CUSTOMER COPY' : 'WORKSHOP COPY'
+  ctx.font = `${Math.round(11 * scale)}px sans-serif`
   const copyW = ctx.measureText(copyLabel).width
-  ctx.fillText(copyLabel, LABEL_W - PAD - copyW, 18)
+  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(18 * scale))
 
   ctx.fillStyle = '#000000'
+  ctx.font = `bold ${Math.round(22 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(56 * scale))
 
-  ctx.font = 'bold 22px monospace'
-  ctx.fillText(`#${data.jobNumber}`, PAD, 56)
-
-  ctx.font = 'bold 12px sans-serif'
-  ctx.fillText(truncate(data.customerName, 28), PAD, 78)
-  ctx.font = '11px sans-serif'
-  ctx.fillText(truncate(data.shoeDescription, 30), PAD, 94)
-  ctx.fillText(data.dateIn, PAD, 110)
+  ctx.font = `bold ${Math.round(12 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 30), PAD, Math.round(78 * scale))
+  ctx.font = `${Math.round(11 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.shoeDescription, 32), PAD, Math.round(94 * scale))
+  ctx.fillText(data.dateIn, PAD, Math.round(110 * scale))
 
   if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = '10px sans-serif'
-    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, 126)
-    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, 140)
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
+    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, Math.round(126 * scale))
+    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, Math.round(140 * scale))
   }
 
   if (data.isCustomerCopy) {
-    ctx.font = '10px sans-serif'
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
     ctx.fillStyle = '#555555'
-    ctx.fillText('Scan QR for live repair updates', PAD, 200)
+    ctx.fillText('Scan QR for live repair updates', PAD, H - 12)
     ctx.fillStyle = '#000000'
   }
 
   if (data.qrDataUrl) {
-    const qrSize = 100
-    const qrX = LABEL_W - PAD - qrSize
-    const qrY = 35
-    await drawImage(ctx, data.qrDataUrl, qrX, qrY, qrSize, qrSize)
+    const qrSize = Math.round(100 * scale)
+    await drawImage(ctx, data.qrDataUrl, W - PAD - qrSize, headerH + 4, qrSize, qrSize)
   }
 
   return canvas
 }
 
 function truncate(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text
-  return text.slice(0, maxChars - 1) + '…'
+  return text.length <= maxChars ? text : text.slice(0, maxChars - 1) + '…'
 }
 
-function drawImage(
-  ctx: CanvasRenderingContext2D,
-  src: string,
-  x: number, y: number,
-  w: number, h: number
-): Promise<void> {
+function drawImage(ctx: CanvasRenderingContext2D, src: string, x: number, y: number, w: number, h: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => { ctx.drawImage(img, x, y, w, h); resolve() }

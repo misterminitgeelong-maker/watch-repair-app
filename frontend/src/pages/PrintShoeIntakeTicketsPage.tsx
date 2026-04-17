@@ -25,7 +25,7 @@ export default function PrintShoeIntakeTicketsPage() {
   const autoPrint = params.get('autoprint') === '1'
   const [repairQr, setRepairQr] = useState('')
   const [customerQr, setCustomerQr] = useState('')
-  const { status: btStatus, errorMessage: btError, isSupported: btSupported, connect: btConnect, autoConnect: btAutoConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
+  const { status: btStatus, errorMessage: btError, isSupported: btSupported, labelDots, connect: btConnect, autoConnect: btAutoConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
   const [autoTriedBt, setAutoTriedBt] = useState(false)
 
   const { data: job, isLoading } = useQuery({
@@ -80,8 +80,8 @@ export default function PrintShoeIntakeTicketsPage() {
       dateIn: formatDate(job.created_at),
     }
     const [workshopCanvas, customerCanvas] = await Promise.all([
-      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance) }),
-      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true }),
+      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance), labelDots: labelDots ?? undefined }),
+      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
     ])
     await btPrint([workshopCanvas, customerCanvas])
   }, [job, customer, repairQr, customerQr, balance, btPrint])
@@ -162,23 +162,23 @@ export default function PrintShoeIntakeTicketsPage() {
             <button
               onClick={printToNiimbot}
               disabled={!repairQr || !customerQr}
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold disabled:opacity-50"
-              style={{ backgroundColor: '#1d6b3e', color: '#fff' }}
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold disabled:opacity-50"
+              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
             >
-              <Bluetooth size={20} /> Print 2 Labels to M2
+              <Bluetooth size={22} /> Print 2 Labels to M2
             </button>
           ) : btStatus === 'connecting' ? (
-            <div className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold" style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+            <div className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold" style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}>
               <Spinner /> Connecting to M2…
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <button
                 onClick={btConnect}
-                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold"
-                style={{ backgroundColor: 'var(--cafe-amber)', color: '#FEFCF8' }}
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold"
+                style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
               >
-                <Bluetooth size={20} /> Connect M2 &amp; Print
+                <Bluetooth size={22} /> Connect M2 &amp; Print
               </button>
               <button onClick={() => window.print()} className="w-full py-2 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
                 Print / PDF instead
