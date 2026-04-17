@@ -145,8 +145,23 @@ export class NiimbotPrinter {
   }
 
   async printCanvas(canvas: HTMLCanvasElement, quantity = 1): Promise<void> {
-    const ctx = canvas.getContext('2d')!
-    const { width, height } = canvas
+    // M2 feeds along the long axis. If the canvas is landscape (wider than tall),
+    // rotate 90° CW so height = feed direction, width = printhead width.
+    // Portrait canvases are already in the correct orientation.
+    let src = canvas
+    if (canvas.width > canvas.height) {
+      const rotated = document.createElement('canvas')
+      rotated.width = canvas.height
+      rotated.height = canvas.width
+      const rctx = rotated.getContext('2d')!
+      rctx.translate(rotated.width, 0)
+      rctx.rotate(Math.PI / 2)
+      rctx.drawImage(canvas, 0, 0)
+      src = rotated
+    }
+
+    const ctx = src.getContext('2d')!
+    const { width, height } = src
     const imageData = ctx.getImageData(0, 0, width, height)
 
     const rows: number[][] = []
