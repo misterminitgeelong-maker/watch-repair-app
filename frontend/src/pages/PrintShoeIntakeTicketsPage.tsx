@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, Printer } from 'lucide-react'
+import { Bluetooth, BluetoothOff, ChevronLeft, Printer } from 'lucide-react'
 import QRCode from 'qrcode'
 import { getCustomer, getShoeRepairJob, type ShoeRepairJobItem, type Shoe } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { renderShoeLabel } from '@/lib/niimbot'
+import { useNiimbotPrinter } from '@/hooks/useNiimbotPrinter'
 
 function formatCents(value: number) {
   return (value / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -23,6 +25,7 @@ export default function PrintShoeIntakeTicketsPage() {
   const autoPrint = params.get('autoprint') === '1'
   const [repairQr, setRepairQr] = useState('')
   const [customerQr, setCustomerQr] = useState('')
+  const { status: btStatus, errorMessage: btError, isSupported: btSupported, connect: btConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['shoe-repair-job', id],
@@ -57,6 +60,23 @@ export default function PrintShoeIntakeTicketsPage() {
     return () => window.clearTimeout(t)
   }, [autoPrint, job, repairQr, customerQr])
 
+  const printToNiimbot = useCallback(async () => {
+    if (!job || !customer || !repairQr || !customerQr) return
+    const shoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
+    const shoeDescription = shoes.map(s => shoeLabel(s)).join(', ')
+    const shared = {
+      jobNumber: job.job_number,
+      customerName: customer.full_name || '—',
+      shoeDescription,
+      dateIn: formatDate(job.created_at),
+    }
+    const [workshopCanvas, customerCanvas] = await Promise.all([
+      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance) }),
+      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true }),
+    ])
+    await btPrint([workshopCanvas, customerCanvas])
+  }, [job, customer, repairQr, customerQr, balance, btPrint])
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -78,14 +98,54 @@ export default function PrintShoeIntakeTicketsPage() {
         >
           <ChevronLeft size={15} /> Back
         </Link>
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ backgroundColor: 'var(--cafe-amber)', color: '#FEFCF8' }}
-        >
-          <Printer size={15} /> Print 2 Intake Tickets
-        </button>
+        <div className="flex items-center gap-2">
+          {btSupported && (
+            btStatus === 'connected' || btStatus === 'printing' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={printToNiimbot}
+                  disabled={btStatus === 'printing' || !repairQr || !customerQr}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: '#1d6b3e', color: '#fff' }}
+                >
+                  <Bluetooth size={15} />
+                  {btStatus === 'printing' ? 'Printing…' : 'Print to M2'}
+                </button>
+                <button
+                  onClick={btDisconnect}
+                  className="p-2 rounded-lg transition-colors"
+                  title="Disconnect printer"
+                  style={{ color: 'var(--cafe-text-muted)' }}
+                >
+                  <BluetoothOff size={15} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={btConnect}
+                disabled={btStatus === 'connecting'}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+              >
+                <Bluetooth size={15} />
+                {btStatus === 'connecting' ? 'Connecting…' : 'Connect M2'}
+              </button>
+            )
+          )}
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{ backgroundColor: 'var(--cafe-amber)', color: '#FEFCF8' }}
+          >
+            <Printer size={15} /> Print / PDF
+          </button>
+        </div>
       </div>
+      {btError && (
+        <div className="print:hidden fixed top-14 left-0 right-0 px-6 py-2 text-sm text-center" style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
+          Printer error: {btError}
+        </div>
+      )}
 
       <div className="print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white">
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
