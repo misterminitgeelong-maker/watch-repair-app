@@ -27,10 +27,14 @@ const CMD = {
   GET_PRINT_STATUS: 0xa3,
 }
 
-function buildPacket(cmd: number, data: number[]): Uint8Array {
+function buildPacket(cmd: number, data: number[]): Uint8Array<ArrayBuffer> {
   const len = data.length
   const checksum = [cmd, len, ...data].reduce((xor, b) => xor ^ b, 0)
-  return new Uint8Array([0x55, 0x55, cmd, len, ...data, checksum, 0xaa, 0xaa])
+  const bytes = [0x55, 0x55, cmd, len, ...data, checksum, 0xaa, 0xaa]
+  const buf = new ArrayBuffer(bytes.length)
+  const view = new Uint8Array(buf)
+  view.set(bytes)
+  return view
 }
 
 export class NiimbotPrinter {
