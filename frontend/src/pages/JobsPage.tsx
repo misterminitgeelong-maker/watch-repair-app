@@ -143,14 +143,9 @@ export default function JobsPage() {
       <PageHeader
         title="Watch Repairs"
         action={
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
-              <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
-            </div>
-            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-              After create, you can print tickets from the desktop flow.
-            </span>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
+            <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
           </div>
         }
       />

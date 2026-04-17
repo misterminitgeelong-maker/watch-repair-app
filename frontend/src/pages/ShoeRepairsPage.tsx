@@ -514,9 +514,6 @@ export default function ShoeRepairsPage() {
                 New Job
               </Button>
             </div>
-            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-              After create, you can print tickets from the desktop flow.
-            </span>
           </div>
         }
       />
