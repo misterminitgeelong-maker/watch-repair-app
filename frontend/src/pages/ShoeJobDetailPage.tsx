@@ -529,7 +529,7 @@ export default function ShoeJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print`, '_blank', 'noopener,noreferrer')}>
+            <Button variant="secondary" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')}>
               <Printer size={15} /><span className="hidden sm:inline">Print Intake Tickets</span>
             </Button>
             <Button

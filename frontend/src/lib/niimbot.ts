@@ -54,20 +54,29 @@ export class NiimbotPrinter {
       filters: [{ namePrefix: 'M2' }],
       optionalServices: [NIIMBOT_SERVICE_UUID],
     })
+    await this.setupGatt(device)
+  }
+
+  /** Silently reconnect to a previously paired M2 without showing a picker.
+   *  Returns true if reconnected, false if no paired device found.
+   *  Requires navigator.bluetooth.getDevices (Chrome 85+). */
+  async reconnectIfPaired(): Promise<boolean> {
+    if (!('getDevices' in navigator.bluetooth)) return false
+    const devices = await (navigator.bluetooth as Bluetooth & { getDevices(): Promise<BluetoothDevice[]> }).getDevices()
+    const m2 = devices.find(d => d.name?.startsWith('M2'))
+    if (!m2) return false
+    await this.setupGatt(m2)
+    return true
+  }
+
+  private async setupGatt(device: BluetoothDevice): Promise<void> {
     const server = await device.gatt!.connect()
     const service = await server.getPrimaryService(NIIMBOT_SERVICE_UUID)
     const chars = await service.getCharacteristics()
-
-    // Find the characteristic we can write to (with or without response)
-    const writable = chars.find(
-      c => c.properties.writeWithoutResponse || c.properties.write
-    )
+    const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write)
     if (!writable) throw new Error('No writable characteristic found on Niimbot service')
-
     this.device = device
     this.writeChar = writable
-
-    // Heartbeat to confirm comms
     await this.send(CMD.HEARTBEAT, [0x00])
   }
 

@@ -586,7 +586,7 @@ export default function JobDetailPage() {
             >
               Copy status link
             </Button>
-            <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/intake-print`)}>
+            <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/intake-print?autoprint=1`)}>
               <Printer size={15} /><span className="hidden sm:inline">Print Intake Tickets</span>
             </Button>
             {nextStatus && (

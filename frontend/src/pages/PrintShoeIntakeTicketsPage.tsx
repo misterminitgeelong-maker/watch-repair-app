@@ -25,7 +25,8 @@ export default function PrintShoeIntakeTicketsPage() {
   const autoPrint = params.get('autoprint') === '1'
   const [repairQr, setRepairQr] = useState('')
   const [customerQr, setCustomerQr] = useState('')
-  const { status: btStatus, errorMessage: btError, isSupported: btSupported, connect: btConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
+  const { status: btStatus, errorMessage: btError, isSupported: btSupported, connect: btConnect, autoConnect: btAutoConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
+  const [autoTriedBt, setAutoTriedBt] = useState(false)
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['shoe-repair-job', id],
@@ -55,9 +56,17 @@ export default function PrintShoeIntakeTicketsPage() {
   }, [job])
 
   useEffect(() => {
-    if (!autoPrint || !job || !repairQr || !customerQr) return
-    const t = window.setTimeout(() => window.print(), 250)
-    return () => window.clearTimeout(t)
+    if (!autoPrint || !job || !repairQr || !customerQr || autoTriedBt) return
+    setAutoTriedBt(true)
+    if (btSupported) {
+      btAutoConnect().then(connected => {
+        if (connected) printToNiimbot()
+      })
+    } else {
+      const t = window.setTimeout(() => window.print(), 250)
+      return () => window.clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPrint, job, repairQr, customerQr])
 
   const printToNiimbot = useCallback(async () => {
@@ -147,7 +156,39 @@ export default function PrintShoeIntakeTicketsPage() {
         </div>
       )}
 
-      <div className="print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white">
+      {autoPrint && btSupported && btStatus !== 'printing' && (
+        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-20 sm:hidden" style={{ backgroundColor: 'var(--cafe-surface)', borderTop: '1px solid var(--cafe-border)' }}>
+          {btStatus === 'connected' ? (
+            <button
+              onClick={printToNiimbot}
+              disabled={!repairQr || !customerQr}
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold disabled:opacity-50"
+              style={{ backgroundColor: '#1d6b3e', color: '#fff' }}
+            >
+              <Bluetooth size={20} /> Print 2 Labels to M2
+            </button>
+          ) : btStatus === 'connecting' ? (
+            <div className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold" style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+              <Spinner /> Connecting to M2…
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={btConnect}
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold"
+                style={{ backgroundColor: 'var(--cafe-amber)', color: '#FEFCF8' }}
+              >
+                <Bluetooth size={20} /> Connect M2 &amp; Print
+              </button>
+              <button onClick={() => window.print()} className="w-full py-2 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+                Print / PDF instead
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white${autoPrint && btSupported ? ' pb-28 sm:pb-0' : ''}`}>
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
           <section className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none p-8 print:p-6 print:break-after-page">
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--cafe-text)' }}>Repair Intake Ticket</h1>

@@ -12,9 +12,7 @@ export function useNiimbotPrinter() {
     setStatus('connecting')
     setErrorMessage(null)
     try {
-      if (!printerRef.current) {
-        printerRef.current = new NiimbotPrinter()
-      }
+      if (!printerRef.current) printerRef.current = new NiimbotPrinter()
       await printerRef.current.connect()
       setStatus('connected')
     } catch (err) {
@@ -22,6 +20,22 @@ export function useNiimbotPrinter() {
       const msg = err instanceof Error ? err.message : 'Connection failed'
       setErrorMessage(msg)
       setStatus('error')
+    }
+  }, [])
+
+  /** Try to silently reconnect to a previously paired M2 (no picker).
+   *  Returns true if connected. Falls back gracefully if getDevices is unavailable. */
+  const autoConnect = useCallback(async (): Promise<boolean> => {
+    setStatus('connecting')
+    setErrorMessage(null)
+    try {
+      if (!printerRef.current) printerRef.current = new NiimbotPrinter()
+      const ok = await printerRef.current.reconnectIfPaired()
+      setStatus(ok ? 'connected' : 'disconnected')
+      return ok
+    } catch {
+      setStatus('disconnected')
+      return false
     }
   }, [])
 
@@ -52,5 +66,5 @@ export function useNiimbotPrinter() {
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator
 
-  return { status, errorMessage, isSupported, connect, disconnect, print }
+  return { status, errorMessage, isSupported, connect, autoConnect, disconnect, print }
 }
