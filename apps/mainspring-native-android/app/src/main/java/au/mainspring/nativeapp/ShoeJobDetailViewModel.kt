@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.JobNotePayload
 import au.mainspring.nativeapp.api.RepairJobStatusUpdate
+import au.mainspring.nativeapp.api.ShoeJobStatusHistoryRead
 import au.mainspring.nativeapp.api.ShoeRepairJobRead
 import au.mainspring.nativeapp.api.requireSuccessEmptyBody
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ data class ShoeJobDetailUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val job: ShoeRepairJobRead? = null,
+    val history: List<ShoeJobStatusHistoryRead> = emptyList(),
     val statusBusy: Boolean = false,
     val noteBusy: Boolean = false,
 )
@@ -37,7 +39,8 @@ class ShoeJobDetailViewModel(
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val j = ApiClient.api.getShoeRepairJob(jobId)
-                _state.update { it.copy(loading = false, job = j) }
+                val history = ApiClient.api.getShoeRepairJobStatusHistory(jobId)
+                _state.update { it.copy(loading = false, job = j, history = history) }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.message ?: "Could not load shoe job") }
             }
@@ -49,7 +52,8 @@ class ShoeJobDetailViewModel(
             _state.update { it.copy(statusBusy = true, error = null) }
             try {
                 val j = ApiClient.api.postShoeRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, note?.trim()?.takeIf { it.isNotEmpty() }))
-                _state.update { it.copy(statusBusy = false, job = j) }
+                val history = ApiClient.api.getShoeRepairJobStatusHistory(jobId)
+                _state.update { it.copy(statusBusy = false, job = j, history = history) }
             } catch (e: Exception) {
                 _state.update { it.copy(statusBusy = false, error = e.message ?: "Status update failed") }
             }
@@ -64,7 +68,8 @@ class ShoeJobDetailViewModel(
             try {
                 ApiClient.api.postShoeRepairJobNote(jobId, JobNotePayload(trimmed)).requireSuccessEmptyBody()
                 val j = ApiClient.api.getShoeRepairJob(jobId)
-                _state.update { it.copy(noteBusy = false, job = j) }
+                val history = ApiClient.api.getShoeRepairJobStatusHistory(jobId)
+                _state.update { it.copy(noteBusy = false, job = j, history = history) }
             } catch (e: Exception) {
                 _state.update { it.copy(noteBusy = false, error = e.message ?: "Could not add note") }
             }

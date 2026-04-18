@@ -18,6 +18,7 @@ data class QuoteDetailUiState(
     val error: String? = null,
     val quote: QuoteRead? = null,
     val lines: List<QuoteLineItemRead> = emptyList(),
+    val sendBusy: Boolean = false,
 )
 
 class QuoteDetailViewModel(
@@ -46,6 +47,29 @@ class QuoteDetailViewModel(
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.message ?: "Could not load quote") }
+            }
+        }
+    }
+
+    fun sendQuote() {
+        viewModelScope.launch {
+            _state.update { it.copy(sendBusy = true, error = null) }
+            try {
+                val resp = ApiClient.api.postQuoteSend(quoteId)
+                val cur = _state.value.quote
+                if (cur != null) {
+                    val updated = cur.copy(
+                        status = resp.status,
+                        sentAt = resp.sentAt,
+                        approvalToken = resp.approvalToken,
+                    )
+                    QuoteNavCache.put(updated)
+                    _state.update { it.copy(sendBusy = false, quote = updated) }
+                } else {
+                    _state.update { it.copy(sendBusy = false, error = "Quote metadata missing; pull to refresh from list.") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(sendBusy = false, error = e.message ?: "Send failed") }
             }
         }
     }

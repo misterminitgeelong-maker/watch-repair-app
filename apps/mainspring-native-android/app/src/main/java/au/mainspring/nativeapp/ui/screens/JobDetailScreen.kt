@@ -173,6 +173,32 @@ fun JobDetailScreen(
                     }
                     item {
                         HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                        Text("SMS log", style = MaterialTheme.typography.titleSmall)
+                    }
+                    if (state.smsLog.isEmpty()) {
+                        item {
+                            Text(
+                                "No SMS messages logged",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        items(state.smsLog, key = { it.id }) { log ->
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                Text(
+                                    "${log.event} · ${log.status}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(log.toPhone, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(log.body, style = MaterialTheme.typography.bodySmall)
+                                Text(log.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                    item {
+                        HorizontalDivider(Modifier.padding(vertical = 16.dp))
                         Text("Status history", style = MaterialTheme.typography.titleSmall)
                     }
                     items(state.history, key = { it.id }) { h ->

@@ -9,6 +9,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -86,6 +87,25 @@ fun ShoeJobDetailScreen(
                     }
                     state.error?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                    Text("Status history", style = MaterialTheme.typography.titleSmall)
+                    if (state.history.isEmpty()) {
+                        Text(
+                            "No history yet",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    } else {
+                        state.history.forEach { h ->
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                Text("${h.oldStatus ?: "—"} → ${h.newStatus}", style = MaterialTheme.typography.bodyMedium)
+                                h.changeNote?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                                Text(h.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            HorizontalDivider()
+                        }
                     }
                 }
             }

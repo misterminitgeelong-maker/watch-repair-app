@@ -4,16 +4,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +35,8 @@ fun QuoteDetailScreen(
     val vm: QuoteDetailViewModel = viewModel(key = quoteId, factory = QuoteDetailViewModel.factory(quoteId))
     val state by vm.state.collectAsStateWithLifecycle()
     val q = state.quote
+    var confirmSend by remember { mutableStateOf(false) }
+    val canSend = q?.status == "draft"
 
     Scaffold(
         topBar = {
@@ -54,6 +61,19 @@ fun QuoteDetailScreen(
                             )
                             Text("Repair job ${q.repairJobId}", style = MaterialTheme.typography.bodyMedium)
                             Text("Created ${q.createdAt}", style = MaterialTheme.typography.bodySmall)
+                            q.sentAt?.let { Text("Sent $it", style = MaterialTheme.typography.bodySmall) }
+                            if (canSend) {
+                                OutlinedButton(
+                                    onClick = { confirmSend = true },
+                                    enabled = !state.sendBusy,
+                                    modifier = Modifier.padding(top = 12.dp),
+                                ) {
+                                    Text(if (state.sendBusy) "Sending…" else "Send to customer")
+                                }
+                            }
+                            state.error?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+                            }
                         }
                     }
                     item { HorizontalDivider(Modifier.padding(vertical = 12.dp)) }
@@ -70,5 +90,32 @@ fun QuoteDetailScreen(
                 }
             }
         }
+    }
+
+    if (confirmSend) {
+        AlertDialog(
+            onDismissRequest = { confirmSend = false },
+            title = { Text("Send quote") },
+            text = {
+                Text(
+                    "This marks the quote as sent, updates the repair job where applicable, and notifies the customer by SMS and email when contact details exist.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.sendQuote()
+                        confirmSend = false
+                    },
+                    enabled = !state.sendBusy,
+                ) {
+                    Text("Send")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmSend = false }) { Text("Cancel") }
+            },
+        )
     }
 }

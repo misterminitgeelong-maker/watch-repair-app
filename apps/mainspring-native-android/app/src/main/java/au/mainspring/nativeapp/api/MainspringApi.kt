@@ -42,6 +42,9 @@ interface MainspringApi {
     @GET("v1/repair-jobs/{jobId}/status-history")
     suspend fun getRepairJobStatusHistory(@Path("jobId") jobId: String): List<JobStatusHistoryRead>
 
+    @GET("v1/repair-jobs/{jobId}/sms-log")
+    suspend fun getRepairJobSmsLog(@Path("jobId") jobId: String): List<SmsLogRead>
+
     @POST("v1/repair-jobs/{jobId}/status")
     suspend fun postRepairJobStatus(
         @Path("jobId") jobId: String,
@@ -84,6 +87,9 @@ interface MainspringApi {
     @GET("v1/quotes/{quoteId}/line-items")
     suspend fun getQuoteLineItems(@Path("quoteId") quoteId: String): List<QuoteLineItemRead>
 
+    @POST("v1/quotes/{quoteId}/send")
+    suspend fun postQuoteSend(@Path("quoteId") quoteId: String): QuoteSendResponse
+
     @GET("v1/invoices")
     suspend fun listInvoices(): List<InvoiceRead>
 
@@ -104,6 +110,9 @@ interface MainspringApi {
 
     @GET("v1/shoe-repair-jobs/{jobId}")
     suspend fun getShoeRepairJob(@Path("jobId") jobId: String): ShoeRepairJobRead
+
+    @GET("v1/shoe-repair-jobs/{jobId}/status-history")
+    suspend fun getShoeRepairJobStatusHistory(@Path("jobId") jobId: String): List<ShoeJobStatusHistoryRead>
 
     @POST("v1/shoe-repair-jobs/{jobId}/status")
     suspend fun postShoeRepairJobStatus(

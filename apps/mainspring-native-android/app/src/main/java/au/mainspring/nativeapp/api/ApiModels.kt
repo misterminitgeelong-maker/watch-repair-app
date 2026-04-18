@@ -117,6 +117,31 @@ data class QuoteLineItemRead(
     @SerializedName("item_type") val itemType: String? = null,
 )
 
+data class QuoteSendResponse(
+    val id: String,
+    val status: String,
+    @SerializedName("sent_at") val sentAt: String,
+    @SerializedName("approval_token") val approvalToken: String,
+)
+
+data class ShoeJobStatusHistoryRead(
+    val id: String,
+    @SerializedName("shoe_repair_job_id") val shoeRepairJobId: String,
+    @SerializedName("old_status") val oldStatus: String?,
+    @SerializedName("new_status") val newStatus: String,
+    @SerializedName("change_note") val changeNote: String?,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class SmsLogRead(
+    val id: String,
+    @SerializedName("to_phone") val toPhone: String,
+    val body: String,
+    val event: String,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String,
+)
+
 data class InvoiceRead(
     val id: String,
     @SerializedName("tenant_id") val tenantId: String,

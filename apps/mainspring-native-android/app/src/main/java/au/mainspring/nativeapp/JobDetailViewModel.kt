@@ -9,6 +9,7 @@ import au.mainspring.nativeapp.api.JobNotePayload
 import au.mainspring.nativeapp.api.JobStatusHistoryRead
 import au.mainspring.nativeapp.api.RepairJobRead
 import au.mainspring.nativeapp.api.RepairJobStatusUpdate
+import au.mainspring.nativeapp.api.SmsLogRead
 import au.mainspring.nativeapp.api.absolutizeApiUrl
 import au.mainspring.nativeapp.api.requireSuccessEmptyBody
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ data class JobDetailUiState(
     val job: RepairJobRead? = null,
     val history: List<JobStatusHistoryRead> = emptyList(),
     val attachments: List<AttachmentRead> = emptyList(),
+    val smsLog: List<SmsLogRead> = emptyList(),
     val statusBusy: Boolean = false,
     val noteBusy: Boolean = false,
     val claimBusy: Boolean = false,
@@ -50,8 +52,13 @@ class JobDetailViewModel(
                 } catch (_: Exception) {
                     emptyList()
                 }
+                val smsLog = try {
+                    ApiClient.api.getRepairJobSmsLog(jobId)
+                } catch (_: Exception) {
+                    emptyList()
+                }
                 _state.update {
-                    it.copy(loading = false, job = job, history = history, attachments = attachments)
+                    it.copy(loading = false, job = job, history = history, attachments = attachments, smsLog = smsLog)
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.message ?: "Could not load job") }
@@ -75,7 +82,14 @@ class JobDetailViewModel(
                 } catch (_: Exception) {
                     _state.value.attachments
                 }
-                _state.update { it.copy(statusBusy = false, job = job, history = history, attachments = attachments) }
+                val smsLog = try {
+                    ApiClient.api.getRepairJobSmsLog(jobId)
+                } catch (_: Exception) {
+                    _state.value.smsLog
+                }
+                _state.update {
+                    it.copy(statusBusy = false, job = job, history = history, attachments = attachments, smsLog = smsLog)
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(statusBusy = false, error = e.message ?: "Status update failed") }
             }
@@ -90,7 +104,12 @@ class JobDetailViewModel(
             try {
                 ApiClient.api.postRepairJobNote(jobId, JobNotePayload(trimmed)).requireSuccessEmptyBody()
                 val history = ApiClient.api.getRepairJobStatusHistory(jobId)
-                _state.update { it.copy(noteBusy = false, history = history) }
+                val smsLog = try {
+                    ApiClient.api.getRepairJobSmsLog(jobId)
+                } catch (_: Exception) {
+                    _state.value.smsLog
+                }
+                _state.update { it.copy(noteBusy = false, history = history, smsLog = smsLog) }
             } catch (e: Exception) {
                 _state.update { it.copy(noteBusy = false, error = e.message ?: "Could not add note") }
             }
