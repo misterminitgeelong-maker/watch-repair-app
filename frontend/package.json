@@ -6,12 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:vite": "vite build",
+    "build:web": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cap:sync": "cap sync",
+    "cap:copy": "cap copy",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "cap:bundle": "npm run build && cap sync",
+    "cap:bundle:vite": "npm run build:vite && cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.2",
+    "@capacitor/cli": "^7.6.2",
+    "@capacitor/core": "^7.6.2",
+    "@capacitor/ios": "^7.6.2",
     "@dnd-kit/core": "^6.3.1",
     "@hookform/resolvers": "^5.2.2",
     "@sentry/react": "^8.0.0",

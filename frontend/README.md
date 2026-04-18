@@ -71,3 +71,13 @@ export default defineConfig([
   },
 ])
 ```
+
+## Capacitor (iOS / Android store apps)
+
+This repo includes **Capacitor** (`capacitor.config.ts`, `android/`, `ios/`). The web UI is built to `dist/`, then copied into the native projects.
+
+1. Set **`VITE_API_BASE_URL`** in `.env.local` to your public API origin (e.g. `https://mainspring.au`) so the app calls the real server from the WebView. Production **CORS** must allow Capacitor origins (see root `.env.example`).
+2. Build and sync: **`npm run build && npm run cap:sync`** (or **`npm run cap:bundle`**). If TypeScript project refs fail locally, use **`npm run cap:bundle:vite`** for a Vite-only bundle for native QA.
+3. Open a native IDE: **`npm run cap:open:android`** or **`npm run cap:open:ios`** (iOS needs macOS with Xcode; first time run **`pod install`** in `ios/App` if CocoaPods is installed).
+
+Synced web assets under `android/…/public` and `ios/…/public` are gitignored; always run **`cap:sync`** after a web build before shipping a native binary.
