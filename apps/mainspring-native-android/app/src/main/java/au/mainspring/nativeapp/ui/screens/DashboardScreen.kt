@@ -44,7 +44,7 @@ fun DashboardScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "Use the bar below for Customers and Watch jobs. This shell is separate from the web and Capacitor apps.",
+            "Bottom tabs: home, customers, watch jobs, quotes, invoices. Menu (top left): inbox, shoe repairs, mobile services. This shell is separate from the web and Capacitor apps.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

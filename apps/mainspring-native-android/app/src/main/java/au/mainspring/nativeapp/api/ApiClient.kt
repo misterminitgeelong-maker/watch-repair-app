@@ -13,20 +13,44 @@ object ApiClient {
         .setLenient()
         .create()
 
-    val api: MainspringApi by lazy {
-        val log = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
-        val http = OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor())
-            .addInterceptor(log)
+    private val logging: HttpLoggingInterceptor = HttpLoggingInterceptor().apply {
+        level = HttpLoggingInterceptor.Level.BASIC
+    }
+
+    private val plainClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+    }
 
+    private val refreshRetrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
-            .client(http)
+            .client(plainClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    private val refreshApi: RefreshApi by lazy {
+        refreshRetrofit.create(RefreshApi::class.java)
+    }
+
+    private val mainClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor())
+            .addInterceptor(logging)
+            .authenticator(TokenAuthenticator(refreshApi))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    val api: MainspringApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(BuildConfig.API_BASE_URL)
+            .client(mainClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(MainspringApi::class.java)

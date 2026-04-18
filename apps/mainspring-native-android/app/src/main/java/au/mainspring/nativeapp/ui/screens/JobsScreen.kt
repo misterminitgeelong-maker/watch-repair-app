@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +26,7 @@ import au.mainspring.nativeapp.JobsViewModel
 
 @Composable
 fun JobsScreen(
+    onOpenJob: (String) -> Unit,
     viewModel: JobsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -55,6 +57,7 @@ fun JobsScreen(
                 Column(
                     Modifier
                         .fillMaxWidth()
+                        .clickable { onOpenJob(job.id) }
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
                     Text("${job.jobNumber} · ${job.status}", style = MaterialTheme.typography.titleMedium)
