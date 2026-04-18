@@ -152,3 +152,5 @@ python -m pytest tests/test_quote_token_lifecycle.py
 The **React** UI in `frontend/` can be shipped as **iOS and Android** store binaries. Capacitor workflow, permissions, auth, deep links, and CI are documented in **`frontend/README.md`**.
 
 For **Play/App Store submission**, QA matrices, rollout, and optional post‑v1 roadmap, see **`docs/MOBILE_STORE_RELEASE.md`**.
+
+There is also a **separate native Android client** (Kotlin + Jetpack Compose) in **`apps/mainspring-native-android/`**. It talks to the same FastAPI backend but is **not** the embedded WebView app: use it if you want a fully native UI alongside the web and Capacitor shells. Open that folder in Android Studio, set **`ANDROID_HOME`** or create **`local.properties`** from **`local.properties.example`**, and run **`assembleDebug`**. Optional key **`api.base.url`** sets the API origin (default `http://10.0.2.2:8000/` for the emulator reaching a server on the host).

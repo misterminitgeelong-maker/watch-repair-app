@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dev scaffold: cleartext allowed for local HTTP APIs (emulator 10.0.2.2, LAN, etc.). Use HTTPS-only base-config before Play release. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
