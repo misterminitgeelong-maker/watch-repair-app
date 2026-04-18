@@ -163,3 +163,9 @@ If the key is restricted to production domain only, **maps will fail inside the 
 2. **Android:** `adb shell pm verify-app-links --re-verify au.mainspring.app` then `adb shell pm get-app-links au.mainspring.app`.
 3. **iOS:** open a Notes `https://mainspring.au/…` link on a device with the app installed; it should jump in-app.
 4. If links open Safari only, re-check Team ID, SHA-256, and that Apple/Google crawlers can reach `/.well-known` without auth.
+
+### CI, store release, QA, rollout (steps 8–12)
+
+- **CI:** `.github/workflows/ci.yml` includes **`capacitor_android`** (debug APK artifact) after the web build.
+- **Signed AAB:** `.github/workflows/android-release.yml` (manual) — set Android keystore secrets, then run from the Actions tab.
+- **Everything else** (QA matrix, screenshot sizes, store copy templates, rollout phases, post‑v1 ideas): see **`docs/MOBILE_STORE_RELEASE.md`** in the repo root.

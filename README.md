@@ -146,3 +146,9 @@ python -m pytest tests/test_quote_token_lifecycle.py
 - **Tenant isolation:** all core routes scope reads/writes by tenant context.
 - **Limiter storage:** current `slowapi` store is in-process; use Redis-backed storage when running multiple API instances.
 - **Attachment storage today:** local filesystem abstraction; service contract is ready for future S3/R2 implementation.
+
+## Mobile store apps (Capacitor)
+
+The **React** UI in `frontend/` can be shipped as **iOS and Android** store binaries. Capacitor workflow, permissions, auth, deep links, and CI are documented in **`frontend/README.md`**.
+
+For **Play/App Store submission**, QA matrices, rollout, and optional post‑v1 roadmap, see **`docs/MOBILE_STORE_RELEASE.md`**.
