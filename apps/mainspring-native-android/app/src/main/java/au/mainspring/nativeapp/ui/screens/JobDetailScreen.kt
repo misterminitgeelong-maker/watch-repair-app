@@ -1,6 +1,9 @@
 package au.mainspring.nativeapp.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,26 +26,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.JobDetailViewModel
 import au.mainspring.nativeapp.WATCH_JOB_STATUS_OPTIONS
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobDetailScreen(
     jobId: String,
+    apiBaseUrl: String,
     onBack: () -> Unit,
 ) {
-    val vm: JobDetailViewModel = viewModel(key = jobId, factory = JobDetailViewModel.factory(jobId))
+    val vm: JobDetailViewModel = viewModel(
+        key = "$jobId|$apiBaseUrl",
+        factory = JobDetailViewModel.factory(jobId, apiBaseUrl),
+    )
     val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var statusPicker by remember { mutableStateOf(false) }
     var addNoteOpen by remember { mutableStateOf(false) }
     var statusChangeNote by remember { mutableStateOf("") }
     var newNoteDraft by remember { mutableStateOf("") }
+    var attachmentOpenError by remember { mutableStateOf<String?>(null) }
     val job = state.job
 
     Scaffold(
@@ -63,6 +78,35 @@ fun JobDetailScreen(
                         job.customerName?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                         Text("Priority ${job.priority}", style = MaterialTheme.typography.bodySmall)
                         job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        if (job.claimedByName != null) {
+                            Text(
+                                "Claimed by ${job.claimedByName}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        } else {
+                            Text(
+                                "Unclaimed",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedButton(
+                                onClick = { vm.claimJob() },
+                                enabled = !state.claimBusy,
+                                modifier = Modifier.padding(end = 8.dp),
+                            ) {
+                                Text(if (state.claimBusy) "…" else "Claim for me")
+                            }
+                            OutlinedButton(
+                                onClick = { vm.releaseJob() },
+                                enabled = !state.claimBusy,
+                            ) {
+                                Text(if (state.claimBusy) "…" else "Release")
+                            }
+                        }
                         Button(
                             onClick = {
                                 statusChangeNote = ""
@@ -86,6 +130,48 @@ fun JobDetailScreen(
                         state.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                         }
+                        HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                        Text("Attachments", style = MaterialTheme.typography.titleSmall)
+                        attachmentOpenError?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                    if (state.attachments.isEmpty()) {
+                        item {
+                            Text("No files on this job", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        items(state.attachments, key = { it.id }) { att ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.bodyMedium)
+                                    att.contentType?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        attachmentOpenError = null
+                                        scope.launch {
+                                            try {
+                                                val url = vm.resolveDownloadUrl(att.storageKey)
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                            } catch (e: Exception) {
+                                                attachmentOpenError = e.message ?: "Could not open file"
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    Text("Open")
+                                }
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                    item {
                         HorizontalDivider(Modifier.padding(vertical = 16.dp))
                         Text("Status history", style = MaterialTheme.typography.titleSmall)
                     }

@@ -53,6 +53,28 @@ data class RepairJobRead(
     val priority: String,
     @SerializedName("customer_name") val customerName: String?,
     @SerializedName("created_at") val createdAt: String,
+    @SerializedName("claimed_by_user_id") val claimedByUserId: String? = null,
+    @SerializedName("claimed_by_name") val claimedByName: String? = null,
+)
+
+data class AttachmentRead(
+    val id: String,
+    @SerializedName("tenant_id") val tenantId: String,
+    @SerializedName("repair_job_id") val repairJobId: String? = null,
+    @SerializedName("watch_id") val watchId: String? = null,
+    @SerializedName("shoe_repair_job_id") val shoeRepairJobId: String? = null,
+    @SerializedName("auto_key_job_id") val autoKeyJobId: String? = null,
+    @SerializedName("storage_key") val storageKey: String,
+    @SerializedName("file_name") val fileName: String? = null,
+    @SerializedName("content_type") val contentType: String? = null,
+    @SerializedName("file_size_bytes") val fileSizeBytes: Int? = null,
+    val label: String? = null,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class AttachmentDownloadLinkResponse(
+    @SerializedName("download_url") val downloadUrl: String,
+    @SerializedName("expires_in_seconds") val expiresInSeconds: Int,
 )
 
 data class RepairJobStatusUpdate(

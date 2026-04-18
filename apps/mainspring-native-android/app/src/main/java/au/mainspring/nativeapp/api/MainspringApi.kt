@@ -54,6 +54,24 @@ interface MainspringApi {
         @Body body: JobNotePayload,
     ): Response<ResponseBody>
 
+    @POST("v1/repair-jobs/{jobId}/claim")
+    suspend fun postRepairJobClaim(@Path("jobId") jobId: String): RepairJobRead
+
+    @POST("v1/repair-jobs/{jobId}/release")
+    suspend fun postRepairJobRelease(@Path("jobId") jobId: String): RepairJobRead
+
+    @GET("v1/attachments")
+    suspend fun listAttachments(
+        @Query("repair_job_id") repairJobId: String,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+    ): List<AttachmentRead>
+
+    @GET("v1/attachments/download-link/{storage_key}")
+    suspend fun getAttachmentDownloadLink(
+        @Path("storage_key") storageKey: String,
+    ): AttachmentDownloadLinkResponse
+
     @GET("v1/quotes")
     suspend fun listQuotes(
         @Query("limit") limit: Int = 100,
