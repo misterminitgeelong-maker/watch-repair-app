@@ -87,7 +87,7 @@ Synced web assets under `android/…/public` and `ios/…/public` are gitignored
 - **Safe area:** `viewport-fit=cover` in `index.html`; mobile app header uses `env(safe-area-inset-top)` (see `AppShell.tsx`). Bottom tabs already used `safe-area-inset-bottom`.
 - **Status bar & splash:** `@capacitor/status-bar` + `@capacitor/splash-screen` — tuned in `main.tsx` after auth hydration; defaults also in `capacitor.config.ts`.
 - **Android back:** `@capacitor/app` — `NativeChrome.tsx` maps hardware back to in-app `navigate(-1)` when history allows.
-- **Tokens on device:** `@capacitor/preferences` — access/refresh tokens and “remember device” sync to native storage (in-memory cache for axios). This is **not** hardware-backed encryption; upgrade later if you need stricter guarantees.
+- **Tokens on device:** access/refresh JWTs use **Keychain / Android Keystore** via `@aparajita/capacitor-secure-storage` (Step 5); “remember device” stays in `@capacitor/preferences`. In-memory cache still feeds axios synchronously.
 
 ### Permissions & APIs (Step 4)
 
@@ -113,3 +113,10 @@ If the key is restricted to production domain only, **maps will fail inside the 
 2. Take photo + upload on a watch job, shoe job, and mobile-services job.
 3. Open Mobile Services **Map** view with a valid Maps key (pins or fallback).
 4. Optional: **Print to M2** from intake print page on Android Chrome vs Capacitor WebView.
+
+### Auth & session hardening (Step 5)
+
+- **Secure token storage (native):** `@aparajita/capacitor-secure-storage` stores access + refresh tokens. Existing installs **migrate once** from legacy `@capacitor/preferences` token keys on next cold start.
+- **Resume refresh:** `@capacitor/app` `resume` (see `NativeChrome.tsx`) calls a **proactive** `/auth/refresh` (cooldown 5s) so long background periods are less likely to hit expired access JWTs on the first tap.
+- **React state sync:** after any silent refresh (401 interceptor or resume), `AuthContext` listens for `auth:access-token-updated` and reschedules the proactive refresh timer from `expires_in_seconds` or the JWT `exp` claim.
+- **Web / dev:** unchanged — still `localStorage` / `sessionStorage` per remember-me.

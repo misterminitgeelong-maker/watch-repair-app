@@ -2,7 +2,20 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
-import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, withApiOrigin, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
+import {
+  AUTH_ACCESS_TOKEN_UPDATED,
+  clearStoredTokens,
+  getAuthSession,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  refreshAuth,
+  setStoredTokens,
+  switchActiveSite,
+  withApiOrigin,
+  type FeatureKey,
+  type PlanCode,
+  type SiteOption,
+} from '@/lib/api'
 
 interface AuthCtx {
   token: string | null
@@ -40,8 +53,7 @@ const AuthContext = createContext<AuthCtx | null>(null)
 const SESSION_INIT_TIMEOUT_MS = 30_000
 
 /** Parses role from JWT for optional optimistic UI before /auth/session loads. Session data is the source of truth for role and permissions. */
-function parseRoleFromToken(token: string | null): string | null {
-  if (!token) return null
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.')
     if (parts.length < 2) return null
@@ -49,12 +61,27 @@ function parseRoleFromToken(token: string | null): string | null {
     const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
     const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
     const decoded = atob(padded)
-    const parsed = JSON.parse(decoded) as { sub?: string }
-    const subjectParts = (parsed.sub || '').split(':')
-    return subjectParts.length >= 3 ? subjectParts[2] : null
+    return JSON.parse(decoded) as Record<string, unknown>
   } catch {
     return null
   }
+}
+
+function parseRoleFromToken(token: string | null): string | null {
+  if (!token) return null
+  const parsed = decodeJwtPayload(token)
+  if (!parsed) return null
+  const subjectParts = String(parsed.sub || '').split(':')
+  return subjectParts.length >= 3 ? subjectParts[2] : null
+}
+
+/** Seconds until JWT exp, minimum 60, or 0 if unknown. */
+function secondsUntilJwtExpiry(token: string | null): number {
+  if (!token) return 0
+  const parsed = decodeJwtPayload(token)
+  const exp = typeof parsed?.exp === 'number' ? parsed.exp : 0
+  if (!exp) return 0
+  return Math.max(60, exp - Math.floor(Date.now() / 1000))
 }
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
@@ -181,13 +208,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    function onAccessTokenUpdated(e: Event) {
+      const nextToken = getStoredAccessToken()
+      setToken(nextToken)
+      setRole(parseRoleFromToken(nextToken))
+      const detail = (e as CustomEvent<{ expiresInSeconds?: number }>).detail
+      const fromApi = detail?.expiresInSeconds
+      const sec =
+        typeof fromApi === 'number' && fromApi > 0 ? fromApi : secondsUntilJwtExpiry(nextToken) || 480 * 60
+      scheduleProactiveRefresh(sec)
+    }
+
     window.addEventListener('storage', syncTokenFromStorage)
     window.addEventListener('auth:token-cleared', syncTokenFromStorage)
+    window.addEventListener(AUTH_ACCESS_TOKEN_UPDATED, onAccessTokenUpdated)
     return () => {
       window.removeEventListener('storage', syncTokenFromStorage)
       window.removeEventListener('auth:token-cleared', syncTokenFromStorage)
+      window.removeEventListener(AUTH_ACCESS_TOKEN_UPDATED, onAccessTokenUpdated)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- scheduleProactiveRefresh uses refs
 
   useEffect(() => {
     if (token) {
