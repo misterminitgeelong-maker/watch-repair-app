@@ -91,6 +91,16 @@ def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
     return RepairJobRead(**data)
 
 
+def _append_shop_note_to_fault_report(job: RepairJob, note: str) -> None:
+    """Append a shop note to job.description (fault report and printed intake ticket)."""
+    stripped = note.strip()
+    if not stripped:
+        return
+    line = f"Shop note: {stripped}"
+    existing = (job.description or "").strip()
+    job.description = f"{existing}\n\n{line}" if existing else line
+
+
 def _next_job_number(session: Session, tenant_id: UUID) -> str:
     # Optimistic CAS loop for cross-dialect safety (SQLite + Postgres).
     for _ in range(20):
@@ -317,6 +327,8 @@ def update_repair_job_status(
         change_note=payload.note,
     )
     session.add(history)
+    if payload.note and str(payload.note).strip():
+        _append_shop_note_to_fault_report(job, str(payload.note))
 
     watch = session.get(Watch, job.watch_id)
     if watch:
@@ -660,15 +672,18 @@ def add_repair_job_note(
         raise HTTPException(status_code=404, detail="Repair job not found")
     if not payload.note.strip():
         raise HTTPException(status_code=422, detail="note must not be empty")
+    note_text = payload.note.strip()
     history = JobStatusHistory(
         tenant_id=auth.tenant_id,
         repair_job_id=job.id,
         old_status=job.status,
         new_status=job.status,
         changed_by_user_id=auth.user_id,
-        change_note=payload.note.strip(),
+        change_note=note_text,
     )
     session.add(history)
+    _append_shop_note_to_fault_report(job, note_text)
+    session.add(job)
     session.commit()
     return Response(status_code=204)
 

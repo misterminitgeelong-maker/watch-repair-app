@@ -267,3 +267,50 @@ def test_repair_queue_day_rejects_bad_uuid():
         json={"mode": "shoe", "done_ids": ["not-a-uuid"], "stats": {"advanced": 0, "checkedIn": 0, "skipped": 0}},
     )
     assert p.status_code == 422
+
+
+def test_job_note_appends_to_description_fault_report():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-note-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id)
+    job_id = job["id"]
+
+    patch = client.patch(
+        f"/v1/repair-jobs/{job_id}",
+        headers=headers,
+        json={"description": "Original fault text"},
+    )
+    assert patch.status_code == 200
+
+    note_res = client.post(
+        f"/v1/repair-jobs/{job_id}/note",
+        headers=headers,
+        json={"note": "Customer called back"},
+    )
+    assert note_res.status_code == 204
+
+    got = client.get(f"/v1/repair-jobs/{job_id}", headers=headers)
+    assert got.status_code == 200
+    desc = got.json()["description"]
+    assert "Original fault text" in desc
+    assert "Shop note: Customer called back" in desc
+
+
+def test_status_update_with_note_appends_to_description():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-stat-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id)
+    job_id = job["id"]
+
+    st = client.post(
+        f"/v1/repair-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "awaiting_go_ahead", "note": "Quote emailed"},
+    )
+    assert st.status_code == 200
+    desc = st.json()["description"]
+    assert "Shop note: Quote emailed" in (desc or "")
