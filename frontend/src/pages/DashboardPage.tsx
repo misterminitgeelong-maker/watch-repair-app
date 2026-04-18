@@ -235,7 +235,7 @@ export default function DashboardPage() {
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
-  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then((r) => r.data) })
+  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data) })
   const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
   const invoices = invoicesQ.data ?? []
   const reports = reportsQ.data
@@ -273,8 +273,8 @@ export default function DashboardPage() {
     queryFn: () => getReportsWidgets().then((r) => r.data),
   })
   const { data: inboxAlerts } = useQuery({
-    queryKey: ['inbox'],
-    queryFn: () => getInbox(20).then((r) => r.data),
+    queryKey: ['inbox', 0],
+    queryFn: () => getInbox(50, 0).then((r) => r.data),
   })
 
   useEffect(() => {

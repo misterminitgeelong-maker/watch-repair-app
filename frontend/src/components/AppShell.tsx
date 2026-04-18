@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   createStripeConnectAccountLink,
+  DEFAULT_PAGE_SIZE,
   getBillingLimits,
   listAutoKeyJobs,
   listCustomers,
@@ -453,21 +454,21 @@ export default function AppShell() {
     refetchOnWindowFocus: false,
   })
   const { data: jobs } = useQuery({
-    queryKey: ['jobs', 'guided-tour'],
-    queryFn: () => listJobs().then((r) => r.data),
+    queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
+    queryFn: () => listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
     enabled: guidedTourDataEnabled,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
   const { data: shoeJobs } = useQuery({
-    queryKey: ['shoe-repair-jobs', 'guided-tour'],
+    queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
     enabled: guidedTourDataEnabled && hasFeature('shoe'),
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
   const { data: autoKeyJobs } = useQuery({
-    queryKey: ['auto-key-jobs', 'guided-tour'],
+    queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
     enabled: guidedTourDataEnabled && hasFeature('auto_key'),
     staleTime: 5 * 60_000,
@@ -481,8 +482,8 @@ export default function AppShell() {
     refetchOnWindowFocus: false,
   })
   const { data: invoices } = useQuery({
-    queryKey: ['invoices', 'guided-tour'],
-    queryFn: () => listInvoices().then((r) => r.data),
+    queryKey: ['invoices'],
+    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data),
     enabled: guidedTourDataEnabled,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,

@@ -781,7 +781,8 @@ export interface Invoice {
   tax_cents: number; total_cents: number; currency: string; created_at: string
   invoice?: Invoice
 }
-export const listInvoices = () => api.get<Invoice[]>('/invoices')
+export const listInvoices = (params?: { limit?: number }) =>
+  api.get<Invoice[]>('/invoices', params && Object.keys(params).length ? { params } : undefined)
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${id}`)
 export const getInvoiceLineItems = (invoiceId: string) =>
   api.get<Array<{ id: string; item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }>>(`/invoices/${invoiceId}/line-items`)
@@ -1346,7 +1347,7 @@ export interface ShoeRepairJobCreatePayload {
   items: ShoeRepairJobItemInput[]
 }
 
-export const listShoeRepairJobs = (params?: { status?: string; customer_id?: string }) =>
+export const listShoeRepairJobs = (params?: { status?: string; customer_id?: string; limit?: number }) =>
   api.get<ShoeRepairJob[]>('/shoe-repair-jobs', params && Object.keys(params).length ? { params } : undefined)
 
 export const getShoeRepairJob = (id: string) =>
@@ -1623,8 +1624,7 @@ export function isDuplicateTenantUserEmailError(error: unknown): boolean {
 
 // ── Pagination / sorting constants ───────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 50
-/** Watch Repairs list page loads all jobs in one request (must stay within API max limit). */
-export const WATCH_JOBS_LIST_MAX = 20000
+export const WATCH_JOBS_LIST_MAX = 500
 export type SortDir = 'asc' | 'desc'
 
 // ── Mobile commission lead source options ─────────────────────────────────────

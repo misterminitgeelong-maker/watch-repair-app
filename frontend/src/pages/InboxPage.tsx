@@ -33,11 +33,11 @@ function EventIcon({ eventType }: { eventType: string }) {
   return <KeyRound size={20} />
 }
 
-/** Hook to get inbox count for nav badges — uses same query key so it's cache-shared */
+/** Hook to get inbox count for nav badges — shares key with InboxPage page=0 to avoid duplicate fetch */
 export function useInboxCount() {
   const { data } = useQuery({
-    queryKey: ['inbox'],
-    queryFn: () => getInbox(PAGE_SIZE).then(r => r.data),
+    queryKey: ['inbox', 0],
+    queryFn: () => getInbox(PAGE_SIZE, 0).then(r => r.data),
     staleTime: 60_000,
   })
   return data?.length ?? 0

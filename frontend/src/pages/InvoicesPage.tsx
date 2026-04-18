@@ -42,7 +42,7 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 export function InvoicesPage() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
-  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices().then(r => r.data) })
+  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
 
   return (
     <div>

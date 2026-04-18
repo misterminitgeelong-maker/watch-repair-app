@@ -476,7 +476,7 @@ export default function ShoeRepairsPage() {
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ['shoe-repair-jobs'],
-    queryFn: () => listShoeRepairJobs().then(r => r.data),
+    queryFn: () => listShoeRepairJobs({ limit: 500 }).then(r => r.data),
   })
 
   const statusOptions = jobDirectoryView === 'active' ? SHOE_ACTIVE_STATUSES : SHOE_CLOSED_STATUSES
