@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from sqlalchemy import text
 from sqlmodel import Session, func, select
 
 from ..config import settings
@@ -120,29 +121,20 @@ def get_billing_limits(
     plan_code = auth.plan_code
     limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS["pro"])
 
-    user_count = int(
-        session.exec(
-            select(func.count())
-            .select_from(User)
-            .where(User.tenant_id == auth.tenant_id)
-            .where(User.is_active == True)
-        ).one()
-    )
-    repair_job_count = int(
-        session.exec(
-            select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)
-        ).one()
-    )
-    shoe_job_count = int(
-        session.exec(
-            select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
-        ).one()
-    )
-    auto_key_count = int(
-        session.exec(
-            select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)
-        ).one()
-    )
+    counts = session.execute(
+        text("""
+            SELECT
+                (SELECT COUNT(*) FROM "user"        WHERE tenant_id = :tid AND is_active = true) AS user_count,
+                (SELECT COUNT(*) FROM repairjob     WHERE tenant_id = :tid) AS repair_job_count,
+                (SELECT COUNT(*) FROM shoerepairjob WHERE tenant_id = :tid) AS shoe_job_count,
+                (SELECT COUNT(*) FROM autokeyjob    WHERE tenant_id = :tid) AS auto_key_count
+        """),
+        {"tid": str(auth.tenant_id)},
+    ).one()
+    user_count = int(counts.user_count)
+    repair_job_count = int(counts.repair_job_count)
+    shoe_job_count = int(counts.shoe_job_count)
+    auto_key_count = int(counts.auto_key_count)
 
     tenant = session.get(Tenant, auth.tenant_id)
     stripe_sub_id = tenant.stripe_subscription_id if tenant else None

@@ -1,3 +1,5 @@
+import hashlib
+import time
 from dataclasses import dataclass
 from datetime import timezone
 from typing import Callable
@@ -11,6 +13,24 @@ from .config import settings
 from .database import get_session
 from .models import Tenant, User
 from .security import decode_access_token
+
+# ---------------------------------------------------------------------------
+# Auth context cache — avoids 2 DB lookups (User + Tenant) on every request.
+# Entries expire after 30 s so revocations and suspensions take effect quickly.
+# Each worker process has its own dict; no cross-process coordination needed.
+# ---------------------------------------------------------------------------
+_AUTH_CACHE_TTL = 30  # seconds
+_AUTH_CACHE_MAX = 2000  # clear the dict when it grows too large
+
+@dataclass
+class _CachedAuth:
+    ctx: "AuthContext"
+    signup_payment_pending: bool
+
+_auth_cache: dict[str, tuple[_CachedAuth, float]] = {}
+
+def _cache_key(token: str) -> str:
+    return hashlib.sha256(token.encode(), usedforsecurity=False).hexdigest()
 
 
 def stripe_billing_configured() -> bool:
@@ -149,6 +169,23 @@ def get_auth_context(
         tenant_id = claims.tenant_id
         user_id = claims.user_id
 
+        # Fast path: return cached context without hitting the DB.
+        key = _cache_key(credentials.credentials)
+        now = time.monotonic()
+        cached = _auth_cache.get(key)
+        if cached is not None:
+            cached_auth, expires = cached
+            if now < expires:
+                if (
+                    cached_auth.ctx.role != "platform_admin"
+                    and cached_auth.signup_payment_pending
+                    and stripe_billing_configured()
+                    and not _path_allowed_during_signup_payment_pending(request.url.path)
+                ):
+                    raise HTTPException(status_code=403, detail="subscription_required")
+                return cached_auth.ctx
+
+        # Slow path: validate against DB and populate the cache.
         user = session.get(User, user_id)
         if not user or user.tenant_id != tenant_id or not user.is_active:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -167,19 +204,23 @@ def get_auth_context(
             raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
         plan_code = normalize_plan_code(tenant.plan_code, default_if_empty="pro")
+        signup_pending = bool(getattr(tenant, "signup_payment_pending", False))
 
         if (
             user.role != "platform_admin"
-            and getattr(tenant, "signup_payment_pending", False)
+            and signup_pending
             and stripe_billing_configured()
             and not _path_allowed_during_signup_payment_pending(request.url.path)
         ):
-            raise HTTPException(
-                status_code=403,
-                detail="subscription_required",
-            )
+            raise HTTPException(status_code=403, detail="subscription_required")
 
-        return AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role, plan_code=plan_code)
+        ctx = AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role, plan_code=plan_code)
+
+        if len(_auth_cache) >= _AUTH_CACHE_MAX:
+            _auth_cache.clear()
+        _auth_cache[key] = (_CachedAuth(ctx=ctx, signup_payment_pending=signup_pending), now + _AUTH_CACHE_TTL)
+
+        return ctx
     except HTTPException:
         raise
     except Exception as exc:
