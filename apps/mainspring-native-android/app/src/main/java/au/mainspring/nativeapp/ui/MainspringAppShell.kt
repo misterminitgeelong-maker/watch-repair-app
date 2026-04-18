@@ -188,7 +188,11 @@ fun MainspringAppShell(
                     arguments = listOf(navArgument("customerId") { type = NavType.StringType }),
                 ) { entry ->
                     val id = entry.arguments?.getString("customerId") ?: return@composable
-                    CustomerDetailScreen(customerId = id, onBack = { navController.popBackStack() })
+                    CustomerDetailScreen(
+                        customerId = id,
+                        onBack = { navController.popBackStack() },
+                        onOpenWatchJob = { jobId -> navController.navigate("watchJob/$jobId") },
+                    )
                 }
                 composable(
                     route = "watchJob/{jobId}",

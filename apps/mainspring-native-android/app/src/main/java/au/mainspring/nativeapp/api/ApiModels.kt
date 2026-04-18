@@ -42,6 +42,18 @@ data class CustomerRead(
     @SerializedName("created_at") val createdAt: String,
 )
 
+data class WatchRead(
+    val id: String,
+    @SerializedName("tenant_id") val tenantId: String,
+    @SerializedName("customer_id") val customerId: String,
+    val brand: String? = null,
+    val model: String? = null,
+    @SerializedName("serial_number") val serialNumber: String? = null,
+    @SerializedName("movement_type") val movementType: String? = null,
+    @SerializedName("condition_notes") val conditionNotes: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+)
+
 data class RepairJobRead(
     val id: String,
     @SerializedName("tenant_id") val tenantId: String,
@@ -176,6 +188,12 @@ data class PaymentRead(
     val currency: String,
     val status: String,
     val provider: String,
+    @SerializedName("provider_reference") val providerReference: String? = null,
+)
+
+data class PaymentCreate(
+    @SerializedName("amount_cents") val amountCents: Int,
+    @SerializedName("provider_reference") val providerReference: String? = null,
 )
 
 data class InvoiceWithPayments(

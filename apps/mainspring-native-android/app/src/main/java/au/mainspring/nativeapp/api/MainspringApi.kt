@@ -27,6 +27,15 @@ interface MainspringApi {
     @GET("v1/customers/{id}")
     suspend fun getCustomer(@Path("id") id: String): CustomerRead
 
+    @GET("v1/watches")
+    suspend fun listWatches(
+        @Query("customer_id") customerId: String,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+        @Query("sort_by") sortBy: String = "created_at",
+        @Query("sort_dir") sortDir: String = "desc",
+    ): List<WatchRead>
+
     @GET("v1/repair-jobs")
     suspend fun listRepairJobs(
         @Query("limit") limit: Int = 100,
@@ -34,6 +43,7 @@ interface MainspringApi {
         @Query("sort_by") sortBy: String = "created_at",
         @Query("sort_dir") sortDir: String = "desc",
         @Query("q") q: String? = null,
+        @Query("customer_id") customerId: String? = null,
     ): List<RepairJobRead>
 
     @GET("v1/repair-jobs/{jobId}")
@@ -103,6 +113,15 @@ interface MainspringApi {
 
     @GET("v1/invoices/{invoiceId}")
     suspend fun getInvoice(@Path("invoiceId") invoiceId: String): InvoiceWithPayments
+
+    @GET("v1/invoices/{invoiceId}/line-items")
+    suspend fun getInvoiceLineItems(@Path("invoiceId") invoiceId: String): List<QuoteLineItemRead>
+
+    @POST("v1/invoices/{invoiceId}/payments")
+    suspend fun postInvoicePayment(
+        @Path("invoiceId") invoiceId: String,
+        @Body body: PaymentCreate,
+    ): PaymentRead
 
     @GET("v1/inbox")
     suspend fun listInbox(
