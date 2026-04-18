@@ -60,6 +60,10 @@ data class RepairJobStatusUpdate(
     val note: String? = null,
 )
 
+data class JobNotePayload(
+    val note: String,
+)
+
 data class JobStatusHistoryRead(
     val id: String,
     @SerializedName("repair_job_id") val repairJobId: String? = null,

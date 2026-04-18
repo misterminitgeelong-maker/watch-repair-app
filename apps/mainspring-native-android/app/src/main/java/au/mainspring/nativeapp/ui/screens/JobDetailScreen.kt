@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,6 +39,9 @@ fun JobDetailScreen(
     val vm: JobDetailViewModel = viewModel(key = jobId, factory = JobDetailViewModel.factory(jobId))
     val state by vm.state.collectAsStateWithLifecycle()
     var statusPicker by remember { mutableStateOf(false) }
+    var addNoteOpen by remember { mutableStateOf(false) }
+    var statusChangeNote by remember { mutableStateOf("") }
+    var newNoteDraft by remember { mutableStateOf("") }
     val job = state.job
 
     Scaffold(
@@ -59,11 +64,24 @@ fun JobDetailScreen(
                         Text("Priority ${job.priority}", style = MaterialTheme.typography.bodySmall)
                         job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         Button(
-                            onClick = { statusPicker = true },
+                            onClick = {
+                                statusChangeNote = ""
+                                statusPicker = true
+                            },
                             enabled = !state.statusBusy,
                             modifier = Modifier.padding(top = 12.dp),
                         ) {
                             Text(if (state.statusBusy) "Updating…" else "Change status")
+                        }
+                        Button(
+                            onClick = {
+                                newNoteDraft = ""
+                                addNoteOpen = true
+                            },
+                            enabled = !state.noteBusy,
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
+                            Text(if (state.noteBusy) "Saving…" else "Add shop note")
                         }
                         state.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
@@ -90,9 +108,18 @@ fun JobDetailScreen(
             title = { Text("Choose status") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = statusChangeNote,
+                        onValueChange = { statusChangeNote = it },
+                        label = { Text("Note (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                    )
                     WATCH_JOB_STATUS_OPTIONS.forEach { s ->
                         TextButton(onClick = {
-                            vm.setStatus(s)
+                            vm.setStatus(s, statusChangeNote.trim().takeIf { t -> t.isNotEmpty() })
+                            statusChangeNote = ""
                             statusPicker = false
                         }) {
                             Text(s)
@@ -102,6 +129,37 @@ fun JobDetailScreen(
             },
             confirmButton = {
                 TextButton(onClick = { statusPicker = false }) { Text("Close") }
+            },
+        )
+    }
+
+    if (addNoteOpen) {
+        AlertDialog(
+            onDismissRequest = { addNoteOpen = false },
+            title = { Text("Add shop note") },
+            text = {
+                OutlinedTextField(
+                    value = newNoteDraft,
+                    onValueChange = { newNoteDraft = it },
+                    label = { Text("Note") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    singleLine = false,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.addNote(newNoteDraft)
+                        addNoteOpen = false
+                    },
+                    enabled = !state.noteBusy && newNoteDraft.trim().isNotEmpty(),
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { addNoteOpen = false }) { Text("Cancel") }
             },
         )
     }

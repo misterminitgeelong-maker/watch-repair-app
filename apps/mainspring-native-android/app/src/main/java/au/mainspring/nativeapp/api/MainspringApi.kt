@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.api
 
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -46,6 +48,12 @@ interface MainspringApi {
         @Body body: RepairJobStatusUpdate,
     ): RepairJobRead
 
+    @POST("v1/repair-jobs/{jobId}/note")
+    suspend fun postRepairJobNote(
+        @Path("jobId") jobId: String,
+        @Body body: JobNotePayload,
+    ): Response<ResponseBody>
+
     @GET("v1/quotes")
     suspend fun listQuotes(
         @Query("limit") limit: Int = 100,
@@ -79,6 +87,18 @@ interface MainspringApi {
     @GET("v1/shoe-repair-jobs/{jobId}")
     suspend fun getShoeRepairJob(@Path("jobId") jobId: String): ShoeRepairJobRead
 
+    @POST("v1/shoe-repair-jobs/{jobId}/status")
+    suspend fun postShoeRepairJobStatus(
+        @Path("jobId") jobId: String,
+        @Body body: RepairJobStatusUpdate,
+    ): ShoeRepairJobRead
+
+    @POST("v1/shoe-repair-jobs/{jobId}/note")
+    suspend fun postShoeRepairJobNote(
+        @Path("jobId") jobId: String,
+        @Body body: JobNotePayload,
+    ): Response<ResponseBody>
+
     @GET("v1/auto-key-jobs")
     suspend fun listAutoKeyJobs(
         @Query("skip") skip: Int = 0,
@@ -87,4 +107,10 @@ interface MainspringApi {
 
     @GET("v1/auto-key-jobs/{jobId}")
     suspend fun getAutoKeyJob(@Path("jobId") jobId: String): AutoKeyJobRead
+
+    @POST("v1/auto-key-jobs/{jobId}/status")
+    suspend fun postAutoKeyJobStatus(
+        @Path("jobId") jobId: String,
+        @Body body: RepairJobStatusUpdate,
+    ): AutoKeyJobRead
 }

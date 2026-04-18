@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.AutoKeyJobRead
+import au.mainspring.nativeapp.api.RepairJobStatusUpdate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +16,7 @@ data class AutoKeyJobDetailUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val job: AutoKeyJobRead? = null,
+    val statusBusy: Boolean = false,
 )
 
 class AutoKeyJobDetailViewModel(
@@ -35,6 +37,18 @@ class AutoKeyJobDetailViewModel(
                 _state.update { it.copy(loading = false, job = j) }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.message ?: "Could not load job") }
+            }
+        }
+    }
+
+    fun setStatus(newStatus: String, note: String? = null) {
+        viewModelScope.launch {
+            _state.update { it.copy(statusBusy = true, error = null) }
+            try {
+                val j = ApiClient.api.postAutoKeyJobStatus(jobId, RepairJobStatusUpdate(newStatus, note?.trim()?.takeIf { it.isNotEmpty() }))
+                _state.update { it.copy(statusBusy = false, job = j) }
+            } catch (e: Exception) {
+                _state.update { it.copy(statusBusy = false, error = e.message ?: "Status update failed") }
             }
         }
     }
