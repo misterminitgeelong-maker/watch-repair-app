@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.au.mainspring.app",
+        "paths": ["/*"]
+      }
+    ]
+  }
+}

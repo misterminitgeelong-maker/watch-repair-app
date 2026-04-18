@@ -141,3 +141,25 @@ If the key is restricted to production domain only, **maps will fail inside the 
 2. Maps + geocode with referrers from Step 4; Directions API for route optimisation on the server key.
 3. Photo intake on one watch job, one shoe job, one auto-key job on **physical** devices.
 4. Optional: pay a **test invoice** through Stripe in an internal build.
+
+### Universal Links & App Links (Step 7)
+
+**Goal:** `https://mainspring.au/…` (and `www`) opens the **installed** app and lands on the same route inside the WebView.
+
+**Shipped in this repo**
+
+| Piece | Location |
+|-------|-----------|
+| **AASA** (iOS) | `frontend/public/.well-known/apple-app-site-association` — replace `TEAMID` with your [Apple Team ID](https://developer.apple.com/account) + enable **Associated Domains** on the App ID `au.mainspring.app`. |
+| **assetlinks.json** (Android) | `frontend/public/.well-known/assetlinks.json` — replace the SHA-256 placeholder with the **App signing key certificate** from Play Console (or upload key for sideloads). |
+| **HTTPS serving + `Content-Type: application/json`** | FastAPI routes in `backend/app/main.py` for `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` (so extensionless AASA is correct for Apple). |
+| **iOS domains** | `frontend/ios/App/App/App.entitlements` — `applinks:mainspring.au` and `applinks:www.mainspring.au`. Wired in Xcode via `CODE_SIGN_ENTITLEMENTS`. |
+| **Android intent filters** | `AndroidManifest.xml` — `VIEW` + `BROWSABLE` + `autoVerify` for `https://mainspring.au` and `https://www.mainspring.au`. |
+| **In-app routing** | `NativeChrome.tsx` — `App.getLaunchUrl()` + `appUrlOpen` → `navigate()` for allowlisted hosts (`nativeDeepLinks.ts`). Override hosts with **`VITE_UNIVERSAL_LINK_HOSTS`** (comma-separated), e.g. `staging.example.com`. |
+
+**After deploy**
+
+1. Confirm both URLs return JSON: `https://mainspring.au/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` (and the `www` host if you use it).
+2. **Android:** `adb shell pm verify-app-links --re-verify au.mainspring.app` then `adb shell pm get-app-links au.mainspring.app`.
+3. **iOS:** open a Notes `https://mainspring.au/…` link on a device with the app installed; it should jump in-app.
+4. If links open Safari only, re-check Team ID, SHA-256, and that Apple/Google crawlers can reach `/.well-known` without auth.

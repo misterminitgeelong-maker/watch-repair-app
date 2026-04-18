@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -327,6 +327,21 @@ _static = Path(settings.static_dir) if settings.static_dir else None
 if _static and _static.is_dir():
     # Serve JS/CSS/assets at /assets
     app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
+
+    # Universal Links / App Links verification (Step 7) — must be application/json
+    @app.get("/.well-known/assetlinks.json", include_in_schema=False)
+    async def well_known_assetlinks():
+        p = _static / ".well-known" / "assetlinks.json"
+        if p.is_file():
+            return FileResponse(str(p), media_type="application/json")
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+
+    @app.get("/.well-known/apple-app-site-association", include_in_schema=False)
+    async def well_known_apple_app_site_association():
+        p = _static / ".well-known" / "apple-app-site-association"
+        if p.is_file():
+            return FileResponse(str(p), media_type="application/json")
+        return JSONResponse({"detail": "Not found"}, status_code=404)
 
     # SPA fallback — any non-API path serves index.html
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
