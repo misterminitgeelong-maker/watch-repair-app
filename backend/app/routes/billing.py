@@ -124,10 +124,10 @@ def get_billing_limits(
     counts = session.execute(
         text("""
             SELECT
-                (SELECT COUNT(*) FROM "user"        WHERE tenant_id = :tid AND is_active = true) AS user_count,
-                (SELECT COUNT(*) FROM repairjob     WHERE tenant_id = :tid) AS repair_job_count,
-                (SELECT COUNT(*) FROM shoerepairjob WHERE tenant_id = :tid) AS shoe_job_count,
-                (SELECT COUNT(*) FROM autokeyjob    WHERE tenant_id = :tid) AS auto_key_count
+                (SELECT COUNT(*) FROM "user"        WHERE tenant_id = :tid::uuid AND is_active = true) AS user_count,
+                (SELECT COUNT(*) FROM repairjob     WHERE tenant_id = :tid::uuid) AS repair_job_count,
+                (SELECT COUNT(*) FROM shoerepairjob WHERE tenant_id = :tid::uuid) AS shoe_job_count,
+                (SELECT COUNT(*) FROM autokeyjob    WHERE tenant_id = :tid::uuid) AS auto_key_count
         """),
         {"tid": str(auth.tenant_id)},
     ).one()

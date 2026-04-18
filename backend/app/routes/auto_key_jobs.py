@@ -197,6 +197,23 @@ def create_auto_key_job(
     session.commit()
     session.refresh(job)
     logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
+
+    phone = (customer.phone or "").strip()
+    if phone and getattr(job, "customer_intake_token", None):
+        intake_url = f"{settings.public_base_url.rstrip('/')}/mobile-intake/{job.customer_intake_token}"
+        try:
+            notify_auto_key_customer_intake(
+                session,
+                tenant_id=auth.tenant_id,
+                to_phone=phone,
+                customer_name=customer.full_name or "Customer",
+                shop_name="Workshop",
+                job_number=job.job_number,
+                intake_url=intake_url,
+            )
+        except Exception as exc:
+            logger.warning("auto_key_job.sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
+
     return job
 
 

@@ -1624,7 +1624,7 @@ export function isDuplicateTenantUserEmailError(error: unknown): boolean {
 
 // ── Pagination / sorting constants ───────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 50
-export const WATCH_JOBS_LIST_MAX = 500
+export const WATCH_JOBS_LIST_MAX = 2000
 export type SortDir = 'asc' | 'desc'
 
 // ── Mobile commission lead source options ─────────────────────────────────────
