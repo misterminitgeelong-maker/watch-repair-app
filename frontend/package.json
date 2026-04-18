@@ -17,7 +17,8 @@
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
     "cap:bundle": "npm run build && cap sync",
-    "cap:bundle:vite": "npm run build:vite && cap sync"
+    "cap:bundle:vite": "npm run build:vite && cap sync",
+    "android:debug-apk": "npm run build && cap sync android && node ./scripts/android-assemble-debug.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^7.1.6",
