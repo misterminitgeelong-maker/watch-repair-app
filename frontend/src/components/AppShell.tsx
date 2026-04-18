@@ -864,8 +864,12 @@ export default function AppShell() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
-          className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}
+          className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 pb-3"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            borderBottom: '1px solid var(--cafe-border)',
+            paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+          }}
         >
           <div style={{ width: 34 }} />
           <img

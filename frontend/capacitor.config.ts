@@ -10,6 +10,16 @@ const config: CapacitorConfig = {
   appId: 'au.mainspring.app',
   appName: 'Mainspring',
   webDir: 'dist',
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 400,
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#2D231C',
+    },
+  },
 }
 
 export default config

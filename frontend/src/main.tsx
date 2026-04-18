@@ -1,8 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { Capacitor } from '@capacitor/core'
 import './index.css'
 import App from './App.tsx'
+import { hydrateNativeAuthFromPreferences } from '@/lib/api'
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
@@ -19,8 +21,37 @@ if (typeof sentryDsn === 'string' && sentryDsn.trim()) {
   })
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+async function initNativeShell(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return
+  await hydrateNativeAuthFromPreferences()
+  const [{ StatusBar, Style }, { SplashScreen }] = await Promise.all([
+    import('@capacitor/status-bar'),
+    import('@capacitor/splash-screen'),
+  ])
+  try {
+    await StatusBar.setStyle({ style: Style.Dark })
+  } catch {
+    /* iOS / WebView variance */
+  }
+  try {
+    await StatusBar.setBackgroundColor({ color: '#2D231C' })
+  } catch {
+    /* not supported on all platforms */
+  }
+  try {
+    await SplashScreen.hide()
+  } catch {
+    /* already hidden */
+  }
+}
+
+async function bootstrap(): Promise<void> {
+  await initNativeShell()
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
+
+void bootstrap()

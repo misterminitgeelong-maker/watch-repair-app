@@ -81,3 +81,10 @@ This repo includes **Capacitor** (`capacitor.config.ts`, `android/`, `ios/`). Th
 3. Open a native IDE: **`npm run cap:open:android`** or **`npm run cap:open:ios`** (iOS needs macOS with Xcode; first time run **`pod install`** in `ios/App` if CocoaPods is installed).
 
 Synced web assets under `android/…/public` and `ios/…/public` are gitignored; always run **`cap:sync`** after a web build before shipping a native binary.
+
+### Native shell (Step 3)
+
+- **Safe area:** `viewport-fit=cover` in `index.html`; mobile app header uses `env(safe-area-inset-top)` (see `AppShell.tsx`). Bottom tabs already used `safe-area-inset-bottom`.
+- **Status bar & splash:** `@capacitor/status-bar` + `@capacitor/splash-screen` — tuned in `main.tsx` after auth hydration; defaults also in `capacitor.config.ts`.
+- **Android back:** `@capacitor/app` — `NativeChrome.tsx` maps hardware back to in-app `navigate(-1)` when history allows.
+- **Tokens on device:** `@capacitor/preferences` — access/refresh tokens and “remember device” sync to native storage (in-memory cache for axios). This is **not** hardware-backed encryption; upgrade later if you need stricter guarantees.

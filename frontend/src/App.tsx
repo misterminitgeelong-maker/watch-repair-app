@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import NativeChrome from '@/components/NativeChrome'
 import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
 
@@ -84,6 +85,7 @@ export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
+        <NativeChrome />
         <AuthProvider>
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
