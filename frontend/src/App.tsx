@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
@@ -75,12 +75,17 @@ function AutoKeySection() {
   return <Outlet />
 }
 
+function LocationBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <AuthProvider>
-          <ErrorBoundary>
+          <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
             {/* Public — no auth required */}
@@ -147,7 +152,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
-          </ErrorBoundary>
+          </LocationBoundary>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
