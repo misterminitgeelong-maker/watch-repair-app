@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Eye, EyeOff } from 'lucide-react'
+import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
@@ -58,10 +59,14 @@ export default function LoginPage() {
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       navigate('/dashboard')
     } catch (err) {
-      const msg = getApiErrorMessage(err, mode === 'multi' ? 'Invalid email or password.' : 'Invalid shop ID, email, or password.')
-      setError(err && typeof (err as { code?: string }).code === 'string' && (err as { code: string }).code === 'ECONNABORTED'
-        ? 'Request timed out. Is the backend running on port 8000?'
-        : msg)
+      if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
+        setError('Server is temporarily unavailable. Please try again in a moment.')
+      } else {
+        const msg = getApiErrorMessage(err, mode === 'multi' ? 'Invalid email or password.' : 'Invalid shop ID, email, or password.')
+        setError(err && typeof (err as { code?: string }).code === 'string' && (err as { code: string }).code === 'ECONNABORTED'
+          ? 'Request timed out. Please try again in a moment.'
+          : msg)
+      }
     } finally {
       setLoading(false)
     }
