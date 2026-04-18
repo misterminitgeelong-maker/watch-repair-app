@@ -64,7 +64,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         try {
-            val s = ApiClient.api.session("Bearer $token")
+            val s = ApiClient.api.session()
             _state.update {
                 it.copy(
                     loading = false,

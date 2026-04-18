@@ -1,7 +1,6 @@
 package au.mainspring.nativeapp.api
 
 import au.mainspring.nativeapp.BuildConfig
-import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -11,7 +10,7 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
     private val gson = GsonBuilder()
-        .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+        .setLenient()
         .create()
 
     val api: MainspringApi by lazy {
@@ -19,6 +18,7 @@ object ApiClient {
             level = HttpLoggingInterceptor.Level.BASIC
         }
         val http = OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor())
             .addInterceptor(log)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
