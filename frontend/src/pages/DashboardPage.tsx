@@ -239,42 +239,48 @@ export default function DashboardPage() {
   const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
   const invoices = invoicesQ.data ?? []
   const reports = reportsQ.data
+
+  // Secondary queries fire after primary pair settles to avoid saturating the connection on slow mobile
+  const primarySettled = !invoicesQ.isPending && !reportsQ.isPending
+
   const { data: recentWatchJobs } = useQuery({
     queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
     queryFn: () =>
       listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
-    enabled: hasFeature('watch'),
+    enabled: primarySettled && hasFeature('watch'),
     refetchInterval: 30_000,
   })
   const { data: shoeJobs } = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
-    enabled: hasFeature('shoe'),
+    enabled: primarySettled && hasFeature('shoe'),
     refetchInterval: 30_000,
   })
   const { data: autoKeyJobs } = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
-    enabled: hasFeature('auto_key'),
+    enabled: primarySettled && hasFeature('auto_key'),
     refetchInterval: 30_000,
   })
   const { data: customerAccounts } = useQuery({
     queryKey: ['customer-accounts', 'dashboard'],
     queryFn: () => listCustomerAccounts().then((r) => r.data),
-    enabled: hasFeature('customer_accounts'),
+    enabled: primarySettled && hasFeature('customer_accounts'),
   })
   const { data: users } = useQuery({
     queryKey: ['users', 'dashboard'],
     queryFn: () => listUsers().then((r) => r.data),
-    enabled: canViewAccountMetrics,
+    enabled: primarySettled && canViewAccountMetrics,
   })
   const { data: widgets } = useQuery({
     queryKey: ['reports-widgets'],
     queryFn: () => getReportsWidgets().then((r) => r.data),
+    enabled: primarySettled,
   })
   const { data: inboxAlerts } = useQuery({
     queryKey: ['inbox', 0],
     queryFn: () => getInbox(50, 0).then((r) => r.data),
+    enabled: primarySettled,
   })
 
   useEffect(() => {

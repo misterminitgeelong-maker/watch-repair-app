@@ -10,7 +10,13 @@ import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
 
 const qc = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    },
+  },
 })
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))

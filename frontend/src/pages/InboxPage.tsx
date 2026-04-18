@@ -46,7 +46,7 @@ export function useInboxCount() {
 export default function InboxPage() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
-  const { data: alerts, isLoading } = useQuery({
+  const { data: alerts, isLoading, isError, refetch } = useQuery({
     queryKey: ['inbox', page],
     queryFn: () => getInbox(PAGE_SIZE, page * PAGE_SIZE).then(r => r.data),
   })
@@ -57,7 +57,18 @@ export default function InboxPage() {
     },
   })
 
-  if (isLoading) return <Spinner />
+  if (isLoading) return <div><PageHeader title="Inbox" /><Spinner /></div>
+  if (isError) return (
+    <div>
+      <PageHeader title="Inbox" />
+      <p className="mt-4 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        Could not load inbox. Check your connection and{' '}
+        <button type="button" onClick={() => void refetch()} className="underline" style={{ color: 'var(--cafe-amber)' }}>
+          try again
+        </button>.
+      </p>
+    </div>
+  )
   if (!alerts) return null
 
   return (

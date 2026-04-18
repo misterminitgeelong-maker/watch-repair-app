@@ -50,7 +50,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function ReportsPage() {
-  const { data, isLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
   const { data: trends } = useQuery({ queryKey: ['reports-trends'], queryFn: () => getReportsTrends(6).then(r => r.data) })
   const { data: techBreakdown } = useQuery({ queryKey: ['reports-tech-breakdown'], queryFn: () => getReportsTechBreakdown().then(r => r.data) })
   const { data: activity } = useQuery({ queryKey: ['reports-activity'], queryFn: () => getTenantActivity(50).then(r => r.data) })
@@ -71,6 +71,17 @@ export default function ReportsPage() {
   const anyExporting = exportJobsMut.isPending || exportCustomersMut.isPending || exportInvoicesMut.isPending || exportMyDataMut.isPending
 
   if (isLoading) return <div><PageHeader title="Reports" /><Spinner /></div>
+  if (isError) return (
+    <div>
+      <PageHeader title="Reports" />
+      <p className="mt-4 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        Could not load reports. Check your connection and{' '}
+        <button type="button" onClick={() => void refetch()} className="underline" style={{ color: 'var(--cafe-amber)' }}>
+          try again
+        </button>.
+      </p>
+    </div>
+  )
   if (!data) return <div><PageHeader title="Reports" /><p className="mt-4" style={{ color: 'var(--cafe-text-muted)' }}>No report data available.</p></div>
 
   const maxJobs = Math.max(...(trends?.months.map(m => m.jobs_opened) ?? [1]), 1)

@@ -42,14 +42,22 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 export function InvoicesPage() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
-  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
+  const { data: invoices, isLoading, isError, refetch } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
 
   return (
     <div>
       <PageHeader title="Invoices" />
       {payInvoice && <PaymentModal invoice={payInvoice} onClose={() => setPayInvoice(null)} />}
 
-      {isLoading ? <Spinner /> : (
+      {isError && (
+        <p className="mt-4 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          Could not load invoices. Check your connection and{' '}
+          <button type="button" onClick={() => void refetch()} className="underline" style={{ color: 'var(--cafe-amber)' }}>
+            try again
+          </button>.
+        </p>
+      )}
+      {isLoading ? <Spinner /> : !isError && (
         <>
           {(invoices ?? []).length === 0 ? (
             <Card><EmptyState message="No invoices yet. They are created automatically when a quote is approved." /></Card>
