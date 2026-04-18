@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
@@ -56,12 +56,14 @@ def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
 
 @router.get("", response_model=list[InvoiceRead])
 def list_invoices(
+    status: str | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    invoices = session.exec(
-        select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
-    ).all()
+    query = select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
+    if status:
+        query = query.where(Invoice.status == status)
+    invoices = session.exec(query).all()
     return [
         InvoiceRead(
             id=inv.id,

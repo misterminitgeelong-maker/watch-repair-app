@@ -213,9 +213,13 @@ def create_shoe_repair_job(
     return _job_to_read(job, session)
 
 
+_SHOE_JOB_CLOSED_STATUSES = {"no_go", "completed", "awaiting_collection", "collected"}
+
+
 @router.get("", response_model=list[ShoeRepairJobRead])
 def list_shoe_repair_jobs(
     status: str | None = Query(default=None),
+    active_only: bool = Query(default=False),
     customer_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=2000),
@@ -225,6 +229,8 @@ def list_shoe_repair_jobs(
     query = select(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)
     if status:
         query = query.where(ShoeRepairJob.status == status)
+    if active_only:
+        query = query.where(ShoeRepairJob.status.notin_(_SHOE_JOB_CLOSED_STATUSES))
     if customer_id:
         shoe_ids = select(Shoe.id).where(Shoe.tenant_id == auth.tenant_id).where(Shoe.customer_id == customer_id)
         query = query.where(ShoeRepairJob.shoe_id.in_(shoe_ids))

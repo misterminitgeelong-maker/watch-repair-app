@@ -235,7 +235,7 @@ export default function DashboardPage() {
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
-  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data) })
+  const invoicesQ = useQuery({ queryKey: ['invoices', 'unpaid'], queryFn: () => listInvoices({ status: 'unpaid' }).then((r) => r.data) })
   const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
   const invoices = invoicesQ.data ?? []
   const reports = reportsQ.data
@@ -243,22 +243,23 @@ export default function DashboardPage() {
   // Secondary queries fire after primary pair settles to avoid saturating the connection on slow mobile
   const primarySettled = !invoicesQ.isPending && !reportsQ.isPending
 
+  // Active-only job queries — dashboard shows live work, not history
   const { data: recentWatchJobs } = useQuery({
-    queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
+    queryKey: ['jobs', 'dashboard', 'active'],
     queryFn: () =>
-      listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
+      listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc', active_only: true }).then((r) => r.data),
     enabled: primarySettled && hasFeature('watch'),
     refetchInterval: 30_000,
   })
   const { data: shoeJobs } = useQuery({
-    queryKey: ['shoe-repair-jobs', 'dashboard'],
-    queryFn: () => listShoeRepairJobs().then((r) => r.data),
+    queryKey: ['shoe-repair-jobs', 'dashboard', 'active'],
+    queryFn: () => listShoeRepairJobs({ active_only: true }).then((r) => r.data),
     enabled: primarySettled && hasFeature('shoe'),
     refetchInterval: 30_000,
   })
   const { data: autoKeyJobs } = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
-    queryFn: () => listAutoKeyJobs().then((r) => r.data),
+    queryFn: () => listAutoKeyJobs({ active_only: true }).then((r) => r.data),
     enabled: primarySettled && hasFeature('auto_key'),
     refetchInterval: 30_000,
   })

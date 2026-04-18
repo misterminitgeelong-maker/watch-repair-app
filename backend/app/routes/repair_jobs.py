@@ -216,9 +216,13 @@ def create_repair_job(
     return job
 
 
+_REPAIR_JOB_CLOSED_STATUSES = {"no_go", "completed", "awaiting_collection", "collected"}
+
+
 @router.get("", response_model=list[RepairJobRead])
 def list_repair_jobs(
     status: str | None = Query(default=None),
+    active_only: bool = Query(default=False),
     assigned_user_id: UUID | None = Query(default=None),
     customer_id: UUID | None = Query(default=None, description="Filter jobs whose watch belongs to this customer"),
     q: str | None = Query(default=None),
@@ -234,6 +238,8 @@ def list_repair_jobs(
         query = query.join(Watch, RepairJob.watch_id == Watch.id).where(Watch.customer_id == customer_id)
     if status:
         query = query.where(RepairJob.status == status)
+    if active_only:
+        query = query.where(RepairJob.status.notin_(_REPAIR_JOB_CLOSED_STATUSES))
     if assigned_user_id:
         query = query.where(RepairJob.assigned_user_id == assigned_user_id)
     if q:

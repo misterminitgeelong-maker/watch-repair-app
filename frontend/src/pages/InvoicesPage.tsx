@@ -42,7 +42,18 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 export function InvoicesPage() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
-  const { data: invoices, isLoading, isError, refetch } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
+  const { data: unpaidInvoices, isLoading, isError, refetch } = useQuery({
+    queryKey: ['invoices', 'unpaid'],
+    queryFn: () => listInvoices({ status: 'unpaid' }).then(r => r.data),
+  })
+  const { data: paidInvoices } = useQuery({
+    queryKey: ['invoices', 'paid'],
+    queryFn: () => listInvoices({ status: 'paid' }).then(r => r.data),
+    enabled: unpaidInvoices !== undefined,
+  })
+  const invoices = unpaidInvoices && paidInvoices
+    ? [...unpaidInvoices, ...paidInvoices]
+    : unpaidInvoices
 
   return (
     <div>

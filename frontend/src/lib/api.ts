@@ -563,7 +563,7 @@ export interface RepairJob {
   claimed_by_user_id?: string | null
   claimed_by_name?: string | null
 }
-export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string; q?: string }) =>
+export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; active_only?: boolean; customer_id?: string; assigned_user_id?: string; q?: string }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
 export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
 export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
@@ -969,7 +969,7 @@ export interface Invoice {
   tax_cents: number; total_cents: number; currency: string; created_at: string
   invoice?: Invoice
 }
-export const listInvoices = (params?: { limit?: number }) =>
+export const listInvoices = (params?: { limit?: number; status?: string }) =>
   api.get<Invoice[]>('/invoices', params && Object.keys(params).length ? { params } : undefined)
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${id}`)
 export const getInvoiceLineItems = (invoiceId: string) =>
@@ -1535,7 +1535,7 @@ export interface ShoeRepairJobCreatePayload {
   items: ShoeRepairJobItemInput[]
 }
 
-export const listShoeRepairJobs = (params?: { status?: string; customer_id?: string; limit?: number }) =>
+export const listShoeRepairJobs = (params?: { status?: string; active_only?: boolean; customer_id?: string; limit?: number }) =>
   api.get<ShoeRepairJob[]>('/shoe-repair-jobs', params && Object.keys(params).length ? { params } : undefined)
 
 export const getShoeRepairJob = (id: string) =>
