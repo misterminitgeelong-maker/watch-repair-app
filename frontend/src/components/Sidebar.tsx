@@ -93,7 +93,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
   return (
     <aside
-      className={cn('w-60 flex flex-col shrink-0', className)}
+      className={cn('w-60 flex min-h-0 shrink-0 flex-col md:h-full', className)}
       style={{
         backgroundColor: 'var(--cafe-espresso)',
         color: 'var(--cafe-sidebar-txt)',
@@ -130,7 +130,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-6 space-y-1">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6">
         {filteredBefore.map((item) => (
           <NavLink
             key={item.to}
@@ -410,7 +410,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         )}
       </nav>
 
-      <div className="px-3 pb-6">
+      <div className="shrink-0 px-3 pb-6">
         {showInstall && (
           <div className="mb-2 px-1">
             <button

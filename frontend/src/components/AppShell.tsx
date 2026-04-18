@@ -858,10 +858,10 @@ export default function AppShell() {
   const guidedNextLabel = !guidedIsLast ? guidedTourSteps[guidedStep + 1]?.label : null
 
   return (
-    <div className="h-screen md:flex" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
       <Sidebar className="hidden md:flex" />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
           className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3"
@@ -890,7 +890,7 @@ export default function AppShell() {
         </header>
 
         {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}
-        <main className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 pb-20 md:pb-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
+        <main className={`min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 pb-20 md:pb-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
           {availableSites.length > 1 && (
             <div className="mb-4 flex items-center justify-end gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
