@@ -1370,6 +1370,12 @@ export const updateShoeRepairJobStatus = (id: string, status: string, note?: str
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
 export const addShoeJobNote = (id: string, note: string) =>
   api.post(`/shoe-repair-jobs/${id}/note`, { note })
+export interface ShoeJobHistoryEntry {
+  id: string; shoe_repair_job_id: string; old_status?: string; new_status: string
+  changed_by_user_id?: string; change_note?: string; created_at: string
+}
+export const getShoeJobHistory = (jobId: string) =>
+  api.get<ShoeJobHistoryEntry[]>(`/shoe-repair-jobs/${jobId}/status-history`)
 export const claimShoeJob = (id: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/claim`)
 export const releaseShoeJob = (id: string) =>

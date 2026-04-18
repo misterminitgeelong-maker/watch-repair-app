@@ -203,6 +203,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const [detailJobId, setDetailJobId] = useState<string | null>(null)
   const [smsSending, setSmsSending] = useState(false)
   const [smsResult, setSmsResult] = useState<string | null>(null)
+  const [noteSaved, setNoteSaved] = useState(false)
 
   // ── Swipe state ───────────────────────────────────────────────────────────
   const [dragX, setDragX] = useState(0)
@@ -352,6 +353,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   function invalidateShoeJobCaches(jobId: string) {
     qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
     qc.invalidateQueries({ queryKey: ['shoe-repair-job', jobId] })
+    qc.invalidateQueries({ queryKey: ['shoe-history', jobId] })
     qc.invalidateQueries({ queryKey: ['job-detail'] })
   }
 
@@ -385,16 +387,19 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   })
 
   const noteMutation = useMutation({
-    mutationFn: (vars: { id: string; note: string }) =>
+    mutationFn: (vars: { id: string; note: string; isNoUpdate?: boolean }) =>
       mode === 'watch' ? addJobNote(vars.id, vars.note) : addShoeJobNote(vars.id, vars.note),
     onSuccess: (_d, vars) => {
       if (mode === 'watch') invalidateWatchJobCaches(vars.id)
       else invalidateShoeJobCaches(vars.id)
-      if (cardState === 'noUpdate') {
+      if (vars.isNoUpdate) {
         setStats(s => ({ ...s, checkedIn: s.checkedIn + 1 }))
         setDone(prev => new Set([...prev, vars.id]))
+        resetPanel()
+      } else {
+        setNoteSaved(true)
+        setTimeout(resetPanel, 1200)
       }
-      resetPanel()
     },
   })
 
@@ -413,6 +418,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     setCustomNote('')
     setDragX(0)
     setSmsResult(null)
+    setNoteSaved(false)
   }
 
   function handleAdvance() {
@@ -442,7 +448,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   function handleCheckedIn() {
     if (!current) return
-    noteMutation.mutate({ id: current.id, note: selectedNote || customNote || 'Checked in — no update' })
+    noteMutation.mutate({ id: current.id, note: selectedNote || customNote || 'Checked in — no update', isNoUpdate: true })
   }
 
   function handleSkip() {
@@ -941,7 +947,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               <input type="text" placeholder="Type a note…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)', outline: 'none' }} />
               <div className="flex gap-3">
                 <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>Cancel</button>
-                <button onClick={handleSaveNote} disabled={isPending || (!selectedNote && !customNote.trim())} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: 'var(--cafe-espresso-2)', color: '#D5C8BB', opacity: isPending || (!selectedNote && !customNote.trim()) ? 0.5 : 1 }}>{isPending ? 'Saving…' : 'Save Note'}</button>
+                <button onClick={handleSaveNote} disabled={isPending || noteSaved || (!selectedNote && !customNote.trim())} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: noteSaved ? '#2D6A4F' : 'var(--cafe-espresso-2)', color: noteSaved ? '#fff' : '#D5C8BB', opacity: isPending || (!selectedNote && !customNote.trim()) ? 0.5 : 1 }}>{isPending ? 'Saving…' : noteSaved ? 'Saved ✓' : 'Save Note'}</button>
               </div>
               {noteMutation.isError && <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>}
             </div>

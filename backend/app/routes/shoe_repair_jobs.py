@@ -316,6 +316,23 @@ def add_shoe_repair_job_note(
     return Response(status_code=204)
 
 
+@router.get("/{job_id}/status-history", response_model=list[ShoeJobStatusHistoryRead])
+def get_shoe_repair_job_status_history(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    return session.exec(
+        select(ShoeJobStatusHistory)
+        .where(ShoeJobStatusHistory.tenant_id == auth.tenant_id)
+        .where(ShoeJobStatusHistory.shoe_repair_job_id == job_id)
+        .order_by(ShoeJobStatusHistory.created_at.desc())
+    ).all()
+
+
 @router.post("/{job_id}/claim", response_model=ShoeRepairJobRead)
 def claim_shoe_repair_job(
     job_id: UUID,

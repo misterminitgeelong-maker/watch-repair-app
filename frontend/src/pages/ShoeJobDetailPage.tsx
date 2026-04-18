@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw } from 'lucide-react'
+import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw, History } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment,
@@ -10,7 +10,8 @@ import {
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
   getShoeJobSmsLog, resendShoeNotification, sendShoeQuote,
-  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry,
+  getShoeJobHistory,
+  type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry, type ShoeJobHistoryEntry,
 } from '@/lib/api'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
@@ -417,6 +418,49 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
         </div>
       ))}
     </div>
+  )
+}
+
+// ── History card ──────────────────────────────────────────────────────────────
+function HistoryCard({ jobId }: { jobId: string }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ['shoe-history', jobId],
+    queryFn: () => getShoeJobHistory(jobId).then(r => r.data),
+  })
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 py-3.5 flex items-center gap-2" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+        <History size={14} style={{ color: 'var(--cafe-amber)' }} />
+        <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>History</h2>
+        {history.length > 0 && <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>{history.length}</span>}
+      </div>
+      <div className="p-5">
+        {isLoading ? (
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Loading…</p>
+        ) : history.length === 0 ? (
+          <p className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>No history yet.</p>
+        ) : (
+          <div className="relative pl-5 space-y-4">
+            <div className="absolute left-1.5 top-0 bottom-0 w-0.5" style={{ backgroundColor: 'var(--cafe-border-2)' }} />
+            {history.map((h: ShoeJobHistoryEntry) => {
+              const isNote = h.old_status === h.new_status
+              return (
+                <div key={h.id} className="relative">
+                  <div className="absolute -left-[18px] top-1.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: isNote ? 'var(--cafe-bg)' : 'var(--cafe-gold)', borderColor: isNote ? 'var(--cafe-border-2)' : 'var(--cafe-gold)' }} />
+                  <p className="text-xs font-medium" style={{ color: 'var(--cafe-text)' }}>
+                    {isNote ? 'Note added' : `${STATUS_LABELS[h.old_status ?? ''] ?? h.old_status ?? '—'} → ${STATUS_LABELS[h.new_status] ?? h.new_status}`}
+                  </p>
+                  {h.change_note && (
+                    <p className="text-xs mt-0.5 italic" style={{ color: 'var(--cafe-text-mid)' }}>{h.change_note}</p>
+                  )}
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(h.created_at)}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }
 
@@ -855,6 +899,9 @@ export default function ShoeJobDetailPage() {
 
           {/* ── Messages ──────────────────────────────────────────── */}
           <MessagesCard job={job} />
+
+          {/* ── History ───────────────────────────────────────────── */}
+          <HistoryCard jobId={job.id} />
         </div>
       </div>
     </div>
