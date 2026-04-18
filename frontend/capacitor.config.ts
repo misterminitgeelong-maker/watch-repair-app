@@ -10,6 +10,26 @@ const config: CapacitorConfig = {
   appId: 'au.mainspring.app',
   appName: 'Mainspring',
   webDir: 'dist',
+  /**
+   * Without allowNavigation, Capacitor sends many external navigations to the system browser.
+   * Entries are hostname masks (`*` = one DNS label), same rules as Capacitor Android HostMask.
+   * Keeps Stripe, Maps JS assets, and typical S3-style presigned hosts inside the WebView (Step 6).
+   * Add your Stripe return / marketing hostname if it is not `mainspring.au`.
+   */
+  server: {
+    allowNavigation: [
+      '*.stripe.com',
+      '*.*.stripe.com',
+      'stripe.com',
+      '*.googleapis.com',
+      '*.gstatic.com',
+      '*.google.com',
+      '*.amazonaws.com',
+      '*.*.amazonaws.com',
+      '*.*.*.amazonaws.com',
+      'mainspring.au',
+    ],
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

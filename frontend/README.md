@@ -120,3 +120,24 @@ If the key is restricted to production domain only, **maps will fail inside the 
 - **Resume refresh:** `@capacitor/app` `resume` (see `NativeChrome.tsx`) calls a **proactive** `/auth/refresh` (cooldown 5s) so long background periods are less likely to hit expired access JWTs on the first tap.
 - **React state sync:** after any silent refresh (401 interceptor or resume), `AuthContext` listens for `auth:access-token-updated` and reschedules the proactive refresh timer from `expires_in_seconds` or the JWT `exp` claim.
 - **Web / dev:** unchanged — still `localStorage` / `sessionStorage` per remember-me.
+
+### Device APIs & external flows (Step 6)
+
+**Feature audit (same React build; native is WebView + permissions)**
+
+| Area | In-app usage | Native notes |
+|------|----------------|--------------|
+| **Camera / gallery** | `<input type="file" accept="image/*">` with optional `capture="environment"` on watch/shoe/auto-key/new job flows | iOS/Android permission strings: Step 4. |
+| **Spreadsheet import** | CSV/XLSX `input type="file"` on Database / Stocktakes | Uses system document picker; no extra Android storage permission for typical WebView flows. |
+| **Downloads / blobs** | CSV exports, stocktake export, attachment download (`<a download>` / blob URLs) | Behaviour depends on WebView; if a device saves to “Downloads” oddly, treat as QA edge case. |
+| **Google Maps** | `VITE_GOOGLE_MAPS_API_KEY` + `@vis.gl/react-google-maps` (**Maps JavaScript API**) | Restrict keys by **HTTP referrer** (Step 4), not by Android package / iOS bundle id — that applies to the **native Maps SDK**, which this app does not use. Server route `/maps/optimize-driving-route` needs **`GOOGLE_MAPS_WEB_SERVICES_KEY`** separately. |
+| **Web Bluetooth (Niimbot)** | `PrintWatchIntakeTicketsPage` / `PrintShoeIntakeTicketsPage` via `navigator.bluetooth` | Permissions: Step 4. Chrome vs in-app WebView support varies — QA on real hardware. |
+| **Stripe / billing** | `window.location.assign` / `window.open` to `checkout.stripe.com`, Connect onboarding, billing portal | **`server.allowNavigation`** in `capacitor.config.ts` lists **hostname masks** (`*.stripe.com`, etc.) so those navigations stay in the WebView. Extend the list if your Stripe return URLs use another domain. Android **`queries`** for `https` VIEW intents helps resolve external handlers (manifest). |
+| **Clipboard** | `navigator.clipboard.writeText` (quotes, portal, parent ingest, etc.) | Requires **secure context** (HTTPS / Capacitor localhost); no extra plist keys for basic copy. |
+
+**Store checklist**
+
+1. Stripe Checkout, Connect, and return to your **production web hostname** (add to `allowNavigation` if not `mainspring.au`).
+2. Maps + geocode with referrers from Step 4; Directions API for route optimisation on the server key.
+3. Photo intake on one watch job, one shoe job, one auto-key job on **physical** devices.
+4. Optional: pay a **test invoice** through Stripe in an internal build.
