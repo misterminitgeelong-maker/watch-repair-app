@@ -88,3 +88,28 @@ Synced web assets under `android/…/public` and `ios/…/public` are gitignored
 - **Status bar & splash:** `@capacitor/status-bar` + `@capacitor/splash-screen` — tuned in `main.tsx` after auth hydration; defaults also in `capacitor.config.ts`.
 - **Android back:** `@capacitor/app` — `NativeChrome.tsx` maps hardware back to in-app `navigate(-1)` when history allows.
 - **Tokens on device:** `@capacitor/preferences` — access/refresh tokens and “remember device” sync to native storage (in-memory cache for axios). This is **not** hardware-backed encryption; upgrade later if you need stricter guarantees.
+
+### Permissions & APIs (Step 4)
+
+**Declared in native projects**
+
+- **Camera & photo library** — watch/shoe/auto-key intake uses `<input type="file" capture>` and gallery picks. Android: `CAMERA` + optional camera hardware features. iOS: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`.
+- **Bluetooth (Web Bluetooth / Niimbot)** — Android 12+: `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` (`neverForLocation`); older API levels use legacy Bluetooth permissions. iOS: `NSBluetoothAlwaysUsageDescription`. Behaviour still depends on Chrome/WebView support; test on a real device.
+
+**Google Maps (`VITE_GOOGLE_MAPS_API_KEY`)**
+
+The map uses the **Maps JavaScript API** inside the WebView. In [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → your browser key → **Application restrictions**:
+
+- Under **HTTP referrers**, add (at minimum) the WebView origins used by Capacitor builds, for example:
+  - `https://localhost/*`
+  - `capacitor://localhost/*` (if your tooling reports this origin on iOS)
+- Keep your existing production website referrers (e.g. `https://mainspring.au/*`) for the deployed web app.
+
+If the key is restricted to production domain only, **maps will fail inside the store app** until those referrers exist.
+
+**Quick native QA checklist**
+
+1. Login + session survives app restart (remember device on/off).
+2. Take photo + upload on a watch job, shoe job, and mobile-services job.
+3. Open Mobile Services **Map** view with a valid Maps key (pins or fallback).
+4. Optional: **Print to M2** from intake print page on Android Chrome vs Capacitor WebView.

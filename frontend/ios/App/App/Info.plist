@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos for repair intake and job documentation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Select photos to attach to repair jobs.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Print intake labels to a Bluetooth label printer when you use Print to M2.</string>
 </dict>
 </plist>
