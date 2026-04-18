@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.CustomerRead
+import au.mainspring.nativeapp.api.RepairJobCreate
 import au.mainspring.nativeapp.api.RepairJobRead
 import au.mainspring.nativeapp.api.WatchRead
 import kotlinx.coroutines.async
@@ -21,6 +22,7 @@ data class CustomerDetailUiState(
     val customer: CustomerRead? = null,
     val watches: List<WatchRead> = emptyList(),
     val watchJobs: List<RepairJobRead> = emptyList(),
+    val createJobBusy: Boolean = false,
 )
 
 class CustomerDetailViewModel(
@@ -65,6 +67,32 @@ class CustomerDetailViewModel(
                 _state.update {
                     it.copy(loading = false, error = e.message ?: "Could not load customer")
                 }
+            }
+        }
+    }
+
+    fun createWatchRepairJob(watchId: String, title: String, description: String?, onCreated: (String) -> Unit) {
+        val t = title.trim()
+        if (t.isEmpty()) return
+        viewModelScope.launch {
+            _state.update { it.copy(createJobBusy = true, error = null) }
+            try {
+                val job = ApiClient.api.postRepairJob(
+                    RepairJobCreate(
+                        watchId = watchId,
+                        title = t,
+                        description = description?.trim()?.takeIf { it.isNotEmpty() },
+                    ),
+                )
+                val jobs = try {
+                    ApiClient.api.listRepairJobs(customerId = customerId, limit = 50)
+                } catch (_: Exception) {
+                    _state.value.watchJobs
+                }
+                _state.update { it.copy(createJobBusy = false, watchJobs = jobs) }
+                onCreated(job.id)
+            } catch (e: Exception) {
+                _state.update { it.copy(createJobBusy = false, error = e.message ?: "Could not create job") }
             }
         }
     }

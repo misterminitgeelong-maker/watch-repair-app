@@ -161,6 +161,16 @@ fun MainspringAppShell(
                         sessionSummary = sessionSummary,
                         apiBaseUrl = apiBaseUrl,
                         onLogout = onLogout,
+                        onOpenWatchJobs = { navController.navigate("jobs") { launchSingleTop = true } },
+                        onOpenQuotes = { navController.navigate("quotes") { launchSingleTop = true } },
+                        onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } },
+                        onOpenShoeJobs = {
+                            navController.navigate("shoe_jobs") { launchSingleTop = true }
+                        },
+                        onOpenAutoJobs = {
+                            navController.navigate("auto_jobs") { launchSingleTop = true }
+                        },
+                        onOpenAutoJob = { jobId -> navController.navigate("autoKeyJob/$jobId") },
                     )
                 }
                 composable("customers") {

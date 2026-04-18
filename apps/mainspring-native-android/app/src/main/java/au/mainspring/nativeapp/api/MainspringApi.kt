@@ -15,6 +15,12 @@ interface MainspringApi {
     @GET("v1/auth/session")
     suspend fun session(): SessionResponse
 
+    @GET("v1/reports/summary")
+    suspend fun getReportsSummary(): ReportsSummaryResponse
+
+    @GET("v1/reports/widgets")
+    suspend fun getReportsWidgets(): DashboardWidgetsResponse
+
     @GET("v1/customers")
     suspend fun listCustomers(
         @Query("limit") limit: Int = 100,
@@ -48,6 +54,9 @@ interface MainspringApi {
 
     @GET("v1/repair-jobs/{jobId}")
     suspend fun getRepairJob(@Path("jobId") jobId: String): RepairJobRead
+
+    @POST("v1/repair-jobs")
+    suspend fun postRepairJob(@Body body: RepairJobCreate): RepairJobRead
 
     @GET("v1/repair-jobs/{jobId}/status-history")
     suspend fun getRepairJobStatusHistory(@Path("jobId") jobId: String): List<JobStatusHistoryRead>
@@ -164,6 +173,9 @@ interface MainspringApi {
         @Query("skip") skip: Int = 0,
         @Query("limit") limit: Int = 200,
     ): List<AutoKeyJobRead>
+
+    @POST("v1/auto-key-jobs/quick-intake")
+    suspend fun postAutoKeyQuickIntake(@Body body: AutoKeyQuickIntakeCreate): AutoKeyJobRead
 
     @GET("v1/auto-key-jobs/{jobId}")
     suspend fun getAutoKeyJob(@Path("jobId") jobId: String): AutoKeyJobRead

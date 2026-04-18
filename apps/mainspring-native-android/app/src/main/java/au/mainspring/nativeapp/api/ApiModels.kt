@@ -277,3 +277,72 @@ data class AutoKeyJobRead(
     @SerializedName("customer_name") val customerName: String? = null,
     @SerializedName("customer_phone") val customerPhone: String? = null,
 )
+
+data class ReportsCounts(
+    val jobs: Int,
+    val customers: Int,
+    val watches: Int,
+    val quotes: Int,
+    val invoices: Int,
+    @SerializedName("shoe_jobs") val shoeJobs: Int = 0,
+)
+
+data class ShoeQuotesSummary(
+    @SerializedName("by_status") val byStatus: Map<String, Int> = emptyMap(),
+    @SerializedName("approval_rate_percent") val approvalRatePercent: Double = 0.0,
+)
+
+data class SalesFunnelSummary(
+    @SerializedName("approved_quotes") val approvedQuotes: Int,
+    @SerializedName("sent_quotes") val sentQuotes: Int,
+    @SerializedName("declined_quotes") val declinedQuotes: Int,
+    @SerializedName("approval_rate_percent") val approvalRatePercent: Double,
+)
+
+data class ReportsFinancials(
+    @SerializedName("billed_cents") val billedCents: Int,
+    @SerializedName("revenue_cents") val revenueCents: Int,
+    @SerializedName("cost_cents") val costCents: Int,
+    @SerializedName("outstanding_cents") val outstandingCents: Int,
+    @SerializedName("gross_profit_cents") val grossProfitCents: Int,
+    @SerializedName("gross_margin_percent") val grossMarginPercent: Double,
+)
+
+data class ReportsOperations(
+    @SerializedName("work_minutes") val workMinutes: Int,
+    @SerializedName("avg_revenue_per_job_cents") val avgRevenuePerJobCents: Int,
+    @SerializedName("avg_turnaround_days") val avgTurnaroundDays: Double? = null,
+    @SerializedName("quote_to_invoice_pct") val quoteToInvoicePct: Double,
+    @SerializedName("avg_quote_response_hours") val avgQuoteResponseHours: Double? = null,
+)
+
+data class ReportsSummaryResponse(
+    val counts: ReportsCounts,
+    @SerializedName("jobs_by_status") val jobsByStatus: Map<String, Int> = emptyMap(),
+    @SerializedName("shoe_jobs_by_status") val shoeJobsByStatus: Map<String, Int>? = null,
+    @SerializedName("shoe_quotes") val shoeQuotes: ShoeQuotesSummary? = null,
+    @SerializedName("quotes_by_status") val quotesByStatus: Map<String, Int> = emptyMap(),
+    @SerializedName("sales_funnel") val salesFunnel: SalesFunnelSummary,
+    val financials: ReportsFinancials,
+    val operations: ReportsOperations,
+)
+
+data class DashboardWidgetsResponse(
+    @SerializedName("overdue_jobs_count") val overdueJobsCount: Int,
+    @SerializedName("quotes_pending_7d_count") val quotesPending7dCount: Int,
+    @SerializedName("overdue_invoices_count") val overdueInvoicesCount: Int,
+    @SerializedName("overdue_collection_count") val overdueCollectionCount: Int,
+)
+
+data class RepairJobCreate(
+    @SerializedName("watch_id") val watchId: String,
+    @SerializedName("customer_account_id") val customerAccountId: String? = null,
+    val title: String,
+    val description: String? = null,
+    val priority: String = "normal",
+)
+
+data class AutoKeyQuickIntakeCreate(
+    @SerializedName("full_name") val fullName: String,
+    val phone: String,
+)
