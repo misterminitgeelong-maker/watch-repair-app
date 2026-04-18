@@ -229,7 +229,11 @@ fun MainspringAppShell(
                     arguments = listOf(navArgument("jobId") { type = NavType.StringType }),
                 ) { entry ->
                     val id = entry.arguments?.getString("jobId") ?: return@composable
-                    ShoeJobDetailScreen(jobId = id, onBack = { navController.popBackStack() })
+                    ShoeJobDetailScreen(
+                        jobId = id,
+                        apiBaseUrl = apiBaseUrl,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
                 composable("auto_jobs") {
                     AutoKeyJobsScreen(
@@ -242,7 +246,11 @@ fun MainspringAppShell(
                     arguments = listOf(navArgument("jobId") { type = NavType.StringType }),
                 ) { entry ->
                     val id = entry.arguments?.getString("jobId") ?: return@composable
-                    AutoKeyJobDetailScreen(jobId = id, onBack = { navController.popBackStack() })
+                    AutoKeyJobDetailScreen(
+                        jobId = id,
+                        apiBaseUrl = apiBaseUrl,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

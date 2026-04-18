@@ -45,6 +45,12 @@ interface MainspringApi {
     @GET("v1/repair-jobs/{jobId}/sms-log")
     suspend fun getRepairJobSmsLog(@Path("jobId") jobId: String): List<SmsLogRead>
 
+    @POST("v1/repair-jobs/{jobId}/resend-notification")
+    suspend fun postRepairJobResendNotification(
+        @Path("jobId") jobId: String,
+        @Body body: ResendNotificationRequest,
+    ): ResendNotificationResponse
+
     @POST("v1/repair-jobs/{jobId}/status")
     suspend fun postRepairJobStatus(
         @Path("jobId") jobId: String,
@@ -65,7 +71,9 @@ interface MainspringApi {
 
     @GET("v1/attachments")
     suspend fun listAttachments(
-        @Query("repair_job_id") repairJobId: String,
+        @Query("repair_job_id") repairJobId: String? = null,
+        @Query("shoe_repair_job_id") shoeRepairJobId: String? = null,
+        @Query("auto_key_job_id") autoKeyJobId: String? = null,
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0,
     ): List<AttachmentRead>
@@ -125,6 +133,12 @@ interface MainspringApi {
         @Path("jobId") jobId: String,
         @Body body: JobNotePayload,
     ): Response<ResponseBody>
+
+    @POST("v1/shoe-repair-jobs/{jobId}/claim")
+    suspend fun postShoeRepairJobClaim(@Path("jobId") jobId: String): ShoeRepairJobRead
+
+    @POST("v1/shoe-repair-jobs/{jobId}/release")
+    suspend fun postShoeRepairJobRelease(@Path("jobId") jobId: String): ShoeRepairJobRead
 
     @GET("v1/auto-key-jobs")
     suspend fun listAutoKeyJobs(

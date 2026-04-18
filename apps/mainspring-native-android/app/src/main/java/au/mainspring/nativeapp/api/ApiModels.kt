@@ -142,6 +142,19 @@ data class SmsLogRead(
     @SerializedName("created_at") val createdAt: String,
 )
 
+data class ResendNotificationRequest(
+    @SerializedName("event_type") val eventType: String,
+)
+
+data class ResendNotificationChannels(
+    val sms: Boolean,
+    val email: Boolean,
+)
+
+data class ResendNotificationResponse(
+    val sent: ResendNotificationChannels,
+)
+
 data class InvoiceRead(
     val id: String,
     @SerializedName("tenant_id") val tenantId: String,

@@ -9,6 +9,7 @@ import au.mainspring.nativeapp.api.JobNotePayload
 import au.mainspring.nativeapp.api.JobStatusHistoryRead
 import au.mainspring.nativeapp.api.RepairJobRead
 import au.mainspring.nativeapp.api.RepairJobStatusUpdate
+import au.mainspring.nativeapp.api.ResendNotificationRequest
 import au.mainspring.nativeapp.api.SmsLogRead
 import au.mainspring.nativeapp.api.absolutizeApiUrl
 import au.mainspring.nativeapp.api.requireSuccessEmptyBody
@@ -28,6 +29,8 @@ data class JobDetailUiState(
     val statusBusy: Boolean = false,
     val noteBusy: Boolean = false,
     val claimBusy: Boolean = false,
+    val resendBusy: Boolean = false,
+    val resendInfo: String? = null,
 )
 
 class JobDetailViewModel(
@@ -73,7 +76,7 @@ class JobDetailViewModel(
 
     fun setStatus(newStatus: String, note: String? = null) {
         viewModelScope.launch {
-            _state.update { it.copy(statusBusy = true, error = null) }
+            _state.update { it.copy(statusBusy = true, error = null, resendInfo = null) }
             try {
                 val job = ApiClient.api.postRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, note))
                 val history = ApiClient.api.getRepairJobStatusHistory(jobId)
@@ -100,7 +103,7 @@ class JobDetailViewModel(
         val trimmed = noteText.trim()
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
-            _state.update { it.copy(noteBusy = true, error = null) }
+            _state.update { it.copy(noteBusy = true, error = null, resendInfo = null) }
             try {
                 ApiClient.api.postRepairJobNote(jobId, JobNotePayload(trimmed)).requireSuccessEmptyBody()
                 val history = ApiClient.api.getRepairJobStatusHistory(jobId)
@@ -118,7 +121,7 @@ class JobDetailViewModel(
 
     fun claimJob() {
         viewModelScope.launch {
-            _state.update { it.copy(claimBusy = true, error = null) }
+            _state.update { it.copy(claimBusy = true, error = null, resendInfo = null) }
             try {
                 val job = ApiClient.api.postRepairJobClaim(jobId)
                 _state.update { it.copy(claimBusy = false, job = job) }
@@ -130,12 +133,38 @@ class JobDetailViewModel(
 
     fun releaseJob() {
         viewModelScope.launch {
-            _state.update { it.copy(claimBusy = true, error = null) }
+            _state.update { it.copy(claimBusy = true, error = null, resendInfo = null) }
             try {
                 val job = ApiClient.api.postRepairJobRelease(jobId)
                 _state.update { it.copy(claimBusy = false, job = job) }
             } catch (e: Exception) {
                 _state.update { it.copy(claimBusy = false, error = e.message ?: "Could not release job") }
+            }
+        }
+    }
+
+    fun resendNotification(eventType: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(resendBusy = true, error = null, resendInfo = null) }
+            try {
+                val r = ApiClient.api.postRepairJobResendNotification(jobId, ResendNotificationRequest(eventType))
+                val parts = buildList {
+                    if (r.sent.sms) add("SMS")
+                    if (r.sent.email) add("Email")
+                }
+                val msg = if (parts.isEmpty()) {
+                    "Nothing was sent (check customer phone/email, or quote status for “Quote sent”)."
+                } else {
+                    "Sent: ${parts.joinToString(" + ")}"
+                }
+                val smsLog = try {
+                    ApiClient.api.getRepairJobSmsLog(jobId)
+                } catch (_: Exception) {
+                    _state.value.smsLog
+                }
+                _state.update { it.copy(resendBusy = false, resendInfo = msg, smsLog = smsLog) }
+            } catch (e: Exception) {
+                _state.update { it.copy(resendBusy = false, error = e.message ?: "Resend failed") }
             }
         }
     }

@@ -57,6 +57,7 @@ fun JobDetailScreen(
     var statusChangeNote by remember { mutableStateOf("") }
     var newNoteDraft by remember { mutableStateOf("") }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
+    var resendPicker by remember { mutableStateOf(false) }
     val job = state.job
 
     Scaffold(
@@ -126,6 +127,21 @@ fun JobDetailScreen(
                             modifier = Modifier.padding(top = 8.dp),
                         ) {
                             Text(if (state.noteBusy) "Saving…" else "Add shop note")
+                        }
+                        OutlinedButton(
+                            onClick = { resendPicker = true },
+                            enabled = !state.resendBusy,
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
+                            Text(if (state.resendBusy) "Sending…" else "Notify customer…")
+                        }
+                        state.resendInfo?.let {
+                            Text(
+                                it,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
                         }
                         state.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
@@ -272,6 +288,44 @@ fun JobDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { addNoteOpen = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (resendPicker) {
+        AlertDialog(
+            onDismissRequest = { resendPicker = false },
+            title = { Text("Customer notification") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        "The server checks customer phone/email and quote state. If nothing is sent, open the SMS log below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    TextButton(onClick = {
+                        vm.resendNotification("job_live")
+                        resendPicker = false
+                    }) {
+                        Text("Job live (SMS)")
+                    }
+                    TextButton(onClick = {
+                        vm.resendNotification("job_ready")
+                        resendPicker = false
+                    }) {
+                        Text("Ready for pickup (SMS + email)")
+                    }
+                    TextButton(onClick = {
+                        vm.resendNotification("quote_sent")
+                        resendPicker = false
+                    }) {
+                        Text("Quote sent (SMS + email)")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { resendPicker = false }) { Text("Close") }
             },
         )
     }
