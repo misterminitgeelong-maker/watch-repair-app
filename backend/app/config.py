@@ -64,8 +64,11 @@ class Settings(BaseSettings):
     # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
     schedule_calendar_timezone: str = "Australia/Sydney"
 
-    # CORS — comma-separated origins allowed in production
-    cors_origins: str = "https://mainspring.au,https://www.mainspring.au"
+    # CORS — comma-separated origins allowed in production (include Capacitor / WebView origins for native builds)
+    cors_origins: str = (
+        "https://mainspring.au,https://www.mainspring.au,"
+        "capacitor://localhost,https://localhost,http://localhost,ionic://localhost"
+    )
 
     # Path to the built frontend (set by Dockerfile / deploy)
     static_dir: str = ""

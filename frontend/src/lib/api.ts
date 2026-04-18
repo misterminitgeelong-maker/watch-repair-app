@@ -1,6 +1,32 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/v1', timeout: 20000 })
+/**
+ * Optional API origin for Capacitor / native builds (scheme + host, no path).
+ * Set `VITE_API_BASE_URL` at build time, e.g. `https://mainspring.au` or `https://mainspring.au/v1`.
+ * Leave unset for normal web: same host + `/v1` (Vite dev proxy or Docker static + API).
+ */
+function normalizeConfiguredApiOrigin(raw: string): string {
+  let s = raw.trim().replace(/\/+$/, '')
+  if (s.toLowerCase().endsWith('/v1')) {
+    s = s.slice(0, -3)
+    s = s.replace(/\/+$/, '')
+  }
+  return s
+}
+
+export const API_ORIGIN: string = (() => {
+  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined
+  if (!raw?.trim()) return ''
+  return normalizeConfiguredApiOrigin(raw)
+})()
+
+/** Prefix a path that starts with `/v1` for cross-origin API calls when `VITE_API_BASE_URL` is set. */
+export function withApiOrigin(v1Path: string): string {
+  if (!v1Path.startsWith('/v1')) return v1Path
+  return API_ORIGIN ? `${API_ORIGIN}${v1Path}` : v1Path
+}
+
+const api = axios.create({ baseURL: API_ORIGIN ? `${API_ORIGIN}/v1` : '/v1', timeout: 20000 })
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
@@ -476,9 +502,9 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
-  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(`/v1/public/quotes/${token}`)
+  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
-  axios.post(`/v1/public/quotes/${token}/decision`, { decision, signature })
+  axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
 export interface PublicJobStatus {
   job_number: string
@@ -502,10 +528,10 @@ export interface PublicJobStatus {
   }>
 }
 export const getPublicJobStatus = (token: string) =>
-  axios.get<PublicJobStatus>(`/v1/public/jobs/${token}`)
+  axios.get<PublicJobStatus>(withApiOrigin(`/v1/public/jobs/${token}`))
 
 export const getPublicJobQrUrl = (token: string) =>
-  `/v1/public/jobs/${token}/qr`
+  withApiOrigin(`/v1/public/jobs/${token}/qr`)
 
 export interface PublicShoeJobStatus {
   job_number: string
@@ -536,7 +562,7 @@ export interface PublicShoeJobStatus {
 }
 
 export const getPublicShoeJobStatus = (token: string) =>
-  axios.get<PublicShoeJobStatus>(`/v1/public/shoe-jobs/${token}`)
+  axios.get<PublicShoeJobStatus>(withApiOrigin(`/v1/public/shoe-jobs/${token}`))
 
 export interface CustomerPortalJob {
   type: 'watch' | 'shoe'
@@ -549,7 +575,7 @@ export interface CustomerPortalJob {
 }
 
 export const customerPortalLookup = (email: string) =>
-  axios.post<{ jobs: CustomerPortalJob[] }>('/v1/public/customer-lookup', { email })
+  axios.post<{ jobs: CustomerPortalJob[] }>(withApiOrigin('/v1/public/customer-lookup'), { email })
 
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
@@ -694,7 +720,7 @@ export const exportStocktake = (id: string, format: 'csv' | 'xlsx') =>
   api.get<Blob>(`/stocktakes/${id}/export`, { params: { format }, responseType: 'blob' })
 
 export const getPublicShoeJobQrUrl = (token: string) =>
-  `/v1/public/shoe-jobs/${token}/qr`
+  withApiOrigin(`/v1/public/shoe-jobs/${token}/qr`)
 
 // ── Work Logs ─────────────────────────────────────────────────────────────────
 export interface WorkLog {
@@ -719,12 +745,12 @@ export interface AttachmentDownloadLinkResponse {
   expires_in_seconds: number
 }
 export const API_ROUTES = {
-  attachmentDownload: (storageKey: string) => `/v1/attachments/download/${encodeURIComponent(storageKey)}`,
+  attachmentDownload: (storageKey: string) => withApiOrigin(`/v1/attachments/download/${encodeURIComponent(storageKey)}`),
   attachmentDownloadLink: (storageKey: string) => `/attachments/download-link/${encodeURIComponent(storageKey)}`,
-  publicAutoKeyInvoice: (token: string) => `/v1/public/auto-key-invoice/${token}`,
-  publicAutoKeyInvoiceCheckout: (token: string) => `/v1/public/auto-key-invoice/${token}/checkout`,
-  publicAutoKeyBooking: (token: string) => `/v1/public/auto-key-booking/${token}`,
-  publicAutoKeyBookingConfirm: (token: string) => `/v1/public/auto-key-booking/${token}/confirm`,
+  publicAutoKeyInvoice: (token: string) => withApiOrigin(`/v1/public/auto-key-invoice/${token}`),
+  publicAutoKeyInvoiceCheckout: (token: string) => withApiOrigin(`/v1/public/auto-key-invoice/${token}/checkout`),
+  publicAutoKeyBooking: (token: string) => withApiOrigin(`/v1/public/auto-key-booking/${token}`),
+  publicAutoKeyBookingConfirm: (token: string) => withApiOrigin(`/v1/public/auto-key-booking/${token}/confirm`),
 } as const
 export const listAttachments = (repairJobId: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
   api.get<Attachment[]>('/attachments', { params: { repair_job_id: repairJobId, ...params } })
@@ -1415,16 +1441,16 @@ export interface PublicShoeQuote {
 }
 
 export const getPublicShoeQuote = (token: string) =>
-  axios.get<PublicShoeQuote>(`/v1/public/shoe-quotes/${token}`)
+  axios.get<PublicShoeQuote>(withApiOrigin(`/v1/public/shoe-quotes/${token}`))
 
 export const decideShoeQuote = (token: string, decision: 'approved' | 'declined', customer_signature_data_url?: string) =>
-  axios.post<{ decision: string; job_number: string }>(`/v1/public/shoe-quotes/${token}/decision`, { decision, customer_signature_data_url })
+  axios.post<{ decision: string; job_number: string }>(withApiOrigin(`/v1/public/shoe-quotes/${token}/decision`), { decision, customer_signature_data_url })
 
 export const createPortalSession = (email: string) =>
-  axios.post<{ session_token: string; portal_url: string; expires_days: number }>('/v1/public/portal/create-session', { email })
+  axios.post<{ session_token: string; portal_url: string; expires_days: number }>(withApiOrigin('/v1/public/portal/create-session'), { email })
 
 export const getPortalSession = (token: string) =>
-  axios.get<{ jobs: CustomerPortalJob[]; email: string }>(`/v1/public/portal/session/${token}`)
+  axios.get<{ jobs: CustomerPortalJob[]; email: string }>(withApiOrigin(`/v1/public/portal/session/${token}`))
 
 // Pricing type display helper (used by both modal and page)
 export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {
@@ -1945,7 +1971,7 @@ export interface PublicAutoKeyIntake {
   customer_first_name_hint?: string
 }
 export const getPublicAutoKeyIntake = (token: string) =>
-  axios.get<PublicAutoKeyIntake>(`/v1/public/auto-key-intake/${token}`)
+  axios.get<PublicAutoKeyIntake>(withApiOrigin(`/v1/public/auto-key-intake/${token}`))
 export const submitPublicAutoKeyIntake = (token: string, data: {
   full_name?: string
   vehicle_make?: string
@@ -1963,7 +1989,7 @@ export const submitPublicAutoKeyIntake = (token: string, data: {
   blade_code?: string
   chip_type?: string
   tech_notes?: string
-}) => axios.post<{ message?: string }>(`/v1/public/auto-key-intake/${token}/submit`, data)
+}) => axios.post<{ message?: string }>(withApiOrigin(`/v1/public/auto-key-intake/${token}/submit`), data)
 
 export interface PublicAutoKeyInvoice {
   invoice_number: string

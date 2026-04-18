@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
-import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
+import { clearStoredTokens, getAuthSession, getStoredAccessToken, getStoredRefreshToken, refreshAuth, setStoredTokens, switchActiveSite, withApiOrigin, type FeatureKey, type PlanCode, type SiteOption } from '@/lib/api'
 
 interface AuthCtx {
   token: string | null
@@ -276,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function ensureTestSession() {
       try {
         // Optional dev helper for local demos and seeded datasets.
-        const loginResp = await postJson<{ access_token: string; refresh_token?: string }>('/v1/auth/dev-auto-login', {})
+        const loginResp = await postJson<{ access_token: string; refresh_token?: string }>(withApiOrigin('/v1/auth/dev-auto-login'), {})
         if (!canceled && !timedOut && loginResp.access_token) {
           setStoredTokens(loginResp.access_token, loginResp.refresh_token ?? null)
           setToken(loginResp.access_token)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  API_ORIGIN,
   clearParentMobileLeadWebhookSecret,
   createMobileSuburbRoute,
   createTenantFromParentAccount,
@@ -213,7 +214,7 @@ export default function ParentAccountPage() {
   const ingestPublicId = data?.mobile_lead_ingest_public_id ?? null
   const ingestUrl =
     ingestPublicId != null && ingestPublicId !== ''
-      ? `${window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
+      ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
       : ''
   const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
   const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
