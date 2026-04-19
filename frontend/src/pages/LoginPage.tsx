@@ -17,7 +17,7 @@ const ANIM_CSS = `
 `
 
 export default function LoginPage() {
-  const { token, login: setToken } = useAuth()
+  const { token, sessionReady, login: setToken } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
@@ -44,7 +44,7 @@ export default function LoginPage() {
     setPassword(demoCreds.password)
   }, [demoCreds.email, demoCreds.password, demoCreds.slug, searchParams])
 
-  if (token) return <Navigate to="/dashboard" replace />
+  if (token && sessionReady) return <Navigate to="/dashboard" replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
