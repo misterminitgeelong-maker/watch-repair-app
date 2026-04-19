@@ -9,6 +9,7 @@ from sqlmodel import Session, func, select, col
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
 from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
@@ -546,3 +547,205 @@ def export_invoices_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=invoices.csv"},
     )
+
+
+@router.get("/auto-key")
+def get_auto_key_reports(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant_id = auth.tenant_id
+
+    stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            stmt = stmt.where(AutoKeyJob.created_at >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            stmt = stmt.where(AutoKeyJob.created_at <= dt)
+        except ValueError:
+            pass
+
+    jobs = session.exec(stmt).all()
+    job_ids = [j.id for j in jobs]
+
+    invoices_map: dict[UUID, AutoKeyInvoice] = {}
+    if job_ids:
+        invs = session.exec(
+            select(AutoKeyInvoice).where(
+                AutoKeyInvoice.auto_key_job_id.in_(job_ids),
+                AutoKeyInvoice.tenant_id == tenant_id,
+            )
+        ).all()
+        invoices_map = {inv.auto_key_job_id: inv for inv in invs}
+
+    def job_revenue(job: AutoKeyJob) -> int:
+        inv = invoices_map.get(job.id)
+        return inv.total_cents if inv else 0
+
+    def is_mobile(job: AutoKeyJob) -> bool:
+        return bool(job.job_address and job.job_address.strip())
+
+    def pct(a: int | float, total: int | float) -> float:
+        return round(a / total * 100, 1) if total else 0.0
+
+    total_jobs = len(jobs)
+    total_revenue = sum(job_revenue(j) for j in jobs)
+    mobile_jobs = [j for j in jobs if is_mobile(j)]
+    shop_jobs = [j for j in jobs if not is_mobile(j)]
+    mobile_revenue = sum(job_revenue(j) for j in mobile_jobs)
+    shop_revenue = sum(job_revenue(j) for j in shop_jobs)
+
+    type_map: dict[str, dict] = {}
+    for j in jobs:
+        t = j.job_type or "Unknown"
+        if t not in type_map:
+            type_map[t] = {"job_type": t, "jobs": 0, "revenue_cents": 0}
+        type_map[t]["jobs"] += 1
+        type_map[t]["revenue_cents"] += job_revenue(j)
+    for v in type_map.values():
+        v["avg_value_cents"] = v["revenue_cents"] // v["jobs"] if v["jobs"] else 0
+
+    tech_ids = {j.assigned_user_id for j in jobs if j.assigned_user_id}
+    tech_names: dict[UUID, str] = {}
+    if tech_ids:
+        users = session.exec(select(User).where(col(User.id).in_(tech_ids))).all()
+        tech_names = {u.id: u.full_name for u in users}
+
+    tech_map: dict[UUID, dict] = {}
+    for j in jobs:
+        uid = j.assigned_user_id
+        if not uid:
+            continue
+        if uid not in tech_map:
+            tech_map[uid] = {"tech_id": str(uid), "tech_name": tech_names.get(uid, "Unknown"), "job_count": 0, "revenue_cents": 0}
+        tech_map[uid]["job_count"] += 1
+        tech_map[uid]["revenue_cents"] += job_revenue(j)
+    for v in tech_map.values():
+        v["revenue_share_pct"] = pct(v["revenue_cents"], total_revenue)
+
+    status_map: dict[str, int] = {}
+    for j in jobs:
+        status_map[j.status] = status_map.get(j.status, 0) + 1
+
+    week_map: dict[str, dict] = {}
+    for j in jobs:
+        dt = j.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        week_start = (dt - timedelta(days=dt.weekday())).date().isoformat()
+        if week_start not in week_map:
+            week_map[week_start] = {"week_start": week_start, "week_label": week_start, "jobs": 0, "revenue_cents": 0}
+        week_map[week_start]["jobs"] += 1
+        week_map[week_start]["revenue_cents"] += job_revenue(j)
+
+    return {
+        "summary": {
+            "total_jobs": total_jobs,
+            "total_revenue_cents": total_revenue,
+            "avg_job_value_cents": total_revenue // total_jobs if total_jobs else 0,
+            "mobile_count": len(mobile_jobs),
+            "mobile_pct": pct(len(mobile_jobs), total_jobs),
+            "shop_count": len(shop_jobs),
+            "shop_pct": pct(len(shop_jobs), total_jobs),
+            "mobile_revenue_cents": mobile_revenue,
+            "mobile_revenue_pct": pct(mobile_revenue, total_revenue),
+            "shop_revenue_cents": shop_revenue,
+            "shop_revenue_pct": pct(shop_revenue, total_revenue),
+        },
+        "jobs_by_type": sorted(type_map.values(), key=lambda x: -x["revenue_cents"]),
+        "jobs_by_tech": sorted(tech_map.values(), key=lambda x: -x["revenue_cents"]),
+        "jobs_by_status": [{"status": s, "count": c} for s, c in status_map.items()],
+        "week_on_week": sorted(week_map.values(), key=lambda x: x["week_start"]),
+    }
+
+
+@router.get("/auto-key/commission")
+def get_auto_key_commission_report(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant_id = auth.tenant_id
+
+    users = session.exec(
+        select(User).where(
+            User.tenant_id == tenant_id,
+            col(User.mobile_commission_rules_json).isnot(None),
+        )
+    ).all()
+
+    stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            stmt = stmt.where(AutoKeyJob.created_at >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            stmt = stmt.where(AutoKeyJob.created_at <= dt)
+        except ValueError:
+            pass
+
+    all_jobs = session.exec(stmt).all()
+    job_ids = [j.id for j in all_jobs]
+
+    invoices_map: dict[UUID, AutoKeyInvoice] = {}
+    if job_ids:
+        invs = session.exec(
+            select(AutoKeyInvoice).where(
+                AutoKeyInvoice.auto_key_job_id.in_(job_ids),
+                AutoKeyInvoice.tenant_id == tenant_id,
+            )
+        ).all()
+        invoices_map = {inv.auto_key_job_id: inv for inv in invs}
+
+    technicians = []
+    for user in users:
+        rules = parse_mobile_commission_rules(user.mobile_commission_rules_json)
+        if not rules or not rules.get("enabled"):
+            continue
+
+        eligible_statuses = rules.get("eligible_job_statuses", list(DEFAULT_ELIGIBLE_STATUSES))
+        user_jobs = [j for j in all_jobs if j.assigned_user_id == user.id and j.status in eligible_statuses]
+
+        lines_data = [
+            (j.id, j.job_number, invoices_map[j.id].id, invoices_map[j.id].total_cents, j.commission_lead_source, j.status)
+            for j in user_jobs
+            if j.id in invoices_map and invoices_map[j.id].total_cents > 0
+        ]
+
+        raw_commission, commission_lines = commission_for_period_lines(rules=rules, lines_data=lines_data)
+        retainer = rules.get("retainer_cents_per_period", 0)
+        labels: dict[str, str] = rules.get("labels", {})
+
+        technicians.append({
+            "user_id": str(user.id),
+            "full_name": user.full_name,
+            "raw_commission_cents": raw_commission,
+            "retainer_cents": retainer,
+            "bonus_payable_cents": max(0, raw_commission - retainer),
+            "lines": [
+                {
+                    "job_id": str(line.job_id),
+                    "invoice_id": str(line.invoice_id),
+                    "job_number": line.job_number,
+                    "lead_source_label": labels.get(line.lead_source, line.lead_source),
+                    "revenue_cents": line.revenue_cents,
+                    "rate_bp": line.rate_bp,
+                    "commission_cents": line.commission_cents,
+                }
+                for line in commission_lines
+            ],
+        })
+
+    return {"technicians": technicians}
