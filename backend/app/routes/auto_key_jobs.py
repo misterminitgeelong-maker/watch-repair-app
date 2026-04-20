@@ -752,6 +752,47 @@ def send_auto_key_quote(
     return _to_quote_read(session, quote)
 
 
+@router.post("/invoices/{invoice_id}/send", response_model=AutoKeyInvoiceRead)
+def send_auto_key_invoice(
+    invoice_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    invoice = session.get(AutoKeyInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        _customer = session.get(Customer, job.customer_id)
+        _tenant = session.get(Tenant, auth.tenant_id)
+        if _customer and (_customer.phone or "").strip():
+            _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
+            _shop = (_tenant.name if _tenant else None) or "Mobile Services"
+            _view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
+            notify_auto_key_invoice_ready(
+                session,
+                tenant_id=auth.tenant_id,
+                to_phone=_customer.phone.strip(),
+                customer_name=_first,
+                shop_name=_shop,
+                job_number=job.job_number,
+                invoice_number=invoice.invoice_number,
+                total_cents=invoice.total_cents,
+                currency=invoice.currency or "AUD",
+                view_url=_view_url,
+            )
+            session.commit()
+            logger.info("auto_key_invoice.send_sms tenant=%s invoice=%s", auth.tenant_id, invoice_id)
+    except Exception:
+        logger.exception("auto_key_invoice.send_sms_failed tenant=%s invoice=%s", auth.tenant_id, invoice_id)
+
+    return _to_invoice_read(invoice)
+
+
 @router.get("/{job_id}/invoices", response_model=list[AutoKeyInvoiceRead])
 def list_auto_key_invoices(
     job_id: UUID,

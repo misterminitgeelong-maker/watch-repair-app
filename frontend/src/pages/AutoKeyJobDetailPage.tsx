@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail } from 'lucide-react'
+import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail, Plus, Send } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
@@ -13,6 +13,10 @@ import {
   listAutoKeyQuotes,
   listCustomerAccounts,
   listUsers,
+  createAutoKeyQuote,
+  sendAutoKeyQuote,
+  createAutoKeyInvoiceFromQuote,
+  sendAutoKeyInvoice,
   searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
   updateAutoKeyInvoice,
@@ -35,6 +39,46 @@ import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+
+function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [err, setErr] = useState('')
+  const [description, setDescription] = useState('Mobile service')
+  const [quantity, setQuantity] = useState('1')
+  const [unitPrice, setUnitPrice] = useState('120.00')
+  const [tax, setTax] = useState('0.00')
+
+  const mut = useMutation({
+    mutationFn: () =>
+      createAutoKeyQuote(jobId, {
+        line_items: [{ description: description.trim() || 'Mobile service', quantity: Math.max(1, Number(quantity || '1')), unit_price_cents: Math.max(0, Math.round(parseFloat(unitPrice || '0') * 100)) }],
+        tax_cents: Math.max(0, Math.round(parseFloat(tax || '0') * 100)),
+      }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] }); onClose() },
+    onError: (e) => setErr(getApiErrorMessage(e, 'Failed to create quote.')),
+  })
+
+  const total = (parseFloat(unitPrice || '0') * parseFloat(quantity || '1') + parseFloat(tax || '0')).toFixed(2)
+
+  return (
+    <div className="space-y-3">
+      <Input label="Description" value={description} onChange={e => setDescription(e.target.value)} />
+      <div className="grid grid-cols-3 gap-3">
+        <Input label="Qty" type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
+        <Input label="Unit price ($)" type="number" step="0.01" min="0" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} />
+        <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
+      </div>
+      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>Total: ${total}</p>
+      {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+      <div className="flex gap-2 pt-1">
+        <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
+        <Button className="flex-1 flex items-center justify-center gap-1" onClick={() => mut.mutate()} disabled={mut.isPending}>
+          {mut.isPending ? 'Creating…' : 'Save Quote'}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 function SeverityBadge({ severity }: { severity: string }) {
   const s = severity.toLowerCase()
@@ -86,6 +130,8 @@ export default function AutoKeyJobDetailPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'eftpos' | 'bank'>('eftpos')
   const [statusFeedback, setStatusFeedback] = useState('')
   const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos'>('info')
+  const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -231,6 +277,31 @@ export default function AutoKeyJobDetailPage() {
     }
     setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
+
+  const sendQuoteMut = useMutation({
+    mutationFn: (quoteId: string) => sendAutoKeyQuote(quoteId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-quotes', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to send quote.')),
+  })
+
+  const createInvoiceMut = useMutation({
+    mutationFn: (quoteId: string) => createAutoKeyInvoiceFromQuote(id!, quoteId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to create invoice.')),
+  })
+
+  const sendInvoiceMut = useMutation({
+    mutationFn: (invoiceId: string) => sendAutoKeyInvoice(invoiceId),
+    onSuccess: () => setSendInvoiceFeedback('Payment link sent to customer via SMS.'),
+    onError: err => setSendInvoiceFeedback(getApiErrorMessage(err, 'Failed to send invoice.')),
+  })
 
   const assignTechMut = useMutation({
     mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(id!, { assigned_user_id }),
@@ -907,54 +978,108 @@ export default function AutoKeyJobDetailPage() {
         )}
 
         <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden lg:block' : ''}`}>
+          {showQuoteModal && (
+            <Modal title="Create Quote" onClose={() => setShowQuoteModal(false)}>
+              <CreateQuoteInlineForm jobId={id!} onClose={() => setShowQuoteModal(false)} />
+            </Modal>
+          )}
+
           <Card>
-            <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Quotes</h2>
+              <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => setShowQuoteModal(true)}>
+                <Plus size={13} /> New Quote
+              </Button>
             </div>
             {(quotes ?? []).length === 0 ? (
               <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>No quotes yet.</p>
             ) : (
               quotes.map(q => (
-                <div key={q.id} className='px-5 py-3 text-sm flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                  <div>
-                    <p style={{ color: 'var(--cafe-text)' }}>{formatDate(q.created_at)}</p>
-                    <p className='text-xs capitalize' style={{ color: 'var(--cafe-text-muted)' }}>{q.status}</p>
+                <div key={q.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <p style={{ color: 'var(--cafe-text)' }}>{formatDate(q.created_at)}</p>
+                      <p className='text-xs capitalize' style={{ color: q.status === 'sent' ? '#4A8A4A' : q.status === 'declined' ? '#C96A5A' : 'var(--cafe-text-muted)' }}>
+                        {q.status}{q.sent_at ? ` · sent ${formatDate(q.sent_at)}` : ''}
+                      </p>
+                    </div>
+                    <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(q.total_cents)}</p>
                   </div>
-                  <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(q.total_cents)}</p>
+                  {(q.line_items ?? []).map((li, i) => (
+                    <p key={i} className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>
+                      {li.quantity} × {li.description} — {formatCents(li.unit_price_cents)} ea
+                    </p>
+                  ))}
+                  {q.status === 'draft' && (
+                    <Button
+                      className="text-xs py-1 px-3 flex items-center gap-1"
+                      onClick={() => sendQuoteMut.mutate(q.id)}
+                      disabled={sendQuoteMut.isPending}
+                    >
+                      <Send size={12} /> {sendQuoteMut.isPending ? 'Sending…' : 'Send Quote to Customer'}
+                    </Button>
+                  )}
                 </div>
               ))
             )}
           </Card>
 
           <Card>
-            <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Invoices</h2>
+              {quotes.length > 0 && invoices.length === 0 && (
+                <Button
+                  variant="secondary"
+                  className="text-xs py-1 px-2 flex items-center gap-1"
+                  onClick={() => createInvoiceMut.mutate(quotes[0].id)}
+                  disabled={createInvoiceMut.isPending}
+                >
+                  <Plus size={13} /> {createInvoiceMut.isPending ? 'Creating…' : 'Create Invoice'}
+                </Button>
+              )}
             </div>
             {(invoices ?? []).length === 0 ? (
-              <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>No invoices yet.</p>
+              <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>
+                {quotes.length === 0 ? 'Create a quote first, then generate an invoice.' : 'No invoice yet — click Create Invoice above.'}
+              </p>
             ) : (
               invoices.map(inv => (
-                <div key={inv.id} className='px-5 py-3 text-sm flex items-center justify-between flex-wrap gap-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-                  <div>
-                    <p style={{ color: 'var(--cafe-text)' }}>{inv.invoice_number}</p>
-                    <p className='text-xs capitalize' style={{ color: 'var(--cafe-text-muted)' }}>
-                      {inv.status}
-                      {inv.payment_method && <span> · {inv.payment_method}</span>}
-                      {' · '}{formatDate(inv.created_at)}
-                    </p>
+                <div key={inv.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <div className='flex items-center justify-between flex-wrap gap-2'>
+                    <div>
+                      <p style={{ color: 'var(--cafe-text)', fontWeight: 600 }}>{inv.invoice_number}</p>
+                      <p className='text-xs' style={{ color: inv.status === 'paid' ? '#4A8A4A' : inv.status === 'void' ? '#999' : '#C9A248' }}>
+                        {inv.status === 'paid' ? '✓ Paid' : inv.status === 'void' ? 'Void' : 'Unpaid'}
+                        {inv.payment_method && inv.status === 'paid' ? ` · ${inv.payment_method}` : ''}
+                        {' · '}{formatDate(inv.created_at)}
+                      </p>
+                    </div>
+                    <p className='font-semibold' style={{ color: inv.status === 'paid' ? '#4A8A4A' : 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</p>
                   </div>
-                  <div className='flex items-center gap-2'>
-                    <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</p>
+                  <div className='flex gap-2 flex-wrap'>
                     {inv.status === 'unpaid' && (
-                      <Button
-                        variant="secondary"
-                        className="text-xs py-1 px-2"
-                        onClick={() => setInvoiceToPay({ id: inv.id, invoice_number: inv.invoice_number, total_cents: inv.total_cents })}
-                      >
-                        <CheckCircle size={12} /> Record payment
-                      </Button>
+                      <>
+                        <Button
+                          variant="secondary"
+                          className="text-xs py-1 px-2 flex items-center gap-1"
+                          onClick={() => { setSendInvoiceFeedback(''); sendInvoiceMut.mutate(inv.id) }}
+                          disabled={sendInvoiceMut.isPending}
+                        >
+                          <Send size={12} /> {sendInvoiceMut.isPending ? 'Sending…' : 'Send to Customer'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="text-xs py-1 px-2 flex items-center gap-1"
+                          onClick={() => setInvoiceToPay({ id: inv.id, invoice_number: inv.invoice_number, total_cents: inv.total_cents })}
+                        >
+                          <CheckCircle size={12} /> Record Payment
+                        </Button>
+                      </>
                     )}
                   </div>
+                  {sendInvoiceFeedback && inv.id && (
+                    <p className='text-xs rounded px-2 py-1' style={{ backgroundColor: '#F0FAF0', color: '#2A6A2A' }}>{sendInvoiceFeedback}</p>
+                  )}
                 </div>
               ))
             )}

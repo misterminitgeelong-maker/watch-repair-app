@@ -1455,6 +1455,8 @@ export const sendAutoKeyQuote = (quoteId: string) => api.post<AutoKeyQuote>(`/au
 export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
 export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
   api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
+export const sendAutoKeyInvoice = (invoiceId: string) =>
+  api.post<AutoKeyInvoice>(`/auto-key-jobs/invoices/${invoiceId}/send`)
 
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Shoe>('/shoe-repair-jobs/shoes', data)
