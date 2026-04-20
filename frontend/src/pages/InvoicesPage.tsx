@@ -42,6 +42,7 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 export function InvoicesPage() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatusFilter = searchParams.get('status') ?? ''
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
@@ -170,11 +171,33 @@ export function InvoicesPage() {
                         <td className="px-5 py-3">
                           <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
                         </td>
-                        <td className="px-5 py-3">
-                          <Link to={`/invoices/${inv.id}`} className="font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>#{inv.invoice_number}</Link>
+                        <td
+                          className="px-5 py-3 cursor-pointer"
+                          onClick={() => navigate(`/invoices/${inv.id}`)}
+                        >
+                          <Link
+                            to={`/invoices/${inv.id}`}
+                            className="inline-block font-mono transition-colors"
+                            style={{ color: 'var(--cafe-amber)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+                          >
+                            #{inv.invoice_number}
+                          </Link>
                         </td>
-                        <td className="px-5 py-3">
-                          <Link to={`/jobs/${inv.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
+                        <td
+                          className="px-5 py-3 cursor-pointer"
+                          onClick={() => navigate(`/jobs/${inv.repair_job_id}`)}
+                        >
+                          <Link
+                            to={`/jobs/${inv.repair_job_id}`}
+                            className="inline-block text-xs font-mono transition-colors"
+                            style={{ color: 'var(--cafe-amber)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+                          >
+                            View Job
+                          </Link>
                         </td>
                         <td className="px-5 py-3"><Badge status={inv.status} /></td>
                         <td className="px-5 py-3">{formatCents(inv.subtotal_cents)}</td>
