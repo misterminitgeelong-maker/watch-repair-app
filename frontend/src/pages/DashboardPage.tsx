@@ -32,7 +32,7 @@ import { Badge, Button, Card, Input, Modal, PageHeader } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
 
@@ -74,6 +74,16 @@ type RecentItem = {
   detail: string
 }
 
+function sanitizeQueueTitle(title: string | undefined): string {
+  const cleaned = (title ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!cleaned) return 'Untitled repair job'
+  if (cleaned.length <= 96) return cleaned
+  return `${cleaned.slice(0, 93).trimEnd()}...`
+}
+
 const LIVE_QUEUE_MIN_PER_SERVICE = 3
 const LIVE_QUEUE_MAX_ITEMS = 12
 
@@ -88,7 +98,7 @@ function buildBalancedLiveQueue(
 ): RecentItem[] {
   const watchItems = (recentWatchJobs ?? []).map((job) => ({
     id: job.id,
-    title: job.title,
+    title: sanitizeQueueTitle(job.title),
     to: `/jobs/${job.id}`,
     created_at: job.created_at,
     status: job.status,
@@ -97,7 +107,7 @@ function buildBalancedLiveQueue(
   }))
   const shoeItems = (shoeJobs ?? []).map((job) => ({
     id: job.id,
-    title: job.title,
+    title: sanitizeQueueTitle(job.title),
     to: `/shoe-repairs/${job.id}`,
     created_at: job.created_at,
     status: job.status,
@@ -106,7 +116,7 @@ function buildBalancedLiveQueue(
   }))
   const autoItems = (autoKeyJobs ?? []).map((job) => ({
     id: job.id,
-    title: job.title,
+    title: sanitizeQueueTitle(job.title),
     to: `/auto-key/${job.id}`,
     created_at: job.created_at,
     status: job.status,
@@ -231,6 +241,7 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
 
 export default function DashboardPage() {
   const { tenantId, role, planCode, availableSites, hasFeature } = useAuth()
+  const navigate = useNavigate()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
@@ -336,6 +347,14 @@ export default function DashboardPage() {
   )
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0) + (widgets?.overdue_collection_count ?? 0)
+  const followUpRoute = useMemo(() => {
+    if (!widgets) return null
+    if ((widgets.overdue_jobs_count ?? 0) > 0) return '/jobs?status=awaiting_go_ahead'
+    if ((widgets.quotes_pending_7d_count ?? 0) > 0) return '/quotes'
+    if ((widgets.overdue_invoices_count ?? 0) > 0) return '/invoices'
+    if ((widgets.overdue_collection_count ?? 0) > 0) return '/jobs'
+    return null
+  }, [widgets])
 
   const serviceBreakdown = [
       hasFeature('watch') && `Watch: ${watchOpenJobsCount}`,
@@ -488,6 +507,11 @@ export default function DashboardPage() {
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
                   {formatCents(reports?.financials.gross_profit_cents ?? 0)}
                 </p>
+                {(reports?.financials.cost_outlier_jobs ?? 0) > 0 && (
+                  <p className="mt-1 text-[10px] sm:text-xs" style={{ color: '#8B3A3A' }}>
+                    Ignoring {(reports?.financials.cost_outlier_jobs ?? 0)} cost outlier job(s)
+                  </p>
+                )}
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Approval Rate</p>
@@ -568,6 +592,15 @@ export default function DashboardPage() {
         {actionCount > 0 && (
           <Card className="mb-6 p-4 flex flex-wrap items-center gap-4" style={{ backgroundColor: '#FFFBEB', borderColor: '#FCD34D' }}>
             <span className="font-semibold" style={{ color: '#92400E' }}>Action needed</span>
+            {followUpRoute && (
+              <Button
+                type="button"
+                onClick={() => navigate(followUpRoute)}
+                className="!py-1.5 !px-3 !text-xs"
+              >
+                Start follow-up sweep
+              </Button>
+            )}
             {widgets && (
               <div className="flex flex-wrap gap-4 text-sm">
                 {(widgets.overdue_jobs_count ?? 0) > 0 && (
@@ -640,7 +673,7 @@ export default function DashboardPage() {
                         {item.detail}
                       </span>
                     </div>
-                    <p className="mt-1 truncate text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{item.title}</p>
+                    <p className="mt-1 text-sm font-medium leading-5" style={{ color: 'var(--cafe-text)' }}>{item.title}</p>
                     <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(item.created_at)}</p>
                   </div>
                   <Badge status={item.status} />

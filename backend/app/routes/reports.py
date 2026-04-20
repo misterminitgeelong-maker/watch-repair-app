@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import case
 from sqlmodel import Session, func, select, col
 
 from ..database import get_session
@@ -13,6 +14,11 @@ from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period
 from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
+
+# Imported legacy datasets occasionally contain cost values that are clearly out-of-scale
+# (e.g. dollars stored as cents multiple times). Clamp cost aggregation to sane per-job caps
+# so dashboard gross profit remains actionable.
+_MAX_REASONABLE_JOB_COST_CENTS = 5_000_000  # $50,000 per job
 
 
 @router.get("/summary")
@@ -118,9 +124,55 @@ def get_reports_summary(
         ).one() or 0
     )
     revenue_cents = payment_revenue + orphan_paid_cents + ak_revenue + shoe_revenue
-    # Cost: watch + shoe parts costs only (auto-key cost_cents is the customer charge, not shop cost)
-    watch_cost = int(session.exec(select(func.coalesce(func.sum(RepairJob.cost_cents), 0)).where(RepairJob.tenant_id == tenant_id)).one())
-    shoe_cost = int(session.exec(select(func.coalesce(func.sum(ShoeRepairJob.cost_cents), 0)).where(ShoeRepairJob.tenant_id == tenant_id)).one())
+    # Cost: watch + shoe parts costs only (auto-key cost_cents is customer charge, not shop cost).
+    # Also clamp obvious imported outliers so gross profit stays meaningful.
+    watch_cost = int(
+        session.exec(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (RepairJob.cost_cents <= _MAX_REASONABLE_JOB_COST_CENTS, RepairJob.cost_cents),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                )
+            ).where(RepairJob.tenant_id == tenant_id)
+        ).one()
+    )
+    shoe_cost = int(
+        session.exec(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (ShoeRepairJob.cost_cents <= _MAX_REASONABLE_JOB_COST_CENTS, ShoeRepairJob.cost_cents),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                )
+            ).where(ShoeRepairJob.tenant_id == tenant_id)
+        ).one()
+    )
+    watch_cost_outliers = int(
+        session.exec(
+            select(func.count())
+            .select_from(RepairJob)
+            .where(RepairJob.tenant_id == tenant_id)
+            .where(RepairJob.cost_cents > _MAX_REASONABLE_JOB_COST_CENTS)
+        ).one()
+    )
+    shoe_cost_outliers = int(
+        session.exec(
+            select(func.count())
+            .select_from(ShoeRepairJob)
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .where(ShoeRepairJob.cost_cents > _MAX_REASONABLE_JOB_COST_CENTS)
+        ).one()
+    )
+    cost_outlier_jobs = watch_cost_outliers + shoe_cost_outliers
     cost_cents = watch_cost + shoe_cost
     outstanding_cents = max(billed_cents - revenue_cents, 0)
     gross_profit_cents = revenue_cents - cost_cents
@@ -248,6 +300,7 @@ def get_reports_summary(
             "billed_cents": billed_cents,
             "revenue_cents": revenue_cents,
             "cost_cents": cost_cents,
+            "cost_outlier_jobs": cost_outlier_jobs,
             "outstanding_cents": outstanding_cents,
             "gross_profit_cents": gross_profit_cents,
             "gross_margin_percent": gross_margin_percent,

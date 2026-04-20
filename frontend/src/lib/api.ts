@@ -1032,6 +1032,7 @@ export interface ReportsSummary {
     billed_cents: number
     revenue_cents: number
     cost_cents: number
+    cost_outlier_jobs?: number
     outstanding_cents: number
     gross_profit_cents: number
     gross_margin_percent: number
