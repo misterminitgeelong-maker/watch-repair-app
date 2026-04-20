@@ -301,6 +301,8 @@ def get_reports_summary(
             "revenue_cents": revenue_cents,
             "cost_cents": cost_cents,
             "cost_outlier_jobs": cost_outlier_jobs,
+            "cost_outlier_watch_jobs": watch_cost_outliers,
+            "cost_outlier_shoe_jobs": shoe_cost_outliers,
             "outstanding_cents": outstanding_cents,
             "gross_profit_cents": gross_profit_cents,
             "gross_margin_percent": gross_margin_percent,

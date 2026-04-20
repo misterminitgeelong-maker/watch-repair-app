@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, MessageSquare, Copy, CheckCheck, FileText } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
@@ -202,13 +202,20 @@ const QUOTE_STATUS_FILTERS: Array<{ value: string; label: string }> = [
 
 export default function QuotesPage() {
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status') ?? ''
   const [showCreate, setShowCreate] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [invoiceCreated, setInvoiceCreated] = useState<string | null>(null)
   const [invoiceError, setInvoiceError] = useState('')
   const [sortBy, setSortBy] = useState<'created_at' | 'sent_at' | 'status' | 'total_cents'>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (statusFilter) next.set('status', statusFilter)
+    setSearchParams(next, { replace: true })
+  }, [setSearchParams, statusFilter])
 
   const quotesQuery = useOffsetPaginatedQuery({
     queryKey: ['quotes', 'paged', 'page', statusFilter || null, sortBy, sortDir],

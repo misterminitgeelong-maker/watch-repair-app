@@ -217,6 +217,7 @@ def create_shoe_repair_job(
 def list_shoe_repair_jobs(
     status: str | None = Query(default=None),
     customer_id: UUID | None = Query(default=None),
+    cost_outlier: bool | None = Query(default=None, description="When true, only include jobs with outlier cost values"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=2000),
     auth: AuthContext = Depends(get_auth_context),
@@ -228,6 +229,8 @@ def list_shoe_repair_jobs(
     if customer_id:
         shoe_ids = select(Shoe.id).where(Shoe.tenant_id == auth.tenant_id).where(Shoe.customer_id == customer_id)
         query = query.where(ShoeRepairJob.shoe_id.in_(shoe_ids))
+    if cost_outlier:
+        query = query.where(ShoeRepairJob.cost_cents > 5_000_000)
     jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc()).offset(skip).limit(limit)).all()
     return [_job_to_read(j, session) for j in jobs]
 

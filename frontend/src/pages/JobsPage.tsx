@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Search, X, ListOrdered } from 'lucide-react'
 import {
   deleteJob,
@@ -30,23 +30,28 @@ type JobSortField = (typeof JOB_SORT_FIELDS)[number]
 
 export default function JobsPage() {
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status')
+  const statusIsClosed = initialStatus != null && (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(initialStatus as JobStatus)
+  const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(statusIsClosed ? 'completed' : 'active')
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [sortBy, setSortBy] = useState<JobSortField>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [assignedUserId, setAssignedUserId] = useState<string>('')
+  const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
   const [showFilters, setShowFilters] = useState(false)
 
   const apiStatus = statusFilter === 'all' ? undefined : statusFilter
 
   const jobsQuery = useQuery({
-    queryKey: ['jobs', 'all', apiStatus, assignedUserId || null, sortBy, sortDir],
+    queryKey: ['jobs', 'all', apiStatus, assignedUserId || null, sortBy, sortDir, costOutlierOnly],
     queryFn: () =>
       listJobs({
         limit: WATCH_JOBS_LIST_MAX,
@@ -55,6 +60,7 @@ export default function JobsPage() {
         sort_dir: sortDir,
         ...(apiStatus ? { status: apiStatus } : {}),
         ...(assignedUserId ? { assigned_user_id: assignedUserId } : {}),
+        ...(costOutlierOnly ? { cost_outlier: true } : {}),
       }).then((r) => r.data),
   })
 
@@ -137,6 +143,13 @@ export default function JobsPage() {
     !search.trim() &&
     filtered.length === 0 &&
     completedCount > 0
+
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (statusFilter !== 'all') next.set('status', statusFilter)
+    if (costOutlierOnly) next.set('cost_outlier', '1')
+    setSearchParams(next, { replace: true })
+  }, [costOutlierOnly, setSearchParams, statusFilter])
 
   return (
     <div>
@@ -308,6 +321,21 @@ export default function JobsPage() {
               </option>
             ))}
           </select>
+          <label
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition inline-flex items-center gap-2"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={costOutlierOnly}
+              onChange={(e) => setCostOutlierOnly(e.target.checked)}
+            />
+            Cost outliers only
+          </label>
         </div>
       </div>
 

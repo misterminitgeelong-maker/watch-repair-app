@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Search, ChevronDown, Shield, Tag, Camera, Upload, X, ListOrdered } from 'lucide-react'
 import {
   deleteShoeRepairJob,
@@ -462,11 +462,19 @@ function ComboBanner() {
 // -- Page ---------------------------------------------------------------------
 export default function ShoeRepairsPage() {
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status')
+  const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
+  const initialDirectory =
+    initialStatus && SHOE_CLOSED_STATUSES.includes(initialStatus)
+      ? 'completed'
+      : 'active'
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
+  const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
   const [viewMode, setViewMode] = useState<'kanban' | 'cards'>(() => window.innerWidth < 640 ? 'cards' : 'kanban')
 
   const statusMut = useMutation({
@@ -475,9 +483,16 @@ export default function ShoeRepairsPage() {
   })
 
   const { data: jobs, isLoading } = useQuery({
-    queryKey: ['shoe-repair-jobs'],
-    queryFn: () => listShoeRepairJobs({ limit: 500 }).then(r => r.data),
+    queryKey: ['shoe-repair-jobs', 'list', costOutlierOnly],
+    queryFn: () => listShoeRepairJobs({ limit: 500, ...(costOutlierOnly ? { cost_outlier: true } : {}) }).then(r => r.data),
   })
+
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (statusFilter !== 'all') next.set('status', statusFilter)
+    if (costOutlierOnly) next.set('cost_outlier', '1')
+    setSearchParams(next, { replace: true })
+  }, [costOutlierOnly, setSearchParams, statusFilter])
 
   const statusOptions = jobDirectoryView === 'active' ? SHOE_ACTIVE_STATUSES : SHOE_CLOSED_STATUSES
   const activeCount = (jobs ?? []).filter(j => SHOE_ACTIVE_STATUSES.includes(j.status)).length
@@ -620,6 +635,17 @@ export default function ShoeRepairsPage() {
             <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </select>
+        <label
+          className="h-10 rounded-xl border px-3 text-sm inline-flex items-center gap-2 sm:w-auto"
+          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+        >
+          <input
+            type="checkbox"
+            checked={costOutlierOnly}
+            onChange={(e) => setCostOutlierOnly(e.target.checked)}
+          />
+          Cost outliers only
+        </label>
       </div>
 
       {isLoading && <Spinner />}

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, Printer } from 'lucide-react'
 import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
@@ -42,7 +42,20 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 export function InvoicesPage() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialStatusFilter = searchParams.get('status') ?? ''
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
   const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
+  const filteredInvoices = useMemo(
+    () => (invoices ?? []).filter((inv) => (statusFilter ? inv.status === statusFilter : true)),
+    [invoices, statusFilter],
+  )
+
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (statusFilter) next.set('status', statusFilter)
+    setSearchParams(next, { replace: true })
+  }, [setSearchParams, statusFilter])
 
   return (
     <div>
@@ -51,13 +64,51 @@ export function InvoicesPage() {
 
       {isLoading ? <Spinner /> : (
         <>
-          {(invoices ?? []).length === 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('')}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{
+                backgroundColor: statusFilter === '' ? '#F3EADF' : 'var(--cafe-surface)',
+                color: 'var(--cafe-text)',
+                border: '1px solid var(--cafe-border)',
+              }}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('unpaid')}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{
+                backgroundColor: statusFilter === 'unpaid' ? '#F3EADF' : 'var(--cafe-surface)',
+                color: 'var(--cafe-text)',
+                border: '1px solid var(--cafe-border)',
+              }}
+            >
+              Unpaid
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('paid')}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{
+                backgroundColor: statusFilter === 'paid' ? '#F3EADF' : 'var(--cafe-surface)',
+                color: 'var(--cafe-text)',
+                border: '1px solid var(--cafe-border)',
+              }}
+            >
+              Paid
+            </button>
+          </div>
+          {filteredInvoices.length === 0 ? (
             <Card><EmptyState message="No invoices yet. They are created automatically when a quote is approved." /></Card>
           ) : (
             <>
               {/* Mobile card list */}
               <div className="md:hidden space-y-3">
-                {(invoices ?? []).map((inv: Invoice) => (
+                {filteredInvoices.map((inv: Invoice) => (
                   <Card key={inv.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -114,7 +165,7 @@ export function InvoicesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(invoices ?? []).map((inv: Invoice) => (
+                    {filteredInvoices.map((inv: Invoice) => (
                       <tr key={inv.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3">
                           <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>

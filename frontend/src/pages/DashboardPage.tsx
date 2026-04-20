@@ -347,12 +347,18 @@ export default function DashboardPage() {
   )
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0) + (widgets?.overdue_collection_count ?? 0)
+  const lastUpdatedAt = useMemo(
+    () => Math.max(invoicesQ.dataUpdatedAt, reportsQ.dataUpdatedAt, 0),
+    [invoicesQ.dataUpdatedAt, reportsQ.dataUpdatedAt],
+  )
+  const isRefreshing =
+    invoicesQ.isFetching || reportsQ.isFetching || reportsQ.isPending || invoicesQ.isPending
   const followUpRoute = useMemo(() => {
     if (!widgets) return null
     if ((widgets.overdue_jobs_count ?? 0) > 0) return '/jobs?status=awaiting_go_ahead'
-    if ((widgets.quotes_pending_7d_count ?? 0) > 0) return '/quotes'
-    if ((widgets.overdue_invoices_count ?? 0) > 0) return '/invoices'
-    if ((widgets.overdue_collection_count ?? 0) > 0) return '/jobs'
+    if ((widgets.quotes_pending_7d_count ?? 0) > 0) return '/quotes?status=sent'
+    if ((widgets.overdue_invoices_count ?? 0) > 0) return '/invoices?status=unpaid'
+    if ((widgets.overdue_collection_count ?? 0) > 0) return '/jobs?status=awaiting_collection'
     return null
   }, [widgets])
 
@@ -444,6 +450,25 @@ export default function DashboardPage() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         <PageHeader title="Operations Dashboard" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            Last refreshed {lastUpdatedAt > 0 ? new Date(lastUpdatedAt).toLocaleTimeString() : 'just now'}
+          </p>
+          <Button
+            variant="secondary"
+            type="button"
+            className="!py-1.5 !px-3 !text-xs"
+            onClick={() => {
+              void Promise.all([
+                invoicesQ.refetch(),
+                reportsQ.refetch(),
+              ])
+            }}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? 'Refreshing…' : 'Refresh now'}
+          </Button>
+        </div>
 
         {(invoicesQ.isError || reportsQ.isError) && (
           <Card className="mb-4 p-4" style={{ borderColor: '#E8B4AA', backgroundColor: '#FDF0EE' }}>
@@ -609,12 +634,12 @@ export default function DashboardPage() {
                   </Link>
                 )}
                 {(widgets.quotes_pending_7d_count ?? 0) > 0 && (
-                  <Link to="/quotes" className="underline" style={{ color: '#B45309' }}>
+                  <Link to="/quotes?status=sent" className="underline" style={{ color: '#B45309' }}>
                     {widgets.quotes_pending_7d_count} quote(s) sent 7+ days, no response
                   </Link>
                 )}
                 {(widgets.overdue_invoices_count ?? 0) > 0 && (
-                  <Link to="/invoices" className="underline" style={{ color: '#B45309' }}>
+                  <Link to="/invoices?status=unpaid" className="underline" style={{ color: '#B45309' }}>
                     {widgets.overdue_invoices_count} unpaid invoice(s)
                   </Link>
                 )}
@@ -623,7 +648,7 @@ export default function DashboardPage() {
                     <span className="font-semibold" style={{ color: '#8B3A3A' }}>{widgets.overdue_collection_count}</span>
                     <span style={{ color: 'var(--cafe-text-mid)' }}>
                       job{widgets.overdue_collection_count !== 1 ? 's' : ''} past collection date —{' '}
-                      <Link to="/jobs" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
+                      <Link to="/jobs?status=awaiting_collection" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
                     </span>
                   </div>
                 )}
@@ -758,6 +783,43 @@ export default function DashboardPage() {
                 <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Open invoices</p>
                   <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{invoicesOpen.length}</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="dashboard-panel p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: '#FDE9E1', color: '#A2502E' }}>
+                  <DollarSign size={18} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                    Financial Data Health
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                    Flags imported cost outliers excluded from gross profit.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--cafe-text-mid)' }}>Watch outlier jobs</span>
+                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_watch_jobs ?? 0}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--cafe-text-mid)' }}>Shoe outlier jobs</span>
+                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_shoe_jobs ?? 0}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--cafe-text-mid)' }}>Total suppressed jobs</span>
+                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_jobs ?? 0}</strong>
+                </div>
+                <div className="pt-2 flex gap-2">
+                  <Link to="/jobs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--cafe-amber)' }}>
+                    Review watch outliers
+                  </Link>
+                  <Link to="/shoe-repairs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--cafe-amber)' }}>
+                    Review shoe outliers
+                  </Link>
                 </div>
               </div>
             </Card>
