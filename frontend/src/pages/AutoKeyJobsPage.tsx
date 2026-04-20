@@ -2006,7 +2006,7 @@ export default function AutoKeyJobsPage() {
     initialStatus && AUTO_KEY_CLOSED_STATUSES.includes(initialStatus as typeof AUTO_KEY_CLOSED_STATUSES[number])
       ? 'completed'
       : 'active'
-  const { role, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
+  const { role, token, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
   const syncedShopCalendarDate = useRef(false)
   const weekAnchorSynced = useRef(false)
   const {
@@ -2079,12 +2079,13 @@ export default function AutoKeyJobsPage() {
     weekAnchorSynced.current = true
   }, [sessionReady, shopCalendarTodayYmd])
 
-  const needsAllJobs = view === 'dashboard' || view === 'jobs' || view === 'dispatch'
+  /** Full job list is shared across Pipeline, Jobs, Dispatch, and background tabs (reports/week/map/planner/POS). */
+  const fetchHubJobList = Boolean(token)
 
   const { data: jobs = [], isLoading, isError, error: jobsQueryError } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
-    enabled: needsAllJobs,
+    enabled: fetchHubJobList,
   })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
