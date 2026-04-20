@@ -4,11 +4,12 @@ import react from '@vitejs/plugin-react'
 import type { UserConfigExport } from 'vite'
 import { defineConfig } from 'vite'
 
-const config: UserConfigExport & { test?: { environment: string; include: string[] } } = {
+const config: UserConfigExport & { test?: { environment: string; include: string[]; setupFiles?: string[] } } = {
   plugins: [react(), tailwindcss()],
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test/setup.ts'],
   },
   resolve: {
     alias: {

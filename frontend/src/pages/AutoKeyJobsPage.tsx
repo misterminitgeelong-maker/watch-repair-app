@@ -10,6 +10,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
@@ -127,6 +128,8 @@ const WEEK_SCHEDULE_HOURS = Array.from({ length: 15 }, (_, i) => 7 + i)
 const WEEK_UNSCHEDULED_DROP_ID = 'week-unscheduled'
 const WEEK_DAY_DROP_PREFIX = 'week-day:'
 const WEEK_SLOT_DROP_PREFIX = 'week-slot:'
+/** Virtualize the Jobs directory list above this count to keep long lists smooth on mobile. */
+const JOB_DIRECTORY_VIRTUAL_THRESHOLD = 40
 
 function weekDayDropId(dayStr: string) {
   return `${WEEK_DAY_DROP_PREFIX}${dayStr}`
@@ -2030,7 +2033,7 @@ export default function AutoKeyJobsPage() {
 
   const needsAllJobs = view === 'dashboard' || view === 'jobs' || view === 'dispatch'
 
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading, isError, error: jobsQueryError } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
     enabled: needsAllJobs,
@@ -2168,6 +2171,35 @@ export default function AutoKeyJobsPage() {
   const statusOptions = jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
   const activeCount = (jobs ?? []).filter((j: { status: JobStatus }) => !isClosed(j.status)).length
   const completedCount = (jobs ?? []).filter((j: { status: JobStatus }) => isClosed(j.status)).length
+
+  const sortedJobsDirectory = useMemo(() => {
+    if (view !== 'jobs') return []
+    const todayYmd = ymdLocal(new Date())
+    return [...filteredJobs].sort((a, b) => {
+      const ja = a as AutoKeyJob
+      const jb = b as AutoKeyJob
+      const aToday = ja.scheduled_at && ymdLocal(new Date(ja.scheduled_at)) === todayYmd ? 0 : 1
+      const bToday = jb.scheduled_at && ymdLocal(new Date(jb.scheduled_at)) === todayYmd ? 0 : 1
+      if (aToday !== bToday) return aToday - bToday
+      if (ja.scheduled_at && jb.scheduled_at) {
+        return new Date(ja.scheduled_at).getTime() - new Date(jb.scheduled_at).getTime()
+      }
+      if (ja.scheduled_at) return -1
+      if (jb.scheduled_at) return 1
+      return new Date(jb.created_at).getTime() - new Date(ja.created_at).getTime()
+    })
+  }, [view, filteredJobs])
+
+  const jobDirectoryVirtualize = view === 'jobs' && sortedJobsDirectory.length >= JOB_DIRECTORY_VIRTUAL_THRESHOLD
+  const jobDirectoryScrollRef = useRef<HTMLDivElement>(null)
+  const jobDirectoryVirtualizer = useVirtualizer({
+    count: jobDirectoryVirtualize ? sortedJobsDirectory.length : 0,
+    getScrollElement: () => jobDirectoryScrollRef.current,
+    estimateSize: () => 140,
+    overscan: 10,
+    measureElement: (el) => (el as HTMLElement).getBoundingClientRect().height,
+  })
+
   useEffect(() => {
     const next = new URLSearchParams()
     if (view !== 'dashboard') next.set('view', view)
@@ -2452,7 +2484,16 @@ export default function AutoKeyJobsPage() {
               </Select>
             </div>
           </div>
-          {isLoading ? <Spinner /> : filteredJobs.length === 0 ? (
+          {isLoading ? (
+            <Spinner />
+          ) : isError ? (
+            <p
+              className="text-sm rounded-lg px-4 py-3"
+              style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-surface)', color: '#C96A5A' }}
+            >
+              {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
+            </p>
+          ) : filteredJobs.length === 0 ? (
             <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
@@ -2599,25 +2640,49 @@ export default function AutoKeyJobsPage() {
               <option value="21">21+ days old</option>
             </Select>
           </div>
-          {isLoading ? <Spinner /> : (
+          {isLoading ? (
+            <Spinner />
+          ) : isError ? (
+            <p
+              className="text-sm rounded-lg px-4 py-3"
+              style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-surface)', color: '#C96A5A' }}
+            >
+              {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
+            </p>
+          ) : (
             <div className="space-y-3">
               {filteredJobs.length === 0 ? (
                 <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+              ) : jobDirectoryVirtualize ? (
+                <div
+                  ref={jobDirectoryScrollRef}
+                  className="max-h-[min(70vh,720px)] overflow-auto rounded-lg"
+                  style={{ contain: 'strict', border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                >
+                  <div
+                    className="relative w-full p-3 box-border"
+                    style={{ height: jobDirectoryVirtualizer.getTotalSize(), minHeight: '120px' }}
+                  >
+                    {jobDirectoryVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const job = sortedJobsDirectory[virtualRow.index] as Parameters<typeof AutoKeyJobCard>[0]['job']
+                      return (
+                        <div
+                          key={job.id}
+                          data-index={virtualRow.index}
+                          ref={jobDirectoryVirtualizer.measureElement}
+                          className="absolute left-0 top-0 w-full box-border px-3 pb-3"
+                          style={{ transform: `translateY(${virtualRow.start}px)` }}
+                        >
+                          <AutoKeyJobCard job={job} users={users} isSolo={isSolo} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               ) : (
-                [...filteredJobs].sort((a: object, b: object) => {
-                  const ja = a as { scheduled_at?: string; created_at: string }
-                  const jb = b as { scheduled_at?: string; created_at: string }
-                  const todayYmd = ymdLocal(new Date())
-                  const aToday = ja.scheduled_at && ymdLocal(new Date(ja.scheduled_at)) === todayYmd ? 0 : 1
-                  const bToday = jb.scheduled_at && ymdLocal(new Date(jb.scheduled_at)) === todayYmd ? 0 : 1
-                  if (aToday !== bToday) return aToday - bToday
-                  if (ja.scheduled_at && jb.scheduled_at) {
-                    return new Date(ja.scheduled_at).getTime() - new Date(jb.scheduled_at).getTime()
-                  }
-                  if (ja.scheduled_at) return -1
-                  if (jb.scheduled_at) return 1
-                  return new Date(jb.created_at).getTime() - new Date(ja.created_at).getTime()
-                }).map((job: object) => <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />)
+                sortedJobsDirectory.map((job) => (
+                  <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} />
+                ))
               )}
             </div>
           )}
