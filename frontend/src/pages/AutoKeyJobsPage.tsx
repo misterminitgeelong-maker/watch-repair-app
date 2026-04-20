@@ -1926,6 +1926,54 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   )
 }
 
+/** Only mounts for long lists so `useVirtualizer` never runs on the dashboard or small directories. */
+function VirtualizedAutoKeyJobCards({
+  jobs,
+  users,
+  isSolo,
+}: {
+  jobs: AutoKeyJob[]
+  users: { id: string; full_name: string }[]
+  isSolo: boolean
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: jobs.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 140,
+    overscan: 10,
+    measureElement: (el) => (el as HTMLElement).getBoundingClientRect().height,
+  })
+
+  return (
+    <div
+      ref={scrollRef}
+      className="max-h-[min(70vh,720px)] overflow-auto rounded-lg"
+      style={{ contain: 'strict', border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+    >
+      <div
+        className="relative w-full p-3 box-border"
+        style={{ height: virtualizer.getTotalSize(), minHeight: '120px' }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const job = jobs[virtualRow.index]!
+          return (
+            <div
+              key={job.id}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              className="absolute left-0 top-0 w-full box-border px-3 pb-3"
+              style={{ transform: `translateY(${virtualRow.start}px)` }}
+            >
+              <AutoKeyJobCard job={job} users={users} isSolo={isSolo} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -2191,14 +2239,6 @@ export default function AutoKeyJobsPage() {
   }, [view, filteredJobs])
 
   const jobDirectoryVirtualize = view === 'jobs' && sortedJobsDirectory.length >= JOB_DIRECTORY_VIRTUAL_THRESHOLD
-  const jobDirectoryScrollRef = useRef<HTMLDivElement>(null)
-  const jobDirectoryVirtualizer = useVirtualizer({
-    count: jobDirectoryVirtualize ? sortedJobsDirectory.length : 0,
-    getScrollElement: () => jobDirectoryScrollRef.current,
-    estimateSize: () => 140,
-    overscan: 10,
-    measureElement: (el) => (el as HTMLElement).getBoundingClientRect().height,
-  })
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -2654,31 +2694,7 @@ export default function AutoKeyJobsPage() {
               {filteredJobs.length === 0 ? (
                 <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
               ) : jobDirectoryVirtualize ? (
-                <div
-                  ref={jobDirectoryScrollRef}
-                  className="max-h-[min(70vh,720px)] overflow-auto rounded-lg"
-                  style={{ contain: 'strict', border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
-                >
-                  <div
-                    className="relative w-full p-3 box-border"
-                    style={{ height: jobDirectoryVirtualizer.getTotalSize(), minHeight: '120px' }}
-                  >
-                    {jobDirectoryVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const job = sortedJobsDirectory[virtualRow.index] as Parameters<typeof AutoKeyJobCard>[0]['job']
-                      return (
-                        <div
-                          key={job.id}
-                          data-index={virtualRow.index}
-                          ref={jobDirectoryVirtualizer.measureElement}
-                          className="absolute left-0 top-0 w-full box-border px-3 pb-3"
-                          style={{ transform: `translateY(${virtualRow.start}px)` }}
-                        >
-                          <AutoKeyJobCard job={job} users={users} isSolo={isSolo} />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <VirtualizedAutoKeyJobCards jobs={sortedJobsDirectory} users={users} isSolo={isSolo} />
               ) : (
                 sortedJobsDirectory.map((job) => (
                   <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} />
