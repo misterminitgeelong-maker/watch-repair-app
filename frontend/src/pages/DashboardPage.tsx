@@ -250,20 +250,20 @@ export default function DashboardPage() {
   const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
   const invoices = invoicesQ.data ?? []
   const reports = reportsQ.data
-  const { data: recentWatchJobs } = useQuery({
+  const recentWatchJobsQ = useQuery({
     queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
     queryFn: () =>
       listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
     enabled: hasFeature('watch'),
     refetchInterval: 30_000,
   })
-  const { data: shoeJobs } = useQuery({
+  const shoeJobsQ = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
     enabled: hasFeature('shoe'),
     refetchInterval: 30_000,
   })
-  const { data: autoKeyJobs } = useQuery({
+  const autoKeyJobsQ = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
     enabled: hasFeature('auto_key'),
@@ -279,14 +279,19 @@ export default function DashboardPage() {
     queryFn: () => listUsers().then((r) => r.data),
     enabled: canViewAccountMetrics,
   })
-  const { data: widgets } = useQuery({
+  const widgetsQ = useQuery({
     queryKey: ['reports-widgets'],
     queryFn: () => getReportsWidgets().then((r) => r.data),
   })
-  const { data: inboxAlerts } = useQuery({
+  const inboxAlertsQ = useQuery({
     queryKey: ['inbox', 0],
     queryFn: () => getInbox(50, 0).then((r) => r.data),
   })
+  const recentWatchJobs = recentWatchJobsQ.data
+  const shoeJobs = shoeJobsQ.data
+  const autoKeyJobs = autoKeyJobsQ.data
+  const widgets = widgetsQ.data
+  const inboxAlerts = inboxAlertsQ.data
 
   useEffect(() => {
     setChecklistDismissedState(isChecklistDismissed(tenantId))
@@ -348,17 +353,43 @@ export default function DashboardPage() {
 
   const actionCount = (widgets?.overdue_jobs_count ?? 0) + (widgets?.quotes_pending_7d_count ?? 0) + (widgets?.overdue_invoices_count ?? 0) + (widgets?.overdue_collection_count ?? 0)
   const lastUpdatedAt = useMemo(
-    () => Math.max(invoicesQ.dataUpdatedAt, reportsQ.dataUpdatedAt, 0),
-    [invoicesQ.dataUpdatedAt, reportsQ.dataUpdatedAt],
+    () =>
+      Math.max(
+        invoicesQ.dataUpdatedAt,
+        reportsQ.dataUpdatedAt,
+        widgetsQ.dataUpdatedAt,
+        recentWatchJobsQ.dataUpdatedAt,
+        shoeJobsQ.dataUpdatedAt,
+        autoKeyJobsQ.dataUpdatedAt,
+        inboxAlertsQ.dataUpdatedAt,
+        0,
+      ),
+    [
+      autoKeyJobsQ.dataUpdatedAt,
+      inboxAlertsQ.dataUpdatedAt,
+      invoicesQ.dataUpdatedAt,
+      recentWatchJobsQ.dataUpdatedAt,
+      reportsQ.dataUpdatedAt,
+      shoeJobsQ.dataUpdatedAt,
+      widgetsQ.dataUpdatedAt,
+    ],
   )
   const isRefreshing =
-    invoicesQ.isFetching || reportsQ.isFetching || reportsQ.isPending || invoicesQ.isPending
+    invoicesQ.isFetching ||
+    reportsQ.isFetching ||
+    widgetsQ.isFetching ||
+    recentWatchJobsQ.isFetching ||
+    shoeJobsQ.isFetching ||
+    autoKeyJobsQ.isFetching ||
+    inboxAlertsQ.isFetching ||
+    reportsQ.isPending ||
+    invoicesQ.isPending
   const followUpRoute = useMemo(() => {
     if (!widgets) return null
-    if ((widgets.overdue_jobs_count ?? 0) > 0) return '/jobs?status=awaiting_go_ahead'
-    if ((widgets.quotes_pending_7d_count ?? 0) > 0) return '/quotes?status=sent'
+    if ((widgets.overdue_jobs_count ?? 0) > 0) return '/jobs?status=awaiting_go_ahead&older_than_days=14'
+    if ((widgets.quotes_pending_7d_count ?? 0) > 0) return '/quotes?status=sent&older_than_days=7'
     if ((widgets.overdue_invoices_count ?? 0) > 0) return '/invoices?status=unpaid'
-    if ((widgets.overdue_collection_count ?? 0) > 0) return '/jobs?status=awaiting_collection'
+    if ((widgets.overdue_collection_count ?? 0) > 0) return '/jobs?status=awaiting_collection&past_collection=1'
     return null
   }, [widgets])
 
@@ -462,6 +493,11 @@ export default function DashboardPage() {
               void Promise.all([
                 invoicesQ.refetch(),
                 reportsQ.refetch(),
+                widgetsQ.refetch(),
+                recentWatchJobsQ.refetch(),
+                shoeJobsQ.refetch(),
+                autoKeyJobsQ.refetch(),
+                inboxAlertsQ.refetch(),
               ])
             }}
             disabled={isRefreshing}
@@ -629,12 +665,12 @@ export default function DashboardPage() {
             {widgets && (
               <div className="flex flex-wrap gap-4 text-sm">
                 {(widgets.overdue_jobs_count ?? 0) > 0 && (
-                  <Link to="/jobs?status=awaiting_go_ahead" className="underline" style={{ color: '#B45309' }}>
+                  <Link to="/jobs?status=awaiting_go_ahead&older_than_days=14" className="underline" style={{ color: '#B45309' }}>
                     {widgets.overdue_jobs_count} job(s) awaiting go-ahead 14+ days
                   </Link>
                 )}
                 {(widgets.quotes_pending_7d_count ?? 0) > 0 && (
-                  <Link to="/quotes?status=sent" className="underline" style={{ color: '#B45309' }}>
+                  <Link to="/quotes?status=sent&older_than_days=7" className="underline" style={{ color: '#B45309' }}>
                     {widgets.quotes_pending_7d_count} quote(s) sent 7+ days, no response
                   </Link>
                 )}
@@ -648,7 +684,7 @@ export default function DashboardPage() {
                     <span className="font-semibold" style={{ color: '#8B3A3A' }}>{widgets.overdue_collection_count}</span>
                     <span style={{ color: 'var(--cafe-text-mid)' }}>
                       job{widgets.overdue_collection_count !== 1 ? 's' : ''} past collection date —{' '}
-                      <Link to="/jobs?status=awaiting_collection" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
+                      <Link to="/jobs?status=awaiting_collection&past_collection=1" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
                     </span>
                   </div>
                 )}

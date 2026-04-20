@@ -465,6 +465,7 @@ export default function ShoeRepairsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatus = searchParams.get('status')
   const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
+  const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialDirectory =
     initialStatus && SHOE_CLOSED_STATUSES.includes(initialStatus)
       ? 'completed'
@@ -475,6 +476,7 @@ export default function ShoeRepairsPage() {
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
+  const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [viewMode, setViewMode] = useState<'kanban' | 'cards'>(() => window.innerWidth < 640 ? 'cards' : 'kanban')
 
   const statusMut = useMutation({
@@ -491,8 +493,9 @@ export default function ShoeRepairsPage() {
     const next = new URLSearchParams()
     if (statusFilter !== 'all') next.set('status', statusFilter)
     if (costOutlierOnly) next.set('cost_outlier', '1')
+    if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
     setSearchParams(next, { replace: true })
-  }, [costOutlierOnly, setSearchParams, statusFilter])
+  }, [costOutlierOnly, olderThanDays, setSearchParams, statusFilter])
 
   const statusOptions = jobDirectoryView === 'active' ? SHOE_ACTIVE_STATUSES : SHOE_CLOSED_STATUSES
   const activeCount = (jobs ?? []).filter(j => SHOE_ACTIVE_STATUSES.includes(j.status)).length
@@ -504,6 +507,10 @@ export default function ShoeRepairsPage() {
       : SHOE_CLOSED_STATUSES.includes(job.status)
     if (!inDirectory) return false
     if (statusFilter !== 'all' && job.status !== statusFilter) return false
+    if (olderThanDays > 0) {
+      const ageDays = Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86_400_000)
+      if (ageDays < olderThanDays) return false
+    }
     if (search) {
       const q = search.toLowerCase()
       return (
@@ -646,6 +653,18 @@ export default function ShoeRepairsPage() {
           />
           Cost outliers only
         </label>
+        <select
+          value={String(olderThanDays)}
+          onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+          className="h-10 rounded-xl border px-3 text-sm outline-none focus:ring-2 sm:w-auto"
+          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+          aria-label="Filter by age in shop"
+        >
+          <option value="0">Any age</option>
+          <option value="7">7+ days in shop</option>
+          <option value="14">14+ days in shop</option>
+          <option value="21">21+ days in shop</option>
+        </select>
       </div>
 
       {isLoading && <Spinner />}

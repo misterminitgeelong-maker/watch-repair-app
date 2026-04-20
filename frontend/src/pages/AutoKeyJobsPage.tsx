@@ -10,7 +10,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
@@ -89,6 +89,14 @@ function formatCents(value: number) {
 function ymdLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function isYmd(value: string | null | undefined): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
+function daysInShop(createdAt: string): number {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
 function dateFromYmdLocal(ymd: string): Date {
@@ -1918,6 +1926,35 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedView = searchParams.get('view')
+  const initialView =
+    requestedView === 'dashboard' ||
+    requestedView === 'jobs' ||
+    requestedView === 'pos' ||
+    requestedView === 'dispatch' ||
+    requestedView === 'week' ||
+    requestedView === 'map' ||
+    requestedView === 'planner' ||
+    requestedView === 'reports'
+      ? requestedView
+      : 'dashboard'
+  const initialStatus = searchParams.get('status')
+  const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
+  const initialDispatchDate = isYmd(searchParams.get('dispatch_date')) ? (searchParams.get('dispatch_date') as string) : ymdLocal(new Date())
+  const initialDispatchTechFilter = searchParams.get('dispatch_tech') ?? ''
+  const requestedMapRange = searchParams.get('map_range')
+  const initialMapRangeMode =
+    requestedMapRange === 'day' || requestedMapRange === 'week' || requestedMapRange === 'month'
+      ? requestedMapRange
+      : 'day'
+  const initialWeekStart = isYmd(searchParams.get('week_start'))
+    ? civilMondayOfWeekContaining(searchParams.get('week_start') as string)
+    : civilMondayOfWeekContaining(ymdLocal(new Date()))
+  const initialDirectory =
+    initialStatus && AUTO_KEY_CLOSED_STATUSES.includes(initialStatus as typeof AUTO_KEY_CLOSED_STATUSES[number])
+      ? 'completed'
+      : 'active'
   const { role, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
   const syncedShopCalendarDate = useRef(false)
   const weekAnchorSynced = useRef(false)
@@ -1944,14 +1981,15 @@ export default function AutoKeyJobsPage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showMoreActions])
-  const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>('day')
-  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>('dashboard')
+  const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
+  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [dispatchDate, setDispatchDate] = useState(() => ymdLocal(new Date()))
-  const [dispatchTechFilter, setDispatchTechFilter] = useState<string>('')
-  const [weekStart, setWeekStart] = useState(() => civilMondayOfWeekContaining(ymdLocal(new Date())))
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
+  const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
+  const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
+  const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
+  const [weekStart, setWeekStart] = useState(initialWeekStart)
   /** Week grid: tap Move then tap a day/slot if you do not want to drag. */
   /** Mobile: which day index (0-6) starts the 3-day window */
   const [mobileDayStart, setMobileDayStart] = useState(0)
@@ -2115,7 +2153,7 @@ export default function AutoKeyJobsPage() {
     })
     : []
   const isSolo = users.length <= 1
-  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
+  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
     const q = search.trim().toLowerCase()
     const matchSearch = !q || j.job_number.toLowerCase().includes(q) || j.title.toLowerCase().includes(q) ||
       (j.vehicle_make && j.vehicle_make.toLowerCase().includes(q)) ||
@@ -2124,11 +2162,38 @@ export default function AutoKeyJobsPage() {
       (j.customer_name && j.customer_name.toLowerCase().includes(q))
     const inDirectory = jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
-    return matchSearch && inDirectory && matchStatus
+    const matchAge = olderThanDays > 0 ? daysInShop(j.created_at) >= olderThanDays : true
+    return matchSearch && inDirectory && matchStatus && matchAge
   })
   const statusOptions = jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
   const activeCount = (jobs ?? []).filter((j: { status: JobStatus }) => !isClosed(j.status)).length
   const completedCount = (jobs ?? []).filter((j: { status: JobStatus }) => isClosed(j.status)).length
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (view !== 'dashboard') next.set('view', view)
+    if (statusFilter !== 'all') next.set('status', statusFilter)
+    if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
+    if (view === 'dispatch' || view === 'map' || view === 'planner') {
+      next.set('dispatch_date', dispatchDate)
+      if (dispatchTechFilter) next.set('dispatch_tech', dispatchTechFilter)
+    }
+    if (view === 'map') {
+      next.set('map_range', mapRangeMode)
+    }
+    if (view === 'week') {
+      next.set('week_start', weekStart)
+    }
+    setSearchParams(next, { replace: true })
+  }, [
+    dispatchDate,
+    dispatchTechFilter,
+    mapRangeMode,
+    olderThanDays,
+    setSearchParams,
+    statusFilter,
+    view,
+    weekStart,
+  ])
 
   return (
     <div>
@@ -2374,6 +2439,17 @@ export default function AutoKeyJobsPage() {
                   <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
                 ))}
               </Select>
+              <Select
+                value={String(olderThanDays)}
+                onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+                className="min-w-[140px]"
+                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              >
+                <option value="0">Any age</option>
+                <option value="7">7+ days old</option>
+                <option value="14">14+ days old</option>
+                <option value="21">21+ days old</option>
+              </Select>
             </div>
           </div>
           {isLoading ? <Spinner /> : filteredJobs.length === 0 ? (
@@ -2510,6 +2586,17 @@ export default function AutoKeyJobsPage() {
               {statusOptions.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
               ))}
+            </Select>
+            <Select
+              value={String(olderThanDays)}
+              onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+              className="min-w-[160px]"
+              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            >
+              <option value="0">Any age</option>
+              <option value="7">7+ days old</option>
+              <option value="14">14+ days old</option>
+              <option value="21">21+ days old</option>
             </Select>
           </div>
           {isLoading ? <Spinner /> : (

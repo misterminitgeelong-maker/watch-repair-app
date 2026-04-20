@@ -34,6 +34,8 @@ export default function JobsPage() {
   const initialStatus = searchParams.get('status')
   const statusIsClosed = initialStatus != null && (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(initialStatus as JobStatus)
   const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
+  const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
+  const initialPastCollectionOnly = searchParams.get('past_collection') === '1' || searchParams.get('past_collection') === 'true'
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
@@ -46,6 +48,8 @@ export default function JobsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [assignedUserId, setAssignedUserId] = useState<string>('')
   const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
+  const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
+  const [pastCollectionOnly, setPastCollectionOnly] = useState(initialPastCollectionOnly)
   const [showFilters, setShowFilters] = useState(false)
 
   const apiStatus = statusFilter === 'all' ? undefined : statusFilter
@@ -133,7 +137,11 @@ export default function JobsPage() {
       ? !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
       : (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
-    return matchSearch && inDirectory && matchStatus
+    const ageDays = daysInShop(j.created_at)
+    const matchAge = olderThanDays > 0 ? ageDays >= olderThanDays : true
+    const todayYmd = new Date().toISOString().slice(0, 10)
+    const matchPastCollection = pastCollectionOnly ? !!j.collection_date && j.collection_date < todayYmd : true
+    return matchSearch && inDirectory && matchStatus && matchAge && matchPastCollection
   })
 
   const showSwitchToCompletedHint =
@@ -148,8 +156,10 @@ export default function JobsPage() {
     const next = new URLSearchParams()
     if (statusFilter !== 'all') next.set('status', statusFilter)
     if (costOutlierOnly) next.set('cost_outlier', '1')
+    if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
+    if (pastCollectionOnly) next.set('past_collection', '1')
     setSearchParams(next, { replace: true })
-  }, [costOutlierOnly, setSearchParams, statusFilter])
+  }, [costOutlierOnly, olderThanDays, pastCollectionOnly, setSearchParams, statusFilter])
 
   return (
     <div>
@@ -335,6 +345,37 @@ export default function JobsPage() {
               onChange={(e) => setCostOutlierOnly(e.target.checked)}
             />
             Cost outliers only
+          </label>
+          <select
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+            value={String(olderThanDays)}
+            onChange={(e) => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+            aria-label="Filter by minimum days in shop"
+          >
+            <option value="0">Any age</option>
+            <option value="7">7+ days in shop</option>
+            <option value="14">14+ days in shop</option>
+            <option value="21">21+ days in shop</option>
+          </select>
+          <label
+            className="w-full sm:w-auto rounded-lg px-3 py-2.5 text-base sm:text-sm outline-none transition inline-flex items-center gap-2"
+            style={{
+              backgroundColor: 'var(--cafe-surface)',
+              border: '1px solid var(--cafe-border-2)',
+              color: 'var(--cafe-text)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={pastCollectionOnly}
+              onChange={(e) => setPastCollectionOnly(e.target.checked)}
+            />
+            Past collection date only
           </label>
         </div>
       </div>

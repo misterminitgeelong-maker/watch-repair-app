@@ -204,9 +204,11 @@ export default function QuotesPage() {
   const qc = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatus = searchParams.get('status') ?? ''
+  const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const [showCreate, setShowCreate] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState(initialStatus)
+  const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [invoiceCreated, setInvoiceCreated] = useState<string | null>(null)
   const [invoiceError, setInvoiceError] = useState('')
   const [sortBy, setSortBy] = useState<'created_at' | 'sent_at' | 'status' | 'total_cents'>('created_at')
@@ -214,8 +216,9 @@ export default function QuotesPage() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (statusFilter) next.set('status', statusFilter)
+    if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
     setSearchParams(next, { replace: true })
-  }, [setSearchParams, statusFilter])
+  }, [olderThanDays, setSearchParams, statusFilter])
 
   const quotesQuery = useOffsetPaginatedQuery({
     queryKey: ['quotes', 'paged', 'page', statusFilter || null, sortBy, sortDir],
@@ -229,6 +232,14 @@ export default function QuotesPage() {
       }).then((r) => r.data),
   })
   const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
+  const filteredQuotes = useMemo(() => {
+    if (olderThanDays <= 0) return quotes
+    const cutoff = Date.now() - olderThanDays * 86_400_000
+    return quotes.filter((q) => {
+      if (!q.sent_at) return false
+      return new Date(q.sent_at).getTime() <= cutoff
+    })
+  }, [olderThanDays, quotes])
   const isLoading = quotesQuery.isLoading
 
   const sendMut = useMutation({
@@ -304,6 +315,22 @@ export default function QuotesPage() {
           <option value="desc">Descending</option>
           <option value="asc">Ascending</option>
         </select>
+        <select
+          className="rounded-lg px-3 py-2 text-sm outline-none transition"
+          style={{
+            backgroundColor: 'var(--cafe-surface)',
+            border: '1px solid var(--cafe-border-2)',
+            color: 'var(--cafe-text)',
+          }}
+          value={String(olderThanDays)}
+          onChange={(e) => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+          aria-label="Filter by quote age"
+        >
+          <option value="0">Any sent age</option>
+          <option value="7">Sent 7+ days ago</option>
+          <option value="14">Sent 14+ days ago</option>
+          <option value="21">Sent 21+ days ago</option>
+        </select>
       </div>
 
       {quotesQuery.error && (
@@ -330,13 +357,13 @@ export default function QuotesPage() {
 
       {isLoading ? <Spinner /> : (
         <>
-          {quotes.length === 0 ? (
+          {filteredQuotes.length === 0 ? (
             <Card><EmptyState message="No quotes yet." /></Card>
           ) : (
             <>
               {/* Mobile card list */}
               <div className="md:hidden space-y-3">
-                {quotes.map(q => (
+                {filteredQuotes.map(q => (
                   <Card key={q.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -409,7 +436,7 @@ export default function QuotesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quotes.map(q => (
+                    {filteredQuotes.map(q => (
                       <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3"><Badge status={q.status} /></td>
                         <td className="px-5 py-3 font-semibold">{formatCents(q.total_cents)}</td>
