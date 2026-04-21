@@ -10,7 +10,6 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
@@ -128,8 +127,6 @@ const WEEK_SCHEDULE_HOURS = Array.from({ length: 15 }, (_, i) => 7 + i)
 const WEEK_UNSCHEDULED_DROP_ID = 'week-unscheduled'
 const WEEK_DAY_DROP_PREFIX = 'week-day:'
 const WEEK_SLOT_DROP_PREFIX = 'week-slot:'
-/** Virtualize the Jobs directory list above this count to keep long lists smooth on mobile. */
-const JOB_DIRECTORY_VIRTUAL_THRESHOLD = 40
 
 function weekDayDropId(dayStr: string) {
   return `${WEEK_DAY_DROP_PREFIX}${dayStr}`
@@ -1926,54 +1923,6 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   )
 }
 
-/** Only mounts for long lists so `useVirtualizer` never runs on the dashboard or small directories. */
-function VirtualizedAutoKeyJobCards({
-  jobs,
-  users,
-  isSolo,
-}: {
-  jobs: AutoKeyJob[]
-  users: { id: string; full_name: string }[]
-  isSolo: boolean
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const virtualizer = useVirtualizer({
-    count: jobs.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 140,
-    overscan: 10,
-    measureElement: (el) => (el as HTMLElement).getBoundingClientRect().height,
-  })
-
-  return (
-    <div
-      ref={scrollRef}
-      className="max-h-[min(70vh,720px)] overflow-auto rounded-lg"
-      style={{ contain: 'strict', border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
-    >
-      <div
-        className="relative w-full p-3 box-border"
-        style={{ height: virtualizer.getTotalSize(), minHeight: '120px' }}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const job = jobs[virtualRow.index]!
-          return (
-            <div
-              key={job.id}
-              data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
-              className="absolute left-0 top-0 w-full box-border px-3 pb-3"
-              style={{ transform: `translateY(${virtualRow.start}px)` }}
-            >
-              <AutoKeyJobCard job={job} users={users} isSolo={isSolo} />
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 export default function AutoKeyJobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -2238,8 +2187,6 @@ export default function AutoKeyJobsPage() {
       return new Date(jb.created_at).getTime() - new Date(ja.created_at).getTime()
     })
   }, [view, filteredJobs])
-
-  const jobDirectoryVirtualize = view === 'jobs' && sortedJobsDirectory.length >= JOB_DIRECTORY_VIRTUAL_THRESHOLD
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -2694,8 +2641,6 @@ export default function AutoKeyJobsPage() {
             <div className="space-y-3">
               {filteredJobs.length === 0 ? (
                 <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
-              ) : jobDirectoryVirtualize ? (
-                <VirtualizedAutoKeyJobCards jobs={sortedJobsDirectory} users={users} isSolo={isSolo} />
               ) : (
                 sortedJobsDirectory.map((job) => (
                   <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} />
