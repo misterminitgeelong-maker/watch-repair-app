@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, require_platform_admin
+from ..dependencies import AuthContext, invalidate_auth_cache_for_tenant, require_platform_admin
 from ..models import (
     AutoKeyJob,
     Invoice,
@@ -166,6 +166,9 @@ def set_tenant_status(
         )
     )
     session.commit()
+    # Invalidate any in-process auth cache entries for this tenant so an
+    # already-issued bearer token cannot survive the suspension window.
+    invalidate_auth_cache_for_tenant(tenant_id)
 
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
@@ -206,6 +209,9 @@ def set_tenant_plan(
         )
     )
     session.commit()
+    # Plan change can enable/disable features; drop cached auth so the next
+    # request re-reads plan_code from the DB.
+    invalidate_auth_cache_for_tenant(tenant_id)
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
         id=tenant.id,
@@ -246,6 +252,7 @@ def force_tenant_logout(
         )
     )
     session.commit()
+    invalidate_auth_cache_for_tenant(tenant_id)
     return {"ok": True, "tenant_id": str(tenant_id), "auth_revoked_at": tenant.auth_revoked_at}
 
 
