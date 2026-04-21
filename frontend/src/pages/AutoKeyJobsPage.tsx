@@ -2206,22 +2206,6 @@ export default function AutoKeyJobsPage() {
   const activeCount = jobs.filter((j: { status: JobStatus }) => !isClosed(j.status)).length
   const completedCount = jobs.filter((j: { status: JobStatus }) => isClosed(j.status)).length
 
-  /** Pipeline board only had columns for `statusOptions`; jobs with any other DB status were invisible. */
-  const pipelineColumnStatuses = useMemo(() => {
-    const fromFilter =
-      statusFilter === 'all' ? [...statusOptions] : statusOptions.filter((s) => s === statusFilter)
-    const seen = new Set<string>(fromFilter)
-    const extras: string[] = []
-    for (const j of filteredJobs) {
-      const s = String(j.status)
-      if (!seen.has(s)) {
-        seen.add(s)
-        extras.push(s)
-      }
-    }
-    extras.sort()
-    return [...fromFilter, ...extras]
-  }, [statusFilter, statusOptions, filteredJobs])
 
   const sortedJobsDirectory = useMemo(() => {
     if (view !== 'jobs') return []
