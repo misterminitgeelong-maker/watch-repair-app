@@ -177,31 +177,70 @@ export function Modal({ title, children, onClose, size = 'default' }: ModalProps
     size === 'wide'
       ? 'max-w-[min(100%,42rem)] sm:max-w-2xl lg:max-w-3xl'
       : 'max-w-md'
+
+  // F-M-ACCESS: give the modal the WAI-ARIA dialog shape so screen readers
+  // announce it correctly, wire up Escape-to-close, and make the backdrop
+  // click dismiss. We keep the focus management simple (the first focusable
+  // element inside {children} receives focus on mount); a full focus trap
+  // can be added if needed.
+  const titleId = React.useId()
+  const panelRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    // Move focus into the panel on open.
+    const raf = window.requestAnimationFrame(() => {
+      const focusable = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      )
+      focusable?.focus()
+    })
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      window.cancelAnimationFrame(raf)
+    }
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ backgroundColor: 'rgba(28,13,5,0.55)', backdropFilter: 'blur(4px)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      style={{ backgroundColor: 'rgba(28,13,5,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={cn(
           'max-h-[90vh] w-full overflow-y-auto rounded-t-2xl shadow-2xl mx-2 sm:mx-4 sm:rounded-2xl',
-          maxWidth
+          maxWidth,
         )}
         style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div
           className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4"
           style={{ borderBottom: '1px solid var(--cafe-border)' }}
         >
           <h2
+            id={titleId}
             className="font-semibold text-base sm:text-lg pr-2"
             style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
           >
             {title}
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="text-xl leading-none transition-colors w-7 h-7 flex shrink-0 items-center justify-center rounded-full"
             style={{ color: 'var(--cafe-text-muted)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-text)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--cafe-text)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
           >
             &times;
           </button>

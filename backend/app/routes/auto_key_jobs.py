@@ -188,12 +188,65 @@ def create_auto_key_job(
     data["key_quantity"] = max(1, int(data.get("key_quantity", 1)))
     data["customer_account_id"] = customer_account_id
 
+    # Flags on the payload model influence post-create behavior but are not
+    # columns on AutoKeyJob. Pop them before constructing the ORM row.
+    apply_suggested_quote = bool(data.pop("apply_suggested_quote", False))
+    send_booking_sms = bool(data.pop("send_booking_sms", False))
+    # additional_services is a transient JSON list used by the intake flow
+    # and is serialized elsewhere; drop it here so SQLModel doesn't complain
+    # about an unknown column.
+    data.pop("additional_services", None)
+
+    # When booking-SMS path is requested, set booking_confirmation_token so
+    # the customer portal endpoint /v1/public/auto-key-booking/<token> can
+    # resolve the job. Mirror the pending_booking status expected by the
+    # booking-request UX (quote + scheduled time sent; customer must confirm).
+    if send_booking_sms:
+        data["status"] = "pending_booking"
+
     job = AutoKeyJob(
         tenant_id=auth.tenant_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
+        booking_confirmation_token=(uuid4().hex if send_booking_sms else None),
         **data,
     )
     session.add(job)
+    session.flush()
+
+    # Auto-quote from the canonical pricing sheet when requested. We pick the
+    # tier from the linked CustomerAccount (if any) and fall back to retail.
+    if apply_suggested_quote:
+        pricing_tier = "retail"
+        if customer_account_id:
+            linked_account = session.get(CustomerAccount, customer_account_id)
+            tier_raw = getattr(linked_account, "pricing_tier", None) if linked_account else None
+            if isinstance(tier_raw, str) and tier_raw.strip():
+                pricing_tier = tier_raw.strip().lower()
+        lines = suggest_line_items(job.job_type, job.key_quantity, pricing_tier)
+        if lines:
+            subtotal = sum(int(round(q * p)) for _, q, p in lines)
+            tax = gst_tax_cents(subtotal)
+            quote = AutoKeyQuote(
+                tenant_id=auth.tenant_id,
+                auto_key_job_id=job.id,
+                subtotal_cents=subtotal,
+                tax_cents=tax,
+                total_cents=subtotal + tax,
+            )
+            session.add(quote)
+            session.flush()
+            for description, quantity, unit_price_cents in lines:
+                session.add(
+                    AutoKeyQuoteLineItem(
+                        tenant_id=auth.tenant_id,
+                        auto_key_quote_id=quote.id,
+                        description=description,
+                        quantity=quantity,
+                        unit_price_cents=unit_price_cents,
+                        total_price_cents=int(round(quantity * unit_price_cents)),
+                    )
+                )
+
     session.commit()
     session.refresh(job)
     logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
@@ -241,8 +294,14 @@ def create_auto_key_quick_intake(
         customer_id=customer.id,
         assigned_user_id=auth.user_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
-        title=f"{full_name.split()[0]} - Job",
-        status="awaiting_quote",
+        # Title starts with "Pending" so the board clearly shows the row is
+        # awaiting the customer completing the intake form. Once they do,
+        # update_auto_key_job can overwrite title with the real description.
+        title=f"Pending customer details — {full_name.split()[0]}",
+        # Quick-intake jobs are created with a partially-filled customer record.
+        # Status stays in the "awaiting_customer_details" bucket until the
+        # customer completes the intake form at /mobile-intake/<token>.
+        status="awaiting_customer_details",
         programming_status="pending",
         key_quantity=1,
         customer_intake_token=uuid4().hex,

@@ -147,10 +147,6 @@ python -m pytest tests/test_quote_token_lifecycle.py
 - **Limiter storage:** current `slowapi` store is in-process; use Redis-backed storage when running multiple API instances.
 - **Attachment storage today:** local filesystem abstraction; service contract is ready for future S3/R2 implementation.
 
-## Mobile store apps (Capacitor)
+## Delivery
 
-The **React** UI in `frontend/` can be shipped as **iOS and Android** store binaries. Capacitor workflow, permissions, auth, deep links, and CI are documented in **`frontend/README.md`**.
-
-For **Play/App Store submission**, QA matrices, rollout, and optional post‑v1 roadmap, see **`docs/MOBILE_STORE_RELEASE.md`**.
-
-There is also a **separate native Android client** (Kotlin + Jetpack Compose) in **`apps/mainspring-native-android/`**. It talks to the same FastAPI backend but is **not** the embedded WebView app: use it if you want a fully native UI alongside the web and Capacitor shells. After sign-in it includes **five bottom tabs** (home, customers, watch jobs, quotes, invoices), a **drawer** (inbox, shoe repairs, mobile services), **customer list/search/detail**, **watch job list/detail** with **status changes** and **history**, **quotes list/detail** (line items; meta from list cache), **invoices list/detail** (with payments), **shoe job list/detail**, and **auto-key job list/detail**. **401 handling** refreshes the access token via **`/v1/auth/refresh`** when a refresh token is stored. It does **not** yet replicate every web screen (reports, accounts, maps, attachments, billing UI, etc.). Open that folder in Android Studio, set **`ANDROID_HOME`** or create **`local.properties`** from **`local.properties.example`**, and run **`assembleDebug`**. Optional key **`api.base.url`** sets the API origin (default `http://10.0.2.2:8000/` for the emulator reaching a server on the host).
+The product ships as a **web application only** (React SPA served same-origin by the FastAPI backend, or cross-origin via `VITE_API_BASE_URL`). Native iOS / Android builds and the separate Kotlin client were removed in Apr 2026 to reduce surface area; the git history under branch `cursor/remove-android-*` has the full last-known-good state if you want to resurrect either shell.

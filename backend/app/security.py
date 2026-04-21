@@ -9,6 +9,12 @@ from .config import settings
 
 REFRESH_TOKEN_TYP = "refresh"
 
+# Token types that are explicitly valid for the auth pipeline. Any other typ
+# claim (e.g. "attachment_download") must be rejected on access-token paths.
+# Legacy access tokens were minted without a typ claim, so None is allowed.
+_AUTH_ACCESS_ALLOWED_TYPS = {None, "access"}
+_AUTH_REFRESH_ALLOWED_TYPS = {REFRESH_TOKEN_TYP}
+
 
 @dataclass
 class TokenClaims:
@@ -62,12 +68,11 @@ def create_refresh_token(tenant_id: UUID | str, user_id: UUID | str, role: str) 
 
 def _parse_claims(payload: dict, *, expect_refresh: bool) -> TokenClaims:
     token_type = payload.get("typ")
-    if expect_refresh:
-        if token_type != REFRESH_TOKEN_TYP:
-            raise ValueError("Invalid refresh token")
-    else:
-        if token_type == REFRESH_TOKEN_TYP:
-            raise ValueError("Expected access token, got refresh token")
+    allowed = _AUTH_REFRESH_ALLOWED_TYPS if expect_refresh else _AUTH_ACCESS_ALLOWED_TYPS
+    if token_type not in allowed:
+        # Catch-all for any token minted for a different purpose (e.g.
+        # attachment_download) that is replayed on an auth endpoint.
+        raise ValueError("Invalid token type for this endpoint")
 
     sub = payload.get("sub")
     tenant_id_raw = payload.get("tenant_id")

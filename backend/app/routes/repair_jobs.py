@@ -79,16 +79,52 @@ def _resolve_watch_queue_transition(current_status: str, direction: str) -> str:
     raise HTTPException(status_code=400, detail="direction must be 'left' or 'right'")
 
 
+def _assemble_repair_job_reads(session: Session, jobs: list[RepairJob]) -> list[RepairJobRead]:
+    """Turn a list of RepairJob rows into RepairJobRead DTOs with customer_name
+    and claimed_by_name populated, using at most 3 batched queries regardless
+    of list size. Used by both list and single-GET so the response shape is
+    consistent (B-M1).
+    """
+    if not jobs:
+        return []
+
+    watch_ids = [j.watch_id for j in jobs if j.watch_id]
+    watches: dict[UUID, Watch] = {}
+    if watch_ids:
+        for w in session.exec(select(Watch).where(Watch.id.in_(watch_ids))).all():
+            watches[w.id] = w
+
+    customer_ids = list({w.customer_id for w in watches.values() if w.customer_id})
+    customer_names: dict[UUID, str] = {}
+    if customer_ids:
+        for c in session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all():
+            customer_names[c.id] = c.full_name or ""
+
+    claimed_ids = list({j.claimed_by_user_id for j in jobs if j.claimed_by_user_id})
+    claimed_names: dict[UUID, str] = {}
+    if claimed_ids:
+        from ..models import User as UserModel
+        for u in session.exec(select(UserModel).where(UserModel.id.in_(claimed_ids))).all():
+            claimed_names[u.id] = u.full_name or ""
+
+    result: list[RepairJobRead] = []
+    for j in jobs:
+        w = watches.get(j.watch_id)
+        data = j.model_dump()
+        data["customer_name"] = (
+            customer_names.get(w.customer_id) if w and w.customer_id else None
+        )
+        data["claimed_by_name"] = (
+            claimed_names.get(j.claimed_by_user_id) if j.claimed_by_user_id else None
+        )
+        result.append(RepairJobRead(**data))
+    return result
+
+
 def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
-    watch = session.get(Watch, job.watch_id)
-    customer_name = None
-    if watch and watch.customer_id:
-        customer = session.get(Customer, watch.customer_id)
-        if customer:
-            customer_name = customer.full_name or ""
-    data = job.model_dump()
-    data["customer_name"] = customer_name
-    return RepairJobRead(**data)
+    """Single-row convenience wrapper around _assemble_repair_job_reads."""
+    reads = _assemble_repair_job_reads(session, [job])
+    return reads[0]
 
 
 def _append_shop_note_to_fault_report(job: RepairJob, note: str) -> None:
@@ -260,38 +296,7 @@ def list_repair_jobs(
     query = query.offset(offset).limit(limit)
     jobs = session.exec(query).all()
 
-    if not jobs:
-        return []
-
-    # Batch-fetch watches and customers to add customer_name to each job
-    watch_ids = [j.watch_id for j in jobs if j.watch_id]
-    watches: dict = {}
-    if watch_ids:
-        for w in session.exec(select(Watch).where(Watch.id.in_(watch_ids))).all():
-            watches[w.id] = w
-    customer_ids = list({w.customer_id for w in watches.values() if w.customer_id})
-    customer_names: dict = {}
-    if customer_ids:
-        for c in session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all():
-            customer_names[c.id] = c.full_name or ''
-
-    # Batch-fetch claimed_by user names
-    claimed_ids = list({j.claimed_by_user_id for j in jobs if j.claimed_by_user_id})
-    claimed_names: dict = {}
-    if claimed_ids:
-        from ..models import User as UserModel
-        for u in session.exec(select(UserModel).where(UserModel.id.in_(claimed_ids))).all():
-            claimed_names[u.id] = u.full_name or ''
-
-    result = []
-    for j in jobs:
-        w = watches.get(j.watch_id)
-        cname = customer_names.get(w.customer_id) if w and w.customer_id else None
-        data = j.model_dump()
-        data['customer_name'] = cname
-        data['claimed_by_name'] = claimed_names.get(j.claimed_by_user_id) if j.claimed_by_user_id else None
-        result.append(RepairJobRead(**data))
-    return result
+    return _assemble_repair_job_reads(session, jobs)
 
 
 @router.get("/{job_id}", response_model=RepairJobRead)
@@ -303,7 +308,7 @@ def get_repair_job(
     job = get_tenant_repair_job(session, job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
-    return job
+    return _repair_job_to_read(session, job)
 
 
 @router.post("/{job_id}/status", response_model=RepairJobRead)

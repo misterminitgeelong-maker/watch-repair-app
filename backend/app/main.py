@@ -4,8 +4,9 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -214,36 +215,75 @@ app.add_middleware(
 )
 
 
+def _compute_demo_status() -> dict[str, Any] | None:
+    """Internal: demo tenant state + B2B account count. Used by the gated
+    debug endpoint and /v1/health/deep. Returns None on any failure so it
+    never breaks healthchecks.
+    """
+    try:
+        from sqlmodel import select, func
+        from .models import CustomerAccount, Tenant
+
+        slug = (settings.startup_seed_tenant_slug or "myshop").strip().lower()
+        with Session(engine) as session:
+            tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
+            if not tenant:
+                return {"demo_tenant": None, "message": f"Demo tenant '{slug}' not found"}
+            count = session.exec(
+                select(func.count()).select_from(CustomerAccount).where(CustomerAccount.tenant_id == tenant.id)
+            ).one()
+            return {
+                "demo_tenant": {
+                    "slug": tenant.slug,
+                    "id": str(tenant.id),
+                    "plan_code": tenant.plan_code,
+                },
+                "customer_account_count": int(count),
+            }
+    except Exception:
+        return None
+
+
 @app.get("/v1/debug/demo-status")
 def debug_demo_status():
-    """Diagnostic: demo tenant state and B2B account count. No auth required."""
-    from sqlmodel import select, func
-    from .config import settings
-    from .models import CustomerAccount, Tenant
+    """Diagnostic: demo tenant state and B2B account count.
 
-    slug = (settings.startup_seed_tenant_slug or "myshop").strip().lower()
-    with Session(engine) as session:
-        tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
-        if not tenant:
-            return {"demo_tenant": None, "message": f"Demo tenant '{slug}' not found"}
-        count = session.exec(
-            select(func.count()).select_from(CustomerAccount).where(CustomerAccount.tenant_id == tenant.id)
-        ).one()
-        return {
-            "demo_tenant": {
-                "slug": tenant.slug,
-                "id": str(tenant.id),
-                "plan_code": tenant.plan_code,
-            },
-            "customer_account_count": int(count),
-        }
+    Blocked in production (APP_ENV=production) because this endpoint is
+    unauthenticated and leaks tenant id/plan/account count. Use the admin
+    API for production diagnostics.
+    """
+    if (settings.app_env or "").strip().lower() == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    status = _compute_demo_status()
+    if status is None:
+        return {"demo_tenant": None, "message": "Unable to compute demo status"}
+    return status
 
 
 @app.get("/v1/health")
 def health():
+    """Cheap liveness probe. Does not touch the database.
+
+    Load balancers and uptime monitors should hit this; it must stay fast
+    and must not return any data that identifies tenants. For deeper
+    diagnostics (DB reachability, demo/testing tenant existence) see
+    /v1/health/deep.
+    """
+    return {"status": "ok", "startup_seed": get_seed_status()}
+
+
+@app.get("/v1/health/deep")
+def health_deep():
+    """Deep health check: runs a DB query and reports testing/demo tenant state.
+
+    In production, demo/testing identifiers are suppressed so the endpoint
+    still works for internal monitoring without exposing tenant metadata.
+    """
     from sqlmodel import select
-    from .config import settings
     from .models import Tenant
+
+    is_production = (settings.app_env or "").strip().lower() == "production"
+
     testing_configured = bool(
         (settings.testing_tenant_slug or "").strip()
         and (settings.testing_owner_email or "").strip()
@@ -252,15 +292,17 @@ def health():
     testing_tenant_exists = False
     if testing_configured:
         slug = (settings.testing_tenant_slug or "").strip().lower()
-        with Session(engine) as session:
-            testing_tenant_exists = session.exec(
-                select(Tenant).where(Tenant.slug == slug)
-            ).first() is not None
-    demo_status = None
-    try:
-        demo_status = debug_demo_status()
-    except Exception:
-        pass
+        try:
+            with Session(engine) as session:
+                testing_tenant_exists = session.exec(
+                    select(Tenant).where(Tenant.slug == slug)
+                ).first() is not None
+        except Exception:
+            testing_tenant_exists = False
+
+    # Demo payload identifies a tenant (slug + id + plan). Only include in
+    # non-production environments.
+    demo_status = None if is_production else _compute_demo_status()
 
     return {
         "status": "ok",
@@ -328,20 +370,10 @@ if _static and _static.is_dir():
     # Serve JS/CSS/assets at /assets
     app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
 
-    # Universal Links / App Links verification (Step 7) — must be application/json
-    @app.get("/.well-known/assetlinks.json", include_in_schema=False)
-    async def well_known_assetlinks():
-        p = _static / ".well-known" / "assetlinks.json"
-        if p.is_file():
-            return FileResponse(str(p), media_type="application/json")
-        return JSONResponse({"detail": "Not found"}, status_code=404)
-
-    @app.get("/.well-known/apple-app-site-association", include_in_schema=False)
-    async def well_known_apple_app_site_association():
-        p = _static / ".well-known" / "apple-app-site-association"
-        if p.is_file():
-            return FileResponse(str(p), media_type="application/json")
-        return JSONResponse({"detail": "Not found"}, status_code=404)
+    # Universal Links / App Links endpoints were removed along with the
+    # Capacitor / native builds. If they come back in future, restore the
+    # /.well-known/* routes here and re-add the JSON fixtures under
+    # frontend/public/.well-known/.
 
     # SPA fallback — any non-API path serves index.html
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)

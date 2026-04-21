@@ -75,8 +75,13 @@ type RecentItem = {
 }
 
 function sanitizeQueueTitle(title: string | undefined): string {
+  // Intentionally match control chars \u0000..\u001f and DEL \u007f so we
+  // can strip them from titles before rendering. eslint's no-control-regex
+  // flags this pattern; the intent is the point of the function.
+  // eslint-disable-next-line no-control-regex
+  const controlChars = /[\u0000-\u001f\u007f]/g
   const cleaned = (title ?? '')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(controlChars, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   if (!cleaned) return 'Untitled repair job'

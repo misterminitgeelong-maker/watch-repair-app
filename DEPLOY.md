@@ -120,17 +120,29 @@ All platforms above support custom domains — just add a CNAME record pointing 
 
 ## Environment Variables Reference
 
-- `DATABASE_URL` (required, default `sqlite:///./watch_repair.db`): PostgreSQL connection string for production.
-- `JWT_SECRET` (required, default `change-me-in-production`): random secret for signing JWTs.
-- `APP_ENV` (optional, default `development`): runtime environment (`production` disables dev-only auth paths).
-- `JWT_EXPIRE_MINUTES` (optional, default `480`): token lifetime (8 hours).
-- `ALLOW_DEV_AUTO_LOGIN` (optional, default `true`): enable dev helper `/v1/auth/dev-auto-login`.
+Defaults below come from `backend/app/config.py` (`Settings`). See
+`docs/ENV_VARS.md` and `.env.example` for the complete list including
+Stripe, Sentry, Google Maps, Twilio, Blue Flag rego lookup, and rate-limit
+settings.
+
+- `DATABASE_URL` (required in prod, default `sqlite:///./watch_repair.db`): PostgreSQL connection string.
+- `JWT_SECRET` (required, default `change-me-in-production`): random secret for signing JWTs. Production startup fails fast if this is unset or left at the placeholder.
+- `ATTACHMENT_SIGNING_SECRET` (optional, default empty → falls back to `JWT_SECRET`): dedicated secret for short-lived attachment download URLs. Set in production.
+- `APP_ENV` (optional, default `development`): one of `development` | `test` | `staging` | `production`. `production` enables the config validator and disables the demo-status debug endpoint.
+- `JWT_EXPIRE_MINUTES` (optional, default `480`): access-token lifetime (8 hours).
+- `JWT_REFRESH_EXPIRE_DAYS` (optional, default `7`): refresh-token lifetime.
+- `ALLOW_DEV_AUTO_LOGIN` (optional, default `false`): enables dev helper `/v1/auth/dev-auto-login`. Must remain `false` in production.
+- `ALLOW_PUBLIC_BOOTSTRAP` (optional, default `true`): allow anyone to hit `/v1/auth/bootstrap` to create a tenant. Set to `false` after initial deploy.
+- `ALLOW_SQLITE_IN_PRODUCTION` (optional, default `false`): break-glass flag for intentionally running on SQLite in prod. Validator blocks SQLite URLs otherwise.
 - `STATIC_DIR` (required in prod, default empty): path to built frontend (`/app/static` in Docker).
-- `CORS_ORIGINS` (optional, default `*`): comma-separated allowed origins.
-- `PUBLIC_BASE_URL` (optional, default `http://localhost:5173`): used in SMS approval links.
-- `TWILIO_ACCOUNT_SID` (optional, default empty): Twilio SID for SMS notifications.
-- `TWILIO_AUTH_TOKEN` (optional, default empty): Twilio auth token.
-- `TWILIO_FROM_NUMBER` (optional, default empty): Twilio sender number (E.164).
+- `CORS_ORIGINS` (optional, default `https://mainspring.au,https://www.mainspring.au,https://localhost,http://localhost`): comma-separated allowlist. The validator blocks `*` in production.
+- `PUBLIC_BASE_URL` (optional, default `https://mainspring.au`): base URL used in SMS approval links and the customer portal URL. Validator blocks localhost values in production.
+- `PORTAL_SESSION_TTL_DAYS` (optional, default `7`): lifetime of customer-portal bookmarkable sessions.
+- `RATE_LIMIT_AUTH_LOGIN` (optional, default `20/minute`): slowapi limit on `/v1/auth/login`.
+- `RATE_LIMIT_PUBLIC_CUSTOMER_LOOKUP` (optional, default `30/minute`).
+- `RATE_LIMIT_PUBLIC_PORTAL_CREATE` (optional, default `10/minute`).
+- `RATE_LIMIT_PUBLIC_PORTAL_SESSION` (optional, default `60/minute`).
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` (optional, default empty): required for SMS notifications.
 
 ---
 

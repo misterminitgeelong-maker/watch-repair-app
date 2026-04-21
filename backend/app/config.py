@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     jwt_refresh_expire_days: int = 7
+    # Dedicated signing secret for short-lived attachment download URLs.
+    # Leave blank to reuse JWT_SECRET (backward compatible). Set in production
+    # so a leaked download URL cannot share signing material with auth tokens.
+    attachment_signing_secret: str = ""
     app_env: Literal["development", "test", "staging", "production"] = "development"
     # Break-glass flag only for explicitly intended production SQLite runs.
     allow_sqlite_in_production: bool = False
@@ -64,10 +68,11 @@ class Settings(BaseSettings):
     # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
     schedule_calendar_timezone: str = "Australia/Sydney"
 
-    # CORS — comma-separated origins allowed in production (include Capacitor / WebView origins for native builds)
+    # CORS — comma-separated origins allowed in production. Web-only (no
+    # Capacitor / native WebView origins — those builds were removed).
     cors_origins: str = (
         "https://mainspring.au,https://www.mainspring.au,"
-        "capacitor://localhost,https://localhost,http://localhost,ionic://localhost"
+        "https://localhost,http://localhost"
     )
 
     # Path to the built frontend (set by Dockerfile / deploy)
@@ -120,6 +125,16 @@ class Settings(BaseSettings):
     rate_limit_public_quote_get: str = "30/minute"
     rate_limit_public_quote_decision: str = "20/minute"
     rate_limit_import_csv: str = "5/minute"
+    # Public customer-portal endpoints (cross-tenant lookup by email).
+    # These return PII (job status + names/brands) so they must be throttled.
+    rate_limit_public_customer_lookup: str = "30/minute"
+    rate_limit_public_portal_create: str = "10/minute"
+    rate_limit_public_portal_session: str = "60/minute"
+
+    # Customer portal session TTL. Was 30 days; shortened because issuance only
+    # requires an email + that the email has at least one active job. Move to
+    # a magic-link / OTP flow before extending this back out.
+    portal_session_ttl_days: int = 7
 
     # Public quote approval token lifetime from send time.
     quote_approval_token_ttl_hours: int = 168

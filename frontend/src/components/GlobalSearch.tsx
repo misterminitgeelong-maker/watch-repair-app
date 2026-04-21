@@ -34,7 +34,21 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  // Debounced search
+  // Debounced search with stale-result guard (F-M8).
+  // Each effect run bumps a monotonically increasing request id; when the
+  // response comes back we only apply its results if its id still matches
+  // the latest request. This avoids the typical "type fast, older slower
+  // response overwrites newer result" flash. We also clear state immediately
+  // on unmount so a late response cannot call setState on an unmounted tree.
+  const requestIdRef = useRef(0)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
   useEffect(() => {
     if (!q.trim()) {
       setJobs([])
@@ -42,18 +56,22 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
       return
     }
     const timer = setTimeout(async () => {
+      const myRequestId = ++requestIdRef.current
       setLoading(true)
       try {
         const [jobRes, custRes] = await Promise.all([
           listJobs({ limit: 6, q: q.trim() }),
           listCustomers({ limit: 6, q: q.trim() }),
         ])
+        if (!mountedRef.current || myRequestId !== requestIdRef.current) return
         setJobs(jobRes.data ?? [])
         setCustomers(custRes.data ?? [])
       } catch {
-        // silently ignore search errors
+        // silently ignore search errors (including stale-request aborts)
       } finally {
-        setLoading(false)
+        if (mountedRef.current && myRequestId === requestIdRef.current) {
+          setLoading(false)
+        }
       }
     }, 280)
     return () => clearTimeout(timer)
@@ -73,8 +91,12 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
       className="fixed inset-0 z-50 flex items-start justify-center px-4"
       style={{ paddingTop: '10vh', backgroundColor: 'rgba(30,20,10,0.45)' }}
       onClick={onClose}
+      role="presentation"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Global search"
         className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
         style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
         onClick={e => e.stopPropagation()}

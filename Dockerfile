@@ -4,7 +4,9 @@ WORKDIR /app/frontend
 # Vite env vars must be passed as build args (Railway injects service vars)
 ARG VITE_GOOGLE_MAPS_API_KEY
 ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
-# Optional: set for Capacitor / native builds (e.g. https://mainspring.au). Omit for same-origin web bundle in Docker.
+# Optional: set when hosting the frontend on a different origin than the API
+# (e.g. VITE_API_BASE_URL=https://api.mainspring.au with the SPA on
+# https://app.mainspring.au). Leave unset for the same-origin Docker bundle.
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY frontend/package.json frontend/package-lock.json ./
@@ -35,10 +37,17 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 RUN mkdir -p /app/uploads /app/data
 
 # Environment defaults (override at deploy time)
+#
+# IMPORTANT: JWT_SECRET is intentionally NOT set here. Baking a default
+# secret into the image (even a placeholder) is a footgun — any non-production
+# environment that skips the runtime validator would silently run on it.
+# Deploys MUST inject JWT_SECRET via the platform's secret manager
+# (Railway service variables, GitHub Actions secrets, etc.). The runtime
+# validator in app/config.py fails fast in production if JWT_SECRET is
+# unset or still the placeholder.
 ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
     STATIC_DIR="/app/static" \
     APP_ENV="production" \
-    JWT_SECRET="change-me-in-production" \
     ALLOW_DEV_AUTO_LOGIN="false" \
     CORS_ORIGINS="https://mainspring.au,https://www.mainspring.au" \
     PUBLIC_BASE_URL="https://mainspring.au"

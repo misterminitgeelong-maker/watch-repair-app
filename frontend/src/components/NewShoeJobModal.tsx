@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import {
-  listCustomers, createCustomer, createShoe, createShoeRepairJob,
+  createShoe, createShoeRepairJob,
   addShoeToJob, appendShoeRepairJobItems,
   listCustomerAccounts,
   getApiErrorMessage,
-  type Customer,
   type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService, SHOE_TYPE_GROUPS } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import { CustomerStep, useCustomerStep } from '@/components/CustomerStep'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
@@ -79,11 +79,11 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const qc = useQueryClient()
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
-  // Step 1 – Customer
-  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
-  const [selectedCustomerId, setSelectedCustomerId] = useState(preselectedCustomer?.id ?? '')
-  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
-  const [createdCustomerId, setCreatedCustomerId] = useState('')
+  // Step 1 – Customer (shared component)
+  const customerStep = useCustomerStep({
+    preselectedCustomerId: preselectedCustomer?.id,
+    enableCustomersQuery: !preselectedCustomer,
+  })
 
   // Step 2 / 3 – Shoes + services
   const [shoeCount, setShoeCount] = useState(1)
@@ -97,13 +97,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const [loading, setLoading] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
 
-  const { data: customers } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => listCustomers().then(r => r.data),
-    enabled: !preselectedCustomer,
-  })
-
-  const activeCustomerId = createdCustomerId || selectedCustomerId
+  const activeCustomerId = customerStep.activeCustomerId
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
@@ -112,8 +106,6 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(activeCustomerId))
     : customerAccounts
 
-  const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setNewCustomer(f => ({ ...f, [k]: e.target.value }))
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setJob(f => ({ ...f, [k]: e.target.value }))
 
@@ -152,17 +144,12 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   async function nextStep1() {
     setError('')
-    if (customerMode === 'new') {
-      if (!newCustomer.full_name) { setError('Customer name is required.'); return }
-      setLoading(true)
-      try {
-        const { data } = await createCustomer(newCustomer)
-        setCreatedCustomerId(data.id)
-        qc.invalidateQueries({ queryKey: ['customers'] })
-      } catch (err) { setError(getApiErrorMessage(err, 'Failed to create customer.')); setLoading(false); return }
-      setLoading(false)
-    } else {
-      if (!selectedCustomerId) { setError('Please select a customer.'); return }
+    setLoading(true)
+    const result = await customerStep.submit()
+    setLoading(false)
+    if (!result.ok) {
+      setError(result.error)
+      return
     }
     setStep(2)
   }
@@ -174,7 +161,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
       setError('Please add a job title or select at least one service for a pair.')
       return
     }
-    const custId = createdCustomerId || selectedCustomerId
+    const custId = customerStep.activeCustomerId
     setLoading(true)
     try {
       const createdShoeIds: string[] = []
@@ -275,48 +262,16 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         </p>
       )}
 
-      {/* ── Step 1: Customer ── */}
+      {/* ── Step 1: Customer (shared with NewJobModal) ── */}
       {step === 1 && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            {(['existing', 'new'] as const).map(mode => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setCustomerMode(mode)}
-                className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors border"
-                style={{
-                  backgroundColor: customerMode === mode ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
-                  color: customerMode === mode ? '#fff' : 'var(--cafe-text-mid)',
-                  borderColor: customerMode === mode ? 'var(--cafe-amber)' : 'var(--cafe-border-2)',
-                }}
-              >
-                {mode === 'existing' ? 'Existing Customer' : 'New Customer'}
-              </button>
-            ))}
-          </div>
-          {customerMode === 'existing' ? (
-            <Select
-              label="Select Customer"
-              value={selectedCustomerId}
-              onChange={e => setSelectedCustomerId(e.target.value)}
-            >
-              <option value="">Choose…</option>
-              {(customers ?? []).map((c: Customer) => (
-                <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>
-              ))}
-            </Select>
-          ) : (
-            <>
-              <Input label="Full Name *" value={newCustomer.full_name} onChange={setC('full_name')} placeholder="Jane Smith" />
-              <Input label="Phone" value={newCustomer.phone ?? ''} onChange={setC('phone')} placeholder="+61 4xx xxx xxx" />
-              <Input label="Email" value={newCustomer.email ?? ''} onChange={setC('email')} placeholder="jane@example.com" />
-            </>
-          )}
-          <Button onClick={nextStep1} disabled={loading} className="w-full">
-            {loading ? 'Saving…' : 'Continue'}
-          </Button>
-        </div>
+        <CustomerStep
+          state={customerStep}
+          error={error}
+          primaryLabel="Continue"
+          onNext={nextStep1}
+          loading={loading}
+          autoFocus={false}
+        />
       )}
 
       {/* ── Step 2: Shoe Details ── */}

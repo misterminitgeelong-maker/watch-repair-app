@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, require_platform_admin
+from ..dependencies import AuthContext, invalidate_auth_cache_for_tenant, require_platform_admin
 from ..models import (
     AutoKeyJob,
     Invoice,
@@ -60,12 +60,15 @@ def list_all_tenants(
 ):
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
 
-    # Count users per tenant with a simple per-tenant query to avoid SQLModel aggregation issues
+    # B-M3: one grouped query instead of N per-tenant COUNTs. SQLModel's
+    # .all() on a grouped select returns tuples, so we build the map in Python.
     user_counts: dict[UUID, int] = {}
-    for t in tenants:
-        user_counts[t.id] = session.exec(
-            select(func.count(User.id)).where(User.tenant_id == t.id)
-        ).one()
+    if tenants:
+        grouped = session.exec(
+            select(User.tenant_id, func.count(User.id)).group_by(User.tenant_id)
+        ).all()
+        for tenant_id, count in grouped:
+            user_counts[tenant_id] = int(count or 0)
 
     return [
         PlatformTenantRead(
@@ -163,6 +166,9 @@ def set_tenant_status(
         )
     )
     session.commit()
+    # Invalidate any in-process auth cache entries for this tenant so an
+    # already-issued bearer token cannot survive the suspension window.
+    invalidate_auth_cache_for_tenant(tenant_id)
 
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
@@ -203,6 +209,9 @@ def set_tenant_plan(
         )
     )
     session.commit()
+    # Plan change can enable/disable features; drop cached auth so the next
+    # request re-reads plan_code from the DB.
+    invalidate_auth_cache_for_tenant(tenant_id)
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
         id=tenant.id,
@@ -243,6 +252,7 @@ def force_tenant_logout(
         )
     )
     session.commit()
+    invalidate_auth_cache_for_tenant(tenant_id)
     return {"ok": True, "tenant_id": str(tenant_id), "auth_revoked_at": tenant.auth_revoked_at}
 
 

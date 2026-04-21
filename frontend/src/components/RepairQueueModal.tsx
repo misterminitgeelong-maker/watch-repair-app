@@ -1,4 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { filteredJobsIdKey, mergeQueueOrder } from '@/lib/queueOrder'
+import {
+  dayQueueStorageKey,
+  daysInShop,
+  getCollectionUrgency,
+  readDayQueueState,
+  sortQueue,
+  writeDayQueueState,
+  type SessionStats,
+} from '@/lib/repairQueueHelpers'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
@@ -43,15 +53,11 @@ interface Props {
 
 type CardState = 'view' | 'advance' | 'note' | 'noUpdate'
 
-interface SessionStats {
-  advanced: number
-  checkedIn: number
-  skipped: number
-}
+// SessionStats lives in lib/repairQueueHelpers.ts — imported above.
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 }
+// PRIORITY_ORDER lives in lib/repairQueueHelpers.ts alongside sortQueue.
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: '#C0392B', high: '#D4693A', normal: '#7A5D2E', low: '#8A7563',
@@ -112,72 +118,8 @@ const ALL_PRIORITIES = ['urgent', 'high', 'normal', 'low']
 const QUEUE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on', 'completed', 'awaiting_collection']
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-function getCollectionUrgency(collectionDate?: string): number {
-  if (!collectionDate) return 3
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
-  const d = new Date(collectionDate)
-  if (d < today) return 0  // OVERDUE
-  if (d <= today) return 1  // today (same day, after midnight check)
-  if (d <= tomorrow) return 2  // tomorrow
-  return 3
-}
-
-function sortQueue(jobs: QueueJob[]): QueueJob[] {
-  return [...jobs].sort((a, b) => {
-    const cu = getCollectionUrgency(a.collection_date) - getCollectionUrgency(b.collection_date)
-    if (cu !== 0) return cu
-    const pu = (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
-    if (pu !== 0) return pu
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  })
-}
-
-function daysInShop(createdAt: string): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
-}
-
-/** Local calendar date for offline cache only (browser). Server uses tenant timezone). */
-function getLocalDateKey(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function dayQueueStorageKey(mode: 'watch' | 'shoe'): string {
-  return `repairQueueDay:v1:${mode}:${getLocalDateKey()}`
-}
-
-function readDayQueueState(mode: 'watch' | 'shoe'): { done: Set<string>; stats: SessionStats } {
-  const emptyStats: SessionStats = { advanced: 0, checkedIn: 0, skipped: 0 }
-  try {
-    const raw = localStorage.getItem(dayQueueStorageKey(mode))
-    if (!raw) return { done: new Set(), stats: emptyStats }
-    const o = JSON.parse(raw) as { doneIds?: string[]; stats?: Partial<SessionStats> }
-    const stats: SessionStats = {
-      advanced: typeof o.stats?.advanced === 'number' ? o.stats.advanced : 0,
-      checkedIn: typeof o.stats?.checkedIn === 'number' ? o.stats.checkedIn : 0,
-      skipped: typeof o.stats?.skipped === 'number' ? o.stats.skipped : 0,
-    }
-    return { done: new Set(Array.isArray(o.doneIds) ? o.doneIds : []), stats }
-  } catch {
-    return { done: new Set(), stats: emptyStats }
-  }
-}
-
-function writeDayQueueState(mode: 'watch' | 'shoe', done: Set<string>, stats: SessionStats) {
-  try {
-    localStorage.setItem(
-      dayQueueStorageKey(mode),
-      JSON.stringify({ doneIds: [...done], stats }),
-    )
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
+// getCollectionUrgency, sortQueue, daysInShop, readDayQueueState,
+// writeDayQueueState live in src/lib/repairQueueHelpers.ts (imported at top).
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -315,12 +257,23 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     return true
   })
 
+  // F-H3: Rebuild the queue whenever the *membership* of filteredJobs changes,
+  // not just when the count changes. Previous effect keyed only on
+  // filteredJobs.length, so a filter swap producing the same count but a
+  // different set of jobs surfaced the wrong rows. See
+  // src/lib/queueOrder.ts for the pure helpers + their regression tests.
+  const filteredJobIdsKey = useMemo(
+    () => filteredJobsIdKey(filteredJobs.map((j) => j.id)),
+    [filteredJobs],
+  )
+
   useEffect(() => {
-    if (filteredJobs.length > 0 && queueOrder === null) {
-      setQueueOrder(sortQueue(filteredJobs).map(j => j.id))
-    }
+    if (filteredJobIdsKey.length === 0) return
+    setQueueOrder((prev) => mergeQueueOrder(prev, sortQueue(filteredJobs).map((j) => j.id)))
+  // Intentional deps: the id-set key (membership). sortQueue input is
+  // filteredJobs, covered by the key.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredJobs.length, queueOrder])
+  }, [filteredJobIdsKey])
 
   const jobMap = Object.fromEntries(filteredJobs.map(j => [j.id, j]))
   const visibleIds = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id])
@@ -701,7 +654,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               {QUEUE_STATUSES.map(s => {
                 const on = filterStatuses.has(s)
                 return (
-                  <button key={s} onClick={() => setFilterStatuses(prev => { const n = new Set(prev); on ? n.delete(s) : n.add(s); return n })}
+                  <button key={s} onClick={() => setFilterStatuses(prev => { const n = new Set(prev); if (on) n.delete(s); else n.add(s); return n })}
                     className="px-2.5 py-1 rounded-full text-xs border"
                     style={{ backgroundColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.1)' }}>
                     {STATUS_LABELS[s] ?? s}
@@ -716,7 +669,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               {ALL_PRIORITIES.map(p => {
                 const on = filterPriorities.has(p)
                 return (
-                  <button key={p} onClick={() => setFilterPriorities(prev => { const n = new Set(prev); on ? n.delete(p) : n.add(p); return n })}
+                  <button key={p} onClick={() => setFilterPriorities(prev => { const n = new Set(prev); if (on) n.delete(p); else n.add(p); return n })}
                     className="px-2.5 py-1 rounded-full text-xs border capitalize"
                     style={{ backgroundColor: on ? PRIORITY_COLORS[p] : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? PRIORITY_COLORS[p] : 'rgba(255,255,255,0.1)' }}>
                     {p}

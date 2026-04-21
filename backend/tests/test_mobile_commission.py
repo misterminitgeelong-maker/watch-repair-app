@@ -50,7 +50,7 @@ def _tech_with_commission(h: dict, suffix: str, shop_bp: int = 3000, self_bp: in
         "enabled": True,
         "retainer_cents_per_period": retainer,
         "revenue_basis": "invoice_total",
-        "eligible_job_statuses": ["completed", "collected"],
+        "eligible_job_statuses": ["work_completed", "invoice_paid"],
         "rates_bp": {"shop_referred": shop_bp, "tech_sourced": self_bp},
         "labels": {"shop_referred": "Shop", "tech_sourced": "Self"},
     }
@@ -113,11 +113,11 @@ def test_commission_report_retainer_and_rates():
         json={"line_items": [{"description": "S", "quantity": 1, "unit_price_cents": unit}], "tax_cents": tax},
     )
     assert q.status_code == 201, q.text
-    comp = client.post(f"/v1/auto-key-jobs/{job_id}/status", headers=h, json={"status": "completed", "note": "x"})
+    comp = client.post(f"/v1/auto-key-jobs/{job_id}/status", headers=h, json={"status": "work_completed", "note": "x"})
     assert comp.status_code == 200, comp.text
 
     rep = client.get(
-        "/v1/reports/auto-key-commission",
+        "/v1/reports/auto-key/commission",
         headers=h,
         params={"date_from": today, "date_to": today},
     )

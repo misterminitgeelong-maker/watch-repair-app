@@ -2,6 +2,8 @@
 
 import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from typing import Optional
 from uuid import UUID
 
@@ -22,10 +24,12 @@ from ..models import (
     BillingLimitsUsage,
     RepairJob,
     ShoeRepairJob,
+    StripeWebhookEvent,
     Tenant,
     TenantEventLog,
     User,
 )
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/v1/billing", tags=["billing"])
 
@@ -398,6 +402,21 @@ async def stripe_webhook(
         event = _stripe.Webhook.construct_event(body, stripe_signature, settings.stripe_webhook_secret)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    # Idempotency: Stripe retries any delivery that doesn't receive a 2xx in
+    # time. Insert event.id into a ledger table under a unique constraint; a
+    # duplicate delivery will fail the insert and we short-circuit. This must
+    # happen BEFORE any side effects so that concurrent retries can't both
+    # commit plan changes / event log entries for the same event.
+    event_id = event.get("id") if isinstance(event, dict) else getattr(event, "id", None)
+    if event_id:
+        try:
+            session.add(StripeWebhookEvent(event_id=event_id, event_type=event.get("type", "")))
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            logger.info("stripe_webhook.duplicate event_id=%s type=%s", event_id, event.get("type"))
+            return {"status": "duplicate", "event_id": event_id}
 
     obj = event.data.object
 

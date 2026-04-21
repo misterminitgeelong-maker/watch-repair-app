@@ -20,20 +20,38 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add quote approval fields to shoerepairjob
-    op.add_column('shoerepairjob', sa.Column('quote_approval_token', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
-    op.add_column('shoerepairjob', sa.Column('quote_approval_token_expires_at', sa.DateTime(), nullable=True))
-    op.add_column('shoerepairjob', sa.Column('quote_status', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+    bind = op.get_bind()
+    dialect = bind.dialect.name
 
-    # Backfill: generate unique tokens for existing rows
-    op.execute("UPDATE shoerepairjob SET quote_approval_token = gen_random_uuid()::text WHERE quote_approval_token IS NULL")
+    # Add quote approval fields to shoerepairjob. Wrap in batch_alter_table
+    # so the subsequent alter_column (NOT NULL) works on SQLite too.
+    with op.batch_alter_table("shoerepairjob") as batch_op:
+        batch_op.add_column(sa.Column("quote_approval_token", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+        batch_op.add_column(sa.Column("quote_approval_token_expires_at", sa.DateTime(), nullable=True))
+        batch_op.add_column(sa.Column("quote_status", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+
+    # Backfill: generate unique tokens for existing rows. Postgres uses its
+    # native UUID function; SQLite uses the hex() of random bytes (CI-only
+    # path — prod runs on Postgres).
+    if dialect == "postgresql":
+        op.execute("UPDATE shoerepairjob SET quote_approval_token = gen_random_uuid()::text WHERE quote_approval_token IS NULL")
+    else:
+        op.execute("UPDATE shoerepairjob SET quote_approval_token = lower(hex(randomblob(16))) WHERE quote_approval_token IS NULL")
     op.execute("UPDATE shoerepairjob SET quote_status = 'none' WHERE quote_status IS NULL")
 
-    op.alter_column('shoerepairjob', 'quote_approval_token', nullable=False)
-    op.alter_column('shoerepairjob', 'quote_status', nullable=False)
-
-    op.create_index(op.f('ix_shoerepairjob_quote_approval_token'), 'shoerepairjob', ['quote_approval_token'], unique=True)
-    op.create_index(op.f('ix_shoerepairjob_quote_approval_token_expires_at'), 'shoerepairjob', ['quote_approval_token_expires_at'], unique=False)
+    with op.batch_alter_table("shoerepairjob") as batch_op:
+        batch_op.alter_column("quote_approval_token", nullable=False)
+        batch_op.alter_column("quote_status", nullable=False)
+        batch_op.create_index(
+            batch_op.f("ix_shoerepairjob_quote_approval_token"),
+            ["quote_approval_token"],
+            unique=True,
+        )
+        batch_op.create_index(
+            batch_op.f("ix_shoerepairjob_quote_approval_token_expires_at"),
+            ["quote_approval_token_expires_at"],
+            unique=False,
+        )
 
     # Create portal session table
     op.create_table(
@@ -54,8 +72,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_portalsession_email'), table_name='portalsession')
     op.drop_table('portalsession')
 
-    op.drop_index(op.f('ix_shoerepairjob_quote_approval_token_expires_at'), table_name='shoerepairjob')
-    op.drop_index(op.f('ix_shoerepairjob_quote_approval_token'), table_name='shoerepairjob')
-    op.drop_column('shoerepairjob', 'quote_status')
-    op.drop_column('shoerepairjob', 'quote_approval_token_expires_at')
-    op.drop_column('shoerepairjob', 'quote_approval_token')
+    with op.batch_alter_table("shoerepairjob") as batch_op:
+        batch_op.drop_index(batch_op.f("ix_shoerepairjob_quote_approval_token_expires_at"))
+        batch_op.drop_index(batch_op.f("ix_shoerepairjob_quote_approval_token"))
+        batch_op.drop_column("quote_status")
+        batch_op.drop_column("quote_approval_token_expires_at")
+        batch_op.drop_column("quote_approval_token")

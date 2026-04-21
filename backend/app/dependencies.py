@@ -26,8 +26,26 @@ _AUTH_CACHE_MAX = 2000  # clear the dict when it grows too large
 class _CachedAuth:
     ctx: "AuthContext"
     signup_payment_pending: bool
+    cached_at: float  # time.monotonic() when the entry was written
 
 _auth_cache: dict[str, tuple[_CachedAuth, float]] = {}
+
+# Per-tenant "any cached auth entry issued before this moment should be
+# invalidated" timestamps. Updated via invalidate_auth_cache_for_tenant()
+# whenever the tenant's authorization state changes (suspend / force-logout /
+# plan demotion). Keeps the fast-path cache correct without needing to scan
+# every cached token to find matches.
+_tenant_auth_invalidated_at: dict[UUID, float] = {}
+
+
+def invalidate_auth_cache_for_tenant(tenant_id: UUID) -> None:
+    """Mark every currently-cached auth context for `tenant_id` as stale.
+
+    The next request will fall through to the DB slow path where
+    tenant.is_active, auth_revoked_at, and plan_code are re-checked.
+    """
+    _tenant_auth_invalidated_at[tenant_id] = time.monotonic()
+
 
 def _cache_key(token: str) -> str:
     return hashlib.sha256(token.encode(), usedforsecurity=False).hexdigest()
@@ -169,13 +187,19 @@ def get_auth_context(
         tenant_id = claims.tenant_id
         user_id = claims.user_id
 
-        # Fast path: return cached context without hitting the DB.
+        # Fast path: return cached context without hitting the DB, but only
+        # if no tenant-level invalidation has happened since this entry was
+        # cached (suspend / force-logout / plan change).
         key = _cache_key(credentials.credentials)
         now = time.monotonic()
         cached = _auth_cache.get(key)
         if cached is not None:
             cached_auth, expires = cached
-            if now < expires:
+            invalidated_at = _tenant_auth_invalidated_at.get(tenant_id)
+            tenant_invalidated = (
+                invalidated_at is not None and cached_auth.cached_at <= invalidated_at
+            )
+            if now < expires and not tenant_invalidated:
                 if (
                     cached_auth.ctx.role != "platform_admin"
                     and cached_auth.signup_payment_pending
@@ -184,6 +208,10 @@ def get_auth_context(
                 ):
                     raise HTTPException(status_code=403, detail="subscription_required")
                 return cached_auth.ctx
+            if tenant_invalidated:
+                # Drop the stale entry proactively so subsequent requests
+                # with the same token re-validate against the DB.
+                _auth_cache.pop(key, None)
 
         # Slow path: validate against DB and populate the cache.
         user = session.get(User, user_id)
@@ -218,7 +246,10 @@ def get_auth_context(
 
         if len(_auth_cache) >= _AUTH_CACHE_MAX:
             _auth_cache.clear()
-        _auth_cache[key] = (_CachedAuth(ctx=ctx, signup_payment_pending=signup_pending), now + _AUTH_CACHE_TTL)
+        _auth_cache[key] = (
+            _CachedAuth(ctx=ctx, signup_payment_pending=signup_pending, cached_at=now),
+            now + _AUTH_CACHE_TTL,
+        )
 
         return ctx
     except HTTPException:

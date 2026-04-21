@@ -4,13 +4,14 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
 from ..database import get_session
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
+from ..limiter import limiter
 from ..models import (
     AutoKeyInvoice,
     AutoKeyJob,
@@ -30,6 +31,18 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
+
+
+def _public_customer_lookup_rate_limit() -> str:
+    return settings.rate_limit_public_customer_lookup
+
+
+def _public_portal_create_rate_limit() -> str:
+    return settings.rate_limit_public_portal_create
+
+
+def _public_portal_session_rate_limit() -> str:
+    return settings.rate_limit_public_portal_session
 
 
 class PublicAutoKeyIntakeSubmit(SQLModel):
@@ -664,8 +677,74 @@ class CustomerLookupRequest(SQLModel):
     email: str
 
 
+# --- shared helper for customer-lookup + portal session jobs ---------------
+#
+# RepairJob does not have a direct customer_id column — customer is reached via
+# Watch.customer_id. This helper joins correctly and batch-loads watches/shoes
+# to avoid per-row session.get() calls (see code review B-H1 + B-M4).
+
+_WATCH_JOB_HIDDEN_STATUSES = ("collected", "cancelled")
+_SHOE_JOB_HIDDEN_STATUSES = ("collected", "no_go")
+
+
+def _collect_jobs_for_customers(session: Session, customers: list[Customer]) -> list[dict[str, Any]]:
+    if not customers:
+        return []
+
+    customer_ids = [c.id for c in customers]
+    results: list[dict[str, Any]] = []
+
+    # Watch jobs: join RepairJob -> Watch (Watch.customer_id is the only link)
+    watch_job_rows = session.exec(
+        select(RepairJob, Watch)
+        .join(Watch, Watch.id == RepairJob.watch_id)
+        .where(Watch.customer_id.in_(customer_ids))  # type: ignore[attr-defined]
+        .where(RepairJob.status.not_in(_WATCH_JOB_HIDDEN_STATUSES))  # type: ignore[attr-defined]
+        .order_by(RepairJob.created_at.desc())
+        .limit(20 * len(customer_ids))
+    ).all()
+    for job, watch in watch_job_rows:
+        results.append({
+            "type": "watch",
+            "job_number": job.job_number,
+            "title": job.title,
+            "status": job.status,
+            "created_at": isoformat_z_utc(naive_utc_from_any(job.created_at)),
+            "status_url": f"/status/{job.status_token}",
+            "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
+        })
+
+    shoe_job_rows = session.exec(
+        select(ShoeRepairJob, Shoe)
+        .join(Shoe, Shoe.id == ShoeRepairJob.shoe_id)
+        .where(Shoe.customer_id.in_(customer_ids))  # type: ignore[attr-defined]
+        .where(ShoeRepairJob.status.not_in(_SHOE_JOB_HIDDEN_STATUSES))  # type: ignore[attr-defined]
+        .order_by(ShoeRepairJob.created_at.desc())
+        .limit(20 * len(customer_ids))
+    ).all()
+    for job, shoe in shoe_job_rows:
+        detail_bits = [shoe.brand if shoe else None, shoe.shoe_type if shoe else None]
+        results.append({
+            "type": "shoe",
+            "job_number": job.job_number,
+            "title": job.title,
+            "status": job.status,
+            "created_at": isoformat_z_utc(naive_utc_from_any(job.created_at)),
+            "status_url": f"/shoe-status/{job.status_token}",
+            "detail": " ".join(filter(None, detail_bits)) or None,
+        })
+
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+    return results
+
+
 @router.post("/customer-lookup")
-def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(get_session)):
+@limiter.limit(_public_customer_lookup_rate_limit)
+def customer_lookup(
+    request: Request,
+    payload: CustomerLookupRequest,
+    session: Session = Depends(get_session),
+):
     """Return all active jobs for a customer by email address (cross-tenant, public)."""
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
@@ -680,62 +759,21 @@ def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(g
     if not customers:
         return {"jobs": []}
 
-    results = []
-
-    for customer in customers:
-        # Watch repair jobs
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        # Shoe repair jobs
-        shoe_ids = session.exec(
-            select(Shoe.id).where(Shoe.customer_id == customer.id)
-        ).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    # Sort by created_at descending
-    results.sort(key=lambda x: x["created_at"], reverse=True)
-
+    results = _collect_jobs_for_customers(session, customers)
     return {"jobs": results[:50]}
 
 
 # ── Customer portal sessions ─────────────────────────────────────────────────
-
-_PORTAL_SESSION_TTL_DAYS = 30
+#
+# SECURITY NOTE:
+# This endpoint issues a bookmarkable session token from just an email, with
+# no proof that the caller controls that email. That is acceptable only because
+# a) the only data exposed is the active-repair status of that email's jobs,
+# b) the session is now short-lived, and c) it is rate-limited per IP and only
+# issued when the email actually has at least one non-final job.
+#
+# A magic-link / OTP flow (emailing a one-time code, exchanging it for a
+# session token) is the right long-term fix — tracked as a follow-up.
 
 
 class PortalSessionRequest(SQLModel):
@@ -743,33 +781,54 @@ class PortalSessionRequest(SQLModel):
 
 
 @router.post("/portal/create-session")
-def create_portal_session(payload: PortalSessionRequest, session: Session = Depends(get_session)):
-    """Create a 30-day bookmarkable portal session for the given email."""
+@limiter.limit(_public_portal_create_rate_limit)
+def create_portal_session(
+    request: Request,
+    payload: PortalSessionRequest,
+    session: Session = Depends(get_session),
+):
+    """Create a short-lived bookmarkable portal session for the given email.
+
+    Returns 404 if no matching customer exists, or if the email has no active jobs.
+    This prevents using the endpoint to enumerate email addresses that simply
+    exist in the system without an in-flight repair.
+    """
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=422, detail="Please enter a valid email address.")
 
-    # Check at least one customer exists
-    customer = session.exec(
+    customers = session.exec(
         select(Customer).where(Customer.email.ilike(email))  # type: ignore[attr-defined]
-    ).first()
-    if not customer:
+    ).all()
+    if not customers:
         raise HTTPException(status_code=404, detail="No repairs found for this email address.")
 
+    # Require at least one non-final job before issuing a session, so
+    # the portal issuance endpoint cannot be used as a pure enumeration oracle.
+    jobs = _collect_jobs_for_customers(session, customers)
+    if not jobs:
+        raise HTTPException(status_code=404, detail="No repairs found for this email address.")
+
+    ttl_days = max(1, int(settings.portal_session_ttl_days))
     portal_session = PortalSession(
         email=email,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=ttl_days),
     )
     session.add(portal_session)
     session.commit()
     session.refresh(portal_session)
 
     portal_url = f"{settings.public_base_url}/customer-portal/s/{portal_session.token}"
-    return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+    return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": ttl_days}
 
 
 @router.get("/portal/session/{token}")
-def get_portal_session_jobs(token: str, session: Session = Depends(get_session)):
+@limiter.limit(_public_portal_session_rate_limit)
+def get_portal_session_jobs(
+    request: Request,
+    token: str,
+    session: Session = Depends(get_session),
+):
     """Return jobs for a portal session token (same as customer-lookup but token-auth)."""
     portal = session.exec(select(PortalSession).where(PortalSession.token == token)).first()
     if not portal:
@@ -789,47 +848,5 @@ def get_portal_session_jobs(token: str, session: Session = Depends(get_session))
     if not customers:
         return {"jobs": [], "email": portal.email}
 
-    results = []
-    for customer in customers:
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    results.sort(key=lambda x: x["created_at"], reverse=True)
+    results = _collect_jobs_for_customers(session, customers)
     return {"jobs": results[:50], "email": portal.email}

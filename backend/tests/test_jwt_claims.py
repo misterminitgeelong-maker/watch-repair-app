@@ -50,3 +50,24 @@ def test_malformed_claims_rejected():
     )
     with pytest.raises(ValueError):
         decode_access_token(token)
+
+
+def test_download_typ_token_rejected_as_access_token():
+    """Regression for B-H5: a token minted for attachment download must not be
+    accepted on auth paths even though it was signed with the same secret.
+    """
+    tenant_id = uuid4()
+    user_id = uuid4()
+    token = jwt.encode(
+        {
+            "sub": f"{tenant_id}:{user_id}",
+            "tenant_id": str(tenant_id),
+            "user_id": str(user_id),
+            "role": "owner",
+            "typ": "attachment_download",
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+    with pytest.raises(ValueError):
+        decode_access_token(token)
