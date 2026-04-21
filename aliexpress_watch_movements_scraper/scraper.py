@@ -9,7 +9,11 @@ import time
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+from playwright.sync_api import (
+    Error as PlaywrightError,
+    TimeoutError as PlaywrightTimeout,
+    sync_playwright,
+)
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from config import (
@@ -35,10 +39,20 @@ def _random_delay():
     time.sleep(delay)
 
 
+# Narrow retry set: only retry on clearly-transient network/browser issues.
+# Previously included `Exception` catch-all which would also retry programming
+# bugs (AttributeError, TypeError, KeyError, etc.) — that hid the real error
+# behind MAX_RETRIES * exponential backoff of dead time.
 @retry(
     stop=stop_after_attempt(MAX_RETRIES),
     wait=wait_exponential(multiplier=2, min=4, max=60),
-    retry=retry_if_exception_type((PlaywrightTimeout, ConnectionError, Exception)),
+    retry=retry_if_exception_type((
+        PlaywrightTimeout,
+        PlaywrightError,
+        ConnectionError,
+        TimeoutError,
+        OSError,
+    )),
     reraise=True,
 )
 def _fetch_page_with_retry(page, url: str) -> str:
