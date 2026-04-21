@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     jwt_refresh_expire_days: int = 7
+    # Dedicated signing secret for short-lived attachment download URLs.
+    # Leave blank to reuse JWT_SECRET (backward compatible). Set in production
+    # so a leaked download URL cannot share signing material with auth tokens.
+    attachment_signing_secret: str = ""
     app_env: Literal["development", "test", "staging", "production"] = "development"
     # Break-glass flag only for explicitly intended production SQLite runs.
     allow_sqlite_in_production: bool = False

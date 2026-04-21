@@ -45,22 +45,39 @@ def _allowed_content_types() -> set[str]:
     return {ct.strip().lower() for ct in settings.attachment_allowed_content_types.split(",") if ct.strip()}
 
 
+def _attachment_signing_secret() -> str:
+    """Return the secret used to sign short-lived download URLs.
+
+    Prefer a dedicated ATTACHMENT_SIGNING_SECRET so a leaked download URL does
+    not share signing material with auth tokens. Falls back to JWT_SECRET for
+    backward compatibility. Access tokens already reject typ=attachment_download
+    (see security._parse_claims), so collision risk is low either way.
+    """
+    secret = (settings.attachment_signing_secret or "").strip()
+    return secret if secret else settings.jwt_secret
+
+
 def _create_signed_download_token(*, tenant_id: UUID, user_id: UUID, storage_key: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(seconds=SIGNED_DOWNLOAD_EXPIRE_SECONDS)
     payload = {
         "sub": f"{tenant_id}:{user_id}",
         "typ": SIGNED_DOWNLOAD_TOKEN_TYP,
+        "purpose": "download",
         "sk": storage_key,
         "exp": expire,
     }
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, _attachment_signing_secret(), algorithm=settings.jwt_algorithm)
 
 
 def _decode_signed_download_token(token: str) -> tuple[UUID, UUID, str]:
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, _attachment_signing_secret(), algorithms=[settings.jwt_algorithm]
+        )
         if payload.get("typ") != SIGNED_DOWNLOAD_TOKEN_TYP:
             raise ValueError("Invalid token type")
+        if payload.get("purpose") not in (None, "download"):
+            raise ValueError("Invalid token purpose")
         subject = payload.get("sub")
         storage_key = payload.get("sk")
         if not isinstance(subject, str) or not isinstance(storage_key, str):
