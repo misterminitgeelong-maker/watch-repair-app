@@ -364,7 +364,7 @@ export default function JobsPage() {
       )}
 
       {listError && (
-        <p className="text-sm mb-3" style={{ color: '#8B3A2A' }}>
+        <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>
           {getApiErrorMessage(listError, 'Could not load jobs or quotes.')}
         </p>
       )}
@@ -476,7 +476,7 @@ export default function JobsPage() {
             <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               This action cannot be undone.
             </p>
-            {deleteError && <p className="text-sm" style={{ color: '#8B3A2A' }}>{deleteError}</p>}
+            {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
             <div className="flex gap-2 pt-2">
               <Button
                 variant="secondary"
@@ -538,7 +538,7 @@ function ListView({
           <tbody>
             {jobs.map((j, idx) => {
               const days = daysInShop(j.created_at)
-              const daysColor = days >= 14 ? '#8B3A2A' : days >= 7 ? '#9A5010' : 'var(--ms-text-mid)'
+              const daysColor = days >= 14 ? 'var(--ms-error)' : days >= 7 ? '#9A5010' : 'var(--ms-text-mid)'
               const pastCollection = j.collection_date && j.collection_date < today
               const tech = assigneeName.get(j.assigned_user_id ?? '') ?? null
               return (
@@ -569,7 +569,7 @@ function ListView({
                   <Td style={{ color: 'var(--ms-text)', fontWeight: 600 }}>
                     ${(displayQuoteCents(j) / 100).toFixed(2)}
                   </Td>
-                  <Td style={{ color: pastCollection ? '#8B3A2A' : 'var(--ms-text-mid)' }}>
+                  <Td style={{ color: pastCollection ? 'var(--ms-error)' : 'var(--ms-text-mid)' }}>
                     {j.collection_date ? formatDate(j.collection_date) : '—'}
                   </Td>
                   <Td style={{ color: 'var(--ms-text-mid)' }}>{tech ?? '—'}</Td>
@@ -579,7 +579,7 @@ function ListView({
                       aria-label={`Delete job ${j.job_number}`}
                       onClick={() => onDelete(j)}
                       className="h-7 w-7 rounded-full flex items-center justify-center"
-                      style={{ color: '#8B3A2A', border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
+                      style={{ color: 'var(--ms-error)', border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
                     >
                       <X size={14} />
                     </button>

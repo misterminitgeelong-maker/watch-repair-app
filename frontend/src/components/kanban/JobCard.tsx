@@ -27,7 +27,7 @@ function PriorityPill({ priority }: { priority?: string | null }) {
   const p = priority.toLowerCase()
   if (p !== 'urgent' && p !== 'high') return null
   const bg = p === 'urgent' ? '#FEEEED' : '#FFF0E0'
-  const text = p === 'urgent' ? '#8B3A2A' : '#8A5010'
+  const text = p === 'urgent' ? 'var(--ms-error)' : '#8A5010'
   const label = p === 'urgent' ? 'Urgent' : 'High'
   return (
     <span
@@ -51,7 +51,7 @@ function AgingPill({ days }: { days: number }) {
   let text = '#3A6A3A'
   if (days >= 14) {
     bg = '#FEEEED'
-    text = '#8B3A2A'
+    text = 'var(--ms-error)'
   } else if (days >= 7) {
     bg = '#FFF0E0'
     text = '#9A5010'
