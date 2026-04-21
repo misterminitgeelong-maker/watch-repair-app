@@ -243,6 +243,22 @@ class ProspectBusiness(SQLModel, table=True):
 _ProspectLeadStatus = Literal["new", "contacted", "qualified", "won", "lost", "unqualified"]
 
 
+class StripeWebhookEvent(SQLModel, table=True):
+    """Processed Stripe webhook events, keyed on event.id for idempotency.
+
+    Stripe sends retries when it doesn't get a 2xx response in time. Without
+    this ledger, a repeat delivery of the same event can double-apply a plan
+    change or re-emit a tenant event log entry. The webhook handler writes
+    into this table inside the same transaction as its side-effects, so a
+    duplicate event fails the unique constraint and is skipped.
+    """
+    __tablename__ = "stripewebhookevent"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    event_id: str = Field(index=True, unique=True)
+    event_type: str = Field(index=True)
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class ProspectLead(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("tenant_id", "place_id", name="uq_prospectlead_tenant_place"),
