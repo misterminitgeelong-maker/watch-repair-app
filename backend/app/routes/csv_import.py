@@ -5,10 +5,13 @@ rows into watch repairs, shoe repairs, or mobile services (auto key), based on i
 
 import csv
 import io
+import logging
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
 from sqlalchemy import delete as sa_delete, func
@@ -303,9 +306,10 @@ def _load_xlsx_rows(raw_bytes: bytes, sheet_name: str | None = None) -> tuple[li
     except HTTPException:
         raise
     except Exception as exc:
+        logger.exception("Failed to read uploaded Excel file")
         raise HTTPException(
             status_code=400,
-            detail=f"Could not read Excel file. Try saving as CSV (UTF-8) or a fresh .xlsx. Error: {exc}",
+            detail="Could not read the Excel file. Try saving as CSV (UTF-8) or a fresh .xlsx.",
         ) from exc
 
     if not all_rows:
@@ -664,9 +668,12 @@ async def import_csv(
             session.commit()
         except Exception as exc:
             session.rollback()
+            logger.exception(
+                "Could not clear existing data before import for tenant %s", auth.tenant_id
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"Could not clear existing data before import: {exc}",
+                detail="Could not clear existing data before import. Please try again.",
             ) from exc
 
     import_log = None
@@ -1177,6 +1184,9 @@ async def import_csv(
         raise
     except Exception as exc:
         session.rollback()
+        # Full detail goes to logs; clients only see a generic message so we
+        # do not leak DB/driver errors, file paths, or stack traces.
+        logger.exception("CSV import failed for tenant %s", auth.tenant_id)
         if import_log is not None:
             import_log.status = "failed"
             import_log.error_message = str(exc)
@@ -1185,7 +1195,10 @@ async def import_csv(
             import_log.customers_created_count = len(customer_cache)
             session.add(import_log)
             session.commit()
-        raise HTTPException(status_code=400, detail=f"Import failed: {exc}") from exc
+        raise HTTPException(
+            status_code=400,
+            detail="Import failed. Please check the file and try again.",
+        ) from exc
 
     return ImportSummaryResponse(
         import_id=import_log.id,
