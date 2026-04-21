@@ -84,9 +84,16 @@ export const SHOE_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
 
 export const AUTO_KEY_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   {
+    key: 'awaiting_quote',
+    label: 'Awaiting Quote',
+    statuses: ['awaiting_quote', 'awaiting_customer_details'],
+    color: '#C07820',
+    bg: '#FAEEDB',
+  },
+  {
     key: 'quote_sent',
     label: 'Quote Sent',
-    statuses: ['quote_sent', 'awaiting_quote', 'awaiting_booking_confirmation'],
+    statuses: ['quote_sent', 'awaiting_booking_confirmation'],
     color: '#2A5FA0',
     bg: '#EDF3FA',
   },
@@ -94,15 +101,15 @@ export const AUTO_KEY_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
     key: 'booked',
     label: 'Booking Confirmed',
     statuses: ['booking_confirmed', 'booked', 'pending_booking'],
-    color: '#1A7068',
-    bg: '#E2F4F0',
+    color: '#B06010',
+    bg: '#FFF0E0',
   },
   {
     key: 'dispatch',
     label: 'En Route / On Site',
     statuses: ['en_route', 'on_site', 'working_on'],
-    color: '#B06010',
-    bg: '#FFF0E0',
+    color: '#C96A5A',
+    bg: '#FBEAE6',
   },
   {
     key: 'complete',

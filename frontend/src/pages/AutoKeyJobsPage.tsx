@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, AlertCircle, BarChart3, Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -1947,8 +1947,7 @@ export default function AutoKeyJobsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedView = searchParams.get('view')
-  const initialView =
-    requestedView === 'dashboard' ||
+  const initialView: 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports' =
     requestedView === 'jobs' ||
     requestedView === 'pos' ||
     requestedView === 'dispatch' ||
@@ -1957,7 +1956,13 @@ export default function AutoKeyJobsPage() {
     requestedView === 'planner' ||
     requestedView === 'reports'
       ? requestedView
-      : 'dashboard'
+      : 'jobs'
+  const initialJobsLayout: 'board' | 'list' =
+    searchParams.get('jobs_layout') === 'list'
+      ? 'list'
+      : requestedView === 'dashboard' || !requestedView || requestedView === 'jobs'
+        ? (searchParams.get('jobs_layout') === 'board' ? 'board' : 'board')
+        : 'board'
   const initialStatus = searchParams.get('status')
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialDispatchDate = isYmd(searchParams.get('dispatch_date')) ? (searchParams.get('dispatch_date') as string) : ymdLocal(new Date())
@@ -2001,12 +2006,12 @@ export default function AutoKeyJobsPage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showMoreActions])
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
-  const [view, setView] = useState<'dashboard' | 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
+  const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
-  const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(searchParams.get('jobs_layout') === 'board' ? 'board' : 'list')
+  const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
   const [weekStart, setWeekStart] = useState(initialWeekStart)
@@ -2238,7 +2243,7 @@ export default function AutoKeyJobsPage() {
 
   useEffect(() => {
     const next = new URLSearchParams()
-    if (view !== 'dashboard') next.set('view', view)
+    if (view !== 'jobs') next.set('view', view)
     if (statusFilter !== 'all') next.set('status', statusFilter)
     if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
     if (view === 'dispatch' || view === 'map' || view === 'planner') {
@@ -2326,63 +2331,50 @@ export default function AutoKeyJobsPage() {
       </p>
       <MobileServicesSubNav className="mb-5" />
       <div className="mb-5 -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0">
-        <div className="flex items-center gap-2 flex-nowrap sm:flex-wrap">
-          <button
-            onClick={() => setView('dashboard')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
-            style={view === 'dashboard' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <LayoutGrid size={16} /> Pipeline
-          </button>
-          <button
-            onClick={() => setView('jobs')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
-            style={view === 'jobs' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <List size={16} /> Jobs
-          </button>
-          <button
-            onClick={() => setView('pos')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'pos' ? 'bg-opacity-20' : ''}`}
-            style={view === 'pos' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <CreditCard size={16} /> POS
-          </button>
-          <button
-            onClick={() => setView('dispatch')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
-            style={view === 'dispatch' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <Calendar size={16} /> Dispatch
-          </button>
-          <button
-            onClick={() => setView('week')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'week' ? 'bg-opacity-20' : ''}`}
-            style={view === 'week' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <CalendarDays size={16} /> Week
-          </button>
-          <button
-            onClick={() => setView('map')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'map' ? 'bg-opacity-20' : ''}`}
-            style={view === 'map' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <MapIcon size={16} /> Map
-          </button>
-          <button
-            onClick={() => setView('planner')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'planner' ? 'bg-opacity-20' : ''}`}
-            style={view === 'planner' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <Clock size={16} /> Day Planner
-          </button>
-          <button
-            onClick={() => setView('reports')}
-            className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'reports' ? 'bg-opacity-20' : ''}`}
-            style={view === 'reports' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
-          >
-            <BarChart3 size={16} /> Reports
-          </button>
+        <div
+          className="inline-flex items-center gap-1 rounded-lg p-1"
+          style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
+        >
+          {([
+            { key: 'list', label: 'List', icon: <List size={15} /> },
+            { key: 'kanban', label: 'Kanban', icon: <LayoutGrid size={15} /> },
+            { key: 'map', label: 'Map', icon: <MapIcon size={15} /> },
+            { key: 'planner', label: 'Planner', icon: <CalendarDays size={15} /> },
+            { key: 'pos', label: 'POS', icon: <CreditCard size={15} /> },
+            { key: 'reports', label: 'Reports', icon: <BarChart3 size={15} /> },
+          ] as const).map(tab => {
+            const active =
+              (tab.key === 'list' && view === 'jobs' && jobsLayout === 'list') ||
+              (tab.key === 'kanban' && view === 'jobs' && jobsLayout === 'board') ||
+              (tab.key === 'planner' && (view === 'planner' || view === 'dispatch' || view === 'week')) ||
+              (tab.key === 'map' && view === 'map') ||
+              (tab.key === 'pos' && view === 'pos') ||
+              (tab.key === 'reports' && view === 'reports')
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  if (tab.key === 'list') { setView('jobs'); setJobsLayout('list') }
+                  else if (tab.key === 'kanban') { setView('jobs'); setJobsLayout('board') }
+                  else if (tab.key === 'planner') { setView('week') }
+                  else setView(tab.key as typeof view)
+                }}
+                className="flex items-center gap-1.5 rounded-md whitespace-nowrap transition-colors"
+                style={{
+                  padding: '7px 14px',
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                  backgroundColor: active ? 'var(--ms-accent-pop)' : 'transparent',
+                  border: active ? '1px solid var(--ms-accent-light)' : '1px solid transparent',
+                }}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -2403,220 +2395,6 @@ export default function AutoKeyJobsPage() {
           customers={customers}
           users={users}
         />
-      )}
-
-      {view === 'dashboard' && (
-        <>
-          {/* Today's summary */}
-          {(() => {
-            const todayYmd = ymdLocal(new Date())
-            const todayJobs = [...jobs].filter(j => {
-              if (!j.scheduled_at) return false
-              return ymdLocal(new Date(j.scheduled_at)) === todayYmd
-            })
-            const needsAttention = jobs.filter(j =>
-              ['awaiting_quote', 'quote_sent', 'awaiting_booking_confirmation'].includes(j.status)
-            )
-            if (todayJobs.length === 0 && needsAttention.length === 0) return null
-            return (
-              <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {todayJobs.length > 0 && (
-                  <div
-                    className="rounded-xl px-4 py-3 flex items-start gap-3"
-                    style={{ backgroundColor: 'rgba(201,162,72,0.12)', border: '1px solid rgba(201,162,72,0.35)' }}
-                  >
-                    <CalendarClock size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--ms-accent)' }} />
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
-                        {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''} scheduled today
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                        {todayJobs.map(j => j.customer_name || j.title).slice(0, 3).join(', ')}{todayJobs.length > 3 ? ` +${todayJobs.length - 3} more` : ''}
-                      </p>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold mt-1.5 underline"
-                        style={{ color: 'var(--ms-accent)' }}
-                        onClick={() => { setView('dispatch'); setDispatchDate(todayYmd) }}
-                      >
-                        View dispatch →
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {needsAttention.length > 0 && (
-                  <div
-                    className="rounded-xl px-4 py-3 flex items-start gap-3"
-                    style={{ backgroundColor: 'rgba(201,100,90,0.08)', border: '1px solid rgba(201,100,90,0.25)' }}
-                  >
-                    <AlertCircle size={18} className="shrink-0 mt-0.5" style={{ color: '#C96A5A' }} />
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
-                        {needsAttention.length} job{needsAttention.length !== 1 ? 's' : ''} need attention
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                        Awaiting quote, approval, or booking confirmation
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-          <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
-              <button
-                type="button"
-                onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
-                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                style={{
-                  backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
-                  color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
-                }}
-              >
-                Active ({activeCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
-                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                style={{
-                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
-                  color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
-                }}
-              >
-                Closed ({completedCount})
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--ms-text-muted)' }} />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search job, customer, rego…"
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-                />
-              </div>
-              <Select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="min-w-[140px]"
-                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-              >
-                <option value="all">All stages</option>
-                {statusOptions.map(s => (
-                  <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
-                ))}
-              </Select>
-              <Select
-                value={String(olderThanDays)}
-                onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
-                className="min-w-[140px]"
-                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-              >
-                <option value="0">Any age</option>
-                <option value="7">7+ days old</option>
-                <option value="14">14+ days old</option>
-                <option value="21">21+ days old</option>
-              </Select>
-            </div>
-          </div>
-          {isLoading ? (
-            <Spinner />
-          ) : isError ? (
-            <p
-              className="text-sm rounded-lg px-4 py-3"
-              style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: '#C96A5A' }}
-            >
-              {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
-            </p>
-          ) : filteredJobs.length === 0 ? (
-            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
-              {pipelineColumnStatuses.map((status) => {
-                const jobsInStatus = filteredJobs.filter((j: { status: JobStatus }) => j.status === status)
-                return (
-                  <Card key={status} className="overflow-hidden min-w-[240px]">
-                    <div
-                      className="px-4 py-3.5 flex items-center justify-between"
-                      style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
-                    >
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
-                        {STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}
-                      </p>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
-                        {jobsInStatus.length}
-                      </span>
-                    </div>
-                    <div>
-                      {jobsInStatus.length === 0 ? (
-                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No jobs in this stage.</p>
-                      ) : (
-                        jobsInStatus.map((j: object, i: number) => {
-                          const job = j as { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; created_at: string; job_type?: string; customer_name?: string; scheduled_at?: string }
-                          const kanbanScheduledLabel = job.scheduled_at
-                            ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                            : null
-                          return (
-                            <div
-                              key={job.id}
-                              className="px-4 py-3"
-                              style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <Link to={`/auto-key/${job.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--ms-accent)' }}>
-                                    {job.title}
-                                  </Link>
-                                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                                    #{job.job_number} · {formatDate(job.created_at)}
-                                  </p>
-                                  {job.customer_name && (
-                                    <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{job.customer_name}</p>
-                                  )}
-                                  {kanbanScheduledLabel && (
-                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--ms-accent)' }}>
-                                      <Clock size={10} />
-                                      {kanbanScheduledLabel}
-                                    </span>
-                                  )}
-                                </div>
-                                <Badge status={job.status} />
-                              </div>
-                              {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
-                                <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
-                                  {job.vehicle_make || ''} {job.vehicle_model || ''}{job.registration_plate ? ` · ${job.registration_plate}` : ''}
-                                </p>
-                              )}
-                              {job.job_type && (
-                                <p className="text-[11px] mt-1" style={{ color: 'var(--ms-text-muted)' }}>{job.job_type}</p>
-                              )}
-                              <select
-                                value={job.status}
-                                className="w-full mt-2 rounded-md px-2 py-1.5 text-xs outline-none"
-                                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-                                onChange={e => statusMut.mutate({ jobId: job.id, status: e.target.value as JobStatus })}
-                                disabled={statusMut.isPending}
-                              >
-                                {Array.from(new Set([...statusOptions, String(job.status)])).map((s) => (
-                                  <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </>
       )}
 
       {view === 'jobs' && (
