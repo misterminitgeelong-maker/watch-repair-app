@@ -238,6 +238,82 @@ class ProspectBusiness(SQLModel, table=True):
     fetched_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+# Tenant-scoped prospect pipeline ("saved lead" from the global ProspectBusiness
+# catalogue or from free-form entry). Each tenant owns their own list + status.
+_ProspectLeadStatus = Literal["new", "contacted", "qualified", "won", "lost", "unqualified"]
+
+
+class ProspectLead(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "place_id", name="uq_prospectlead_tenant_place"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    # Optional link back to the ProspectBusiness catalogue (by Google place_id).
+    # May also be a shop-generated id when the lead was entered manually.
+    place_id: Optional[str] = Field(default=None, index=True)
+    name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    category: Optional[str] = None
+    state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
+    status: str = Field(default="new", index=True)  # see _ProspectLeadStatus
+    notes: Optional[str] = None
+    next_follow_up_on: Optional[date] = None
+    customer_account_id: Optional[UUID] = Field(default=None, foreign_key="customeraccount.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProspectLeadCreate(SQLModel):
+    place_id: Optional[str] = None
+    name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    category: Optional[str] = None
+    state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ProspectLeadUpdate(SQLModel):
+    status: Optional[_ProspectLeadStatus] = None
+    notes: Optional[str] = None
+    next_follow_up_on: Optional[date] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+
+
+class ProspectLeadRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    place_id: Optional[str] = None
+    name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    category: Optional[str] = None
+    state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
+    status: str
+    notes: Optional[str] = None
+    next_follow_up_on: Optional[date] = None
+    customer_account_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProspectLeadConvertRequest(SQLModel):
+    account_name: str
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+
+
 class Customer(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")

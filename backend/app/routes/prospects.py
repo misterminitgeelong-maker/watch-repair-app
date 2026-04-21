@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from uuid import UUID
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -7,7 +10,16 @@ from typing import Optional
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import ProspectBusiness, Suburb
+from ..models import (
+    CustomerAccount,
+    ProspectBusiness,
+    ProspectLead,
+    ProspectLeadConvertRequest,
+    ProspectLeadCreate,
+    ProspectLeadRead,
+    ProspectLeadUpdate,
+    Suburb,
+)
 
 router = APIRouter(prefix="/v1/prospects", tags=["prospects"])
 
@@ -245,3 +257,166 @@ async def list_regions(
     except Exception:
         suburbs_by_state = SUBURBS_BY_STATE_FALLBACK
     return {"states": AU_STATES, "suburbs": suburbs_by_state}
+
+
+# ── Tenant-scoped prospect lead pipeline ─────────────────────────────────────
+#
+# ProspectLead is the per-tenant "save a lead" / CRM-lite layer sitting on top
+# of the global ProspectBusiness catalogue. A shop clicks "Save" on a search
+# result (or enters a business manually) and we create a ProspectLead with
+# status='new'. The shop can then update status/notes over time and eventually
+# convert a qualified lead into a CustomerAccount in one step.
+
+
+def _prospect_lead_to_read(row: ProspectLead) -> ProspectLeadRead:
+    return ProspectLeadRead(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        place_id=row.place_id,
+        name=row.name,
+        address=row.address,
+        phone=row.phone,
+        website=row.website,
+        category=row.category,
+        state_code=row.state_code,
+        suburb_name=row.suburb_name,
+        status=row.status,
+        notes=row.notes,
+        next_follow_up_on=row.next_follow_up_on,
+        customer_account_id=row.customer_account_id,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+@router.post("/leads", response_model=ProspectLeadRead, status_code=201)
+def save_prospect_lead(
+    payload: ProspectLeadCreate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Save a business as a tenant-scoped lead with status='new'.
+
+    Dedupes within the tenant on place_id. Calling this twice with the same
+    place_id returns 409; callers should PATCH the existing lead instead.
+    """
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Lead name is required")
+
+    place_id = (payload.place_id or "").strip() or None
+    if place_id:
+        existing = session.exec(
+            select(ProspectLead)
+            .where(ProspectLead.tenant_id == auth.tenant_id)
+            .where(ProspectLead.place_id == place_id)
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="This business is already saved as a lead.",
+            )
+
+    lead = ProspectLead(
+        tenant_id=auth.tenant_id,
+        place_id=place_id,
+        name=name,
+        address=(payload.address or "").strip() or None,
+        phone=(payload.phone or "").strip() or None,
+        website=(payload.website or "").strip() or None,
+        category=(payload.category or "").strip() or None,
+        state_code=(payload.state_code or "").strip().upper() or None,
+        suburb_name=(payload.suburb_name or "").strip() or None,
+        notes=(payload.notes or "").strip() or None,
+        status="new",
+    )
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return _prospect_lead_to_read(lead)
+
+
+@router.get("/leads", response_model=list[ProspectLeadRead])
+def list_prospect_leads(
+    status: Optional[str] = Query(default=None, description="Filter by status"),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    query = select(ProspectLead).where(ProspectLead.tenant_id == auth.tenant_id)
+    if status:
+        query = query.where(ProspectLead.status == status)
+    leads = session.exec(query.order_by(ProspectLead.created_at.desc())).all()
+    return [_prospect_lead_to_read(row) for row in leads]
+
+
+@router.patch("/leads/{lead_id}", response_model=ProspectLeadRead)
+def update_prospect_lead(
+    lead_id: UUID,
+    payload: ProspectLeadUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    lead = session.exec(
+        select(ProspectLead).where(
+            ProspectLead.id == lead_id,
+            ProspectLead.tenant_id == auth.tenant_id,
+        )
+    ).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(lead, field, value)
+    lead.updated_at = datetime.now(timezone.utc)
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return _prospect_lead_to_read(lead)
+
+
+@router.post("/leads/{lead_id}/convert-to-account", response_model=ProspectLeadRead, status_code=201)
+def convert_prospect_lead_to_account(
+    lead_id: UUID,
+    payload: ProspectLeadConvertRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Create a CustomerAccount from a lead and mark the lead status='won'.
+
+    If the lead has already been converted (customer_account_id is set),
+    returns 409 rather than creating a duplicate account.
+    """
+    lead = session.exec(
+        select(ProspectLead).where(
+            ProspectLead.id == lead_id,
+            ProspectLead.tenant_id == auth.tenant_id,
+        )
+    ).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if lead.customer_account_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Lead already converted to a customer account.",
+        )
+
+    account_name = (payload.account_name or "").strip() or lead.name
+    account = CustomerAccount(
+        tenant_id=auth.tenant_id,
+        name=account_name,
+        contact_name=(payload.contact_name or "").strip() or None,
+        contact_phone=(payload.contact_phone or "").strip() or lead.phone,
+        contact_email=(payload.contact_email or "").strip() or None,
+        billing_address=lead.address,
+    )
+    session.add(account)
+    session.flush()
+
+    lead.customer_account_id = account.id
+    lead.status = "won"
+    lead.updated_at = datetime.now(timezone.utc)
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return _prospect_lead_to_read(lead)
