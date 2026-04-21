@@ -2,6 +2,17 @@ import axios from 'axios'
 import { Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
 
+// F-M7: declare our internal axios-request flag so we don't rely on implicit
+// `any` when setting `config._retried = true` in the 401 retry interceptor.
+declare module 'axios' {
+  export interface InternalAxiosRequestConfig {
+    _retried?: boolean
+  }
+  export interface AxiosRequestConfig {
+    _retried?: boolean
+  }
+}
+
 /**
  * Optional API origin for Capacitor / native builds (scheme + host, no path).
  * Set `VITE_API_BASE_URL` at build time, e.g. `https://mainspring.au` or `https://mainspring.au/v1`.

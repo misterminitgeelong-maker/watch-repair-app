@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
 import {
@@ -392,39 +392,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshSession()
   }
 
-  function hasFeature(feature: FeatureKey) {
+  // F-M1: stable action references via latest-ref pattern.
+  // The inline action functions above are redefined on every render, so the
+  // previous provider value={{ ... }} object identity changed every render and
+  // every useAuth() consumer re-rendered on every auth state change.
+  // Here, `actionsRef` always points at the latest copies, and the exported
+  // action shims below keep a fixed identity across renders. Combined with
+  // useMemo() on the provider value, consumers only re-render when the
+  // primitive state they care about changes.
+  const actionsRef = useRef({ login, logout, refreshSession, switchSite, hasFeature: (feature: FeatureKey) => {
     if (role === 'platform_admin') return true
     return enabledFeatures.includes(feature)
+  } })
+  actionsRef.current = {
+    login,
+    logout,
+    refreshSession,
+    switchSite,
+    hasFeature: (feature: FeatureKey) => {
+      if (role === 'platform_admin') return true
+      return enabledFeatures.includes(feature)
+    },
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        token,
-        role,
-        tenantId,
-        sessionUserId,
-        activeSiteTenantId,
-        availableSites,
-        planCode,
-        enabledFeatures,
-        signupPaymentPending,
-        subscriptionStatus,
-        trialEnd,
-        shopCalendarTodayYmd,
-        scheduleCalendarTimezone,
-        sessionReady,
-        initializing,
-        login,
-        logout,
-        hasFeature,
-        refreshSession,
-        switchSite,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const stableLogin = useCallback(
+    (a: string, r?: string | null, e?: number) => actionsRef.current.login(a, r, e),
+    [],
   )
+  const stableLogout = useCallback(() => actionsRef.current.logout(), [])
+  const stableRefreshSession = useCallback(() => actionsRef.current.refreshSession(), [])
+  const stableSwitchSite = useCallback(
+    (nextTenantId: string) => actionsRef.current.switchSite(nextTenantId),
+    [],
+  )
+  const stableHasFeature = useCallback(
+    (feature: FeatureKey) => actionsRef.current.hasFeature(feature),
+    [],
+  )
+
+  const contextValue = useMemo(
+    () => ({
+      token,
+      role,
+      tenantId,
+      sessionUserId,
+      activeSiteTenantId,
+      availableSites,
+      planCode,
+      enabledFeatures,
+      signupPaymentPending,
+      subscriptionStatus,
+      trialEnd,
+      shopCalendarTodayYmd,
+      scheduleCalendarTimezone,
+      sessionReady,
+      initializing,
+      login: stableLogin,
+      logout: stableLogout,
+      hasFeature: stableHasFeature,
+      refreshSession: stableRefreshSession,
+      switchSite: stableSwitchSite,
+    }),
+    [
+      token,
+      role,
+      tenantId,
+      sessionUserId,
+      activeSiteTenantId,
+      availableSites,
+      planCode,
+      enabledFeatures,
+      signupPaymentPending,
+      subscriptionStatus,
+      trialEnd,
+      shopCalendarTodayYmd,
+      scheduleCalendarTimezone,
+      sessionReady,
+      initializing,
+      stableLogin,
+      stableLogout,
+      stableHasFeature,
+      stableRefreshSession,
+      stableSwitchSite,
+    ],
+  )
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
