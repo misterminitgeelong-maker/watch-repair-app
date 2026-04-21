@@ -23,6 +23,9 @@ const config: UserConfigExport & {
       ['src/**/*.dom.test.{ts,tsx}', 'jsdom'],
       ['src/components/**/*.test.tsx', 'jsdom'],
       ['src/context/**/*.test.tsx', 'jsdom'],
+      // mobileServicesMap/mapUtils.test.ts exercises sessionStorage so it
+      // needs a browser-like environment too.
+      ['src/components/mobileServicesMap/*.test.ts', 'jsdom'],
     ],
   },
   resolve: {
