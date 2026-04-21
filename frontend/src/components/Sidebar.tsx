@@ -461,7 +461,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       {showIosHint && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          style={{ backgroundColor: 'var(--ms-overlay)' }}
           onClick={() => setShowIosHint(false)}
         >
           <div

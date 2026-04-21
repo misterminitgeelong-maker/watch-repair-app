@@ -373,7 +373,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
 
       {/* Change Plan Modal */}
       {planModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'var(--ms-overlay)' }}>
           <div className="rounded-2xl shadow-xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border-strong)' }}>
             <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Change Plan — {planModal.name}</h3>
             <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>Current: <strong>{planModal.currentPlan}</strong></p>
