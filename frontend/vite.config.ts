@@ -23,9 +23,11 @@ const config: UserConfigExport & {
       ['src/**/*.dom.test.{ts,tsx}', 'jsdom'],
       ['src/components/**/*.test.tsx', 'jsdom'],
       ['src/context/**/*.test.tsx', 'jsdom'],
-      // mobileServicesMap/mapUtils.test.ts exercises sessionStorage so it
-      // needs a browser-like environment too.
+      // mobileServicesMap/mapUtils.test.ts exercises sessionStorage.
+      // repairQueueHelpers.test.ts exercises localStorage.
+      // Both need a browser-like environment.
       ['src/components/mobileServicesMap/*.test.ts', 'jsdom'],
+      ['src/lib/repairQueueHelpers.test.ts', 'jsdom'],
     ],
   },
   resolve: {
