@@ -283,6 +283,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Dev-only auto-login. The leading `import.meta.env.DEV` guard is what
+    // lets Vite dead-code-eliminate the whole dev-auto-login branch (including
+    // the `/v1/auth/dev-auto-login` URL string) from production bundles.
+    // DO NOT remove the `import.meta.env.DEV &&` prefix — without it the
+    // branch, and the URL it embeds, would ship in prod bundles.
     const enableDevAutoLogin =
       import.meta.env.DEV && String(import.meta.env.VITE_ENABLE_DEV_AUTO_LOGIN ?? 'false') === 'true'
 

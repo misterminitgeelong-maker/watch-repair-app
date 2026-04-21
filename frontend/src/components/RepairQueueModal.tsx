@@ -1,4 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+
+function filteredJobsKeyHasIds(key: string): boolean {
+  return key.length > 0
+}
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
@@ -315,12 +319,40 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     return true
   })
 
+  // F-H3: Rebuild the queue whenever the *membership* of filteredJobs changes,
+  // not just when the count changes. The previous effect only keyed on
+  // `filteredJobs.length`, so if a filter swap produced the same count but
+  // a different set of jobs (say 5 "due today" -> 5 "in progress"), the old
+  // queueOrder was kept and the modal showed the wrong jobs. Key on a stable
+  // sorted join of ids instead.
+  const filteredJobIdsKey = useMemo(
+    () =>
+      filteredJobs
+        .map((j) => j.id)
+        .slice()
+        .sort()
+        .join('|'),
+    [filteredJobs],
+  )
+
   useEffect(() => {
-    if (filteredJobs.length > 0 && queueOrder === null) {
-      setQueueOrder(sortQueue(filteredJobs).map(j => j.id))
-    }
+    if (!filteredJobsKeyHasIds(filteredJobIdsKey)) return
+    // Preserve existing order for ids that are still present, then append
+    // any new ids in their sort-queue position. This keeps manual reorder
+    // sticky while still reacting to membership changes.
+    setQueueOrder((prev) => {
+      const sortedIds = sortQueue(filteredJobs).map((j) => j.id)
+      if (prev === null) return sortedIds
+      const filteredSet = new Set(sortedIds)
+      const kept = prev.filter((id) => filteredSet.has(id))
+      const keptSet = new Set(kept)
+      const appended = sortedIds.filter((id) => !keptSet.has(id))
+      return [...kept, ...appended]
+    })
+  // Intentional deps: the id-set key (membership) + the latest jobs payload
+  // used to compute default sort. Do NOT depend on queueOrder here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredJobs.length, queueOrder])
+  }, [filteredJobIdsKey])
 
   const jobMap = Object.fromEntries(filteredJobs.map(j => [j.id, j]))
   const visibleIds = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id])
