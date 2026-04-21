@@ -370,20 +370,10 @@ if _static and _static.is_dir():
     # Serve JS/CSS/assets at /assets
     app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
 
-    # Universal Links / App Links verification (Step 7) — must be application/json
-    @app.get("/.well-known/assetlinks.json", include_in_schema=False)
-    async def well_known_assetlinks():
-        p = _static / ".well-known" / "assetlinks.json"
-        if p.is_file():
-            return FileResponse(str(p), media_type="application/json")
-        return JSONResponse({"detail": "Not found"}, status_code=404)
-
-    @app.get("/.well-known/apple-app-site-association", include_in_schema=False)
-    async def well_known_apple_app_site_association():
-        p = _static / ".well-known" / "apple-app-site-association"
-        if p.is_file():
-            return FileResponse(str(p), media_type="application/json")
-        return JSONResponse({"detail": "Not found"}, status_code=404)
+    # Universal Links / App Links endpoints were removed along with the
+    # Capacitor / native builds. If they come back in future, restore the
+    # /.well-known/* routes here and re-add the JSON fixtures under
+    # frontend/public/.well-known/.
 
     # SPA fallback — any non-API path serves index.html
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)

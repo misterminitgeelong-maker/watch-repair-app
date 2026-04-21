@@ -4,7 +4,9 @@ WORKDIR /app/frontend
 # Vite env vars must be passed as build args (Railway injects service vars)
 ARG VITE_GOOGLE_MAPS_API_KEY
 ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
-# Optional: set for Capacitor / native builds (e.g. https://mainspring.au). Omit for same-origin web bundle in Docker.
+# Optional: set when hosting the frontend on a different origin than the API
+# (e.g. VITE_API_BASE_URL=https://api.mainspring.au with the SPA on
+# https://app.mainspring.au). Leave unset for the same-origin Docker bundle.
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY frontend/package.json frontend/package-lock.json ./

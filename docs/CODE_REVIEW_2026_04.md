@@ -1,6 +1,8 @@
 # Code Review — Mainspring / Watch Repair App
 
-**Scope:** All code under `/workspace`: FastAPI + SQLModel backend (`backend/`), React + Vite + Capacitor frontend (`frontend/`), native Kotlin/Compose Android app (`apps/mainspring-native-android/`), auxiliary scrapers, and infra/docs at the repo root.
+> **2026-04-21 update:** The Capacitor iOS/Android wrappers, native Kotlin/Compose client (`apps/mainspring-native-android/`), and store-release tooling referenced below have been removed from the tree. Sections F-H1 (`capacitor.config.ts` allowNavigation), A-H1 / A-H2 (Android logging + cleartext), and A-CI (native-app CI) are kept here for historical context only — the files they refer to no longer exist.
+
+**Scope:** All code under `/workspace`: FastAPI + SQLModel backend (`backend/`), React + Vite frontend (`frontend/`), auxiliary scrapers, and infra/docs at the repo root. (When this review was written the tree also included Capacitor wrappers and a native Kotlin Android app; both were removed in the 2026-04-21 delete pass.)
 
 **Method:** Static read-through + targeted verification of highest-impact findings (no runtime exec). Where I call out a line, I re-read the file in this session to confirm the claim.
 

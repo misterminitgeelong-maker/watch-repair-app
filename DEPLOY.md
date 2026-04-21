@@ -135,7 +135,7 @@ settings.
 - `ALLOW_PUBLIC_BOOTSTRAP` (optional, default `true`): allow anyone to hit `/v1/auth/bootstrap` to create a tenant. Set to `false` after initial deploy.
 - `ALLOW_SQLITE_IN_PRODUCTION` (optional, default `false`): break-glass flag for intentionally running on SQLite in prod. Validator blocks SQLite URLs otherwise.
 - `STATIC_DIR` (required in prod, default empty): path to built frontend (`/app/static` in Docker).
-- `CORS_ORIGINS` (optional, default `https://mainspring.au,https://www.mainspring.au,capacitor://localhost,https://localhost,http://localhost,ionic://localhost`): comma-separated allowlist. The validator blocks `*` in production.
+- `CORS_ORIGINS` (optional, default `https://mainspring.au,https://www.mainspring.au,https://localhost,http://localhost`): comma-separated allowlist. The validator blocks `*` in production.
 - `PUBLIC_BASE_URL` (optional, default `https://mainspring.au`): base URL used in SMS approval links and the customer portal URL. Validator blocks localhost values in production.
 - `PORTAL_SESSION_TTL_DAYS` (optional, default `7`): lifetime of customer-portal bookmarkable sessions.
 - `RATE_LIMIT_AUTH_LOGIN` (optional, default `20/minute`): slowapi limit on `/v1/auth/login`.

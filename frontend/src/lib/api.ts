@@ -1,6 +1,4 @@
 import axios from 'axios'
-import { Capacitor } from '@capacitor/core'
-import { Preferences } from '@capacitor/preferences'
 
 // F-M7: declare our internal axios-request flag so we don't rely on implicit
 // `any` when setting `config._retried = true` in the 401 retry interceptor.
@@ -14,9 +12,10 @@ declare module 'axios' {
 }
 
 /**
- * Optional API origin for Capacitor / native builds (scheme + host, no path).
- * Set `VITE_API_BASE_URL` at build time, e.g. `https://mainspring.au` or `https://mainspring.au/v1`.
- * Leave unset for normal web: same host + `/v1` (Vite dev proxy or Docker static + API).
+ * Optional API origin for cross-origin deploys. Set `VITE_API_BASE_URL` at
+ * build time (e.g. `https://mainspring.au`) to send requests to a different
+ * host than the one serving the frontend; leave unset for same-origin
+ * deployments (Vite dev proxy or the Docker image that serves both).
  */
 function normalizeConfiguredApiOrigin(raw: string): string {
   let s = raw.trim().replace(/\/+$/, '')
@@ -39,16 +38,7 @@ export function withApiOrigin(v1Path: string): string {
   return API_ORIGIN ? `${API_ORIGIN}${v1Path}` : v1Path
 }
 
-// ── Native (Capacitor) auth — Keychain/Keystore via @aparajita/capacitor-secure-storage; remember-me in Preferences. ──
-const NATIVE_ACCESS_KEY = 'mainspring_access_token'
-const NATIVE_REFRESH_KEY = 'mainspring_refresh_token'
-const PREF_REMEMBER = 'mainspring_remember_device'
-
-let nativeAccessToken: string | null = null
-let nativeRefreshToken: string | null = null
-let nativeRememberDevice = true
-
-/** Fired after access token changes (401 refresh, resume refresh, login). Detail may include `expiresInSeconds` for proactive refresh scheduling. */
+/** Fired after access token changes (401 refresh, login). Detail may include `expiresInSeconds` for proactive refresh scheduling. */
 export const AUTH_ACCESS_TOKEN_UPDATED = 'auth:access-token-updated'
 
 function emitAccessTokenUpdated(expiresInSeconds?: number): void {
@@ -57,126 +47,6 @@ function emitAccessTokenUpdated(expiresInSeconds?: number): void {
       detail: expiresInSeconds != null && expiresInSeconds > 0 ? { expiresInSeconds } : {},
     }),
   )
-}
-
-function isNativeApp(): boolean {
-  try {
-    return Capacitor.isNativePlatform()
-  } catch {
-    return false
-  }
-}
-
-async function secureStorageGetString(key: string): Promise<string | null> {
-  try {
-    const { SecureStorage } = await import('@aparajita/capacitor-secure-storage')
-    const v = await SecureStorage.get(key)
-    return typeof v === 'string' && v ? v : null
-  } catch {
-    return null
-  }
-}
-
-async function secureStorageSetString(key: string, value: string | null): Promise<void> {
-  const { SecureStorage } = await import('@aparajita/capacitor-secure-storage')
-  if (value) await SecureStorage.set(key, value)
-  else await SecureStorage.remove(key)
-}
-
-/** Call once at startup before React (native only). Loads JWTs from secure storage; migrates legacy Preferences tokens. */
-export async function hydrateNativeAuthFromPreferences(): Promise<void> {
-  if (!isNativeApp()) return
-  let access = await secureStorageGetString(NATIVE_ACCESS_KEY)
-  let refresh = await secureStorageGetString(NATIVE_REFRESH_KEY)
-
-  if (access == null && refresh == null) {
-    const [legacyA, legacyR] = await Promise.all([
-      Preferences.get({ key: NATIVE_ACCESS_KEY }),
-      Preferences.get({ key: NATIVE_REFRESH_KEY }),
-    ])
-    if (legacyA.value || legacyR.value) {
-      access = legacyA.value ?? null
-      refresh = legacyR.value ?? null
-      try {
-        if (access) await secureStorageSetString(NATIVE_ACCESS_KEY, access)
-        else await secureStorageSetString(NATIVE_ACCESS_KEY, null)
-        if (refresh) await secureStorageSetString(NATIVE_REFRESH_KEY, refresh)
-        else await secureStorageSetString(NATIVE_REFRESH_KEY, null)
-        await Promise.all([
-          Preferences.remove({ key: NATIVE_ACCESS_KEY }),
-          Preferences.remove({ key: NATIVE_REFRESH_KEY }),
-        ])
-      } catch {
-        /* if secure storage fails, keep legacy prefs for next launch */
-      }
-    }
-  }
-
-  nativeAccessToken = access
-  nativeRefreshToken = refresh
-  const m = await Preferences.get({ key: PREF_REMEMBER })
-  nativeRememberDevice = m.value !== 'false'
-}
-
-function scheduleNativeAuthPersist(): void {
-  if (!isNativeApp()) return
-  void (async () => {
-    try {
-      if (nativeAccessToken) await secureStorageSetString(NATIVE_ACCESS_KEY, nativeAccessToken)
-      else await secureStorageSetString(NATIVE_ACCESS_KEY, null)
-      if (nativeRefreshToken) await secureStorageSetString(NATIVE_REFRESH_KEY, nativeRefreshToken)
-      else await secureStorageSetString(NATIVE_REFRESH_KEY, null)
-      await Preferences.set({ key: PREF_REMEMBER, value: nativeRememberDevice ? 'true' : 'false' })
-    } catch {
-      /* non-fatal */
-    }
-  })()
-}
-
-async function clearNativeAuthDeviceStorage(): Promise<void> {
-  await Promise.all([
-    Preferences.remove({ key: PREF_REMEMBER }),
-    Preferences.remove({ key: NATIVE_ACCESS_KEY }),
-    Preferences.remove({ key: NATIVE_REFRESH_KEY }),
-  ])
-  try {
-    await secureStorageSetString(NATIVE_ACCESS_KEY, null)
-    await secureStorageSetString(NATIVE_REFRESH_KEY, null)
-  } catch {
-    /* ignore */
-  }
-}
-
-let lastNativeResumeRefreshAt = 0
-const NATIVE_RESUME_REFRESH_COOLDOWN_MS = 5000
-
-/**
- * Proactively refresh JWTs using the stored refresh token (no 401). Use on app resume so the access token is fresh after long background.
- * Returns true if a new access token was obtained. Does not clear tokens on network errors.
- */
-export async function proactiveTokenRefresh(): Promise<boolean> {
-  if (!isNativeApp()) return false
-  const rt = getStoredRefreshToken()
-  if (!rt) return false
-  try {
-    const res = await refreshAuth(rt)
-    const access = res.data.access_token
-    const refresh = res.data.refresh_token ?? null
-    setStoredTokens(access, refresh)
-    emitAccessTokenUpdated(res.data.expires_in_seconds)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/** On native resume: optional cooldown, then proactive refresh so the next API call is unlikely to 401. */
-export async function refreshSessionOnNativeResume(): Promise<void> {
-  if (!isNativeApp()) return
-  const now = Date.now()
-  if (now - lastNativeResumeRefreshAt < NATIVE_RESUME_REFRESH_COOLDOWN_MS) return
-  lastNativeResumeRefreshAt = now
-  await proactiveTokenRefresh()
 }
 
 const api = axios.create({ baseURL: API_ORIGIN ? `${API_ORIGIN}/v1` : '/v1', timeout: 20000 })
@@ -266,7 +136,6 @@ const REFRESH_TOKEN_KEY = 'refresh_token'
 const REMEMBER_ME_KEY = 'remember_me'
 
 export function getRememberMe(): boolean {
-  if (isNativeApp()) return nativeRememberDevice
   try {
     return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
   } catch {
@@ -275,11 +144,6 @@ export function getRememberMe(): boolean {
 }
 
 export function setRememberMe(value: boolean) {
-  if (isNativeApp()) {
-    nativeRememberDevice = value
-    void Preferences.set({ key: PREF_REMEMBER, value: value ? 'true' : 'false' }).catch(() => {})
-    return
-  }
   try {
     if (value) localStorage.setItem(REMEMBER_ME_KEY, 'true')
     else localStorage.removeItem(REMEMBER_ME_KEY)
@@ -293,22 +157,14 @@ function getTokenStorage(): Storage {
 }
 
 export function getStoredAccessToken(): string | null {
-  if (isNativeApp()) return nativeAccessToken
   return getTokenStorage().getItem('token') ?? localStorage.getItem('token') ?? sessionStorage.getItem('token')
 }
 
 export function getStoredRefreshToken(): string | null {
-  if (isNativeApp()) return nativeRefreshToken
   return getTokenStorage().getItem(REFRESH_TOKEN_KEY) ?? localStorage.getItem(REFRESH_TOKEN_KEY) ?? sessionStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
 export function setStoredTokens(accessToken: string, refreshToken: string | null) {
-  if (isNativeApp()) {
-    nativeAccessToken = accessToken
-    nativeRefreshToken = refreshToken
-    scheduleNativeAuthPersist()
-    return
-  }
   const storage = getTokenStorage()
   storage.setItem('token', accessToken)
   if (refreshToken != null) storage.setItem(REFRESH_TOKEN_KEY, refreshToken)
@@ -323,12 +179,6 @@ export function setStoredTokens(accessToken: string, refreshToken: string | null
 }
 
 export function clearStoredTokens() {
-  if (isNativeApp()) {
-    nativeAccessToken = null
-    nativeRefreshToken = null
-    void clearNativeAuthDeviceStorage().catch(() => {})
-    return
-  }
   localStorage.removeItem('token')
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   sessionStorage.removeItem('token')
