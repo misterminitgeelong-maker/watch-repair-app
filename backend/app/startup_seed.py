@@ -927,7 +927,7 @@ def ensure_demo_supplemental_data(session: Session) -> None:
     if ak_jobs:
         cutoff = datetime.now(timezone.utc) - timedelta(days=45)
         newest_date = max(j.created_at for j in ak_jobs)
-        if newest_date < cutoff:
+        if newest_date.replace(tzinfo=None) < cutoff.replace(tzinfo=None):
             # Spread the 5 most recent demo jobs across the last 28 days
             now = datetime.now(timezone.utc)
             for i, job in enumerate(ak_jobs):
