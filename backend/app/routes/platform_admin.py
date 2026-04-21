@@ -60,12 +60,15 @@ def list_all_tenants(
 ):
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
 
-    # Count users per tenant with a simple per-tenant query to avoid SQLModel aggregation issues
+    # B-M3: one grouped query instead of N per-tenant COUNTs. SQLModel's
+    # .all() on a grouped select returns tuples, so we build the map in Python.
     user_counts: dict[UUID, int] = {}
-    for t in tenants:
-        user_counts[t.id] = session.exec(
-            select(func.count(User.id)).where(User.tenant_id == t.id)
-        ).one()
+    if tenants:
+        grouped = session.exec(
+            select(User.tenant_id, func.count(User.id)).group_by(User.tenant_id)
+        ).all()
+        for tenant_id, count in grouped:
+            user_counts[tenant_id] = int(count or 0)
 
     return [
         PlatformTenantRead(
