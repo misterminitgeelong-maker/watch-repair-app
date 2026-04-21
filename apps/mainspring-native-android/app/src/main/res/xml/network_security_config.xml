@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dev scaffold: cleartext allowed for local HTTP APIs (emulator 10.0.2.2, LAN, etc.). Use HTTPS-only base-config before Play release. -->
+<!--
+  A-H2: default to HTTPS-only. Cleartext is only allowed for localhost
+  and the Android emulator's loopback to the host (10.0.2.2), so a
+  misconfigured release build pointing at http://mainspring.au cannot
+  silently work. Add domain entries here for any other dev host you need
+  (e.g. a LAN address) but do NOT relax the base-config.
+-->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true" />
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
 </network-security-config>

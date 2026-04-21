@@ -10,7 +10,6 @@
         android:roundIcon="@drawable/ic_launcher_vector"
         android:supportsRtl="true"
         android:theme="@style/Theme.MainspringNative"
-        android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"

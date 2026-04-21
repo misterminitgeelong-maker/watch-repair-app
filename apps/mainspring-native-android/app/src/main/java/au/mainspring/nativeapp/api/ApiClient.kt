@@ -13,13 +13,19 @@ object ApiClient {
         .setLenient()
         .create()
 
+    // A-H1: HttpLoggingInterceptor at BASIC logs URL/method/status lines for
+    // every authenticated request. In release builds this is unnecessary noise
+    // at best and a leak of request metadata at worst. Only attach logging in
+    // debug builds.
     private val logging: HttpLoggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+        else HttpLoggingInterceptor.Level.NONE
     }
 
     private val plainClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .addInterceptor(logging)
+        OkHttpClient.Builder().apply {
+            if (BuildConfig.DEBUG) addInterceptor(logging)
+        }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
@@ -40,7 +46,7 @@ object ApiClient {
     private val mainClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor())
-            .addInterceptor(logging)
+            .apply { if (BuildConfig.DEBUG) addInterceptor(logging) }
             .authenticator(TokenAuthenticator(refreshApi))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
