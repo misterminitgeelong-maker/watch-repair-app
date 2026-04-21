@@ -95,7 +95,7 @@ def _job_done(headers: dict, customer_id: str, **kwargs) -> str:
     comp = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "ok"},
+        json={"status": "work_completed", "note": "ok"},
     )
     assert comp.status_code == 200, comp.text
     return job_id
@@ -130,7 +130,7 @@ def test_auto_key_reports_mobile_shop_revenue_and_tech_share():
 
     today = date.today().isoformat()
     rep = client.get(
-        "/v1/reports/auto-key-reports",
+        "/v1/reports/auto-key",
         headers=headers,
         params={"date_from": today, "date_to": today},
     )

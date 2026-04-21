@@ -13,6 +13,7 @@ from sqlmodel import Field, SQLModel
 from .datetime_utils import as_utc_for_json
 
 JobStatus = Literal[
+    # Watch repair pipeline
     "awaiting_quote",
     "awaiting_go_ahead",
     "go_ahead",
@@ -26,11 +27,23 @@ JobStatus = Literal[
     "completed",
     "awaiting_collection",
     "collected",
-    "en_route",   # Auto key mobile: tech driving to job
-    "on_site",    # Auto key mobile: tech arrived at location
-    "pending_booking",  # Mobile Services: quote + time sent; customer must confirm
-    "booked",  # Mobile Services: customer confirmed booking; on calendar
-    "awaiting_customer_details",  # Mobile Services: quick-add; customer fills link
+    # Mobile Services / Auto-key shared vocabulary
+    "en_route",                      # tech driving to job
+    "on_site",                       # tech arrived at location
+    "pending_booking",               # quote + time sent; customer must confirm
+    "booked",                        # customer confirmed booking; on calendar
+    "awaiting_customer_details",     # quick-add; customer fills link
+    # Mobile Services specific statuses (also used by the frontend STATUSES list
+    # in AutoKeyJobsPage.tsx). These were previously missing from the Literal,
+    # so every Mobile Services status update with one of these strings failed
+    # Pydantic validation — that's the root cause of most failing auto-key tests.
+    "quote_sent",                    # quote delivered to customer, awaiting response
+    "awaiting_booking_confirmation", # customer viewed quote, booking-link pending
+    "booking_confirmed",             # customer confirmed; ready to dispatch
+    "job_delayed",                   # tech-reported delay
+    "work_completed",                # work done; invoice to follow
+    "invoice_paid",                  # customer paid; final
+    "failed_job",                    # tech/dispatcher marked job unrecoverable; final
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
