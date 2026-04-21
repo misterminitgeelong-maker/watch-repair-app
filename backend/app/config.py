@@ -120,6 +120,16 @@ class Settings(BaseSettings):
     rate_limit_public_quote_get: str = "30/minute"
     rate_limit_public_quote_decision: str = "20/minute"
     rate_limit_import_csv: str = "5/minute"
+    # Public customer-portal endpoints (cross-tenant lookup by email).
+    # These return PII (job status + names/brands) so they must be throttled.
+    rate_limit_public_customer_lookup: str = "30/minute"
+    rate_limit_public_portal_create: str = "10/minute"
+    rate_limit_public_portal_session: str = "60/minute"
+
+    # Customer portal session TTL. Was 30 days; shortened because issuance only
+    # requires an email + that the email has at least one active job. Move to
+    # a magic-link / OTP flow before extending this back out.
+    portal_session_ttl_days: int = 7
 
     # Public quote approval token lifetime from send time.
     quote_approval_token_ttl_hours: int = 168

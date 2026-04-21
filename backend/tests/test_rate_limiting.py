@@ -157,3 +157,66 @@ def test_import_csv_rate_limited():
     finally:
         settings.rate_limit_import_csv = old
         limiter.reset()
+
+
+def test_public_customer_lookup_rate_limited():
+    limiter.reset()
+    old = settings.rate_limit_public_customer_lookup
+    settings.rate_limit_public_customer_lookup = "1/minute"
+    try:
+        first = client.post(
+            "/v1/public/customer-lookup",
+            json={"email": f"nobody-{uuid4().hex[:6]}@example.com"},
+        )
+        second = client.post(
+            "/v1/public/customer-lookup",
+            json={"email": f"nobody-{uuid4().hex[:6]}@example.com"},
+        )
+        assert first.status_code == 200
+        assert second.status_code == 429
+    finally:
+        settings.rate_limit_public_customer_lookup = old
+        limiter.reset()
+
+
+def test_create_portal_session_requires_active_jobs_and_is_rate_limited():
+    limiter.reset()
+    old = settings.rate_limit_public_portal_create
+    settings.rate_limit_public_portal_create = "5/minute"
+    try:
+        # Unknown email -> 404, never mints a session.
+        unknown = client.post(
+            "/v1/public/portal/create-session",
+            json={"email": f"ghost-{uuid4().hex[:6]}@example.com"},
+        )
+        assert unknown.status_code == 404
+
+        # Customer exists but has no jobs -> also 404 (blocks email enumeration via portal).
+        suffix = uuid4().hex[:8]
+        token = _bootstrap_and_login(f"portal-noact-{suffix}", f"owner-{suffix}@portal.test", "pass123456")
+        headers = {"Authorization": f"Bearer {token}"}
+        email_no_jobs = f"noact-{suffix}@example.com"
+        client.post(
+            "/v1/customers",
+            headers=headers,
+            json={"full_name": "No Jobs", "email": email_no_jobs},
+        )
+        no_jobs = client.post("/v1/public/portal/create-session", json={"email": email_no_jobs})
+        assert no_jobs.status_code == 404
+
+        # Rate limit the bare-404 path.
+        settings.rate_limit_public_portal_create = "1/minute"
+        limiter.reset()
+        first = client.post(
+            "/v1/public/portal/create-session",
+            json={"email": f"rl-{uuid4().hex[:6]}@example.com"},
+        )
+        second = client.post(
+            "/v1/public/portal/create-session",
+            json={"email": f"rl-{uuid4().hex[:6]}@example.com"},
+        )
+        assert first.status_code == 404
+        assert second.status_code == 429
+    finally:
+        settings.rate_limit_public_portal_create = old
+        limiter.reset()
