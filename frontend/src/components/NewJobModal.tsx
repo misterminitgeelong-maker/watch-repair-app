@@ -3,18 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, X } from 'lucide-react'
 import {
-  listCustomers, createCustomer, listWatches, createWatch, createJob,
+  listWatches, createWatch, createJob,
   listCustomerAccounts,
   uploadAttachment,
   getApiErrorMessage,
   getUploadErrorMessage,
   getWatchRepairsConfig,
-  type JobStatus, type Customer, type Watch, type CustomerAccount,
+  type JobStatus, type Watch, type CustomerAccount,
   type WatchCatalogueItem,
 } from '@/lib/api'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
+import { CustomerStep, useCustomerStep } from '@/components/CustomerStep'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
@@ -95,12 +96,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   // Start at step 2 if customer is already known
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
-  // Step 1 – Customer
-  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
-  const [selectedCustomerId, setSelectedCustomerId] = useState(preselectedCustomer?.id ?? '')
-  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
-  const [createdCustomerId, setCreatedCustomerId] = useState('')
-  const [phoneMatch, setPhoneMatch] = useState<Customer | null>(null)
+  // Step 1 – Customer (extracted into shared CustomerStep / useCustomerStep)
+  const customerStep = useCustomerStep({
+    preselectedCustomerId: preselectedCustomer?.id,
+    enableCustomersQuery: !preselectedCustomer,
+  })
 
   // Step 2 – Watch
   const [watchMode, setWatchMode] = useState<'existing' | 'new'>('existing')
@@ -125,18 +125,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [loading, setLoading] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
 
-  const { data: customers } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => listCustomers().then(r => r.data),
-    enabled: !preselectedCustomer,
-  })
-
   const { data: repairsConfig } = useQuery({
     queryKey: ['watch-repairs-config'],
     queryFn: () => getWatchRepairsConfig().then(r => r.data),
   })
 
-  const activeCustomerId = createdCustomerId || selectedCustomerId
+  const activeCustomerId = customerStep.activeCustomerId
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
@@ -152,17 +146,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     enabled: !!activeCustomerId,
   })
 
-  const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.value
-    setNewCustomer(f => ({ ...f, [k]: value }))
-    if (k === 'phone' && customers) {
-      const match = customers.find((c: Customer) => c.phone && value && c.phone.replace(/\D/g, '') === value.replace(/\D/g, ''))
-      setPhoneMatch(match || null)
-    }
-    if (k === 'phone' && !value) {
-      setPhoneMatch(null)
-    }
-  }
   const setW = (k: keyof typeof newWatch) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setNewWatch(f => ({ ...f, [k]: e.target.value }))
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -183,24 +166,19 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   async function nextStep1() {
     setError('')
-    if (customerMode === 'new') {
-      if (!newCustomer.full_name) { setError('Customer name is required.'); return }
-      setLoading(true)
-      try {
-        const { data } = await createCustomer(newCustomer)
-        setCreatedCustomerId(data.id)
-        qc.invalidateQueries({ queryKey: ['customers'] })
-      } catch (err) { setError(getApiErrorMessage(err, 'Failed to create customer.')); setLoading(false); return }
-      setLoading(false)
-    } else {
-      if (!selectedCustomerId) { setError('Please select a customer.'); return }
+    setLoading(true)
+    const result = await customerStep.submit()
+    setLoading(false)
+    if (!result.ok) {
+      setError(result.error)
+      return
     }
     setStep(2)
   }
 
   async function nextStep2() {
     setError('')
-    const custId = createdCustomerId || selectedCustomerId
+    const custId = customerStep.activeCustomerId
     if (watchMode === 'new') {
       setLoading(true)
       try {
@@ -302,54 +280,15 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
       {/* ── Step 1: Customer ── */}
       {step === 1 && (
-        <div className="space-y-3">
-          <div className="flex gap-2 mb-1">
-            <button
-              onClick={() => setCustomerMode('existing')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={customerMode === 'existing'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
-              }
-            >Existing Customer</button>
-            <button
-              onClick={() => setCustomerMode('new')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={customerMode === 'new'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
-              }
-            >New Customer</button>
-          </div>
-          {customerMode === 'existing' ? (
-            <Select label="Select Customer" value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)}>
-              <option value="">Choose…</option>
-              {(customers ?? []).map((c: Customer) => <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
-            </Select>
-          ) : (
-            <>
-              <Input label="Full Name *" value={newCustomer.full_name} onChange={setC('full_name')} placeholder="Jane Smith" autoFocus />
-              <div className="grid grid-cols-2 gap-2">
-                <Input label="Phone" value={newCustomer.phone} onChange={setC('phone')} placeholder="0412 345 678" />
-                <Input label="Email" type="email" value={newCustomer.email} onChange={setC('email')} placeholder="jane@example.com" />
-              </div>
-              {phoneMatch && (
-                <div className="rounded bg-yellow-100 border border-yellow-300 px-3 py-2 text-sm mt-2 flex items-center gap-2">
-                  <span>Existing customer found with this phone:</span>
-                  <span className="font-semibold">{phoneMatch.full_name}</span>
-                  <Button variant="secondary" onClick={() => { setCustomerMode('existing'); setSelectedCustomerId(phoneMatch.id); setPhoneMatch(null); }}>Use</Button>
-                </div>
-              )}
-              <Input label="Address" value={newCustomer.address} onChange={setC('address')} placeholder="Unit 5/36 Grange Rd, Toorak 3142" />
-              <Textarea label="Notes" value={newCustomer.notes} onChange={setC('notes')} rows={2} placeholder="VIP, allergic to…" />
-            </>
-          )}
-          {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={nextStep1} disabled={loading}>{loading ? 'Saving…' : 'Next →'}</Button>
-          </div>
-        </div>
+        <CustomerStep
+          state={customerStep}
+          includeAddressAndNotes
+          includePhoneMatchHint
+          error={error}
+          onCancel={onClose}
+          onNext={nextStep1}
+          loading={loading}
+        />
       )}
 
       {/* ── Step 2: Watch ── */}
