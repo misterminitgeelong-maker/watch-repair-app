@@ -1571,7 +1571,18 @@ function WeekHourDropCell({
   )
 }
 
-function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; priority?: string; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string; tech_notes?: string }; users: { id: string; full_name: string }[]; isSolo?: boolean }) {
+function AutoKeyJobCard({
+  job,
+  users,
+  isSolo,
+  /** When true, skip per-job quotes/invoices/account queries so long lists do not fan out dozens of parallel API calls (can freeze the UI). */
+  listMode = false,
+}: {
+  job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; customer_account_id?: string; assigned_user_id?: string; vehicle_make?: string; vehicle_model?: string; vehicle_year?: number; registration_plate?: string; key_type?: string; key_quantity: number; programming_status: string; status: JobStatus; priority?: string; created_at: string; salesperson?: string; scheduled_at?: string; job_address?: string; job_type?: string; tech_notes?: string }
+  users: { id: string; full_name: string }[]
+  isSolo?: boolean
+  listMode?: boolean
+}) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showQuoteModal, setShowQuoteModal] = useState(false)
@@ -1583,16 +1594,19 @@ function AutoKeyJobCard({ job, users, isSolo }: { job: { id: string; job_number:
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
+    enabled: !listMode,
   })
-  const matchingAccounts = customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
+  const matchingAccounts = listMode ? [] : customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
 
   const { data: quotes = [] } = useQuery({
     queryKey: ['auto-key-quotes', job.id],
     queryFn: () => listAutoKeyQuotes(job.id).then(r => r.data),
+    enabled: !listMode,
   })
   const { data: invoices = [] } = useQuery({
     queryKey: ['auto-key-invoices', job.id],
     queryFn: () => listAutoKeyInvoices(job.id).then(r => r.data),
+    enabled: !listMode,
   })
 
   const latestQuote = quotes[0]
@@ -1955,7 +1969,7 @@ export default function AutoKeyJobsPage() {
     initialStatus && AUTO_KEY_CLOSED_STATUSES.includes(initialStatus as typeof AUTO_KEY_CLOSED_STATUSES[number])
       ? 'completed'
       : 'active'
-  const { role, token, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
+  const { role, shopCalendarTodayYmd, scheduleCalendarTimezone, sessionReady } = useAuth()
   const syncedShopCalendarDate = useRef(false)
   const weekAnchorSynced = useRef(false)
   const {
@@ -2028,13 +2042,9 @@ export default function AutoKeyJobsPage() {
     weekAnchorSynced.current = true
   }, [sessionReady, shopCalendarTodayYmd])
 
-  /** Full job list is shared across Pipeline, Jobs, Dispatch, and background tabs (reports/week/map/planner/POS). */
-  const fetchHubJobList = Boolean(token)
-
   const { data: jobs = [], isLoading, isError, error: jobsQueryError } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
-    enabled: fetchHubJobList,
   })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -2156,17 +2166,31 @@ export default function AutoKeyJobsPage() {
   const isSolo = users.length <= 1
   const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
     const q = search.trim().toLowerCase()
-    const matchSearch = !q || j.job_number.toLowerCase().includes(q) || j.title.toLowerCase().includes(q) ||
-      (j.vehicle_make && j.vehicle_make.toLowerCase().includes(q)) ||
-      (j.vehicle_model && j.vehicle_model.toLowerCase().includes(q)) ||
-      (j.registration_plate && j.registration_plate.toLowerCase().includes(q)) ||
-      (j.customer_name && j.customer_name.toLowerCase().includes(q))
+    const jn = String(j.job_number ?? '')
+    const jt = String(j.title ?? '')
+    const matchSearch =
+      !q ||
+      jn.toLowerCase().includes(q) ||
+      jt.toLowerCase().includes(q) ||
+      (j.vehicle_make && String(j.vehicle_make).toLowerCase().includes(q)) ||
+      (j.vehicle_model && String(j.vehicle_model).toLowerCase().includes(q)) ||
+      (j.registration_plate && String(j.registration_plate).toLowerCase().includes(q)) ||
+      (j.customer_name && String(j.customer_name).toLowerCase().includes(q))
     const inDirectory = jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
-    const matchAge = olderThanDays > 0 ? daysInShop(j.created_at) >= olderThanDays : true
+    const created = j.created_at ? String(j.created_at) : ''
+    const matchAge = olderThanDays > 0 ? (created ? daysInShop(created) >= olderThanDays : false) : true
     return matchSearch && inDirectory && matchStatus && matchAge
   })
   const statusOptions = jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
+
+  useEffect(() => {
+    if (statusFilter === 'all') return
+    const allowed: readonly string[] = jobDirectoryView === 'active' ? AUTO_KEY_ACTIVE_STATUSES : AUTO_KEY_CLOSED_STATUSES
+    if (!allowed.includes(statusFilter)) {
+      setStatusFilter('all')
+    }
+  }, [jobDirectoryView, statusFilter])
   const activeCount = (jobs ?? []).filter((j: { status: JobStatus }) => !isClosed(j.status)).length
   const completedCount = (jobs ?? []).filter((j: { status: JobStatus }) => isClosed(j.status)).length
 
@@ -2643,7 +2667,7 @@ export default function AutoKeyJobsPage() {
                 <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
               ) : (
                 sortedJobsDirectory.map((job) => (
-                  <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} />
+                  <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} listMode />
                 ))
               )}
             </div>
@@ -2713,7 +2737,7 @@ export default function AutoKeyJobsPage() {
                 ) : isSolo || dispatchTechFilter ? (
                   <div className="space-y-2">
                     {dispatchJobs.map((job: object) => (
-                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
+                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
                     ))}
                   </div>
                 ) : (
@@ -2740,7 +2764,7 @@ export default function AutoKeyJobsPage() {
                             </p>
                             <div className="space-y-2">
                               {techJobs.map((job: object) => (
-                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
+                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
                               ))}
                             </div>
                           </div>
@@ -2750,7 +2774,7 @@ export default function AutoKeyJobsPage() {
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Unassigned</p>
                             <div className="space-y-2">
                               {unassigned.map((job: object) => (
-                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
+                                <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
                               ))}
                             </div>
                           </div>
@@ -2768,7 +2792,7 @@ export default function AutoKeyJobsPage() {
                   </h3>
                   <div className="space-y-2">
                     {unscheduledJobs.map((job: object) => (
-                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} />
+                      <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
                     ))}
                   </div>
                 </div>
