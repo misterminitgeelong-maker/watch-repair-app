@@ -711,6 +711,14 @@ async def import_csv(
             ).all()
             used_job_numbers: set[str] = {jn for jn in existing_job_nums if jn}
 
+            # B-M2: count once before the loop, increment locally on each
+            # successful create. Previously this ran a COUNT(*) per row.
+            repair_job_running_count = int(
+                session.exec(
+                    select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant_id)
+                ).one()
+            )
+
             for idx, row in enumerate(rows, start=1):
                 row = _normalize_row_keys(row)
                 original_job_id = _get_first(row, [
@@ -798,11 +806,8 @@ async def import_csv(
                     else datetime.now(timezone.utc)
                 )
 
-                enforce_plan_limit(
-                    auth,
-                    "repair_job",
-                    int(session.exec(select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == tenant_id)).one()),
-                )
+                enforce_plan_limit(auth, "repair_job", repair_job_running_count)
+                repair_job_running_count += 1
 
                 job = RepairJob(
                     tenant_id=tenant_id,
@@ -851,6 +856,12 @@ async def import_csv(
                 select(ShoeRepairJob.job_number).where(ShoeRepairJob.tenant_id == tenant_id)
             ).all()
             used_job_numbers = {jn for jn in existing_job_nums if jn}
+
+            shoe_job_running_count = int(
+                session.exec(
+                    select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id)
+                ).one()
+            )
 
             for idx, row in enumerate(rows, start=1):
                 row = _normalize_row_keys(row)
@@ -950,11 +961,8 @@ async def import_csv(
 
                 ca_id = _infer_customer_account_id(session, tenant_id, customer.id)
 
-                enforce_plan_limit(
-                    auth,
-                    "shoe_job",
-                    int(session.exec(select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id)).one()),
-                )
+                enforce_plan_limit(auth, "shoe_job", shoe_job_running_count)
+                shoe_job_running_count += 1
 
                 job = ShoeRepairJob(
                     tenant_id=tenant_id,
@@ -1000,6 +1008,12 @@ async def import_csv(
                 select(AutoKeyJob.job_number).where(AutoKeyJob.tenant_id == tenant_id)
             ).all()
             used_job_numbers = {jn for jn in existing_job_nums if jn}
+
+            auto_key_running_count = int(
+                session.exec(
+                    select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+                ).one()
+            )
 
             for idx, row in enumerate(rows, start=1):
                 row = _normalize_row_keys(row)
@@ -1094,11 +1108,8 @@ async def import_csv(
 
                 ca_id = _infer_customer_account_id(session, tenant_id, customer.id)
 
-                enforce_plan_limit(
-                    auth,
-                    "auto_key_job",
-                    int(session.exec(select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).one()),
-                )
+                enforce_plan_limit(auth, "auto_key_job", auto_key_running_count)
+                auto_key_running_count += 1
 
                 job = AutoKeyJob(
                     tenant_id=tenant_id,
