@@ -85,7 +85,7 @@ export function Button({
     primary:   { backgroundColor: 'var(--ms-accent)',     color: '#fff',                 borderColor: 'var(--ms-accent)' },
     secondary: { backgroundColor: 'var(--ms-surface)',    color: 'var(--ms-text-mid)',   borderColor: 'var(--ms-border)' },
     ghost:     { backgroundColor: 'transparent',          color: 'var(--ms-text-mid)',   borderColor: 'transparent' },
-    danger:    { backgroundColor: '#7A3020',              color: '#fff',                 borderColor: '#7A3020' },
+    danger:    { backgroundColor: 'var(--ms-danger)',     color: '#fff',                 borderColor: 'var(--ms-danger)' },
     subtle:    { backgroundColor: 'var(--ms-accent-pop)', color: 'var(--ms-accent)',     borderColor: 'var(--ms-accent-light)' },
   }
 
@@ -93,7 +93,7 @@ export function Button({
     primary:   'var(--ms-accent-hover)',
     secondary: 'var(--ms-hover)',
     ghost:     'var(--ms-hover)',
-    danger:    '#5A2015',
+    danger:    'var(--ms-danger-hover)',
     subtle:    'var(--ms-accent-light)',
   }
 
@@ -147,19 +147,19 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
           className={cn('w-full border outline-none transition focus:ring-2', props.className)}
           style={{
             ...inputBase,
-            borderColor: error ? '#8B3A2A' : 'var(--ms-border)',
+            borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
             '--tw-ring-color': 'var(--ms-accent-pop)',
           } as React.CSSProperties}
           onFocus={e => {
-            e.currentTarget.style.borderColor = error ? '#8B3A2A' : 'var(--ms-accent)'
+            e.currentTarget.style.borderColor = error ? 'var(--ms-error)' : 'var(--ms-accent)'
             props.onFocus?.(e)
           }}
           onBlur={e => {
-            e.currentTarget.style.borderColor = error ? '#8B3A2A' : 'var(--ms-border)'
+            e.currentTarget.style.borderColor = error ? 'var(--ms-error)' : 'var(--ms-border)'
             props.onBlur?.(e)
           }}
         />
-        {error && <p className="mt-1 text-[11px]" style={{ color: '#8B3A2A' }}>{error}</p>}
+        {error && <p className="mt-1 text-[11px]" style={{ color: 'var(--ms-error)' }}>{error}</p>}
       </div>
     )
   },
@@ -174,13 +174,13 @@ export function Select({ label, error, children, ...props }: React.SelectHTMLAtt
         className={cn('w-full border outline-none transition focus:ring-2', props.className)}
         style={{
           ...inputBase,
-          borderColor: error ? '#8B3A2A' : 'var(--ms-border)',
+          borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
           '--tw-ring-color': 'var(--ms-accent-pop)',
         } as React.CSSProperties}
       >
         {children}
       </select>
-      {error && <p className="mt-1 text-[11px]" style={{ color: '#8B3A2A' }}>{error}</p>}
+      {error && <p className="mt-1 text-[11px]" style={{ color: 'var(--ms-error)' }}>{error}</p>}
     </div>
   )
 }
@@ -195,14 +195,14 @@ export function Textarea({ label, error, ...props }: React.TextareaHTMLAttribute
         style={{
           backgroundColor: 'var(--ms-surface)',
           color: 'var(--ms-text)',
-          borderColor: error ? '#8B3A2A' : 'var(--ms-border)',
+          borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
           borderRadius: 'var(--ms-radius-sm)',
           padding: '8px 12px',
           fontSize: 13,
           '--tw-ring-color': 'var(--ms-accent-pop)',
         } as React.CSSProperties}
       />
-      {error && <p className="mt-1 text-[11px]" style={{ color: '#8B3A2A' }}>{error}</p>}
+      {error && <p className="mt-1 text-[11px]" style={{ color: 'var(--ms-error)' }}>{error}</p>}
     </div>
   )
 }
@@ -238,7 +238,7 @@ export function Modal({ title, children, onClose, size = 'default' }: ModalProps
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
-      style={{ backgroundColor: 'rgba(28, 21, 16, 0.50)', backdropFilter: 'blur(4px)' }}
+      style={{ backgroundColor: 'var(--ms-overlay)', backdropFilter: 'blur(4px)' }}
     >
       <div
         className={cn('mx-2 max-h-[90vh] w-full overflow-hidden sm:mx-4', maxWidth)}

@@ -54,25 +54,15 @@
   --ms-badge-orange-bg: #FFF0E0;  --ms-badge-orange-text:#9A5010;
   --ms-badge-green-bg:  #E8F5ED;  --ms-badge-green-text: #1A6838;
 
-  /* ── Legacy --cafe-* aliases (resolve to --ms-* equivalents) ──────────
-     Lets 63 files / 2,159 call sites pick up new colours with zero edits.
-     Remove once Phase 1 sweeps components. */
-  --cafe-bg:          var(--ms-bg);
-  --cafe-surface:     var(--ms-surface);
-  --cafe-paper:       var(--ms-surface);
-  --cafe-espresso:    var(--ms-sidebar);
+  /* Error / danger (semantic feedback) */
+  --ms-error:          #8B3A2A;
+  --ms-danger:         #7A3020;
+  --ms-danger-hover:   #5A2015;
+  --ms-overlay:        rgba(28, 21, 16, 0.50);
+
+  /* Legacy espresso tints — still used by AppShell / Sidebar / RepairQueueModal */
   --cafe-espresso-2:  color-mix(in srgb, var(--ms-sidebar) 80%, #fff);
   --cafe-espresso-3:  color-mix(in srgb, var(--ms-sidebar) 70%, #fff);
-  --cafe-gold:        var(--ms-accent);
-  --cafe-gold-dark:   var(--ms-accent-hover);
-  --cafe-amber:       var(--ms-accent);
-  --cafe-border:      var(--ms-border);
-  --cafe-border-2:    var(--ms-border-strong);
-  --cafe-text:        var(--ms-text);
-  --cafe-text-mid:    var(--ms-text-mid);
-  --cafe-text-muted:  var(--ms-text-muted);
-  --cafe-sidebar-txt: var(--ms-sidebar-text);
-  --cafe-link:        var(--ms-accent);
 }
 
 /* Dark mode — Night Workshop */
@@ -109,6 +99,10 @@
   --ms-badge-teal-bg:   rgba(30,150,130,0.14);  --ms-badge-teal-text:  #60D8C0;
   --ms-badge-orange-bg: rgba(210,130,30,0.14);  --ms-badge-orange-text:#E0A040;
   --ms-badge-green-bg:  rgba(50,170,80,0.14);   --ms-badge-green-text: #70D890;
+  --ms-error:           #F09090;
+  --ms-danger:          #C05040;
+  --ms-danger-hover:    #A03828;
+  --ms-overlay:         rgba(0, 0, 0, 0.65);
 }
 
 /* Neutral variant — Steel & Amber */
@@ -136,6 +130,10 @@
   --ms-radius-sm:       6px;
   --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
   --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
+  --ms-error:           #A33838;
+  --ms-danger:          #8B3020;
+  --ms-danger-hover:    #6A2010;
+  --ms-overlay:         rgba(20, 18, 16, 0.52);
 }
 
 @layer base {
