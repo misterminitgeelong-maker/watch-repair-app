@@ -664,6 +664,67 @@ class CustomerLookupRequest(SQLModel):
     email: str
 
 
+# --- shared helper for customer-lookup + portal session jobs ---------------
+#
+# RepairJob does not have a direct customer_id column — customer is reached via
+# Watch.customer_id. This helper joins correctly and batch-loads watches/shoes
+# to avoid per-row session.get() calls (see code review B-H1 + B-M4).
+
+_WATCH_JOB_HIDDEN_STATUSES = ("collected", "cancelled")
+_SHOE_JOB_HIDDEN_STATUSES = ("collected", "no_go")
+
+
+def _collect_jobs_for_customers(session: Session, customers: list[Customer]) -> list[dict[str, Any]]:
+    if not customers:
+        return []
+
+    customer_ids = [c.id for c in customers]
+    results: list[dict[str, Any]] = []
+
+    # Watch jobs: join RepairJob -> Watch (Watch.customer_id is the only link)
+    watch_job_rows = session.exec(
+        select(RepairJob, Watch)
+        .join(Watch, Watch.id == RepairJob.watch_id)
+        .where(Watch.customer_id.in_(customer_ids))  # type: ignore[attr-defined]
+        .where(RepairJob.status.not_in(_WATCH_JOB_HIDDEN_STATUSES))  # type: ignore[attr-defined]
+        .order_by(RepairJob.created_at.desc())
+        .limit(20 * len(customer_ids))
+    ).all()
+    for job, watch in watch_job_rows:
+        results.append({
+            "type": "watch",
+            "job_number": job.job_number,
+            "title": job.title,
+            "status": job.status,
+            "created_at": isoformat_z_utc(naive_utc_from_any(job.created_at)),
+            "status_url": f"/status/{job.status_token}",
+            "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
+        })
+
+    shoe_job_rows = session.exec(
+        select(ShoeRepairJob, Shoe)
+        .join(Shoe, Shoe.id == ShoeRepairJob.shoe_id)
+        .where(Shoe.customer_id.in_(customer_ids))  # type: ignore[attr-defined]
+        .where(ShoeRepairJob.status.not_in(_SHOE_JOB_HIDDEN_STATUSES))  # type: ignore[attr-defined]
+        .order_by(ShoeRepairJob.created_at.desc())
+        .limit(20 * len(customer_ids))
+    ).all()
+    for job, shoe in shoe_job_rows:
+        detail_bits = [shoe.brand if shoe else None, shoe.shoe_type if shoe else None]
+        results.append({
+            "type": "shoe",
+            "job_number": job.job_number,
+            "title": job.title,
+            "status": job.status,
+            "created_at": isoformat_z_utc(naive_utc_from_any(job.created_at)),
+            "status_url": f"/shoe-status/{job.status_token}",
+            "detail": " ".join(filter(None, detail_bits)) or None,
+        })
+
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+    return results
+
+
 @router.post("/customer-lookup")
 def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(get_session)):
     """Return all active jobs for a customer by email address (cross-tenant, public)."""
@@ -680,56 +741,7 @@ def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(g
     if not customers:
         return {"jobs": []}
 
-    results = []
-
-    for customer in customers:
-        # Watch repair jobs
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        # Shoe repair jobs
-        shoe_ids = session.exec(
-            select(Shoe.id).where(Shoe.customer_id == customer.id)
-        ).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    # Sort by created_at descending
-    results.sort(key=lambda x: x["created_at"], reverse=True)
-
+    results = _collect_jobs_for_customers(session, customers)
     return {"jobs": results[:50]}
 
 
@@ -789,47 +801,5 @@ def get_portal_session_jobs(token: str, session: Session = Depends(get_session))
     if not customers:
         return {"jobs": [], "email": portal.email}
 
-    results = []
-    for customer in customers:
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    results.sort(key=lambda x: x["created_at"], reverse=True)
+    results = _collect_jobs_for_customers(session, customers)
     return {"jobs": results[:50], "email": portal.email}
