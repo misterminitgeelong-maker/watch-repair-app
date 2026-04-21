@@ -4,12 +4,26 @@ import react from '@vitejs/plugin-react'
 import type { UserConfigExport } from 'vite'
 import { defineConfig } from 'vite'
 
-const config: UserConfigExport & { test?: { environment: string; include: string[]; setupFiles?: string[] } } = {
+const config: UserConfigExport & {
+  test?: {
+    environment: string
+    include: string[]
+    setupFiles?: string[]
+    environmentMatchGlobs?: [string, string][]
+  }
+} = {
   plugins: [react(), tailwindcss()],
   test: {
+    // Default to node for the existing API/unit tests. Component tests opt in
+    // to jsdom via environmentMatchGlobs below so a single config covers both.
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
+    environmentMatchGlobs: [
+      ['src/**/*.dom.test.{ts,tsx}', 'jsdom'],
+      ['src/components/**/*.test.tsx', 'jsdom'],
+      ['src/context/**/*.test.tsx', 'jsdom'],
+    ],
   },
   resolve: {
     alias: {

@@ -1,4 +1,6 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
 import { testServer } from './msw/server'
 
 const memoryStorage = (): Storage => {
@@ -34,6 +36,9 @@ beforeAll(() => {
 
 afterEach(() => {
   testServer.resetHandlers()
+  // Tear down rendered React trees between component tests so subsequent
+  // screen.getByRole() queries don't see stale dialogs/backdrops.
+  cleanup()
 })
 
 afterAll(() => {

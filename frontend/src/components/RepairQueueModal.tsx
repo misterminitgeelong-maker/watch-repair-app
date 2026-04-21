@@ -1,8 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-
-function filteredJobsKeyHasIds(key: string): boolean {
-  return key.length > 0
-}
+import { filteredJobsIdKey, mergeQueueOrder } from '@/lib/queueOrder'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
@@ -320,37 +317,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   })
 
   // F-H3: Rebuild the queue whenever the *membership* of filteredJobs changes,
-  // not just when the count changes. The previous effect only keyed on
-  // `filteredJobs.length`, so if a filter swap produced the same count but
-  // a different set of jobs (say 5 "due today" -> 5 "in progress"), the old
-  // queueOrder was kept and the modal showed the wrong jobs. Key on a stable
-  // sorted join of ids instead.
+  // not just when the count changes. Previous effect keyed only on
+  // filteredJobs.length, so a filter swap producing the same count but a
+  // different set of jobs surfaced the wrong rows. See
+  // src/lib/queueOrder.ts for the pure helpers + their regression tests.
   const filteredJobIdsKey = useMemo(
-    () =>
-      filteredJobs
-        .map((j) => j.id)
-        .slice()
-        .sort()
-        .join('|'),
+    () => filteredJobsIdKey(filteredJobs.map((j) => j.id)),
     [filteredJobs],
   )
 
   useEffect(() => {
-    if (!filteredJobsKeyHasIds(filteredJobIdsKey)) return
-    // Preserve existing order for ids that are still present, then append
-    // any new ids in their sort-queue position. This keeps manual reorder
-    // sticky while still reacting to membership changes.
-    setQueueOrder((prev) => {
-      const sortedIds = sortQueue(filteredJobs).map((j) => j.id)
-      if (prev === null) return sortedIds
-      const filteredSet = new Set(sortedIds)
-      const kept = prev.filter((id) => filteredSet.has(id))
-      const keptSet = new Set(kept)
-      const appended = sortedIds.filter((id) => !keptSet.has(id))
-      return [...kept, ...appended]
-    })
-  // Intentional deps: the id-set key (membership) + the latest jobs payload
-  // used to compute default sort. Do NOT depend on queueOrder here.
+    if (filteredJobIdsKey.length === 0) return
+    setQueueOrder((prev) => mergeQueueOrder(prev, sortQueue(filteredJobs).map((j) => j.id)))
+  // Intentional deps: the id-set key (membership). sortQueue input is
+  // filteredJobs, covered by the key.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredJobIdsKey])
 
