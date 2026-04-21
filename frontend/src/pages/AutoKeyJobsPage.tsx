@@ -43,11 +43,12 @@ import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
-import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea, ViewToggle } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import {
   KanbanBoard,
   JobCard as KanbanJobCard,
   AUTO_KEY_KANBAN_COLUMNS,
+  findColumnForStatus,
 } from '@/components/kanban'
 import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
 import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
@@ -2008,7 +2009,7 @@ export default function AutoKeyJobsPage() {
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
   const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
-  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
+  const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
@@ -2188,13 +2189,15 @@ export default function AutoKeyJobsPage() {
       (j.vehicle_model && String(j.vehicle_model).toLowerCase().includes(q)) ||
       (j.registration_plate && String(j.registration_plate).toLowerCase().includes(q)) ||
       (j.customer_name && String(j.customer_name).toLowerCase().includes(q))
-    const inDirectory = jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
+    const inDirectory = jobDirectoryView === 'all' ? true : jobDirectoryView === 'active' ? !isClosed(j.status) : isClosed(j.status)
     const matchStatus = statusFilter === 'all' ? true : j.status === statusFilter
     const created = j.created_at ? String(j.created_at) : ''
     const matchAge = olderThanDays > 0 ? (created ? daysInShop(created) >= olderThanDays : false) : true
     return matchSearch && inDirectory && matchStatus && matchAge
   })
-  const statusOptions = jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
+  const statusOptions = jobDirectoryView === 'all'
+    ? [...AUTO_KEY_ACTIVE_STATUSES, ...AUTO_KEY_CLOSED_STATUSES]
+    : jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
 
   useEffect(() => {
     if (statusFilter === 'all') return
@@ -2381,87 +2384,23 @@ export default function AutoKeyJobsPage() {
         />
       )}
 
-      {view === 'jobs' && (
+      {view === 'jobs' && jobsLayout === 'board' && (
         <>
-          <div className="mb-5 flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1 max-w-xs min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--ms-text-muted)' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search job, customer, vehicle, rego…"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
-                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-              />
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services — Kanban</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
+                {filteredJobs.length} active job{filteredJobs.length !== 1 ? 's' : ''} across {AUTO_KEY_KANBAN_COLUMNS.length} stages
+              </p>
             </div>
-            <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
-              <button
-                type="button"
-                onClick={() => setJobDirectoryView('active')}
-                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                style={{
-                  backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
-                  color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
-                }}
-              >
-                Active ({activeCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setJobDirectoryView('completed')}
-                className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
-                style={{
-                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
-                  color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
-                }}
-              >
-                Closed ({completedCount})
-              </button>
-            </div>
-            <Select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="min-w-[160px]"
-              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-            >
-              <option value="all">All statuses</option>
-              {statusOptions.map(s => (
-                <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
-              ))}
-            </Select>
-            <Select
-              value={String(olderThanDays)}
-              onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
-              className="min-w-[160px]"
-              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-            >
-              <option value="0">Any age</option>
-              <option value="7">7+ days old</option>
-              <option value="14">14+ days old</option>
-              <option value="21">21+ days old</option>
-            </Select>
-            <ViewToggle<'board' | 'list'>
-              value={jobsLayout}
-              onChange={setJobsLayout}
-              options={[
-                { value: 'board', label: 'Board' },
-                { value: 'list', label: 'List' },
-              ]}
-            />
           </div>
           {isLoading ? (
             <Spinner />
           ) : isError ? (
-            <p
-              className="text-sm rounded-lg px-4 py-3"
-              style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: '#C96A5A' }}
-            >
-              {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
+            <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
+              {getApiErrorMessage(jobsQueryError, 'Could not load jobs.')}
             </p>
-          ) : filteredJobs.length === 0 ? (
-            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
-          ) : jobsLayout === 'board' ? (
+          ) : (
             <KanbanBoard
               jobs={sortedJobsDirectory as AutoKeyJob[]}
               columns={AUTO_KEY_KANBAN_COLUMNS}
@@ -2512,12 +2451,138 @@ export default function AutoKeyJobsPage() {
                 )
               }}
             />
-          ) : (
-            <div className="space-y-3">
-              {sortedJobsDirectory.map((job) => (
-                <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} listMode />
-              ))}
+          )}
+        </>
+      )}
+
+      {view === 'jobs' && jobsLayout === 'list' && (
+        <>
+          {/* Filter chips + search */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {([
+                { label: 'Active', dir: 'active' as const, status: 'all' },
+                { label: 'All', dir: 'all' as const, status: 'all' },
+                { label: 'Awaiting Quote', dir: 'active' as const, status: 'awaiting_quote' },
+                { label: 'Booking Confirmed', dir: 'active' as const, status: 'booking_confirmed' },
+                { label: 'Work Completed', dir: 'active' as const, status: 'work_completed' },
+                { label: 'Invoice Paid', dir: 'completed' as const, status: 'invoice_paid' },
+              ]).map(chip => {
+                const isActive = jobDirectoryView === chip.dir && statusFilter === chip.status
+                return (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status) }}
+                    className="rounded-full text-xs font-semibold transition-colors"
+                    style={{
+                      padding: '5px 13px',
+                      backgroundColor: isActive ? 'var(--ms-accent)' : 'var(--ms-surface)',
+                      color: isActive ? '#fff' : 'var(--ms-text-mid)',
+                      border: `1px solid ${isActive ? 'var(--ms-accent)' : 'var(--ms-border)'}`,
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                )
+              })}
             </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5" style={{ color: 'var(--ms-text-muted)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search jobs…"
+                className="pl-8 pr-3 py-1.5 rounded-lg border text-sm w-48"
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
+              />
+            </div>
+          </div>
+          {isLoading ? (
+            <Spinner />
+          ) : isError ? (
+            <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
+              {getApiErrorMessage(jobsQueryError, 'Could not load jobs.')}
+            </p>
+          ) : filteredJobs.length === 0 ? (
+            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+          ) : (
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                      {['#', 'CUSTOMER', 'VEHICLE', 'JOB TYPE', 'STATUS', 'TECH', 'SCHEDULED', 'QUOTE'].map(h => (
+                        <th
+                          key={h}
+                          className="px-4 py-2.5 text-left font-semibold tracking-wider text-[11px]"
+                          style={{ color: 'var(--ms-text-muted)' }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedJobsDirectory.map((job, i) => {
+                      const tech = users.find((u: { id: string; full_name: string }) => u.id === job.assigned_user_id)?.full_name
+                      const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
+                      const sched = job.scheduled_at
+                        ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                        : null
+                      const col = findColumnForStatus(AUTO_KEY_KANBAN_COLUMNS, job.status)
+                      return (
+                        <tr
+                          key={job.id}
+                          className="group cursor-pointer"
+                          style={{ borderBottom: i < sortedJobsDirectory.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
+                          onClick={() => window.location.href = `/mobile-services/jobs/${job.id}`}
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+                        >
+                          <td className="px-4 py-3 font-semibold whitespace-nowrap" style={{ color: 'var(--ms-accent)' }}>
+                            #{job.job_number}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>{job.customer_name ?? '—'}</p>
+                            {job.customer_phone && <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{job.customer_phone}</p>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>{vehicle || '—'}</p>
+                            {job.registration_plate && <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{job.registration_plate}</p>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--ms-text-mid)' }}>
+                            {job.job_type ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                              style={{
+                                backgroundColor: col ? col.bg : 'var(--ms-bg)',
+                                color: col ? col.color : 'var(--ms-text-muted)',
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: col?.color ?? 'var(--ms-text-muted)', flexShrink: 0 }} />
+                              {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--ms-text-mid)' }}>
+                            {tech ?? <span style={{ color: 'var(--ms-text-muted)' }}>Unassigned</span>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: sched ? 'var(--ms-accent)' : 'var(--ms-text-muted)' }}>
+                            {sched ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap font-semibold" style={{ color: job.cost_cents > 0 ? 'var(--ms-text)' : 'var(--ms-text-muted)' }}>
+                            {job.cost_cents > 0 ? formatCents(job.cost_cents) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
         </>
       )}
@@ -3052,247 +3117,205 @@ export default function AutoKeyJobsPage() {
 
       {view === 'reports' && (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium" style={{ color: 'var(--ms-text-muted)' }}>Date range:</span>
-              {(['today', 'week', 'month', 'last_month', 'all'] as const).map(preset => (
+          {/* Header row */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services Reports</h2>
+            <div
+              className="inline-flex rounded-lg p-0.5"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
+            >
+              {([
+                { key: 'week' as const, label: 'This week' },
+                { key: 'month' as const, label: 'This month' },
+                { key: 'all' as const, label: 'Last 90 days' },
+              ]).map(p => (
                 <button
-                  key={preset}
+                  key={p.key}
                   type="button"
-                  onClick={() => setReportPreset(preset)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                  style={reportPreset === preset ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
+                  onClick={() => setReportPreset(p.key)}
+                  className="rounded-md px-4 py-1.5 text-xs font-semibold transition-colors"
+                  style={reportPreset === p.key
+                    ? { backgroundColor: 'var(--ms-accent)', color: '#fff', border: '1px solid var(--ms-accent)' }
+                    : { backgroundColor: 'transparent', color: 'var(--ms-text-muted)', border: '1px solid transparent' }}
                 >
-                  {preset === 'today' ? 'Today' : preset === 'week' ? 'This Week' : preset === 'month' ? 'This Month' : preset === 'last_month' ? 'Last Month' : 'All Time'}
+                  {p.label}
                 </button>
               ))}
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={reportPreset === 'custom'}
-                  onChange={e => setReportPreset(e.target.checked ? 'custom' : 'month')}
-                />
-                <span style={{ color: 'var(--ms-text-muted)' }}>Custom</span>
-              </label>
-              {reportPreset === 'custom' && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={reportDateFrom}
-                    onChange={e => setReportDateFrom(e.target.value)}
-                    className="w-36"
-                  />
-                  <span style={{ color: 'var(--ms-text-muted)' }}>to</span>
-                  <Input
-                    type="date"
-                    value={reportDateTo}
-                    onChange={e => setReportDateTo(e.target.value)}
-                    className="w-36"
-                  />
-                </div>
-              )}
             </div>
-            <Button variant="secondary" onClick={() => sendRemindersMut.mutate()} disabled={sendRemindersMut.isPending}>
-              {sendRemindersMut.isPending
-                ? 'Sending…'
-                : tomorrowJobs.length > 0
-                ? `Send reminders (${tomorrowJobs.length} tomorrow)`
-                : 'Send day-before reminders'}
-            </Button>
           </div>
 
           {reportsError && !reportsLoading && (
             <Card className="p-4">
-              <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(reportsErr, 'Could not load reports.')}</p>
-              <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>If you are on a restricted role, ask an owner to confirm you can access reports. Otherwise check your connection and try again.</p>
+              <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(reportsErr, 'Could not load reports.')}</p>
             </Card>
           )}
+
           {reportsLoading ? <Spinner /> : reportsError ? null : autoKeyReports ? (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Total Jobs</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.summary.total_jobs}</p>
-                </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Total Revenue</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.summary.total_revenue_cents)}</p>
-                </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Avg Job Value</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.summary.avg_job_value_cents)}</p>
-                </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Mobile vs Shop</p>
-                  <p className="text-sm font-medium leading-snug" style={{ color: 'var(--ms-text)' }}>
-                    <span className="block">
-                      Jobs — Mobile: {autoKeyReports.summary.mobile_count} ({autoKeyReports.summary.mobile_pct}%) · Shop:{' '}
-                      {autoKeyReports.summary.shop_count} ({autoKeyReports.summary.shop_pct}%)
-                    </span>
-                    <span className="block mt-1" style={{ color: 'var(--ms-text-mid)' }}>
-                      Revenue — Mobile: {formatCents(autoKeyReports.summary.mobile_revenue_cents)} ({autoKeyReports.summary.mobile_revenue_pct}%) · Shop:{' '}
-                      {formatCents(autoKeyReports.summary.shop_revenue_cents)} ({autoKeyReports.summary.shop_revenue_pct}%)
-                    </span>
-                  </p>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Type</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
-                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--ms-text-muted)' }}>Job Type</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Jobs</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
-                          <th className="py-2 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Avg Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {autoKeyReports.jobs_by_type.map(row => (
-                          <tr key={row.job_type} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
-                            <td className="py-2 pr-4" style={{ color: 'var(--ms-text)' }}>{row.job_type}</td>
-                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{row.jobs}</td>
-                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(row.revenue_cents)}</td>
-                            <td className="py-2 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(row.avg_value_cents)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-                <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Tech</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
-                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--ms-text-muted)' }}>Tech</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Jobs</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
-                          <th className="py-2 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Share</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {autoKeyReports.jobs_by_tech.length === 0 ? (
-                          <tr><td colSpan={4} className="py-4 text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>No data</td></tr>
-                        ) : (
-                          autoKeyReports.jobs_by_tech.map(t => (
-                            <tr key={t.tech_id} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
-                              <td className="py-2 pr-4" style={{ color: 'var(--ms-text)' }}>{t.tech_name}</td>
-                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{t.job_count}</td>
-                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(t.revenue_cents)}</td>
-                              <td className="py-2 text-right" style={{ color: 'var(--ms-text-mid)' }}>{t.revenue_share_pct ?? 0}%</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Status (Live Pipeline)</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {autoKeyReports.jobs_by_status.map(s => (
-                      <div
-                        key={s.status}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-                      >
-                        <span className="text-sm" style={{ color: 'var(--ms-text)' }}>{s.label}</span>
-                        <span className="text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>{s.count}</span>
-                      </div>
+              {/* Metric cards */}
+              {(() => {
+                const topTech = autoKeyReports.jobs_by_tech[0]
+                return (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      {
+                        label: 'REVENUE MTD',
+                        value: formatCents(autoKeyReports.summary.total_revenue_cents),
+                        sub: `${autoKeyReports.summary.mobile_pct ?? 0}% mobile`,
+                      },
+                      {
+                        label: 'JOBS MTD',
+                        value: String(autoKeyReports.summary.total_jobs),
+                        sub: `${autoKeyReports.summary.mobile_count ?? 0} mobile · ${autoKeyReports.summary.shop_count ?? 0} shop`,
+                      },
+                      {
+                        label: 'AVG PER JOB',
+                        value: formatCents(autoKeyReports.summary.avg_job_value_cents),
+                        sub: null,
+                      },
+                      {
+                        label: 'TOP TECH',
+                        value: topTech?.tech_name ?? '—',
+                        sub: topTech ? `${topTech.job_count} jobs · ${formatCents(topTech.revenue_cents)}` : null,
+                        large: false,
+                      },
+                    ].map(card => (
+                      <Card key={card.label} className="p-5">
+                        <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.08em' }}>{card.label}</p>
+                        <p className={card.label === 'TOP TECH' ? 'text-xl font-bold leading-snug' : 'text-2xl font-extrabold'} style={{ color: 'var(--ms-text)' }}>{card.value}</p>
+                        {card.sub && <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{card.sub}</p>}
+                      </Card>
                     ))}
                   </div>
-                </Card>
-                <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Week on Week (Last 8 Weeks)</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {autoKeyReports.week_on_week.map((w, i) => (
-                      <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm" style={{ borderColor: 'var(--ms-border)' }}>
-                        <span style={{ color: 'var(--ms-text-muted)' }}>{w.week_label}</span>
-                        <span style={{ color: 'var(--ms-text)' }}>
-                          {w.jobs} jobs · {formatCents(w.revenue_cents)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
+                )
+              })()}
 
-              {(role === 'owner' || role === 'manager') && (
+              {/* Weekly Revenue bar chart + Jobs by Type horizontal bars */}
+              <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
-                    Technician commission & weekly bonus
-                  </h3>
-                  <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>
-                    Uses the same date range as above. Revenue is attributed by <strong>invoice created</strong> time. Each job must match the technician&apos;s eligible statuses (default: completed, collected).
-                    Bonus = raw commission minus the per-period retainer (salary component). Each job uses one of three sources (Technician / Shop / Minit); matching percentages are under Commission rules per technician.
-                  </p>
-                  {commissionLoading && <Spinner />}
-                  {commissionError && !commissionLoading && (
-                    <p className="text-sm" style={{ color: '#C96A5A' }}>
-                      {getApiErrorMessage(commissionErr, 'Could not load commission report.')}
-                    </p>
-                  )}
-                  {!commissionLoading && !commissionError && commissionReport && (
-                    <div className="space-y-4">
-                      {commissionReport.technicians.length === 0 ? (
-                        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-                          No commission data for this period. Enable commission tracking per technician under <strong>Team → Commission rules</strong>, then assign jobs with a lead source (Shop / Tech / Minit sourced).
-                        </p>
-                      ) : (
-                        commissionReport.technicians.map(tech => (
-                          <div
-                            key={tech.user_id}
-                            className="rounded-xl border p-4"
-                            style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
-                          >
-                            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                              <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{tech.full_name}</p>
-                              <p className="text-sm" style={{ color: 'var(--ms-accent)' }}>
-                                Bonus payable: <strong>{formatCents(tech.bonus_payable_cents)}</strong>
-                                <span className="font-normal" style={{ color: 'var(--ms-text-muted)' }}>
-                                  {' '}· Raw {formatCents(tech.raw_commission_cents)} · Retainer {formatCents(tech.retainer_cents)}
-                                </span>
-                              </p>
+                  <h3 className="text-sm font-semibold mb-5" style={{ color: 'var(--ms-text)' }}>Weekly Revenue</h3>
+                  {autoKeyReports.week_on_week.length === 0 ? (
+                    <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No weekly data.</p>
+                  ) : (() => {
+                    const bars = autoKeyReports.week_on_week.slice(-6)
+                    const maxRev = Math.max(...bars.map(b => b.revenue_cents), 1)
+                    const CHART_H = 120
+                    return (
+                      <div className="flex items-end gap-2" style={{ height: CHART_H + 40 }}>
+                        {bars.map(b => {
+                          const h = Math.round((b.revenue_cents / maxRev) * CHART_H)
+                          const isLast = b === bars[bars.length - 1]
+                          return (
+                            <div key={b.week_label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                              <span className="text-[10px] font-semibold truncate" style={{ color: 'var(--ms-text)' }}>
+                                {b.revenue_cents > 0 ? `$${Math.round(b.revenue_cents / 100 / 1000 * 10) / 10}k` : ''}
+                              </span>
+                              <div
+                                className="w-full rounded-t"
+                                style={{
+                                  height: Math.max(h, b.revenue_cents > 0 ? 4 : 2),
+                                  backgroundColor: isLast ? 'var(--ms-accent)' : 'var(--ms-accent-light)',
+                                  minHeight: 2,
+                                }}
+                                title={`${b.week_label}: ${formatCents(b.revenue_cents)}`}
+                              />
+                              <span className="text-[10px] truncate w-full text-center" style={{ color: 'var(--ms-text-muted)' }}>{b.week_label}</span>
                             </div>
-                            {tech.lines.length > 0 && (
-                              <div className="overflow-x-auto mt-3">
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
-                                      <th className="py-1 pr-2" style={{ color: 'var(--ms-text-muted)' }}>Job</th>
-                                      <th className="py-1 pr-2" style={{ color: 'var(--ms-text-muted)' }}>Source</th>
-                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
-                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--ms-text-muted)' }}>Rate</th>
-                                      <th className="py-1 text-right" style={{ color: 'var(--ms-text-muted)' }}>Comm.</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {tech.lines.map(line => (
-                                      <tr key={`${line.job_id}-${line.invoice_id}`} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
-                                        <td className="py-1 pr-2" style={{ color: 'var(--ms-text)' }}>#{line.job_number}</td>
-                                        <td className="py-1 pr-2" style={{ color: 'var(--ms-text-mid)' }}>{line.lead_source_label}</td>
-                                        <td className="py-1 pr-2 text-right">{formatCents(line.revenue_cents)}</td>
-                                        <td className="py-1 pr-2 text-right">{line.rate_bp / 100}%</td>
-                                        <td className="py-1 text-right font-medium">{formatCents(line.commission_cents)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+                </Card>
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold mb-5" style={{ color: 'var(--ms-text)' }}>Jobs by Type</h3>
+                  {autoKeyReports.jobs_by_type.length === 0 ? (
+                    <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No data.</p>
+                  ) : (() => {
+                    const maxJobs = Math.max(...autoKeyReports.jobs_by_type.map(r => r.jobs), 1)
+                    return (
+                      <div className="space-y-3">
+                        {autoKeyReports.jobs_by_type.map(row => (
+                          <div key={row.job_type} className="flex items-center gap-3">
+                            <span className="text-xs w-36 shrink-0 truncate" style={{ color: 'var(--ms-text)' }}>{row.job_type}</span>
+                            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${Math.max((row.jobs / maxJobs) * 100, row.jobs > 0 ? 4 : 0)}%`, backgroundColor: 'var(--ms-accent)' }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold w-12 text-right" style={{ color: 'var(--ms-text-mid)' }}>{row.jobs} jobs</span>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </Card>
+              </div>
+
+              {/* Technician Leaderboard */}
+              {autoKeyReports.jobs_by_tech.length > 0 && (
+                <Card className="overflow-hidden">
+                  <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                    <span style={{ color: 'var(--ms-accent)', fontSize: 16 }}>🏆</span>
+                    <h3 className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
+                      Technician Leaderboard
+                    </h3>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                        {['RANK', 'TECHNICIAN', 'JOBS', 'REVENUE', 'AVG', ...(role === 'owner' || role === 'manager' ? ['COMMISSION'] : [])].map(h => (
+                          <th key={h} className="px-5 py-2.5 text-left font-semibold tracking-wider text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {autoKeyReports.jobs_by_tech.map((t, i) => {
+                        const initials = t.tech_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+                        const avgCents = t.job_count > 0 ? Math.round(t.revenue_cents / t.job_count) : 0
+                        const commTech = commissionReport?.technicians.find(c => c.user_id === t.tech_id)
+                        const rankColors = ['#C07820', '#888', '#B06010']
+                        const avatarColors = ['#6B4F1A', '#1A5068', '#1A4A30', '#4A1A68', '#68201A']
+                        const avatarBg = avatarColors[i % avatarColors.length]
+                        return (
+                          <tr key={t.tech_id} style={{ borderBottom: i < autoKeyReports.jobs_by_tech.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                            <td className="px-5 py-4">
+                              <span className="font-extrabold text-sm" style={{ color: rankColors[i] ?? 'var(--ms-text-muted)' }}>#{i + 1}</span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                                  style={{ backgroundColor: avatarBg, color: '#fff' }}
+                                >
+                                  {initials}
+                                </div>
+                                <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.tech_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4" style={{ color: 'var(--ms-text)' }}>{t.job_count}</td>
+                            <td className="px-5 py-4" style={{ color: 'var(--ms-text)' }}>{formatCents(t.revenue_cents)}</td>
+                            <td className="px-5 py-4" style={{ color: 'var(--ms-text-mid)' }}>{formatCents(avgCents)}</td>
+                            {(role === 'owner' || role === 'manager') && (
+                              <td className="px-5 py-4">
+                                {commTech ? (
+                                  <span
+                                    className="inline-block rounded-md px-3 py-1 text-xs font-bold"
+                                    style={{ backgroundColor: 'var(--ms-accent-pop)', color: 'var(--ms-accent)' }}
+                                  >
+                                    {formatCents(commTech.bonus_payable_cents)}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--ms-text-muted)' }}>—</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </Card>
               )}
             </>
