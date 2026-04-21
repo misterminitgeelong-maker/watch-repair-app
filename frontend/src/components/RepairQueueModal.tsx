@@ -654,7 +654,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               {QUEUE_STATUSES.map(s => {
                 const on = filterStatuses.has(s)
                 return (
-                  <button key={s} onClick={() => setFilterStatuses(prev => { const n = new Set(prev); on ? n.delete(s) : n.add(s); return n })}
+                  <button key={s} onClick={() => setFilterStatuses(prev => { const n = new Set(prev); if (on) n.delete(s); else n.add(s); return n })}
                     className="px-2.5 py-1 rounded-full text-xs border"
                     style={{ backgroundColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.1)' }}>
                     {STATUS_LABELS[s] ?? s}
@@ -669,7 +669,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               {ALL_PRIORITIES.map(p => {
                 const on = filterPriorities.has(p)
                 return (
-                  <button key={p} onClick={() => setFilterPriorities(prev => { const n = new Set(prev); on ? n.delete(p) : n.add(p); return n })}
+                  <button key={p} onClick={() => setFilterPriorities(prev => { const n = new Set(prev); if (on) n.delete(p); else n.add(p); return n })}
                     className="px-2.5 py-1 rounded-full text-xs border capitalize"
                     style={{ backgroundColor: on ? PRIORITY_COLORS[p] : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? PRIORITY_COLORS[p] : 'rgba(255,255,255,0.1)' }}>
                     {p}

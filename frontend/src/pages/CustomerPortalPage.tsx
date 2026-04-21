@@ -140,15 +140,16 @@ function SessionView({ token }: { token: string }) {
 // ── Email lookup view ─────────────────────────────────────────────────────────
 export default function CustomerPortalPage() {
   const { token } = useParams<{ token?: string }>()
-
-  // If a session token is in the URL, show session view
-  if (token) return <SessionView token={token} />
-
+  // Hooks must be called unconditionally, above any early return, so that
+  // React's hook order stays stable across renders (rules-of-hooks).
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [jobs, setJobs] = useState<CustomerPortalJob[] | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
+
+  // If a session token is in the URL, show session view.
+  if (token) return <SessionView token={token} />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
