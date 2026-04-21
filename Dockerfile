@@ -4,8 +4,9 @@ WORKDIR /app/frontend
 # Vite env vars must be passed as build args (Railway injects service vars)
 ARG VITE_GOOGLE_MAPS_API_KEY
 ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
-# Optional: set for Capacitor / native builds (e.g. https://mainspring.au). Omit for same-origin web bundle in Docker.
-ARG VITE_API_BASE_URL=
+# Set to the public API origin so the frontend knows where to send requests.
+# Override at build time via Railway service variables (VITE_API_BASE_URL).
+ARG VITE_API_BASE_URL=https://mainspring.au
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -34,7 +35,9 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 # Persistent volume mount points
 RUN mkdir -p /app/uploads /app/data
 
-# Environment defaults (override at deploy time)
+# Fallback defaults — all of these are overridden by Railway service variables at runtime.
+# CORS_ORIGINS and PUBLIC_BASE_URL are set here only so the container starts without
+# Railway vars (e.g. local docker run); Railway always injects the real values.
 ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
     STATIC_DIR="/app/static" \
     APP_ENV="production" \
@@ -45,4 +48,4 @@ ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1"]
