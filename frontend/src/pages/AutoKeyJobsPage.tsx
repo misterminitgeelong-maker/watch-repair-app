@@ -2042,10 +2042,11 @@ export default function AutoKeyJobsPage() {
     weekAnchorSynced.current = true
   }, [sessionReady, shopCalendarTodayYmd])
 
-  const { data: jobs = [], isLoading, isError, error: jobsQueryError } = useQuery({
+  const { data: jobsRaw, isLoading, isError, error: jobsQueryError } = useQuery({
     queryKey: ['auto-key-jobs'],
     queryFn: () => listAutoKeyJobs().then(r => r.data),
   })
+  const jobs = Array.isArray(jobsRaw) ? jobsRaw : []
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
@@ -2164,7 +2165,7 @@ export default function AutoKeyJobsPage() {
     })
     : []
   const isSolo = users.length <= 1
-  const filteredJobs = (jobs ?? []).filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
+  const filteredJobs = jobs.filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
     const q = search.trim().toLowerCase()
     const jn = String(j.job_number ?? '')
     const jt = String(j.title ?? '')
@@ -2191,8 +2192,25 @@ export default function AutoKeyJobsPage() {
       setStatusFilter('all')
     }
   }, [jobDirectoryView, statusFilter])
-  const activeCount = (jobs ?? []).filter((j: { status: JobStatus }) => !isClosed(j.status)).length
-  const completedCount = (jobs ?? []).filter((j: { status: JobStatus }) => isClosed(j.status)).length
+  const activeCount = jobs.filter((j: { status: JobStatus }) => !isClosed(j.status)).length
+  const completedCount = jobs.filter((j: { status: JobStatus }) => isClosed(j.status)).length
+
+  /** Pipeline board only had columns for `statusOptions`; jobs with any other DB status were invisible. */
+  const pipelineColumnStatuses = useMemo(() => {
+    const fromFilter =
+      statusFilter === 'all' ? [...statusOptions] : statusOptions.filter((s) => s === statusFilter)
+    const seen = new Set<string>(fromFilter)
+    const extras: string[] = []
+    for (const j of filteredJobs) {
+      const s = String(j.status)
+      if (!seen.has(s)) {
+        seen.add(s)
+        extras.push(s)
+      }
+    }
+    extras.sort()
+    return [...fromFilter, ...extras]
+  }, [statusFilter, statusOptions, filteredJobs])
 
   const sortedJobsDirectory = useMemo(() => {
     if (view !== 'jobs') return []
@@ -2506,10 +2524,10 @@ export default function AutoKeyJobsPage() {
               {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
             </p>
           ) : filteredJobs.length === 0 ? (
-            <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
-              {(statusFilter === 'all' ? statusOptions : statusOptions.filter(s => s === statusFilter)).map((status) => {
+              {pipelineColumnStatuses.map((status) => {
                 const jobsInStatus = filteredJobs.filter((j: { status: JobStatus }) => j.status === status)
                 return (
                   <Card key={status} className="overflow-hidden min-w-[240px]">
@@ -2574,7 +2592,7 @@ export default function AutoKeyJobsPage() {
                                 onChange={e => statusMut.mutate({ jobId: job.id, status: e.target.value as JobStatus })}
                                 disabled={statusMut.isPending}
                               >
-                                {statusOptions.map(s => (
+                                {Array.from(new Set([...statusOptions, String(job.status)])).map((s) => (
                                   <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
                                 ))}
                               </select>
@@ -2664,7 +2682,7 @@ export default function AutoKeyJobsPage() {
           ) : (
             <div className="space-y-3">
               {filteredJobs.length === 0 ? (
-                <EmptyState message={jobs?.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+                <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
               ) : (
                 sortedJobsDirectory.map((job) => (
                   <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} listMode />
