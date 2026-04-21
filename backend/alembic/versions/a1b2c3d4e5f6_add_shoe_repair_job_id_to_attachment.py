@@ -13,7 +13,11 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "a1b2c3d4e5f6"
-down_revision: Union[str, None] = "de9f6ccfac01"
+# Chain: de9f6ccfac01 -> bfadd_shoe_tables -> a1b2c3d4e5f6.
+# The shoe tables used to be implicit (create_all()); bfadd_shoe_tables
+# is an idempotent backfill so `alembic upgrade head` against a blank DB
+# (CI) works too.
+down_revision: Union[str, None] = "bfadd_shoe_tables"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
