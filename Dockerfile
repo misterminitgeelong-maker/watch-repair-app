@@ -35,10 +35,17 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 RUN mkdir -p /app/uploads /app/data
 
 # Environment defaults (override at deploy time)
+#
+# IMPORTANT: JWT_SECRET is intentionally NOT set here. Baking a default
+# secret into the image (even a placeholder) is a footgun — any non-production
+# environment that skips the runtime validator would silently run on it.
+# Deploys MUST inject JWT_SECRET via the platform's secret manager
+# (Railway service variables, GitHub Actions secrets, etc.). The runtime
+# validator in app/config.py fails fast in production if JWT_SECRET is
+# unset or still the placeholder.
 ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
     STATIC_DIR="/app/static" \
     APP_ENV="production" \
-    JWT_SECRET="change-me-in-production" \
     ALLOW_DEV_AUTO_LOGIN="false" \
     CORS_ORIGINS="https://mainspring.au,https://www.mainspring.au" \
     PUBLIC_BASE_URL="https://mainspring.au"

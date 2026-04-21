@@ -40,7 +40,7 @@ If you see "nothing," one of these steps is failing.
 
 **Local dev:**  
 - Backend must run on **port 8000** (Vite proxies `/v1` to `http://127.0.0.1:8000`).  
-- Start with: `python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000`
+- Start with: `cd backend && uvicorn app.main:app --reload --port 8000` (or `python -m uvicorn app.main:app --reload --port 8000` from the `backend/` directory). The app package is `app`, so running from the repo root with `backend.app.main:app` fails because `backend/` is not a Python package.
 
 **Production:**  
 - Frontend uses `baseURL: '/v1'` (same origin). Backend must serve both the SPA and `/v1/*` on the same domain.
