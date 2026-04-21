@@ -1,40 +1,157 @@
 @import "tailwindcss";
 
-/* ── Café design tokens ─────────────────────────────────────────────────── */
+/* ── Refined Warmth tokens (Mainspring) ──────────────────────────────────
+   Primary token set. Legacy --cafe-* names are aliased to these values
+   further down so existing call sites keep resolving during the phased
+   migration. New code should use --ms-* directly.
+   ----------------------------------------------------------------------- */
 :root {
-  --cafe-bg:          #F6F2EB;
-  --cafe-surface:     #FCFAF6;
-  --cafe-espresso:    #1F1712;
-  --cafe-espresso-2:  #2D231C;
-  --cafe-espresso-3:  #3B2F27;
-  --cafe-gold:        #B89556;
-  --cafe-gold-dark:   #7A5D2E;
-  --cafe-amber:       #8F6A33;
-  --cafe-border:      #E3DACE;
-  --cafe-border-2:    #D3C8BA;
-  --cafe-text:        #201813;
-  --cafe-text-mid:    #5F4D3E;
-  --cafe-text-muted:  #8A7563;
-  --cafe-sidebar-txt: #D5C8BB;
-  --cafe-link:        #6F5843;
+  /* Backgrounds */
+  --ms-bg:              #F5F1EC;
+  --ms-surface:         #FDFCF9;
+  --ms-surface-alt:     #EDE7DF;
+  --ms-hover:           #F0EAE1;
+
+  /* Text */
+  --ms-text:            #1A1410;
+  --ms-text-mid:        #5C4B3C;
+  --ms-text-muted:      #8E7B6B;
+
+  /* Borders */
+  --ms-border:          #E2D9CE;
+  --ms-border-strong:   #C8BEB2;
+
+  /* Accent — gold */
+  --ms-accent:          #9A6E26;
+  --ms-accent-hover:    #7A5520;
+  --ms-accent-light:    #F6EDD8;
+  --ms-accent-pop:      rgba(154, 110, 38, 0.10);
+
+  /* Sidebar */
+  --ms-sidebar:         #1C1510;
+  --ms-sidebar-text:    #BCA898;
+  --ms-sidebar-act-text:#EDE0CE;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.05);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.07);
+
+  /* Radius */
+  --ms-radius:          12px;
+  --ms-radius-sm:       8px;
+
+  /* Shadows */
+  --ms-shadow:          0 1px 3px rgba(60, 30, 10, 0.05), 0 4px 16px rgba(60, 30, 10, 0.05);
+  --ms-shadow-hover:    0 4px 12px rgba(60, 30, 10, 0.08), 0 16px 36px rgba(60, 30, 10, 0.08);
+
+  /* Status badge colours */
+  --ms-badge-wait-bg:   #FFF7E5;  --ms-badge-wait-text:  #8A5A10;
+  --ms-badge-in-bg:     #E8F2F8;  --ms-badge-in-text:    #1E6A8A;
+  --ms-badge-done-bg:   #EBF8EF;  --ms-badge-done-text:  #1A6A3A;
+  --ms-badge-alert-bg:  #FEEEED;  --ms-badge-alert-text: #8B3A2A;
+  --ms-badge-neutral-bg:#EEEBE5;  --ms-badge-neutral-text:#7A6A5A;
+  --ms-badge-blue-bg:   #EAF1FB;  --ms-badge-blue-text:  #2A5598;
+  --ms-badge-teal-bg:   #E2F4F0;  --ms-badge-teal-text:  #1A6860;
+  --ms-badge-orange-bg: #FFF0E0;  --ms-badge-orange-text:#9A5010;
+  --ms-badge-green-bg:  #E8F5ED;  --ms-badge-green-text: #1A6838;
+
+  /* ── Legacy --cafe-* aliases (resolve to --ms-* equivalents) ──────────
+     Lets 63 files / 2,159 call sites pick up new colours with zero edits.
+     Remove once Phase 1 sweeps components. */
+  --cafe-bg:          var(--ms-bg);
+  --cafe-surface:     var(--ms-surface);
+  --cafe-paper:       var(--ms-surface);
+  --cafe-espresso:    var(--ms-sidebar);
+  --cafe-espresso-2:  color-mix(in srgb, var(--ms-sidebar) 80%, #fff);
+  --cafe-espresso-3:  color-mix(in srgb, var(--ms-sidebar) 70%, #fff);
+  --cafe-gold:        var(--ms-accent);
+  --cafe-gold-dark:   var(--ms-accent-hover);
+  --cafe-amber:       var(--ms-accent);
+  --cafe-border:      var(--ms-border);
+  --cafe-border-2:    var(--ms-border-strong);
+  --cafe-text:        var(--ms-text);
+  --cafe-text-mid:    var(--ms-text-mid);
+  --cafe-text-muted:  var(--ms-text-muted);
+  --cafe-sidebar-txt: var(--ms-sidebar-text);
+  --cafe-link:        var(--ms-accent);
+}
+
+/* Dark mode — Night Workshop */
+[data-theme="dark"] {
+  --ms-bg:              #121110;
+  --ms-surface:         #1C1A18;
+  --ms-surface-alt:     #242220;
+  --ms-hover:           #2A2825;
+  --ms-text:            #F0EAE0;
+  --ms-text-mid:        #BEB4A8;
+  --ms-text-muted:      #7A726A;
+  --ms-border:          rgba(255, 255, 255, 0.08);
+  --ms-border-strong:   rgba(255, 255, 255, 0.14);
+  --ms-accent:          #D4940A;
+  --ms-accent-hover:    #F0A820;
+  --ms-accent-light:    rgba(212, 148, 10, 0.14);
+  --ms-accent-pop:      rgba(212, 148, 10, 0.09);
+  --ms-sidebar:         #0C0B0A;
+  --ms-sidebar-text:    #887A6E;
+  --ms-sidebar-act-text:#E8D8C0;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.04);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.05);
+  --ms-radius:          10px;
+  --ms-radius-sm:       6px;
+  --ms-shadow:          0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+  --ms-shadow-hover:    0 4px 16px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.35);
+  --ms-badge-wait-bg:   rgba(200,150,20,0.15);  --ms-badge-wait-text:  #D8C060;
+  --ms-badge-in-bg:     rgba(60,130,200,0.15);  --ms-badge-in-text:    #70B8F0;
+  --ms-badge-done-bg:   rgba(60,170,90,0.15);   --ms-badge-done-text:  #70D890;
+  --ms-badge-alert-bg:  rgba(200,70,70,0.15);   --ms-badge-alert-text: #F09090;
+  --ms-badge-neutral-bg:rgba(255,255,255,0.07); --ms-badge-neutral-text:#A09080;
+  --ms-badge-blue-bg:   rgba(50,120,200,0.14);  --ms-badge-blue-text:  #80C0F0;
+  --ms-badge-teal-bg:   rgba(30,150,130,0.14);  --ms-badge-teal-text:  #60D8C0;
+  --ms-badge-orange-bg: rgba(210,130,30,0.14);  --ms-badge-orange-text:#E0A040;
+  --ms-badge-green-bg:  rgba(50,170,80,0.14);   --ms-badge-green-text: #70D890;
+}
+
+/* Neutral variant — Steel & Amber */
+[data-theme="neutral"] {
+  --ms-bg:              #F6F5F3;
+  --ms-surface:         #FFFFFF;
+  --ms-surface-alt:     #EEECEA;
+  --ms-hover:           #F3F1EE;
+  --ms-text:            #141210;
+  --ms-text-mid:        #4A4540;
+  --ms-text-muted:      #87837D;
+  --ms-border:          #E0DDD8;
+  --ms-border-strong:   #C6C2BC;
+  --ms-accent:          #C07820;
+  --ms-accent-hover:    #9A5C0C;
+  --ms-accent-light:    #FEF3E2;
+  --ms-accent-pop:      rgba(192, 120, 32, 0.09);
+  --ms-sidebar:         #181614;
+  --ms-sidebar-text:    #A8A29C;
+  --ms-sidebar-act-text:#EDEBE7;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.07);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.04);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.06);
+  --ms-radius:          8px;
+  --ms-radius-sm:       6px;
+  --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
+  --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
 }
 
 @layer base {
   html, body {
-    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-    background-color: var(--cafe-bg);
-    color: var(--cafe-text);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--ms-bg);
+    color: var(--ms-text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Serif headings */
   h1, h2, h3 {
-    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 
-  /* Warm scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--cafe-bg); }
-  ::-webkit-scrollbar-thumb { background: var(--cafe-border-2); border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: var(--ms-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--ms-border-strong); border-radius: 3px; }
 }

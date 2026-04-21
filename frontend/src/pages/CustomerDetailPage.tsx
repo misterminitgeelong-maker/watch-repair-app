@@ -75,7 +75,7 @@ export default function CustomerDetailPage() {
   const closedJobsCount = completedDirectoryJobs.length + noGoJobs.length
 
   if (isLoading) return <Spinner />
-  if (!customer) return <p style={{ color: 'var(--cafe-text-muted)' }}>Customer not found.</p>
+  if (!customer) return <p style={{ color: 'var(--ms-text-muted)' }}>Customer not found.</p>
 
   return (
     <div>
@@ -83,9 +83,9 @@ export default function CustomerDetailPage() {
         <Link
           to="/customers"
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
-          style={{ color: 'var(--cafe-text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+          style={{ color: 'var(--ms-text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
         >
           <ChevronLeft size={14} /> Back to Customers
         </Link>
@@ -109,17 +109,17 @@ export default function CustomerDetailPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 text-sm">
-        {customer.phone && <div style={{ color: 'var(--cafe-text-mid)' }}><span className="font-medium" style={{ color: 'var(--cafe-text)' }}>Phone: </span>{customer.phone}</div>}
-        {customer.email && <div style={{ color: 'var(--cafe-text-mid)' }}><span className="font-medium" style={{ color: 'var(--cafe-text)' }}>Email: </span>{customer.email}</div>}
-        {customer.address && <div style={{ color: 'var(--cafe-text-mid)' }}><span className="font-medium" style={{ color: 'var(--cafe-text)' }}>Address: </span>{customer.address}</div>}
-        {customer.notes && <div className="lg:col-span-3" style={{ color: 'var(--cafe-text-mid)' }}><span className="font-medium" style={{ color: 'var(--cafe-text)' }}>Notes: </span>{customer.notes}</div>}
+        {customer.phone && <div style={{ color: 'var(--ms-text-mid)' }}><span className="font-medium" style={{ color: 'var(--ms-text)' }}>Phone: </span>{customer.phone}</div>}
+        {customer.email && <div style={{ color: 'var(--ms-text-mid)' }}><span className="font-medium" style={{ color: 'var(--ms-text)' }}>Email: </span>{customer.email}</div>}
+        {customer.address && <div style={{ color: 'var(--ms-text-mid)' }}><span className="font-medium" style={{ color: 'var(--ms-text)' }}>Address: </span>{customer.address}</div>}
+        {customer.notes && <div className="lg:col-span-3" style={{ color: 'var(--ms-text-mid)' }}><span className="font-medium" style={{ color: 'var(--ms-text)' }}>Notes: </span>{customer.notes}</div>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <div
             className="px-5 py-4 font-semibold"
-            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+            style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
           >
             Watches ({watches?.length ?? 0})
           </div>
@@ -128,14 +128,14 @@ export default function CustomerDetailPage() {
               <div
                 key={w.id}
                 className="px-5 py-3.5"
-                style={{ borderBottom: i < (watches ?? []).length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                style={{ borderBottom: i < (watches ?? []).length - 1 ? '1px solid var(--ms-border)' : 'none' }}
               >
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{w.serial_number ? `S/N: ${w.serial_number}` : ''} {w.movement_type ?? ''}</p>
+                <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{w.serial_number ? `S/N: ${w.serial_number}` : ''} {w.movement_type ?? ''}</p>
               </div>
             ))}
             {(watches ?? []).length === 0 && (
-              <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No watches yet.</p>
+              <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No watches yet.</p>
             )}
           </div>
         </Card>
@@ -143,19 +143,19 @@ export default function CustomerDetailPage() {
         <Card>
           <div
             className="px-5 py-4 font-semibold"
-            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+            style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
           >
             Repair Jobs ({customerJobs.length})
           </div>
           <div>
-            <div className="px-5 pt-4 pb-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+            <div className="px-5 pt-4 pb-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
               <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
                 <button
                   type="button"
                   className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                   style={{
-                    backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
-                    color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                    backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
+                    color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                   }}
                   onClick={() => setJobDirectoryView('active')}
                 >
@@ -165,8 +165,8 @@ export default function CustomerDetailPage() {
                   type="button"
                   className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                   style={{
-                    backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
-                    color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                    backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
+                    color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                   }}
                   onClick={() => setJobDirectoryView('completed')}
                 >
@@ -182,19 +182,19 @@ export default function CustomerDetailPage() {
                     key={job.id}
                     to={`/jobs/${job.id}`}
                     className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                    style={{ borderBottom: i < activeJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                    style={{ borderBottom: i < activeJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
                     </div>
                     <Badge status={job.status} />
                   </Link>
                 ))}
                 {activeJobs.length === 0 && (
-                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No active jobs.</p>
+                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No active jobs.</p>
                 )}
               </>
             )}
@@ -202,7 +202,7 @@ export default function CustomerDetailPage() {
             {jobDirectoryView === 'completed' && (
               <>
                 {completedDirectoryJobs.length > 0 && (
-                  <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                     Completed Directory ({completedDirectoryJobs.length})
                   </div>
                 )}
@@ -211,13 +211,13 @@ export default function CustomerDetailPage() {
                     key={job.id}
                     to={`/jobs/${job.id}`}
                     className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                    style={{ borderBottom: i < completedDirectoryJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                    style={{ borderBottom: i < completedDirectoryJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
                     </div>
                     <Badge status={job.status} />
                   </Link>
@@ -225,7 +225,7 @@ export default function CustomerDetailPage() {
 
                 {noGoJobs.length > 0 && (
                   <>
-                    <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)', borderTop: completedDirectoryJobs.length > 0 ? '1px solid var(--cafe-border)' : 'none' }}>
+                    <div className="px-5 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)', borderTop: completedDirectoryJobs.length > 0 ? '1px solid var(--ms-border)' : 'none' }}>
                       Closed - No Go ({noGoJobs.length})
                     </div>
                     {noGoJobs.map((job, i) => (
@@ -233,13 +233,13 @@ export default function CustomerDetailPage() {
                         key={job.id}
                         to={`/jobs/${job.id}`}
                         className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                        style={{ borderBottom: i < noGoJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                        style={{ borderBottom: i < noGoJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         <div>
-                          <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
+                          <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>#{job.job_number} · {formatDate(job.created_at)}</p>
                         </div>
                         <Badge status={job.status} />
                       </Link>
@@ -248,12 +248,12 @@ export default function CustomerDetailPage() {
                 )}
 
                 {closedJobsCount === 0 && (
-                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No completed jobs.</p>
+                  <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No completed jobs.</p>
                 )}
               </>
             )}
             {customerJobs.length === 0 && (
-              <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>No jobs yet.</p>
+              <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No jobs yet.</p>
             )}
           </div>
         </Card>
@@ -264,7 +264,7 @@ export default function CustomerDetailPage() {
         <Card className="mt-6">
           <div
             className="px-5 py-4 font-semibold"
-            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+            style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
           >
             Shoe Repairs ({shoeJobs.length})
           </div>
@@ -274,13 +274,13 @@ export default function CustomerDetailPage() {
                 key={job.id}
                 to={`/shoe-repairs/${job.id}`}
                 className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                style={{ borderBottom: i < shoeJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                style={{ borderBottom: i < shoeJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     #{job.job_number}
                     {job.shoe?.brand ? ` · ${job.shoe.brand}` : ''}
                     {` · ${formatDate(job.created_at)}`}
@@ -298,7 +298,7 @@ export default function CustomerDetailPage() {
         <Card className="mt-4">
           <div
             className="px-5 py-4 font-semibold"
-            style={{ borderBottom: '1px solid var(--cafe-border)', fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+            style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
           >
             Mobile Key Jobs ({autoKeyJobs.length})
           </div>
@@ -308,13 +308,13 @@ export default function CustomerDetailPage() {
                 key={job.id}
                 to={`/auto-key/${job.id}`}
                 className="flex items-center justify-between px-5 py-3.5 transition-colors"
-                style={{ borderBottom: i < autoKeyJobs.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                style={{ borderBottom: i < autoKeyJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{job.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     #{job.job_number}
                     {job.vehicle_make ? ` · ${job.vehicle_make}${job.vehicle_model ? ` ${job.vehicle_model}` : ''}` : ''}
                     {` · ${formatDate(job.created_at)}`}

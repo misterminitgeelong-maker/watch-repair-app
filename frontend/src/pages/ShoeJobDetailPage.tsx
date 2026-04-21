@@ -135,9 +135,9 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
             onClick={() => setMode('existing')}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
-              backgroundColor: mode === 'existing' ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
-              color: mode === 'existing' ? '#fff' : 'var(--cafe-text-muted)',
-              border: '1px solid var(--cafe-border-2)',
+              backgroundColor: mode === 'existing' ? 'var(--ms-accent)' : 'var(--ms-surface)',
+              color: mode === 'existing' ? '#fff' : 'var(--ms-text-muted)',
+              border: '1px solid var(--ms-border-strong)',
             }}
           >
             From this customer
@@ -147,9 +147,9 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
             onClick={() => setMode('new')}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
-              backgroundColor: mode === 'new' ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
-              color: mode === 'new' ? '#fff' : 'var(--cafe-text-muted)',
-              border: '1px solid var(--cafe-border-2)',
+              backgroundColor: mode === 'new' ? 'var(--ms-accent)' : 'var(--ms-surface)',
+              color: mode === 'new' ? '#fff' : 'var(--ms-text-muted)',
+              border: '1px solid var(--ms-border-strong)',
             }}
           >
             New pair
@@ -158,7 +158,7 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
 
         {mode === 'existing' ? (
           availableShoes.length === 0 ? (
-            <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No other shoes on file for this customer. Use "New pair" instead.</p>
+            <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No other shoes on file for this customer. Use "New pair" instead.</p>
           ) : (
             <Select label="Choose shoe" value={selectedShoeId} onChange={e => setSelectedShoeId(e.target.value)}>
               <option value="">Select…</option>
@@ -177,7 +177,7 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
         )}
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
             Services For This Pair
           </p>
           <ShoeServicePicker selected={selectedItems} onChange={setSelectedItems} />
@@ -239,14 +239,14 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
     <Card>
       <div
         className="flex items-center gap-2 px-5 py-3.5"
-        style={{ borderBottom: '1px solid var(--cafe-border)' }}
+        style={{ borderBottom: '1px solid var(--ms-border)' }}
       >
-        <Tag size={14} style={{ color: 'var(--cafe-amber)' }} />
-        <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+        <Tag size={14} style={{ color: 'var(--ms-accent)' }} />
+        <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
           Services
         </h2>
         {job.items.length > 0 && (
-          <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>
+          <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>
             {job.items.length} item{job.items.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -254,7 +254,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
           type="button"
           onClick={onAddServices}
           className="ml-auto flex items-center gap-1 text-xs font-medium transition-colors"
-          style={{ color: 'var(--cafe-amber)' }}
+          style={{ color: 'var(--ms-accent)' }}
         >
           <Plus size={13} /> Add service
         </button>
@@ -262,7 +262,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
       {job.items.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
-          style={{ color: 'var(--cafe-text-muted)' }}
+          style={{ color: 'var(--ms-text-muted)' }}
           onClick={onAddServices}
         >
           <Tag size={24} style={{ opacity: 0.25 }} />
@@ -274,17 +274,17 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
             <div
               key={item.id}
               className="flex items-center justify-between gap-3 px-5 py-3 text-sm"
-              style={{ borderBottom: i < job.items.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+              style={{ borderBottom: i < job.items.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
             >
               <div className="flex-1 min-w-0">
-                <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.item_name}</p>
-                <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{item.item_name}</p>
+                <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   {item.catalogue_group.replace(/_/g, ' ')}
                   {item.quantity > 1 ? ` · qty ${item.quantity}` : ''}
                   {item.notes ? ` · ${item.notes}` : ''}
                 </p>
               </div>
-              <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>
+              <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--ms-accent)' }}>
                 {itemPriceDisplay(item)}
               </span>
               <button
@@ -301,10 +301,10 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
           {total > 0 && (
             <div
               className="flex justify-between px-5 py-3 text-sm font-semibold"
-              style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+              style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
             >
               <span>Total</span>
-              <span style={{ color: 'var(--cafe-amber)' }}>${(total / 100).toFixed(2)}</span>
+              <span style={{ color: 'var(--ms-accent)' }}>${(total / 100).toFixed(2)}</span>
             </div>
           )}
         </div>
@@ -334,15 +334,15 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
     <Card className="overflow-hidden">
       <div
         className="px-5 py-3.5 flex items-center justify-between"
-        style={{ borderBottom: '1px solid var(--cafe-border)' }}
+        style={{ borderBottom: '1px solid var(--ms-border)' }}
       >
         <div className="flex items-center gap-2">
-          <MessageSquare size={14} style={{ color: 'var(--cafe-amber)' }} />
-          <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <MessageSquare size={14} style={{ color: 'var(--ms-accent)' }} />
+          <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
             Messages
           </h2>
           {logs.length > 0 && (
-            <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>{logs.length}</span>
+            <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>{logs.length}</span>
           )}
         </div>
       </div>
@@ -357,7 +357,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
               onClick={() => resendMut.mutate(event)}
               disabled={resendMut.isPending}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-amber)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-accent)' }}
             >
               <RefreshCw size={11} className={resendMut.isPending ? 'animate-spin' : ''} />
               Resend: {label}
@@ -367,15 +367,15 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 
         {/* Log */}
         {isLoading ? (
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Loading…</p>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>
         ) : logs.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>No messages sent yet.</p>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No messages sent yet.</p>
         ) : (
           <div className="space-y-3">
             {logs.map((log: SmsLogEntry) => (
-              <div key={log.id} className="text-xs rounded-lg p-3" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+              <div key={log.id} className="text-xs rounded-lg p-3" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{log.event.replace(/_/g, ' ')}</span>
+                  <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{log.event.replace(/_/g, ' ')}</span>
                   <span
                     className="px-1.5 py-0.5 rounded text-[10px] font-medium"
                     style={{
@@ -386,8 +386,8 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
                     {log.status}
                   </span>
                 </div>
-                <p style={{ color: 'var(--cafe-text-mid)' }}>{log.body}</p>
-                <p className="mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{new Date(log.created_at).toLocaleString()}</p>
+                <p style={{ color: 'var(--ms-text-mid)' }}>{log.body}</p>
+                <p className="mt-1" style={{ color: 'var(--ms-text-muted)' }}>{new Date(log.created_at).toLocaleString()}</p>
               </div>
             ))}
           </div>
@@ -399,7 +399,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 
 // ── Shoe tab content ──────────────────────────────────────────────────────────
 function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
-  if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No shoe details.</p>
+  if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No shoe details.</p>
   const rows = [
     ['Type', shoe.shoe_type],
     ['Brand', shoe.brand],
@@ -407,14 +407,14 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
     ['Notes', shoe.description_notes],
   ].filter(([, v]) => v)
 
-  if (rows.length === 0) return <p className="text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No shoe details recorded.</p>
+  if (rows.length === 0) return <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No shoe details recorded.</p>
 
   return (
     <div className="space-y-2 text-sm">
       {rows.map(([label, value]) => (
         <div key={label} className="flex gap-3">
-          <span className="w-16 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>{label}</span>
-          <span style={{ color: 'var(--cafe-text)' }}>{value}</span>
+          <span className="w-16 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
+          <span style={{ color: 'var(--ms-text)' }}>{value}</span>
         </div>
       ))}
     </div>
@@ -429,31 +429,31 @@ function HistoryCard({ jobId }: { jobId: string }) {
   })
   return (
     <Card className="overflow-hidden">
-      <div className="px-5 py-3.5 flex items-center gap-2" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-        <History size={14} style={{ color: 'var(--cafe-amber)' }} />
-        <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>History</h2>
-        {history.length > 0 && <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>{history.length}</span>}
+      <div className="px-5 py-3.5 flex items-center gap-2" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+        <History size={14} style={{ color: 'var(--ms-accent)' }} />
+        <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>History</h2>
+        {history.length > 0 && <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>{history.length}</span>}
       </div>
       <div className="p-5">
         {isLoading ? (
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Loading…</p>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>
         ) : history.length === 0 ? (
-          <p className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>No history yet.</p>
+          <p className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>No history yet.</p>
         ) : (
           <div className="relative pl-5 space-y-4">
-            <div className="absolute left-1.5 top-0 bottom-0 w-0.5" style={{ backgroundColor: 'var(--cafe-border-2)' }} />
+            <div className="absolute left-1.5 top-0 bottom-0 w-0.5" style={{ backgroundColor: 'var(--ms-border-strong)' }} />
             {history.map((h: ShoeJobHistoryEntry) => {
               const isNote = h.old_status === h.new_status
               return (
                 <div key={h.id} className="relative">
-                  <div className="absolute -left-[18px] top-1.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: isNote ? 'var(--cafe-bg)' : 'var(--cafe-gold)', borderColor: isNote ? 'var(--cafe-border-2)' : 'var(--cafe-gold)' }} />
-                  <p className="text-xs font-medium" style={{ color: 'var(--cafe-text)' }}>
+                  <div className="absolute -left-[18px] top-1.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: isNote ? 'var(--ms-bg)' : 'var(--ms-accent)', borderColor: isNote ? 'var(--ms-border-strong)' : 'var(--ms-accent)' }} />
+                  <p className="text-xs font-medium" style={{ color: 'var(--ms-text)' }}>
                     {isNote ? 'Note added' : `${STATUS_LABELS[h.old_status ?? ''] ?? h.old_status ?? '—'} → ${STATUS_LABELS[h.new_status] ?? h.new_status}`}
                   </p>
                   {h.change_note && (
-                    <p className="text-xs mt-0.5 italic" style={{ color: 'var(--cafe-text-mid)' }}>{h.change_note}</p>
+                    <p className="text-xs mt-0.5 italic" style={{ color: 'var(--ms-text-mid)' }}>{h.change_note}</p>
                   )}
-                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(h.created_at)}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(h.created_at)}</p>
                 </div>
               )
             })}
@@ -539,7 +539,7 @@ export default function ShoeJobDetailPage() {
   }
 
   if (isLoading) return <Spinner />
-  if (!job) return <p style={{ color: 'var(--cafe-text-muted)' }}>Job not found.</p>
+  if (!job) return <p style={{ color: 'var(--ms-text-muted)' }}>Job not found.</p>
 
   const allShoes = [
     { id: 'primary', shoe: job.shoe, isPrimary: true, entryId: null as string | null },
@@ -561,9 +561,9 @@ export default function ShoeJobDetailPage() {
         <Link
           to="/shoe-repairs"
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
-          style={{ color: 'var(--cafe-text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+          style={{ color: 'var(--ms-text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
         >
           <ChevronLeft size={14} /> Back to Shoe Repairs
         </Link>
@@ -598,42 +598,112 @@ export default function ShoeJobDetailPage() {
 
       {/* Summary strip */}
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
-        <span style={{ color: 'var(--cafe-text-muted)' }}>Status: <Badge status={job.status} /></span>
+        <span style={{ color: 'var(--ms-text-muted)' }}>Status: <Badge status={job.status} /></span>
         {job.quote_status !== 'none' && (
-          <span style={{ color: 'var(--cafe-text-muted)' }}>
+          <span style={{ color: 'var(--ms-text-muted)' }}>
             Quote:{' '}
             <span
               className="font-medium capitalize"
               style={{
                 color: job.quote_status === 'approved' ? '#1F6D4C'
                   : job.quote_status === 'declined' ? '#8B3A3A'
-                  : 'var(--cafe-amber)',
+                  : 'var(--ms-accent)',
               }}
             >
               {job.quote_status}
             </span>
           </span>
         )}
-        <span style={{ color: 'var(--cafe-text-muted)' }}>
+        <span style={{ color: 'var(--ms-text-muted)' }}>
           Priority:{' '}
           <span
             className="font-medium capitalize"
             style={{
-              color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--cafe-text)',
+              color: job.priority === 'urgent' ? '#8B3A3A' : job.priority === 'high' ? '#9B4E0F' : 'var(--ms-text)',
             }}
           >
             {job.priority}
           </span>
         </span>
         {total > 0 && (
-          <span style={{ color: 'var(--cafe-text-muted)' }}>
-            Estimated: <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>${(total / 100).toFixed(2)}</span>
+          <span style={{ color: 'var(--ms-text-muted)' }}>
+            Estimated: <span className="font-medium" style={{ color: 'var(--ms-text)' }}>${(total / 100).toFixed(2)}</span>
           </span>
         )}
-        <span style={{ color: 'var(--cafe-text-muted)' }}>
-          Created: <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span>
+        <span style={{ color: 'var(--ms-text-muted)' }}>
+          Created: <span style={{ color: 'var(--ms-text)' }}>{formatDate(job.created_at)}</span>
         </span>
       </div>
+
+      {/* Photo hero — full-width 4-col grid above main grid */}
+      <Card className="overflow-hidden mb-5">
+        <div
+          className="px-5 py-3.5 flex items-center justify-between flex-wrap gap-2"
+          style={{ borderBottom: photos.length > 0 ? '1px solid var(--ms-border)' : 'none' }}
+        >
+          <div className="flex items-center gap-2">
+            <Camera size={14} style={{ color: 'var(--ms-accent)' }} />
+            <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
+              Photos
+            </h2>
+            {photos.length > 0 && (
+              <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>{photos.length}</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                backgroundColor: 'var(--ms-accent)',
+                border: '1px solid var(--ms-accent)',
+                color: '#fff',
+                opacity: uploading ? 0.7 : 1,
+              }}
+            >
+              <Camera size={11} />
+              {uploading ? 'Uploading…' : 'Take photo'}
+            </button>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                backgroundColor: 'var(--ms-surface)',
+                border: '1px dashed var(--ms-border-strong)',
+                color: uploading ? 'var(--ms-text-muted)' : 'var(--ms-accent)',
+              }}
+            >
+              <Upload size={11} />
+              Gallery upload
+            </button>
+          </div>
+        </div>
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+        <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+        {photos.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
+            style={{ color: 'var(--ms-text-muted)' }}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera size={28} style={{ opacity: 0.3 }} />
+            <p className="text-xs mt-2">No photos yet. Tap to add intake or gallery photos.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-5">
+            {photos.map(photo => (
+              <SecureAttachmentLink key={photo.id} storageKey={photo.storage_key} target="_blank" rel="noopener noreferrer" className="group">
+                <SecureAttachmentImage storageKey={photo.storage_key} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--ms-border)' }} />
+                <p className="text-[10px] text-center mt-1" style={{ color: 'var(--ms-text-muted)' }}>{photo.label || 'Photo'}</p>
+              </SecureAttachmentLink>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -644,14 +714,14 @@ export default function ShoeJobDetailPage() {
           <Card className="overflow-hidden">
             <div
               className="px-5 py-3.5 flex items-center justify-between"
-              style={{ borderBottom: '1px solid var(--cafe-border)' }}
+              style={{ borderBottom: '1px solid var(--ms-border)' }}
             >
               <div className="flex items-center gap-2">
-                <Footprints size={14} style={{ color: 'var(--cafe-amber)' }} />
-                <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <Footprints size={14} style={{ color: 'var(--ms-accent)' }} />
+                <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
                   Shoes
                 </h2>
-                <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>
                   {allShoes.length} pair{allShoes.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -659,7 +729,7 @@ export default function ShoeJobDetailPage() {
                 type="button"
                 onClick={() => setShowAddPair(true)}
                 className="flex items-center gap-1 text-xs font-medium transition-colors"
-                style={{ color: 'var(--cafe-amber)' }}
+                style={{ color: 'var(--ms-accent)' }}
                 title="Add another pair"
               >
                 <Plus size={13} /> Add pair
@@ -668,7 +738,7 @@ export default function ShoeJobDetailPage() {
 
             {/* Pair tabs */}
             {allShoes.length > 1 && (
-              <div className="flex gap-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+              <div className="flex gap-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--ms-border)' }}>
                 {allShoes.map((pair, idx) => (
                   <button
                     key={pair.id}
@@ -676,8 +746,9 @@ export default function ShoeJobDetailPage() {
                     onClick={() => setActivePairIdx(idx)}
                     className="flex-shrink-0 px-4 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap"
                     style={{
-                      borderBottomColor: safeIdx === idx ? 'var(--cafe-gold)' : 'transparent',
-                      color: safeIdx === idx ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)',
+                      borderBottomColor: safeIdx === idx ? 'var(--ms-accent)' : 'transparent',
+                      color: safeIdx === idx ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                      fontWeight: safeIdx === idx ? 700 : 500,
                       marginBottom: '-1px',
                     }}
                   >
@@ -690,7 +761,7 @@ export default function ShoeJobDetailPage() {
             {/* Active pair details */}
             <div className="p-5">
               <div className="flex items-start justify-between gap-2 mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>
                   {activePair.isPrimary ? 'Primary pair' : `Pair ${safeIdx + 1}`}
                 </p>
                 {!activePair.isPrimary && activePair.entryId && (
@@ -712,46 +783,46 @@ export default function ShoeJobDetailPage() {
 
           {/* ── Job Info ──────────────────────────────────────────── */}
           <Card className="p-5 space-y-3">
-            <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>
+            <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>
               Job Info
             </h2>
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Job #</span>
-                <span className="font-mono" style={{ color: 'var(--cafe-text)' }}>#{job.job_number}</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Job #</span>
+                <span className="font-mono" style={{ color: 'var(--ms-text)' }}>#{job.job_number}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Status</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Status</span>
                 <Badge status={job.status} />
               </div>
               <div className="flex justify-between">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Priority</span>
-                <span className="capitalize font-medium" style={{ color: 'var(--cafe-text)' }}>{job.priority}</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Priority</span>
+                <span className="capitalize font-medium" style={{ color: 'var(--ms-text)' }}>{job.priority}</span>
               </div>
               <div className="flex justify-between">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Date In</span>
-                <span style={{ color: 'var(--cafe-text)' }}>{formatDate(job.created_at)}</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Date In</span>
+                <span style={{ color: 'var(--ms-text)' }}>{formatDate(job.created_at)}</span>
               </div>
               {job.collection_date && (
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--cafe-text-muted)' }}>Collection</span>
-                  <span style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span>
+                  <span style={{ color: 'var(--ms-text-muted)' }}>Collection</span>
+                  <span style={{ color: 'var(--ms-text)' }}>{job.collection_date}</span>
                 </div>
               )}
               {job.salesperson && (
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--cafe-text-muted)' }}>Salesperson</span>
-                  <span style={{ color: 'var(--cafe-text)' }}>{job.salesperson}</span>
+                  <span style={{ color: 'var(--ms-text-muted)' }}>Salesperson</span>
+                  <span style={{ color: 'var(--ms-text)' }}>{job.salesperson}</span>
                 </div>
               )}
               {job.deposit_cents > 0 && (
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--cafe-text-muted)' }}>Deposit</span>
+                  <span style={{ color: 'var(--ms-text-muted)' }}>Deposit</span>
                   <span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span>
                 </div>
               )}
               <div className="space-y-1">
-                <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Customer Account</span>
+                <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Customer Account</span>
                 <Select
                   value={job.customer_account_id ?? ''}
                   onChange={e => updateAccountMutation.mutate(e.target.value || null)}
@@ -767,10 +838,10 @@ export default function ShoeJobDetailPage() {
               </div>
               {/* Cost — editable */}
               <div className="flex justify-between items-center">
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Cost</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Cost</span>
                 {editingCost ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>$</span>
+                    <span className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>$</span>
                     <input
                       type="number" min="0" step="0.01"
                       value={costInput}
@@ -781,26 +852,26 @@ export default function ShoeJobDetailPage() {
                       }}
                       autoFocus
                       className="w-24 text-right text-sm rounded px-1.5 py-0.5"
-                      style={{ border: '1px solid var(--cafe-border)', background: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}
+                      style={{ border: '1px solid var(--ms-border)', background: 'var(--ms-bg)', color: 'var(--ms-text)' }}
                     />
                     <button
                       onClick={() => updateCostMutation.mutate(Math.round(parseFloat(costInput || '0') * 100))}
                       disabled={updateCostMutation.isPending}
                       className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text)' }}
+                      style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text)' }}
                     >Save</button>
-                    <button onClick={() => setEditingCost(false)} className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>✕</button>
+                    <button onClick={() => setEditingCost(false)} className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>✕</button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
+                    <span className="font-medium" style={{ color: 'var(--ms-text-mid)' }}>
                       {job.cost_cents > 0 ? `$${(job.cost_cents / 100).toFixed(2)}` : '—'}
                     </span>
                     <button
                       onClick={() => { setCostInput(job.cost_cents > 0 ? (job.cost_cents / 100).toFixed(2) : ''); setEditingCost(true) }}
                       className="opacity-50 hover:opacity-100 transition-opacity" title="Edit cost"
                     >
-                      <Pencil size={12} style={{ color: 'var(--cafe-text-muted)' }} />
+                      <Pencil size={12} style={{ color: 'var(--ms-text-muted)' }} />
                     </button>
                   </div>
                 )}
@@ -809,78 +880,8 @@ export default function ShoeJobDetailPage() {
           </Card>
         </div>
 
-        {/* Right columns: Services + Description + Photos */}
+        {/* Right columns: Services + Description */}
         <div className="lg:col-span-2 flex flex-col gap-5">
-
-          {/* ── Photos ────────────────────────────────────────────── */}
-          <Card className="overflow-hidden">
-            <div
-              className="px-5 py-3.5 flex items-center justify-between"
-              style={{ borderBottom: photos.length > 0 ? '1px solid var(--cafe-border)' : 'none' }}
-            >
-              <div className="flex items-center gap-2">
-                <Camera size={14} style={{ color: 'var(--cafe-amber)' }} />
-                <h2 className="font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
-                  Photos
-                </h2>
-                {photos.length > 0 && (
-                  <span className="text-xs font-mono" style={{ color: 'var(--cafe-text-muted)' }}>{photos.length}</span>
-                )}
-              </div>
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => cameraInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: 'var(--cafe-amber)',
-                  border: '1px solid var(--cafe-amber)',
-                  color: '#fff',
-                  opacity: uploading ? 0.7 : 1,
-                }}
-              >
-                <Camera size={11} />
-                {uploading ? 'Uploading…' : 'Take photo'}
-              </button>
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => photoInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: 'var(--cafe-surface)',
-                  border: '1px dashed var(--cafe-border-2)',
-                  color: uploading ? 'var(--cafe-text-muted)' : 'var(--cafe-amber)',
-                }}
-              >
-                <Upload size={11} />
-                Gallery upload
-              </button>
-            </div>
-
-            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-            <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-
-            {photos.length === 0 ? (
-              <div
-                className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
-                style={{ color: 'var(--cafe-text-muted)' }}
-                onClick={() => cameraInputRef.current?.click()}
-              >
-                <Camera size={28} style={{ opacity: 0.3 }} />
-                <p className="text-xs mt-2">No photos yet. Tap to add intake or gallery photos.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-5">
-                {photos.map(photo => (
-                  <SecureAttachmentLink key={photo.id} storageKey={photo.storage_key} target="_blank" rel="noopener noreferrer" className="group">
-                    <SecureAttachmentImage storageKey={photo.storage_key} alt={photo.label || 'Shoe photo'} className="w-full aspect-square object-cover rounded-lg transition-shadow" style={{ border: '1px solid var(--cafe-border)' }} />
-                    <p className="text-[10px] text-center mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{photo.label || 'Photo'}</p>
-                  </SecureAttachmentLink>
-                ))}
-              </div>
-            )}
-          </Card>
 
           {/* ── Services ──────────────────────────────────────────── */}
           <ServicesCard job={job} onAddServices={() => setShowAddServices(true)} />
@@ -888,10 +889,10 @@ export default function ShoeJobDetailPage() {
           {/* ── Description ───────────────────────────────────────── */}
           {job.description && (
             <Card className="p-5">
-              <h2 className="font-semibold text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+              <h2 className="font-semibold text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
                 Notes
               </h2>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>
                 {job.description}
               </p>
             </Card>

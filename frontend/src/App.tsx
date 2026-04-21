@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
+import { ThemeProvider } from '@/context/ThemeContext'
 import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import NativeChrome from '@/components/NativeChrome'
@@ -86,6 +87,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <NativeChrome />
+        <ThemeProvider>
         <AuthProvider>
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
@@ -156,6 +158,7 @@ export default function App() {
             </Suspense>
           </LocationBoundary>
         </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )

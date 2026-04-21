@@ -76,22 +76,22 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     >
       <div
         className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-          <Search size={16} style={{ color: 'var(--cafe-text-muted)', flexShrink: 0 }} />
+        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+          <Search size={16} style={{ color: 'var(--ms-text-muted)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Search jobs, customers…"
             className="flex-1 bg-transparent text-sm outline-none"
-            style={{ color: 'var(--cafe-text)' }}
+            style={{ color: 'var(--ms-text)' }}
           />
           {q && (
-            <button onClick={() => setQ('')} style={{ color: 'var(--cafe-text-muted)', flexShrink: 0 }}>
+            <button onClick={() => setQ('')} style={{ color: 'var(--ms-text-muted)', flexShrink: 0 }}>
               <X size={14} />
             </button>
           )}
@@ -100,36 +100,36 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         {/* Results */}
         <div className="max-h-96 overflow-y-auto">
           {!q.trim() && (
-            <p className="px-4 py-8 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="px-4 py-8 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
               Type to search jobs and customers
             </p>
           )}
           {loading && q.trim() && (
-            <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>Searching…</p>
+            <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>Searching…</p>
           )}
           {!loading && q.trim() && !hasResults && (
-            <p className="px-4 py-8 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="px-4 py-8 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
               No results for <strong>"{q}"</strong>
             </p>
           )}
 
           {!loading && jobs.length > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>
                 Jobs
               </p>
               {jobs.map(j => (
                 <button
                   key={j.id}
                   className="w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors"
-                  style={{ borderBottom: '1px solid var(--cafe-border)' }}
+                  style={{ borderBottom: '1px solid var(--ms-border)' }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   onClick={() => go(`/jobs/${j.id}`)}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{j.title}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--ms-text)' }}>{j.title}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                       #{j.job_number}{j.customer_name ? ` · ${j.customer_name}` : ''}
                     </p>
                   </div>
@@ -141,20 +141,20 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
           {!loading && customers.length > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>
                 Customers
               </p>
               {customers.map(c => (
                 <button
                   key={c.id}
                   className="w-full text-left px-4 py-2.5 transition-colors"
-                  style={{ borderBottom: '1px solid var(--cafe-border)' }}
+                  style={{ borderBottom: '1px solid var(--ms-border)' }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   onClick={() => go(`/customers/${c.id}`)}
                 >
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{c.full_name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{c.full_name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     {[c.email, c.phone].filter(Boolean).join(' · ') || 'No contact details'}
                   </p>
                 </button>
@@ -164,9 +164,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid var(--cafe-border)' }}>
-          <span className="text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>↵ open · esc close</span>
-          <span className="text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>⌘K</span>
+        <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid var(--ms-border)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>↵ open · esc close</span>
+          <span className="text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>⌘K</span>
         </div>
       </div>
     </div>

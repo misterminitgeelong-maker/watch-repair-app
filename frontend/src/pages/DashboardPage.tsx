@@ -173,20 +173,20 @@ function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefin
 function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
   return (
     <Link to={to} className="dashboard-rise block" style={{ animationDelay: `${index * 0.06}s` }}>
-      <Card className="dashboard-panel h-full p-4 sm:p-5">
+      <Card className="dashboard-panel h-full p-4">
         <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide sm:tracking-[0.2em] whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-[10px] font-bold uppercase whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.12em' }}>
               <span className="sm:hidden">{mobileLabel ?? label}</span>
               <span className="hidden sm:inline">{label}</span>
             </p>
             <p
-              className="mt-1.5 sm:mt-2 text-2xl sm:text-3xl font-semibold leading-none"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+              className="mt-2 font-extrabold leading-none"
+              style={{ color: 'var(--ms-text)', fontSize: 26, letterSpacing: '-0.02em' }}
             >
               {value}
             </p>
-            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm truncate" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm truncate" style={{ color: 'var(--ms-text-mid)' }}>
               {helper}
             </p>
           </div>
@@ -216,7 +216,7 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
   })
   return (
     <Modal title="Quick add — customer completes details" onClose={onClose}>
-      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
         We create a draft job and text the customer a secure link to enter vehicle and service information. You will see the job update when they submit the form.
       </p>
       <div className="space-y-3">
@@ -482,7 +482,7 @@ export default function DashboardPage() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         <PageHeader title="Operations Dashboard" />
         <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
             Last refreshed {lastUpdatedAt > 0 ? new Date(lastUpdatedAt).toLocaleTimeString() : 'just now'}
           </p>
           <Button
@@ -523,10 +523,10 @@ export default function DashboardPage() {
         )}
 
         {(invoicesQ.isPending || reportsQ.isPending) && (
-          <div className="mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             <div
               className="w-5 h-5 border-2 rounded-full animate-spin shrink-0"
-              style={{ borderColor: 'var(--cafe-border)', borderTopColor: 'var(--cafe-amber)' }}
+              style={{ borderColor: 'var(--ms-border)', borderTopColor: 'var(--ms-accent)' }}
               aria-hidden
             />
             <span>Loading latest totals…</span>
@@ -539,7 +539,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: '#D6C4AD' }}>
                 Shop-wide overview
               </p>
-              <h2 className="mt-3 text-3xl font-semibold leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#FFF7EA' }}>
+              <h2 className="mt-3 text-3xl font-semibold leading-tight" style={{ color: '#FFF7EA' }}>
                 All your repairs, one place.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: '#E7D8C3' }}>
@@ -558,14 +558,14 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
               <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
-                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</p>
-                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Revenue</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.financials.revenue_cents ?? 0)}
                 </p>
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
-                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Gross Profit</p>
-                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Gross Profit</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.financials.gross_profit_cents ?? 0)}
                 </p>
                 {(reports?.financials.cost_outlier_jobs ?? 0) > 0 && (
@@ -575,14 +575,14 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
-                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Approval Rate</p>
-                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Approval Rate</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {reports?.sales_funnel.approval_rate_percent ?? 0}%
                 </p>
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
-                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Avg / Job</p>
-                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Avg / Job</p>
+                <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.operations.avg_revenue_per_job_cents ?? 0)}
                 </p>
               </div>
@@ -594,15 +594,15 @@ export default function DashboardPage() {
           <Card className="mb-6 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>Launch checklist</p>
-                <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Launch checklist</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                   Progress {checklistDone}/{checklist.length} completed
                 </p>
               </div>
               <button
                 type="button"
                 className="text-xs font-semibold"
-                style={{ color: 'var(--cafe-amber)' }}
+                style={{ color: 'var(--ms-accent)' }}
                 onClick={() => {
                   setChecklistDismissed(tenantId, true)
                   setChecklistDismissedState(true)
@@ -619,9 +619,9 @@ export default function DashboardPage() {
                   to={item.to}
                   className="rounded-xl border px-3 py-3 text-sm"
                   style={{
-                    borderColor: 'var(--cafe-border)',
-                    backgroundColor: item.done ? '#EAF4EA' : 'var(--cafe-bg)',
-                    color: 'var(--cafe-text)',
+                    borderColor: 'var(--ms-border)',
+                    backgroundColor: item.done ? '#EAF4EA' : 'var(--ms-bg)',
+                    color: 'var(--ms-text)',
                   }}
                 >
                   <span className="font-semibold">{item.done ? 'Done' : 'Next'}</span> · {item.label}
@@ -638,14 +638,14 @@ export default function DashboardPage() {
                 <Inbox size={20} />
               </div>
               <div>
-                <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {inboxAlerts.length} alert{inboxAlerts.length !== 1 ? 's' : ''} in Inbox
                 </p>
-                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                   Quote activity and website mobile key leads
                 </p>
               </div>
-              <ArrowRight size={18} className="ml-auto shrink-0" style={{ color: 'var(--cafe-amber)' }} />
+              <ArrowRight size={18} className="ml-auto shrink-0" style={{ color: 'var(--ms-accent)' }} />
             </Link>
           </Card>
         )}
@@ -682,9 +682,9 @@ export default function DashboardPage() {
                 {widgets.overdue_collection_count > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <span className="font-semibold" style={{ color: '#8B3A3A' }}>{widgets.overdue_collection_count}</span>
-                    <span style={{ color: 'var(--cafe-text-mid)' }}>
+                    <span style={{ color: 'var(--ms-text-mid)' }}>
                       job{widgets.overdue_collection_count !== 1 ? 's' : ''} past collection date —{' '}
-                      <Link to="/jobs?status=awaiting_collection&past_collection=1" className="underline" style={{ color: 'var(--cafe-amber)' }}>view jobs</Link>
+                      <Link to="/jobs?status=awaiting_collection&past_collection=1" className="underline" style={{ color: 'var(--ms-accent)' }}>view jobs</Link>
                     </span>
                   </div>
                 )}
@@ -701,16 +701,16 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
           <Card className="dashboard-panel overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
               <div>
-                <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
                   Live Service Queue
                 </h2>
-                <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                   At least three rows per enabled service line (when data exists), then newest activity up to {LIVE_QUEUE_MAX_ITEMS} items.
                 </p>
               </div>
-              <Link to="/jobs" className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-amber)' }}>
+              <Link to="/jobs" className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-accent)' }}>
                 Open workflow
               </Link>
             </div>
@@ -721,28 +721,28 @@ export default function DashboardPage() {
                   key={`${item.typeLabel}-${item.id}`}
                   to={item.to}
                   className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors"
-                  style={{ borderBottom: index < recentItems.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                  style={{ borderBottom: index < recentItems.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F5EDE0' }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                         {item.typeLabel}
                       </span>
-                      <span className="text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <span className="text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>
                         {item.detail}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-medium leading-5" style={{ color: 'var(--cafe-text)' }}>{item.title}</p>
-                    <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(item.created_at)}</p>
+                    <p className="mt-1 text-sm font-medium leading-5" style={{ color: 'var(--ms-text)' }}>{item.title}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(item.created_at)}</p>
                   </div>
                   <Badge status={item.status} />
                 </Link>
               ))}
 
               {recentItems.length === 0 && (
-                <p className="px-5 py-8 text-sm italic" style={{ color: 'var(--cafe-text-muted)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+                <p className="px-5 py-8 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>
                   No recent jobs yet.
                 </p>
               )}
@@ -756,10 +756,10 @@ export default function DashboardPage() {
                   <DollarSign size={18} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
                     Commercial Pulse
                   </h2>
-                  <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                     What the shop has billed, recovered, and still needs to chase.
                   </p>
                 </div>
@@ -767,20 +767,20 @@ export default function DashboardPage() {
 
               <div className="mt-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Billed total</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(reports?.financials.billed_cents ?? 0)}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Billed total</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.billed_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Revenue received</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(reports?.financials.revenue_cents ?? 0)}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Revenue received</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.revenue_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Outstanding</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{formatCents(reports?.financials.outstanding_cents ?? 0)}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Outstanding</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.outstanding_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Gross margin</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.gross_margin_percent ?? 0}%</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Gross margin</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{reports?.financials.gross_margin_percent ?? 0}%</strong>
                 </div>
               </div>
             </Card>
@@ -791,34 +791,34 @@ export default function DashboardPage() {
                   <Clock3 size={18} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
                     Operational Pressure
                   </h2>
-                  <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                     Where workflow congestion is starting to show.
                   </p>
                 </div>
               </div>
 
-              <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                 Urgent total includes watch jobs from your {DEFAULT_PAGE_SIZE} most recent by date, plus full shoe and mobile lists.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Watch OK wait</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{watchAwaitingGoAheadCount}</p>
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Watch OK wait</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>{watchAwaitingGoAheadCount}</p>
                 </div>
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Quotes pending</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{quotesPendingCount}</p>
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Quotes pending</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>{quotesPendingCount}</p>
                 </div>
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Urgent jobs</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{urgentAcrossServiceLines}</p>
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Urgent jobs</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>{urgentAcrossServiceLines}</p>
                 </div>
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Open invoices</p>
-                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{invoicesOpen.length}</p>
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Open invoices</p>
+                  <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>{invoicesOpen.length}</p>
                 </div>
               </div>
             </Card>
@@ -828,32 +828,32 @@ export default function DashboardPage() {
                   <DollarSign size={18} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
                     Financial Data Health
                   </h2>
-                  <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                     Flags imported cost outliers excluded from gross profit.
                   </p>
                 </div>
               </div>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Watch outlier jobs</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_watch_jobs ?? 0}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Watch outlier jobs</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{reports?.financials.cost_outlier_watch_jobs ?? 0}</strong>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Shoe outlier jobs</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_shoe_jobs ?? 0}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Shoe outlier jobs</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{reports?.financials.cost_outlier_shoe_jobs ?? 0}</strong>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--cafe-text-mid)' }}>Total suppressed jobs</span>
-                  <strong style={{ color: 'var(--cafe-text)' }}>{reports?.financials.cost_outlier_jobs ?? 0}</strong>
+                  <span style={{ color: 'var(--ms-text-mid)' }}>Total suppressed jobs</span>
+                  <strong style={{ color: 'var(--ms-text)' }}>{reports?.financials.cost_outlier_jobs ?? 0}</strong>
                 </div>
                 <div className="pt-2 flex gap-2">
-                  <Link to="/jobs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--cafe-amber)' }}>
+                  <Link to="/jobs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--ms-accent)' }}>
                     Review watch outliers
                   </Link>
-                  <Link to="/shoe-repairs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--cafe-amber)' }}>
+                  <Link to="/shoe-repairs?cost_outlier=1" className="text-xs underline" style={{ color: 'var(--ms-accent)' }}>
                     Review shoe outliers
                   </Link>
                 </div>

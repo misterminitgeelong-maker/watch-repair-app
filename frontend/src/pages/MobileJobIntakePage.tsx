@@ -86,8 +86,8 @@ export default function MobileJobIntakePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)' }}>
-        <div className="text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
+        <div className="text-center" style={{ color: 'var(--ms-text-muted)' }}>
           <Clock className="mx-auto mb-3 animate-spin" size={28} />
           <p>Loading…</p>
         </div>
@@ -101,12 +101,12 @@ export default function MobileJobIntakePage() {
         ? 'This link is not valid or the job has already been completed. Contact the shop if you need help.'
         : getApiErrorMessage(error, 'Could not load form.')
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <div className="max-w-md text-center">
-          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>
             Link unavailable
           </h1>
-          <p style={{ color: 'var(--cafe-text-muted)' }}>{msg}</p>
+          <p style={{ color: 'var(--ms-text-muted)' }}>{msg}</p>
         </div>
       </div>
     )
@@ -116,17 +116,17 @@ export default function MobileJobIntakePage() {
 
   if (submitMut.isSuccess) {
     return (
-      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <Card className="max-w-md p-8 text-center space-y-3">
           <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ backgroundColor: '#E8F6EE' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1F6D4C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <p className="text-xl font-semibold" style={{ color: 'var(--cafe-text)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <p className="text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>
             {submitMut.data?.message ?? 'Request received!'}
           </p>
-          <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
             We'll be in touch shortly to confirm your booking. You can close this page.
           </p>
         </Card>
@@ -135,22 +135,22 @@ export default function MobileJobIntakePage() {
   }
 
   return (
-    <div className="min-h-screen py-6 px-4 sm:py-10 sm:px-5" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="min-h-screen py-6 px-4 sm:py-10 sm:px-5" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-lg mx-auto space-y-4">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <Wrench size={22} style={{ color: 'var(--cafe-gold-dark)' }} />
+            <Wrench size={22} style={{ color: 'var(--ms-accent-hover)' }} />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Complete your job details
           </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             {info.shop_name} · Job #{info.job_number}
           </p>
         </div>
 
         <Card className="p-4 sm:p-5 space-y-3">
-          <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             Hi{info.customer_first_name_hint ? ` ${info.customer_first_name_hint}` : ''} — please confirm your details so we can schedule and quote accurately.
           </p>
           <Input
@@ -177,7 +177,7 @@ export default function MobileJobIntakePage() {
           </Select>
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>More work on the same visit (optional)</p>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>More work on the same visit (optional)</p>
             {extraLines.map((row, idx) => (
               <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
                 <Select

@@ -78,10 +78,10 @@ export default function PricingPage() {
             />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/pricing" className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <Link to="/pricing" className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
               Pricing
             </Link>
-            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap" style={{ color: 'var(--cafe-text)' }}>
+            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>
               Log in
             </Link>
             <Link
@@ -104,10 +104,10 @@ export default function PricingPage() {
 
         <section id="pricing" className="lp-reveal mt-16 sm:mt-20">
           <div className="text-center">
-            <h1 className="text-3xl" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+            <h1 className="text-3xl" style={{ color: 'var(--ms-text)' }}>
               Clear pricing with no surprises
             </h1>
-            <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
               Start with Basic at A$25/month, add service tabs at A$10/month each, or move to Pro at A$50/month for full access.
             </p>
           </div>
@@ -118,23 +118,23 @@ export default function PricingPage() {
                 key={plan.title}
                 className="lp-card rounded-3xl p-6"
                 style={{
-                  backgroundColor: 'var(--cafe-surface)',
-                  border: '1px solid var(--cafe-border)',
+                  backgroundColor: 'var(--ms-surface)',
+                  border: '1px solid var(--ms-border)',
                   boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
                 }}
               >
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#8D6420' }}>
                   {plan.title}
                 </p>
-                <p className="mt-2 text-3xl" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                <p className="mt-2 text-3xl" style={{ color: 'var(--ms-text)' }}>
                   {plan.price}
                 </p>
-                <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                <p className="mt-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                   {plan.note}
                 </p>
                 <ul className="mt-4 space-y-2">
                   {plan.bullets.map((bullet) => (
-                    <li key={bullet} className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                    <li key={bullet} className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                       • {bullet}
                     </li>
                   ))}
@@ -144,10 +144,10 @@ export default function PricingPage() {
           </div>
 
           <div className="mt-6 rounded-3xl p-5" style={{ backgroundColor: '#FBF8F3', border: '1px solid #E7DDD0' }}>
-            <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
               Full monthly breakdown (AUD)
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2" style={{ color: 'var(--cafe-text-mid)' }}>
+            <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2" style={{ color: 'var(--ms-text-mid)' }}>
               <p>Basic 1 tab: A$25/month</p>
               <p>Basic 2 tabs: A$35/month</p>
               <p>Basic 3 tabs: A$45/month</p>
@@ -159,7 +159,7 @@ export default function PricingPage() {
             <Link
               to="/signup"
               className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso)', boxShadow: '0 5px 16px rgba(201,162,72,0.25)' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-sidebar)', boxShadow: '0 5px 16px rgba(201,162,72,0.25)' }}
             >
               Start your shop
             </Link>

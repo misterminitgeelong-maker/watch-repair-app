@@ -261,18 +261,18 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     return (
       <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
         <div className="space-y-4">
-          <p className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>
+          <p className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>
             Print job tickets now?
           </p>
           <div className="rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
               Recommended at intake
             </p>
-            <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
               Print both copies now: one for workshop, one for customer.
             </p>
           </div>
-          <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             This will open the browser print flow. You can also print later from the desktop job details page.
           </p>
           <div className="flex gap-2 pt-2">
@@ -295,8 +295,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {/* Customer banner when pre-selected */}
       {preselectedCustomer && (
         <div className="mb-4 flex items-center gap-2 text-sm rounded-lg px-3 py-2" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
-          <span style={{ color: 'var(--cafe-text-muted)' }}>Customer:</span>
-          <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{preselectedCustomer.full_name}</span>
+          <span style={{ color: 'var(--ms-text-muted)' }}>Customer:</span>
+          <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{preselectedCustomer.full_name}</span>
         </div>
       )}
 
@@ -308,16 +308,16 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               onClick={() => setCustomerMode('existing')}
               className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
               style={customerMode === 'existing'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
+                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
+                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
               }
             >Existing Customer</button>
             <button
               onClick={() => setCustomerMode('new')}
               className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
               style={customerMode === 'new'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
+                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
+                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
               }
             >New Customer</button>
           </div>
@@ -360,16 +360,16 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               onClick={() => setWatchMode('existing')}
               className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
               style={watchMode === 'existing'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
+                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
+                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
               }
             >Existing Watch</button>
             <button
               onClick={() => setWatchMode('new')}
               className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
               style={watchMode === 'new'
-                ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' }
-                : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }
+                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
+                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
               }
             >Add New Watch</button>
           </div>
@@ -413,7 +413,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {step === 3 && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Select repairs (optional)</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Select repairs (optional)</label>
             <WatchServicePicker
               selected={selectedRepairs}
               onChange={items => {
@@ -451,7 +451,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             </Select>
           </div>
           {selectedRepairs.some(i => i.item.pricing_type === 'quote') && (
-            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               Quoted service selected → job will go to Awaiting quote for workshop review
             </p>
           )}
@@ -506,20 +506,20 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {/* ── Step 4: Watch Photos ── */}
       {step === 4 && (
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>Take or upload two photos of the watch — one of the <strong>front</strong> (dial) and one of the <strong>back</strong> (caseback).</p>
+          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>Take or upload two photos of the watch — one of the <strong>front</strong> (dial) and one of the <strong>back</strong> (caseback).</p>
 
           <div className="grid grid-cols-2 gap-4">
             {/* Front photo */}
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Front (Dial) *</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Front (Dial) *</label>
               <input ref={frontRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhoto('front', e)} />
               {frontPreview ? (
                 <div className="relative group">
-                  <img src={frontPreview} alt="Watch front" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--cafe-border)' }} />
+                  <img src={frontPreview} alt="Watch front" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
                   <button onClick={() => removePhoto('front')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove"><X size={14} /></button>
                 </div>
               ) : (
-                <button onClick={() => frontRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cafe-amber)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--cafe-amber)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--cafe-border-2)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--cafe-text-muted)' }}>
+                <button onClick={() => frontRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
                   <Camera size={28} />
                   <span className="text-xs font-medium">Tap to capture</span>
                 </button>
@@ -528,15 +528,15 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
             {/* Back photo */}
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Back (Caseback) *</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Back (Caseback) *</label>
               <input ref={backRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhoto('back', e)} />
               {backPreview ? (
                 <div className="relative group">
-                  <img src={backPreview} alt="Watch back" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--cafe-border)' }} />
+                  <img src={backPreview} alt="Watch back" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
                   <button onClick={() => removePhoto('back')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove"><X size={14} /></button>
                 </div>
               ) : (
-                <button onClick={() => backRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cafe-amber)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--cafe-amber)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--cafe-border-2)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--cafe-text-muted)' }}>
+                <button onClick={() => backRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
                   <Camera size={28} />
                   <span className="text-xs font-medium">Tap to capture</span>
                 </button>

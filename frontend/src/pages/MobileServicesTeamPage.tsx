@@ -61,20 +61,20 @@ export default function MobileServicesTeamPage() {
           </div>
         )}
       />
-      <p className="text-sm -mt-4 mb-6" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm -mt-4 mb-6" style={{ color: 'var(--ms-text-muted)' }}>
         Technicians you can assign to mobile jobs.
       </p>
 
       {addedBanner && (
         <div
           className="mb-4 rounded-xl border px-4 py-3 text-sm"
-          style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+          style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
         >
           Technician added. They appear in the list below and in job assignment menus.
           <button
             type="button"
             className="ml-2 underline font-medium"
-            style={{ color: 'var(--cafe-amber)' }}
+            style={{ color: 'var(--ms-accent)' }}
             onClick={() => setAddedBanner(false)}
           >
             Dismiss
@@ -102,17 +102,17 @@ export default function MobileServicesTeamPage() {
       {!isLoading && techs.length > 0 && (
         <Card className="overflow-hidden">
           {/* Mobile card list */}
-          <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border-2)' }}>
+          <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border-strong)' }}>
             {techs.map(t => (
               <div key={t.id} className="p-4 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{t.full_name}</p>
+                  <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.full_name}</p>
                   {t.is_active
                     ? <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(90,140,90,0.15)', color: '#5a8c5a' }}>Active</span>
-                    : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}>Inactive</span>}
+                    : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}>Inactive</span>}
                 </div>
-                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{t.email}</p>
-                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{t.email}</p>
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                   Commission:{' '}
                   {commissionEnabled(t.mobile_commission_rules_json)
                     ? <span className="font-medium" style={{ color: '#1F5C24' }}>On</span>
@@ -125,36 +125,36 @@ export default function MobileServicesTeamPage() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Name</th>
-                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Email</th>
-                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Status</th>
-                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>Commission</th>
+                <tr style={{ borderBottom: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>Name</th>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>Email</th>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>Status</th>
+                  <th className="text-left font-semibold px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>Commission</th>
                 </tr>
               </thead>
               <tbody>
                 {techs.map(t => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid var(--cafe-border-2)' }}>
-                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.full_name}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.email}</td>
+                  <tr key={t.id} style={{ borderBottom: '1px solid var(--ms-border-strong)' }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--ms-text)' }}>{t.full_name}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>{t.email}</td>
                     <td className="px-4 py-3">
                       {t.is_active
                         ? <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(90,140,90,0.15)', color: '#5a8c5a' }}>Active</span>
-                        : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}>Inactive</span>}
+                        : <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}>Inactive</span>}
                     </td>
                     <td className="px-4 py-3">
                       {commissionEnabled(t.mobile_commission_rules_json)
                         ? <span className="font-medium" style={{ color: '#1F5C24' }}>On</span>
-                        : <span style={{ color: 'var(--cafe-text-muted)' }}>Off</span>}
+                        : <span style={{ color: 'var(--ms-text-muted)' }}>Off</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-xs px-4 py-3 border-t" style={{ borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs px-4 py-3 border-t" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}>
             To change passwords, roles, or deactivate logins, use{' '}
-            <Link to="/accounts" className="underline font-medium" style={{ color: 'var(--cafe-amber)' }}>Team accounts</Link>.
+            <Link to="/accounts" className="underline font-medium" style={{ color: 'var(--ms-accent)' }}>Team accounts</Link>.
           </p>
         </Card>
       )}

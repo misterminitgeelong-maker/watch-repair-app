@@ -3,18 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#C9A248" />
+    <meta name="theme-color" content="#9A6E26" />
     <title>Mainspring — Offline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --cafe-bg: #f6f2eb;
-        --cafe-text: #201813;
-        --cafe-text-mid: #5f4d3e;
-        --cafe-border: #e3dace;
-        --cafe-gold: #c9a248;
+        --ms-bg: #F5F1EC;
+        --ms-surface: #FDFCF9;
+        --ms-text: #1A1410;
+        --ms-text-mid: #5C4B3C;
+        --ms-border: #E2D9CE;
+        --ms-accent: #9A6E26;
       }
       * {
         box-sizing: border-box;
@@ -26,39 +27,40 @@
         align-items: center;
         justify-content: center;
         padding: 1.5rem;
-        font-family: 'DM Sans', system-ui, sans-serif;
-        background: var(--cafe-bg);
-        color: var(--cafe-text);
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        background: var(--ms-bg);
+        color: var(--ms-text);
       }
       .card {
         max-width: 28rem;
         width: 100%;
         padding: 2rem;
-        background: #fcfaf6;
-        border: 1px solid var(--cafe-border);
+        background: var(--ms-surface);
+        border: 1px solid var(--ms-border);
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(31, 23, 18, 0.06);
         text-align: center;
       }
       h1 {
-        font-family: 'Playfair Display', Georgia, serif;
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
         font-size: 1.5rem;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: -0.01em;
         margin: 0 0 0.75rem;
-        color: var(--cafe-text);
+        color: var(--ms-text);
       }
       p {
         margin: 0;
         font-size: 0.95rem;
         line-height: 1.5;
-        color: var(--cafe-text-mid);
+        color: var(--ms-text-mid);
       }
       .accent {
         display: inline-block;
         margin-top: 1.25rem;
         font-size: 0.8rem;
-        font-weight: 500;
-        color: var(--cafe-gold);
+        font-weight: 600;
+        color: var(--ms-accent);
         letter-spacing: 0.02em;
       }
     </style>

@@ -93,14 +93,14 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
         <ul
           className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-64"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            borderColor: 'var(--cafe-border-2)',
+            backgroundColor: 'var(--ms-surface)',
+            borderColor: 'var(--ms-border-strong)',
           }}
         >
           {movementsLoading ? (
-            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>Loading movements…</li>
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading movements…</li>
           ) : suggestions.length === 0 ? (
-            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>No movements found</li>
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>No movements found</li>
           ) : (
           suggestions.slice(0, 30).map((m, i) => (
             <li key={m.key}>
@@ -108,7 +108,7 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm flex justify-between items-center gap-2"
                 style={{
-                  color: 'var(--cafe-text)',
+                  color: 'var(--ms-text)',
                   backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent',
                 }}
                 onMouseEnter={() => setHighlight(i)}
@@ -119,11 +119,11 @@ export default function MovementAutocomplete({ label, placeholder = 'Search move
               >
                 <span className="truncate flex-1 min-w-0">{m.name}</span>
                 <span className="shrink-0 text-right">
-                  <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                     Cost: ${((m.purchase_cost_cents ?? 0) / 100).toFixed(2)}
                   </span>
-                  <span className="mx-1.5" style={{ color: 'var(--cafe-border)' }}>→</span>
-                  <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>
+                  <span className="mx-1.5" style={{ color: 'var(--ms-border)' }}>→</span>
+                  <span className="font-medium" style={{ color: 'var(--ms-accent)' }}>
                     RRP: {m.quote_cents != null ? `$${(m.quote_cents / 100).toFixed(2)}` : '—'}
                   </span>
                 </span>

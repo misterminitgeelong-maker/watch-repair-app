@@ -82,8 +82,8 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
         <ul
           className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-48"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            borderColor: 'var(--cafe-border-2)',
+            backgroundColor: 'var(--ms-surface)',
+            borderColor: 'var(--ms-border-strong)',
           }}
         >
           {suggestions.slice(0, 20).map((brand, i) => (
@@ -92,7 +92,7 @@ export default function BrandAutocomplete({ label, value, onChange, placeholder 
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm truncate"
                 style={{
-                  color: 'var(--cafe-text)',
+                  color: 'var(--ms-text)',
                   backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent',
                 }}
                 onMouseEnter={() => setHighlight(i)}

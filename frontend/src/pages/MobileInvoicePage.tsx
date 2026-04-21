@@ -55,8 +55,8 @@ export default function MobileInvoicePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)' }}>
-        <div className="text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
+        <div className="text-center" style={{ color: 'var(--ms-text-muted)' }}>
           <Clock className="mx-auto mb-3 animate-spin" size={28} />
           <p>Loading invoice…</p>
         </div>
@@ -70,12 +70,12 @@ export default function MobileInvoicePage() {
         ? 'This invoice link is not valid. Contact the shop if you need a copy.'
         : getApiErrorMessage(error, 'Could not load invoice.')
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <div className="max-w-md text-center">
-          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>
             Invoice unavailable
           </h1>
-          <p style={{ color: 'var(--cafe-text-muted)' }}>{msg}</p>
+          <p style={{ color: 'var(--ms-text-muted)' }}>{msg}</p>
         </div>
       </div>
     )
@@ -85,7 +85,7 @@ export default function MobileInvoicePage() {
   const showPayOnline = Boolean(inv.can_pay_online && inv.status === 'unpaid')
 
   return (
-    <div className="min-h-screen py-6 px-4 sm:py-10 sm:px-5" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="min-h-screen py-6 px-4 sm:py-10 sm:px-5" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-lg mx-auto space-y-4 sm:space-y-5">
         {flashPaid && inv.status === 'paid' && (
           <p
@@ -130,27 +130,27 @@ export default function MobileInvoicePage() {
         )}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <FileText size={22} style={{ color: 'var(--cafe-gold-dark)' }} />
+            <FileText size={22} style={{ color: 'var(--ms-accent-hover)' }} />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Invoice
           </h1>
           {inv.shop_name && (
-            <p className="text-sm mt-1 font-medium" style={{ color: 'var(--cafe-text)' }}>{inv.shop_name}</p>
+            <p className="text-sm mt-1 font-medium" style={{ color: 'var(--ms-text)' }}>{inv.shop_name}</p>
           )}
-          <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             {inv.invoice_number} · Job #{inv.job_number}
           </p>
         </div>
 
         <Card className="p-4 sm:p-5 space-y-3">
-          <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>{inv.job_title}</p>
-          <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Status</p>
-          <p className="text-sm capitalize" style={{ color: 'var(--cafe-text)' }}>{inv.status.replace(/_/g, ' ')}</p>
+          <p className="text-sm" style={{ color: 'var(--ms-text)' }}>{inv.job_title}</p>
+          <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Status</p>
+          <p className="text-sm capitalize" style={{ color: 'var(--ms-text)' }}>{inv.status.replace(/_/g, ' ')}</p>
 
-          <div className="pt-2" style={{ borderTop: '1px solid var(--cafe-border)' }}>
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Line items</p>
-            <ul className="text-sm space-y-2" style={{ color: 'var(--cafe-text)' }}>
+          <div className="pt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
+            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--ms-text-muted)' }}>Line items</p>
+            <ul className="text-sm space-y-2" style={{ color: 'var(--ms-text)' }}>
               {inv.line_items.map((li, i) => (
                 <li key={i} className="flex justify-between gap-3">
                   <span>
@@ -160,7 +160,7 @@ export default function MobileInvoicePage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-3 space-y-1 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            <div className="mt-3 space-y-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span className="tabular-nums">{formatMoney(inv.subtotal_cents, inv.currency)}</span>
@@ -169,7 +169,7 @@ export default function MobileInvoicePage() {
                 <span>Tax</span>
                 <span className="tabular-nums">{formatMoney(inv.tax_cents, inv.currency)}</span>
               </div>
-              <div className="flex justify-between font-semibold pt-1" style={{ color: 'var(--cafe-text)' }}>
+              <div className="flex justify-between font-semibold pt-1" style={{ color: 'var(--ms-text)' }}>
                 <span>Total</span>
                 <span className="tabular-nums">{formatMoney(inv.total_cents, inv.currency)}</span>
               </div>
@@ -188,13 +188,13 @@ export default function MobileInvoicePage() {
               <CreditCard size={18} />
               {checkoutMut.isPending ? 'Opening secure checkout…' : 'Pay with card'}
             </Button>
-            <p className="text-xs text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
               Secure payment via Stripe. You will return here when done.
             </p>
           </div>
         )}
 
-        <p className="text-xs text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
           Questions? Reply to the shop or call them with your job number.
         </p>
       </div>

@@ -101,7 +101,7 @@ export default function WatchServicePicker({
     <div>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--cafe-text-muted)' }} />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--ms-text-muted)' }} />
           <input
             type="text"
             placeholder="Search repairs…"
@@ -109,9 +109,9 @@ export default function WatchServicePicker({
             onChange={e => setSearch(e.target.value)}
             className="w-full h-9 rounded-lg border pl-8 pr-3 text-sm outline-none focus:ring-2"
             style={{
-              backgroundColor: 'var(--cafe-surface)',
-              borderColor: 'var(--cafe-border-2)',
-              color: 'var(--cafe-text)',
+              backgroundColor: 'var(--ms-surface)',
+              borderColor: 'var(--ms-border-strong)',
+              color: 'var(--ms-text)',
             }}
           />
         </div>
@@ -119,7 +119,7 @@ export default function WatchServicePicker({
           value={groupFilter}
           onChange={e => setGroupFilter(e.target.value)}
           className="h-9 rounded-lg border px-2 text-sm outline-none focus:ring-2"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
         >
           <option value="">All categories</option>
           {groups.map(g => (
@@ -136,13 +136,13 @@ export default function WatchServicePicker({
           type="button"
           onClick={() => setAddOpen(!addOpen)}
           className="flex items-center gap-1.5 text-xs font-medium py-1.5 px-2 rounded"
-          style={{ color: 'var(--cafe-amber)' }}
+          style={{ color: 'var(--ms-accent)' }}
         >
           <Plus size={14} />
           Add your own service
         </button>
         {addOpen && (
-          <div className="mt-2 p-3 rounded-lg border space-y-2" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
+          <div className="mt-2 p-3 rounded-lg border space-y-2" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
             <Input
               label="Service name"
               value={addForm.name}
@@ -169,10 +169,10 @@ export default function WatchServicePicker({
 
       <div
         className="rounded-xl border overflow-y-auto mb-4"
-        style={{ maxHeight: '200px', borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+        style={{ maxHeight: '200px', borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
       >
         {searchFiltered.length === 0 ? (
-          <p className="text-center py-6 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No repairs found</p>
+          <p className="text-center py-6 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No repairs found</p>
         ) : (
           searchFiltered.map(item => {
             const alreadyAdded = selectedKeys.has(item.key)
@@ -184,20 +184,20 @@ export default function WatchServicePicker({
                 onClick={() => addItem(item)}
                 className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left text-sm border-b last:border-b-0 transition-colors"
                 style={{
-                  borderColor: 'var(--cafe-border)',
-                  backgroundColor: alreadyAdded ? 'var(--cafe-border)' : 'transparent',
+                  borderColor: 'var(--ms-border)',
+                  backgroundColor: alreadyAdded ? 'var(--ms-border)' : 'transparent',
                   opacity: alreadyAdded ? 0.5 : 1,
                   cursor: alreadyAdded ? 'default' : 'pointer',
                 }}
-                onMouseEnter={e => { if (!alreadyAdded) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--cafe-surface)' }}
+                onMouseEnter={e => { if (!alreadyAdded) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--ms-surface)' }}
                 onMouseLeave={e => { if (!alreadyAdded) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{item.group_label}</p>
+                  <p className="font-medium truncate" style={{ color: 'var(--ms-text)' }}>{item.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{item.group_label}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>${((item.price_cents ?? 0) / 100).toFixed(2)}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>${((item.price_cents ?? 0) / 100).toFixed(2)}</p>
                   {alreadyAdded && (
                     <span className="text-[10px] text-green-600 font-medium">Added</span>
                   )}
@@ -210,7 +210,7 @@ export default function WatchServicePicker({
 
       {selected.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
             Selected repairs ({selected.length})
           </p>
           <div className="space-y-2">
@@ -218,12 +218,12 @@ export default function WatchServicePicker({
               <div
                 key={item.key}
                 className="flex items-center gap-2 rounded-lg px-3 py-2"
-                style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}
               >
-                <Tag size={13} className="shrink-0" style={{ color: 'var(--cafe-amber)' }} />
+                <Tag size={13} className="shrink-0" style={{ color: 'var(--ms-accent)' }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{item.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                     {item.group_label} · ${((item.price_cents ?? 0) / 100).toFixed(2)}
                   </p>
                 </div>
@@ -231,7 +231,7 @@ export default function WatchServicePicker({
                   type="button"
                   onClick={() => removeItem(item.key)}
                   className="p-0.5 rounded hover:bg-[#F5EDE0] transition-colors"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                 >
                   <X size={14} />
                 </button>

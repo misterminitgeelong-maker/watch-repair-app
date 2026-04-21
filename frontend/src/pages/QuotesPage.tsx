@@ -17,8 +17,8 @@ import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Badge, Sel
 import { formatCents, formatDate } from '@/lib/utils'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
-const inputStyle = { border: '1px solid var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }
-const labelStyle = { color: 'var(--cafe-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' as const }
+const inputStyle = { border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }
+const labelStyle = { color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' as const }
 
 function AddLineItemRow({ item, index, onChange, onRemove }: {
   item: QuoteLineItemInput; index: number
@@ -50,7 +50,7 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
   return (
     <>
       {/* Mobile stacked layout */}
-      <div className="sm:hidden space-y-2 pb-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+      <div className="sm:hidden space-y-2 pb-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-xs font-medium block mb-1" style={labelStyle}>Type</label>
@@ -155,11 +155,11 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="space-y-2">
-          <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Line Items</label>
+          <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Line Items</label>
           {items.map((item, i) => (
             <AddLineItemRow key={i} item={item} index={i} onChange={updateItem} onRemove={removeItem} />
           ))}
-          <button onClick={addItem} className="text-sm flex items-center gap-1 font-medium transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}><Plus size={14} />Add line</button>
+          <button onClick={addItem} className="text-sm flex items-center gap-1 font-medium transition-colors" style={{ color: 'var(--ms-accent)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}><Plus size={14} />Add line</button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -174,8 +174,8 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
             }}
           />
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Total</label>
-            <div className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}>{formatCents(total)}</div>
+            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Total</label>
+            <div className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(total)}</div>
           </div>
         </div>
 
@@ -271,9 +271,9 @@ export default function QuotesPage() {
         <select
           className="rounded-lg px-3 py-2 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -288,9 +288,9 @@ export default function QuotesPage() {
         <select
           className="rounded-lg px-3 py-2 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -304,9 +304,9 @@ export default function QuotesPage() {
         <select
           className="rounded-lg px-3 py-2 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={sortDir}
           onChange={(e) => setSortDir(e.target.value as SortDir)}
@@ -318,9 +318,9 @@ export default function QuotesPage() {
         <select
           className="rounded-lg px-3 py-2 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={String(olderThanDays)}
           onChange={(e) => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
@@ -337,7 +337,7 @@ export default function QuotesPage() {
         <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(quotesQuery.error)}</p>
       )}
       {quotesQuery.hasNextPage && (
-        <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
           More quotes exist — use Load more to fetch the next batch.
         </p>
       )}
@@ -375,15 +375,15 @@ export default function QuotesPage() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1.5 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                        <p className="mt-1.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                           Created {formatDate(q.created_at)}
                         </p>
                         <div className="mt-2 flex items-center gap-3 flex-wrap">
-                          <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono underline" style={{ color: 'var(--cafe-amber)' }}>View Job</Link>
+                          <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono underline" style={{ color: 'var(--ms-accent)' }}>View Job</Link>
                           {q.status === 'draft' && (
                             <button
                               className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
-                              style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+                              style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
                               onClick={() => sendMut.mutate(q.id)}
                               disabled={sendMut.isPending}
                             >
@@ -391,7 +391,7 @@ export default function QuotesPage() {
                             </button>
                           )}
                           {q.status === 'sent' && (
-                            <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                            <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
                           )}
                           {q.status === 'approved' && (
                             <button
@@ -408,14 +408,14 @@ export default function QuotesPage() {
                               title="Copy approval link"
                               onClick={() => copyApprovalLink(q.approval_token, q.id)}
                               className="p-1 transition-colors"
-                              style={{ color: 'var(--cafe-text-muted)' }}
+                              style={{ color: 'var(--ms-text-muted)' }}
                             >
                               {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
                             </button>
                           )}
                         </div>
                       </div>
-                      <p className="text-lg font-semibold shrink-0" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                      <p className="text-lg font-semibold shrink-0" style={{ color: 'var(--ms-text)' }}>
                         {formatCents(q.total_cents)}
                       </p>
                     </div>
@@ -427,7 +427,7 @@ export default function QuotesPage() {
               <Card className="hidden md:block">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                       <th className="px-5 py-3 font-medium">Status</th>
                       <th className="px-5 py-3 font-medium">Total</th>
                       <th className="px-5 py-3 font-medium">Sent</th>
@@ -437,7 +437,7 @@ export default function QuotesPage() {
                   </thead>
                   <tbody>
                     {filteredQuotes.map(q => (
-                      <tr key={q.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                      <tr key={q.id} style={{ borderBottom: '1px solid var(--ms-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3"><Badge status={q.status} /></td>
                         <td className="px-5 py-3 font-semibold">{formatCents(q.total_cents)}</td>
                         <td className="px-5 py-3">
@@ -446,20 +446,20 @@ export default function QuotesPage() {
                               <MessageSquare size={12} /> {formatDate(q.sent_at)}
                             </span>
                           ) : (
-                            <span className="text-xs" style={{ color: 'var(--cafe-border-2)' }}>—</span>
+                            <span className="text-xs" style={{ color: 'var(--ms-border-strong)' }}>—</span>
                           )}
                         </td>
-                        <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(q.created_at)}</td>
+                        <td className="px-5 py-3" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(q.created_at)}</td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
-                            <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--cafe-amber)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}>View Job</Link>
+                            <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono transition-colors" style={{ color: 'var(--ms-accent)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}>View Job</Link>
                             {q.status === 'draft' && (
                               <Button variant="secondary" onClick={() => sendMut.mutate(q.id)} disabled={sendMut.isPending} className="text-xs py-1 px-2">
                                 <MessageSquare size={12} /> Send SMS
                               </Button>
                             )}
                             {q.status === 'sent' && (
-                              <span className="text-xs italic" style={{ color: 'var(--cafe-text-muted)' }}>Awaiting response</span>
+                              <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
                             )}
                             {q.status === 'approved' && (
                               <Button
@@ -477,9 +477,9 @@ export default function QuotesPage() {
                                 title="Copy approval link"
                                 onClick={() => copyApprovalLink(q.approval_token, q.id)}
                                 className="p-1 transition-colors"
-                                style={{ color: 'var(--cafe-text-muted)' }}
-                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+                                style={{ color: 'var(--ms-text-muted)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
                               >
                                 {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
                               </button>

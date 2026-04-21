@@ -5,6 +5,9 @@ import { Capacitor } from '@capacitor/core'
 import './index.css'
 import App from './App.tsx'
 import { hydrateNativeAuthFromPreferences } from '@/lib/api'
+import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
+
+applyTheme(readStoredTheme())
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

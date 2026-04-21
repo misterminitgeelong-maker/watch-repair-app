@@ -85,8 +85,8 @@ export default function DatabasePage() {
           type="button"
           className="px-4 py-2 text-sm font-semibold rounded-md transition"
           style={{
-            backgroundColor: activeTab === 'import' ? 'var(--cafe-paper)' : 'transparent',
-            color: activeTab === 'import' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            backgroundColor: activeTab === 'import' ? 'var(--ms-surface)' : 'transparent',
+            color: activeTab === 'import' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
           }}
           onClick={() => setActiveTab('import')}
         >
@@ -96,8 +96,8 @@ export default function DatabasePage() {
           type="button"
           className="px-4 py-2 text-sm font-semibold rounded-md transition"
           style={{
-            backgroundColor: activeTab === 'catalogue' ? 'var(--cafe-paper)' : 'transparent',
-            color: activeTab === 'catalogue' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+            backgroundColor: activeTab === 'catalogue' ? 'var(--ms-surface)' : 'transparent',
+            color: activeTab === 'catalogue' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
           }}
           onClick={() => setActiveTab('catalogue')}
         >
@@ -115,11 +115,11 @@ export default function DatabasePage() {
         <Card className="p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#EEE6DA' }}>
-              <FileSpreadsheet size={20} style={{ color: 'var(--cafe-gold-dark)' }} />
+              <FileSpreadsheet size={20} style={{ color: 'var(--ms-accent-hover)' }} />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>Import Data File</h2>
-              <p className="text-sm mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>Import Data File</h2>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                 Choose which module receives the file. Rows only create records in that module (watch jobs, shoe jobs, or mobile services jobs).
               </p>
               <div className="mt-3 inline-flex flex-wrap gap-1 rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
@@ -135,8 +135,8 @@ export default function DatabasePage() {
                     type="button"
                     className="px-3 py-1.5 text-sm font-semibold rounded-md transition"
                     style={{
-                      backgroundColor: importTarget === id ? 'var(--cafe-paper)' : 'transparent',
-                      color: importTarget === id ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                      backgroundColor: importTarget === id ? 'var(--ms-surface)' : 'transparent',
+                      color: importTarget === id ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                     }}
                     onClick={() => {
                       setImportTarget(id)
@@ -149,48 +149,48 @@ export default function DatabasePage() {
                 ))}
               </div>
               {importTarget === 'watch' && (
-                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm mt-3" style={{ color: 'var(--ms-text-muted)' }}>
                   Expected columns include{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_in</code> /{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>date_time</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>notes</code> /{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>ticket_number</code>.
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>date_in</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>date_time</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>brand</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>status</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>notes</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>job_description</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>ticket_number</code>.
                   Excel: we auto-pick the sheet that looks most like a job log; override below if needed.
                 </p>
               )}
               {importTarget === 'shoe' && (
-                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm mt-3" style={{ color: 'var(--ms-text-muted)' }}>
                   Creates customers, shoes, and shoe repair jobs. Useful headers:{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>brand</code> /{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>shoe_type</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>color</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code> /{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>notes</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>.
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>brand</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>shoe_type</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>color</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>job_description</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>notes</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>status</code>.
                 </p>
               )}
               {importTarget === 'mobile' && (
-                <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm mt-3" style={{ color: 'var(--ms-text-muted)' }}>
                   Creates customers and mobile services (auto key) jobs. Useful headers:{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>customer</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>phone</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>address</code> /{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_address</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>job_description</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>vehicle_make</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>vehicle_model</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>quote</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>status</code>,{' '}
-                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-mid)' }}>source</code> (salesperson).
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>customer</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>phone</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>address</code> /{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>job_address</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>job_description</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>vehicle_make</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>vehicle_model</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>quote</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>status</code>,{' '}
+                  <code className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>source</code> (salesperson).
                 </p>
               )}
             </div>
@@ -207,18 +207,18 @@ export default function DatabasePage() {
           <button
             onClick={() => fileRef.current?.click()}
             className="w-full border-2 border-dashed rounded-lg p-8 transition-colors text-center"
-            style={{ borderColor: 'var(--cafe-border-2)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cafe-amber)'; e.currentTarget.style.backgroundColor = '#FEF0DC' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--cafe-border-2)'; e.currentTarget.style.backgroundColor = 'transparent' }}
+            style={{ borderColor: 'var(--ms-border-strong)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent' }}
           >
             {file ? (
               <div className="flex flex-col items-center gap-2">
-                <FileSpreadsheet size={32} style={{ color: 'var(--cafe-amber)' }} />
-                <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{file.name}</p>
-                <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{(file.size / 1024).toFixed(1)} KB · Click to change</p>
+                <FileSpreadsheet size={32} style={{ color: 'var(--ms-accent)' }} />
+                <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{file.name}</p>
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{(file.size / 1024).toFixed(1)} KB · Click to change</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2" style={{ color: 'var(--cafe-text-muted)' }}>
+              <div className="flex flex-col items-center gap-2" style={{ color: 'var(--ms-text-muted)' }}>
                 <Upload size={32} />
                 <p className="text-sm font-medium">Click to select a CSV or Excel file (.csv, .xlsx, .xls, .xlsm)</p>
                 <p className="text-xs">or drag and drop</p>
@@ -237,7 +237,7 @@ export default function DatabasePage() {
 
           {/* Replace options */}
           <div className="mt-4 space-y-3">
-            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={dryRun}
@@ -246,12 +246,12 @@ export default function DatabasePage() {
               />
               <span>
                 Dry run (preview only — recommended)
-                <span className="block text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                   Validates the file and shows a summary without writing data. Turn off to apply a real import.
                 </span>
               </span>
             </label>
-            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={replaceExisting}

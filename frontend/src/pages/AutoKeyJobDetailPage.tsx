@@ -68,7 +68,7 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
         <Input label="Unit price ($)" type="number" step="0.01" min="0" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} />
         <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
       </div>
-      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>Total: ${total}</p>
+      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Total: ${total}</p>
       {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
       <div className="flex gap-2 pt-1">
         <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
@@ -445,7 +445,7 @@ export default function AutoKeyJobDetailPage() {
         <Link
           to='/auto-key'
           className='inline-flex items-center gap-1 text-sm font-medium transition-colors'
-          style={{ color: 'var(--cafe-text-muted)' }}
+          style={{ color: 'var(--ms-text-muted)' }}
         >
           <ChevronLeft size={14} /> Back to Mobile Services
         </Link>
@@ -459,7 +459,7 @@ export default function AutoKeyJobDetailPage() {
         <Badge status={job.status} />
         <select
           className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
           value={job.status}
           disabled={statusMut.isPending}
           onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
@@ -474,7 +474,7 @@ export default function AutoKeyJobDetailPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium touch-manipulation shrink-0"
-            style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: 'var(--cafe-amber)', border: '1px solid rgba(201,162,72,0.3)' }}
+            style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: 'var(--ms-accent)', border: '1px solid rgba(201,162,72,0.3)' }}
           >
             <MapPin size={14} /> Nav
           </a>
@@ -501,8 +501,8 @@ export default function AutoKeyJobDetailPage() {
               onClick={() => setDetailTab(tab.key)}
               className="px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap touch-manipulation"
               style={{
-                backgroundColor: detailTab === tab.key ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
-                color: detailTab === tab.key ? '#2C1810' : 'var(--cafe-text-muted)',
+                backgroundColor: detailTab === tab.key ? 'var(--ms-accent)' : 'var(--ms-surface)',
+                color: detailTab === tab.key ? '#2C1810' : 'var(--ms-text-muted)',
               }}
             >
               {tab.label}
@@ -517,21 +517,21 @@ export default function AutoKeyJobDetailPage() {
           <div className={detailTab !== 'info' ? 'hidden lg:contents' : ''}>
           {/* Customer section */}
           {customer && (
-            <div className='pb-3' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-              <h2 className='font-semibold text-xs uppercase tracking-widest mb-2' style={{ color: 'var(--cafe-text-muted)' }}>Customer</h2>
+            <div className='pb-3' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+              <h2 className='font-semibold text-xs uppercase tracking-widest mb-2' style={{ color: 'var(--ms-text-muted)' }}>Customer</h2>
               <div className='space-y-1.5 text-sm'>
                 <div>
-                  <Link to={`/customers/${customer.id}`} className='font-medium' style={{ color: 'var(--cafe-amber)' }}>
+                  <Link to={`/customers/${customer.id}`} className='font-medium' style={{ color: 'var(--ms-accent)' }}>
                     {customer.full_name || 'Unknown'}
                   </Link>
                 </div>
                 {customer.phone && (
-                  <a href={`tel:${customer.phone.replace(/\s/g, '')}`} className='flex items-center gap-1.5 touch-manipulation' style={{ color: 'var(--cafe-text)' }}>
+                  <a href={`tel:${customer.phone.replace(/\s/g, '')}`} className='flex items-center gap-1.5 touch-manipulation' style={{ color: 'var(--ms-text)' }}>
                     <Phone size={14} /> {customer.phone}
                   </a>
                 )}
                 {customer.email && (
-                  <a href={`mailto:${customer.email}`} className='flex items-center gap-1.5' style={{ color: 'var(--cafe-text)' }}>
+                  <a href={`mailto:${customer.email}`} className='flex items-center gap-1.5' style={{ color: 'var(--ms-text)' }}>
                     <Mail size={14} /> {customer.email}
                   </a>
                 )}
@@ -539,22 +539,22 @@ export default function AutoKeyJobDetailPage() {
             </div>
           )}
 
-          <h2 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Job Info</h2>
+          <h2 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--ms-text-muted)' }}>Job Info</h2>
           <div className='space-y-2 text-sm'>
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Status</span><Badge status={job.status} /></div>
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Priority</span><span className='capitalize'>{job.priority}</span></div>
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Created</span><span>{formatDate(job.created_at)}</span></div>
+            <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Status</span><Badge status={job.status} /></div>
+            <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Priority</span><span className='capitalize'>{job.priority}</span></div>
+            <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Created</span><span>{formatDate(job.created_at)}</span></div>
             {(job.vehicle_make || job.vehicle_model) && (
               <div className='flex justify-between items-center gap-2'>
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Vehicle</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Vehicle</span>
                 <div className='flex items-center gap-1.5'>
                   <span>{[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}</span>
                   {jobContext?.complexity && <AklComplexityPill complexity={jobContext.complexity} className='px-2 text-xs' />}
                 </div>
               </div>
             )}
-            <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
-            {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
+            <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Qty</span><span>{job.key_quantity}</span></div>
+            {job.job_type && <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Type</span><span>{job.job_type}</span></div>}
             {job.additional_services_json && (() => {
               try {
                 const arr = JSON.parse(job.additional_services_json) as { preset?: string | null; custom?: string | null }[]
@@ -563,8 +563,8 @@ export default function AutoKeyJobDetailPage() {
                 if (!lines.length) return null
                 return (
                   <div className='pt-1'>
-                    <div className='text-xs uppercase tracking-widest mb-1' style={{ color: 'var(--cafe-text-muted)' }}>Additional services</div>
-                    <ul className='text-sm list-disc pl-5 space-y-0.5' style={{ color: 'var(--cafe-text)' }}>
+                    <div className='text-xs uppercase tracking-widest mb-1' style={{ color: 'var(--ms-text-muted)' }}>Additional services</div>
+                    <ul className='text-sm list-disc pl-5 space-y-0.5' style={{ color: 'var(--ms-text)' }}>
                       {lines.map((t, i) => <li key={i}>{t}</li>)}
                     </ul>
                   </div>
@@ -573,16 +573,16 @@ export default function AutoKeyJobDetailPage() {
                 return null
               }
             })()}
-            {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--cafe-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--cafe-amber)' }}>{formatDate(job.scheduled_at)}</span></div>}
+            {job.scheduled_at && <div className='flex justify-between'><span style={{ color: 'var(--ms-text-muted)' }}>Scheduled</span><span style={{ color: 'var(--ms-accent)' }}>{formatDate(job.scheduled_at)}</span></div>}
             {job.job_address && (
               <div>
-                <div className='flex justify-between items-start gap-2'><span style={{ color: 'var(--cafe-text-muted)' }}>Address</span><span className='text-right'>{job.job_address}</span></div>
+                <div className='flex justify-between items-start gap-2'><span style={{ color: 'var(--ms-text-muted)' }}>Address</span><span className='text-right'>{job.job_address}</span></div>
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 min-h-9 px-3 py-1.5 rounded-lg text-sm font-medium mt-2 touch-manipulation"
-                  style={{ color: 'var(--cafe-text)', backgroundColor: 'rgba(201, 162, 72, 0.15)', border: '1px solid var(--cafe-amber)' }}
+                  style={{ color: 'var(--ms-text)', backgroundColor: 'rgba(201, 162, 72, 0.15)', border: '1px solid var(--ms-accent)' }}
                 >
                   <MapPin size={14} /> Get Directions
                 </a>
@@ -593,7 +593,7 @@ export default function AutoKeyJobDetailPage() {
                 type="button"
                 onClick={() => setShowArrivalSms(true)}
                 className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg text-sm font-medium touch-manipulation"
-                style={{ color: 'var(--cafe-amber)', backgroundColor: 'rgba(201, 162, 72, 0.12)' }}
+                style={{ color: 'var(--ms-accent)', backgroundColor: 'rgba(201, 162, 72, 0.12)' }}
               >
                 <MessageSquare size={16} /> Send arrival SMS to customer
               </button>
@@ -606,10 +606,10 @@ export default function AutoKeyJobDetailPage() {
           <div className={detailTab !== 'vehicle' ? 'hidden lg:contents' : ''}>
           {hasFeature('auto_key') && (
             <>
-              <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>
+              <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>
                 Vehicle database
               </h3>
-              <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
                 Refine make, model, and year, then tap a match to fill vehicle, key type, chip, blade code, and tech notes.
               </p>
               <div className='space-y-2'>
@@ -634,19 +634,19 @@ export default function AutoKeyJobDetailPage() {
                 />
               </div>
               {vehicleSpecSearch && vehicleSpecSearch.matches.length > 0 && (
-                <ul className='max-h-44 overflow-y-auto space-y-1 rounded-lg border p-1.5' style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
+                <ul className='max-h-44 overflow-y-auto space-y-1 rounded-lg border p-1.5' style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}>
                   {vehicleSpecSearch.matches.map((m, i) => (
                     <li key={`${m.label}-${i}`}>
                       <button
                         type='button'
                         disabled={applyVehicleDbMut.isPending}
                         className='w-full text-left px-2 py-1.5 rounded text-sm transition disabled:opacity-50'
-                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
                         onClick={() => applyVehicleDbMut.mutate(m)}
                       >
                         <span className='block'>{m.label}</span>
                         {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
-                          <span className='block text-xs mt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span className='block text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
                             Blanks: {(m.key_blanks ?? []).slice(0, 4).map(b => b.primary_code || b.blank_reference).filter(Boolean).join(', ') || m.suggested_blade_code}
                           </span>
                         )}
@@ -665,7 +665,7 @@ export default function AutoKeyJobDetailPage() {
             </>
           )}
 
-          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Key Details</h3>
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>Key Details</h3>
           <Input
             label='Key Type'
             value={keyTypeEdit !== null ? keyTypeEdit : (job.key_type ?? '')}
@@ -691,7 +691,7 @@ export default function AutoKeyJobDetailPage() {
             placeholder='Chip type'
           />
 
-          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Tech Notes</h3>
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>Tech Notes</h3>
           <textarea
             value={techNotesEdit !== null ? techNotesEdit : (job.tech_notes ?? '')}
             onChange={e => setTechNotesEdit(e.target.value)}
@@ -699,7 +699,7 @@ export default function AutoKeyJobDetailPage() {
             disabled={keyDetailsMut.isPending}
             placeholder='Notes for the technician'
             className='w-full min-h-20 px-3 py-2 rounded-lg text-sm resize-y'
-            style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
           />
 
           {/* Known Issues warning */}
@@ -710,12 +710,12 @@ export default function AutoKeyJobDetailPage() {
                 <div key={i} className='rounded-lg border p-3 space-y-1 text-sm'
                   style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.07)' }}>
                   <div className='flex items-start justify-between gap-2'>
-                    <span className='font-medium' style={{ color: 'var(--cafe-text)' }}>{issue.issue}</span>
+                    <span className='font-medium' style={{ color: 'var(--ms-text)' }}>{issue.issue}</span>
                     {issue.severity && <SeverityBadge severity={issue.severity} />}
                   </div>
-                  {issue.notes && <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{issue.notes}</p>}
+                  {issue.notes && <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>{issue.notes}</p>}
                   {issue.resolution && (
-                    <p className='text-xs font-medium' style={{ color: 'var(--cafe-text)' }}>
+                    <p className='text-xs font-medium' style={{ color: 'var(--ms-text)' }}>
                       Fix: {issue.resolution}
                     </p>
                   )}
@@ -727,31 +727,31 @@ export default function AutoKeyJobDetailPage() {
           {/* Tool Recommendations */}
           {jobContext?.tool_recommendations && jobContext.tool_recommendations.length > 0 && (
             <div className='space-y-2 pt-2'>
-              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Recommended Tools</h3>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--ms-text-muted)' }}>Recommended Tools</h3>
               {jobContext.tool_recommendations.map((rec: ToolRecommendation, i: number) => (
                 <div key={i} className='rounded-lg border p-3 text-sm space-y-1'
-                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
+                  style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}>
                   <div className='flex items-center justify-between gap-2'>
-                    {rec.job_type && <span className='text-xs font-medium uppercase tracking-wide' style={{ color: 'var(--cafe-text-muted)' }}>{rec.job_type}</span>}
+                    {rec.job_type && <span className='text-xs font-medium uppercase tracking-wide' style={{ color: 'var(--ms-text-muted)' }}>{rec.job_type}</span>}
                     {rec.risk_level && <SeverityBadge severity={rec.risk_level} />}
                   </div>
                   <div className='flex items-center gap-1.5'>
-                    <span className='font-semibold' style={{ color: 'var(--cafe-amber)' }}>Primary:</span>
+                    <span className='font-semibold' style={{ color: 'var(--ms-accent)' }}>Primary:</span>
                     <span>{rec.primary_tool}</span>
                   </div>
                   {rec.backup_tool && (
                     <div className='flex items-center gap-1.5'>
-                      <span style={{ color: 'var(--cafe-text-muted)' }}>Backup:</span>
+                      <span style={{ color: 'var(--ms-text-muted)' }}>Backup:</span>
                       <span>{rec.backup_tool}</span>
                     </div>
                   )}
                   {rec.escalation_tool && (
                     <div className='flex items-center gap-1.5'>
-                      <span style={{ color: 'var(--cafe-text-muted)' }}>Escalate to:</span>
+                      <span style={{ color: 'var(--ms-text-muted)' }}>Escalate to:</span>
                       <span>{rec.escalation_tool}</span>
                     </div>
                   )}
-                  {rec.notes && <p className='text-xs pt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>{rec.notes}</p>}
+                  {rec.notes && <p className='text-xs pt-0.5' style={{ color: 'var(--ms-text-muted)' }}>{rec.notes}</p>}
                 </div>
               ))}
             </div>
@@ -760,41 +760,41 @@ export default function AutoKeyJobDetailPage() {
           {/* Cutting Machine Profiles */}
           {jobContext?.cutting_profiles && jobContext.cutting_profiles.length > 0 && (
             <div className='space-y-2 pt-2'>
-              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--cafe-text-muted)' }}>Cutting Machine Profiles</h3>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--ms-text-muted)' }}>Cutting Machine Profiles</h3>
               {jobContext.cutting_profiles.map((cp: CuttingProfile, i: number) => (
                 <div key={i} className='rounded-lg border p-3 text-sm space-y-2'
-                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}>
-                  <div className='font-medium' style={{ color: 'var(--cafe-text)' }}>
+                  style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}>
+                  <div className='font-medium' style={{ color: 'var(--ms-text)' }}>
                     {cp.blank_reference}
                     {cp.description ? ` — ${cp.description}` : ''}
                   </div>
                   <div className='grid grid-cols-1 gap-1 text-xs'>
                     {cp.dolphin_xp005l && (
                       <div className='flex justify-between'>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>Dolphin XP-005L</span>
+                        <span style={{ color: 'var(--ms-text-muted)' }}>Dolphin XP-005L</span>
                         <span className='font-mono font-medium'>{cp.dolphin_xp005l}</span>
                       </div>
                     )}
                     {cp.condor_xc_mini_plus_ii && (
                       <div className='flex justify-between'>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>Condor XC-Mini Plus II</span>
+                        <span style={{ color: 'var(--ms-text-muted)' }}>Condor XC-Mini Plus II</span>
                         <span className='font-mono font-medium'>{cp.condor_xc_mini_plus_ii}</span>
                       </div>
                     )}
                     {cp.silca_alpha_pro && (
                       <div className='flex justify-between'>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>Silca Alpha Pro</span>
+                        <span style={{ color: 'var(--ms-text-muted)' }}>Silca Alpha Pro</span>
                         <span className='font-mono font-medium'>{cp.silca_alpha_pro}</span>
                       </div>
                     )}
                     {cp.silca_futura_pro && (
                       <div className='flex justify-between'>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>Silca Futura Pro</span>
+                        <span style={{ color: 'var(--ms-text-muted)' }}>Silca Futura Pro</span>
                         <span className='font-mono font-medium'>{cp.silca_futura_pro}</span>
                       </div>
                     )}
                   </div>
-                  {cp.notes && <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{cp.notes}</p>}
+                  {cp.notes && <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>{cp.notes}</p>}
                 </div>
               ))}
             </div>
@@ -804,7 +804,7 @@ export default function AutoKeyJobDetailPage() {
 
           {/* Photos tab */}
           <div className={detailTab !== 'photos' ? 'hidden lg:contents' : ''}>
-          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Photo Attachments</h3>
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>Photo Attachments</h3>
           <div className='space-y-2'>
             {attachments.length > 0 && (
               <div className='flex flex-wrap gap-2'>
@@ -815,7 +815,7 @@ export default function AutoKeyJobDetailPage() {
                     target='_blank'
                     rel='noopener noreferrer'
                     className='block w-16 h-16 rounded-lg overflow-hidden shrink-0'
-                    style={{ border: '1px solid var(--cafe-border)' }}
+                    style={{ border: '1px solid var(--ms-border)' }}
                   >
                     <SecureAttachmentImage
                       storageKey={a.storage_key}
@@ -861,7 +861,7 @@ export default function AutoKeyJobDetailPage() {
                 </Button>
               </div>
             )}
-            <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>{attachments.length}/5 photos</p>
+            <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>{attachments.length}/5 photos</p>
           </div>
 
           </div>{/* end photos tab group */}
@@ -921,7 +921,7 @@ export default function AutoKeyJobDetailPage() {
             ))}
           </Select>
 
-          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--cafe-text-muted)' }}>Schedule</h3>
+          <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>Schedule</h3>
           <Select
             label='Job type'
             value={job.job_type ?? ''}
@@ -959,7 +959,7 @@ export default function AutoKeyJobDetailPage() {
 
         {showArrivalSms && (
           <Modal title="Send arrival SMS" onClose={() => setShowArrivalSms(false)}>
-            <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
               Customer will receive: &quot;Your technician is on the way and will arrive between [time window].&quot;
             </p>
             <Input
@@ -985,28 +985,28 @@ export default function AutoKeyJobDetailPage() {
           )}
 
           <Card>
-            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-              <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Quotes</h2>
+            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+              <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Quotes</h2>
               <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => setShowQuoteModal(true)}>
                 <Plus size={13} /> New Quote
               </Button>
             </div>
             {(quotes ?? []).length === 0 ? (
-              <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>No quotes yet.</p>
+              <p className='px-5 py-4 text-sm' style={{ color: 'var(--ms-text-muted)' }}>No quotes yet.</p>
             ) : (
               quotes.map(q => (
-                <div key={q.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                <div key={q.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--ms-border)' }}>
                   <div className='flex items-center justify-between'>
                     <div>
-                      <p style={{ color: 'var(--cafe-text)' }}>{formatDate(q.created_at)}</p>
-                      <p className='text-xs capitalize' style={{ color: q.status === 'sent' ? '#4A8A4A' : q.status === 'declined' ? '#C96A5A' : 'var(--cafe-text-muted)' }}>
+                      <p style={{ color: 'var(--ms-text)' }}>{formatDate(q.created_at)}</p>
+                      <p className='text-xs capitalize' style={{ color: q.status === 'sent' ? '#4A8A4A' : q.status === 'declined' ? '#C96A5A' : 'var(--ms-text-muted)' }}>
                         {q.status}{q.sent_at ? ` · sent ${formatDate(q.sent_at)}` : ''}
                       </p>
                     </div>
-                    <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{formatCents(q.total_cents)}</p>
+                    <p className='font-semibold' style={{ color: 'var(--ms-text)' }}>{formatCents(q.total_cents)}</p>
                   </div>
                   {(q.line_items ?? []).map((li, i) => (
-                    <p key={i} className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p key={i} className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
                       {li.quantity} × {li.description} — {formatCents(li.unit_price_cents)} ea
                     </p>
                   ))}
@@ -1025,8 +1025,8 @@ export default function AutoKeyJobDetailPage() {
           </Card>
 
           <Card>
-            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-              <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Invoices</h2>
+            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+              <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Invoices</h2>
               {quotes.length > 0 && invoices.length === 0 && (
                 <Button
                   variant="secondary"
@@ -1039,22 +1039,22 @@ export default function AutoKeyJobDetailPage() {
               )}
             </div>
             {(invoices ?? []).length === 0 ? (
-              <p className='px-5 py-4 text-sm' style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className='px-5 py-4 text-sm' style={{ color: 'var(--ms-text-muted)' }}>
                 {quotes.length === 0 ? 'Create a quote first, then generate an invoice.' : 'No invoice yet — click Create Invoice above.'}
               </p>
             ) : (
               invoices.map(inv => (
-                <div key={inv.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                <div key={inv.id} className='px-5 py-3 text-sm space-y-2' style={{ borderBottom: '1px solid var(--ms-border)' }}>
                   <div className='flex items-center justify-between flex-wrap gap-2'>
                     <div>
-                      <p style={{ color: 'var(--cafe-text)', fontWeight: 600 }}>{inv.invoice_number}</p>
+                      <p style={{ color: 'var(--ms-text)', fontWeight: 600 }}>{inv.invoice_number}</p>
                       <p className='text-xs' style={{ color: inv.status === 'paid' ? '#4A8A4A' : inv.status === 'void' ? '#999' : '#C9A248' }}>
                         {inv.status === 'paid' ? '✓ Paid' : inv.status === 'void' ? 'Void' : 'Unpaid'}
                         {inv.payment_method && inv.status === 'paid' ? ` · ${inv.payment_method}` : ''}
                         {' · '}{formatDate(inv.created_at)}
                       </p>
                     </div>
-                    <p className='font-semibold' style={{ color: inv.status === 'paid' ? '#4A8A4A' : 'var(--cafe-text)' }}>{formatCents(inv.total_cents)}</p>
+                    <p className='font-semibold' style={{ color: inv.status === 'paid' ? '#4A8A4A' : 'var(--ms-text)' }}>{formatCents(inv.total_cents)}</p>
                   </div>
                   <div className='flex gap-2 flex-wrap'>
                     {inv.status === 'unpaid' && (
@@ -1089,9 +1089,9 @@ export default function AutoKeyJobDetailPage() {
       {invoiceToPay && (
         <Modal title="Record payment" onClose={() => setInvoiceToPay(null)}>
           <div className="space-y-4">
-            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
-              <p><span style={{ color: 'var(--cafe-text-muted)' }}>Invoice</span> #{invoiceToPay.invoice_number}</p>
-              <p><span style={{ color: 'var(--cafe-text-muted)' }}>Total</span> {formatCents(invoiceToPay.total_cents)}</p>
+            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
+              <p><span style={{ color: 'var(--ms-text-muted)' }}>Invoice</span> #{invoiceToPay.invoice_number}</p>
+              <p><span style={{ color: 'var(--ms-text-muted)' }}>Total</span> {formatCents(invoiceToPay.total_cents)}</p>
             </div>
             <Select
               label="Payment method"

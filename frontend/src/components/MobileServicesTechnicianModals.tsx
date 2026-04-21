@@ -58,21 +58,21 @@ export function AddTechnicianModal({
   })
   return (
     <Modal title="Add technician" onClose={onClose}>
-      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
         Creates a login they can use in the app. Assign them to jobs from the job page or dispatch views.
       </p>
       <div className="space-y-3">
         <Input label="Full name *" value={form.full_name} onChange={e => { setError(null); setForm(f => ({ ...f, full_name: e.target.value })) }} placeholder="Alex Smith" autoFocus />
         <Input label="Email *" type="email" value={form.email} onChange={e => { setError(null); setForm(f => ({ ...f, email: e.target.value })) }} placeholder="alex@shop.com" />
         <Input label="Password *" type="password" value={form.password} onChange={e => { setError(null); setForm(f => ({ ...f, password: e.target.value })) }} placeholder="At least 8 characters" />
-        <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
-          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text)' }}>
+        <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}>
+          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text)' }}>
             <input type="checkbox" checked={commEnabled} onChange={e => setCommEnabled(e.target.checked)} />
             Mobile Services commission tracking (bonus above retainer)
           </label>
           {commEnabled && (
             <>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                 First portion of commission each period counts toward salary (retainer); only the amount above that is bonus. Percentages apply to invoice total. You can change keys or add tiers later under Commission rules.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -87,13 +87,13 @@ export function AddTechnicianModal({
           )}
         </div>
         {error === 'duplicate_email' && (
-          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cafe-border-2)', color: '#C96A5A' }}>
-            <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>This email is already on your team</p>
-            <p style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: '#C96A5A' }}>
+            <p className="font-medium" style={{ color: 'var(--ms-text)' }}>This email is already on your team</p>
+            <p style={{ color: 'var(--ms-text-muted)' }}>
               Each address can only be used once. If you already added this technician, open{' '}
-              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Team</Link>
+              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--ms-accent)' }} onClick={onClose}>Team</Link>
               {' to confirm they are listed. To change their password or role, use '}
-              <Link to="/accounts" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Team accounts</Link>.
+              <Link to="/accounts" className="font-medium underline" style={{ color: 'var(--ms-accent)' }} onClick={onClose}>Team accounts</Link>.
             </p>
           </div>
         )}
@@ -184,11 +184,11 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
 
   return (
     <Modal title="Mobile Services commission rules" onClose={onClose}>
-      <p className="text-sm mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
         Set the commission percentage earned for each job source. The retainer is a salary component — only earnings above it are paid as a bonus.
       </p>
       {techs.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           No technicians yet. Add one from Team or the main Mobile Services page first.
         </p>
       ) : (
@@ -198,7 +198,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
               <option key={t.id} value={t.id}>{t.full_name}</option>
             ))}
           </Select>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text)' }}>
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
             <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
             Commission tracking enabled
           </label>

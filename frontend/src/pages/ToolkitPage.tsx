@@ -120,10 +120,10 @@ export default function ToolkitPage() {
       <MobileServicesSubNav />
 
       <Card className="p-4">
-        <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+        <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
           Customer text messages (mobile jobs)
         </p>
-        <p className="text-xs mt-1 max-w-2xl" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs mt-1 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
           When enabled, customers receive SMS for mobile services (scheduling, on the way, arrival window, intake links,
           invoices, booking confirmations). Tech-only reminders are not affected. Turn off if you contact customers
           another way.
@@ -139,10 +139,10 @@ export default function ToolkitPage() {
               smsMut.mutate(e.target.checked)
             }}
           />
-          <span className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+          <span className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
             Send SMS to customers for mobile services
             {!canEditMobileCustomerSms && (
-              <span className="block text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              <span className="block text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                 Ask a technician or manager to change this setting.
               </span>
             )}
@@ -153,13 +153,13 @@ export default function ToolkitPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <PageHeader title="Mobile toolkit" />
-          <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
             Tick the tools you keep on the van. Pick a scenario to see what you are missing before you roll.
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-end">
           {dirty && (
-            <span className="text-xs font-medium text-center sm:text-right" style={{ color: 'var(--cafe-amber)' }}>
+            <span className="text-xs font-medium text-center sm:text-right" style={{ color: 'var(--ms-accent)' }}>
               Unsaved changes
             </span>
           )}
@@ -169,17 +169,17 @@ export default function ToolkitPage() {
         </div>
       </div>
 
-      <details className="rounded-xl border text-sm" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-        <summary className="cursor-pointer px-4 py-3 font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
+      <details className="rounded-xl border text-sm" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+        <summary className="cursor-pointer px-4 py-3 font-medium" style={{ color: 'var(--ms-text-mid)' }}>
           Where the catalog comes from
         </summary>
-        <p className="px-4 pb-3 pl-6" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="px-4 pb-3 pl-6" style={{ color: 'var(--ms-text-muted)' }}>
           Ship list:{' '}
-          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>
+          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>
             backend/seed/mobile_services_tools.json
           </code>
           . Optional regen:{' '}
-          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--cafe-surface)' }}>
+          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>
             backend/scripts/generate_mobile_services_tools_from_xlsx.py
           </code>
           .
@@ -187,12 +187,12 @@ export default function ToolkitPage() {
       </details>
 
       <Card className="p-4 sm:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
           Scenario check
         </h2>
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="min-w-[200px] flex-1">
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--cafe-text)' }}>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ms-text)' }}>
               Scenario
             </label>
             <Select
@@ -201,7 +201,7 @@ export default function ToolkitPage() {
                 setScenarioId(e.target.value)
                 setRecommend(null)
               }}
-              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             >
               <option value="">Select…</option>
               {scenarios.map((s) => (
@@ -217,7 +217,7 @@ export default function ToolkitPage() {
         </div>
         {recErr && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{recErr}</p>}
         {recommend && (
-          <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--cafe-text)' }}>
+          <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--ms-text)' }}>
             <p className="font-medium">
               {recommend.label}{' '}
               <span
@@ -230,7 +230,7 @@ export default function ToolkitPage() {
                 {recommend.ready_for_required ? 'Ready (required covered)' : 'Missing required items'}
               </span>
             </p>
-            {recommend.tips && <p style={{ color: 'var(--cafe-text-muted)' }}>{recommend.tips}</p>}
+            {recommend.tips && <p style={{ color: 'var(--ms-text-muted)' }}>{recommend.tips}</p>}
             {recommend.missing_required.length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A2502E' }}>
@@ -248,10 +248,10 @@ export default function ToolkitPage() {
             )}
             {recommend.missing_nice_to_have.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>
                   Nice to have
                 </p>
-                <ul className="list-disc pl-5 space-y-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                <ul className="list-disc pl-5 space-y-1" style={{ color: 'var(--ms-text-mid)' }}>
                   {recommend.missing_nice_to_have.map((r) => (
                     <li key={r.key}>{r.name}</li>
                   ))}
@@ -259,7 +259,7 @@ export default function ToolkitPage() {
               </div>
             )}
             {recommend.ready_for_required && recommend.required.filter((r) => r.via_alternative).length > 0 && (
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                 Some required roles are covered by substitute tools you ticked.
               </p>
             )}
@@ -272,7 +272,7 @@ export default function ToolkitPage() {
       </div>
 
       {filteredGroups.length === 0 && toolSearch.trim() && (
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           No tools match that filter.
         </p>
       )}
@@ -281,33 +281,33 @@ export default function ToolkitPage() {
         <details
           key={g.id}
           className="rounded-2xl border overflow-hidden"
-          style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-surface)' }}
+          style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
           open={idx === 0 && !toolSearch.trim()}
         >
           <summary
             className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold uppercase tracking-wide flex items-center justify-between gap-2"
-            style={{ color: 'var(--cafe-amber)', backgroundColor: 'var(--cafe-bg)' }}
+            style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-bg)' }}
           >
             <span>{g.label}</span>
-            <span className="text-xs font-normal normal-case tracking-normal" style={{ color: 'var(--cafe-text-muted)' }}>
+            <span className="text-xs font-normal normal-case tracking-normal" style={{ color: 'var(--ms-text-muted)' }}>
               {g.tools.length} tool{g.tools.length !== 1 ? 's' : ''}
             </span>
           </summary>
-          <ul className="px-4 pb-4 pt-2 space-y-2 border-t" style={{ borderColor: 'var(--cafe-border)' }}>
+          <ul className="px-4 pb-4 pt-2 space-y-2 border-t" style={{ borderColor: 'var(--ms-border)' }}>
             {g.tools.map((t) => (
               <li key={t.key}>
                 <label className="flex gap-3 cursor-pointer touch-manipulation min-h-11 items-start">
                   <input
                     type="checkbox"
                     className="mt-1 size-4 shrink-0 rounded border"
-                    style={{ accentColor: 'var(--cafe-amber)' }}
+                    style={{ accentColor: 'var(--ms-accent)' }}
                     checked={localKeys.has(t.key)}
                     onChange={() => toggle(t.key)}
                   />
                   <span>
-                    <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</span>
+                    <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.name}</span>
                     {t.notes && (
-                      <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{t.notes}</span>
+                      <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{t.notes}</span>
                     )}
                   </span>
                 </label>

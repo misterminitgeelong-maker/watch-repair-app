@@ -127,20 +127,20 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="w-full max-w-3xl">
         {redirectingToPayment ? (
           <div
             className="rounded-2xl shadow-sm p-8 space-y-5"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
           >
             <h1
               className="text-2xl font-semibold text-center"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+              style={{ color: 'var(--ms-text)' }}
             >
               Redirecting to payment…
             </h1>
-            <p className="text-sm text-center" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-sm text-center" style={{ color: 'var(--ms-text-mid)' }}>
               Setting up your plan with Stripe. This window will redirect automatically.
             </p>
           </div>
@@ -161,11 +161,11 @@ export default function SignupPage() {
               <div className="text-center">
                 <h1
                   className="text-3xl font-semibold"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+                  style={{ color: 'var(--ms-text)' }}
                 >
                   Create Your Shop
                 </h1>
-                <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
                   Answer a few questions so we can recommend the right plan.
                 </p>
               </div>
@@ -173,11 +173,11 @@ export default function SignupPage() {
 
             <div
               className="rounded-2xl shadow-sm p-8 space-y-5"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             >
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="rounded-xl p-3" style={{ border: '1px solid var(--cafe-border)', backgroundColor: '#FBF8F3' }}>
-                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                <div className="rounded-xl p-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: '#FBF8F3' }}>
+                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                     What are you most likely to use the app for?
                   </p>
                   <div className="space-y-2">
@@ -192,16 +192,16 @@ export default function SignupPage() {
                             className="mt-0.5"
                           />
                           <span>
-                            <span className="block text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{item.label}</span>
-                            <span className="block text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{item.hint}</span>
+                            <span className="block text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{item.label}</span>
+                            <span className="block text-xs" style={{ color: 'var(--ms-text-mid)' }}>{item.hint}</span>
                           </span>
                         </label>
                       )
                     })}
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
-                      Recommended plan: <strong style={{ color: 'var(--cafe-text)' }}>{PLAN_OPTIONS.find((p) => p.id === recommendedPlan)?.name}</strong>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                      Recommended plan: <strong style={{ color: 'var(--ms-text)' }}>{PLAN_OPTIONS.find((p) => p.id === recommendedPlan)?.name}</strong>
                     </p>
                     <button
                       type="button"
@@ -254,7 +254,7 @@ export default function SignupPage() {
                 />
 
                 <div className="pt-2">
-                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                     Choose your plan
                   </p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -267,14 +267,14 @@ export default function SignupPage() {
                           onClick={() => setSelectedPlan(plan.id)}
                           className="rounded-xl p-3 text-left"
                           style={{
-                            border: active ? '2px solid #B0812A' : '1px solid var(--cafe-border)',
-                            backgroundColor: active ? '#F6EFE3' : 'var(--cafe-surface)',
+                            border: active ? '2px solid #B0812A' : '1px solid var(--ms-border)',
+                            backgroundColor: active ? '#F6EFE3' : 'var(--ms-surface)',
                           }}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{plan.name}</p>
-                              <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{plan.description}</p>
+                              <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{plan.name}</p>
+                              <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>{plan.description}</p>
                               <p className="mt-2 text-xs font-semibold" style={{ color: '#8D6420' }}>{plan.price}</p>
                             </div>
                             {active ? <Check size={16} style={{ color: '#8D6420' }} /> : null}
@@ -292,9 +292,9 @@ export default function SignupPage() {
                 </Button>
               </form>
 
-              <p className="text-sm text-center" style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className="text-sm text-center" style={{ color: 'var(--ms-text-mid)' }}>
                 Already have an account?{' '}
-                <Link to="/login" className="underline" style={{ color: 'var(--cafe-espresso)' }}>
+                <Link to="/login" className="underline" style={{ color: 'var(--ms-sidebar)' }}>
                   Sign in
                 </Link>
               </p>

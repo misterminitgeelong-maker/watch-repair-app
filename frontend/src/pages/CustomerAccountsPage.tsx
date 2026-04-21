@@ -359,20 +359,20 @@ export default function CustomerAccountsPage() {
 
       {/* Dashboard summary */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Active Fleet/Dealer Accounts</div>
-          <div className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{totalFleet}</div>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--ms-text-muted)' }}>Active Fleet/Dealer Accounts</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{totalFleet}</div>
         </div>
-        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Credit Limit</div>
-          <div className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>${totalCreditLimit.toLocaleString()}</div>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--ms-text-muted)' }}>Total Credit Limit</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>${totalCreditLimit.toLocaleString()}</div>
         </div>
-        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Billing Cycle Distribution</div>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#F8F5EE' }}>
+          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--ms-text-muted)' }}>Billing Cycle Distribution</div>
           <ul className="text-sm mt-1">
-            {Object.entries(billingCycleCounts).length === 0 && <li style={{ color: 'var(--cafe-text-muted)' }}>None</li>}
+            {Object.entries(billingCycleCounts).length === 0 && <li style={{ color: 'var(--ms-text-muted)' }}>None</li>}
             {Object.entries(billingCycleCounts).map(([cycle, count]) => (
-              <li key={cycle}><span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{cycle}</span>: {count}</li>
+              <li key={cycle}><span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{cycle}</span>: {count}</li>
             ))}
           </ul>
         </div>
@@ -406,34 +406,34 @@ export default function CustomerAccountsPage() {
               <Card key={account.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{account.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       {account.account_code ? `Code ${account.account_code} · ` : ''}
                       Terms {account.payment_terms_days} days
                       {account.contact_email ? ` · ${account.contact_email}` : ''}
                     </p>
                     {/* Fleet/Dealer fields summary */}
-                    <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
-                      {account.account_type && <div>Type: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.account_type}</span></div>}
-                      {account.fleet_size !== undefined && account.fleet_size !== null && <div>Fleet size: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.fleet_size}</span></div>}
-                      {account.primary_contact_name && <div>Primary contact: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.primary_contact_name}</span></div>}
-                      {account.primary_contact_phone && <div>Contact phone: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.primary_contact_phone}</span></div>}
-                      {account.billing_cycle && <div>Billing cycle: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{account.billing_cycle}</span></div>}
-                      {account.credit_limit !== undefined && account.credit_limit !== null && <div>Credit limit: <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>${account.credit_limit}</span></div>}
+                    <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                      {account.account_type && <div>Type: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{account.account_type}</span></div>}
+                      {account.fleet_size !== undefined && account.fleet_size !== null && <div>Fleet size: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{account.fleet_size}</span></div>}
+                      {account.primary_contact_name && <div>Primary contact: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{account.primary_contact_name}</span></div>}
+                      {account.primary_contact_phone && <div>Contact phone: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{account.primary_contact_phone}</span></div>}
+                      {account.billing_cycle && <div>Billing cycle: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{account.billing_cycle}</span></div>}
+                      {account.credit_limit !== undefined && account.credit_limit !== null && <div>Credit limit: <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>${account.credit_limit}</span></div>}
                     </div>
-                    {account.account_notes && <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{account.account_notes}</p>}
-                    {account.notes && <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{account.notes}</p>}
+                    {account.account_notes && <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{account.account_notes}</p>}
+                    {account.notes && <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{account.notes}</p>}
                   </div>
                 </div>
 
 
-                <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                     Linked customers ({account.customer_ids.length})
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {account.customer_ids.length === 0 ? (
-                      <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>No customers linked yet.</p>
+                      <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No customers linked yet.</p>
                     ) : account.customer_ids.map(customerId => (
                       <span key={customerId} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs" style={{ backgroundColor: '#EFE9DF', color: '#5F4734' }}>
                         {customerName(customerId)}
@@ -466,8 +466,8 @@ export default function CustomerAccountsPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#F8F5EE' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#F8F5EE' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                     Month-End Billing
                   </p>
                   <div className="mt-2 grid gap-2 md:grid-cols-3">
@@ -513,7 +513,7 @@ export default function CustomerAccountsPage() {
                   )}
 
                   {statement && (
-                    <div className="mt-3 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <div className="mt-3 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       <p>
                         Statement: {statement.lines.length} line{statement.lines.length === 1 ? '' : 's'} · Subtotal {centsToCurrency(statement.subtotal_cents)}
                       </p>
@@ -521,27 +521,27 @@ export default function CustomerAccountsPage() {
                   )}
 
                   {latestInvoice && (
-                    <div className="mt-2 rounded border p-2 text-xs" style={{ borderColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                    <div className="mt-2 rounded border p-2 text-xs" style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                       Created invoice {latestInvoice.invoice_number} · Total {centsToCurrency(latestInvoice.total_cents)}
                     </div>
                   )}
 
                   {history.length > 0 && (
-                    <div className="mt-3 rounded border" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#FFFDF9' }}>
-                      <div className="flex items-center justify-between px-2.5 py-2 text-xs" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                    <div className="mt-3 rounded border" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#FFFDF9' }}>
+                      <div className="flex items-center justify-between px-2.5 py-2 text-xs" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                         <span>Recent invoices</span>
                         <span>{history.length}</span>
                       </div>
                       <div>
                         {history.slice(0, 5).map(inv => (
-                          <div key={inv.id} className="px-2.5 py-2 text-xs" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                          <div key={inv.id} className="px-2.5 py-2 text-xs" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{inv.invoice_number}</p>
+                                <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{inv.invoice_number}</p>
                                 <p>{inv.period_year}-{String(inv.period_month).padStart(2, '0')} · {formatDate(inv.created_at)}</p>
                               </div>
                               <div className="text-right">
-                                <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{centsToCurrency(inv.total_cents)}</p>
+                                <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{centsToCurrency(inv.total_cents)}</p>
                                 <p className="capitalize">{inv.status}</p>
                               </div>
                             </div>
@@ -550,7 +550,7 @@ export default function CustomerAccountsPage() {
                               <button
                                 type="button"
                                 className="text-[11px] font-semibold"
-                                style={{ color: 'var(--cafe-amber)' }}
+                                style={{ color: 'var(--ms-accent)' }}
                                 onClick={() => setExpandedInvoiceById(prev => ({ ...prev, [inv.id]: !prev[inv.id] }))}
                               >
                                 {expandedInvoiceById[inv.id] ? 'Hide lines' : `View lines (${inv.lines.length})`}
@@ -558,23 +558,23 @@ export default function CustomerAccountsPage() {
                             </div>
 
                             {expandedInvoiceById[inv.id] && (
-                              <div className="mt-2 rounded border" style={{ borderColor: 'var(--cafe-border)', backgroundColor: '#FFFFFF' }}>
+                              <div className="mt-2 rounded border" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#FFFFFF' }}>
                                 {inv.lines.length === 0 ? (
-                                  <p className="px-2 py-2 text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>No lines in this invoice.</p>
+                                  <p className="px-2 py-2 text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>No lines in this invoice.</p>
                                 ) : (
                                   inv.lines.map((line) => (
-                                    <div key={`${inv.id}-${line.source_job_id}`} className="px-2 py-1.5 flex items-start justify-between gap-2 text-[11px]" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                                    <div key={`${inv.id}-${line.source_job_id}`} className="px-2 py-1.5 flex items-start justify-between gap-2 text-[11px]" style={{ borderBottom: '1px solid var(--ms-border)' }}>
                                       <div>
                                         <Link
                                           to={jobPath(line.source_type, line.source_job_id)}
                                           className="font-semibold hover:underline"
-                                          style={{ color: 'var(--cafe-text)' }}
+                                          style={{ color: 'var(--ms-text)' }}
                                         >
                                           {sourceLabel(line.source_type)} · #{line.job_number}
                                         </Link>
-                                        <p style={{ color: 'var(--cafe-text-muted)' }}>{line.description}</p>
+                                        <p style={{ color: 'var(--ms-text-muted)' }}>{line.description}</p>
                                       </div>
-                                      <p className="font-semibold whitespace-nowrap" style={{ color: 'var(--cafe-text)' }}>
+                                      <p className="font-semibold whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>
                                         {centsToCurrency(line.amount_cents)}
                                       </p>
                                     </div>

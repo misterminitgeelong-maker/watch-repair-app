@@ -68,7 +68,7 @@ export default function ProspectsPage() {
       <MobileServicesSubNav className="mb-4" />
       <PageHeader title="Prospects" />
       <Card className="p-5 mb-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+        <h2 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           Search filters
         </h2>
         <div className="flex flex-wrap gap-6">
@@ -106,13 +106,13 @@ export default function ProspectsPage() {
             >
               {isFetching ? 'Searching…' : 'Search'}
             </Button>
-            <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={useLiveApi}
                 onChange={e => setUseLiveApi(e.target.checked)}
                 className="rounded border"
-                style={{ accentColor: 'var(--cafe-amber)' }}
+                style={{ accentColor: 'var(--ms-accent)' }}
               />
               Refresh from Google (live API)
             </label>
@@ -120,9 +120,9 @@ export default function ProspectsPage() {
         </div>
 
         {state && suburbsForState.length > 0 && (
-          <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--cafe-border)' }}>
+          <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--ms-border)' }}>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+              <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
                 Suburbs (optional) — narrow your search
               </label>
               <div className="flex gap-2">
@@ -130,7 +130,7 @@ export default function ProspectsPage() {
                   type="button"
                   onClick={selectAllSuburbs}
                   className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5"
-                  style={{ color: 'var(--cafe-amber)' }}
+                  style={{ color: 'var(--ms-accent)' }}
                 >
                   Select all
                 </button>
@@ -138,13 +138,13 @@ export default function ProspectsPage() {
                   type="button"
                   onClick={clearSuburbs}
                   className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                 >
                   Clear
                 </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 max-h-[160px] overflow-y-auto py-1 pr-2" style={{ color: 'var(--cafe-text)' }}>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 max-h-[160px] overflow-y-auto py-1 pr-2" style={{ color: 'var(--ms-text)' }}>
               {suburbsForState.map(sub => (
                 <label key={sub} className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
@@ -152,7 +152,7 @@ export default function ProspectsPage() {
                     checked={suburbs.has(sub)}
                     onChange={() => toggleSuburb(sub)}
                     className="rounded border"
-                    style={{ accentColor: 'var(--cafe-amber)' }}
+                    style={{ accentColor: 'var(--ms-accent)' }}
                   />
                   {sub}
                 </label>
@@ -163,7 +163,7 @@ export default function ProspectsPage() {
       </Card>
 
       {collectorStatus && collectorStatus.total > 0 && (
-        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           {collectorStatus.total.toLocaleString()} prospects stored. Searches use stored data unless &quot;Refresh from Google&quot; is checked.
         </p>
       )}
@@ -174,13 +174,13 @@ export default function ProspectsPage() {
         ) : searchData?.results?.length ? (
           <ul className="space-y-3">
             {searchData.results.map((p: Prospect) => (
-              <li key={p.place_id} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
+              <li key={p.place_id} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
                 <div className="font-semibold">{p.name}</div>
                 <div className="text-sm">{p.address}</div>
                 <div className="text-sm mt-1">
                   {p.phone}
                   {p.website && (
-                    <a href={p.website} className="ml-2" style={{ color: 'var(--cafe-amber)' }} target="_blank" rel="noopener noreferrer">
+                    <a href={p.website} className="ml-2" style={{ color: 'var(--ms-accent)' }} target="_blank" rel="noopener noreferrer">
                       Website
                     </a>
                   )}
@@ -189,11 +189,11 @@ export default function ProspectsPage() {
             ))}
           </ul>
         ) : searchParams ? (
-          <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>
             No results. Try a different state or suburbs.
           </p>
         ) : (
-          <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>
             Choose a category and state, then click Search.
           </p>
         )}

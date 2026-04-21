@@ -315,26 +315,26 @@ function MarkerWithInfoWindow({
       />
       {infoWindowShown && marker && (
         <InfoWindow anchor={marker} onClose={handleClose} disableAutoPan shouldFocus={false}>
-          <div className="min-w-[200px] text-sm" style={{ color: 'var(--cafe-text)' }}>
-            <p className="font-semibold" style={{ color: 'var(--cafe-amber)' }}>
+          <div className="min-w-[200px] text-sm" style={{ color: 'var(--ms-text)' }}>
+            <p className="font-semibold" style={{ color: 'var(--ms-accent)' }}>
               Stop {stopNumber} · #{job.job_number}
             </p>
             <p className="mt-1 font-medium">{vehicleLabel(job)}</p>
-            <p className="mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
               {customerName(customers, job.customer_id)}
             </p>
             <p className="mt-0.5">
-              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: 'var(--cafe-text-mid)' }}>
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: 'var(--ms-text-mid)' }}>
                 {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
               </span>
             </p>
-            <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               {displayAddress}
             </p>
             <a
               href={`/auto-key/${job.id}`}
               className="mt-2 inline-block text-xs font-semibold hover:underline"
-              style={{ color: 'var(--cafe-amber)' }}
+              style={{ color: 'var(--ms-accent)' }}
               onClick={(e) => e.stopPropagation()}
             >
               View job →
@@ -664,9 +664,9 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
 
   if (jobsWithAddresses.length === 0) {
     return (
-      <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
-        <p style={{ color: 'var(--cafe-text-muted)' }}>No jobs with addresses in this range.</p>
-        <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+      <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
+        <p style={{ color: 'var(--ms-text-muted)' }}>No jobs with addresses in this range.</p>
+        <p className="mt-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           Add job or customer addresses to see them on the map.
         </p>
       </div>
@@ -677,19 +677,19 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
     return (
       <div className="space-y-4">
         {rangeLabel && (
-          <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm font-medium" style={{ color: 'var(--ms-text-muted)' }}>
             {rangeLabel}
           </p>
         )}
-        <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)' }}>
-          <p style={{ color: 'var(--cafe-text-muted)' }}>No on-site / mobile visits with addresses for this range.</p>
-          <p className="mt-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <div className="rounded-lg border p-8 text-center" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
+          <p style={{ color: 'var(--ms-text-muted)' }}>No on-site / mobile visits with addresses for this range.</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             Mobile visit job types include lockouts, roadside, all keys lost, ignition work, and similar. In-shop jobs are hidden unless you widen the filter.
           </p>
           <button
             type="button"
             className="mt-4 px-4 py-2 rounded-lg text-sm font-medium touch-manipulation"
-            style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
             onClick={() => setMapFilter('all_addresses')}
           >
             Show all jobs with addresses
@@ -719,26 +719,26 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
   return (
     <div className="space-y-3">
       {rangeLabel && (
-        <p className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm font-medium" style={{ color: 'var(--ms-text-muted)' }}>
           {rangeLabel}
         </p>
       )}
       {!useGoogleTiles && (
-        <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text-mid)' }}>
+        <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--ms-border)', color: 'var(--ms-text-mid)' }}>
           OpenStreetMap with approximate pin positions (works without a browser key). Set{' '}
           <span className="font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</span> at <strong>build time</strong> (e.g. Docker/Railway build args) for Google Maps and JavaScript geocoding.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Show</span>
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Show</span>
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
           <button
             type="button"
             onClick={() => setMapFilter('mobile_visits')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
             style={{
-              backgroundColor: mapFilter === 'mobile_visits' ? 'var(--cafe-paper)' : 'transparent',
-              color: mapFilter === 'mobile_visits' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: mapFilter === 'mobile_visits' ? 'var(--ms-surface)' : 'transparent',
+              color: mapFilter === 'mobile_visits' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
           >
             Mobile visits
@@ -748,22 +748,22 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             onClick={() => setMapFilter('all_addresses')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
             style={{
-              backgroundColor: mapFilter === 'all_addresses' ? 'var(--cafe-paper)' : 'transparent',
-              color: mapFilter === 'all_addresses' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: mapFilter === 'all_addresses' ? 'var(--ms-surface)' : 'transparent',
+              color: mapFilter === 'all_addresses' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
           >
             All with address
           </button>
         </div>
-        <span className="text-xs font-semibold uppercase tracking-wide ml-1" style={{ color: 'var(--cafe-text-muted)' }}>Route</span>
+        <span className="text-xs font-semibold uppercase tracking-wide ml-1" style={{ color: 'var(--ms-text-muted)' }}>Route</span>
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
           <button
             type="button"
             onClick={() => setRouteOrder('scheduled')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
             style={{
-              backgroundColor: routeOrder === 'scheduled' ? 'var(--cafe-paper)' : 'transparent',
-              color: routeOrder === 'scheduled' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: routeOrder === 'scheduled' ? 'var(--ms-surface)' : 'transparent',
+              color: routeOrder === 'scheduled' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
           >
             By time
@@ -774,8 +774,8 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             onClick={() => setRouteOrder('optimized')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation disabled:opacity-45"
             style={{
-              backgroundColor: routeOrder === 'optimized' ? 'var(--cafe-paper)' : 'transparent',
-              color: routeOrder === 'optimized' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: routeOrder === 'optimized' ? 'var(--ms-surface)' : 'transparent',
+              color: routeOrder === 'optimized' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
             title={!canOptimize ? 'Geocode all stops first (wait for loading to finish).' : 'Reorder by nearest-neighbor from the first scheduled stop'}
           >
@@ -787,8 +787,8 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             onClick={() => setRouteOrder('driving')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation disabled:opacity-45"
             style={{
-              backgroundColor: routeOrder === 'driving' ? 'var(--cafe-paper)' : 'transparent',
-              color: routeOrder === 'driving' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: routeOrder === 'driving' ? 'var(--ms-surface)' : 'transparent',
+              color: routeOrder === 'driving' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
             title={
               !allStopsGeocoded
@@ -805,24 +805,24 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs font-semibold hover:underline touch-manipulation"
-            style={{ color: 'var(--cafe-amber)' }}
+            style={{ color: 'var(--ms-accent)' }}
           >
             Open in Google Maps →
           </a>
         )}
       </div>
       {routeOrder === 'optimized' && canOptimize && (
-        <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           Line shows a straight path between stops (not driving directions). Use Open in Google Maps for turn-by-turn.
         </p>
       )}
       {routeOrder === 'driving' && allStopsGeocoded && sortedBySchedule.length >= 3 && (
-        <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           First and last stops stay in appointment order; Google reorders the middle for driving distance. Map line is still straight between stops; use Open in Google Maps for roads.
         </p>
       )}
       {routeOrder === 'driving' && drivingLoading && (
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           Computing driving order…
         </p>
       )}
@@ -832,16 +832,16 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
         </p>
       )}
       {loading && (
-        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           Geocoding addresses…
         </p>
       )}
       {!loading && ungeocodedJobs.length > 0 && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: '#E7C6B7', backgroundColor: '#FFF7F3', color: 'var(--cafe-text-mid)' }}>
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: '#E7C6B7', backgroundColor: '#FFF7F3', color: 'var(--ms-text-mid)' }}>
           <p className="font-medium">
             Could not place {ungeocodedJobs.length} job{ungeocodedJobs.length === 1 ? '' : 's'} on the map.
           </p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
             You can still open directions from these jobs:
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -860,7 +860,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
           </div>
         </div>
       )}
-      <div className="h-[min(520px,70vh)] min-h-[320px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--cafe-border)' }}>
+      <div className="h-[min(520px,70vh)] min-h-[320px] rounded-lg border overflow-hidden" style={{ borderColor: 'var(--ms-border)' }}>
         {useGoogleTiles ? (
           <APIProvider apiKey={apiKey!}>
             <GoogleMapsJsGeocodeEffect
@@ -883,7 +883,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
         )}
       </div>
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-muted)' }}>
+        <span className="text-xs font-medium" style={{ color: 'var(--ms-text-muted)' }}>
           Stops ({routeStopsLegend}):
         </span>
         {orderedJobs.map((j, i) => (
@@ -891,7 +891,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             <a
               href={`/auto-key/${j.id}`}
               className="px-3 py-1.5 rounded inline-block"
-              style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
             >
               {i + 1}. #{j.job_number} · {j.title}
             </a>

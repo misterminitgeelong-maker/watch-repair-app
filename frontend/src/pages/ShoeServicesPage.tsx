@@ -46,7 +46,7 @@ export default function ShoeServicesPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8 max-w-5xl mx-auto">
       <PageHeader title="Shoe Repairs" />
-      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Soles, heels, stitching, cleaning, and more. Multi-pair intake with combo pricing.
       </p>
 
@@ -57,7 +57,7 @@ export default function ShoeServicesPage() {
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
               backgroundColor: 'transparent',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               textDecoration: 'none',
             }}
           >
@@ -65,7 +65,7 @@ export default function ShoeServicesPage() {
           </Link>
           <span
             className="px-3 py-1.5 text-xs font-semibold rounded-md"
-            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
           >
             Services
           </span>
@@ -75,24 +75,24 @@ export default function ShoeServicesPage() {
       {/* Combos & Guarantee */}
       {(combos.length > 0 || guarantee) && (
         <div className="mb-8 space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
             Combo pricing & guarantee
           </h2>
           {combos.map(combo => (
             <div
               key={combo.id}
               className="rounded-xl px-4 py-3 text-sm"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{combo.name}</span>
+                <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{combo.name}</span>
                 {(combo.discount || combo.discounts?.length) && (
-                  <span className="text-xs font-bold rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}>
+                  <span className="text-xs font-bold rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>
                     {combo.discount ?? combo.discounts?.join(', ')}
                   </span>
                 )}
               </div>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{combo.rule}</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{combo.rule}</p>
             </div>
           ))}
           {guarantee && (
@@ -101,36 +101,36 @@ export default function ShoeServicesPage() {
               style={{ backgroundColor: 'rgba(130,160,100,0.08)', border: '1px solid rgba(130,160,100,0.25)' }}
             >
               <Shield size={14} className="mt-0.5 shrink-0" style={{ color: '#6A9A50' }} />
-              <p style={{ color: 'var(--cafe-text)' }}>{guarantee.shoe_repairs}</p>
+              <p style={{ color: 'var(--ms-text)' }}>{guarantee.shoe_repairs}</p>
             </div>
           )}
         </div>
       )}
 
       {/* Service catalogue */}
-      <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+      <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
         Service reference
       </h2>
-      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Browse services by group. Use when creating jobs to ensure consistent naming and pricing.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-muted)' }} />
           <input
             type="text"
             placeholder="Search services..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full h-10 rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2"
-            style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
           />
         </div>
         <select
           value={groupFilter}
           onChange={e => setGroupFilter(e.target.value)}
           className="h-10 rounded-xl border px-3 text-sm sm:w-48"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
         >
           <option value="">All groups</option>
           {groups.map(g => (
@@ -138,33 +138,33 @@ export default function ShoeServicesPage() {
           ))}
         </select>
       </div>
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-surface)' }}>
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}>
         <div className="max-h-[400px] overflow-y-auto">
           {items.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No services match your search.</p>
+            <p className="px-5 py-8 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No services match your search.</p>
           ) : (
             <>
               {/* Mobile card list */}
-              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                 {items.map(item => (
                   <div key={item.key} className="px-4 py-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-sm" style={{ color: 'var(--cafe-text)' }}>{item.name}</p>
+                      <p className="font-medium text-sm" style={{ color: 'var(--ms-text)' }}>{item.name}</p>
                       {item.notes && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{item.notes}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{item.notes}</p>
                       )}
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs mt-1.5" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs mt-1.5" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
                         <Tag size={10} />{item.group_label ?? item.group_id}
                       </span>
                     </div>
-                    <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>{formatPrice(item)}</span>
+                    <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--ms-accent)' }}>{formatPrice(item)}</span>
                   </div>
                 ))}
               </div>
               {/* Desktop table */}
               <table className="w-full text-sm hidden md:table">
                 <thead>
-                  <tr className="text-left text-xs uppercase" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                  <tr className="text-left text-xs uppercase" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                     <th className="px-4 py-3 font-medium">Service</th>
                     <th className="px-4 py-3 font-medium">Group</th>
                     <th className="px-4 py-3 font-medium text-right">Price</th>
@@ -172,19 +172,19 @@ export default function ShoeServicesPage() {
                 </thead>
                 <tbody>
                   {items.map(item => (
-                    <tr key={item.key} style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                    <tr key={item.key} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                       <td className="px-4 py-2.5">
-                        <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.name}</span>
+                        <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{item.name}</span>
                         {item.notes && (
-                          <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{item.notes}</span>
+                          <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{item.notes}</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
                           <Tag size={10} />{item.group_label ?? item.group_id}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--cafe-amber)' }}>
+                      <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--ms-accent)' }}>
                         {formatPrice(item)}
                       </td>
                     </tr>

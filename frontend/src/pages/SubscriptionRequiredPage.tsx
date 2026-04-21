@@ -51,11 +51,11 @@ export default function SubscriptionRequiredPage() {
     <div className="mx-auto max-w-lg px-6 py-10">
       <h1
         className="text-2xl font-semibold"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+        style={{ color: 'var(--ms-text)' }}
       >
         Complete subscription to continue
       </h1>
-      <p className="mt-3 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+      <p className="mt-3 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
         Your workspace was created, but payment was not completed. Finish checkout with Stripe to access the app. If you
         closed the payment page by mistake, you can open it again below.
       </p>
@@ -75,7 +75,7 @@ export default function SubscriptionRequiredPage() {
         </Button>
       </div>
 
-      <p className="mt-8 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="mt-8 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
         Wrong account?{' '}
         <button type="button" className="underline hover:opacity-90" onClick={() => logout()}>
           Sign out

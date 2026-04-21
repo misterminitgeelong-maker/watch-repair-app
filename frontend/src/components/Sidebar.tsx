@@ -88,15 +88,15 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   function linkStyle(isActive: boolean) {
     return isActive
       ? { backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0E7DD', border: '1px solid rgba(255,255,255,0.08)' }
-      : { color: 'var(--cafe-sidebar-txt)' }
+      : { color: 'var(--ms-sidebar-text)' }
   }
 
   return (
     <aside
-      className={cn('w-60 flex min-h-0 shrink-0 flex-col md:h-full', className)}
+      className={cn('w-[216px] flex min-h-0 shrink-0 flex-col md:h-full', className)}
       style={{
-        backgroundColor: 'var(--cafe-espresso)',
-        color: 'var(--cafe-sidebar-txt)',
+        backgroundColor: 'var(--ms-sidebar)',
+        color: 'var(--ms-sidebar-text)',
         ...(!mobile ? { borderRight: '1px solid rgba(160,130,90,0.15)' } : {}),
       }}
     >
@@ -160,7 +160,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                       bottom: '20%',
                       width: 3,
                       borderRadius: 4,
-                      backgroundColor: 'var(--cafe-gold)',
+                      backgroundColor: 'var(--ms-accent)',
                     }}
                   />
                 )}
@@ -205,7 +205,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                         bottom: '20%',
                         width: 3,
                         borderRadius: 4,
-                        backgroundColor: 'var(--cafe-gold)',
+                        backgroundColor: 'var(--ms-accent)',
                       }}
                     />
                   )}
@@ -246,7 +246,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                             bottom: '20%',
                             width: 3,
                             borderRadius: 4,
-                            backgroundColor: 'var(--cafe-gold)',
+                            backgroundColor: 'var(--ms-accent)',
                           }}
                         />
                       )}
@@ -282,7 +282,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                             bottom: '20%',
                             width: 3,
                             borderRadius: 4,
-                            backgroundColor: 'var(--cafe-gold)',
+                            backgroundColor: 'var(--ms-accent)',
                           }}
                         />
                       )}
@@ -318,7 +318,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                             bottom: '20%',
                             width: 3,
                             borderRadius: 4,
-                            backgroundColor: 'var(--cafe-gold)',
+                            backgroundColor: 'var(--ms-accent)',
                           }}
                         />
                       )}
@@ -361,7 +361,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                       bottom: '20%',
                       width: 3,
                       borderRadius: 4,
-                      backgroundColor: 'var(--cafe-gold)',
+                      backgroundColor: 'var(--ms-accent)',
                     }}
                   />
                 )}
@@ -398,7 +398,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                       bottom: '20%',
                       width: 3,
                       borderRadius: 4,
-                      backgroundColor: 'var(--cafe-gold)',
+                      backgroundColor: 'var(--ms-accent)',
                     }}
                   />
                 )}
@@ -466,18 +466,18 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         >
           <div
             className="w-full max-w-sm rounded-2xl p-6 text-center space-y-3"
-            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <p className="text-base font-semibold" >
               Add to Home Screen
             </p>
-            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
               Tap the <strong>Share</strong> icon <span style={{ fontSize: '1.1em' }}>⎙</span> at the bottom of Safari, then choose <strong>"Add to Home Screen"</strong> to install Mainspring.
             </p>
             <button
               className="mt-1 w-full rounded-xl py-2.5 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
               onClick={() => setShowIosHint(false)}
             >
               Got it

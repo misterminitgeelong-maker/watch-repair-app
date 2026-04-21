@@ -88,10 +88,10 @@ export default function InboxPage() {
                     <EventIcon eventType={ev.event_type} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+                    <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
                       {ev.event_summary}
                     </p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                       {formatDate(ev.created_at)}
                     </p>
                   </div>
@@ -100,7 +100,7 @@ export default function InboxPage() {
                       <Link
                         to={jobLink}
                         className="flex items-center gap-1 text-sm font-medium transition-colors"
-                        style={{ color: 'var(--cafe-amber)' }}
+                        style={{ color: 'var(--ms-accent)' }}
                       >
                         {linkLabel} <ArrowRight size={14} />
                       </Link>
@@ -110,7 +110,7 @@ export default function InboxPage() {
                       onClick={() => deleteMut.mutate(ev.id)}
                       disabled={deleteMut.isPending}
                       className="p-1.5 rounded transition-colors hover:bg-black/10"
-                      style={{ color: 'var(--cafe-text-muted)' }}
+                      style={{ color: 'var(--ms-text-muted)' }}
                       title="Delete"
                       aria-label="Delete"
                     >
@@ -128,16 +128,16 @@ export default function InboxPage() {
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
               className="text-sm px-4 py-2 rounded-lg"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: page === 0 ? 'var(--cafe-text-muted)' : 'var(--cafe-text)', opacity: page === 0 ? 0.4 : 1 }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: page === 0 ? 'var(--ms-text-muted)' : 'var(--ms-text)', opacity: page === 0 ? 0.4 : 1 }}
             >
               ← Newer
             </button>
-            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Page {page + 1}</span>
+            <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Page {page + 1}</span>
             <button
               onClick={() => setPage(p => p + 1)}
               disabled={alerts.length < PAGE_SIZE}
               className="text-sm px-4 py-2 rounded-lg"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: alerts.length < PAGE_SIZE ? 'var(--cafe-text-muted)' : 'var(--cafe-text)', opacity: alerts.length < PAGE_SIZE ? 0.4 : 1 }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: alerts.length < PAGE_SIZE ? 'var(--ms-text-muted)' : 'var(--ms-text)', opacity: alerts.length < PAGE_SIZE ? 0.4 : 1 }}
             >
               Older →
             </button>

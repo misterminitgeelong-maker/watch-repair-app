@@ -61,18 +61,18 @@ export default function SignupCheckoutPage() {
   if (!selectedPlan) return <Navigate to="/signup" replace />
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div
         className="w-full max-w-xl rounded-2xl shadow-sm p-8 space-y-5"
-        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
       >
         <h1
           className="text-2xl font-semibold text-center"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}
+          style={{ color: 'var(--ms-text)' }}
         >
           Redirecting to secure payment...
         </h1>
-        <p className="text-sm text-center" style={{ color: 'var(--cafe-text-mid)' }}>
+        <p className="text-sm text-center" style={{ color: 'var(--ms-text-mid)' }}>
           We are preparing your Stripe checkout session for the selected plan.
         </p>
 

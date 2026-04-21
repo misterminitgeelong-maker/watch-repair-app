@@ -71,13 +71,13 @@ export default function CustomersPage() {
 
       <div className="mb-5 flex flex-wrap gap-3 items-end">
         <div className="relative w-full max-w-md flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-muted)' }} />
           <input
             className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
             style={{
-              backgroundColor: 'var(--cafe-surface)',
-              border: '1px solid var(--cafe-border-2)',
-              color: 'var(--cafe-text)',
+              backgroundColor: 'var(--ms-surface)',
+              border: '1px solid var(--ms-border-strong)',
+              color: 'var(--ms-text)',
             }}
             placeholder="Search customers…"
             value={search}
@@ -87,9 +87,9 @@ export default function CustomersPage() {
         <select
           className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'created_at' | 'full_name')}
@@ -101,9 +101,9 @@ export default function CustomersPage() {
         <select
           className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1px solid var(--cafe-border-2)',
-            color: 'var(--cafe-text)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            color: 'var(--ms-text)',
           }}
           value={sortDir}
           onChange={(e) => setSortDir(e.target.value as SortDir)}
@@ -118,7 +118,7 @@ export default function CustomersPage() {
         <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(customersQuery.error)}</p>
       )}
       {(customersQuery.hasNextPage || search.trim()) && (
-        <p className="text-xs mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
           {search.trim()
             ? 'Search applies to customers already loaded. Load more to include additional rows in search.'
             : customersQuery.hasNextPage
@@ -131,29 +131,29 @@ export default function CustomersPage() {
         <Card>
           {filtered.length === 0 ? <EmptyState message="No customers found." /> : (
             <>
-            <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+            <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
               {filtered.map((c: Customer) => (
                 <div key={c.id} className="p-4 space-y-2">
-                  <Link to={`/customers/${c.id}`} className="font-medium" style={{ color: 'var(--cafe-amber)' }}>
+                  <Link to={`/customers/${c.id}`} className="font-medium" style={{ color: 'var(--ms-accent)' }}>
                     {c.full_name}
                   </Link>
-                  <div className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+                  <div className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                     <p>{c.email ?? 'No email'}</p>
                     <p>{c.phone ?? 'No phone'}</p>
                   </div>
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Added {formatDate(c.created_at)}</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Added {formatDate(c.created_at)}</p>
                 </div>
               ))}
             </div>
 
             <table className="w-full text-sm hidden md:table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
                   {['Name', 'Email', 'Phone', 'Added'].map(h => (
                     <th
                       key={h}
                       className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase"
-                      style={{ color: 'var(--cafe-text-muted)' }}
+                      style={{ color: 'var(--ms-text-muted)' }}
                     >
                       {h}
                     </th>
@@ -164,7 +164,7 @@ export default function CustomersPage() {
                 {filtered.map((c: Customer, i) => (
                   <tr
                     key={c.id}
-                    style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                    style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
@@ -172,14 +172,14 @@ export default function CustomersPage() {
                       <Link
                         to={`/customers/${c.id}`}
                         className="font-medium hover:underline"
-                        style={{ color: 'var(--cafe-amber)' }}
+                        style={{ color: 'var(--ms-accent)' }}
                       >
                         {c.full_name}
                       </Link>
                     </td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{c.email ?? '—'}</td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{c.phone ?? '—'}</td>
-                    <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(c.created_at)}</td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{c.email ?? '—'}</td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{c.phone ?? '—'}</td>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

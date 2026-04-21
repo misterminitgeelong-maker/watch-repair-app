@@ -26,8 +26,8 @@ export default function StatusPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)' }}>
-        <div className="text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
+        <div className="text-center" style={{ color: 'var(--ms-text-muted)' }}>
           <Clock className="mx-auto mb-3 animate-spin" size={28} />
           <p>Loading repair status…</p>
         </div>
@@ -37,12 +37,12 @@ export default function StatusPage() {
 
   if (isError || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <div className="max-w-md text-center">
-          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>
             Status link not found
           </h1>
-          <p style={{ color: 'var(--cafe-text-muted)' }}>
+          <p style={{ color: 'var(--ms-text-muted)' }}>
             This status link may have expired. Please contact the shop for an updated link.
           </p>
         </div>
@@ -54,45 +54,45 @@ export default function StatusPage() {
   const watchTitle = [job.watch?.brand, job.watch?.model].filter(Boolean).join(' ') || 'Watch repair'
 
   return (
-    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="text-center mb-2">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <Wrench size={22} style={{ color: 'var(--cafe-gold-dark)' }} />
+            <Wrench size={22} style={{ color: 'var(--ms-accent-hover)' }} />
           </div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Live Repair Status
           </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             Job #{job.job_number} • {watchTitle}
           </p>
         </div>
 
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Current stage</p>
-              <p className="text-lg font-semibold capitalize" style={{ color: 'var(--cafe-text)' }}>{readableStatus(job.status)}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Current stage</p>
+              <p className="text-lg font-semibold capitalize" style={{ color: 'var(--ms-text)' }}>{readableStatus(job.status)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>Pre-quote</p>
-              <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{formatCents(job.pre_quote_cents || 0)}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Pre-quote</p>
+              <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{formatCents(job.pre_quote_cents || 0)}</p>
             </div>
           </div>
           {job.description && (
-            <p className="text-sm mt-3" style={{ color: 'var(--cafe-text-mid)' }}>{job.description}</p>
+            <p className="text-sm mt-3" style={{ color: 'var(--ms-text-mid)' }}>{job.description}</p>
           )}
           {job.collection_date && (
-            <div className="flex items-center gap-2 text-sm mt-3 pt-3" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text-mid)' }}>
-              <span style={{ color: 'var(--cafe-text-muted)' }}>Expected ready:</span>
-              <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{job.collection_date}</span>
+            <div className="flex items-center gap-2 text-sm mt-3 pt-3" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text-mid)' }}>
+              <span style={{ color: 'var(--ms-text-muted)' }}>Expected ready:</span>
+              <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.collection_date}</span>
             </div>
           )}
           <div className="mt-3 flex justify-end">
             <button
               type="button"
               className="inline-flex items-center gap-1.5 text-xs font-medium"
-              style={{ color: 'var(--cafe-amber)' }}
+              style={{ color: 'var(--ms-accent)' }}
               onClick={() => refetch()}
             >
               <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
@@ -101,18 +101,18 @@ export default function StatusPage() {
           </div>
         </div>
 
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
             Timeline
           </h2>
           <div className="space-y-3">
             {job.history.map((entry, idx) => (
               <div key={`${entry.created_at}-${idx}`} className="flex items-start justify-between gap-4 text-sm">
                 <div>
-                  <p className="font-medium capitalize" style={{ color: 'var(--cafe-text)' }}>{readableStatus(entry.new_status)}</p>
-                  {entry.change_note && <p style={{ color: 'var(--cafe-text-mid)' }}>{entry.change_note}</p>}
+                  <p className="font-medium capitalize" style={{ color: 'var(--ms-text)' }}>{readableStatus(entry.new_status)}</p>
+                  {entry.change_note && <p style={{ color: 'var(--ms-text-mid)' }}>{entry.change_note}</p>}
                 </div>
-                <span className="text-xs whitespace-nowrap" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(entry.created_at)}</span>
+                <span className="text-xs whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(entry.created_at)}</span>
               </div>
             ))}
           </div>

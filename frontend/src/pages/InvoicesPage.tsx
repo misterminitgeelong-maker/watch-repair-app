@@ -17,9 +17,9 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
   return (
     <Modal title="Record Payment" onClose={onClose}>
       <div className="space-y-4">
-        <div className="rounded-lg p-4 text-sm space-y-1" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
-          <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Invoice</span><span className="font-mono">#{invoice.invoice_number}</span></div>
-          <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Total Due</span><span className="font-semibold">{formatCents(invoice.total_cents)}</span></div>
+        <div className="rounded-lg p-4 text-sm space-y-1" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
+          <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Invoice</span><span className="font-mono">#{invoice.invoice_number}</span></div>
+          <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Total Due</span><span className="font-semibold">{formatCents(invoice.total_cents)}</span></div>
         </div>
         <Input
           label="Amount ($)"
@@ -71,9 +71,9 @@ export function InvoicesPage() {
               onClick={() => setStatusFilter('')}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{
-                backgroundColor: statusFilter === '' ? '#F3EADF' : 'var(--cafe-surface)',
-                color: 'var(--cafe-text)',
-                border: '1px solid var(--cafe-border)',
+                backgroundColor: statusFilter === '' ? '#F3EADF' : 'var(--ms-surface)',
+                color: 'var(--ms-text)',
+                border: '1px solid var(--ms-border)',
               }}
             >
               All
@@ -83,9 +83,9 @@ export function InvoicesPage() {
               onClick={() => setStatusFilter('unpaid')}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{
-                backgroundColor: statusFilter === 'unpaid' ? '#F3EADF' : 'var(--cafe-surface)',
-                color: 'var(--cafe-text)',
-                border: '1px solid var(--cafe-border)',
+                backgroundColor: statusFilter === 'unpaid' ? '#F3EADF' : 'var(--ms-surface)',
+                color: 'var(--ms-text)',
+                border: '1px solid var(--ms-border)',
               }}
             >
               Unpaid
@@ -95,9 +95,9 @@ export function InvoicesPage() {
               onClick={() => setStatusFilter('paid')}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{
-                backgroundColor: statusFilter === 'paid' ? '#F3EADF' : 'var(--cafe-surface)',
-                color: 'var(--cafe-text)',
-                border: '1px solid var(--cafe-border)',
+                backgroundColor: statusFilter === 'paid' ? '#F3EADF' : 'var(--ms-surface)',
+                color: 'var(--ms-text)',
+                border: '1px solid var(--ms-border)',
               }}
             >
               Paid
@@ -114,16 +114,16 @@ export function InvoicesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Link to={`/invoices/${inv.id}`} className="font-mono font-semibold text-base" style={{ color: 'var(--cafe-amber)' }}>
+                          <Link to={`/invoices/${inv.id}`} className="font-mono font-semibold text-base" style={{ color: 'var(--ms-accent)' }}>
                             #{inv.invoice_number}
                           </Link>
                           <Badge status={inv.status} />
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                        <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                           <span>{formatDate(inv.created_at)}</span>
-                          <Link to={`/jobs/${inv.repair_job_id}`} className="font-mono text-xs underline" style={{ color: 'var(--cafe-amber)' }}>View Job</Link>
+                          <Link to={`/jobs/${inv.repair_job_id}`} className="font-mono text-xs underline" style={{ color: 'var(--ms-accent)' }}>View Job</Link>
                         </div>
-                        <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                        <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--ms-text-mid)' }}>
                           <div className="flex gap-4">
                             <span>Subtotal: {formatCents(inv.subtotal_cents)}</span>
                             <span>Tax: {formatCents(inv.tax_cents)}</span>
@@ -131,13 +131,13 @@ export function InvoicesPage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--cafe-text)' }}>
+                        <p className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
                           {formatCents(inv.total_cents)}
                         </p>
                         {inv.status === 'unpaid' && (
                           <button
                             className="mt-2 text-xs font-semibold rounded-lg px-3 py-1.5"
-                            style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+                            style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
                             onClick={() => setPayInvoice(inv)}
                           >
                             Record Payment
@@ -153,7 +153,7 @@ export function InvoicesPage() {
               <Card className="hidden md:block">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--cafe-border)', color: 'var(--cafe-text-muted)' }}>
+                    <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                       <th className="px-5 py-3 font-medium">Source</th>
                       <th className="px-5 py-3 font-medium">Invoice #</th>
                       <th className="px-5 py-3 font-medium">Job</th>
@@ -167,7 +167,7 @@ export function InvoicesPage() {
                   </thead>
                   <tbody>
                     {filteredInvoices.map((inv: Invoice) => (
-                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--cafe-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--ms-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3">
                           <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
                         </td>
@@ -178,9 +178,9 @@ export function InvoicesPage() {
                           <Link
                             to={`/invoices/${inv.id}`}
                             className="inline-block font-mono transition-colors"
-                            style={{ color: 'var(--cafe-amber)' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+                            style={{ color: 'var(--ms-accent)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
                           >
                             #{inv.invoice_number}
                           </Link>
@@ -192,9 +192,9 @@ export function InvoicesPage() {
                           <Link
                             to={`/jobs/${inv.repair_job_id}`}
                             className="inline-block text-xs font-mono transition-colors"
-                            style={{ color: 'var(--cafe-amber)' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-gold-dark)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
+                            style={{ color: 'var(--ms-accent)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
                           >
                             View Job
                           </Link>
@@ -203,7 +203,7 @@ export function InvoicesPage() {
                         <td className="px-5 py-3">{formatCents(inv.subtotal_cents)}</td>
                         <td className="px-5 py-3">{formatCents(inv.tax_cents)}</td>
                         <td className="px-5 py-3 font-semibold">{formatCents(inv.total_cents)}</td>
-                        <td className="px-5 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{formatDate(inv.created_at)}</td>
+                        <td className="px-5 py-3" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(inv.created_at)}</td>
                         <td className="px-5 py-3">
                           {inv.status === 'unpaid' && (
                             <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => setPayInvoice(inv)}>
@@ -236,7 +236,7 @@ export function InvoiceDetailPage() {
   })
 
   if (isLoading) return <Spinner />
-  if (!invoice) return <p style={{ color: 'var(--cafe-text-muted)' }}>Invoice not found.</p>
+  if (!invoice) return <p style={{ color: 'var(--ms-text-muted)' }}>Invoice not found.</p>
 
   return (
     <div>
@@ -244,9 +244,9 @@ export function InvoiceDetailPage() {
         <Link
           to="/invoices"
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
-          style={{ color: 'var(--cafe-text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+          style={{ color: 'var(--ms-text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
         >
           <ChevronLeft size={14} /> Back to Invoices
         </Link>
@@ -264,17 +264,17 @@ export function InvoiceDetailPage() {
 
       {lineItems && lineItems.length > 0 && (
         <Card className="p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--cafe-text)' }}>Line Items</h2>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--ms-text)' }}>Line Items</h2>
           <div className="space-y-2">
             {lineItems.map((item, i) => (
-              <div key={i} className="flex items-start justify-between gap-4 text-sm py-2" style={{ borderBottom: i < lineItems.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
+              <div key={i} className="flex items-start justify-between gap-4 text-sm py-2" style={{ borderBottom: i < lineItems.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
                 <div className="min-w-0">
-                  <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{item.description}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{item.description}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     {item.item_type} · qty {item.quantity} × ${(item.unit_price_cents / 100).toFixed(2)}
                   </p>
                 </div>
-                <span className="font-semibold shrink-0" style={{ color: 'var(--cafe-text)' }}>
+                <span className="font-semibold shrink-0" style={{ color: 'var(--ms-text)' }}>
                   ${(item.total_price_cents / 100).toFixed(2)}
                 </span>
               </div>
@@ -286,22 +286,22 @@ export function InvoiceDetailPage() {
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span style={{ color: 'var(--cafe-text-muted)' }}>Status</span>
+              <span style={{ color: 'var(--ms-text-muted)' }}>Status</span>
               <Badge status={invoice.status} />
             </div>
             <div className="flex justify-between">
-              <span style={{ color: 'var(--cafe-text-muted)' }}>Invoice #</span>
-              <span className="font-mono" style={{ color: 'var(--cafe-text)' }}>{invoice.invoice_number}</span>
+              <span style={{ color: 'var(--ms-text-muted)' }}>Invoice #</span>
+              <span className="font-mono" style={{ color: 'var(--ms-text)' }}>{invoice.invoice_number}</span>
             </div>
             <div className="flex justify-between">
-              <span style={{ color: 'var(--cafe-text-muted)' }}>Date</span>
-              <span style={{ color: 'var(--cafe-text)' }}>{formatDate(invoice.created_at)}</span>
+              <span style={{ color: 'var(--ms-text-muted)' }}>Date</span>
+              <span style={{ color: 'var(--ms-text)' }}>{formatDate(invoice.created_at)}</span>
             </div>
           </div>
-          <div className="space-y-2 text-sm border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6" style={{ borderColor: 'var(--cafe-border)' }}>
-            <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.subtotal_cents)}</span></div>
-            <div className="flex justify-between"><span style={{ color: 'var(--cafe-text-muted)' }}>Tax</span><span style={{ color: 'var(--cafe-text)' }}>{formatCents(invoice.tax_cents)}</span></div>
-            <div className="flex justify-between font-bold text-base pt-2 mt-2" style={{ borderTop: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}>
+          <div className="space-y-2 text-sm border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6" style={{ borderColor: 'var(--ms-border)' }}>
+            <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>{formatCents(invoice.subtotal_cents)}</span></div>
+            <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Tax</span><span style={{ color: 'var(--ms-text)' }}>{formatCents(invoice.tax_cents)}</span></div>
+            <div className="flex justify-between font-bold text-base pt-2 mt-2" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
               <span>Total</span><span>{formatCents(invoice.total_cents)}</span>
             </div>
           </div>

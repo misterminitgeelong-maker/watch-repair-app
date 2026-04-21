@@ -142,7 +142,7 @@ export default function LoginPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
             }}>
               Repair OS for the modern bench.
             </p>
@@ -150,7 +150,7 @@ export default function LoginPage() {
 
           {/* Card */}
           <div className="ms-card" style={{
-            backgroundColor: 'var(--cafe-surface)',
+            backgroundColor: 'var(--ms-surface)',
             border: '1px solid #EAE0D4',
             borderRadius: '22px',
             padding: '2.6rem 2.4rem',
@@ -167,7 +167,7 @@ export default function LoginPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               marginBottom: '1.4rem',
             }}>
               Sign in to your account
@@ -189,8 +189,8 @@ export default function LoginPage() {
                     padding: '0.5rem',
                     borderRadius: '10px',
                     border: mode === 'single' ? '1px solid #C9A248' : '1px solid #D8CBBA',
-                    backgroundColor: mode === 'single' ? '#F6EFE5' : 'var(--cafe-bg)',
-                    color: mode === 'single' ? '#6B513A' : 'var(--cafe-text-muted)',
+                    backgroundColor: mode === 'single' ? '#F6EFE5' : 'var(--ms-bg)',
+                    color: mode === 'single' ? '#6B513A' : 'var(--ms-text-muted)',
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -209,8 +209,8 @@ export default function LoginPage() {
                     padding: '0.5rem',
                     borderRadius: '10px',
                     border: mode === 'multi' ? '1px solid #C9A248' : '1px solid #D8CBBA',
-                    backgroundColor: mode === 'multi' ? '#F6EFE5' : 'var(--cafe-bg)',
-                    color: mode === 'multi' ? '#6B513A' : 'var(--cafe-text-muted)',
+                    backgroundColor: mode === 'multi' ? '#F6EFE5' : 'var(--ms-bg)',
+                    color: mode === 'multi' ? '#6B513A' : 'var(--ms-text-muted)',
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -273,7 +273,7 @@ export default function LoginPage() {
                 type="password"
                 showPasswordToggle
               />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--cafe-text-mid)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ms-text-mid)' }}>
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -316,9 +316,9 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p style={{ fontSize: '0.85rem', textAlign: 'center', marginTop: '1.25rem', color: 'var(--cafe-text-mid)' }}>
+            <p style={{ fontSize: '0.85rem', textAlign: 'center', marginTop: '1.25rem', color: 'var(--ms-text-mid)' }}>
               New here?{' '}
-              <Link to="/signup" style={{ color: 'var(--cafe-espresso)', textDecoration: 'underline' }}>
+              <Link to="/signup" style={{ color: 'var(--ms-sidebar)', textDecoration: 'underline' }}>
                 Create your shop account
               </Link>
             </p>
@@ -351,7 +351,7 @@ function LoginField({
         fontWeight: 600,
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
-        color: 'var(--cafe-text-muted)',
+        color: 'var(--ms-text-muted)',
       }}>
         {label}
       </span>
@@ -372,8 +372,8 @@ function LoginField({
             paddingRight: hasToggle ? '2.75rem' : '0.95rem',
             borderRadius: '11px',
             border: focused ? '1.5px solid #C9A248' : '1.5px solid #D8CBBA',
-            backgroundColor: focused ? '#FFFDF8' : 'var(--cafe-bg)',
-            color: 'var(--cafe-text)',
+            backgroundColor: focused ? '#FFFDF8' : 'var(--ms-bg)',
+            color: 'var(--ms-text)',
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '0.9rem',
             outline: 'none',
@@ -399,7 +399,7 @@ function LoginField({
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

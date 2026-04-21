@@ -6,7 +6,7 @@ export default function CataloguePage() {
   return (
     <div>
       <PageHeader title="Watch Repairs" />
-      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Movement services, batteries, pressure testing, and full servicing.
       </p>
 
@@ -17,7 +17,7 @@ export default function CataloguePage() {
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
               backgroundColor: 'transparent',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               textDecoration: 'none',
             }}
           >
@@ -25,14 +25,14 @@ export default function CataloguePage() {
           </Link>
           <span
             className="px-3 py-1.5 text-xs font-semibold rounded-md"
-            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
           >
             Catalogue
           </span>
         </div>
       </div>
 
-      <p className="text-sm mb-6" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-6" style={{ color: 'var(--ms-text-muted)' }}>
         Repair services and movement database. Search by name or caliber.
       </p>
       <div className="max-w-3xl">

@@ -93,17 +93,17 @@ export default function PrintShoeIntakeTicketsPage() {
       </div>
     )
   }
-  if (!job) return <p className="p-8" style={{ color: 'var(--cafe-text-muted)' }}>Job not found.</p>
+  if (!job) return <p className="p-8" style={{ color: 'var(--ms-text-muted)' }}>Job not found.</p>
 
   const allShoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
 
   return (
     <>
-      <div className="print:hidden fixed top-0 left-0 right-0 px-6 py-3 flex items-center justify-between z-10 shadow-sm" style={{ backgroundColor: 'var(--cafe-surface)', borderBottom: '1px solid var(--cafe-border)' }}>
+      <div className="print:hidden fixed top-0 left-0 right-0 px-6 py-3 flex items-center justify-between z-10 shadow-sm" style={{ backgroundColor: 'var(--ms-surface)', borderBottom: '1px solid var(--ms-border)' }}>
         <Link
           to={`/shoe-repairs/${id}`}
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
-          style={{ color: 'var(--cafe-text-muted)' }}
+          style={{ color: 'var(--ms-text-muted)' }}
         >
           <ChevronLeft size={15} /> Back
         </Link>
@@ -124,7 +124,7 @@ export default function PrintShoeIntakeTicketsPage() {
                   onClick={btDisconnect}
                   className="p-2 rounded-lg transition-colors"
                   title="Disconnect printer"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                 >
                   <BluetoothOff size={15} />
                 </button>
@@ -134,7 +134,7 @@ export default function PrintShoeIntakeTicketsPage() {
                 onClick={btConnect}
                 disabled={btStatus === 'connecting'}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
               >
                 <Bluetooth size={15} />
                 {btStatus === 'connecting' ? 'Connecting…' : 'Connect M2'}
@@ -144,7 +144,7 @@ export default function PrintShoeIntakeTicketsPage() {
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ backgroundColor: 'var(--cafe-amber)', color: '#FEFCF8' }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: '#FEFCF8' }}
           >
             <Printer size={15} /> Print / PDF
           </button>
@@ -157,18 +157,18 @@ export default function PrintShoeIntakeTicketsPage() {
       )}
 
       {autoPrint && btSupported && btStatus !== 'printing' && (
-        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-20 sm:hidden" style={{ backgroundColor: 'var(--cafe-surface)', borderTop: '1px solid var(--cafe-border)' }}>
+        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-20 sm:hidden" style={{ backgroundColor: 'var(--ms-surface)', borderTop: '1px solid var(--ms-border)' }}>
           {btStatus === 'connected' ? (
             <button
               onClick={printToNiimbot}
               disabled={!repairQr || !customerQr}
               className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold disabled:opacity-50"
-              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
             >
               <Bluetooth size={22} /> Print 2 Labels to M2
             </button>
           ) : btStatus === 'connecting' ? (
-            <div className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold" style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}>
+            <div className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold" style={{ backgroundColor: 'var(--ms-border)', color: 'var(--ms-text)' }}>
               <Spinner /> Connecting to M2…
             </div>
           ) : (
@@ -176,11 +176,11 @@ export default function PrintShoeIntakeTicketsPage() {
               <button
                 onClick={btConnect}
                 className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold"
-                style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
               >
                 <Bluetooth size={22} /> Connect M2 &amp; Print
               </button>
-              <button onClick={() => window.print()} className="w-full py-2 text-sm text-center" style={{ color: 'var(--cafe-text-muted)' }}>
+              <button onClick={() => window.print()} className="w-full py-2 text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
                 Print / PDF instead
               </button>
             </div>
@@ -191,8 +191,8 @@ export default function PrintShoeIntakeTicketsPage() {
       <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white${autoPrint && btSupported ? ' pb-28 sm:pb-0' : ''}`}>
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
           <section className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none p-8 print:p-6 print:break-after-page">
-            <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--cafe-text)' }}>Repair Intake Ticket</h1>
-            <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>Internal copy for workshop</p>
+            <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--ms-text)' }}>Repair Intake Ticket</h1>
+            <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)' }}>Internal copy for workshop</p>
 
             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div><strong>Ticket #:</strong> {job.job_number}</div>
@@ -203,13 +203,13 @@ export default function PrintShoeIntakeTicketsPage() {
               <div><strong>Collection:</strong> {job.collection_date || '—'}</div>
             </div>
 
-            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p><strong>Customer:</strong> {customer?.full_name || '—'}</p>
               <p><strong>Phone:</strong> {customer?.phone || '—'}</p>
               <p><strong>Email:</strong> {customer?.email || '—'}</p>
             </div>
 
-            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-1">Pairs in this ticket</p>
               <ul className="list-disc pl-5">
                 {allShoes.map((shoe, idx) => (
@@ -218,12 +218,12 @@ export default function PrintShoeIntakeTicketsPage() {
               </ul>
             </div>
 
-            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-1">Workshop notes</p>
               <p className="whitespace-pre-wrap">{job.description || '—'}</p>
             </div>
 
-            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-2">Selected services</p>
               {job.items.length === 0 ? (
                 <p>—</p>
@@ -248,15 +248,15 @@ export default function PrintShoeIntakeTicketsPage() {
               {repairQr && (
                 <div className="text-center">
                   <img src={repairQr} alt="Repair ticket QR" className="w-28 h-28" />
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Open internal ticket</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Open internal ticket</p>
                 </div>
               )}
             </div>
           </section>
 
           <section className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none p-8 print:p-6">
-            <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--cafe-text)' }}>Customer Intake Copy</h1>
-            <p className="text-sm mb-5" style={{ color: 'var(--cafe-text-muted)' }}>Keep this ticket for pickup and updates</p>
+            <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--ms-text)' }}>Customer Intake Copy</h1>
+            <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)' }}>Keep this ticket for pickup and updates</p>
 
             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div><strong>Ticket #:</strong> {job.job_number}</div>
@@ -265,7 +265,7 @@ export default function PrintShoeIntakeTicketsPage() {
               <div><strong>Collection:</strong> {job.collection_date || 'TBC'}</div>
             </div>
 
-            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--cafe-border)' }}>
+            <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-2">Price Breakdown</p>
               {job.items.length > 0 ? (
                 <div className="space-y-1 text-sm">
@@ -284,19 +284,19 @@ export default function PrintShoeIntakeTicketsPage() {
               )}
               <div className="flex justify-between text-sm mt-3"><span>Subtotal estimate</span><span>{formatCents(total)}</span></div>
               <div className="flex justify-between text-sm"><span>Deposit paid</span><span>- {formatCents(job.deposit_cents)}</span></div>
-              <div className="flex justify-between text-sm font-semibold mt-2 pt-2" style={{ borderTop: '1px solid var(--cafe-border)' }}>
+              <div className="flex justify-between text-sm font-semibold mt-2 pt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
                 <span>Estimated balance</span><span>{formatCents(balance)}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-end gap-4">
-              <div className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+              <div className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                 Scan for live repair updates.
               </div>
               {customerQr && (
                 <div className="text-center">
                   <img src={customerQr} alt="Customer status QR" className="w-28 h-28" />
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Track this repair</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Track this repair</p>
                 </div>
               )}
             </div>

@@ -10,11 +10,16 @@ import {
   formatShoePricingType, listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType
 } from '@/lib/api'
-import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal } from '@/components/ui'
+import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal, ViewToggle } from '@/components/ui'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 import RepairQueueModal from '@/components/RepairQueueModal'
+import {
+  KanbanBoard,
+  JobCard as KanbanJobCard,
+  SHOE_KANBAN_COLUMNS,
+} from '@/components/kanban'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -36,7 +41,7 @@ const SHOE_STATUSES = [
 const SHOE_ACTIVE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on']
 const SHOE_CLOSED_STATUSES = ['completed', 'awaiting_collection', 'collected', 'no_go']
 
-function JobCard({ job }: { job: ShoeRepairJob }) {
+function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [showItems, setShowItems] = useState(false)
@@ -107,7 +112,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             <div className="flex items-center gap-2 mb-1">
               <span
                 className="text-xs font-mono font-bold tracking-wide"
-                style={{ color: 'var(--cafe-amber)' }}
+                style={{ color: 'var(--ms-accent)' }}
               >
                 #{job.job_number}
               </span>
@@ -121,13 +126,13 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                 <span className="text-xs font-semibold rounded-full px-2 py-0.5 bg-red-100 text-red-700">Urgent</span>
               )}
             </div>
-            <h3 className="font-semibold text-sm leading-snug" style={{ color: 'var(--cafe-text)' }}>
+            <h3 className="font-semibold text-sm leading-snug" style={{ color: 'var(--ms-text)' }}>
               {job.title}
             </h3>
             {(job.estimated_ready_by || job.complexity || (job.estimated_days_min != null && job.estimated_days_max != null)) && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                 {job.estimated_ready_by && (
-                  <span className="font-medium" style={{ color: 'var(--cafe-amber)' }}>Est. ready {formatDate(job.estimated_ready_by)}</span>
+                  <span className="font-medium" style={{ color: 'var(--ms-accent)' }}>Est. ready {formatDate(job.estimated_ready_by)}</span>
                 )}
                 {job.estimated_ready_by && job.complexity && ' · '}
                 {job.complexity && <span className="capitalize">{COMPLEXITY_LABELS[job.complexity] ?? job.complexity}</span>}
@@ -138,16 +143,16 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
               </p>
             )}
             {job.description && (
-              <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>{job.description}</p>
+              <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--ms-text-muted)' }}>{job.description}</p>
             )}
           </div>
 
           {total > 0 && (
             <div className="text-right shrink-0">
-              <p className="text-sm font-bold" style={{ color: 'var(--cafe-text)' }}>
+              <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>
                 ${(total / 100).toFixed(2)}
               </p>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>estimated</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>estimated</p>
             </div>
           )}
 
@@ -166,7 +171,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 mt-3 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <div className="flex items-center gap-3 mt-3 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           <span>{formatDate(job.created_at)}</span>
           {job.salesperson && <span>· {job.salesperson}</span>}
           {job.deposit_cents > 0 && (
@@ -183,9 +188,9 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             type="button"
             onClick={e => { e.stopPropagation(); setShowItems(v => !v) }}
             className="flex items-center gap-1.5 mt-3 text-xs font-medium transition-colors"
-            style={{ color: 'var(--cafe-text-muted)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+            style={{ color: 'var(--ms-text-muted)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
           >
             <Tag size={12} />
             {job.items.length} service{job.items.length !== 1 ? 's' : ''}
@@ -194,21 +199,21 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
         )}
 
         {showItems && (
-          <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid var(--cafe-border)' }}>
+          <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid var(--ms-border)' }}>
             {job.items.map(item => (
               <div
                 key={item.id}
                 className="flex items-center justify-between gap-3 px-3 py-2.5 border-b last:border-b-0 text-sm"
-                style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{item.item_name}</p>
-                  <p className="text-xs capitalize" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="font-medium truncate" style={{ color: 'var(--ms-text)' }}>{item.item_name}</p>
+                  <p className="text-xs capitalize" style={{ color: 'var(--ms-text-muted)' }}>
                     {item.catalogue_group.replace(/_/g, ' ')}
                     {item.notes ? ` · ${item.notes}` : ''}
                   </p>
                 </div>
-                <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--cafe-amber)' }}>
+                <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--ms-accent)' }}>
                   {itemPriceDisplay(item)}
                 </p>
               </div>
@@ -221,9 +226,9 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           type="button"
           onClick={e => { e.stopPropagation(); setShowPhotos(v => !v) }}
           className="flex items-center gap-1.5 mt-3 text-xs font-medium transition-colors"
-          style={{ color: 'var(--cafe-text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+          style={{ color: 'var(--ms-text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
         >
           <Camera size={12} />
           Photos{photos ? ` (${photos.length})` : ''}
@@ -247,7 +252,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
                     className="block rounded-lg overflow-hidden"
-                    style={{ border: '1px solid var(--cafe-border)', aspectRatio: '1' }}
+                    style={{ border: '1px solid var(--ms-border)', aspectRatio: '1' }}
                   >
                     <SecureAttachmentImage
                       storageKey={photo.storage_key}
@@ -281,8 +286,8 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                 onClick={e => { e.stopPropagation(); cameraInputRef.current?.click() }}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 style={{
-                  backgroundColor: 'var(--cafe-amber)',
-                  border: '1px solid var(--cafe-amber)',
+                  backgroundColor: 'var(--ms-accent)',
+                  border: '1px solid var(--ms-accent)',
                   color: '#fff',
                   opacity: uploading ? 0.7 : 1,
                 }}
@@ -296,9 +301,9 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
                 onClick={e => { e.stopPropagation(); photoInputRef.current?.click() }}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 style={{
-                  backgroundColor: 'var(--cafe-surface)',
-                  border: '1px dashed var(--cafe-border-2)',
-                  color: uploading ? 'var(--cafe-text-muted)' : 'var(--cafe-amber)',
+                  backgroundColor: 'var(--ms-surface)',
+                  border: '1px dashed var(--ms-border-strong)',
+                  color: uploading ? 'var(--ms-text-muted)' : 'var(--ms-accent)',
                 }}
               >
                 <Upload size={11} />
@@ -312,7 +317,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
       {/* Status update footer */}
       <div
         className="px-5 py-3 flex items-center gap-2"
-        style={{ backgroundColor: 'var(--cafe-bg)', borderTop: '1px solid var(--cafe-border)' }}
+        style={{ backgroundColor: 'var(--ms-bg)', borderTop: '1px solid var(--ms-border)' }}
       >
         <select
           value={job.status}
@@ -323,7 +328,7 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
             setUpdatingStatus(false)
           }}
           className="flex-1 h-8 rounded-lg border px-2 text-xs outline-none focus:ring-1"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
         >
           {SHOE_STATUSES.map(s => (
             <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
@@ -342,15 +347,15 @@ function JobCard({ job }: { job: ShoeRepairJob }) {
           }}
         >
           <div className="space-y-4">
-            <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>
+            <p className="text-sm" style={{ color: 'var(--ms-text)' }}>
               Are you sure you want to delete this job?
             </p>
-            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-              <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
                 #{job.job_number} · {job.title}
               </p>
             </div>
-            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               This action cannot be undone.
             </p>
             {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
@@ -404,9 +409,9 @@ function ComboBanner() {
         type="button"
         onClick={() => setExpanded(v => !v)}
         className="flex items-center gap-2 text-sm font-medium mb-2 transition-colors"
-        style={{ color: 'var(--cafe-text-muted)' }}
-        onMouseEnter={e => (e.currentTarget.style.color = 'var(--cafe-amber)')}
-        onMouseLeave={e => (e.currentTarget.style.color = 'var(--cafe-text-muted)')}
+        style={{ color: 'var(--ms-text-muted)' }}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
       >
         <Shield size={14} />
         Pricing combos &amp; guarantee
@@ -419,14 +424,14 @@ function ComboBanner() {
             <div
               key={combo.id}
               className="rounded-xl px-4 py-3 text-sm"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{combo.name}</span>
+                <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{combo.name}</span>
                 {combo.discount && (
                   <span
                     className="text-xs font-bold rounded-full px-2 py-0.5"
-                    style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
                   >
                     {combo.discount}
                   </span>
@@ -435,13 +440,13 @@ function ComboBanner() {
                   <span
                     key={d}
                     className="text-xs font-bold rounded-full px-2 py-0.5"
-                    style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
                   >
                     {d}
                   </span>
                 ))}
               </div>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{combo.rule}</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{combo.rule}</p>
             </div>
           ))}
           {guarantee && (
@@ -450,7 +455,7 @@ function ComboBanner() {
               style={{ backgroundColor: 'rgba(130,160,100,0.08)', border: '1px solid rgba(130,160,100,0.25)' }}
             >
               <Shield size={14} className="mt-0.5 shrink-0" style={{ color: '#6A9A50' }} />
-              <p style={{ color: 'var(--cafe-text)' }}>{guarantee.shoe_repairs}</p>
+              <p style={{ color: 'var(--ms-text)' }}>{guarantee.shoe_repairs}</p>
             </div>
           )}
         </div>
@@ -540,7 +545,7 @@ export default function ShoeRepairsPage() {
         }
       />
 
-      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Soles, heels, stitching, cleaning, and more. Multi-pair intake with combo pricing.
       </p>
 
@@ -548,7 +553,7 @@ export default function ShoeRepairsPage() {
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
           <span
             className="px-3 py-1.5 text-xs font-semibold rounded-md"
-            style={{ backgroundColor: 'var(--cafe-paper)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
           >
             Jobs
           </span>
@@ -557,7 +562,7 @@ export default function ShoeRepairsPage() {
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
               backgroundColor: 'transparent',
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               textDecoration: 'none',
             }}
           >
@@ -575,8 +580,8 @@ export default function ShoeRepairsPage() {
             type="button"
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
-              backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
-              color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
+              color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
             onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
           >
@@ -586,38 +591,28 @@ export default function ShoeRepairsPage() {
             type="button"
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
             style={{
-              backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
-              color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
+              color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
             onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
           >
             Completed ({completedCount})
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className={`px-2 py-1 text-xs font-medium rounded ${viewMode === 'kanban' ? 'bg-amber-100' : ''}`}
-            style={viewMode === 'kanban' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { color: 'var(--cafe-text-muted)' }}
-            onClick={() => setViewMode('kanban')}
-          >
-            By stage
-          </button>
-          <button
-            type="button"
-            className={`px-2 py-1 text-xs font-medium rounded ${viewMode === 'cards' ? 'bg-amber-100' : ''}`}
-            style={viewMode === 'cards' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { color: 'var(--cafe-text-muted)' }}
-            onClick={() => setViewMode('cards')}
-          >
-            Cards
-          </button>
-        </div>
+        <ViewToggle<'kanban' | 'cards'>
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'kanban', label: 'Board' },
+            { value: 'cards', label: 'Cards' },
+          ]}
+        />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row mb-6">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--cafe-text-muted)' }} />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--ms-text-muted)' }} />
           <input
             type="text"
             placeholder="Search jobs or services..."
@@ -625,9 +620,9 @@ export default function ShoeRepairsPage() {
             onChange={e => setSearch(e.target.value)}
             className="w-full h-10 rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2"
             style={{
-              backgroundColor: 'var(--cafe-surface)',
-              borderColor: 'var(--cafe-border)',
-              color: 'var(--cafe-text)',
+              backgroundColor: 'var(--ms-surface)',
+              borderColor: 'var(--ms-border)',
+              color: 'var(--ms-text)',
             }}
           />
         </div>
@@ -635,7 +630,7 @@ export default function ShoeRepairsPage() {
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="h-10 rounded-xl border px-3 text-sm outline-none focus:ring-2 sm:w-48"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
         >
           <option value="all">All in {jobDirectoryView === 'active' ? 'active' : 'completed'}</option>
           {statusOptions.map(s => (
@@ -644,7 +639,7 @@ export default function ShoeRepairsPage() {
         </select>
         <label
           className="h-10 rounded-xl border px-3 text-sm inline-flex items-center gap-2 sm:w-auto"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
         >
           <input
             type="checkbox"
@@ -657,7 +652,7 @@ export default function ShoeRepairsPage() {
           value={String(olderThanDays)}
           onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
           className="h-10 rounded-xl border px-3 text-sm outline-none focus:ring-2 sm:w-auto"
-          style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border)', color: 'var(--cafe-text)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
           aria-label="Filter by age in shop"
         >
           <option value="0">Any age</option>
@@ -674,76 +669,82 @@ export default function ShoeRepairsPage() {
       )}
 
       {!isLoading && viewMode === 'kanban' && filtered.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
-          {statusOptions
-            .filter(s => statusFilter === 'all' || s === statusFilter)
-            .map((status) => {
-              const jobsInStatus = filtered.filter(j => j.status === status)
-              return (
-                <Card key={status} className="overflow-hidden">
-                  <div
-                    className="px-4 py-3.5 flex items-center justify-between"
-                    style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
-                  >
-                    <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
-                      {STATUS_LABELS[status] ?? status}
-                    </p>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
-                      {jobsInStatus.length}
-                    </span>
-                  </div>
-                  <div>
-                    {jobsInStatus.length === 0 ? (
-                      <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No jobs in this stage.</p>
-                    ) : (
-                      jobsInStatus.map((j, i) => {
-                        const total = j.items.reduce((s, it) => s + (it.unit_price_cents != null ? it.unit_price_cents * it.quantity : 0), 0)
-                        return (
-                          <div
-                            key={j.id}
-                            className="px-4 py-3"
-                            style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <Link to={`/shoe-repairs/${j.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
-                                  {j.title}
-                                </Link>
-                                <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
-                                  #{j.job_number} · {formatDate(j.created_at)}
-                                </p>
-                              </div>
-                              <Badge status={j.status} />
-                            </div>
-                            <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
-                              {j.items.length} service{j.items.length !== 1 ? 's' : ''} · ${(total / 100).toFixed(2)}
-                            </p>
-                            <select
-                              value={j.status}
-                              className="w-full mt-2 rounded-md px-2 py-1.5 text-xs outline-none"
-                              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
-                              onChange={e => statusMut.mutate({ jobId: j.id, status: e.target.value })}
-                              disabled={statusMut.isPending}
-                            >
-                              {SHOE_STATUSES.map(s => (
-                                <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )
-                      })
+        <KanbanBoard
+          jobs={filtered}
+          columns={SHOE_KANBAN_COLUMNS}
+          onStatusChange={(jobId, nextStatus) => statusMut.mutate({ jobId, status: nextStatus })}
+          renderCard={(job, column) => {
+            const total = job.items.reduce(
+              (s, it) => s + (it.unit_price_cents != null ? it.unit_price_cents * it.quantity : 0),
+              0,
+            )
+            const pairCount = 1 + (job.extra_shoes?.length ?? 0)
+            const complexity = job.complexity
+            const complexityStyle = (() => {
+              if (complexity === 'simple' || complexity === 'standard') return { bg: '#E8F5EC', text: '#1A6838' }
+              if (complexity === 'complex') return { bg: '#F5EEFB', text: '#6040A8' }
+              return { bg: '#EDF3FB', text: '#245498' }
+            })()
+            return (
+              <KanbanJobCard
+                jobNumber={job.job_number}
+                title={job.title}
+                description={job.items.map(i => i.item_name).slice(0, 3).join(' · ')}
+                customerName={null}
+                priority={job.priority}
+                daysInShop={Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86_400_000)}
+                quoteCents={job.cost_cents > 0 ? job.cost_cents : total}
+                techName={job.claimed_by_name ?? null}
+                techKey={job.claimed_by_user_id ?? null}
+                accentColor={column.color}
+                href={`/shoe-repairs/${job.id}`}
+                draggable={!statusMut.isPending}
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/job-id', job.id)
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                extras={
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {complexity && (
+                      <span
+                        style={{
+                          backgroundColor: complexityStyle.bg,
+                          color: complexityStyle.text,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 99,
+                        }}
+                      >
+                        {COMPLEXITY_LABELS[complexity] ?? complexity}
+                      </span>
+                    )}
+                    {pairCount > 1 && (
+                      <span
+                        style={{
+                          backgroundColor: 'var(--ms-accent-light)',
+                          color: 'var(--ms-accent)',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 99,
+                        }}
+                      >
+                        {pairCount} pairs
+                      </span>
                     )}
                   </div>
-                </Card>
-              )
-            })}
-        </div>
+                }
+              />
+            )
+          }}
+        />
       )}
 
       {!isLoading && viewMode === 'cards' && filtered.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map(job => (
-            <JobCard key={job.id} job={job} />
+            <DetailedJobCard key={job.id} job={job} />
           ))}
         </div>
       )}
@@ -756,7 +757,7 @@ export default function ShoeRepairsPage() {
         type="button"
         onClick={() => setShowAdd(true)}
         className="sm:hidden fixed bottom-20 right-5 z-30 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold shadow-lg"
-        style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810', boxShadow: '0 4px 16px rgba(140,95,15,0.35)' }}
+        style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810', boxShadow: '0 4px 16px rgba(140,95,15,0.35)' }}
         aria-label="New shoe repair job"
       >
         <Plus size={18} />New Job

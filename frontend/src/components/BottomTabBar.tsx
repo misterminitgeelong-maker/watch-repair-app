@@ -68,7 +68,7 @@ export default function BottomTabBar() {
   ].filter(Boolean) as Array<{ to: string; label: string; icon: typeof Wrench }>
 
   const tabStyle = (isActive: boolean) => ({
-    color: isActive ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)',
+    color: isActive ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
   })
 
   return (
@@ -79,7 +79,7 @@ export default function BottomTabBar() {
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
           <div
             className="absolute bottom-16 left-0 right-0 mx-3 rounded-2xl overflow-hidden shadow-2xl"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="grid grid-cols-4 gap-0">
@@ -89,7 +89,7 @@ export default function BottomTabBar() {
                   type="button"
                   onClick={() => { navigate(item.to); setShowMore(false) }}
                   className="flex flex-col items-center gap-1.5 py-4 px-2 text-center transition-colors active:opacity-60"
-                  style={{ color: 'var(--cafe-text-mid)' }}
+                  style={{ color: 'var(--ms-text-mid)' }}
                 >
                   <item.icon size={20} />
                   <span className="text-xs font-medium leading-tight">{item.label}</span>
@@ -99,7 +99,7 @@ export default function BottomTabBar() {
                 type="button"
                 onClick={() => { setShowChangelog(true); setShowMore(false) }}
                 className="flex flex-col items-center gap-1.5 py-4 px-2 text-center transition-colors active:opacity-60"
-                style={{ color: 'var(--cafe-text-mid)' }}
+                style={{ color: 'var(--ms-text-mid)' }}
               >
                 <Sparkles size={20} />
                 <span className="text-xs font-medium leading-tight">What's new</span>
@@ -122,8 +122,8 @@ export default function BottomTabBar() {
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-stretch"
         style={{
-          backgroundColor: 'var(--cafe-surface)',
-          borderTop: '1px solid var(--cafe-border)',
+          backgroundColor: 'var(--ms-surface)',
+          borderTop: '1px solid var(--ms-border)',
           paddingBottom: 'env(safe-area-inset-bottom)',
           height: 'calc(56px + env(safe-area-inset-bottom))',
         }}
@@ -190,7 +190,7 @@ export default function BottomTabBar() {
             'flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60',
             showMore ? '' : '',
           )}
-          style={{ color: showMore ? 'var(--cafe-amber)' : 'var(--cafe-text-muted)' }}
+          style={{ color: showMore ? 'var(--ms-accent)' : 'var(--ms-text-muted)' }}
           aria-label="More navigation options"
         >
           <MoreHorizontal size={22} strokeWidth={showMore ? 2.5 : 1.8} />

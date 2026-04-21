@@ -49,10 +49,10 @@ function SubscriptionBanner({
     return (
       <div
         className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
-        style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '1px solid var(--cafe-gold)' }}
+        style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '1px solid var(--ms-accent)' }}
       >
-        <span style={{ color: 'var(--cafe-text)' }}>
-          <span className="font-semibold" style={{ color: 'var(--cafe-gold)' }}>
+        <span style={{ color: 'var(--ms-text)' }}>
+          <span className="font-semibold" style={{ color: 'var(--ms-accent)' }}>
             {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in your free trial.
           </span>{' '}
           Add a payment method to keep access after the trial ends.
@@ -60,7 +60,7 @@ function SubscriptionBanner({
         <button
           onClick={onManage}
           className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-          style={{ backgroundColor: 'var(--cafe-gold)', color: 'var(--cafe-espresso-1)' }}
+          style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-sidebar-act-text)' }}
         >
           Add card
         </button>
@@ -74,7 +74,7 @@ function SubscriptionBanner({
         className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
         style={{ backgroundColor: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.4)' }}
       >
-        <span style={{ color: 'var(--cafe-text)' }}>
+        <span style={{ color: 'var(--ms-text)' }}>
           <span className="font-semibold" style={{ color: '#f87171' }}>Payment failed.</span>{' '}
           Update your billing details to avoid losing access.
         </span>
@@ -119,7 +119,7 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
       className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
       style={{ backgroundColor: 'rgba(201,162,72,0.1)', border: '1px solid rgba(201,162,72,0.35)' }}
     >
-      <span style={{ color: 'var(--cafe-text)' }}>
+      <span style={{ color: 'var(--ms-text)' }}>
         <strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.
       </span>
       <button
@@ -127,7 +127,7 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
         onClick={() => connectMut.mutate()}
         disabled={connectMut.isPending}
         className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-        style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+        style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
       >
         {connectMut.isPending ? 'Opening Stripe…' : 'Set up payouts'}
       </button>
@@ -832,7 +832,7 @@ export default function AppShell() {
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)' }}>
         Loading...
       </div>
     )
@@ -848,7 +848,7 @@ export default function AppShell() {
 
   if (location.pathname === '/subscription-required') {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <Outlet />
       </div>
     )
@@ -858,7 +858,7 @@ export default function AppShell() {
   const guidedNextLabel = !guidedIsLast ? guidedTourSteps[guidedStep + 1]?.label : null
 
   return (
-    <div className="h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+    <div className="h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <Sidebar className="hidden md:flex" />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -866,8 +866,8 @@ export default function AppShell() {
         <header
           className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 pb-3"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            borderBottom: '1px solid var(--cafe-border)',
+            backgroundColor: 'var(--ms-surface)',
+            borderBottom: '1px solid var(--ms-border)',
             paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
           }}
         >
@@ -886,7 +886,7 @@ export default function AppShell() {
           <button
             onClick={() => setSearchOpen(true)}
             className="p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--cafe-text-muted)' }}
+            style={{ color: 'var(--ms-text-muted)' }}
             aria-label="Search"
           >
             <Search size={18} />
@@ -897,7 +897,7 @@ export default function AppShell() {
         <main className={`min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 pb-20 md:pb-8${tourMode === 'guided' ? ' pb-28' : ''}`}>
           {availableSites.length > 1 && (
             <div className="mb-4 flex items-center justify-end gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Active site
               </span>
               <select
@@ -915,9 +915,9 @@ export default function AppShell() {
                 }}
                 className="rounded-lg px-2.5 py-2 text-xs"
                 style={{
-                  backgroundColor: 'var(--cafe-surface)',
-                  border: '1px solid var(--cafe-border-2)',
-                  color: 'var(--cafe-text)',
+                  backgroundColor: 'var(--ms-surface)',
+                  border: '1px solid var(--ms-border-strong)',
+                  color: 'var(--ms-text)',
                 }}
               >
                 {availableSites.map((site) => (
@@ -945,27 +945,27 @@ export default function AppShell() {
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>
           <div className="space-y-4">
-            <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               Your demo workspace is ready with real sample records. Choose whether you want to explore freely or be walked through the product with live demo jobs and customer records.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 onClick={() => chooseMode('self')}
                 className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: 'var(--cafe-surface)', border: '2px solid var(--cafe-border-2)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', border: '2px solid var(--ms-border-strong)' }}
               >
-                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-text)' }}>Self-Guided</div>
-                <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                <div className="font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Self-Guided</div>
+                <div className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                   Explore freely at your own pace. A tip pop-up explains each page as you navigate to it.
                 </div>
               </button>
               <button
                 onClick={() => chooseMode('guided')}
                 className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '2px solid var(--cafe-gold)' }}
+                style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '2px solid var(--ms-accent)' }}
               >
-                <div className="font-semibold mb-1" style={{ color: 'var(--cafe-gold)' }}>In-Depth Guided Tour</div>
-                <div className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+                <div className="font-semibold mb-1" style={{ color: 'var(--ms-accent)' }}>In-Depth Guided Tour</div>
+                <div className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                   Follow a structured demo with real customer, watch, shoe, mobile services, quote, and invoice records.
                 </div>
               </button>
@@ -976,15 +976,15 @@ export default function AppShell() {
 
       {activeTutorial && (
         <Modal title={activeTutorial.title} onClose={dismissTutorial}>
-          <div className="space-y-3 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-            <p style={{ color: 'var(--cafe-text)' }}>{activeTutorial.intro}</p>
-            <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>This page lets you:</p>
+          <div className="space-y-3 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+            <p style={{ color: 'var(--ms-text)' }}>{activeTutorial.intro}</p>
+            <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>This page lets you:</p>
             <ul className="list-disc pl-5 space-y-1">
               {activeTutorial.features.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
-            <p style={{ color: 'var(--cafe-text)' }}>
+            <p style={{ color: 'var(--ms-text)' }}>
               <span className="font-semibold">Suggested next step:</span> {activeTutorial.nextStep}
             </p>
             <div className="pt-1 flex gap-2">
@@ -997,16 +997,16 @@ export default function AppShell() {
 
       {tourMode === 'guided' && showGuidedModal && currentGuidedStep && (
         <Modal title={currentGuidedStep.title} onClose={() => setShowGuidedModal(false)}>
-          <div className="space-y-4 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
-            <p style={{ color: 'var(--cafe-text)' }}>{currentGuidedStep.intro}</p>
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="space-y-4 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+            <p style={{ color: 'var(--ms-text)' }}>{currentGuidedStep.intro}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Try this now
               </p>
-              <p className="mt-1" style={{ color: 'var(--cafe-text)' }}>{currentGuidedStep.task}</p>
+              <p className="mt-1" style={{ color: 'var(--ms-text)' }}>{currentGuidedStep.task}</p>
             </div>
             <div>
-              <p className="font-semibold mb-2" style={{ color: 'var(--cafe-text)' }}>What to notice</p>
+              <p className="font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>What to notice</p>
               <ul className="list-disc pl-5 space-y-1">
                 {currentGuidedStep.highlights.map((item) => (
                   <li key={item}>{item}</li>
@@ -1050,15 +1050,15 @@ export default function AppShell() {
           className="fixed bottom-0 left-0 right-0 z-50"
           style={{
             backgroundColor: 'var(--cafe-espresso-2)',
-            borderTop: '2px solid var(--cafe-gold)',
+            borderTop: '2px solid var(--ms-accent)',
             boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
           }}
         >
-          <div className="h-1" style={{ backgroundColor: 'var(--cafe-border)' }}>
+          <div className="h-1" style={{ backgroundColor: 'var(--ms-border)' }}>
             <div
               className="h-1 transition-all duration-300"
               style={{
-                backgroundColor: 'var(--cafe-gold)',
+                backgroundColor: 'var(--ms-accent)',
                 width: `${((guidedStep + 1) / guidedTourSteps.length) * 100}%`,
               }}
             />
@@ -1067,14 +1067,14 @@ export default function AppShell() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--cafe-gold)' }}>
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ms-accent)' }}>
                     Step {guidedStep + 1} of {guidedTourSteps.length}
                   </span>
-                  <span className="text-xs font-medium" style={{ color: 'var(--cafe-text-mid)' }}>
+                  <span className="text-xs font-medium" style={{ color: 'var(--ms-text-mid)' }}>
                     - {currentGuidedStep.label}
                   </span>
                 </div>
-                <p className="text-sm line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="text-sm line-clamp-2" style={{ color: 'var(--ms-text-muted)' }}>
                   {currentGuidedStep.task}
                 </p>
               </div>
@@ -1082,7 +1082,7 @@ export default function AppShell() {
                 <button
                   onClick={() => setShowGuidedModal(true)}
                   className="px-3 py-1.5 rounded-lg text-sm"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                 >
                   Show tip
                 </button>
@@ -1091,9 +1091,9 @@ export default function AppShell() {
                     onClick={retreatGuidedTour}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium"
                     style={{
-                      backgroundColor: 'var(--cafe-surface)',
-                      color: 'var(--cafe-text-mid)',
-                      border: '1px solid var(--cafe-border-2)',
+                      backgroundColor: 'var(--ms-surface)',
+                      color: 'var(--ms-text-mid)',
+                      border: '1px solid var(--ms-border-strong)',
                     }}
                   >
                     Back
@@ -1102,7 +1102,7 @@ export default function AppShell() {
                 <button
                   onClick={exitGuidedTour}
                   className="px-3 py-1.5 rounded-lg text-sm"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                 >
                   Exit Tour
                 </button>
@@ -1110,8 +1110,8 @@ export default function AppShell() {
                   onClick={advanceGuidedTour}
                   className="px-4 py-1.5 rounded-lg text-sm font-bold"
                   style={{
-                    backgroundColor: 'var(--cafe-gold)',
-                    color: 'var(--cafe-espresso-1)',
+                    backgroundColor: 'var(--ms-accent)',
+                    color: 'var(--ms-sidebar-act-text)',
                   }}
                 >
                   {guidedIsLast ? 'Finish Tour' : `Next: ${guidedNextLabel} ->`}

@@ -96,7 +96,7 @@ export default function SignaturePad({ width = 300, height = 120, onSignatureCha
         ref={canvasRef}
         width={width}
         height={height}
-        style={{ touchAction: 'none', border: '1px solid var(--cafe-border)', borderRadius: 8, cursor: 'crosshair' }}
+        style={{ touchAction: 'none', border: '1px solid var(--ms-border)', borderRadius: 8, cursor: 'crosshair' }}
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
@@ -109,7 +109,7 @@ export default function SignaturePad({ width = 300, height = 120, onSignatureCha
         type="button"
         onClick={clear}
         className="text-xs mt-1.5"
-        style={{ color: 'var(--cafe-text-muted)' }}
+        style={{ color: 'var(--ms-text-muted)' }}
       >
         Clear
       </button>

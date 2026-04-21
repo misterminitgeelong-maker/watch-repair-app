@@ -101,7 +101,7 @@ function KanbanPreview() {
     >
       <div
         style={{
-          backgroundColor: 'var(--cafe-surface)',
+          backgroundColor: 'var(--ms-surface)',
           border: '1px solid #E0D5C6',
           borderRadius: 20,
           boxShadow: '0 2px 8px rgba(90,55,16,0.07), 0 20px 48px rgba(90,55,16,0.12)',
@@ -127,7 +127,7 @@ function KanbanPreview() {
               marginLeft: 12,
               fontSize: '0.7rem',
               fontWeight: 600,
-              color: 'var(--cafe-text-muted)',
+              color: 'var(--ms-text-muted)',
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
             }}
@@ -170,7 +170,7 @@ function KanbanPreview() {
                   style={{
                     fontSize: '0.62rem',
                     fontWeight: 700,
-                    color: 'var(--cafe-text)',
+                    color: 'var(--ms-text)',
                     letterSpacing: '0.03em',
                     lineHeight: 1.2,
                   }}
@@ -193,7 +193,7 @@ function KanbanPreview() {
                         opacity: 0.8,
                       }}
                     />
-                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--cafe-text)', lineHeight: 1.3 }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--ms-text)', lineHeight: 1.3 }}>
                       {card}
                     </span>
                   </div>
@@ -228,7 +228,7 @@ function HeroSection() {
           style={{
             backgroundColor: '#F3ECE2',
             border: '1px solid #E2D7C8',
-            color: 'var(--cafe-espresso)',
+            color: 'var(--ms-sidebar)',
           }}
         >
           <span
@@ -247,8 +247,7 @@ function HeroSection() {
         <h1
           className="lp-reveal lp-reveal-delay-1 mt-5 text-4xl leading-tight sm:text-5xl lg:text-[3.2rem]"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            color: 'var(--cafe-text)',
+            color: 'var(--ms-text)',
             fontWeight: 700,
             letterSpacing: '-0.01em',
           }}
@@ -259,7 +258,7 @@ function HeroSection() {
         {/* Subheading */}
         <p
           className="lp-reveal lp-reveal-delay-2 mt-5 max-w-xl text-base sm:text-lg"
-          style={{ color: 'var(--cafe-text-mid)', lineHeight: 1.75 }}
+          style={{ color: 'var(--ms-text-mid)', lineHeight: 1.75 }}
         >
           Mainspring tracks every job from intake to collection across watches, shoes, and mobile key
           services. One workshop, one dashboard, zero jobs slipping through the cracks.
@@ -271,7 +270,7 @@ function HeroSection() {
             to="/signup"
             className="lp-btn inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold"
             style={{
-              backgroundColor: 'var(--cafe-amber)',
+              backgroundColor: 'var(--ms-accent)',
               color: '#fff',
               boxShadow: '0 4px 14px rgba(120,76,20,0.28)',
             }}
@@ -284,16 +283,16 @@ function HeroSection() {
             className="lp-btn inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
             style={{
               backgroundColor: 'transparent',
-              color: 'var(--cafe-text)',
-              border: '1.5px solid var(--cafe-border)',
+              color: 'var(--ms-text)',
+              border: '1.5px solid var(--ms-border)',
             }}
           >
             Log in
           </Link>
         </div>
-        <p className="mt-3 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="mt-3 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
           Want to explore first?{' '}
-          <Link to="/login?demo=1" style={{ color: 'var(--cafe-amber)', fontWeight: 600 }}>
+          <Link to="/login?demo=1" style={{ color: 'var(--ms-accent)', fontWeight: 600 }}>
             Try the demo &rarr;
           </Link>
         </p>
@@ -306,11 +305,11 @@ function HeroSection() {
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
               style={{
                 backgroundColor: '#F0E9DF',
-                color: 'var(--cafe-espresso)',
+                color: 'var(--ms-sidebar)',
                 border: '1px solid #DFD4C5',
               }}
             >
-              <CheckCircle2 size={11} style={{ color: 'var(--cafe-gold-dark)' }} />
+              <CheckCircle2 size={11} style={{ color: 'var(--ms-accent-hover)' }} />
               {pill}
             </span>
           ))}
@@ -350,8 +349,7 @@ function HowItWorks() {
         <h2
           className="text-3xl sm:text-4xl"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            color: 'var(--cafe-text)',
+            color: 'var(--ms-text)',
             fontWeight: 700,
           }}
         >
@@ -368,7 +366,7 @@ function HowItWorks() {
             left: 'calc(16.66% + 24px)',
             right: 'calc(16.66% + 24px)',
             height: 2,
-            background: 'linear-gradient(90deg, var(--cafe-gold) 0%, var(--cafe-amber) 50%, var(--cafe-gold) 100%)',
+            background: 'linear-gradient(90deg, var(--ms-accent) 0%, var(--ms-accent) 50%, var(--ms-accent) 100%)',
             opacity: 0.35,
             borderRadius: 99,
           }}
@@ -381,8 +379,8 @@ function HowItWorks() {
               key={step}
               className="lp-card rounded-3xl p-7"
               style={{
-                backgroundColor: 'var(--cafe-surface)',
-                border: '1px solid var(--cafe-border)',
+                backgroundColor: 'var(--ms-surface)',
+                border: '1px solid var(--ms-border)',
                 boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
                 textAlign: 'center',
               }}
@@ -395,9 +393,8 @@ function HowItWorks() {
                   width: 52,
                   height: 52,
                   borderRadius: 99,
-                  backgroundColor: 'var(--cafe-amber)',
+                  backgroundColor: 'var(--ms-accent)',
                   color: '#fff',
-                  fontFamily: "'Playfair Display', Georgia, serif",
                   fontWeight: 700,
                   fontSize: '1.15rem',
                   marginBottom: 16,
@@ -409,15 +406,14 @@ function HowItWorks() {
               <h3
                 className="text-xl"
                 style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  color: 'var(--cafe-text)',
+                  color: 'var(--ms-text)',
                   fontWeight: 700,
                   marginBottom: 8,
                 }}
               >
                 {title}
               </h3>
-              <p style={{ color: 'var(--cafe-text-mid)', fontSize: '0.9rem', lineHeight: 1.7 }}>
+              <p style={{ color: 'var(--ms-text-mid)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                 {desc}
               </p>
             </div>
@@ -437,14 +433,13 @@ function ServiceLines() {
         <h2
           className="text-3xl sm:text-4xl"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            color: 'var(--cafe-text)',
+            color: 'var(--ms-text)',
             fontWeight: 700,
           }}
         >
           Built for every kind of repair shop
         </h2>
-        <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base" style={{ color: 'var(--cafe-text-mid)' }}>
+        <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
           Whether you specialise in one trade or run all three, Mainspring has a workflow that fits.
         </p>
       </div>
@@ -477,8 +472,7 @@ function ServiceLines() {
           <h3
             className="text-xl mb-2"
             style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              color: 'var(--cafe-espresso)',
+              color: 'var(--ms-sidebar)',
               fontWeight: 700,
             }}
           >
@@ -529,7 +523,6 @@ function ServiceLines() {
           <h3
             className="text-xl mb-2"
             style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
               color: '#1C3D26',
               fontWeight: 700,
             }}
@@ -581,7 +574,6 @@ function ServiceLines() {
           <h3
             className="text-xl mb-2"
             style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
               color: '#F4E4CC',
               fontWeight: 700,
             }}
@@ -659,7 +651,6 @@ function FeatureHighlight() {
         <h2
           className="text-3xl sm:text-4xl"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
             color: '#F4E4CC',
             fontWeight: 700,
           }}
@@ -719,14 +710,13 @@ function PricingSection() {
         <h2
           className="text-3xl sm:text-4xl"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            color: 'var(--cafe-text)',
+            color: 'var(--ms-text)',
             fontWeight: 700,
           }}
         >
           Simple, honest pricing
         </h2>
-        <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--cafe-text-mid)' }}>
+        <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
           Start with one service line. Add more as you grow. No lock-in.
         </p>
       </div>
@@ -736,32 +726,31 @@ function PricingSection() {
         <article
           className="lp-card rounded-3xl p-8"
           style={{
-            backgroundColor: 'var(--cafe-surface)',
-            border: '1.5px solid var(--cafe-border)',
+            backgroundColor: 'var(--ms-surface)',
+            border: '1.5px solid var(--ms-border)',
             boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
           }}
         >
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-3"
-            style={{ color: 'var(--cafe-text-muted)' }}
+            style={{ color: 'var(--ms-text-muted)' }}
           >
             Basic
           </p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
             <span
               style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
                 fontSize: '2.4rem',
                 fontWeight: 700,
-                color: 'var(--cafe-text)',
+                color: 'var(--ms-text)',
                 lineHeight: 1,
               }}
             >
               A$25
             </span>
-            <span style={{ color: 'var(--cafe-text-muted)', fontSize: '0.85rem' }}>/month</span>
+            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.85rem' }}>/month</span>
           </div>
-          <p className="text-sm mb-6" style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className="text-sm mb-6" style={{ color: 'var(--ms-text-mid)' }}>
             One service line
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -770,8 +759,8 @@ function PricingSection() {
               'Full job tracking, POS & invoicing',
               'Unlimited customers and jobs',
             ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', color: 'var(--cafe-text-mid)' }}>
-                <CheckCircle2 size={15} style={{ color: 'var(--cafe-gold-dark)', flexShrink: 0, marginTop: 2 }} />
+              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', color: 'var(--ms-text-mid)' }}>
+                <CheckCircle2 size={15} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
                 {b}
               </li>
             ))}
@@ -783,7 +772,7 @@ function PricingSection() {
           className="lp-card rounded-3xl p-8"
           style={{
             backgroundColor: '#FDF8EE',
-            border: '2px solid var(--cafe-amber)',
+            border: '2px solid var(--ms-accent)',
             boxShadow: '0 4px 16px rgba(186,120,32,0.15)',
           }}
         >
@@ -798,7 +787,7 @@ function PricingSection() {
               style={{
                 fontSize: '0.65rem',
                 fontWeight: 700,
-                backgroundColor: 'var(--cafe-amber)',
+                backgroundColor: 'var(--ms-accent)',
                 color: '#fff',
                 borderRadius: 99,
                 padding: '3px 10px',
@@ -812,10 +801,9 @@ function PricingSection() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
             <span
               style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
                 fontSize: '2.4rem',
                 fontWeight: 700,
-                color: 'var(--cafe-espresso)',
+                color: 'var(--ms-sidebar)',
                 lineHeight: 1,
               }}
             >
@@ -833,7 +821,7 @@ function PricingSection() {
               'Priority support from the founders',
             ].map((b) => (
               <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', color: '#6B4F22' }}>
-                <CheckCircle2 size={15} style={{ color: 'var(--cafe-amber)', flexShrink: 0, marginTop: 2 }} />
+                <CheckCircle2 size={15} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />
                 {b}
               </li>
             ))}
@@ -844,7 +832,7 @@ function PricingSection() {
       {/* Add-on note */}
       <p
         className="mt-6 text-center text-sm"
-        style={{ color: 'var(--cafe-text-muted)' }}
+        style={{ color: 'var(--ms-text-muted)' }}
       >
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
         Add extra service lines for A$10/month each on the Basic plan.
@@ -866,11 +854,10 @@ function FinalCTA() {
           boxShadow: '0 4px 16px rgba(0,0,0,0.16), 0 20px 40px rgba(0,0,0,0.20)',
         }}
       >
-        <Sparkles size={28} style={{ color: 'var(--cafe-gold)', margin: '0 auto 16px' }} />
+        <Sparkles size={28} style={{ color: 'var(--ms-accent)', margin: '0 auto 16px' }} />
         <h2
           className="text-3xl sm:text-4xl"
           style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
             color: '#F4E8D7',
             fontWeight: 700,
             maxWidth: 560,
@@ -885,8 +872,8 @@ function FinalCTA() {
             to="/signup"
             className="lp-btn inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold"
             style={{
-              backgroundColor: 'var(--cafe-gold)',
-              color: 'var(--cafe-espresso)',
+              backgroundColor: 'var(--ms-accent)',
+              color: 'var(--ms-sidebar)',
               boxShadow: '0 5px 16px rgba(201,162,72,0.30)',
             }}
           >
@@ -949,14 +936,14 @@ export default function LandingPage() {
             <a
               href="#pricing"
               className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium"
-              style={{ color: 'var(--cafe-text)' }}
+              style={{ color: 'var(--ms-text)' }}
             >
               Pricing
             </a>
             <Link
               to="/login"
               className="lp-btn rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap"
-              style={{ color: 'var(--cafe-text)' }}
+              style={{ color: 'var(--ms-text)' }}
             >
               Log in
             </Link>
@@ -964,7 +951,7 @@ export default function LandingPage() {
               to="/signup"
               className="lp-btn rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap"
               style={{
-                backgroundColor: 'var(--cafe-amber)',
+                backgroundColor: 'var(--ms-accent)',
                 color: '#fff',
                 boxShadow: '0 3px 10px rgba(120,76,20,0.22)',
               }}
@@ -986,8 +973,8 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer
         style={{
-          borderTop: '1px solid var(--cafe-border)',
-          backgroundColor: 'var(--cafe-paper)',
+          borderTop: '1px solid var(--ms-border)',
+          backgroundColor: 'var(--ms-surface)',
           marginTop: 0,
           padding: '24px 0',
         }}
@@ -1002,20 +989,20 @@ export default function LandingPage() {
               alt="Mainspring"
               style={{ height: 36, width: 'auto', objectFit: 'contain' }}
             />
-            <span style={{ fontSize: '0.8rem', color: 'var(--cafe-text-muted)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--ms-text-muted)' }}>
               &copy; 2026 Mainspring
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <a
               href="#pricing"
-              style={{ fontSize: '0.82rem', color: 'var(--cafe-text-mid)', textDecoration: 'none' }}
+              style={{ fontSize: '0.82rem', color: 'var(--ms-text-mid)', textDecoration: 'none' }}
             >
               Pricing
             </a>
             <Link
               to="/login"
-              style={{ fontSize: '0.82rem', color: 'var(--cafe-text-mid)', textDecoration: 'none' }}
+              style={{ fontSize: '0.82rem', color: 'var(--ms-text-mid)', textDecoration: 'none' }}
             >
               Log in
             </Link>

@@ -43,7 +43,12 @@ import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
-import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea, ViewToggle } from '@/components/ui'
+import {
+  KanbanBoard,
+  JobCard as KanbanJobCard,
+  AUTO_KEY_KANBAN_COLUMNS,
+} from '@/components/kanban'
 import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
 import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
 import { useMobileServicesModals } from '@/hooks/useMobileServicesModals'
@@ -232,8 +237,8 @@ function PlannerJobDetailModal({
 
   const row = (label: string, value: string | ReactNode) => (
     <>
-      <dt className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>{label}</dt>
-      <dd className="text-sm" style={{ color: 'var(--cafe-text)' }}>{value}</dd>
+      <dt className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</dt>
+      <dd className="text-sm" style={{ color: 'var(--ms-text)' }}>{value}</dd>
     </>
   )
 
@@ -243,7 +248,7 @@ function PlannerJobDetailModal({
       {isError && <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(error, 'Could not load job')}</p>}
       {j && (
         <div className="space-y-4">
-          <p className="text-base font-medium" style={{ color: 'var(--cafe-text)' }}>{j.title}</p>
+          <p className="text-base font-medium" style={{ color: 'var(--ms-text)' }}>{j.title}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
             <dl className="contents">
               {row('Status', <Badge status={j.status} />)}
@@ -269,8 +274,8 @@ function PlannerJobDetailModal({
                 if (!lines.length) return null
                 return (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Additional services</p>
-                    <ul className="text-sm list-disc pl-5 space-y-0.5" style={{ color: 'var(--cafe-text)' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Additional services</p>
+                    <ul className="text-sm list-disc pl-5 space-y-0.5" style={{ color: 'var(--ms-text)' }}>
                       {lines.map((t, i) => <li key={i}>{t}</li>)}
                     </ul>
                   </div>
@@ -281,14 +286,14 @@ function PlannerJobDetailModal({
             })()}
           {j.description && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Description</p>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--cafe-text)' }}>{j.description}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Description</p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--ms-text)' }}>{j.description}</p>
             </div>
           )}
           {j.tech_notes && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Tech notes</p>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--cafe-text)' }}>{j.tech_notes}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Tech notes</p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--ms-text)' }}>{j.tech_notes}</p>
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-2">
@@ -296,7 +301,7 @@ function PlannerJobDetailModal({
             <Link
               to={`/auto-key/${j.id}`}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium"
-              style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
             >
               Open full job page
             </Link>
@@ -348,13 +353,13 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
         placeholder="Type name, phone or email…"
       />
       {open && (
-        <ul className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-48" style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)' }}>
+        <ul className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-48" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)' }}>
           {filtered.slice(0, 30).map((c, i) => (
             <li key={c.id}>
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm truncate"
-                style={{ color: 'var(--cafe-text)', backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent' }}
+                style={{ color: 'var(--ms-text)', backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent' }}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={e => { e.preventDefault(); onChange(c.id); setOpen(false); setSearch('') }}
               >
@@ -362,7 +367,7 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
               </button>
             </li>
           ))}
-          {filtered.length === 0 && <li className="px-3 py-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No customers match</li>}
+          {filtered.length === 0 && <li className="px-3 py-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No customers match</li>}
         </ul>
       )}
     </div>
@@ -601,22 +606,22 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           <span
             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
             style={step === 1
-              ? { backgroundColor: 'var(--cafe-amber)', color: '#fff' }
-              : { backgroundColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+              ? { backgroundColor: 'var(--ms-accent)', color: '#fff' }
+              : { backgroundColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
           >1</span>
-          <span className="text-xs font-medium" style={{ color: step === 1 ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
+          <span className="text-xs font-medium" style={{ color: step === 1 ? 'var(--ms-text)' : 'var(--ms-text-muted)' }}>
             Customer &amp; Vehicle
           </span>
         </div>
-        <div className="flex-1 h-px mx-1" style={{ backgroundColor: 'var(--cafe-border-2)' }} />
+        <div className="flex-1 h-px mx-1" style={{ backgroundColor: 'var(--ms-border-strong)' }} />
         <div className="flex items-center gap-1.5">
           <span
             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
             style={step === 2
-              ? { backgroundColor: 'var(--cafe-amber)', color: '#fff' }
-              : { backgroundColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+              ? { backgroundColor: 'var(--ms-accent)', color: '#fff' }
+              : { backgroundColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
           >2</span>
-          <span className="text-xs font-medium" style={{ color: step === 2 ? 'var(--cafe-text)' : 'var(--cafe-text-muted)' }}>
+          <span className="text-xs font-medium" style={{ color: step === 2 ? 'var(--ms-text)' : 'var(--ms-text-muted)' }}>
             Schedule &amp; Details
           </span>
         </div>
@@ -630,12 +635,12 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               <button
                 onClick={() => setCustomerMode('existing')}
                 className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-                style={customerMode === 'existing' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+                style={customerMode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}
               >Existing Customer</button>
               <button
                 onClick={() => setCustomerMode('new')}
                 className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-                style={customerMode === 'new' ? { backgroundColor: 'var(--cafe-amber)', color: '#fff', borderColor: 'var(--cafe-amber)' } : { borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text-mid)', backgroundColor: 'transparent' }}
+                style={customerMode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}
               >New Customer</button>
             </div>
             {customerMode === 'existing' ? (
@@ -665,13 +670,13 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             {showLastJobBanner && customerLastJob && (
               <div
                 className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm"
-                style={{ borderColor: 'var(--cafe-amber)', backgroundColor: 'rgba(201,162,72,0.08)' }}
+                style={{ borderColor: 'var(--ms-accent)', backgroundColor: 'rgba(201,162,72,0.08)' }}
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'var(--cafe-amber)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'var(--ms-accent)' }}>
                     Last visit vehicle on file
                   </p>
-                  <p className="truncate" style={{ color: 'var(--cafe-text)' }}>
+                  <p className="truncate" style={{ color: 'var(--ms-text)' }}>
                     {[customerLastJob.vehicle_make, customerLastJob.vehicle_year, customerLastJob.vehicle_model]
                       .filter(Boolean).join(' ')}
                     {customerLastJob.registration_plate ? ` · ${customerLastJob.registration_plate}` : ''}
@@ -692,7 +697,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               ))}
             </Select>
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Additional services (optional)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Additional services (optional)</p>
               {extraServices.map((row, idx) => (
                 <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <Select
@@ -745,9 +750,9 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             {specSearch && specSearch.matches.length > 0 && (
               <div
                 className="rounded-lg border p-2 text-sm"
-                style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+                style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}
               >
-                <p className="font-medium mb-1" style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className="font-medium mb-1" style={{ color: 'var(--ms-text-muted)' }}>
                   Vehicle database — tap a row to fill key details
                 </p>
                 <ul className="max-h-48 overflow-y-auto space-y-1">
@@ -756,14 +761,14 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                       <button
                         type="button"
                         className="w-full text-left px-2 py-1.5 rounded transition"
-                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
                         onMouseEnter={e => { e.currentTarget.style.opacity = '0.92' }}
                         onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
                         onClick={() => applyVehicleSpec(m)}
                       >
                         <span className="block">{m.label}</span>
                         {(m.suggested_blade_code || (m.key_blanks && m.key_blanks.length > 0)) && (
-                          <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                             Blanks: {(m.key_blanks ?? []).slice(0, 4).map(b => b.primary_code || b.blank_reference).filter(Boolean).join(', ') || m.suggested_blade_code}
                           </span>
                         )}
@@ -818,7 +823,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
             />
             {sendBookingSms && (
-              <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs -mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                 The customer receives a text with job summary, quote total, and time. Status will be set to "Awaiting booking confirm" until they tap confirm.
               </p>
             )}
@@ -832,12 +837,12 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             />
             <div
               className="rounded-lg border p-3 space-y-2"
-              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-paper)' }}
+              style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}
             >
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Quote &amp; booking SMS
               </p>
-              <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
+              <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--ms-text)' }}>
                 <input
                   type="checkbox"
                   className="mt-1 rounded"
@@ -846,12 +851,12 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 />
                 <span>
                   <span className="font-medium">Apply suggested quote</span>
-                  <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     Draft quote from job type and qty (inc. GST). Fills cost below when checked.
                   </span>
                 </span>
               </label>
-              <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--cafe-text)' }}>
+              <label className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--ms-text)' }}>
                 <input
                   type="checkbox"
                   className="mt-1 rounded"
@@ -863,21 +868,21 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 />
                 <span>
                   <span className="font-medium">Text customer to confirm booking</span>
-                  <span className="block text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                     Sends SMS with link to confirm. Requires customer mobile and scheduled time above.
                   </span>
                 </span>
               </label>
               {quoteSuggestion && (
-                <div className="text-sm pt-1 space-y-1" style={{ color: 'var(--cafe-text)' }}>
+                <div className="text-sm pt-1 space-y-1" style={{ color: 'var(--ms-text)' }}>
                   <div className="flex justify-between gap-2">
-                    <span style={{ color: 'var(--cafe-text-muted)' }}>Suggested total (incl. GST)</span>
+                    <span style={{ color: 'var(--ms-text-muted)' }}>Suggested total (incl. GST)</span>
                     <span className="font-semibold tabular-nums">{formatCents(quoteSuggestion.total_cents)}</span>
                   </div>
                   {quoteSuggestionLoading && (
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Updating…</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Updating…</p>
                   )}
-                  <ul className="text-xs space-y-0.5 mt-1 max-h-24 overflow-y-auto" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <ul className="text-xs space-y-0.5 mt-1 max-h-24 overflow-y-auto" style={{ color: 'var(--ms-text-muted)' }}>
                     {quoteSuggestion.line_items.map((li, i) => (
                       <li key={i}>
                         {li.quantity}× {li.description} — {formatCents(li.unit_price_cents * li.quantity)}
@@ -899,7 +904,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               </Select>
             </div>
             {sendBookingSms && (
-              <p className="text-xs -mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs -mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                 Initial status is forced to awaiting confirmation while the SMS link is open.
               </p>
             )}
@@ -1079,8 +1084,8 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
   if (successJobId) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-lg font-semibold mb-2" style={{ color: 'var(--cafe-text)' }}>Sale complete</p>
-        <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-lg font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Sale complete</p>
+        <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           Invoice created (unpaid). Send to customer via email or SMS, or record payment on the job.
         </p>
         <div className="flex gap-2 justify-center flex-wrap">
@@ -1095,17 +1100,17 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
         <Card className="p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Customer</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Customer</h3>
           <div className="flex gap-2 mb-3">
             <button
               onClick={() => setCustomerMode('existing')}
               className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'existing' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
-              style={customerMode === 'existing' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--cafe-amber)' } : {}}
+              style={customerMode === 'existing' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--ms-accent)' } : {}}
             >Existing</button>
             <button
               onClick={() => setCustomerMode('new')}
               className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'new' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
-              style={customerMode === 'new' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--cafe-amber)' } : {}}
+              style={customerMode === 'new' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--ms-accent)' } : {}}
             >Walk-in</button>
           </div>
           {customerMode === 'existing' ? (
@@ -1154,7 +1159,7 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Add items</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Add items</h3>
           <div className="flex flex-wrap gap-2 mb-4">
             {POS_QUICK_ITEMS.map(({ label, desc, price }) => (
               <button
@@ -1162,7 +1167,7 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
                 type="button"
                 onClick={() => addToCart(desc, price)}
                 className="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
                 {label} — ${(price / 100).toFixed(2)}
               </button>
@@ -1202,33 +1207,33 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
       </div>
 
       <Card className="p-5 h-fit">
-        <h3 className="text-sm font-semibold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: 'var(--cafe-text-muted)' }}>
+        <h3 className="text-sm font-semibold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: 'var(--ms-text-muted)' }}>
           <ShoppingCart size={16} /> Cart
         </h3>
         {cart.length === 0 ? (
-          <p className="text-sm py-6 text-center" style={{ color: 'var(--cafe-text-muted)' }}>Cart empty. Add items above.</p>
+          <p className="text-sm py-6 text-center" style={{ color: 'var(--ms-text-muted)' }}>Cart empty. Add items above.</p>
         ) : (
           <div className="space-y-3 mb-4">
             {cart.map(line => (
-              <div key={line.id} className="flex items-center justify-between gap-2 py-2 border-b" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div key={line.id} className="flex items-center justify-between gap-2 py-2 border-b" style={{ borderColor: 'var(--ms-border)' }}>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate" style={{ color: 'var(--cafe-text)' }}>{line.description}</p>
-                  <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}</p>
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--ms-text)' }}>{line.description}</p>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => updateQty(line.id, line.quantity - 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}><Minus size={14} /></button>
-                  <span className="text-sm w-6 text-center" style={{ color: 'var(--cafe-text)' }}>{line.quantity}</span>
-                  <button type="button" onClick={() => updateQty(line.id, line.quantity + 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)' }}>+</button>
+                  <button type="button" onClick={() => updateQty(line.id, line.quantity - 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}><Minus size={14} /></button>
+                  <span className="text-sm w-6 text-center" style={{ color: 'var(--ms-text)' }}>{line.quantity}</span>
+                  <button type="button" onClick={() => updateQty(line.id, line.quantity + 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>+</button>
                   <button type="button" onClick={() => removeFromCart(line.id)} className="w-7 h-7 rounded flex items-center justify-center" style={{ color: '#C96A5A' }}><X size={14} /></button>
                 </div>
               </div>
             ))}
           </div>
         )}
-        <div className="border-t pt-4" style={{ borderColor: 'var(--cafe-border)' }}>
-          <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--cafe-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--cafe-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
-          {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--cafe-text-muted)' }}>Tax</span><span style={{ color: 'var(--cafe-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
-          <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--cafe-amber)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
+        <div className="border-t pt-4" style={{ borderColor: 'var(--ms-border)' }}>
+          <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
+          {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Tax</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
+          <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
         </div>
         {error && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{error}</p>}
         <Button
@@ -1342,7 +1347,7 @@ function WeekJobChip({
       data-week-job-chip
       className={`group flex items-stretch shrink-0 rounded-lg border overflow-hidden select-none transition-[box-shadow,transform,opacity] ${compact ? 'mb-1 last:mb-0' : 'max-w-[min(420px,96vw)]'}`}
       style={{
-        borderColor: selected ? 'var(--cafe-amber)' : 'var(--cafe-border)',
+        borderColor: selected ? 'var(--ms-accent)' : 'var(--ms-border)',
         outline: selected ? '2px solid rgba(245,158,11,0.35)' : undefined,
         outlineOffset: 1,
         opacity: isDragging ? 0.38 : 1,
@@ -1354,7 +1359,7 @@ function WeekJobChip({
             : '0 3px 10px rgba(44,24,16,0.06)',
         cursor: isOverlay ? 'grabbing' : 'grab',
         touchAction: 'none',
-        backgroundColor: compact ? 'rgba(245, 158, 11, 0.08)' : 'var(--cafe-surface)',
+        backgroundColor: compact ? 'rgba(245, 158, 11, 0.08)' : 'var(--ms-surface)',
       }}
       title={isOverlay ? undefined : hoverTitle || 'Drag the whole booking card to reschedule'}
     >
@@ -1372,11 +1377,11 @@ function WeekJobChip({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-mono font-semibold" style={{ backgroundColor: '#F8EBDD', color: 'var(--cafe-amber)' }}>
+              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-mono font-semibold" style={{ backgroundColor: '#F8EBDD', color: 'var(--ms-accent)' }}>
                 #{job.job_number}
               </span>
               {job.status && (
-                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
                   {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
                 </span>
               )}
@@ -1384,7 +1389,7 @@ function WeekJobChip({
             <p
               className={`${compact ? 'text-[11px]' : 'text-sm'} mt-1 font-semibold leading-tight`}
               style={{
-                color: 'var(--cafe-text)',
+                color: 'var(--ms-text)',
                 display: '-webkit-box',
                 WebkitBoxOrient: 'vertical',
                 WebkitLineClamp: compact ? 2 : 2,
@@ -1397,14 +1402,14 @@ function WeekJobChip({
         </div>
 
         {customerName && (
-          <p className="text-[11px] mt-1 font-medium" style={{ color: 'var(--cafe-text)' }}>
+          <p className="text-[11px] mt-1 font-medium" style={{ color: 'var(--ms-text)' }}>
             {customerName}
           </p>
         )}
 
         {vehicleSummary && (
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <p className="text-[11px]" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-[11px]" style={{ color: 'var(--ms-text-mid)' }}>
               {vehicleSummary}
             </p>
             {(() => {
@@ -1420,7 +1425,7 @@ function WeekJobChip({
               <span
                 key={tag}
                 className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text-mid)' }}
+                style={{ backgroundColor: '#F7F1E8', color: 'var(--ms-text-mid)' }}
               >
                 {tag}
               </span>
@@ -1429,7 +1434,7 @@ function WeekJobChip({
         )}
 
         {!compact && job.job_address && (
-          <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--ms-text-muted)' }}>
             <span className="inline-flex items-center gap-1"><MapPin size={11} /> {job.job_address}</span>
           </p>
         )}
@@ -1439,7 +1444,7 @@ function WeekJobChip({
             <button
               type="button"
               className={`rounded-md font-semibold touch-manipulation ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[11px]'}`}
-              style={{ backgroundColor: '#F7F1E8', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: '#F7F1E8', color: 'var(--ms-text)' }}
               onPointerDown={stopDragControlPropagation}
               onMouseDown={stopDragControlPropagation}
               onTouchStart={stopDragControlPropagation}
@@ -1456,7 +1461,7 @@ function WeekJobChip({
                 type="button"
                 className={`rounded-md font-semibold touch-manipulation ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[11px]'}`}
                 style={{
-                  backgroundColor: compact ? '#E8DCC8' : 'var(--cafe-amber)',
+                  backgroundColor: compact ? '#E8DCC8' : 'var(--ms-accent)',
                   color: compact ? '#3d2f20' : '#2C1810',
                 }}
                 onPointerDown={stopDragControlPropagation}
@@ -1494,8 +1499,8 @@ function WeekUnscheduledDropZone({
       ref={setNodeRef}
       className={`min-h-[52px] p-2 rounded border flex flex-wrap gap-2 content-start transition-colors ${canTapPlace ? 'cursor-pointer' : ''}`}
       style={{
-        backgroundColor: isOver ? '#F5EDE0' : 'var(--cafe-bg)',
-        borderColor: isOver ? 'var(--cafe-amber)' : 'var(--cafe-border)',
+        backgroundColor: isOver ? '#F5EDE0' : 'var(--ms-bg)',
+        borderColor: isOver ? 'var(--ms-accent)' : 'var(--ms-border)',
         borderStyle: 'dashed',
         boxShadow: isOver ? 'inset 0 0 0 1px rgba(245,158,11,0.18)' : undefined,
       }}
@@ -1522,7 +1527,7 @@ function WeekDayHeaderDrop({
   onClick: () => void
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: weekDayDropId(dayStr) })
-  const baseBg = isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--cafe-surface)'
+  const baseBg = isToday ? 'rgba(245, 158, 11, 0.15)' : 'var(--ms-surface)'
 
   return (
     <div
@@ -1530,14 +1535,14 @@ function WeekDayHeaderDrop({
       className={`text-center py-2 rounded-lg min-h-[56px] flex flex-col items-center justify-center transition-colors ${canTapPlace ? 'cursor-pointer' : ''}`}
       style={{
         backgroundColor: isOver ? 'rgba(245, 158, 11, 0.28)' : baseBg,
-        border: `1px dashed ${isOver ? 'var(--cafe-amber)' : 'var(--cafe-border)'}`,
+        border: `1px dashed ${isOver ? 'var(--ms-accent)' : 'var(--ms-border)'}`,
         boxShadow: isOver ? '0 0 0 2px rgba(245,158,11,0.18)' : undefined,
       }}
       title={canTapPlace ? 'Tap to place the selected job on this day' : 'Drag a booking card here to move it to this day (same clock time)'}
       onClick={onClick}
     >
-      <p className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>{dayName}</p>
-      <p className="text-sm font-bold" style={{ color: 'var(--cafe-text)' }}>{dayNum}</p>
+      <p className="text-xs font-semibold" style={{ color: 'var(--ms-text-muted)' }}>{dayName}</p>
+      <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>{dayNum}</p>
     </div>
   )
 }
@@ -1560,8 +1565,8 @@ function WeekHourDropCell({
       ref={setNodeRef}
       className={`min-h-[44px] p-1 rounded border transition-colors ${canTapPlace ? 'cursor-pointer' : ''}`}
       style={{
-        backgroundColor: isOver ? '#F5EDE0' : 'var(--cafe-bg)',
-        borderColor: isOver ? 'var(--cafe-amber)' : 'var(--cafe-border)',
+        backgroundColor: isOver ? '#F5EDE0' : 'var(--ms-bg)',
+        borderColor: isOver ? 'var(--ms-accent)' : 'var(--ms-border)',
         boxShadow: isOver ? 'inset 0 0 0 1px rgba(245,158,11,0.18)' : undefined,
       }}
       onClick={onClick}
@@ -1695,9 +1700,9 @@ function AutoKeyJobCard({
           tabIndex={0}
         >
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs font-mono font-semibold" style={{ color: 'var(--cafe-amber)' }}>#{job.job_number}</p>
+            <p className="text-xs font-mono font-semibold" style={{ color: 'var(--ms-accent)' }}>#{job.job_number}</p>
             {!isSolo && (
-              <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: job.assigned_user_id ? 'rgba(93,74,155,0.2)' : 'rgba(138,117,99,0.25)', color: job.assigned_user_id ? '#5D4A9B' : 'var(--cafe-text-muted)' }}>
+              <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: job.assigned_user_id ? 'rgba(93,74,155,0.2)' : 'rgba(138,117,99,0.25)', color: job.assigned_user_id ? '#5D4A9B' : 'var(--ms-text-muted)' }}>
                 {job.assigned_user_id ? (users.find(u => u.id === job.assigned_user_id)?.full_name ?? 'Assigned') : 'Unassigned'}
               </span>
             )}
@@ -1717,17 +1722,17 @@ function AutoKeyJobCard({
               </span>
             )}
           </div>
-          <span className="text-sm font-semibold hover:underline block" style={{ color: 'var(--cafe-text)' }}>
+          <span className="text-sm font-semibold hover:underline block" style={{ color: 'var(--ms-text)' }}>
             {job.title}
           </span>
           {job.customer_name && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{job.customer_name}</p>
           )}
           {job.customer_phone && (
             <a
               href={`tel:${job.customer_phone.replace(/\s/g, '')}`}
               className="inline-flex items-center gap-1 text-xs font-medium mt-0.5 touch-manipulation"
-              style={{ color: 'var(--cafe-amber)' }}
+              style={{ color: 'var(--ms-accent)' }}
               onClick={e => e.stopPropagation()}
             >
               <Phone size={11} /> {job.customer_phone}
@@ -1738,7 +1743,7 @@ function AutoKeyJobCard({
               ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
               : null
             return scheduledLabel ? (
-              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--cafe-amber)' }}>
+              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--ms-accent)' }}>
                 <Clock size={11} />
                 {scheduledLabel}
               </span>
@@ -1746,7 +1751,7 @@ function AutoKeyJobCard({
           })()}
           {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                 {[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}
                 {job.vehicle_year ? ` · ${job.vehicle_year}` : ''}
                 {job.registration_plate ? ` · ${job.registration_plate}` : ''}
@@ -1758,32 +1763,32 @@ function AutoKeyJobCard({
             </div>
           )}
           {job.job_address && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-mid)' }}>
               {job.job_address}
             </p>
           )}
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
             Key: {job.key_type || 'Unspecified'} · Qty {job.key_quantity}
           </p>
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
             {formatDate(job.created_at)}{job.salesperson ? ` · ${job.salesperson}` : ''}
           </p>
           {job.job_type && (
-            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{job.job_type}</p>
           )}
           {job.job_address && (
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium mt-1 hover:underline" style={{ color: 'var(--ms-accent)' }}>
               <MapPin size={12} /> Get directions
             </a>
           )}
 
           {latestQuote && (
-            <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-xs mt-2" style={{ color: 'var(--ms-text-mid)' }}>
               Latest quote: {formatCents(latestQuote.total_cents)} ({latestQuote.status})
             </p>
           )}
           {latestInvoice && (
-            <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
               Latest invoice: {latestInvoice.invoice_number} · {formatCents(latestInvoice.total_cents)} ({latestInvoice.status})
             </p>
           )}
@@ -1845,7 +1850,7 @@ function AutoKeyJobCard({
               <button
                 type="button"
                 className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2"
-                style={{ backgroundColor: 'var(--cafe-amber)', color: '#fff', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}
                 onClick={() => { void handleStatusChange(nextStatus) }}
                 disabled={statusMut.isPending}
               >
@@ -1879,7 +1884,7 @@ function AutoKeyJobCard({
           title={`Mark as ${STATUS_LABELS[confirmStatus] ?? confirmStatus.replace(/_/g, ' ')}?`}
           onClose={() => setConfirmStatus(null)}
         >
-          <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
             {confirmStatus === 'failed_job'
               ? 'This will mark the job as failed. No invoice will be auto-created.'
               : 'This will mark the job as work completed. An invoice will be auto-created and payment link sent to the customer.'}
@@ -1918,11 +1923,11 @@ function AutoKeyJobCard({
         onClose={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}
       >
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: 'var(--cafe-text)' }}>Are you sure you want to delete this job?</p>
-          <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>#{job.job_number} · {job.title}</p>
+          <p className="text-sm" style={{ color: 'var(--ms-text)' }}>Are you sure you want to delete this job?</p>
+          <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.title}</p>
           </div>
-          <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>This action cannot be undone.</p>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>This action cannot be undone.</p>
           {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
           <div className="flex gap-2 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}>Cancel</Button>
@@ -2001,6 +2006,7 @@ export default function AutoKeyJobsPage() {
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
+  const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(searchParams.get('jobs_layout') === 'board' ? 'board' : 'list')
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
   const [weekStart, setWeekStart] = useState(initialWeekStart)
@@ -2245,8 +2251,12 @@ export default function AutoKeyJobsPage() {
     if (view === 'week') {
       next.set('week_start', weekStart)
     }
+    if (view === 'jobs' && jobsLayout === 'board') {
+      next.set('jobs_layout', 'board')
+    }
     setSearchParams(next, { replace: true })
   }, [
+    jobsLayout,
     dispatchDate,
     dispatchTechFilter,
     mapRangeMode,
@@ -2270,7 +2280,7 @@ export default function AutoKeyJobsPage() {
                 {showMoreActions && (
                   <div
                     className="absolute left-0 top-full mt-1 z-20 rounded-xl flex flex-col gap-1 p-2 shadow-xl"
-                    style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', minWidth: '180px' }}
+                    style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', minWidth: '180px' }}
                   >
                     {role === 'owner' && (
                       <Button variant="secondary" onClick={() => { setShowAddTech(true); setShowMoreActions(false) }} type="button">
@@ -2308,9 +2318,9 @@ export default function AutoKeyJobsPage() {
           )}
         />
       </div>
-      <p className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.{' '}
-        <Link to="/auto-key/team" className="font-semibold whitespace-nowrap" style={{ color: 'var(--cafe-amber)' }}>
+        <Link to="/auto-key/team" className="font-semibold whitespace-nowrap" style={{ color: 'var(--ms-accent)' }}>
           Team roster →
         </Link>
       </p>
@@ -2320,56 +2330,56 @@ export default function AutoKeyJobsPage() {
           <button
             onClick={() => setView('dashboard')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dashboard' ? 'bg-opacity-20' : ''}`}
-            style={view === 'dashboard' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'dashboard' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <LayoutGrid size={16} /> Pipeline
           </button>
           <button
             onClick={() => setView('jobs')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'jobs' ? 'bg-opacity-20' : ''}`}
-            style={view === 'jobs' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'jobs' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <List size={16} /> Jobs
           </button>
           <button
             onClick={() => setView('pos')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'pos' ? 'bg-opacity-20' : ''}`}
-            style={view === 'pos' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'pos' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <CreditCard size={16} /> POS
           </button>
           <button
             onClick={() => setView('dispatch')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'dispatch' ? 'bg-opacity-20' : ''}`}
-            style={view === 'dispatch' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'dispatch' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <Calendar size={16} /> Dispatch
           </button>
           <button
             onClick={() => setView('week')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'week' ? 'bg-opacity-20' : ''}`}
-            style={view === 'week' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'week' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <CalendarDays size={16} /> Week
           </button>
           <button
             onClick={() => setView('map')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'map' ? 'bg-opacity-20' : ''}`}
-            style={view === 'map' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'map' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <MapIcon size={16} /> Map
           </button>
           <button
             onClick={() => setView('planner')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'planner' ? 'bg-opacity-20' : ''}`}
-            style={view === 'planner' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'planner' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <Clock size={16} /> Day Planner
           </button>
           <button
             onClick={() => setView('reports')}
             className={`flex items-center gap-2 px-4 py-3 min-h-11 rounded-lg text-sm font-medium transition-colors touch-manipulation whitespace-nowrap ${view === 'reports' ? 'bg-opacity-20' : ''}`}
-            style={view === 'reports' ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+            style={view === 'reports' ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
           >
             <BarChart3 size={16} /> Reports
           </button>
@@ -2415,18 +2425,18 @@ export default function AutoKeyJobsPage() {
                     className="rounded-xl px-4 py-3 flex items-start gap-3"
                     style={{ backgroundColor: 'rgba(201,162,72,0.12)', border: '1px solid rgba(201,162,72,0.35)' }}
                   >
-                    <CalendarClock size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--cafe-amber)' }} />
+                    <CalendarClock size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--ms-accent)' }} />
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                         {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''} scheduled today
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                         {todayJobs.map(j => j.customer_name || j.title).slice(0, 3).join(', ')}{todayJobs.length > 3 ? ` +${todayJobs.length - 3} more` : ''}
                       </p>
                       <button
                         type="button"
                         className="text-xs font-semibold mt-1.5 underline"
-                        style={{ color: 'var(--cafe-amber)' }}
+                        style={{ color: 'var(--ms-accent)' }}
                         onClick={() => { setView('dispatch'); setDispatchDate(todayYmd) }}
                       >
                         View dispatch →
@@ -2441,10 +2451,10 @@ export default function AutoKeyJobsPage() {
                   >
                     <AlertCircle size={18} className="shrink-0 mt-0.5" style={{ color: '#C96A5A' }} />
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                         {needsAttention.length} job{needsAttention.length !== 1 ? 's' : ''} need attention
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                         Awaiting quote, approval, or booking confirmation
                       </p>
                     </div>
@@ -2460,8 +2470,8 @@ export default function AutoKeyJobsPage() {
                 onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
                 className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                 style={{
-                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
-                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                 }}
               >
                 Active ({activeCount})
@@ -2471,8 +2481,8 @@ export default function AutoKeyJobsPage() {
                 onClick={() => { setJobDirectoryView('completed'); setStatusFilter('all') }}
                 className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                 style={{
-                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
-                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                 }}
               >
                 Closed ({completedCount})
@@ -2480,21 +2490,21 @@ export default function AutoKeyJobsPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--cafe-text-muted)' }} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--ms-text-muted)' }} />
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search job, customer, rego…"
                   className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                  style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                 />
               </div>
               <Select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
                 className="min-w-[140px]"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
                 <option value="all">All stages</option>
                 {statusOptions.map(s => (
@@ -2505,7 +2515,7 @@ export default function AutoKeyJobsPage() {
                 value={String(olderThanDays)}
                 onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
                 className="min-w-[140px]"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
                 <option value="0">Any age</option>
                 <option value="7">7+ days old</option>
@@ -2519,7 +2529,7 @@ export default function AutoKeyJobsPage() {
           ) : isError ? (
             <p
               className="text-sm rounded-lg px-4 py-3"
-              style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-surface)', color: '#C96A5A' }}
+              style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: '#C96A5A' }}
             >
               {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
             </p>
@@ -2533,18 +2543,18 @@ export default function AutoKeyJobsPage() {
                   <Card key={status} className="overflow-hidden min-w-[240px]">
                     <div
                       className="px-4 py-3.5 flex items-center justify-between"
-                      style={{ borderBottom: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                      style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
                     >
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                         {STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}
                       </p>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--cafe-text-mid)' }}>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
                         {jobsInStatus.length}
                       </span>
                     </div>
                     <div>
                       {jobsInStatus.length === 0 ? (
-                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--cafe-text-muted)' }}>No jobs in this stage.</p>
+                        <p className="px-4 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No jobs in this stage.</p>
                       ) : (
                         jobsInStatus.map((j: object, i: number) => {
                           const job = j as { id: string; job_number: string; title: string; status: JobStatus; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; created_at: string; job_type?: string; customer_name?: string; scheduled_at?: string }
@@ -2555,21 +2565,21 @@ export default function AutoKeyJobsPage() {
                             <div
                               key={job.id}
                               className="px-4 py-3"
-                              style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}
+                              style={{ borderBottom: i < jobsInStatus.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <Link to={`/auto-key/${job.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--cafe-amber)' }}>
+                                  <Link to={`/auto-key/${job.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--ms-accent)' }}>
                                     {job.title}
                                   </Link>
-                                  <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                                     #{job.job_number} · {formatDate(job.created_at)}
                                   </p>
                                   {job.customer_name && (
-                                    <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{job.customer_name}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{job.customer_name}</p>
                                   )}
                                   {kanbanScheduledLabel && (
-                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--cafe-amber)' }}>
+                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--ms-accent)' }}>
                                       <Clock size={10} />
                                       {kanbanScheduledLabel}
                                     </span>
@@ -2578,17 +2588,17 @@ export default function AutoKeyJobsPage() {
                                 <Badge status={job.status} />
                               </div>
                               {(job.vehicle_make || job.vehicle_model || job.registration_plate) && (
-                                <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                                <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
                                   {job.vehicle_make || ''} {job.vehicle_model || ''}{job.registration_plate ? ` · ${job.registration_plate}` : ''}
                                 </p>
                               )}
                               {job.job_type && (
-                                <p className="text-[11px] mt-1" style={{ color: 'var(--cafe-text-muted)' }}>{job.job_type}</p>
+                                <p className="text-[11px] mt-1" style={{ color: 'var(--ms-text-muted)' }}>{job.job_type}</p>
                               )}
                               <select
                                 value={job.status}
                                 className="w-full mt-2 rounded-md px-2 py-1.5 text-xs outline-none"
-                                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                                 onChange={e => statusMut.mutate({ jobId: job.id, status: e.target.value as JobStatus })}
                                 disabled={statusMut.isPending}
                               >
@@ -2613,14 +2623,14 @@ export default function AutoKeyJobsPage() {
         <>
           <div className="mb-5 flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 max-w-xs min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--cafe-text-muted)' }} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--ms-text-muted)' }} />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search job, customer, vehicle, rego…"
                 className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               />
             </div>
             <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
@@ -2629,8 +2639,8 @@ export default function AutoKeyJobsPage() {
                 onClick={() => setJobDirectoryView('active')}
                 className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                 style={{
-                  backgroundColor: jobDirectoryView === 'active' ? 'var(--cafe-paper)' : 'transparent',
-                  color: jobDirectoryView === 'active' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
+                  color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                 }}
               >
                 Active ({activeCount})
@@ -2640,8 +2650,8 @@ export default function AutoKeyJobsPage() {
                 onClick={() => setJobDirectoryView('completed')}
                 className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
                 style={{
-                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--cafe-paper)' : 'transparent',
-                  color: jobDirectoryView === 'completed' ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                  backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
+                  color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                 }}
               >
                 Closed ({completedCount})
@@ -2651,7 +2661,7 @@ export default function AutoKeyJobsPage() {
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               className="min-w-[160px]"
-              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             >
               <option value="all">All statuses</option>
               {statusOptions.map(s => (
@@ -2662,32 +2672,89 @@ export default function AutoKeyJobsPage() {
               value={String(olderThanDays)}
               onChange={e => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
               className="min-w-[160px]"
-              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             >
               <option value="0">Any age</option>
               <option value="7">7+ days old</option>
               <option value="14">14+ days old</option>
               <option value="21">21+ days old</option>
             </Select>
+            <ViewToggle<'board' | 'list'>
+              value={jobsLayout}
+              onChange={setJobsLayout}
+              options={[
+                { value: 'board', label: 'Board' },
+                { value: 'list', label: 'List' },
+              ]}
+            />
           </div>
           {isLoading ? (
             <Spinner />
           ) : isError ? (
             <p
               className="text-sm rounded-lg px-4 py-3"
-              style={{ border: '1px solid var(--cafe-border)', backgroundColor: 'var(--cafe-surface)', color: '#C96A5A' }}
+              style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: '#C96A5A' }}
             >
               {getApiErrorMessage(jobsQueryError, 'Could not load jobs. Check your connection and try again.')}
             </p>
+          ) : filteredJobs.length === 0 ? (
+            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+          ) : jobsLayout === 'board' ? (
+            <KanbanBoard
+              jobs={sortedJobsDirectory as AutoKeyJob[]}
+              columns={AUTO_KEY_KANBAN_COLUMNS}
+              onStatusChange={(jobId, nextStatus) =>
+                statusMut.mutate({ jobId, status: nextStatus as JobStatus })
+              }
+              renderCard={(job, column) => {
+                const tech = users.find((u: { id: string; full_name: string }) => u.id === job.assigned_user_id)?.full_name ?? null
+                const descParts = [
+                  [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' '),
+                  job.registration_plate,
+                ].filter(Boolean)
+                return (
+                  <KanbanJobCard
+                    jobNumber={job.job_number}
+                    title={job.title}
+                    description={descParts.join(' · ') || job.description || undefined}
+                    customerName={job.customer_name ?? null}
+                    priority={job.priority}
+                    daysInShop={daysInShop(job.created_at)}
+                    quoteCents={job.cost_cents > 0 ? job.cost_cents : undefined}
+                    techName={tech}
+                    techKey={job.assigned_user_id ?? null}
+                    accentColor={column.color}
+                    href={`/mobile-services/jobs/${job.id}`}
+                    draggable={!statusMut.isPending}
+                    onDragStart={e => {
+                      e.dataTransfer.setData('text/job-id', job.id)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    extras={job.scheduled_at ? (
+                      <span
+                        className="inline-flex items-center gap-1"
+                        style={{
+                          backgroundColor: 'var(--ms-accent-light)',
+                          color: 'var(--ms-accent)',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 99,
+                        }}
+                      >
+                        <Calendar size={10} />
+                        {formatDate(job.scheduled_at)}
+                      </span>
+                    ) : null}
+                  />
+                )
+              }}
+            />
           ) : (
             <div className="space-y-3">
-              {filteredJobs.length === 0 ? (
-                <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
-              ) : (
-                sortedJobsDirectory.map((job) => (
-                  <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} listMode />
-                ))
-              )}
+              {sortedJobsDirectory.map((job) => (
+                <AutoKeyJobCard key={job.id} job={job} users={users} isSolo={isSolo} listMode />
+              ))}
             </div>
           )}
         </>
@@ -2705,23 +2772,23 @@ export default function AutoKeyJobsPage() {
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Date</label>
               <input
                 type="date"
                 value={dispatchDate}
                 onChange={e => setDispatchDate(e.target.value)}
                 className="rounded-lg border px-3 py-2 text-sm"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               />
             </div>
             {!isSolo && (
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Tech</label>
               <Select
                 value={dispatchTechFilter}
                 onChange={e => setDispatchTechFilter(e.target.value)}
                 className="min-w-[160px]"
-                style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
                 <option value="">All technicians</option>
                 {users.map((u: { id: string; full_name: string }) => (
@@ -2747,11 +2814,11 @@ export default function AutoKeyJobsPage() {
           {dispatchLoading ? <Spinner /> : (
             <>
               <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
                   {isSolo ? "Today's schedule" : 'Scheduled for'} {formatDate(dispatchDate)}
                 </h3>
                 {dispatchJobs.length === 0 ? (
-                  <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>No jobs scheduled for this date.</p>
+                  <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No jobs scheduled for this date.</p>
                 ) : isSolo || dispatchTechFilter ? (
                   <div className="space-y-2">
                     {dispatchJobs.map((job: object) => (
@@ -2777,7 +2844,7 @@ export default function AutoKeyJobsPage() {
                       <div className="space-y-4">
                         {assigned.map(([uid, techJobs]) => (
                           <div key={uid}>
-                            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-amber)' }}>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-accent)' }}>
                               {users.find((u: { id: string }) => u.id === uid)?.full_name ?? 'Tech'}
                             </p>
                             <div className="space-y-2">
@@ -2789,7 +2856,7 @@ export default function AutoKeyJobsPage() {
                         ))}
                         {unassigned.length > 0 && (
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Unassigned</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>Unassigned</p>
                             <div className="space-y-2">
                               {unassigned.map((job: object) => (
                                 <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
@@ -2805,7 +2872,7 @@ export default function AutoKeyJobsPage() {
 
               {unscheduledJobs.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
                     Unscheduled ({unscheduledJobs.length})
                   </h3>
                   <div className="space-y-2">
@@ -2827,7 +2894,7 @@ export default function AutoKeyJobsPage() {
               <Button variant="secondary" onClick={() => {
                 setWeekStart(civilAddDays(weekStart, -7))
               }}><ChevronLeft size={16} /></Button>
-              <span className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+              <span className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
                 {formatDate(weekStart)} – {formatDate(weekEnd)}
               </span>
               <Button variant="secondary" onClick={() => {
@@ -2849,7 +2916,7 @@ export default function AutoKeyJobsPage() {
                   <Button variant="secondary" className="mt-2" type="button" onClick={() => setWeekScheduleErr(null)}>Dismiss</Button>
                 </Card>
               )}
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                 {weekJobs.length === 0
                   ? 'No jobs in this week (nothing scheduled and no unscheduled jobs). Create a job or schedule one to see it here.'
                   : `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} in this view. Drag the whole booking card to a day header (same time) or an hour cell. Use Open to jump into a job, and Move on phones/tablets for tap-to-place scheduling.`}
@@ -2858,9 +2925,9 @@ export default function AutoKeyJobsPage() {
                 const j = weekJobs.find((x: { id: string }) => x.id === weekRelocateJobId)
                 const label = j ? `#${(j as { job_number: string }).job_number}` : 'Job'
                 return (
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'var(--cafe-amber)', color: 'var(--cafe-text)' }}>
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'var(--ms-accent)', color: 'var(--ms-text)' }}>
                     <span className="font-medium">Moving {label}</span>
-                    <span style={{ color: 'var(--cafe-text-muted)' }}>— tap a day or time below, or</span>
+                    <span style={{ color: 'var(--ms-text-muted)' }}>— tap a day or time below, or</span>
                     <Button
                       variant="secondary"
                       type="button"
@@ -2887,13 +2954,13 @@ export default function AutoKeyJobsPage() {
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                           <span className="hidden sm:inline">Unscheduled — drag the whole card to a slot, or Move → tap destination; drop a card here to clear time</span>
                           <span className="sm:hidden">Unscheduled</span>
                         </h3>
                         <span
                           className="sm:hidden inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold cursor-default select-none"
-                          style={{ backgroundColor: 'var(--cafe-border)', color: 'var(--cafe-text-muted)' }}
+                          style={{ backgroundColor: 'var(--ms-border)', color: 'var(--ms-text-muted)' }}
                           title="Tap Move on a card, then tap a time slot to schedule it. Drag cards on desktop."
                           aria-label="Tap Move on a card then tap a time slot to schedule it"
                         >
@@ -2938,11 +3005,11 @@ export default function AutoKeyJobsPage() {
                                 disabled={mobileDayStart === 0}
                                 onClick={() => setMobileDayStart(d => Math.max(0, d - 1))}
                                 className="p-2 rounded-lg disabled:opacity-30"
-                                style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}
+                                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
                               >
-                                <ChevronLeft size={16} style={{ color: 'var(--cafe-text-muted)' }} />
+                                <ChevronLeft size={16} style={{ color: 'var(--ms-text-muted)' }} />
                               </button>
-                              <span className="text-xs font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>
+                              <span className="text-xs font-semibold" style={{ color: 'var(--ms-text-muted)' }}>
                                 {visibleDayIndices.map(i => {
                                   const ds = civilAddDays(weekStart, i)
                                   const [, , cd] = ds.split('-').map(Number)
@@ -2956,9 +3023,9 @@ export default function AutoKeyJobsPage() {
                                 disabled={mobileDayStart >= 4}
                                 onClick={() => setMobileDayStart(d => Math.min(4, d + 1))}
                                 className="p-2 rounded-lg disabled:opacity-30"
-                                style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}
+                                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
                               >
-                                <ChevronRight size={16} style={{ color: 'var(--cafe-text-muted)' }} />
+                                <ChevronRight size={16} style={{ color: 'var(--ms-text-muted)' }} />
                               </button>
                             </div>
                           )}
@@ -2990,7 +3057,7 @@ export default function AutoKeyJobsPage() {
                               })}
                               {WEEK_SCHEDULE_HOURS.map(hour => (
                                 <Fragment key={hour}>
-                                  <div className="py-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                                  <div className="py-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                                     {String(hour).padStart(2, '0')}:00
                                   </div>
                                   {visibleDayIndices.map((i) => {
@@ -3062,7 +3129,7 @@ export default function AutoKeyJobsPage() {
       {view === 'map' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Range</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--ms-text-muted)' }}>Range</span>
             <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
               {(['day', 'week', 'month'] as const).map(m => (
                 <button
@@ -3071,30 +3138,30 @@ export default function AutoKeyJobsPage() {
                   onClick={() => setMapRangeMode(m)}
                   className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation"
                   style={{
-                    backgroundColor: mapRangeMode === m ? 'var(--cafe-paper)' : 'transparent',
-                    color: mapRangeMode === m ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+                    backgroundColor: mapRangeMode === m ? 'var(--ms-surface)' : 'transparent',
+                    color: mapRangeMode === m ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                   }}
                 >
                   {m === 'day' ? 'Day' : m === 'week' ? 'Week' : 'Month'}
                 </button>
               ))}
             </div>
-            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{mapRangeMode === 'day' ? 'Date' : 'Anchor date'}</label>
+            <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{mapRangeMode === 'day' ? 'Date' : 'Anchor date'}</label>
             <input
               type="date"
               value={dispatchDate}
               onChange={e => setDispatchDate(e.target.value)}
               className="rounded-lg border px-3 py-2 text-sm"
-              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             />
             {users.length > 1 && (
               <>
-                <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+                <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Tech</label>
                 <Select
                   value={dispatchTechFilter}
                   onChange={e => setDispatchTechFilter(e.target.value)}
                   className="min-w-[160px]"
-                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                  style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                 >
                   <option value="">All techs</option>
                   {users.map((u: { id: string; full_name: string }) => (
@@ -3113,22 +3180,22 @@ export default function AutoKeyJobsPage() {
       {view === 'planner' && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Date</label>
+            <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Date</label>
             <input
               type="date"
               value={dispatchDate}
               onChange={e => setDispatchDate(e.target.value)}
               className="rounded-lg border px-3 py-2 text-sm"
-              style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             />
             {users.length > 1 && (
               <>
-                <label className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>Tech</label>
+                <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Tech</label>
                 <Select
                   value={dispatchTechFilter}
                   onChange={e => setDispatchTechFilter(e.target.value)}
                   className="min-w-[160px]"
-                  style={{ backgroundColor: 'var(--cafe-surface)', borderColor: 'var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                  style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                 >
                   <option value="">All techs</option>
                   {users.map((u: { id: string; full_name: string }) => (
@@ -3143,11 +3210,11 @@ export default function AutoKeyJobsPage() {
           ) : (
             <>
               <Card className="p-5">
-                <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>
                   {formatDate(dispatchDate)} — {dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''}
                 </h3>
                 {dispatchJobs.length === 0 ? (
-                  <p className="text-sm py-4" style={{ color: 'var(--cafe-text-muted)' }}>No jobs scheduled for this date.</p>
+                  <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No jobs scheduled for this date.</p>
                 ) : (
                   <div className="space-y-3">
                     {[...dispatchJobs]
@@ -3166,7 +3233,7 @@ export default function AutoKeyJobsPage() {
                             role="button"
                             tabIndex={0}
                             className="flex items-start gap-4 py-3 border-b last:border-b-0 rounded-md px-1 -mx-1 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
-                            style={{ borderColor: 'var(--cafe-border)' }}
+                            style={{ borderColor: 'var(--ms-border)' }}
                             onClick={() => setPlannerDetailJobId(job.id)}
                             onKeyDown={e => {
                               if (e.key === 'Enter' || e.key === ' ') {
@@ -3175,12 +3242,12 @@ export default function AutoKeyJobsPage() {
                               }
                             }}
                           >
-                            <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{timeStr}</span>
+                            <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>{timeStr}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>
+                              <p className="font-medium" style={{ color: 'var(--ms-text)' }}>
                                 #{job.job_number} · {job.title}
                               </p>
-                              <p className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                                 {displayName}
                                 {job.vehicle_make || job.vehicle_model ? ` · ${[job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')}` : ''}
                               </p>
@@ -3188,21 +3255,21 @@ export default function AutoKeyJobsPage() {
                                 <a
                                   href={`tel:${(customer?.phone || job.customer_phone)!.replace(/\s/g, '')}`}
                                   className="text-xs mt-0.5 flex items-center gap-1 w-fit"
-                                  style={{ color: 'var(--cafe-amber)' }}
+                                  style={{ color: 'var(--ms-accent)' }}
                                   onClick={e => e.stopPropagation()}
                                 >
                                   <Phone size={11} /> {customer?.phone || job.customer_phone}
                                 </a>
                               )}
                               {job.job_address && (
-                                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--ms-text-mid)' }}>
                                   <MapPin size={12} /> {job.job_address}
                                 </p>
                               )}
                             </div>
                             <span
                               className="shrink-0 px-3 py-1.5 rounded text-xs font-medium"
-                              style={{ backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }}
+                              style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
                             >
                               Details
                             </span>
@@ -3213,7 +3280,7 @@ export default function AutoKeyJobsPage() {
                 )}
               </Card>
               <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--cafe-text-muted)' }}>Map — where to go</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Map — where to go</h3>
                 <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />
               </div>
             </>
@@ -3225,14 +3292,14 @@ export default function AutoKeyJobsPage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Date range:</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--ms-text-muted)' }}>Date range:</span>
               {(['today', 'week', 'month', 'last_month', 'all'] as const).map(preset => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => setReportPreset(preset)}
                   className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                  style={reportPreset === preset ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' } : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }}
+                  style={reportPreset === preset ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' } : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }}
                 >
                   {preset === 'today' ? 'Today' : preset === 'week' ? 'This Week' : preset === 'month' ? 'This Month' : preset === 'last_month' ? 'Last Month' : 'All Time'}
                 </button>
@@ -3243,7 +3310,7 @@ export default function AutoKeyJobsPage() {
                   checked={reportPreset === 'custom'}
                   onChange={e => setReportPreset(e.target.checked ? 'custom' : 'month')}
                 />
-                <span style={{ color: 'var(--cafe-text-muted)' }}>Custom</span>
+                <span style={{ color: 'var(--ms-text-muted)' }}>Custom</span>
               </label>
               {reportPreset === 'custom' && (
                 <div className="flex items-center gap-2">
@@ -3253,7 +3320,7 @@ export default function AutoKeyJobsPage() {
                     onChange={e => setReportDateFrom(e.target.value)}
                     className="w-36"
                   />
-                  <span style={{ color: 'var(--cafe-text-muted)' }}>to</span>
+                  <span style={{ color: 'var(--ms-text-muted)' }}>to</span>
                   <Input
                     type="date"
                     value={reportDateTo}
@@ -3275,32 +3342,32 @@ export default function AutoKeyJobsPage() {
           {reportsError && !reportsLoading && (
             <Card className="p-4">
               <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(reportsErr, 'Could not load reports.')}</p>
-              <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>If you are on a restricted role, ask an owner to confirm you can access reports. Otherwise check your connection and try again.</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>If you are on a restricted role, ask an owner to confirm you can access reports. Otherwise check your connection and try again.</p>
             </Card>
           )}
           {reportsLoading ? <Spinner /> : reportsError ? null : autoKeyReports ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Jobs</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{autoKeyReports.summary.total_jobs}</p>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Total Jobs</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.summary.total_jobs}</p>
                 </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Total Revenue</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeyReports.summary.total_revenue_cents)}</p>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Total Revenue</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.summary.total_revenue_cents)}</p>
                 </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Avg Job Value</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--cafe-text)' }}>{formatCents(autoKeyReports.summary.avg_job_value_cents)}</p>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Avg Job Value</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.summary.avg_job_value_cents)}</p>
                 </Card>
-                <Card className="p-5" style={{ borderLeft: '4px solid var(--cafe-amber)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--cafe-text-muted)' }}>Mobile vs Shop</p>
-                  <p className="text-sm font-medium leading-snug" style={{ color: 'var(--cafe-text)' }}>
+                <Card className="p-5" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>Mobile vs Shop</p>
+                  <p className="text-sm font-medium leading-snug" style={{ color: 'var(--ms-text)' }}>
                     <span className="block">
                       Jobs — Mobile: {autoKeyReports.summary.mobile_count} ({autoKeyReports.summary.mobile_pct}%) · Shop:{' '}
                       {autoKeyReports.summary.shop_count} ({autoKeyReports.summary.shop_pct}%)
                     </span>
-                    <span className="block mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+                    <span className="block mt-1" style={{ color: 'var(--ms-text-mid)' }}>
                       Revenue — Mobile: {formatCents(autoKeyReports.summary.mobile_revenue_cents)} ({autoKeyReports.summary.mobile_revenue_pct}%) · Shop:{' '}
                       {formatCents(autoKeyReports.summary.shop_revenue_cents)} ({autoKeyReports.summary.shop_revenue_pct}%)
                     </span>
@@ -3310,24 +3377,24 @@ export default function AutoKeyJobsPage() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Type</h3>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Type</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
-                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Job Type</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Jobs</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
-                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Avg Value</th>
+                        <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
+                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--ms-text-muted)' }}>Job Type</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Jobs</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
+                          <th className="py-2 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Avg Value</th>
                         </tr>
                       </thead>
                       <tbody>
                         {autoKeyReports.jobs_by_type.map(row => (
-                          <tr key={row.job_type} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
-                            <td className="py-2 pr-4" style={{ color: 'var(--cafe-text)' }}>{row.job_type}</td>
-                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{row.jobs}</td>
-                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(row.revenue_cents)}</td>
-                            <td className="py-2 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(row.avg_value_cents)}</td>
+                          <tr key={row.job_type} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
+                            <td className="py-2 pr-4" style={{ color: 'var(--ms-text)' }}>{row.job_type}</td>
+                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{row.jobs}</td>
+                            <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(row.revenue_cents)}</td>
+                            <td className="py-2 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(row.avg_value_cents)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3335,27 +3402,27 @@ export default function AutoKeyJobsPage() {
                   </div>
                 </Card>
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Tech</h3>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Tech</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
-                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--cafe-text-muted)' }}>Tech</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Jobs</th>
-                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
-                          <th className="py-2 font-medium text-right" style={{ color: 'var(--cafe-text-muted)' }}>Share</th>
+                        <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
+                          <th className="py-2 pr-4 font-medium" style={{ color: 'var(--ms-text-muted)' }}>Tech</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Jobs</th>
+                          <th className="py-2 pr-4 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
+                          <th className="py-2 font-medium text-right" style={{ color: 'var(--ms-text-muted)' }}>Share</th>
                         </tr>
                       </thead>
                       <tbody>
                         {autoKeyReports.jobs_by_tech.length === 0 ? (
-                          <tr><td colSpan={4} className="py-4 text-center text-sm" style={{ color: 'var(--cafe-text-muted)' }}>No data</td></tr>
+                          <tr><td colSpan={4} className="py-4 text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>No data</td></tr>
                         ) : (
                           autoKeyReports.jobs_by_tech.map(t => (
-                            <tr key={t.tech_id} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
-                              <td className="py-2 pr-4" style={{ color: 'var(--cafe-text)' }}>{t.tech_name}</td>
-                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{t.job_count}</td>
-                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--cafe-text)' }}>{formatCents(t.revenue_cents)}</td>
-                              <td className="py-2 text-right" style={{ color: 'var(--cafe-text-mid)' }}>{t.revenue_share_pct ?? 0}%</td>
+                            <tr key={t.tech_id} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
+                              <td className="py-2 pr-4" style={{ color: 'var(--ms-text)' }}>{t.tech_name}</td>
+                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{t.job_count}</td>
+                              <td className="py-2 pr-4 text-right" style={{ color: 'var(--ms-text)' }}>{formatCents(t.revenue_cents)}</td>
+                              <td className="py-2 text-right" style={{ color: 'var(--ms-text-mid)' }}>{t.revenue_share_pct ?? 0}%</td>
                             </tr>
                           ))
                         )}
@@ -3367,27 +3434,27 @@ export default function AutoKeyJobsPage() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Jobs by Status (Live Pipeline)</h3>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Jobs by Status (Live Pipeline)</h3>
                   <div className="flex flex-wrap gap-2">
                     {autoKeyReports.jobs_by_status.map(s => (
                       <div
                         key={s.status}
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
                       >
-                        <span className="text-sm" style={{ color: 'var(--cafe-text)' }}>{s.label}</span>
-                        <span className="text-sm font-semibold" style={{ color: 'var(--cafe-amber)' }}>{s.count}</span>
+                        <span className="text-sm" style={{ color: 'var(--ms-text)' }}>{s.label}</span>
+                        <span className="text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>{s.count}</span>
                       </div>
                     ))}
                   </div>
                 </Card>
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Week on Week (Last 8 Weeks)</h3>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>Week on Week (Last 8 Weeks)</h3>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {autoKeyReports.week_on_week.map((w, i) => (
-                      <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm" style={{ borderColor: 'var(--cafe-border)' }}>
-                        <span style={{ color: 'var(--cafe-text-muted)' }}>{w.week_label}</span>
-                        <span style={{ color: 'var(--cafe-text)' }}>
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm" style={{ borderColor: 'var(--ms-border)' }}>
+                        <span style={{ color: 'var(--ms-text-muted)' }}>{w.week_label}</span>
+                        <span style={{ color: 'var(--ms-text)' }}>
                           {w.jobs} jobs · {formatCents(w.revenue_cents)}
                         </span>
                       </div>
@@ -3398,10 +3465,10 @@ export default function AutoKeyJobsPage() {
 
               {(role === 'owner' || role === 'manager') && (
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
                     Technician commission & weekly bonus
                   </h3>
-                  <p className="text-xs mb-4" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>
                     Uses the same date range as above. Revenue is attributed by <strong>invoice created</strong> time. Each job must match the technician&apos;s eligible statuses (default: completed, collected).
                     Bonus = raw commission minus the per-period retainer (salary component). Each job uses one of three sources (Technician / Shop / Minit); matching percentages are under Commission rules per technician.
                   </p>
@@ -3414,7 +3481,7 @@ export default function AutoKeyJobsPage() {
                   {!commissionLoading && !commissionError && commissionReport && (
                     <div className="space-y-4">
                       {commissionReport.technicians.length === 0 ? (
-                        <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                           No commission data for this period. Enable commission tracking per technician under <strong>Team → Commission rules</strong>, then assign jobs with a lead source (Shop / Tech / Minit sourced).
                         </p>
                       ) : (
@@ -3422,13 +3489,13 @@ export default function AutoKeyJobsPage() {
                           <div
                             key={tech.user_id}
                             className="rounded-xl border p-4"
-                            style={{ borderColor: 'var(--cafe-border)', backgroundColor: 'var(--cafe-bg)' }}
+                            style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
                           >
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
-                              <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{tech.full_name}</p>
-                              <p className="text-sm" style={{ color: 'var(--cafe-amber)' }}>
+                              <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{tech.full_name}</p>
+                              <p className="text-sm" style={{ color: 'var(--ms-accent)' }}>
                                 Bonus payable: <strong>{formatCents(tech.bonus_payable_cents)}</strong>
-                                <span className="font-normal" style={{ color: 'var(--cafe-text-muted)' }}>
+                                <span className="font-normal" style={{ color: 'var(--ms-text-muted)' }}>
                                   {' '}· Raw {formatCents(tech.raw_commission_cents)} · Retainer {formatCents(tech.retainer_cents)}
                                 </span>
                               </p>
@@ -3437,19 +3504,19 @@ export default function AutoKeyJobsPage() {
                               <div className="overflow-x-auto mt-3">
                                 <table className="w-full text-xs">
                                   <thead>
-                                    <tr className="text-left border-b" style={{ borderColor: 'var(--cafe-border)' }}>
-                                      <th className="py-1 pr-2" style={{ color: 'var(--cafe-text-muted)' }}>Job</th>
-                                      <th className="py-1 pr-2" style={{ color: 'var(--cafe-text-muted)' }}>Source</th>
-                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Revenue</th>
-                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Rate</th>
-                                      <th className="py-1 text-right" style={{ color: 'var(--cafe-text-muted)' }}>Comm.</th>
+                                    <tr className="text-left border-b" style={{ borderColor: 'var(--ms-border)' }}>
+                                      <th className="py-1 pr-2" style={{ color: 'var(--ms-text-muted)' }}>Job</th>
+                                      <th className="py-1 pr-2" style={{ color: 'var(--ms-text-muted)' }}>Source</th>
+                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--ms-text-muted)' }}>Revenue</th>
+                                      <th className="py-1 pr-2 text-right" style={{ color: 'var(--ms-text-muted)' }}>Rate</th>
+                                      <th className="py-1 text-right" style={{ color: 'var(--ms-text-muted)' }}>Comm.</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {tech.lines.map(line => (
-                                      <tr key={`${line.job_id}-${line.invoice_id}`} className="border-b last:border-0" style={{ borderColor: 'var(--cafe-border)' }}>
-                                        <td className="py-1 pr-2" style={{ color: 'var(--cafe-text)' }}>#{line.job_number}</td>
-                                        <td className="py-1 pr-2" style={{ color: 'var(--cafe-text-mid)' }}>{line.lead_source_label}</td>
+                                      <tr key={`${line.job_id}-${line.invoice_id}`} className="border-b last:border-0" style={{ borderColor: 'var(--ms-border)' }}>
+                                        <td className="py-1 pr-2" style={{ color: 'var(--ms-text)' }}>#{line.job_number}</td>
+                                        <td className="py-1 pr-2" style={{ color: 'var(--ms-text-mid)' }}>{line.lead_source_label}</td>
                                         <td className="py-1 pr-2 text-right">{formatCents(line.revenue_cents)}</td>
                                         <td className="py-1 pr-2 text-right">{line.rate_bp / 100}%</td>
                                         <td className="py-1 text-right font-medium">{formatCents(line.commission_cents)}</td>

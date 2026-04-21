@@ -126,20 +126,20 @@ export default function PlatformAdminPage() {
   return (
     <div>
       <PageHeader title="Platform Admin" />
-      <p className="mb-5 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="mb-5 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
         All shops and users across the platform.
       </p>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
         {(['shops', 'users', 'activity', 'reports'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => { setTab(t); setSearch('') }}
             className="px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors"
             style={{
-              backgroundColor: tab === t ? 'var(--cafe-bg)' : 'transparent',
-              color: tab === t ? 'var(--cafe-text)' : 'var(--cafe-text-muted)',
+              backgroundColor: tab === t ? 'var(--ms-bg)' : 'transparent',
+              color: tab === t ? 'var(--ms-text)' : 'var(--ms-text-muted)',
               boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}
           >
@@ -159,10 +159,10 @@ export default function PlatformAdminPage() {
 function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
     <div className="mb-5 relative w-full max-w-md">
-      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-muted)' }} />
       <input
         className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
-        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -244,7 +244,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
   return (
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search shops or plan…" />
-      <p className="mb-4 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="mb-4 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
         Use <strong>Enter Shop</strong> to open that shop account and view its full dashboard, jobs, customers, and settings.
       </p>
       {isError && (
@@ -267,11 +267,11 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
           {filtered.length === 0 ? <EmptyState message="No shops found." /> : (
             <>
               {/* Mobile */}
-              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                 {filtered.map(t => (
                   <div key={t.id} className="p-4 space-y-1">
-                    <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{t.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{t.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       #{t.slug} · {t.plan_code} · {t.user_count} user{t.user_count !== 1 ? 's' : ''} · {t.is_active ? 'Active' : 'Suspended'}
                     </p>
                     <div className="pt-2">
@@ -279,7 +279,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         onClick={() => void enterShop(t.id)}
                         disabled={!!entering}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)', opacity: entering === t.id ? 0.6 : 1 }}
+                        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)', opacity: entering === t.id ? 0.6 : 1 }}
                       >
                         {entering === t.id ? 'Entering…' : 'Enter Shop'}
                       </button>
@@ -288,7 +288,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           handleToggleStatus(t.id, t.name, t.slug, t.is_active)
                         }}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
                       >
                         {t.is_active ? 'Suspend' : 'Reactivate'}
                       </button>
@@ -297,7 +297,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           handleForceLogout(t.id, t.name, t.slug)
                         }}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+                        style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                       >
                         Force Logout
                       </button>
@@ -308,9 +308,9 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
               {/* Desktop */}
               <table className="w-full text-sm hidden md:table">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
                     {['Shop', 'Shop Number', 'Plan', 'Users', 'Status', 'Created', 'Actions'].map(h => (
-                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                         {h}
                       </th>
                     ))}
@@ -318,13 +318,13 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 </thead>
                 <tbody>
                   {filtered.map((t, i) => (
-                    <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--cafe-text)' }}>{t.name}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>#{t.slug}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{t.user_count}</td>
+                    <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--ms-text)' }}>{t.name}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>#{t.slug}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{t.plan_code}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{t.user_count}</td>
                       <td className="px-5 py-3.5 font-medium" style={{ color: t.is_active ? '#497A59' : '#A06757' }}>{t.is_active ? 'Active' : 'Suspended'}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>
                         {new Date(t.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-3.5">
@@ -332,7 +332,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           onClick={() => void enterShop(t.id)}
                           disabled={!!entering}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
-                          style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)', opacity: entering === t.id ? 0.6 : 1 }}
+                          style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)', opacity: entering === t.id ? 0.6 : 1 }}
                         >
                           {entering === t.id ? 'Entering…' : 'Enter Shop'}
                         </button>
@@ -341,7 +341,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                             handleToggleStatus(t.id, t.name, t.slug, t.is_active)
                           }}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                          style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
                         >
                           {t.is_active ? 'Suspend' : 'Reactivate'}
                         </button>
@@ -350,14 +350,14 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                             handleForceLogout(t.id, t.name, t.slug)
                           }}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+                          style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                         >
                           Force Logout
                         </button>
                         <button
                           onClick={() => { setPlanModal({ tenantId: t.id, name: t.name, currentPlan: t.plan_code }); setPlanModalValue(t.plan_code) }}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ backgroundColor: 'transparent', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text-muted)' }}
+                          style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                         >
                           Change Plan
                         </button>
@@ -374,12 +374,12 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
       {/* Change Plan Modal */}
       {planModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
-          <div className="rounded-2xl shadow-xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border-2)' }}>
-            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--cafe-text)' }}>Change Plan — {planModal.name}</h3>
-            <p className="text-xs mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Current: <strong>{planModal.currentPlan}</strong></p>
+          <div className="rounded-2xl shadow-xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border-strong)' }}>
+            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Change Plan — {planModal.name}</h3>
+            <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>Current: <strong>{planModal.currentPlan}</strong></p>
             <select
               className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
               value={planModalValue}
               onChange={e => setPlanModalValue(e.target.value)}
             >
@@ -387,7 +387,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
             </select>
             <input
               className="w-full rounded-lg px-3 py-2.5 text-sm mb-4 outline-none"
-              style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
               placeholder="Reason (optional)"
               value={planModalReason}
               onChange={e => setPlanModalReason(e.target.value)}
@@ -396,7 +396,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
               <button
                 onClick={() => { setPlanModal(null); setPlanModalReason('') }}
                 className="px-4 py-2 rounded-lg text-sm"
-                style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
                 Cancel
               </button>
@@ -404,7 +404,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                 disabled={changePlan.isPending || planModalValue === planModal.currentPlan}
                 onClick={() => changePlan.mutate({ tenantId: planModal.tenantId, plan_code: planModalValue, reason: planModalReason.trim() || undefined })}
                 className="px-4 py-2 rounded-lg text-sm font-semibold"
-                style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: changePlan.isPending ? 0.6 : 1 }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: changePlan.isPending ? 0.6 : 1 }}
               >
                 {changePlan.isPending ? 'Saving…' : 'Save Plan'}
               </button>
@@ -440,12 +440,12 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
           {filtered.length === 0 ? <EmptyState message="No users found." /> : (
             <>
               {/* Mobile */}
-              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                 {filtered.map(u => (
                   <div key={u.id} className="p-4 space-y-0.5">
-                    <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{u.full_name}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{u.email}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{u.role} · {u.tenant_name} (#{u.tenant_slug})</p>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{u.full_name}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{u.email}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{u.role} · {u.tenant_name} (#{u.tenant_slug})</p>
                     <p className="text-xs font-medium" style={{ color: u.is_active ? '#497A59' : '#A06757' }}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </p>
@@ -454,7 +454,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                         onClick={() => void enterShop(u.tenant_id)}
                         disabled={!!entering}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
+                        style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: entering === u.tenant_id ? 0.6 : 1 }}
                       >
                         {entering === u.tenant_id ? 'Entering…' : 'Enter Shop'}
                       </button>
@@ -465,9 +465,9 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
               {/* Desktop */}
               <table className="w-full text-sm hidden md:table">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
                     {['Name', 'Email', 'Role', 'Shop', 'Status', 'Enter Shop'].map(h => (
-                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                         {h}
                       </th>
                     ))}
@@ -475,11 +475,11 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                 </thead>
                 <tbody>
                   {filtered.map((u, i) => (
-                    <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text)' }}>{u.full_name}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{u.email}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{u.role}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{u.tenant_name} (#{u.tenant_slug})</td>
+                    <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text)' }}>{u.full_name}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{u.email}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{u.role}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{u.tenant_name} (#{u.tenant_slug})</td>
                       <td className="px-5 py-3.5 font-medium" style={{ color: u.is_active ? '#497A59' : '#A06757' }}>
                         {u.is_active ? 'Active' : 'Inactive'}
                       </td>
@@ -488,7 +488,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
                           onClick={() => void enterShop(u.tenant_id)}
                           disabled={!!entering}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
-                          style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === u.tenant_id ? 0.6 : 1 }}
+                          style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: entering === u.tenant_id ? 0.6 : 1 }}
                         >
                           {entering === u.tenant_id ? 'Entering…' : 'Enter Shop'}
                         </button>
@@ -605,11 +605,11 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search activity type, actor, summary…" />
       <div className="mb-4 flex flex-wrap items-end gap-2">
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           Event type
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={eventTypeDraft}
             onChange={(e) => setEventTypeDraft(e.target.value)}
           >
@@ -619,11 +619,11 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             ))}
           </select>
         </label>
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           Entity
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={entityTypeDraft}
             onChange={(e) => setEntityTypeDraft(e.target.value)}
           >
@@ -633,11 +633,11 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             ))}
           </select>
         </label>
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           Actor
           <select
             className="mt-1 block min-w-52 rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={actorEmailDraft}
             onChange={(e) => setActorEmailDraft(e.target.value)}
           >
@@ -648,11 +648,11 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             ))}
           </select>
         </label>
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           Shop
           <select
             className="mt-1 block min-w-40 rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={shopDraft}
             onChange={(e) => setShopDraft(e.target.value)}
           >
@@ -662,22 +662,22 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             ))}
           </select>
         </label>
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           From
           <input
             type="date"
             className="mt-1 block rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={dateFromDraft}
             onChange={(e) => setDateFromDraft(e.target.value)}
           />
         </label>
-        <label className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+        <label className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           To
           <input
             type="date"
             className="mt-1 block rounded-lg px-2 py-2 text-sm"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)', color: 'var(--cafe-text)' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
             value={dateToDraft}
             onChange={(e) => setDateToDraft(e.target.value)}
           />
@@ -685,7 +685,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         <button
           type="button"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
-          style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+          style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)', border: '1px solid var(--ms-border-strong)' }}
           onClick={() => {
             setEventTypeApplied(eventTypeDraft)
             setEntityTypeApplied(entityTypeDraft)
@@ -700,7 +700,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         <button
           type="button"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
-          style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+          style={{ backgroundColor: 'transparent', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border-strong)' }}
           onClick={() => {
             setEventTypeDraft('all')
             setEntityTypeDraft('all')
@@ -721,7 +721,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         <button
           type="button"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
-          style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)' }}
+          style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
           onClick={exportCsv}
           disabled={filtered.length === 0}
         >
@@ -739,22 +739,22 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
           <Card>
             {filtered.length === 0 ? <EmptyState message="No admin activity found." /> : (
               <>
-              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                 {filtered.map((e) => (
                   <div key={e.id} className="p-4 space-y-1">
-                    <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{formatLabel(e.event_type)}</p>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>{e.event_summary}</p>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{formatLabel(e.event_type)}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>{e.event_summary}</p>
                     <div className="flex flex-wrap gap-1 pt-1">
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: '#9A7220' }}>
                         {formatLabel(e.entity_type)}
                       </span>
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border-strong)' }}>
                         ID {shortId(e.entity_id)}
                       </span>
                       <button
                         type="button"
                         className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border-strong)' }}
                         onClick={() => void copyValue(e.entity_id)}
                       >
                         {copiedValue === e.entity_id ? 'Copied' : 'Copy ID'}
@@ -762,17 +762,17 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       <button
                         type="button"
                         className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                        style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+                        style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)', border: '1px solid var(--ms-border-strong)' }}
                         onClick={() => setSelectedEventId(e.id)}
                       >
                         Details
                       </button>
                     </div>
-                    <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
                     </p>
                     {showTechnical && (
-                      <p className="text-[11px]" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <p className="text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>
                         Actor ID: {e.actor_user_id ?? 'n/a'} · Entity ID: {e.entity_id ?? 'n/a'}
                       </p>
                     )}
@@ -781,9 +781,9 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               </div>
               <table className="w-full text-sm hidden md:table">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
                     {['When', 'Actor', 'Event', 'Entity', 'Shop', 'Summary'].map(h => (
-                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                         {h}
                       </th>
                     ))}
@@ -791,25 +791,25 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                 </thead>
                 <tbody>
                   {filtered.map((e, i) => (
-                    <tr key={e.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                      <td className="px-5 py-3.5 whitespace-nowrap" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <tr key={e.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                      <td className="px-5 py-3.5 whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>
                         <span className="inline-flex items-center gap-1.5">
                           <Clock size={12} />
                           {new Date(e.created_at).toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{e.actor_email ?? 'System'}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text)' }}>{formatLabel(e.event_type)}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{e.actor_email ?? 'System'}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text)' }}>{formatLabel(e.event_type)}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>
                         <div className="flex flex-col">
                           <span>{formatLabel(e.entity_type)}</span>
-                          <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                          <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                             ID {shortId(e.entity_id)}
                             {' '}
                             <button
                               type="button"
                               className="underline"
-                              style={{ color: 'var(--cafe-text-muted)' }}
+                              style={{ color: 'var(--ms-text-muted)' }}
                               onClick={() => void copyValue(e.entity_id)}
                             >
                               {copiedValue === e.entity_id ? 'copied' : 'copy'}
@@ -817,19 +817,19 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}</td>
-                      <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}</td>
+                      <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>
                         <div className="flex flex-col">
                           <span>{e.event_summary}</span>
                           {showTechnical && (
-                            <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                            <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                               actor_user_id={e.actor_user_id ?? 'n/a'} entity_id={e.entity_id ?? 'n/a'}
                             </span>
                           )}
                           <button
                             type="button"
                             className="text-xs underline text-left mt-1"
-                            style={{ color: 'var(--cafe-text-muted)' }}
+                            style={{ color: 'var(--ms-text-muted)' }}
                             onClick={() => setSelectedEventId(e.id)}
                           >
                             View details
@@ -848,7 +848,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               <button
                 type="button"
                 className="rounded-lg px-3 py-2 text-xs font-semibold"
-                style={{ backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border-2)' }}
+                style={{ backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)', border: '1px solid var(--ms-border-strong)' }}
                 onClick={() => void fetchNextPage()}
                 disabled={isFetchingNextPage}
               >
@@ -858,28 +858,28 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
             <button
               type="button"
               className="rounded-lg px-3 py-2 text-xs font-semibold"
-              style={{ backgroundColor: 'transparent', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border-2)' }}
+              style={{ backgroundColor: 'transparent', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border-strong)' }}
               onClick={() => setShowTechnical((s) => !s)}
             >
               {showTechnical ? 'Hide technical fields' : 'Show technical fields'}
             </button>
           </div>
           {selectedEvent && (
-            <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+            <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                   Activity details: {formatLabel(selectedEvent.event_type)}
                 </p>
                 <button
                   type="button"
                   className="text-xs underline"
-                  style={{ color: 'var(--cafe-text-muted)' }}
+                  style={{ color: 'var(--ms-text-muted)' }}
                   onClick={() => setSelectedEventId(null)}
                 >
                   Close
                 </button>
               </div>
-              <div className="grid gap-1 text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+              <div className="grid gap-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                 <p><strong>Summary:</strong> {selectedEvent.event_summary}</p>
                 <p><strong>When:</strong> {new Date(selectedEvent.created_at).toLocaleString()}</p>
                 <p><strong>Shop:</strong> {tenantNameById.get(selectedEvent.tenant_id ?? '') ?? 'Platform'} ({selectedEvent.tenant_id ?? 'n/a'})</p>
@@ -914,9 +914,9 @@ function ReportsTab() {
 
   return (
     <>
-      <div className="mb-4 rounded-lg px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
+      <div className="mb-4 rounded-lg px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
         <BarChart3 size={16} />
-        <span className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+        <span className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
           Network snapshot generated {new Date(data.generated_at).toLocaleString()}
         </span>
       </div>
@@ -943,12 +943,12 @@ function ReportsTab() {
         <StatCard label="No active users" value={String(data.totals.health.tenants_no_active_users)} />
       </div>
       <Card>
-        <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+        <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
           {data.tenants.map((t) => (
             <div key={t.tenant_id} className="p-4 space-y-1">
-              <p className="font-semibold text-sm" style={{ color: 'var(--cafe-text)' }}>{t.tenant_name} (#{t.tenant_slug})</p>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{t.plan_code} · {t.users} users · {t.jobs_total} jobs</p>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{t.tenant_name} (#{t.tenant_slug})</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{t.plan_code} · {t.users} users · {t.jobs_total} jobs</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                 Billed {formatCents(t.billed_total_cents)} · Paid {formatCents(t.paid_total_cents)}
               </p>
               <p className="text-xs" style={{ color: t.health_status === 'healthy' ? '#497A59' : t.health_status === 'suspended' ? '#A06757' : '#9A7220' }}>
@@ -958,7 +958,7 @@ function ReportsTab() {
                 onClick={() => void enterShop(t.tenant_id)}
                 disabled={!!entering}
                 className="text-xs px-3 py-1.5 rounded-lg font-medium mt-1"
-                style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: entering === t.tenant_id ? 0.6 : 1 }}
               >
                 {entering === t.tenant_id ? 'Entering…' : 'Enter Shop'}
               </button>
@@ -967,9 +967,9 @@ function ReportsTab() {
         </div>
         <table className="w-full text-sm hidden md:table">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+            <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
               {['Shop', 'Plan', 'Users', 'Jobs', 'Jobs 30d', 'Invoices', 'Billed', 'Paid', 'Health', 'Last activity', ''].map(h => (
-                <th key={h} className="px-4 py-3 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                <th key={h} className="px-4 py-3 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                   {h}
                 </th>
               ))}
@@ -977,25 +977,25 @@ function ReportsTab() {
           </thead>
           <tbody>
             {data.tenants.map((t, i) => (
-              <tr key={t.tenant_id} style={{ borderBottom: i < data.tenants.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text)' }}>{t.tenant_name} (#{t.tenant_slug})</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.plan_code}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.active_users}/{t.users}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.jobs_total}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.jobs_last_30_days}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{t.paid_invoices}/{t.invoices}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.billed_total_cents)}</td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-mid)' }}>{formatCents(t.paid_total_cents)}</td>
+              <tr key={t.tenant_id} style={{ borderBottom: i < data.tenants.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text)' }}>{t.tenant_name} (#{t.tenant_slug})</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{t.plan_code}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{t.active_users}/{t.users}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{t.jobs_total}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{t.jobs_last_30_days}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{t.paid_invoices}/{t.invoices}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{formatCents(t.billed_total_cents)}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-mid)' }}>{formatCents(t.paid_total_cents)}</td>
                 <td className="px-4 py-3" style={{ color: t.health_status === 'healthy' ? '#497A59' : t.health_status === 'suspended' ? '#A06757' : '#9A7220' }}>
                   {t.health_status} · {t.logins_last_7_days} logins
                 </td>
-                <td className="px-4 py-3" style={{ color: 'var(--cafe-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => void enterShop(t.tenant_id)}
                     disabled={!!entering}
                     className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                    style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: entering === t.tenant_id ? 0.6 : 1 }}
+                    style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: entering === t.tenant_id ? 0.6 : 1 }}
                   >
                     {entering === t.tenant_id ? 'Entering…' : 'Enter Shop'}
                   </button>
@@ -1011,9 +1011,9 @@ function ReportsTab() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border-2)' }}>
-      <p className="text-[11px] uppercase tracking-widest" style={{ color: 'var(--cafe-text-muted)' }}>{label}</p>
-      <p className="text-lg font-semibold mt-1" style={{ color: 'var(--cafe-text)' }}>{value}</p>
+    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
+      <p className="text-[11px] uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>{label}</p>
+      <p className="text-lg font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>{value}</p>
     </div>
   )
 }

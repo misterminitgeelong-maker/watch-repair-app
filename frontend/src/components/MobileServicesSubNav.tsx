@@ -32,8 +32,8 @@ export default function MobileServicesSubNav({ className }: { className?: string
           }
           style={({ isActive }) =>
             isActive
-              ? { backgroundColor: 'var(--cafe-amber)', color: '#2C1810' }
-              : { backgroundColor: 'var(--cafe-surface)', color: 'var(--cafe-text-muted)' }
+              ? { backgroundColor: 'var(--ms-accent)', color: '#2C1810' }
+              : { backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text-muted)' }
           }
         >
           {t.label}

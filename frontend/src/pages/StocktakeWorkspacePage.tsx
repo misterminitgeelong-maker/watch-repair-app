@@ -13,7 +13,7 @@ type DraftEntry = {
 }
 
 const ROW_TONES: Record<string, { border: string; background: string; label: string; text: string }> = {
-  neutral: { border: 'var(--cafe-border)', background: 'var(--cafe-surface)', label: 'Pending', text: 'var(--cafe-text-muted)' },
+  neutral: { border: 'var(--ms-border)', background: 'var(--ms-surface)', label: 'Pending', text: 'var(--ms-text-muted)' },
   match: { border: '#B8D8BF', background: '#EFF8F0', label: 'Matched', text: '#24543B' },
   shortage: { border: '#E9C0C0', background: '#FCF1F1', label: 'Shortage', text: '#8B3A3A' },
   over: { border: '#F1D2A7', background: '#FFF5E7', label: 'Over', text: '#9B6820' },
@@ -164,11 +164,11 @@ export default function StocktakeWorkspacePage() {
         <Link
           to="/stocktakes"
           className="inline-flex items-center gap-1 text-sm font-medium"
-          style={{ color: 'var(--cafe-text-muted)' }}
+          style={{ color: 'var(--ms-text-muted)' }}
         >
           <ChevronLeft size={14} /> Back to stocktakes
         </Link>
-        <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>{saveStatus || 'Autosave ready'}</div>
+        <div className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>{saveStatus || 'Autosave ready'}</div>
       </div>
 
       <PageHeader
@@ -186,7 +186,7 @@ export default function StocktakeWorkspacePage() {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <div className="sticky top-0 z-30 bg-[var(--cafe-surface)] p-3 rounded-2xl shadow-sm xl:col-span-3 flex flex-col gap-3">
+        <div className="sticky top-0 z-30 bg-[var(--ms-surface)] p-3 rounded-2xl shadow-sm xl:col-span-3 flex flex-col gap-3">
           <div className="flex flex-wrap gap-3 items-center">
             <Select
               label="Group"
@@ -220,17 +220,17 @@ export default function StocktakeWorkspacePage() {
             </Button>
           </div>
           <div className="flex flex-wrap gap-3 items-center mt-2">
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               <input type="checkbox" checked={hideZeroStock} onChange={event => setHideZeroStock(event.target.checked)} /> Hide zero-stock
             </label>
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={countQueueMode}
                 onChange={event => setCountQueueMode(event.target.checked)}
               /> Count queue mode
             </label>
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={hideCounted}
@@ -245,20 +245,20 @@ export default function StocktakeWorkspacePage() {
         </div>
 
         <Card className="p-4">
-          <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>Progress</div>
-          <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--cafe-text)' }}>
+          <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Progress</div>
+          <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--ms-text)' }}>
             {progress.counted_items} / {progress.total_items}
           </div>
-          <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+          <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
             <div
               className="h-full rounded-full"
               style={{
                 width: progress.total_items === 0 ? '0%' : `${Math.round((progress.counted_items / progress.total_items) * 100)}%`,
-                backgroundColor: 'var(--cafe-amber)',
+                backgroundColor: 'var(--ms-accent)',
               }}
             />
           </div>
-          <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             <div className="flex items-center gap-2">
               <ScanLine size={15} /> Queue mode keeps the list focused on items still needing a count.
             </div>
@@ -286,18 +286,18 @@ export default function StocktakeWorkspacePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 items-center">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.item_code}</span>
-                      <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#F5EDE0', color: 'var(--cafe-text-mid)' }}>
+                      <span className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>{line.item_code}</span>
+                      <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#F5EDE0', color: 'var(--ms-text-mid)' }}>
                         {line.group_code}{line.group_name ? ` / ${line.group_name}` : ''}
                       </span>
                       <span className="text-xs font-semibold" style={{ color: tone.text }}>{tone.label}</span>
                     </div>
-                    <div className="mt-1 text-sm" style={{ color: 'var(--cafe-text)' }}>{line.full_description || line.item_description || 'No description'}</div>
+                    <div className="mt-1 text-sm" style={{ color: 'var(--ms-text)' }}>{line.full_description || line.item_description || 'No description'}</div>
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>System qty</div>
-                    <div className="mt-1 text-xl font-semibold" style={{ color: 'var(--cafe-text)' }}>{line.expected_qty}</div>
+                    <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--ms-text-muted)' }}>System qty</div>
+                    <div className="mt-1 text-xl font-semibold" style={{ color: 'var(--ms-text)' }}>{line.expected_qty}</div>
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -332,11 +332,11 @@ export default function StocktakeWorkspacePage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--cafe-text-muted)' }}>Variance</div>
+                    <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Variance</div>
                     <div className="mt-1 text-xl font-semibold" style={{ color: tone.text }}>
                       {variance == null ? 'Pending' : `${variance > 0 ? '+' : ''}${variance}`}
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <div className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                       {variance == null ? 'No count yet' : formatCents(Math.round(variance * line.cost_price_cents))}
                     </div>
                   </div>

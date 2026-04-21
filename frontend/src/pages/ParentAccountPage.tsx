@@ -250,7 +250,7 @@ export default function ParentAccountPage() {
         title='My Shops'
         action={<Button onClick={() => { setError(''); setShowAddModal(true) }}>+ Add Shop</Button>}
       />
-      <p className='text-sm mb-5' style={{ color: 'var(--cafe-text-muted)', marginTop: '-12px' }}>
+      <p className='text-sm mb-5' style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
         Manage all your shop locations from one login. Switch between shops or set up website lead routing below.
       </p>
 
@@ -268,9 +268,9 @@ export default function ParentAccountPage() {
             <button
               className='flex-1 py-2 rounded-lg text-sm font-medium transition-colors'
               style={{
-                backgroundColor: addMode === 'create' ? 'var(--cafe-accent)' : 'var(--cafe-surface)',
-                color: addMode === 'create' ? 'var(--cafe-accent-text, #fff)' : 'var(--cafe-text-mid)',
-                border: '1px solid var(--cafe-border-2)',
+                backgroundColor: addMode === 'create' ? 'var(--ms-accent)' : 'var(--ms-surface)',
+                color: addMode === 'create' ? '#fff' : 'var(--ms-text-mid)',
+                border: '1px solid var(--ms-border-strong)',
               }}
               onClick={() => { setAddMode('create'); setError('') }}
             >
@@ -279,9 +279,9 @@ export default function ParentAccountPage() {
             <button
               className='flex-1 py-2 rounded-lg text-sm font-medium transition-colors'
               style={{
-                backgroundColor: addMode === 'link' ? 'var(--cafe-accent)' : 'var(--cafe-surface)',
-                color: addMode === 'link' ? 'var(--cafe-accent-text, #fff)' : 'var(--cafe-text-mid)',
-                border: '1px solid var(--cafe-border-2)',
+                backgroundColor: addMode === 'link' ? 'var(--ms-accent)' : 'var(--ms-surface)',
+                color: addMode === 'link' ? '#fff' : 'var(--ms-text-mid)',
+                border: '1px solid var(--ms-border-strong)',
               }}
               onClick={() => { setAddMode('link'); setError('') }}
             >
@@ -291,7 +291,7 @@ export default function ParentAccountPage() {
 
           {addMode === 'create' && (
             <div className='space-y-3'>
-              <p className='text-sm' style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className='text-sm' style={{ color: 'var(--ms-text-mid)' }}>
                 Set up a brand new shop and it will appear in your shop list straight away.
               </p>
               <Input
@@ -307,7 +307,7 @@ export default function ParentAccountPage() {
                 onChange={e => setNewTenantSlug(e.target.value)}
                 placeholder='mainspring-north'
               />
-              <p className='text-xs' style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
                 The shop number is used to log in. Use lowercase letters, numbers and hyphens only.
               </p>
               <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
@@ -335,7 +335,7 @@ export default function ParentAccountPage() {
 
           {addMode === 'link' && (
             <div className='space-y-3'>
-              <p className='text-sm' style={{ color: 'var(--cafe-text-mid)' }}>
+              <p className='text-sm' style={{ color: 'var(--ms-text-mid)' }}>
                 Already have a shop on the system? Enter its shop number and owner email to link it to your account.
               </p>
               <Input
@@ -369,19 +369,19 @@ export default function ParentAccountPage() {
 
       {/* Shops list */}
       <Card className='mb-6'>
-        <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-          <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>
+        <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+          <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>
             Your Shops {data ? `(${data.sites.length})` : ''}
           </h2>
           {data && (
-            <p className='text-xs mt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
               {data.parent_account_name} · {data.owner_email}
             </p>
           )}
         </div>
         {!data || data.sites.length === 0 ? (
           <div className='px-5 py-8 text-center'>
-            <p className='text-sm' style={{ color: 'var(--cafe-text-muted)' }}>No shops yet. Hit <strong>Add Shop</strong> to get started.</p>
+            <p className='text-sm' style={{ color: 'var(--ms-text-muted)' }}>No shops yet. Hit <strong>Add Shop</strong> to get started.</p>
           </div>
         ) : (
           <div>
@@ -389,21 +389,21 @@ export default function ParentAccountPage() {
               <div
                 key={site.tenant_id}
                 className='px-5 py-4 flex items-center justify-between gap-4'
-                style={{ borderBottom: '1px solid var(--cafe-border)' }}
+                style={{ borderBottom: '1px solid var(--ms-border)' }}
               >
                 <div className='min-w-0'>
                   <div className='flex items-center gap-2 flex-wrap'>
-                    <p className='font-semibold text-sm' style={{ color: 'var(--cafe-text)' }}>{site.tenant_name}</p>
+                    <p className='font-semibold text-sm' style={{ color: 'var(--ms-text)' }}>{site.tenant_name}</p>
                     {site.tenant_id === activeSiteTenantId && (
                       <span
                         className='text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide'
-                        style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)' }}
+                        style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
                       >
                         Active
                       </span>
                     )}
                   </div>
-                  <p className='text-xs mt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
                     Shop #{site.tenant_slug} · {site.owner_email}
                   </p>
                 </div>
@@ -435,8 +435,8 @@ export default function ParentAccountPage() {
 
       {/* Website lead routing */}
       <Card className='mb-6 p-5'>
-        <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Website Lead Routing</h2>
-        <p className='text-sm mt-1 mb-5' style={{ color: 'var(--cafe-text-mid)' }}>
+        <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Website Lead Routing</h2>
+        <p className='text-sm mt-1 mb-5' style={{ color: 'var(--ms-text-mid)' }}>
           Customers submit a job request on your website, pick their suburb, and it automatically lands in the right shop's inbox — ready to quote.
         </p>
 
@@ -444,9 +444,9 @@ export default function ParentAccountPage() {
         <div className='mb-5'>
           <div className='flex items-center gap-2 mb-2'>
             <StepBadge n={1} done={!!ingestUrl} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--cafe-text)' }}>Generate your link</p>
+            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Generate your link</p>
           </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
             This is the URL your website posts to when a customer fills in their details.
           </p>
           <div className='ml-8 flex flex-wrap gap-2'>
@@ -464,7 +464,7 @@ export default function ParentAccountPage() {
             )}
           </div>
           {ingestUrl && (
-            <p className='text-xs mt-2 ml-8 break-all font-mono' style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className='text-xs mt-2 ml-8 break-all font-mono' style={{ color: 'var(--ms-text-muted)' }}>
               {ingestUrl}
             </p>
           )}
@@ -474,9 +474,9 @@ export default function ParentAccountPage() {
         <div className='mb-5'>
           <div className='flex items-center gap-2 mb-2'>
             <StepBadge n={2} done={secretConfigured} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--cafe-text)' }}>Set a security password</p>
+            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Set a security password</p>
           </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
             Your website sends this password with every request so only your site can submit leads. Must be at least 16 characters.
           </p>
           <div className='ml-8 grid gap-3 md:grid-cols-2 max-w-lg'>
@@ -517,9 +517,9 @@ export default function ParentAccountPage() {
         <div>
           <div className='flex items-center gap-2 mb-2'>
             <StepBadge n={3} done={suburbRoutes.length > 0 || !!savedDefaultTenantId} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--cafe-text)' }}>Map suburbs to shops</p>
+            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Map suburbs to shops</p>
           </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
             When a customer picks their suburb, the lead goes to the matching shop. Set a fallback shop for any suburbs you haven't mapped.
           </p>
 
@@ -579,17 +579,17 @@ export default function ParentAccountPage() {
 
           {/* Route list */}
           {suburbRoutes.length === 0 ? (
-            <p className='text-sm mt-3 ml-8' style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className='text-sm mt-3 ml-8' style={{ color: 'var(--ms-text-muted)' }}>
               No suburb routes yet.
             </p>
           ) : (
-            <ul className='mt-3 ml-8 divide-y rounded-lg border' style={{ borderColor: 'var(--cafe-border)' }}>
+            <ul className='mt-3 ml-8 divide-y rounded-lg border' style={{ borderColor: 'var(--ms-border)' }}>
               {suburbRoutes.map(r => (
                 <li key={r.id} className='px-3 py-2.5 flex justify-between gap-3 text-sm'>
-                  <span style={{ color: 'var(--cafe-text)' }}>
+                  <span style={{ color: 'var(--ms-text)' }}>
                     <span className='font-medium'>{r.suburb_normalized}</span>
-                    <span style={{ color: 'var(--cafe-text-muted)' }}>, {r.state_code}</span>
-                    <span style={{ color: 'var(--cafe-text-muted)' }}> → {siteLabel(r.target_tenant_id)}</span>
+                    <span style={{ color: 'var(--ms-text-muted)' }}>, {r.state_code}</span>
+                    <span style={{ color: 'var(--ms-text-muted)' }}> → {siteLabel(r.target_tenant_id)}</span>
                   </span>
                   <Button
                     variant='ghost'
@@ -611,9 +611,9 @@ export default function ParentAccountPage() {
 
       {/* Activity log */}
       <Card>
-        <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--cafe-border)' }}>
-          <h2 className='font-semibold' style={{ color: 'var(--cafe-text)' }}>Recent Activity</h2>
-          <p className='text-xs mt-0.5' style={{ color: 'var(--cafe-text-muted)' }}>
+        <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+          <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Recent Activity</h2>
+          <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
             Actions taken across all your shops.
           </p>
         </div>
@@ -625,15 +625,15 @@ export default function ParentAccountPage() {
               <div
                 key={event.id}
                 className='px-5 py-3 text-sm flex items-start justify-between gap-3'
-                style={{ borderBottom: '1px solid var(--cafe-border)' }}
+                style={{ borderBottom: '1px solid var(--ms-border)' }}
               >
                 <div>
-                  <p className='font-semibold' style={{ color: 'var(--cafe-text)' }}>{event.event_summary}</p>
-                  <p className='text-xs capitalize' style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className='font-semibold' style={{ color: 'var(--ms-text)' }}>{event.event_summary}</p>
+                  <p className='text-xs capitalize' style={{ color: 'var(--ms-text-muted)' }}>
                     {event.event_type.replace(/_/g, ' ')}{event.actor_email ? ` · ${event.actor_email}` : ''}
                   </p>
                 </div>
-                <p className='text-xs whitespace-nowrap' style={{ color: 'var(--cafe-text-muted)' }}>
+                <p className='text-xs whitespace-nowrap' style={{ color: 'var(--ms-text-muted)' }}>
                   {new Date(event.created_at).toLocaleString()}
                 </p>
               </div>
@@ -650,8 +650,8 @@ function StepBadge({ n, done }: { n: number; done: boolean }) {
     <div
       className='w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0'
       style={{
-        backgroundColor: done ? '#1F6D4C' : 'var(--cafe-border-2)',
-        color: done ? '#fff' : 'var(--cafe-text-muted)',
+        backgroundColor: done ? '#1F6D4C' : 'var(--ms-border-strong)',
+        color: done ? '#fff' : 'var(--ms-text-muted)',
       }}
     >
       {done ? '✓' : n}

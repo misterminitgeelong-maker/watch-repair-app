@@ -536,8 +536,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     claimMutation.isPending
 
   const chipBase = 'px-3 py-1 rounded-full text-xs font-medium transition-all border'
-  function chipStyle(active: boolean, ac = 'var(--cafe-gold)') {
-    return { backgroundColor: active ? ac : 'rgba(31,23,18,0.06)', color: active ? '#fff' : 'var(--cafe-text-muted)', borderColor: active ? ac : 'var(--cafe-border)' }
+  function chipStyle(active: boolean, ac = 'var(--ms-accent)') {
+    return { backgroundColor: active ? ac : 'rgba(31,23,18,0.06)', color: active ? '#fff' : 'var(--ms-text-muted)', borderColor: active ? ac : 'var(--ms-border)' }
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -550,24 +550,24 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   // ── Empty / done ──────────────────────────────────────────────────────────
   if (!current) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(31,23,18,0.97)' }}>
-      <div className="rounded-2xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-        <h2 className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--cafe-text)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+      <div className="rounded-2xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+        <h2 className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--ms-text)' }}>
           Queue Clear 👌
         </h2>
         {/* Session summary */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
-            { label: 'Advanced', count: stats.advanced, color: 'var(--cafe-gold)' },
-            { label: 'Checked In', count: stats.checkedIn, color: 'var(--cafe-text-muted)' },
-            { label: 'Skipped', count: stats.skipped, color: 'var(--cafe-border-2)' },
+            { label: 'Advanced', count: stats.advanced, color: 'var(--ms-accent)' },
+            { label: 'Checked In', count: stats.checkedIn, color: 'var(--ms-text-muted)' },
+            { label: 'Skipped', count: stats.skipped, color: 'var(--ms-border-strong)' },
           ].map(({ label, count, color }) => (
-            <div key={label} className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--cafe-bg)', border: '1px solid var(--cafe-border)' }}>
+            <div key={label} className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
               <div className="text-2xl font-black" style={{ color }}>{count}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--cafe-text-muted)' }}>{label}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{label}</div>
             </div>
           ))}
         </div>
-        <button onClick={onClose} className="w-full py-2.5 rounded-xl font-semibold" style={{ backgroundColor: 'var(--cafe-gold)', color: '#fff' }}>
+        <button onClick={onClose} className="w-full py-2.5 rounded-xl font-semibold" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>
           Done
         </button>
       </div>
@@ -581,7 +581,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#1F1712' }}>
         <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <span className="font-bold" style={{ color: '#FCFAF6', fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <span className="font-bold" style={{ color: '#FCFAF6' }}>
             {detailJob?.job_number} — Details
           </span>
           <button onClick={() => setDetailJobId(null)} className="p-2" style={{ color: '#8A7563' }}><X size={20} /></button>
@@ -592,27 +592,27 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           ) : detail ? (
             <div className="space-y-4 max-w-sm mx-auto">
               {/* Key info */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-                <div className="text-sm font-semibold mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Job Info</div>
-                {detail.description && <p className="text-sm mb-2" style={{ color: 'var(--cafe-text)' }}>{detail.description}</p>}
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                <div className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text-muted)' }}>Job Info</div>
+                {detail.description && <p className="text-sm mb-2" style={{ color: 'var(--ms-text)' }}>{detail.description}</p>}
                 {detail.collection_date && (
-                  <div className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>Collection: {detail.collection_date}</div>
+                  <div className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Collection: {detail.collection_date}</div>
                 )}
                 {detail.salesperson && (
-                  <div className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>Salesperson: {detail.salesperson}</div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>Salesperson: {detail.salesperson}</div>
                 )}
               </div>
 
               {/* Shoe items */}
               {'items' in detail && (detail as ShoeRepairJob).items.length > 0 && (
-                <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-                  <div className="text-sm font-semibold mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Repair Items</div>
+                <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                  <div className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text-muted)' }}>Repair Items</div>
                   <div className="space-y-1">
                     {(detail as ShoeRepairJob).items.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm" style={{ color: 'var(--cafe-text)' }}>
+                      <div key={i} className="flex justify-between text-sm" style={{ color: 'var(--ms-text)' }}>
                         <span>{item.item_name}</span>
                         {item.unit_price_cents != null && (
-                          <span style={{ color: 'var(--cafe-text-muted)' }}>${(item.unit_price_cents / 100).toFixed(2)}</span>
+                          <span style={{ color: 'var(--ms-text-muted)' }}>${(item.unit_price_cents / 100).toFixed(2)}</span>
                         )}
                       </div>
                     ))}
@@ -621,13 +621,13 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               )}
 
               {/* Financials */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-                <div className="text-sm font-semibold mb-2" style={{ color: 'var(--cafe-text-muted)' }}>Financials</div>
-                <div className="flex justify-between text-sm" style={{ color: 'var(--cafe-text)' }}>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                <div className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text-muted)' }}>Financials</div>
+                <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text)' }}>
                   <span>Deposit</span><span>${(detail.deposit_cents / 100).toFixed(2)}</span>
                 </div>
                 {detail.cost_cents > 0 && (
-                  <div className="flex justify-between text-sm mt-1" style={{ color: 'var(--cafe-text)' }}>
+                  <div className="flex justify-between text-sm mt-1" style={{ color: 'var(--ms-text)' }}>
                     <span>Job total</span><span>${(detail.cost_cents / 100).toFixed(2)}</span>
                   </div>
                 )}
@@ -638,13 +638,13 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 to={mode === 'watch' ? `/jobs/${detailJobId}` : `/shoe-repairs/${detailJobId}`}
                 onClick={onClose}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold"
-                style={{ backgroundColor: 'rgba(184,149,86,0.12)', color: 'var(--cafe-gold-dark)', border: '1px solid rgba(184,149,86,0.25)' }}
+                style={{ backgroundColor: 'rgba(184,149,86,0.12)', color: 'var(--ms-accent-hover)', border: '1px solid rgba(184,149,86,0.25)' }}
               >
                 <ExternalLink size={14} /> Open full job
               </Link>
             </div>
           ) : (
-            <p className="text-center text-sm" style={{ color: 'var(--cafe-text-muted)' }}>Could not load details.</p>
+            <p className="text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>Could not load details.</p>
           )}
         </div>
       </div>
@@ -658,7 +658,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center gap-3">
-          <span className="font-bold text-lg" style={{ color: '#FCFAF6', fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <span className="font-bold text-lg" style={{ color: '#FCFAF6' }}>
             {mode === 'watch' ? 'Watch' : 'Shoe'} Queue
           </span>
           <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.15)', color: '#B89556' }} title="Progress syncs to the server for your account. Shop day follows tenant timezone; this device also keeps an offline copy.">
@@ -703,7 +703,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 return (
                   <button key={s} onClick={() => setFilterStatuses(prev => { const n = new Set(prev); on ? n.delete(s) : n.add(s); return n })}
                     className="px-2.5 py-1 rounded-full text-xs border"
-                    style={{ backgroundColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.1)' }}>
+                    style={{ backgroundColor: on ? 'var(--ms-accent)' : 'rgba(255,255,255,0.06)', color: on ? '#fff' : '#8A7563', borderColor: on ? 'var(--ms-accent)' : 'rgba(255,255,255,0.1)' }}>
                     {STATUS_LABELS[s] ?? s}
                   </button>
                 )
@@ -761,7 +761,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       {/* Progress bar */}
       {(doneCount + remaining) > 0 && (
         <div className="h-1" style={{ backgroundColor: 'rgba(184,149,86,0.15)' }}>
-          <div className="h-full transition-all duration-300" style={{ width: `${(doneCount / (doneCount + remaining)) * 100}%`, backgroundColor: 'var(--cafe-gold)' }} />
+          <div className="h-full transition-all duration-300" style={{ width: `${(doneCount / (doneCount + remaining)) * 100}%`, backgroundColor: 'var(--ms-accent)' }} />
         </div>
       )}
 
@@ -778,7 +778,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
         )}
         {advanceHint && cardState === 'view' && (
           <div className="absolute right-5 top-1/2 z-20 pointer-events-none" style={{ transform: 'translateY(-50%) rotate(12deg)', opacity: Math.min(1, dragX / SWIPE_THRESHOLD) }}>
-            <span className="block px-4 py-2 rounded-xl font-black text-base" style={{ backgroundColor: 'var(--cafe-gold)', color: '#fff', border: '2px solid #D4AF5E' }}>ADVANCE</span>
+            <span className="block px-4 py-2 rounded-xl font-black text-base" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', border: '2px solid #D4AF5E' }}>ADVANCE</span>
           </div>
         )}
 
@@ -787,7 +787,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           <div
             ref={cardRef}
             className="w-full max-w-sm rounded-2xl shadow-2xl"
-            style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)', transform: `translateX(${dragX}px) rotate(${rotation}deg)`, transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)', touchAction: 'none', userSelect: 'none', cursor: isDragging ? 'grabbing' : 'grab' }}
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', transform: `translateX(${dragX}px) rotate(${rotation}deg)`, transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)', touchAction: 'none', userSelect: 'none', cursor: isDragging ? 'grabbing' : 'grab' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -796,7 +796,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             {/* Priority bar */}
             <div className="h-2 rounded-t-2xl flex overflow-hidden">
               <div className="flex-1" style={{ backgroundColor: PRIORITY_COLORS[current.priority] ?? '#8A7563' }} />
-              {isMyClaim && <div className="w-6" style={{ backgroundColor: 'var(--cafe-gold)' }} />}
+              {isMyClaim && <div className="w-6" style={{ backgroundColor: 'var(--ms-accent)' }} />}
             </div>
 
             <div className="p-5">
@@ -807,20 +807,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                     onPointerDown={e => e.stopPropagation()}
                     onClick={() => setDetailJobId(current.id)}
                     className="text-3xl font-black tracking-tight flex items-center gap-1.5 group"
-                    style={{ color: 'var(--cafe-espresso)', fontFamily: "'Playfair Display', Georgia, serif" }}
+                    style={{ color: 'var(--ms-sidebar)' }}
                   >
                     {current.job_number}
-                    <ExternalLink size={14} className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--cafe-gold)' }} />
+                    <ExternalLink size={14} className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--ms-accent)' }} />
                   </button>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+                    <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       {days === 0 ? 'Today' : days === 1 ? '1 day in shop' : `${days} days in shop`}
                     </span>
                     {collectionUrgency === 0 && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#7B241C', color: '#FADBD8' }}>OVERDUE</span>}
                     {collectionUrgency === 1 && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#C0392B', color: '#fff' }}>DUE TODAY</span>}
                     {collectionUrgency === 2 && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#D4693A', color: '#fff' }}>DUE TOMORROW</span>}
-                    {isMyClaim && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--cafe-gold)', color: '#fff' }}>ON IT</span>}
-                    {isOthersClaim && <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'var(--cafe-text-muted)' }}>by {current.claimed_by_name ?? 'someone'}</span>}
+                    {isMyClaim && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>ON IT</span>}
+                    {isOthersClaim && <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'var(--ms-text-muted)' }}>by {current.claimed_by_name ?? 'someone'}</span>}
                   </div>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase text-white shrink-0" style={{ backgroundColor: PRIORITY_COLORS[current.priority] ?? '#8A7563' }}>
@@ -828,38 +828,38 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 </span>
               </div>
 
-              <div className="text-lg font-semibold leading-snug mb-0.5" style={{ color: 'var(--cafe-text)' }}>{current.title}</div>
-              {current.customer_name && <div className="text-sm mb-2" style={{ color: 'var(--cafe-text-muted)' }}>{current.customer_name}</div>}
+              <div className="text-lg font-semibold leading-snug mb-0.5" style={{ color: 'var(--ms-text)' }}>{current.title}</div>
+              {current.customer_name && <div className="text-sm mb-2" style={{ color: 'var(--ms-text-muted)' }}>{current.customer_name}</div>}
 
               {/* Context */}
               {current.type === 'shoe' && current.items && current.items.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {current.items.slice(0, 4).map((item, i) => (
-                    <span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>{item}</span>
+                    <span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>{item}</span>
                   ))}
-                  {current.items.length > 4 && <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>+{current.items.length - 4}</span>}
+                  {current.items.length > 4 && <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>+{current.items.length - 4}</span>}
                 </div>
               )}
               {current.type === 'watch' && current.description && (
-                <p className="text-xs mb-2 line-clamp-2" style={{ color: 'var(--cafe-text-muted)' }}>{current.description}</p>
+                <p className="text-xs mb-2 line-clamp-2" style={{ color: 'var(--ms-text-muted)' }}>{current.description}</p>
               )}
 
               {RECOMMENDED_ACTION[current.status] && (
                 <div className="flex items-center gap-1.5 mb-3 mt-1">
-                  <ChevronRight size={13} style={{ color: 'var(--cafe-gold)', flexShrink: 0 }} />
-                  <span className="text-xs font-medium" style={{ color: 'var(--cafe-amber)' }}>{RECOMMENDED_ACTION[current.status]}</span>
+                  <ChevronRight size={13} style={{ color: 'var(--ms-accent)', flexShrink: 0 }} />
+                  <span className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>{RECOMMENDED_ACTION[current.status]}</span>
                 </div>
               )}
 
               {/* Status pills */}
               <div className="flex items-center gap-2 flex-wrap mb-3">
-                <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>
+                <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>
                   {STATUS_LABELS[current.status] ?? current.status}
                 </span>
                 {nextStatus && (
                   <>
-                    <ChevronRight size={13} style={{ color: 'var(--cafe-border-2)' }} />
-                    <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.12)', color: 'var(--cafe-gold-dark)', border: '1px solid rgba(184,149,86,0.25)' }}>
+                    <ChevronRight size={13} style={{ color: 'var(--ms-border-strong)' }} />
+                    <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(184,149,86,0.12)', color: 'var(--ms-accent-hover)', border: '1px solid rgba(184,149,86,0.25)' }}>
                       {STATUS_LABELS[nextStatus] ?? nextStatus}
                     </span>
                   </>
@@ -874,7 +874,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                     onClick={handleSendSms}
                     disabled={smsSending || smsResult === 'sent'}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium w-full justify-center"
-                    style={{ backgroundColor: smsResult === 'sent' ? 'rgba(184,149,86,0.12)' : 'var(--cafe-bg)', color: smsResult === 'sent' ? 'var(--cafe-gold-dark)' : 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}
+                    style={{ backgroundColor: smsResult === 'sent' ? 'rgba(184,149,86,0.12)' : 'var(--ms-bg)', color: smsResult === 'sent' ? 'var(--ms-accent-hover)' : 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}
                   >
                     <MessageSquare size={13} />
                     {smsSending ? 'Sending…' : smsResult === 'sent' ? 'SMS sent ✓' : smsResult === 'error' ? 'SMS failed — tap to retry' : current.status === 'awaiting_go_ahead' ? 'Remind customer (SMS)' : 'Notify ready (SMS)'}
@@ -883,15 +883,15 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               )}
 
               {/* Card actions */}
-              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--cafe-border)' }}>
+              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
                 <button onPointerDown={e => e.stopPropagation()} onClick={() => { setCardState('note'); setSelectedNote(''); setCustomNote('') }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>
+                  style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>
                   <StickyNote size={13} /> Note
                 </button>
                 <button onPointerDown={e => e.stopPropagation()} onClick={handleToggleClaim}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: isMyClaim ? 'rgba(184,149,86,0.12)' : 'var(--cafe-bg)', color: isMyClaim ? 'var(--cafe-gold-dark)' : 'var(--cafe-text-muted)', border: `1px solid ${isMyClaim ? 'rgba(184,149,86,0.4)' : 'var(--cafe-border)'}` }}>
+                  style={{ backgroundColor: isMyClaim ? 'rgba(184,149,86,0.12)' : 'var(--ms-bg)', color: isMyClaim ? 'var(--ms-accent-hover)' : 'var(--ms-text-muted)', border: `1px solid ${isMyClaim ? 'rgba(184,149,86,0.4)' : 'var(--ms-border)'}` }}>
                   <Wrench size={13} /> {isMyClaim ? 'Release' : 'Claim'}
                 </button>
               </div>
@@ -901,14 +901,14 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {/* ── ADVANCE panel ── */}
         {cardState === 'advance' && (
-          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--cafe-gold)' }} />
+          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--ms-accent)' }} />
             <div className="p-5">
-              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--cafe-text)' }}>{current.job_number} — {current.title}</div>
-              <div className="text-sm mb-4" style={{ color: 'var(--cafe-amber)' }}>Advance to: <strong>{STATUS_LABELS[nextStatus!] ?? nextStatus}</strong></div>
+              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--ms-text)' }}>{current.job_number} — {current.title}</div>
+              <div className="text-sm mb-4" style={{ color: 'var(--ms-accent)' }}>Advance to: <strong>{STATUS_LABELS[nextStatus!] ?? nextStatus}</strong></div>
               {nextStatus && (ADVANCE_NOTE_CHIPS[nextStatus] ?? []).length > 0 && (
                 <div className="mb-3">
-                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Add a note (optional)</div>
+                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Add a note (optional)</div>
                   <div className="flex flex-wrap gap-2">
                     {(ADVANCE_NOTE_CHIPS[nextStatus] ?? []).map(chip => (
                       <button key={chip} onClick={() => { setSelectedNote(p => p === chip ? '' : chip); setCustomNote('') }} className={chipBase} style={chipStyle(selectedNote === chip)}>{chip}</button>
@@ -916,10 +916,10 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                   </div>
                 </div>
               )}
-              <input type="text" placeholder="Or type a custom note…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)', outline: 'none' }} />
+              <input type="text" placeholder="Or type a custom note…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', outline: 'none' }} />
               <div className="flex gap-3">
-                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>Cancel</button>
-                <button onClick={handleAdvance} disabled={isPending} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: 'var(--cafe-gold)', color: '#fff', opacity: isPending ? 0.65 : 1 }}>{isPending ? 'Saving…' : 'Confirm'}</button>
+                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>Cancel</button>
+                <button onClick={handleAdvance} disabled={isPending} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: isPending ? 0.65 : 1 }}>{isPending ? 'Saving…' : 'Confirm'}</button>
               </div>
               {(watchQueueSwipeMutation.isError || shoeAdvanceMutation.isError) && (
                 <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>
@@ -930,11 +930,11 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {/* ── NOTE panel ── */}
         {cardState === 'note' && (
-          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
+          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
             <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--cafe-espresso-3)' }} />
             <div className="p-5">
-              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--cafe-text)' }}>{current.job_number} — {current.title}</div>
-              <div className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Add a note — status unchanged</div>
+              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--ms-text)' }}>{current.job_number} — {current.title}</div>
+              <div className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>Add a note — status unchanged</div>
               {(STATUS_NOTE_CHIPS[current.status] ?? []).length > 0 && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-2">
@@ -944,9 +944,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                   </div>
                 </div>
               )}
-              <input type="text" placeholder="Type a note…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)', outline: 'none' }} />
+              <input type="text" placeholder="Type a note…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', outline: 'none' }} />
               <div className="flex gap-3">
-                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>Cancel</button>
+                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>Cancel</button>
                 <button onClick={handleSaveNote} disabled={isPending || noteSaved || (!selectedNote && !customNote.trim())} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: noteSaved ? '#2D6A4F' : 'var(--cafe-espresso-2)', color: noteSaved ? '#fff' : '#D5C8BB', opacity: isPending || (!selectedNote && !customNote.trim()) ? 0.5 : 1 }}>{isPending ? 'Saving…' : noteSaved ? 'Saved ✓' : 'Save Note'}</button>
               </div>
               {noteMutation.isError && <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>}
@@ -956,25 +956,25 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
         {/* ── NO UPDATE panel ── */}
         {cardState === 'noUpdate' && (
-          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--cafe-surface)', border: '1px solid var(--cafe-border)' }}>
-            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--cafe-border-2)' }} />
+          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--ms-border-strong)' }} />
             <div className="p-5">
-              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--cafe-text)' }}>{current.job_number} — {current.title}</div>
-              <div className="text-sm mb-4" style={{ color: 'var(--cafe-text-muted)' }}>Mark checked in — no update needed</div>
+              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--ms-text)' }}>{current.job_number} — {current.title}</div>
+              <div className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>Mark checked in — no update needed</div>
               {(NO_UPDATE_CHIPS[current.status] ?? []).length > 0 && (
                 <div className="mb-3">
-                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>Reason (optional)</div>
+                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Reason (optional)</div>
                   <div className="flex flex-wrap gap-2">
                     {(NO_UPDATE_CHIPS[current.status] ?? []).map(chip => (
-                      <button key={chip} onClick={() => { setSelectedNote(p => p === chip ? '' : chip); setCustomNote('') }} className={chipBase} style={chipStyle(selectedNote === chip, 'var(--cafe-text-muted)')}>{chip}</button>
+                      <button key={chip} onClick={() => { setSelectedNote(p => p === chip ? '' : chip); setCustomNote('') }} className={chipBase} style={chipStyle(selectedNote === chip, 'var(--ms-text-muted)')}>{chip}</button>
                     ))}
                   </div>
                 </div>
               )}
-              <input type="text" placeholder="Add a reason (optional)…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text)', border: '1px solid var(--cafe-border)', outline: 'none' }} />
+              <input type="text" placeholder="Add a reason (optional)…" value={customNote} onChange={e => { setCustomNote(e.target.value); setSelectedNote('') }} className="w-full px-3 py-2 rounded-lg text-sm mb-4" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', outline: 'none' }} />
               <div className="flex gap-3">
-                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--cafe-bg)', color: 'var(--cafe-text-muted)', border: '1px solid var(--cafe-border)' }}>Cancel</button>
-                <button onClick={handleCheckedIn} disabled={isPending} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--cafe-espresso)', color: '#D5C8BB', opacity: isPending ? 0.65 : 1 }}>
+                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>Cancel</button>
+                <button onClick={handleCheckedIn} disabled={isPending} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--ms-sidebar)', color: '#D5C8BB', opacity: isPending ? 0.65 : 1 }}>
                   <CheckCheck size={15} />{isPending ? 'Saving…' : 'Checked In'}
                 </button>
               </div>
@@ -1002,7 +1002,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
             <CheckCheck size={15} /> No Update
           </button>
           <button onClick={() => setCardState('advance')} disabled={!nextStatus} className="flex-1 py-3 rounded-2xl font-semibold flex items-center justify-center gap-1.5 text-sm"
-            style={{ backgroundColor: nextStatus ? 'var(--cafe-gold)' : 'rgba(255,255,255,0.05)', color: nextStatus ? '#fff' : 'rgba(255,255,255,0.2)', border: 'none' }}>
+            style={{ backgroundColor: nextStatus ? 'var(--ms-accent)' : 'rgba(255,255,255,0.05)', color: nextStatus ? '#fff' : 'rgba(255,255,255,0.2)', border: 'none' }}>
             <ChevronRight size={15} /> Advance
           </button>
         </div>

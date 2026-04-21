@@ -238,18 +238,18 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     return (
       <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
         <div className="space-y-4">
-          <p className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>
+          <p className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>
             Print job tickets now?
           </p>
           <div className="rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
               Recommended at intake
             </p>
-            <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-mid)' }}>
+            <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
               Print both copies now: one for workshop, one for customer.
             </p>
           </div>
-          <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             This will open the browser print flow. You can also print later from the desktop job details page.
           </p>
           <div className="flex gap-2 pt-2">
@@ -286,9 +286,9 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 onClick={() => setCustomerMode(mode)}
                 className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors border"
                 style={{
-                  backgroundColor: customerMode === mode ? 'var(--cafe-amber)' : 'var(--cafe-surface)',
-                  color: customerMode === mode ? '#fff' : 'var(--cafe-text-mid)',
-                  borderColor: customerMode === mode ? 'var(--cafe-amber)' : 'var(--cafe-border-2)',
+                  backgroundColor: customerMode === mode ? 'var(--ms-accent)' : 'var(--ms-surface)',
+                  color: customerMode === mode ? '#fff' : 'var(--ms-text-mid)',
+                  borderColor: customerMode === mode ? 'var(--ms-accent)' : 'var(--ms-border-strong)',
                 }}
               >
                 {mode === 'existing' ? 'Existing Customer' : 'New Customer'}
@@ -336,9 +336,9 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             <div
               key={idx}
               className="rounded-xl border p-3 space-y-3"
-              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+              style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}
             >
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Pair {idx + 1}
               </p>
               <Select
@@ -379,12 +379,12 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
           ))}
 
           {/* Photo upload widget */}
-          <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
               Intake Photos (optional)
             </p>
             <input type="file" accept="image/*" multiple className="block" style={{ marginBottom: 8 }} />
-            <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               You can upload photos of shoes at intake. Photos will be attached to the job after creation.
             </p>
           </div>
@@ -410,9 +410,9 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             <div
               key={idx}
               className="rounded-xl border p-3"
-              style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+              style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}
             >
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--cafe-text-muted)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
                 Services for Pair {idx + 1}
               </p>
               <ShoeServicePicker

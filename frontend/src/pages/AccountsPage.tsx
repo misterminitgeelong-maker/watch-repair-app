@@ -19,6 +19,7 @@ import {
   updateUser,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme, type Theme } from '@/context/ThemeContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
@@ -148,11 +149,11 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         </Select>
 
         {error === 'duplicate_email' && (
-          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cafe-border-2)', color: '#C96A5A' }}>
-            <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>This email is already on your team</p>
-            <p style={{ color: 'var(--cafe-text-muted)' }}>
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: '#C96A5A' }}>
+            <p className="font-medium" style={{ color: 'var(--ms-text)' }}>This email is already on your team</p>
+            <p style={{ color: 'var(--ms-text-muted)' }}>
               Close this dialog and find them in the table on this page to edit role, password, or status. Technicians also appear under{' '}
-              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--cafe-amber)' }} onClick={onClose}>Mobile Services → Team</Link>.
+              <Link to="/auto-key/team" className="font-medium underline" style={{ color: 'var(--ms-accent)' }} onClick={onClose}>Mobile Services → Team</Link>.
             </p>
           </div>
         )}
@@ -331,9 +332,9 @@ export default function AccountsPage() {
       {showAdd && <AddUserModal onClose={() => setShowAdd(false)} />}
       {deleteTarget && (
         <Modal title="Delete team account" onClose={() => { if (!deleteMut.isPending) setDeleteTarget(null) }}>
-          <p className="text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
             Permanently remove{' '}
-            <span className="font-medium" style={{ color: 'var(--cafe-text)' }}>{deleteTarget.full_name}</span>{' '}
+            <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{deleteTarget.full_name}</span>{' '}
             ({deleteTarget.email})? Assigned jobs will show as unassigned; history may no longer name this user.
           </p>
           <div className="flex justify-end gap-2 pt-4">
@@ -372,15 +373,15 @@ export default function AccountsPage() {
 
 
       <Card className="mb-5 p-4 sm:p-5">
-        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Pricing and plan access
         </p>
-        <div className="mt-3 rounded-xl border p-3 sm:flex sm:items-center sm:justify-between sm:gap-3" style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-surface)' }}>
+        <div className="mt-3 rounded-xl border p-3 sm:flex sm:items-center sm:justify-between sm:gap-3" style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}>
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
               Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode} ({PLAN_BUNDLES.find(p => p.code === planCode)?.monthlyLabel ?? 'Custom'})
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+            <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
               Basic starts at $25/month with one service tab and reports. Each extra service tab adds $10/month. Pro is $50/month for full access.
             </p>
           </div>
@@ -413,19 +414,19 @@ export default function AccountsPage() {
           </div>
         </div>
         {stripeConfigured && (
-          <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
             Stripe is active. Use Checkout to subscribe or change plan; access updates after Stripe confirms payment.
           </p>
         )}
         {!canManagePlan && (
-          <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+          <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
             Only owner accounts can change plans.
           </p>
         )}
         <div className="mt-3">
           <button
             className="text-xs font-medium underline"
-            style={{ color: 'var(--cafe-text-muted)' }}
+            style={{ color: 'var(--ms-text-muted)' }}
             onClick={() => setShowAllPlans(v => !v)}
           >
             {showAllPlans ? 'Hide plan comparison' : 'Compare all plans'}
@@ -436,12 +437,12 @@ export default function AccountsPage() {
                 <div
                   key={bundle.code}
                   className="rounded-xl border p-3"
-                  style={{ borderColor: 'var(--cafe-border-2)', backgroundColor: 'var(--cafe-bg)' }}
+                  style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)' }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: 'var(--cafe-text)' }}>{bundle.name}</p>
-                  <p className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--cafe-text-mid)' }}>{bundle.monthlyLabel}</p>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.summary}</p>
-                  <p className="mt-2 text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{bundle.modules.join(' · ')}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{bundle.name}</p>
+                  <p className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--ms-text-mid)' }}>{bundle.monthlyLabel}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>{bundle.summary}</p>
+                  <p className="mt-2 text-xs" style={{ color: 'var(--ms-text-muted)' }}>{bundle.modules.join(' · ')}</p>
                 </div>
               ))}
             </div>
@@ -455,13 +456,13 @@ export default function AccountsPage() {
 
       <div className="mb-4 flex items-center justify-between">
         <div className="relative w-full max-w-md">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--cafe-text-muted)' }} />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-muted)' }} />
           <input
             className="w-full pl-9 pr-4 py-2.5 rounded-lg text-base sm:text-sm outline-none transition"
             style={{
-              backgroundColor: 'var(--cafe-surface)',
-              border: '1px solid var(--cafe-border-2)',
-              color: 'var(--cafe-text)',
+              backgroundColor: 'var(--ms-surface)',
+              border: '1px solid var(--ms-border-strong)',
+              color: 'var(--ms-text)',
             }}
             placeholder="Search accounts…"
             value={search}
@@ -481,13 +482,13 @@ export default function AccountsPage() {
         <Card className="mb-5">
           {filtered.length === 0 ? <EmptyState message="No team accounts found." /> : (
             <>
-              <div className="md:hidden divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                 {filtered.map((u) => {
                   const d = currentDraft(u)
                   return (
                     <div key={u.id} className="p-4 space-y-2">
-                      <p className="font-medium" style={{ color: 'var(--cafe-text)' }}>{u.full_name}</p>
-                      <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>{u.email}</p>
+                      <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{u.full_name}</p>
+                      <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{u.email}</p>
                       <div className="grid grid-cols-2 gap-2">
                         <Select value={d.role} onChange={(e) => setDrafts((m) => ({ ...m, [u.id]: { ...d, role: e.target.value as UserRole } }))}>
                           {ROLE_OPTIONS.map((role) => (
@@ -522,9 +523,9 @@ export default function AccountsPage() {
 
               <table className="w-full text-sm hidden md:table">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
                     {['Name', 'Email', 'Role', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+                      <th key={h} className="px-5 py-3.5 text-left font-semibold text-[11px] tracking-widest uppercase" style={{ color: 'var(--ms-text-muted)' }}>
                         {h}
                       </th>
                     ))}
@@ -534,9 +535,9 @@ export default function AccountsPage() {
                   {filtered.map((u, i) => {
                     const d = currentDraft(u)
                     return (
-                      <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--cafe-border)' : 'none' }}>
-                        <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text)' }}>{u.full_name}</td>
-                        <td className="px-5 py-3.5" style={{ color: 'var(--cafe-text-mid)' }}>{u.email}</td>
+                      <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}>
+                        <td className="px-5 py-3.5" style={{ color: 'var(--ms-text)' }}>{u.full_name}</td>
+                        <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{u.email}</td>
                         <td className="px-5 py-3.5">
                           <Select value={d.role} onChange={(e) => setDrafts((m) => ({ ...m, [u.id]: { ...d, role: e.target.value as UserRole } }))}>
                             {ROLE_OPTIONS.map((role) => (
@@ -577,12 +578,14 @@ export default function AccountsPage() {
         </Card>
       )}
 
+      <AppearanceCard />
+
       <Card className="mb-5 p-4 sm:p-5">
-        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Onboarding checklist
         </p>
-        <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
-          Dashboard checklist is currently <span className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{checklistHidden ? 'hidden' : 'visible'}</span>.
+        <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
+          Dashboard checklist is currently <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>{checklistHidden ? 'hidden' : 'visible'}</span>.
         </p>
         <div className="mt-3 flex gap-2">
           <Button
@@ -606,6 +609,61 @@ export default function AccountsPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+function AppearanceCard() {
+  const { theme, setTheme } = useTheme()
+  const themes: { key: Theme; label: string; desc: string; swatches: string[] }[] = [
+    { key: 'warm',    label: 'Refined Warmth', desc: 'Cream parchment, gold accent.',        swatches: ['#F5F1EC', '#FDFCF9', '#9A6E26', '#1C1510'] },
+    { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#C07820', '#181614'] },
+    { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',  swatches: ['#121110', '#1C1A18', '#D4940A', '#0C0B0A'] },
+  ]
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        Appearance
+      </p>
+      <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
+        Choose how Mainspring looks on this device. Stored locally.
+      </p>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {themes.map(t => {
+          const active = theme === t.key
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTheme(t.key)}
+              className="text-left rounded-lg p-4 transition-all"
+              style={{
+                backgroundColor: active ? 'var(--ms-accent-light)' : 'var(--ms-surface)',
+                border: active ? '2px solid var(--ms-accent)' : '1px solid var(--ms-border)',
+                boxShadow: active ? 'var(--ms-shadow)' : 'none',
+              }}
+              aria-pressed={active}
+            >
+              <div className="flex gap-1 mb-3">
+                {t.swatches.map(c => (
+                  <span
+                    key={c}
+                    className="w-6 h-6 rounded-full"
+                    style={{ backgroundColor: c, border: '1px solid var(--ms-border)' }}
+                  />
+                ))}
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{t.label}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{t.desc}</p>
+              {active && (
+                <p className="text-[10px] mt-2 font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-accent)' }}>
+                  Active
+                </p>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 
@@ -670,10 +728,10 @@ function StripeConnectCard() {
 
   return (
     <Card className="mb-5 p-4 sm:p-5">
-      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
         Mobile invoice payouts (Stripe Connect)
       </p>
-      <p className="text-sm mt-2" style={{ color: 'var(--cafe-text-mid)' }}>
+      <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
         {statusLine}
       </p>
       {isOwner && (
@@ -694,7 +752,7 @@ function StripeConnectCard() {
         </div>
       )}
       {!isOwner && (
-        <p className="text-xs mt-2" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
           Only an owner can complete Stripe Connect for this workspace.
         </p>
       )}
@@ -740,13 +798,13 @@ function BillingCard() {
     return (
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
-          <span style={{ color: 'var(--cafe-text-mid)' }}>{label}</span>
-          <span style={{ color: nearLimit ? '#8B3A3A' : 'var(--cafe-text-muted)' }}>
+          <span style={{ color: 'var(--ms-text-mid)' }}>{label}</span>
+          <span style={{ color: nearLimit ? '#8B3A3A' : 'var(--ms-text-muted)' }}>
             {used} {unlimited ? '(unlimited)' : `/ ${max}`}
           </span>
         </div>
         {!unlimited && (
-          <div className="h-1.5 rounded overflow-hidden" style={{ backgroundColor: 'var(--cafe-bg)' }}>
+          <div className="h-1.5 rounded overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
             <div
               className="h-full rounded"
               style={{
@@ -764,7 +822,7 @@ function BillingCard() {
   return (
     <Card className="mb-5 p-4 sm:p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Plan usage — {plan_code}
         </p>
         {stripe_configured && stripe_subscription_id && (
@@ -772,7 +830,7 @@ function BillingCard() {
             onClick={openPortal}
             disabled={portalLoading}
             className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity"
-            style={{ backgroundColor: 'var(--cafe-accent)', color: 'var(--cafe-accent-text, #fff)', opacity: portalLoading ? 0.6 : 1 }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: portalLoading ? 0.6 : 1 }}
           >
             {portalLoading ? 'Opening…' : 'Manage Billing'}
           </button>
@@ -797,7 +855,7 @@ function BillingCard() {
       )}
 
       {stripe_configured && !stripe_subscription_id && (
-        <p className="text-xs mt-3" style={{ color: 'var(--cafe-text-muted)' }}>
+        <p className="text-xs mt-3" style={{ color: 'var(--ms-text-muted)' }}>
           No active Stripe subscription. Contact support or configure billing to subscribe.
         </p>
       )}

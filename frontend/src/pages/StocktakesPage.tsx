@@ -96,11 +96,11 @@ export default function StocktakesPage() {
         <Card className="p-5 xl:col-span-2">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#EEE6DA' }}>
-              <FileSpreadsheet size={20} style={{ color: 'var(--cafe-gold-dark)' }} />
+              <FileSpreadsheet size={20} style={{ color: 'var(--ms-accent-hover)' }} />
             </div>
             <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--cafe-text)' }}>Import stock master</h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--cafe-text-muted)' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>Import stock master</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                 Upload the shop stock export. The importer prefers DATA for item master fields and SUMMARY for stock values, then merges by item code.
               </p>
             </div>
@@ -122,21 +122,21 @@ export default function StocktakesPage() {
           <button
             onClick={() => fileRef.current?.click()}
             className="w-full rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors"
-            style={{ borderColor: 'var(--cafe-border-2)' }}
+            style={{ borderColor: 'var(--ms-border-strong)' }}
           >
             <div className="flex flex-col items-center gap-2">
-              <Upload size={30} style={{ color: 'var(--cafe-amber)' }} />
-              <p className="text-sm font-medium" style={{ color: 'var(--cafe-text)' }}>{file ? file.name : 'Select a CSV or Excel stock file'}</p>
-              <p className="text-xs" style={{ color: 'var(--cafe-text-muted)' }}>
+              <Upload size={30} style={{ color: 'var(--ms-accent)' }} />
+              <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{file ? file.name : 'Select a CSV or Excel stock file'}</p>
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                 {file ? `${(file.size / 1024).toFixed(1)} KB` : 'Supports CSV, XLSX, XLS, XLSM'}
               </p>
             </div>
           </button>
 
           <div className="mt-4 flex flex-wrap gap-3 items-center justify-between">
-            <div className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
-              Current catalogue: <strong style={{ color: 'var(--cafe-text)' }}>{inventoryStats.totalItems}</strong> items across{' '}
-              <strong style={{ color: 'var(--cafe-text)' }}>{inventoryStats.groups}</strong> groups.
+            <div className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              Current catalogue: <strong style={{ color: 'var(--ms-text)' }}>{inventoryStats.totalItems}</strong> items across{' '}
+              <strong style={{ color: 'var(--ms-text)' }}>{inventoryStats.groups}</strong> groups.
             </div>
             <Button onClick={() => importMut.mutate()} disabled={!file || importMut.isPending}>
               <Upload size={15} />
@@ -158,7 +158,7 @@ export default function StocktakesPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--cafe-text)' }}>New stocktake session</h2>
+          <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--ms-text)' }}>New stocktake session</h2>
           <div className="space-y-3">
             <Input
               label="Session name"
@@ -182,7 +182,7 @@ export default function StocktakesPage() {
               onChange={event => setForm(current => ({ ...current, search: event.target.value }))}
               placeholder="Item code or description"
             />
-            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--cafe-text-mid)' }}>
+            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
                 checked={form.hide_zero_stock}
@@ -215,10 +215,10 @@ export default function StocktakesPage() {
       )}
 
       <Card>
-        <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--cafe-border)' }}>
+        <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
           <div>
-            <h2 className="font-semibold" style={{ color: 'var(--cafe-text)' }}>Sessions</h2>
-            <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>Resume unfinished counts or open completed summaries.</p>
+            <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>Sessions</h2>
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Resume unfinished counts or open completed summaries.</p>
           </div>
           <Button variant="secondary" onClick={() => qc.invalidateQueries({ queryKey: ['stocktakes'] })}>
             <RefreshCw size={15} /> Refresh
@@ -228,12 +228,12 @@ export default function StocktakesPage() {
         {sessions.length === 0 ? (
           <EmptyState message="No stocktake sessions yet." />
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--cafe-border)' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
             {sessions.map(session => (
               <div key={session.id} className="px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
-                  <p className="font-semibold" style={{ color: 'var(--cafe-text)' }}>{session.name}</p>
-                  <p className="text-sm" style={{ color: 'var(--cafe-text-muted)' }}>
+                  <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{session.name}</p>
+                  <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                     {session.group_code_filter ? `${session.group_code_filter} only` : 'All groups'} · {session.progress.counted_items} / {session.progress.total_items} counted · Created {formatDate(session.created_at)}
                   </p>
                 </div>
