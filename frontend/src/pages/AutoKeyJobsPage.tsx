@@ -2011,7 +2011,7 @@ export default function AutoKeyJobsPage() {
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
-  const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
+  const [olderThanDays, _setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
@@ -2025,8 +2025,8 @@ export default function AutoKeyJobsPage() {
       activationConstraint: { distance: 8 },
     }),
   )
-  const [reportDateFrom, setReportDateFrom] = useState('')
-  const [reportDateTo, setReportDateTo] = useState('')
+  const [reportDateFrom, _setReportDateFrom] = useState('')
+  const [reportDateTo, _setReportDateTo] = useState('')
   const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
 
   useEffect(() => {
@@ -2112,7 +2112,7 @@ export default function AutoKeyJobsPage() {
 
   const {
     reportsQuery: { data: autoKeyReports, isLoading: reportsLoading, isError: reportsError, error: reportsErr },
-    commissionQuery: { data: commissionReport, isLoading: commissionLoading, isError: commissionError, error: commissionErr },
+    commissionQuery: { data: commissionReport },
   } = useAutoKeyReportData({
     view,
     role,
@@ -2195,10 +2195,6 @@ export default function AutoKeyJobsPage() {
     const matchAge = olderThanDays > 0 ? (created ? daysInShop(created) >= olderThanDays : false) : true
     return matchSearch && inDirectory && matchStatus && matchAge
   })
-  const statusOptions = jobDirectoryView === 'all'
-    ? [...AUTO_KEY_ACTIVE_STATUSES, ...AUTO_KEY_CLOSED_STATUSES]
-    : jobDirectoryView === 'active' ? [...AUTO_KEY_ACTIVE_STATUSES] : [...AUTO_KEY_CLOSED_STATUSES]
-
   useEffect(() => {
     if (statusFilter === 'all') return
     const allowed: readonly string[] = jobDirectoryView === 'active' ? AUTO_KEY_ACTIVE_STATUSES : AUTO_KEY_CLOSED_STATUSES
@@ -2206,8 +2202,6 @@ export default function AutoKeyJobsPage() {
       setStatusFilter('all')
     }
   }, [jobDirectoryView, statusFilter])
-  const activeCount = jobs.filter((j: { status: JobStatus }) => !isClosed(j.status)).length
-  const completedCount = jobs.filter((j: { status: JobStatus }) => isClosed(j.status)).length
 
 
   const sortedJobsDirectory = useMemo(() => {
