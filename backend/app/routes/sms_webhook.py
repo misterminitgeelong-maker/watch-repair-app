@@ -2,7 +2,7 @@
 import logging
 
 from fastapi import APIRouter, Form, Request, Response
-from sqlmodel import Session, select, desc
+from sqlmodel import Session, select
 
 from ..database import engine
 from ..models import AutoKeyJob, AutoKeyQuote, SmsLog, TenantEventLog
@@ -36,7 +36,7 @@ async def inbound_sms(
             .where(SmsLog.to_phone == from_phone)
             .where(SmsLog.event == "auto_key_quote_sent")
             .where(SmsLog.auto_key_job_id.is_not(None))
-            .order_by(desc(SmsLog.created_at))
+            .order_by(SmsLog.created_at.desc())
         ).first()
 
         if not sms_log or not sms_log.auto_key_job_id:
@@ -52,7 +52,7 @@ async def inbound_sms(
             select(AutoKeyQuote)
             .where(AutoKeyQuote.auto_key_job_id == job.id)
             .where(AutoKeyQuote.status == "sent")
-            .order_by(desc(AutoKeyQuote.created_at))
+            .order_by(AutoKeyQuote.created_at.desc())
         ).first()
 
         if not quote:
