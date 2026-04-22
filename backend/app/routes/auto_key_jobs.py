@@ -457,6 +457,10 @@ def update_auto_key_invoice(
     invoice_id: UUID,
     status: str | None = Body(default=None),
     payment_method: str | None = Body(default=None),
+    subtotal_cents: int | None = Body(default=None),
+    tax_cents: int | None = Body(default=None),
+    total_cents: int | None = Body(default=None),
+    currency: str | None = Body(default=None),
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -471,6 +475,14 @@ def update_auto_key_invoice(
         invoice.paid_at = datetime.now(timezone.utc) if next_status == "paid" else None
     if payment_method is not None:
         invoice.payment_method = payment_method.strip() or None
+    if subtotal_cents is not None:
+        invoice.subtotal_cents = max(0, subtotal_cents)
+    if tax_cents is not None:
+        invoice.tax_cents = max(0, tax_cents)
+    if total_cents is not None:
+        invoice.total_cents = max(0, total_cents)
+    if currency is not None:
+        invoice.currency = currency.strip().upper()[:3]
     session.add(invoice)
     session.commit()
     session.refresh(invoice)

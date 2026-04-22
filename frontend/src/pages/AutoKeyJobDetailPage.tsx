@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, Phone, Mail, Plus, Send } from 'lucide-react'
+import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send } from 'lucide-react'
 import {
   getAutoKeyJob,
   getApiErrorMessage,
@@ -237,6 +237,10 @@ export default function AutoKeyJobDetailPage() {
   const [arrivalWindow, setArrivalWindow] = useState('9–11am')
   const [invoiceToPay, setInvoiceToPay] = useState<{ id: string; invoice_number: string; total_cents: number } | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'eftpos' | 'bank'>('eftpos')
+  const [invoiceToEdit, setInvoiceToEdit] = useState<{ id: string; invoice_number: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string } | null>(null)
+  const [editSubtotal, setEditSubtotal] = useState('')
+  const [editTax, setEditTax] = useState('')
+  const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
   const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos'>('info')
   const [showQuoteModal, setShowQuoteModal] = useState(false)
@@ -430,6 +434,17 @@ export default function AutoKeyJobDetailPage() {
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update commission source.')),
+  })
+
+  const editInvoiceMut = useMutation({
+    mutationFn: ({ invId, subtotal_cents, tax_cents, total_cents }: { invId: string; subtotal_cents: number; tax_cents: number; total_cents: number }) =>
+      updateAutoKeyInvoice(id!, invId, { subtotal_cents, tax_cents, total_cents }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] })
+      setInvoiceToEdit(null)
+      setError('')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to update invoice.')),
   })
 
   const recordPaymentMut = useMutation({
@@ -1179,6 +1194,18 @@ export default function AutoKeyJobDetailPage() {
                         <Button
                           variant="secondary"
                           className="text-xs py-1 px-2 flex items-center gap-1"
+                          onClick={() => {
+                            setInvoiceToEdit({ id: inv.id, invoice_number: inv.invoice_number, subtotal_cents: inv.subtotal_cents, tax_cents: inv.tax_cents, total_cents: inv.total_cents, currency: inv.currency })
+                            setEditSubtotal((inv.subtotal_cents / 100).toFixed(2))
+                            setEditTax((inv.tax_cents / 100).toFixed(2))
+                            setEditTotal((inv.total_cents / 100).toFixed(2))
+                          }}
+                        >
+                          <PenLine size={12} /> Edit
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="text-xs py-1 px-2 flex items-center gap-1"
                           onClick={() => setInvoiceToPay({ id: inv.id, invoice_number: inv.invoice_number, total_cents: inv.total_cents })}
                         >
                           <CheckCircle size={12} /> Record Payment
@@ -1195,6 +1222,52 @@ export default function AutoKeyJobDetailPage() {
           </Card>
         </div>
       </div>
+      {invoiceToEdit && (
+        <Modal title={`Edit invoice ${invoiceToEdit.invoice_number}`} onClose={() => setInvoiceToEdit(null)}>
+          <div className="space-y-4">
+            <Input
+              label="Subtotal (ex GST)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editSubtotal}
+              onChange={e => setEditSubtotal(e.target.value)}
+            />
+            <Input
+              label="GST"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editTax}
+              onChange={e => setEditTax(e.target.value)}
+            />
+            <Input
+              label="Total (inc GST)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editTotal}
+              onChange={e => setEditTotal(e.target.value)}
+            />
+            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setInvoiceToEdit(null)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                disabled={editInvoiceMut.isPending}
+                onClick={() => editInvoiceMut.mutate({
+                  invId: invoiceToEdit.id,
+                  subtotal_cents: Math.round(parseFloat(editSubtotal || '0') * 100),
+                  tax_cents: Math.round(parseFloat(editTax || '0') * 100),
+                  total_cents: Math.round(parseFloat(editTotal || '0') * 100),
+                })}
+              >
+                {editInvoiceMut.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {invoiceToPay && (
         <Modal title="Record payment" onClose={() => setInvoiceToPay(null)}>
           <div className="space-y-4">

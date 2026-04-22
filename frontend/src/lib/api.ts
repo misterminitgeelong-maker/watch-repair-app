@@ -1886,6 +1886,10 @@ export interface AutoKeyInvoiceUpdatePayload {
   status?: string
   notes?: string
   payment_method?: string | null
+  subtotal_cents?: number
+  tax_cents?: number
+  total_cents?: number
+  currency?: string
 }
 export const updateAutoKeyInvoice = (_jobId: string, invoiceId: string, data: AutoKeyInvoiceUpdatePayload) =>
   api.patch<AutoKeyInvoice>(`/auto-key-jobs/invoices/${invoiceId}`, data)

@@ -3,6 +3,7 @@ import io
 import importlib
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -37,6 +38,31 @@ from ..models import (
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
 
 from .attachments import attachment_storage  # noqa: E402
+
+
+def _next_aki_invoice_number(session: Session, tenant_id) -> str:
+    from uuid import UUID as _UUID
+    rows = session.exec(
+        select(AutoKeyInvoice.invoice_number)
+        .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .where(AutoKeyInvoice.invoice_number.like("AKI-%"))
+    ).all()
+    max_seq = 0
+    pat = re.compile(r"^AKI-(\d+)$")
+    for raw in rows:
+        m = pat.match(str(raw or ""))
+        if m:
+            max_seq = max(max_seq, int(m.group(1)))
+    candidate = max_seq + 1
+    while True:
+        number = f"AKI-{candidate:05d}"
+        if not session.exec(
+            select(AutoKeyInvoice.id)
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.invoice_number == number)
+        ).first():
+            return number
+        candidate += 1
 
 
 class PublicAutoKeyIntakeSubmit(SQLModel):
@@ -944,6 +970,24 @@ def decide_public_auto_key_quote(
             quote.signer_name = (body.signer_name or "").strip() or None
         except Exception:
             logger.exception("quote_signature_upload_failed quote=%s", quote.id)
+
+    # Auto-create invoice when customer approves
+    if decision == "approved":
+        existing_invoice = session.exec(
+            select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
+        ).first()
+        if not existing_invoice:
+            session.add(AutoKeyInvoice(
+                tenant_id=job.tenant_id,
+                auto_key_job_id=job.id,
+                auto_key_quote_id=quote.id,
+                invoice_number=_next_aki_invoice_number(session, job.tenant_id),
+                subtotal_cents=quote.subtotal_cents,
+                tax_cents=quote.tax_cents,
+                total_cents=quote.total_cents,
+                currency=quote.currency,
+                customer_view_token=uuid4().hex,
+            ))
 
     session.add(TenantEventLog(
         tenant_id=job.tenant_id,
