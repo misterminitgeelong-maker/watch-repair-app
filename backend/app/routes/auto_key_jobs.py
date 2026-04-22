@@ -32,6 +32,7 @@ from ..models import (
 )
 from ..sms import (
     notify_auto_key_arrival_window,
+    notify_auto_key_booking_request,
     notify_auto_key_customer_day_before,
     notify_auto_key_customer_intake,
     notify_auto_key_en_route,
@@ -188,6 +189,14 @@ def create_auto_key_job(
     data["key_quantity"] = max(1, int(data.get("key_quantity", 1)))
     data["customer_account_id"] = customer_account_id
 
+    # Extract payload-only fields not present on the DB model
+    apply_suggested_quote = data.pop("apply_suggested_quote", False)
+    send_booking_sms = data.pop("send_booking_sms", False)
+    additional_services = data.pop("additional_services", [])
+    if additional_services:
+        import json
+        data["additional_services_json"] = json.dumps(additional_services)
+
     job = AutoKeyJob(
         tenant_id=auth.tenant_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
@@ -213,6 +222,32 @@ def create_auto_key_job(
             )
         except Exception as exc:
             logger.warning("auto_key_job.sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
+
+    if send_booking_sms and phone:
+        if not job.booking_confirmation_token:
+            job.booking_confirmation_token = uuid4().hex
+            session.add(job)
+            session.commit()
+            session.refresh(job)
+        confirm_url = f"{settings.public_base_url.rstrip('/')}/booking-confirm/{job.booking_confirmation_token}"
+        try:
+            notify_auto_key_booking_request(
+                session,
+                tenant_id=auth.tenant_id,
+                to_phone=phone,
+                customer_name=customer.full_name or "Customer",
+                job_number=job.job_number,
+                title=job.title,
+                vehicle_make=job.vehicle_make,
+                vehicle_model=job.vehicle_model,
+                scheduled_at=job.scheduled_at,
+                quote_total_cents=job.cost_cents,
+                currency="AUD",
+                shop_name="Workshop",
+                confirm_url=confirm_url,
+            )
+        except Exception as exc:
+            logger.warning("auto_key_job.booking_sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
 
     return job
 
