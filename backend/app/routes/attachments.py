@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from PIL import Image, UnidentifiedImageError
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
@@ -28,8 +28,10 @@ from ..models import (
 from ..security import decode_access_token
 from ..services.attachment_storage import (
     AttachmentNotFoundError,
+    AttachmentStorage,
     InvalidStorageKeyError,
     LocalAttachmentStorage,
+    SupabaseAttachmentStorage,
 )
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
@@ -38,7 +40,18 @@ optional_bearer = HTTPBearer(auto_error=False)
 SIGNED_DOWNLOAD_TOKEN_TYP = "attachment_download"
 SIGNED_DOWNLOAD_EXPIRE_SECONDS = 300
 
-attachment_storage = LocalAttachmentStorage(settings.attachment_local_upload_dir)
+
+def _create_storage() -> AttachmentStorage:
+    if settings.supabase_url and settings.supabase_service_role_key:
+        return SupabaseAttachmentStorage(
+            url=settings.supabase_url,
+            key=settings.supabase_service_role_key,
+            bucket=settings.supabase_storage_bucket,
+        )
+    return LocalAttachmentStorage(settings.attachment_local_upload_dir)
+
+
+attachment_storage = _create_storage()
 
 
 def _allowed_content_types() -> set[str]:
@@ -136,7 +149,7 @@ async def upload_attachment(
         storage_key = f"{job_subdir}/{file_id}_{safe_name}"
     else:
         storage_key = f"{file_id}_{safe_name}"
-    file_size = attachment_storage.save_bytes(storage_key, raw)
+    file_size = attachment_storage.save_bytes(storage_key, raw, content_type=content_type)
 
     attachment = Attachment(
         tenant_id=auth.tenant_id,
@@ -193,12 +206,17 @@ def download_attachment(
     ).first()
     if not attachment:
         raise HTTPException(status_code=404, detail="Not found")
+
+    signed_url = attachment_storage.get_signed_url(storage_key, expires_in_seconds=120)
+    if signed_url:
+        return RedirectResponse(url=signed_url, status_code=302)
+
     try:
         dest = attachment_storage.resolve_existing_path(storage_key)
     except InvalidStorageKeyError as exc:
         raise HTTPException(status_code=404, detail="Not found") from exc
     except AttachmentNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="File not found on disk")
+        raise HTTPException(status_code=404, detail="File not found on disk") from exc
     return FileResponse(str(dest), filename=attachment.file_name or storage_key, media_type=attachment.content_type or "application/octet-stream")
 
 

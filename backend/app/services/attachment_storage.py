@@ -17,18 +17,15 @@ class InvalidStorageKeyError(AttachmentStorageError):
 
 
 class AttachmentStorage(ABC):
-    """
-    Small storage contract for attachment persistence.
-    Local FS is implemented now; object storage can implement this later.
-    """
-
     @abstractmethod
-    def save_bytes(self, storage_key: str, content: bytes) -> int:
+    def save_bytes(self, storage_key: str, content: bytes, *, content_type: str = "application/octet-stream") -> int:
         raise NotImplementedError
 
-    @abstractmethod
     def resolve_existing_path(self, storage_key: str) -> Path:
-        raise NotImplementedError
+        raise NotImplementedError("This backend does not support local path resolution")
+
+    def get_signed_url(self, storage_key: str, expires_in_seconds: int = 60) -> str | None:
+        return None
 
 
 class LocalAttachmentStorage(AttachmentStorage):
@@ -49,7 +46,7 @@ class LocalAttachmentStorage(AttachmentStorage):
             raise InvalidStorageKeyError("Path escapes storage root")
         return candidate
 
-    def save_bytes(self, storage_key: str, content: bytes) -> int:
+    def save_bytes(self, storage_key: str, content: bytes, *, content_type: str = "application/octet-stream") -> int:
         path = self._resolve_safe_path(storage_key)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
@@ -60,3 +57,26 @@ class LocalAttachmentStorage(AttachmentStorage):
         if not path.exists() or not path.is_file():
             raise AttachmentNotFoundError("File not found")
         return path
+
+
+class SupabaseAttachmentStorage(AttachmentStorage):
+    def __init__(self, url: str, key: str, bucket: str):
+        from supabase import create_client
+
+        self._client = create_client(url, key)
+        self._bucket = bucket
+
+    def save_bytes(self, storage_key: str, content: bytes, *, content_type: str = "application/octet-stream") -> int:
+        self._client.storage.from_(self._bucket).upload(
+            path=storage_key,
+            file=content,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        return len(content)
+
+    def get_signed_url(self, storage_key: str, expires_in_seconds: int = 60) -> str | None:
+        response = self._client.storage.from_(self._bucket).create_signed_url(
+            path=storage_key,
+            expires_in=expires_in_seconds,
+        )
+        return response.get("signedURL") or response.get("signed_url")

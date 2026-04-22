@@ -20,3 +20,4 @@ qrcode[pil]>=7.4.2
 slowapi>=0.1.9
 stripe>=7.0.0
 sentry-sdk[fastapi]>=2.0.0
+supabase>=2.3.0

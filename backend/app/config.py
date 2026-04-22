@@ -131,6 +131,11 @@ class Settings(BaseSettings):
     attachment_max_upload_bytes: int = 10 * 1024 * 1024
     attachment_local_upload_dir: str = "uploads"
 
+    # Supabase Storage (set these to switch from local FS to Supabase)
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_storage_bucket: str = "attachments"
+
 
 settings = Settings()
 
