@@ -13,6 +13,7 @@ from sqlmodel import Field, SQLModel
 from .datetime_utils import as_utc_for_json
 
 JobStatus = Literal[
+    # Watch repair pipeline
     "awaiting_quote",
     "awaiting_go_ahead",
     "go_ahead",
@@ -26,11 +27,19 @@ JobStatus = Literal[
     "completed",
     "awaiting_collection",
     "collected",
-    "en_route",   # Auto key mobile: tech driving to job
-    "on_site",    # Auto key mobile: tech arrived at location
-    "pending_booking",  # Mobile Services: quote + time sent; customer must confirm
-    "booked",  # Mobile Services: customer confirmed booking; on calendar
-    "awaiting_customer_details",  # Mobile Services: quick-add; customer fills link
+    # Mobile Services / Auto-key statuses
+    "en_route",
+    "on_site",
+    "pending_booking",
+    "booked",
+    "awaiting_customer_details",
+    "quote_sent",
+    "awaiting_booking_confirmation",
+    "booking_confirmed",
+    "job_delayed",
+    "work_completed",
+    "invoice_paid",
+    "failed_job",
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
