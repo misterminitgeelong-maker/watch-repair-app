@@ -571,7 +571,8 @@ def update_auto_key_job_status(
 
     # ── Post-commit side-effects (SMS) ────────────────────────────────────────
     moved_to_en_route = previous_status != "en_route" and job.status == "en_route"
-    if moved_to_en_route or moved_to_completed:
+    moved_to_booking_completed = previous_status != "booking_completed" and job.status == "booking_completed"
+    if moved_to_en_route or moved_to_completed or moved_to_booking_completed:
         _customer = session.get(Customer, job.customer_id)
         _tenant = session.get(Tenant, auth.tenant_id)
         _shop_name = (_tenant.name if _tenant else None) or "Mobile Services"
@@ -594,7 +595,7 @@ def update_auto_key_job_status(
             except Exception:
                 logger.exception("auto_key_job.en_route_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
 
-        if moved_to_completed and _customer and (_customer.phone or "").strip():
+        if (moved_to_completed or moved_to_booking_completed) and _customer and (_customer.phone or "").strip():
             try:
                 _invoice = session.exec(
                     select(AutoKeyInvoice)

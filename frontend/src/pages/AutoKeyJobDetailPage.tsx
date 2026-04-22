@@ -23,6 +23,7 @@ import {
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   uploadAutoKeyAttachment,
+  resolveQuoteSignatureUrl,
   MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
   type AutoKeyJobUpdatePayload,
   type CuttingProfile,
@@ -218,6 +219,27 @@ const STATUSES: JobStatus[] = [
 
 function formatCents(value: number) {
   return `$${(value / 100).toFixed(2)}`
+}
+
+function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: string; signedAt?: string | null; signerName?: string | null }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    resolveQuoteSignatureUrl(quoteId).then(u => { if (active) setUrl(u) }).catch(() => {})
+    return () => { active = false }
+  }, [quoteId])
+  if (!url) return null
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+        Customer signature{signedAt ? ` · ${new Date(signedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+        {signerName ? ` · ${signerName}` : ''}
+      </p>
+      <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--ms-border)', backgroundColor: '#fff', maxWidth: 340 }}>
+        <img src={url} alt="Customer signature" style={{ width: '100%', display: 'block' }} />
+      </div>
+    </div>
+  )
 }
 
 export default function AutoKeyJobDetailPage() {
@@ -1142,6 +1164,9 @@ export default function AutoKeyJobDetailPage() {
                     >
                       <Send size={12} /> {sendQuoteMut.isPending ? 'Sending…' : 'Send Quote to Customer'}
                     </Button>
+                  )}
+                  {q.has_signature && (
+                    <QuoteSignatureImage quoteId={q.id} signedAt={q.signed_at} signerName={q.signer_name} />
                   )}
                 </div>
               ))

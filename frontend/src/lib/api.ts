@@ -1423,8 +1423,16 @@ export interface AutoKeyQuote {
   total_cents: number
   currency: string
   sent_at?: string
+  signed_at?: string | null
+  signer_name?: string | null
+  has_signature: boolean
   created_at: string
   line_items: AutoKeyQuoteLineItem[]
+}
+
+export async function resolveQuoteSignatureUrl(quoteId: string): Promise<string> {
+  const res = await api.get(`/auto-key-jobs/quotes/${quoteId}/signature`, { responseType: 'blob' })
+  return URL.createObjectURL(res.data)
 }
 
 export interface AutoKeyInvoice {
