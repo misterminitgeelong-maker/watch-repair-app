@@ -869,7 +869,7 @@ def get_public_auto_key_quote(token: str, session: Session = Depends(get_session
         "job_address": job.job_address,
         "scheduled_at": isoformat_z_utc(job.scheduled_at),
         "shop_name": tenant.name if tenant else "Mobile Services",
-        "shop_phone": tenant.phone if tenant else None,
+        "shop_phone": None,
         "customer_name": customer.full_name if customer else None,
         "subtotal_cents": quote.subtotal_cents,
         "tax_cents": quote.tax_cents,
