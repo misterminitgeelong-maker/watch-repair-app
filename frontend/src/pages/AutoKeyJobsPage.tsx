@@ -67,26 +67,23 @@ import { formatDate, STATUS_LABELS } from '@/lib/utils'
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
   'quote_sent',
-  'awaiting_booking_confirmation',
   'booking_confirmed',
-  'job_delayed',
   'en_route',
-  'on_site',
-  'work_completed',
-  'invoice_paid',
+  'booking_on_hold',
+  'booking_completed',
   'failed_job',
 ]
 
-const AUTO_KEY_CLOSED_STATUSES = ['invoice_paid', 'failed_job'] as const
+const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'failed_job'] as const
 const AUTO_KEY_ACTIVE_STATUSES = [
   'awaiting_quote',
+  'awaiting_customer_details',
   'quote_sent',
   'awaiting_booking_confirmation',
   'booking_confirmed',
-  'job_delayed',
   'en_route',
   'on_site',
-  'work_completed',
+  'booking_on_hold',
 ] as const
 
 function formatCents(value: number) {

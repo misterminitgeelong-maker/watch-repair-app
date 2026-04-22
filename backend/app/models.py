@@ -36,6 +36,8 @@ JobStatus = Literal[
     "quote_sent",
     "awaiting_booking_confirmation",
     "booking_confirmed",
+    "booking_on_hold",
+    "booking_completed",
     "job_delayed",
     "work_completed",
     "invoice_paid",

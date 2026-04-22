@@ -47,7 +47,7 @@ router = APIRouter(
 )
 
 
-_AUTO_KEY_FINAL_STATUSES = {"work_completed", "invoice_paid", "failed_job"}
+_AUTO_KEY_FINAL_STATUSES = {"booking_completed", "work_completed", "invoice_paid", "failed_job"}
 logger = logging.getLogger(__name__)
 
 

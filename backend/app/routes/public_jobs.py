@@ -928,7 +928,7 @@ def decide_public_auto_key_quote(
 
     quote.status = decision
     if decision == "approved" and job.status in ("quote_sent", "awaiting_quote"):
-        job.status = "go_ahead"
+        job.status = "booking_confirmed"
 
     if decision == "approved" and body.signature_data:
         try:
