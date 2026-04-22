@@ -887,13 +887,17 @@ def get_public_auto_key_quote(token: str, session: Session = Depends(get_session
     }
 
 
+class AutoKeyQuoteDecision(SQLModel):
+    decision: str  # "approved" | "declined"
+
+
 @router.post("/auto-key-quote/{token}/decision")
 def decide_public_auto_key_quote(
     token: str,
-    body: dict,
+    body: AutoKeyQuoteDecision,
     session: Session = Depends(get_session),
 ):
-    decision = (body.get("decision") or "").lower()
+    decision = body.decision.strip().lower()
     if decision not in ("approved", "declined"):
         raise HTTPException(status_code=422, detail="decision must be 'approved' or 'declined'")
 
