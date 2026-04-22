@@ -1,14 +1,14 @@
 """add auto_key_job_id to smslog
 
 Revision ID: a2b3c4d5e6f7
-Revises: z1a2b3c4d5e6
+Revises: 20260415_queue_day
 Create Date: 2026-04-22
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = 'a2b3c4d5e6f7'
-down_revision = 'z1a2b3c4d5e6'
+down_revision = '20260415_queue_day'
 branch_labels = None
 depends_on = None
 
