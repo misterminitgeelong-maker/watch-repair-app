@@ -50,6 +50,99 @@ SUBURBS_BY_STATE_FALLBACK: dict[str, list[str]] = {
     "WA": ["Perth", "Fremantle", "Joondalup", "Mandurah", "Bunbury", "Geraldton", "Kalgoorlie", "Albany", "Northbridge", "Subiaco", "Claremont", "Rockingham", "Canning Vale", "Midland", "Armadale"],
 }
 
+# Regional groupings for suburb picker — suburb names must match DB/fallback exactly
+REGION_GROUPS: dict[str, dict[str, list[str]]] = {
+    "VIC": {
+        "Metro Central": ["Melbourne", "Carlton", "Collingwood", "Fitzroy", "Richmond", "South Yarra", "Prahran", "St Kilda", "Southbank", "Docklands", "Port Melbourne"],
+        "Metro North": ["Coburg", "Brunswick", "Preston", "Reservoir", "Thornbury", "Northcote", "Bundoora", "Greensborough", "Heidelberg", "Macleod", "Rosanna", "Eltham", "Diamond Creek", "Epping", "Lalor", "Mill Park", "South Morang", "Sunbury", "Craigieburn", "Roxburgh Park", "Broadmeadows", "Campbellfield"],
+        "Metro East": ["Box Hill", "Ringwood", "Doncaster", "Croydon", "Lilydale", "Healesville", "Mooroolbark", "Bayswater", "Knox", "Boronia", "Ferntree Gully", "Wantirna", "Mitcham", "Nunawading", "Vermont", "Forest Hill", "Blackburn", "Maroondah"],
+        "Metro South East": ["Dandenong", "Frankston", "Springvale", "Noble Park", "Keysborough", "Pakenham", "Berwick", "Cranbourne", "Narre Warren", "Hampton Park", "Hallam", "Endeavour Hills", "Rowville", "Mulgrave", "Wheelers Hill", "Clayton", "Oakleigh", "Chadstone", "Moorabbin", "Cheltenham", "Mentone", "Mordialloc"],
+        "Metro West": ["Footscray", "Sunshine", "Werribee", "Hoppers Crossing", "Melton", "Deer Park", "St Albans", "Keilor", "Essendon", "Moonee Ponds", "Ascot Vale", "Altona", "Williamstown", "Newport", "Laverton", "Point Cook", "Truganina", "Tarneit"],
+        "Regional North": ["Shepparton", "Benalla", "Wangaratta", "Wodonga", "Albury", "Echuca", "Cobram", "Kyabram", "Mildura", "Swan Hill", "Horsham", "Warracknabeal", "Donald"],
+        "Regional East": ["Traralgon", "Morwell", "Sale", "Bairnsdale", "Orbost", "Warragul", "Drouin", "Korumburra", "Leongatha", "Foster"],
+        "Regional South": ["Geelong", "Torquay", "Lorne", "Apollo Bay", "Colac", "Camperdown", "Warrnambool", "Portland", "Hamilton", "Ararat"],
+        "Regional West": ["Ballarat", "Bacchus Marsh", "Daylesford", "Maryborough", "Castlemaine", "Bendigo", "Heathcote", "Kyneton", "Gisborne"],
+    },
+    "NSW": {
+        "Metro Central": ["Sydney", "Surry Hills", "Newtown", "Redfern", "Pyrmont", "Ultimo", "Glebe", "Darlinghurst", "Kings Cross", "Potts Point", "Woolloomooloo"],
+        "Metro North": ["North Sydney", "Chatswood", "Hornsby", "Penrith", "Windsor", "Richmond", "Rouse Hill", "Castle Hill", "Parramatta", "Blacktown", "Seven Hills", "Bella Vista", "Norwest"],
+        "Metro East": ["Bondi", "Randwick", "Maroubra", "Coogee", "Kingsford", "Mascot", "Botany", "Hurstville", "Rockdale", "Kogarah", "Sans Souci"],
+        "Metro South": ["Liverpool", "Campbelltown", "Macarthur", "Ingleburn", "Minto", "Narellan", "Camden", "Picton", "Wollongong", "Shellharbour", "Kiama", "Bowral"],
+        "Metro West": ["Parramatta", "Westmead", "Auburn", "Granville", "Merrylands", "Fairfield", "Cabramatta", "Wetherill Park", "Bankstown", "Lakemba", "Canterbury"],
+        "Regional North": ["Newcastle", "Maitland", "Cessnock", "Singleton", "Tamworth", "Armidale", "Coffs Harbour", "Grafton", "Lismore", "Byron Bay", "Ballina", "Tweed Heads"],
+        "Regional Central": ["Central Coast", "Gosford", "Wyong", "Tuggerah", "Port Macquarie", "Taree", "Forster", "Dubbo", "Orange", "Bathurst", "Mudgee"],
+        "Regional South": ["Nowra", "Batemans Bay", "Narooma", "Eden", "Wagga Wagga", "Albury", "Griffith", "Leeton", "Young", "Goulburn", "Queanbeyan"],
+    },
+    "QLD": {
+        "Metro Central": ["Brisbane", "Fortitude Valley", "New Farm", "West End", "South Brisbane", "Woolloongabba", "Spring Hill", "Kangaroo Point"],
+        "Metro North": ["Chermside", "Aspley", "Northgate", "Nundah", "Virginia", "Kedron", "Stafford", "Everton Park", "Mitchelton", "Brookside", "Strathpine", "Redcliffe", "Kallangur"],
+        "Metro East": ["Carindale", "Carina", "Wynnum", "Manly", "Bayside", "Cleveland", "Victoria Point", "Redland Bay", "Capalaba"],
+        "Metro South": ["Sunnybank", "Runcorn", "Rochedale", "Logan", "Beenleigh", "Loganholme", "Springwood", "Daisy Hill", "Browns Plains", "Jimboomba"],
+        "Metro West": ["Ipswich", "Springfield", "Richlands", "Forest Lake", "Darra", "Acacia Ridge", "Inala", "Oxley", "Moorooka", "Woolloongabba"],
+        "Gold Coast": ["Surfers Paradise", "Southport", "Broadbeach", "Burleigh Heads", "Robina", "Varsity Lakes", "Nerang", "Mudgeeraba", "Helensvale", "Coomera", "Tweed Heads South"],
+        "Sunshine Coast": ["Maroochydore", "Noosa", "Caloundra", "Nambour", "Buderim", "Mooloolaba", "Kawana Waters", "Sippy Downs"],
+        "Regional North": ["Townsville", "Cairns", "Mackay", "Rockhampton", "Bundaberg", "Hervey Bay", "Gladstone", "Toowoomba", "Mount Isa", "Charters Towers"],
+    },
+    "WA": {
+        "Metro Central": ["Perth", "Northbridge", "Subiaco", "Leederville", "Mount Lawley", "Highgate", "East Perth", "West Perth"],
+        "Metro North": ["Joondalup", "Claremont", "Cottesloe", "Scarborough", "Stirling", "Innaloo", "Osborne Park", "Warwick", "Duncraig", "Hillarys", "Currambine", "Butler", "Yanchep"],
+        "Metro East": ["Midland", "Swan", "Ellenbrook", "Bayswater", "Bassendean", "Guildford", "Kalamunda", "Maida Vale", "Forrestfield"],
+        "Metro South": ["Fremantle", "Rockingham", "Mandurah", "Canning Vale", "Gosnells", "Armadale", "Kwinana", "Cockburn", "Spearwood", "Bibra Lake"],
+        "Regional North": ["Geraldton", "Carnarvon", "Karratha", "Port Hedland", "Broome", "Kununurra", "Derby"],
+        "Regional South": ["Albany", "Bunbury", "Busselton", "Manjimup", "Esperance", "Collie", "Harvey"],
+        "Regional East": ["Kalgoorlie", "Boulder", "Coolgardie", "Merredin", "Northam", "York"],
+    },
+    "SA": {
+        "Metro Central": ["Adelaide", "North Adelaide", "Norwood", "Hyde Park", "Unley", "Parkside", "Glenelg"],
+        "Metro North": ["Prospect", "Enfield", "Salisbury", "Elizabeth", "Tea Tree Gully", "Modbury", "Golden Grove", "Mawson Lakes", "Gawler"],
+        "Metro East": ["Burnside", "Kensington", "Magill", "Campbelltown", "Newton", "Athelstone", "Rostrevor"],
+        "Metro South": ["Marion", "Morphett Vale", "Noarlunga", "Christies Beach", "Hallett Cove", "Reynella", "Onkaparinga"],
+        "Metro West": ["Port Adelaide", "Semaphore", "Largs Bay", "Henley Beach", "Woodville", "Cheltenham", "Beverley"],
+        "Regional North": ["Whyalla", "Port Augusta", "Port Pirie", "Kadina", "Yorke Peninsula"],
+        "Regional South": ["Mount Barker", "Victor Harbor", "Goolwa", "Murray Bridge", "Strathalbyn", "Kangaroo Island"],
+        "Regional East": ["Mount Gambier", "Naracoorte", "Keith", "Bordertown"],
+    },
+    "ACT": {
+        "Inner North": ["Braddon", "Dickson", "Downer", "Lyneham", "O'Connor", "Ainslie", "Campbell", "Reid"],
+        "Inner South": ["Kingston", "Manuka", "Barton", "Forrest", "Griffith", "Red Hill", "Deakin"],
+        "Belconnen": ["Belconnen", "Bruce", "Charnwood", "Florey", "Fraser", "Giralang", "Hawker", "Higgins", "Holt", "Kaleen", "Latham", "Macquarie", "McKellar", "Melba", "Page", "Scullin", "Spence", "Weetangera"],
+        "Woden / Weston": ["Woden", "Philip", "Curtin", "Hughes", "Garran", "Chifley", "Holder", "Rivett", "Stirling", "Waramanga", "Weston"],
+        "Tuggeranong": ["Tuggeranong", "Erindale", "Greenway", "Kambah", "Macarthur", "Calwell", "Isabella Plains", "Fadden", "Gowrie", "Monash"],
+        "Gungahlin": ["Gungahlin", "Franklin", "Harrison", "Mitchell", "Ngunnawal", "Palmerston", "Amaroo", "Casey", "Forde", "Moncrieff"],
+        "Queanbeyan": ["Queanbeyan", "Jerrabomberra", "Googong"],
+    },
+    "TAS": {
+        "Hobart Metro": ["Hobart", "Sandy Bay", "Battery Point", "North Hobart", "West Hobart", "South Hobart", "Glenorchy", "Moonah", "New Town", "Lenah Valley", "Lindisfarne", "Bellerive", "Rosny"],
+        "Launceston Metro": ["Launceston", "Newstead", "Invermay", "Mowbray", "Newnham", "Kings Meadows", "Youngtown", "Riverside"],
+        "North West": ["Devonport", "Ulverstone", "Burnie", "Somerset", "Wynyard", "Smithton", "Penguin"],
+        "Regional": ["New Norfolk", "Queenstown", "Strahan", "St Helens", "Scottsdale", "Swansea", "Huonville"],
+    },
+    "NT": {
+        "Darwin Metro": ["Darwin", "Palmerston", "Casuarina", "Nightcliff", "Rapid Creek", "Fannie Bay", "Stuart Park", "Larrakeyah", "Ludmilla"],
+        "Alice Springs": ["Alice Springs", "Gillen", "Larapinta", "Araluen", "Eastside"],
+        "Regional": ["Katherine", "Tennant Creek", "Jabiru", "Nhulunbuy", "Borroloola"],
+    },
+}
+
+
+def _build_region_groups(state_code: str, available_suburbs: list[str]) -> dict[str, list[str]]:
+    """Return region->suburbs mapping filtered to suburbs that exist in available_suburbs."""
+    if state_code not in REGION_GROUPS:
+        return {}
+    available_set = {s.lower() for s in available_suburbs}
+    result: dict[str, list[str]] = {}
+    assigned: set[str] = set()
+    for region, suburbs in REGION_GROUPS[state_code].items():
+        matched = [s for s in suburbs if s.lower() in available_set]
+        if matched:
+            result[region] = matched
+            assigned.update(s.lower() for s in matched)
+    other = [s for s in available_suburbs if s.lower() not in assigned]
+    if other:
+        result["Other"] = other
+    return result
+
+
 class Prospect(BaseModel):
     name: str
     address: str
@@ -244,4 +337,8 @@ async def list_regions(
             suburbs_by_state = SUBURBS_BY_STATE_FALLBACK
     except Exception:
         suburbs_by_state = SUBURBS_BY_STATE_FALLBACK
-    return {"states": AU_STATES, "suburbs": suburbs_by_state}
+    region_groups = {
+        code: _build_region_groups(code, suburbs)
+        for code, suburbs in suburbs_by_state.items()
+    }
+    return {"states": AU_STATES, "suburbs": suburbs_by_state, "region_groups": region_groups}

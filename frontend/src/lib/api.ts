@@ -2054,7 +2054,7 @@ export const getProspectCollectorStatus = () =>
 export const listProspectCategories = () =>
   api.get<{ categories: Array<{ key: string; label: string }> }>('/prospects/categories')
 export const listProspectRegions = () =>
-  api.get<{ states: Array<{ code: string; name: string }>; suburbs: Record<string, string[]> }>('/prospects/regions')
+  api.get<{ states: Array<{ code: string; name: string }>; suburbs: Record<string, string[]>; region_groups: Record<string, Record<string, string[]>> }>('/prospects/regions')
 export const searchProspects = (category: string, state: string, suburbs?: string[], live?: boolean) =>
   api.get<ProspectSearchResponse>('/prospects/search', { params: { category, state, suburbs, live } })
 

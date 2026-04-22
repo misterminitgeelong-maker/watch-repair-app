@@ -18,11 +18,39 @@ export default function ProspectsPage() {
   const [state, setState] = useState<string>('')
   const [suburbs, setSuburbs] = useState<Set<string>>(new Set())
   const [useLiveApi, setUseLiveApi] = useState(false)
+  const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set())
+
+  const regionGroupsForState: Record<string, string[]> = useMemo(() => {
+    if (!state || !regions?.region_groups) return {}
+    return regions.region_groups[state] ?? {}
+  }, [state, regions])
 
   const suburbsForState: string[] = useMemo(() => {
     const raw = state && regions?.suburbs?.[state]
     return Array.isArray(raw) ? raw : []
   }, [state, regions?.suburbs])
+
+  const toggleRegion = (regionSuburbs: string[]) => {
+    const allSelected = regionSuburbs.every(s => suburbs.has(s))
+    setSuburbs(prev => {
+      const next = new Set(prev)
+      if (allSelected) {
+        regionSuburbs.forEach(s => next.delete(s))
+      } else {
+        regionSuburbs.forEach(s => next.add(s))
+      }
+      return next
+    })
+  }
+
+  const toggleRegionCollapse = (region: string) => {
+    setCollapsedRegions(prev => {
+      const next = new Set(prev)
+      if (next.has(region)) next.delete(region)
+      else next.add(region)
+      return next
+    })
+  }
 
   const toggleSuburb = (suburb: string) => {
     setSuburbs(prev => {
@@ -91,6 +119,7 @@ export default function ProspectsPage() {
               onChange={e => {
                 setState(e.target.value)
                 setSuburbs(new Set())
+                setCollapsedRegions(new Set())
               }}
             >
               <option value="">Select state</option>
@@ -119,47 +148,119 @@ export default function ProspectsPage() {
           </div>
         </div>
 
-        {state && suburbsForState.length > 0 && (
+        {state && (Object.keys(regionGroupsForState).length > 0 ? (
+          <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--ms-border)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+                Regions — narrow your search
+                {suburbs.size > 0 && (
+                  <span className="ml-2 text-xs font-normal" style={{ color: 'var(--ms-text-muted)' }}>
+                    ({suburbs.size} suburb{suburbs.size !== 1 ? 's' : ''} selected)
+                  </span>
+                )}
+              </label>
+              <div className="flex gap-2">
+                <button type="button" onClick={selectAllSuburbs} className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5" style={{ color: 'var(--ms-accent)' }}>
+                  Select all
+                </button>
+                <button type="button" onClick={clearSuburbs} className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5" style={{ color: 'var(--ms-text-muted)' }}>
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {Object.entries(regionGroupsForState).map(([region, regionSuburbs]) => {
+                const allSelected = regionSuburbs.length > 0 && regionSuburbs.every(s => suburbs.has(s))
+                const someSelected = regionSuburbs.some(s => suburbs.has(s))
+                const collapsed = collapsedRegions.has(region)
+                const isOther = region === 'Other'
+
+                return (
+                  <div
+                    key={region}
+                    className="rounded-lg border overflow-hidden"
+                    style={{ borderColor: someSelected ? 'var(--ms-accent)' : 'var(--ms-border)', borderWidth: someSelected ? 1.5 : 1 }}
+                  >
+                    <div
+                      className="flex items-center gap-3 px-3 py-2 select-none"
+                      style={{ backgroundColor: allSelected ? 'var(--ms-accent-light)' : someSelected ? 'var(--ms-hover)' : 'var(--ms-surface)' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
+                        onChange={() => toggleRegion(regionSuburbs)}
+                        className="rounded"
+                        style={{ accentColor: 'var(--ms-accent)', flexShrink: 0 }}
+                      />
+                      <button
+                        type="button"
+                        className="flex-1 text-left text-sm font-semibold"
+                        style={{ color: 'var(--ms-text)' }}
+                        onClick={() => toggleRegionCollapse(region)}
+                      >
+                        {region}
+                        <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--ms-text-muted)' }}>
+                          {someSelected ? `${regionSuburbs.filter(s => suburbs.has(s)).length}/${regionSuburbs.length}` : regionSuburbs.length}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleRegionCollapse(region)}
+                        className="text-xs px-1"
+                        style={{ color: 'var(--ms-text-muted)' }}
+                        aria-label={collapsed ? 'Expand' : 'Collapse'}
+                      >
+                        {collapsed ? '▸' : '▾'}
+                      </button>
+                    </div>
+
+                    {!collapsed && (
+                      <div className="px-3 py-2 flex flex-wrap gap-x-5 gap-y-1.5 max-h-36 overflow-y-auto" style={{ borderTop: '1px solid var(--ms-border)' }}>
+                        {regionSuburbs.map(sub => (
+                          <label key={sub} className="flex items-center gap-1.5 cursor-pointer text-xs" style={{ color: 'var(--ms-text)' }}>
+                            <input
+                              type="checkbox"
+                              checked={suburbs.has(sub)}
+                              onChange={() => toggleSuburb(sub)}
+                              className="rounded"
+                              style={{ accentColor: 'var(--ms-accent)' }}
+                            />
+                            {sub}
+                          </label>
+                        ))}
+                        {isOther && regionSuburbs.length === 0 && (
+                          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No unclassified suburbs.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : suburbsForState.length > 0 ? (
           <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--ms-border)' }}>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
                 Suburbs (optional) — narrow your search
               </label>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={selectAllSuburbs}
-                  className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5"
-                  style={{ color: 'var(--ms-accent)' }}
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSuburbs}
-                  className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5"
-                  style={{ color: 'var(--ms-text-muted)' }}
-                >
-                  Clear
-                </button>
+                <button type="button" onClick={selectAllSuburbs} className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5" style={{ color: 'var(--ms-accent)' }}>Select all</button>
+                <button type="button" onClick={clearSuburbs} className="text-xs font-medium px-2 py-1 rounded hover:bg-black/5" style={{ color: 'var(--ms-text-muted)' }}>Clear</button>
               </div>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 max-h-[160px] overflow-y-auto py-1 pr-2" style={{ color: 'var(--ms-text)' }}>
               {suburbsForState.map(sub => (
                 <label key={sub} className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={suburbs.has(sub)}
-                    onChange={() => toggleSuburb(sub)}
-                    className="rounded border"
-                    style={{ accentColor: 'var(--ms-accent)' }}
-                  />
+                  <input type="checkbox" checked={suburbs.has(sub)} onChange={() => toggleSuburb(sub)} className="rounded border" style={{ accentColor: 'var(--ms-accent)' }} />
                   {sub}
                 </label>
               ))}
             </div>
           </div>
-        )}
+        ) : null)}
       </Card>
 
       {collectorStatus && collectorStatus.total > 0 && (
