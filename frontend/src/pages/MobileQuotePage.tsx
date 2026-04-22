@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { CheckCircle, XCircle, FileText, MapPin, Car, PenLine } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, Car, PenLine } from 'lucide-react'
 import {
   decidePublicAutoKeyQuote,
   getApiErrorMessage,
@@ -210,7 +210,7 @@ export default function MobileQuotePage() {
         {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <FileText size={22} style={{ color: 'var(--ms-accent)' }} />
+            <img src="/mainspring-icon.svg" alt="Mainspring" style={{ width: 30, height: 30 }} />
           </div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--ms-text)' }}>{quote.shop_name}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
