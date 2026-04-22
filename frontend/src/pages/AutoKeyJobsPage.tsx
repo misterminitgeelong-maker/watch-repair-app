@@ -39,6 +39,7 @@ import {
   type JobStatus,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
@@ -729,10 +730,10 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 Add another service line
               </Button>
             </div>
-            <Input
+            <AddressAutocompleteInput
               label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
               value={form.job_address}
-              onChange={e => setForm(f => ({ ...f, job_address: e.target.value }))}
+              onChange={val => setForm(f => ({ ...f, job_address: val }))}
               placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
