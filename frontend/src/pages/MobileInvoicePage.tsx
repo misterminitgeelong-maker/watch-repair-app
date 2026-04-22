@@ -177,7 +177,7 @@ export default function MobileInvoicePage() {
           </div>
         </Card>
 
-        {showPayOnline && (
+        {showPayOnline ? (
           <div className="flex flex-col gap-2">
             <Button
               type="button"
@@ -192,7 +192,17 @@ export default function MobileInvoicePage() {
               Secure payment via Stripe. You will return here when done.
             </p>
           </div>
-        )}
+        ) : inv.status === 'unpaid' ? (
+          <div
+            className="rounded-xl border px-4 py-4 text-sm text-center space-y-1"
+            style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
+          >
+            <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>Payment on collection</p>
+            <p style={{ color: 'var(--ms-text-muted)' }}>
+              Your technician will collect payment on-site, or contact the shop to arrange payment.
+            </p>
+          </div>
+        ) : null}
 
         <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
           Questions? Reply to the shop or call them with your job number.

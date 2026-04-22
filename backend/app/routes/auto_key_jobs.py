@@ -229,7 +229,7 @@ def create_auto_key_job(
             session.add(job)
             session.commit()
             session.refresh(job)
-        confirm_url = f"{settings.public_base_url.rstrip('/')}/booking-confirm/{job.booking_confirmation_token}"
+        confirm_url = f"{settings.public_base_url.rstrip('/')}/mobile-booking/{job.booking_confirmation_token}"
         try:
             notify_auto_key_booking_request(
                 session,
