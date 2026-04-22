@@ -2531,7 +2531,7 @@ export default function AutoKeyJobsPage() {
                           key={job.id}
                           className="group cursor-pointer"
                           style={{ borderBottom: i < sortedJobsDirectory.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                          onClick={() => window.location.href = `/mobile-services/jobs/${job.id}`}
+                          onClick={() => navigate(`/auto-key/${job.id}`)}
                           onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                           onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                         >
