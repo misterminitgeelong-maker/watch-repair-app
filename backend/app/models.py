@@ -1431,6 +1431,9 @@ class AutoKeyQuote(SQLModel, table=True):
     currency: str = "AUD"
     sent_at: Optional[datetime] = None
     quote_approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    signature_storage_key: Optional[str] = None
+    signed_at: Optional[datetime] = None
+    signer_name: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -1500,6 +1503,9 @@ class AutoKeyQuoteRead(SQLModel):
     total_cents: int
     currency: str
     sent_at: Optional[datetime] = None
+    signed_at: Optional[datetime] = None
+    signer_name: Optional[str] = None
+    has_signature: bool = False
     created_at: datetime
     line_items: list[AutoKeyQuoteLineItemRead] = []
 

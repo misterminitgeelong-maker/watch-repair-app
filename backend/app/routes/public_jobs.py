@@ -1,15 +1,20 @@
+import base64
 import io
 import importlib
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
 from ..database import get_session
+
+logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
 from ..models import (
     AutoKeyInvoice,
@@ -30,6 +35,8 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
+
+from .attachments import attachment_storage  # noqa: E402
 
 
 class PublicAutoKeyIntakeSubmit(SQLModel):
@@ -875,6 +882,9 @@ def get_public_auto_key_quote(token: str, session: Session = Depends(get_session
         "tax_cents": quote.tax_cents,
         "total_cents": quote.total_cents,
         "currency": quote.currency or "AUD",
+        "signed_at": isoformat_z_utc(quote.signed_at) if quote.signed_at else None,
+        "signer_name": quote.signer_name,
+        "has_signature": bool(quote.signature_storage_key),
         "line_items": [
             {
                 "description": i.description,
@@ -889,6 +899,8 @@ def get_public_auto_key_quote(token: str, session: Session = Depends(get_session
 
 class AutoKeyQuoteDecision(SQLModel):
     decision: str  # "approved" | "declined"
+    signature_data: Optional[str] = None  # base64 PNG (no data: prefix)
+    signer_name: Optional[str] = None
 
 
 @router.post("/auto-key-quote/{token}/decision")
@@ -917,15 +929,46 @@ def decide_public_auto_key_quote(
     quote.status = decision
     if decision == "approved" and job.status in ("quote_sent", "awaiting_quote"):
         job.status = "go_ahead"
+
+    if decision == "approved" and body.signature_data:
+        try:
+            # Strip data URI prefix if present
+            raw_b64 = body.signature_data
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",", 1)[1]
+            png_bytes = base64.b64decode(raw_b64)
+            storage_key = f"quote-signatures/{quote.id}/{uuid4().hex}_signature.png"
+            attachment_storage.save_bytes(storage_key, png_bytes, content_type="image/png")
+            quote.signature_storage_key = storage_key
+            quote.signed_at = datetime.now(timezone.utc)
+            quote.signer_name = (body.signer_name or "").strip() or None
+        except Exception:
+            logger.exception("quote_signature_upload_failed quote=%s", quote.id)
+
     session.add(TenantEventLog(
         tenant_id=job.tenant_id,
         entity_type="auto_key_job",
         entity_id=job.id,
         event_type=f"quote_{decision}_portal",
-        event_summary=f"Customer {decision} quote for job #{job.job_number} via portal",
+        event_summary=f"Customer {decision} quote for job #{job.job_number} via portal"
+        + (f" — signed by {quote.signer_name}" if quote.signer_name else ""),
     ))
     session.commit()
 
     if decision == "approved":
         return {"ok": True, "status": "approved", "message": "Quote accepted! We'll be in touch to confirm your appointment."}
     return {"ok": True, "status": "declined", "message": "Your quote has been declined. Contact us if you change your mind."}
+
+
+@router.get("/auto-key-quote/{token}/signature")
+def get_quote_signature(token: str, session: Session = Depends(get_session)):
+    """Returns a short-lived redirect to the signature image in Supabase Storage."""
+    quote = session.exec(
+        select(AutoKeyQuote).where(AutoKeyQuote.quote_approval_token == token)
+    ).first()
+    if not quote or not quote.signature_storage_key:
+        raise HTTPException(status_code=404, detail="No signature found")
+    signed_url = attachment_storage.get_signed_url(quote.signature_storage_key, expires_in_seconds=120)
+    if not signed_url:
+        raise HTTPException(status_code=404, detail="Signature not available")
+    return RedirectResponse(url=signed_url, status_code=302)

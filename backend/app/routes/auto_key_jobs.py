@@ -120,6 +120,9 @@ def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
         total_cents=quote.total_cents,
         currency=quote.currency,
         sent_at=quote.sent_at,
+        signed_at=quote.signed_at,
+        signer_name=quote.signer_name,
+        has_signature=bool(quote.signature_storage_key),
         created_at=quote.created_at,
         line_items=[
             AutoKeyQuoteLineItemRead(
@@ -889,3 +892,24 @@ def create_auto_key_invoice_from_quote(
     session.commit()
     session.refresh(invoice)
     return _to_invoice_read(invoice)
+
+
+@router.get("/quotes/{quote_id}/signature")
+def get_quote_signature_admin(
+    quote_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Returns a short-lived redirect to the signature image — authenticated staff only."""
+    from fastapi.responses import RedirectResponse
+    from .attachments import attachment_storage
+
+    quote = session.get(AutoKeyQuote, quote_id)
+    if not quote or quote.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    if not quote.signature_storage_key:
+        raise HTTPException(status_code=404, detail="No signature on file for this quote")
+    signed_url = attachment_storage.get_signed_url(quote.signature_storage_key, expires_in_seconds=120)
+    if not signed_url:
+        raise HTTPException(status_code=404, detail="Signature not available")
+    return RedirectResponse(url=signed_url, status_code=302)

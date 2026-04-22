@@ -2219,10 +2219,20 @@ export interface PublicAutoKeyQuote {
   tax_cents: number
   total_cents: number
   currency: string
+  signed_at: string | null
+  signer_name: string | null
+  has_signature: boolean
   line_items: { description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
 }
 
 export const getPublicAutoKeyQuote = (token: string) =>
   axios.get<PublicAutoKeyQuote>(withApiOrigin(`/v1/public/auto-key-quote/${token}`))
-export const decidePublicAutoKeyQuote = (token: string, decision: 'approved' | 'declined') =>
-  axios.post<{ ok: boolean; status: string; message: string }>(withApiOrigin(`/v1/public/auto-key-quote/${token}/decision`), { decision })
+export const decidePublicAutoKeyQuote = (
+  token: string,
+  decision: 'approved' | 'declined',
+  opts?: { signatureData?: string; signerName?: string }
+) =>
+  axios.post<{ ok: boolean; status: string; message: string }>(
+    withApiOrigin(`/v1/public/auto-key-quote/${token}/decision`),
+    { decision, signature_data: opts?.signatureData, signer_name: opts?.signerName }
+  )

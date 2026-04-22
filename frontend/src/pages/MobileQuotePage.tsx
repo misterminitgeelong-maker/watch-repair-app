@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { CheckCircle, XCircle, FileText, MapPin, Car } from 'lucide-react'
+import { CheckCircle, XCircle, FileText, MapPin, Car, PenLine } from 'lucide-react'
 import {
   decidePublicAutoKeyQuote,
   getApiErrorMessage,
@@ -9,17 +9,154 @@ import {
   type PublicAutoKeyQuote,
 } from '@/lib/api'
 import { Button, Card } from '@/components/ui'
-import { useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 function formatMoney(cents: number, currency: string) {
   const code = (currency || 'AUD').toUpperCase().slice(0, 3)
   return (cents / 100).toLocaleString('en-AU', { style: 'currency', currency: code })
 }
 
+// ── Signature pad ────────────────────────────────────────────────────────────
+
+function SignaturePad({
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  onSave: (dataUrl: string) => void
+  onCancel: () => void
+  isPending: boolean
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const [hasStrokes, setHasStrokes] = useState(false)
+
+  const getPos = (e: MouseEvent | Touch, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    const start = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault()
+      drawing.current = true
+      const pos = getPos('touches' in e ? e.touches[0] : e, canvas)
+      ctx.beginPath()
+      ctx.moveTo(pos.x, pos.y)
+    }
+
+    const move = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault()
+      if (!drawing.current) return
+      const pos = getPos('touches' in e ? e.touches[0] : e, canvas)
+      ctx.lineTo(pos.x, pos.y)
+      ctx.stroke()
+      setHasStrokes(true)
+    }
+
+    const end = () => { drawing.current = false }
+
+    canvas.addEventListener('mousedown', start)
+    canvas.addEventListener('mousemove', move)
+    canvas.addEventListener('mouseup', end)
+    canvas.addEventListener('touchstart', start, { passive: false })
+    canvas.addEventListener('touchmove', move, { passive: false })
+    canvas.addEventListener('touchend', end)
+
+    return () => {
+      canvas.removeEventListener('mousedown', start)
+      canvas.removeEventListener('mousemove', move)
+      canvas.removeEventListener('mouseup', end)
+      canvas.removeEventListener('touchstart', start)
+      canvas.removeEventListener('touchmove', move)
+      canvas.removeEventListener('touchend', end)
+    }
+  }, [])
+
+  const clear = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasStrokes(false)
+  }, [])
+
+  const save = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    // Strip the data: prefix — backend expects raw base64
+    const dataUrl = canvas.toDataURL('image/png')
+    const base64 = dataUrl.split(',')[1]
+    onSave(base64)
+  }
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+          Sign to accept
+        </p>
+        <button
+          type="button"
+          onClick={clear}
+          className="text-xs px-2 py-0.5 rounded"
+          style={{ color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}
+        >
+          Clear
+        </button>
+      </div>
+
+      <div
+        className="rounded-lg overflow-hidden"
+        style={{ border: '1.5px solid var(--ms-border)', backgroundColor: '#fff', touchAction: 'none' }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={180}
+          style={{ width: '100%', height: 180, display: 'block', cursor: 'crosshair' }}
+        />
+      </div>
+      <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
+        Draw your signature above
+      </p>
+
+      <div className="flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onCancel} disabled={isPending}>
+          Back
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={save}
+          disabled={!hasStrokes || isPending}
+        >
+          {isPending ? 'Submitting…' : 'Sign & accept'}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
+
 export default function MobileQuotePage() {
   const { token } = useParams<{ token: string }>()
   const qc = useQueryClient()
-  const [declineConfirm, setDeclineConfirm] = useState(false)
+  const [step, setStep] = useState<'view' | 'sign' | 'decline-confirm'>('view')
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['public-auto-key-quote', token],
@@ -29,11 +166,11 @@ export default function MobileQuotePage() {
   })
 
   const decideMut = useMutation({
-    mutationFn: (decision: 'approved' | 'declined') =>
-      decidePublicAutoKeyQuote(token!, decision).then(r => r.data),
+    mutationFn: ({ decision, signatureData }: { decision: 'approved' | 'declined'; signatureData?: string }) =>
+      decidePublicAutoKeyQuote(token!, decision, { signatureData }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['public-auto-key-quote', token] })
-      setDeclineConfirm(false)
+      setStep('view')
     },
   })
 
@@ -84,12 +221,18 @@ export default function MobileQuotePage() {
 
         {/* Status banner */}
         {isApproved && (
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: 'rgba(80,180,100,0.12)', border: '1px solid rgba(80,180,100,0.3)' }}>
-            <CheckCircle size={20} style={{ color: '#3A9A50', flexShrink: 0 }} />
-            <div>
+          <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'rgba(80,180,100,0.12)', border: '1px solid rgba(80,180,100,0.3)' }}>
+            <div className="flex items-center gap-3 mb-1">
+              <CheckCircle size={20} style={{ color: '#3A9A50', flexShrink: 0 }} />
               <p className="text-sm font-semibold" style={{ color: '#2A7A40' }}>Quote accepted</p>
-              <p className="text-xs" style={{ color: '#2A7A40' }}>We'll be in touch to confirm your appointment.</p>
             </div>
+            {quote.signed_at && (
+              <p className="text-xs ml-8" style={{ color: '#2A7A40' }}>
+                Signed {new Date(quote.signed_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                {quote.signer_name ? ` by ${quote.signer_name}` : ''}
+              </p>
+            )}
+            <p className="text-xs ml-8 mt-0.5" style={{ color: '#2A7A40' }}>We'll be in touch to confirm your appointment.</p>
           </div>
         )}
         {isDeclined && (
@@ -103,34 +246,30 @@ export default function MobileQuotePage() {
         )}
 
         {/* Job details */}
-        <Card className="p-4 space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Job details</h2>
+        <Card className="p-4 space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Job details</h2>
           <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{quote.title}</p>
           {vehicle && (
             <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-              <Car size={14} />
-              <span>{vehicle}</span>
+              <Car size={14} /><span>{vehicle}</span>
             </div>
           )}
           {quote.job_address && (
             <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-              <MapPin size={14} />
-              <span>{quote.job_address}</span>
+              <MapPin size={14} /><span>{quote.job_address}</span>
             </div>
           )}
         </Card>
 
-        {/* Quote line items */}
+        {/* Quote breakdown */}
         <Card className="p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Quote breakdown</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Quote breakdown</h2>
           <div className="space-y-2">
             {quote.line_items.map((item, i) => (
               <div key={i} className="flex items-start justify-between gap-4 text-sm">
                 <span style={{ color: 'var(--ms-text)' }}>
                   {item.description}
-                  {item.quantity !== 1 && (
-                    <span className="ml-1" style={{ color: 'var(--ms-text-muted)' }}>× {item.quantity}</span>
-                  )}
+                  {item.quantity !== 1 && <span className="ml-1" style={{ color: 'var(--ms-text-muted)' }}>× {item.quantity}</span>}
                 </span>
                 <span className="font-medium whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>
                   {formatMoney(item.total_price_cents, quote.currency)}
@@ -138,23 +277,19 @@ export default function MobileQuotePage() {
               </div>
             ))}
           </div>
-
           <div className="mt-4 pt-3 space-y-1" style={{ borderTop: '1px solid var(--ms-border)' }}>
             {quote.tax_cents > 0 && (
               <>
                 <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-                  <span>Subtotal</span>
-                  <span>{formatMoney(quote.subtotal_cents, quote.currency)}</span>
+                  <span>Subtotal</span><span>{formatMoney(quote.subtotal_cents, quote.currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-                  <span>GST</span>
-                  <span>{formatMoney(quote.tax_cents, quote.currency)}</span>
+                  <span>GST</span><span>{formatMoney(quote.tax_cents, quote.currency)}</span>
                 </div>
               </>
             )}
             <div className="flex justify-between font-bold text-base pt-1" style={{ color: 'var(--ms-text)' }}>
-              <span>Total</span>
-              <span>{formatMoney(quote.total_cents, quote.currency)}</span>
+              <span>Total</span><span>{formatMoney(quote.total_cents, quote.currency)}</span>
             </div>
           </div>
         </Card>
@@ -168,40 +303,47 @@ export default function MobileQuotePage() {
               </p>
             )}
 
-            {declineConfirm ? (
+            {step === 'sign' && (
+              <SignaturePad
+                isPending={decideMut.isPending}
+                onCancel={() => setStep('view')}
+                onSave={signatureData => decideMut.mutate({ decision: 'approved', signatureData })}
+              />
+            )}
+
+            {step === 'decline-confirm' && (
               <Card className="p-4 space-y-3">
                 <p className="text-sm font-medium text-center" style={{ color: 'var(--ms-text)' }}>
                   Are you sure you want to decline this quote?
                 </p>
                 <div className="flex gap-3">
-                  <Button variant="secondary" className="flex-1" onClick={() => setDeclineConfirm(false)}>
-                    Go back
-                  </Button>
+                  <Button variant="secondary" className="flex-1" onClick={() => setStep('view')}>Go back</Button>
                   <Button
                     className="flex-1"
                     style={{ backgroundColor: '#C96A5A', color: '#fff' }}
-                    onClick={() => decideMut.mutate('declined')}
+                    onClick={() => decideMut.mutate({ decision: 'declined' })}
                     disabled={decideMut.isPending}
                   >
                     {decideMut.isPending ? 'Declining…' : 'Yes, decline'}
                   </Button>
                 </div>
               </Card>
-            ) : (
+            )}
+
+            {step === 'view' && (
               <>
                 <Button
-                  className="w-full py-3 text-base font-semibold"
-                  onClick={() => decideMut.mutate('approved')}
-                  disabled={decideMut.isPending}
+                  className="w-full py-3 text-base font-semibold flex items-center justify-center gap-2"
+                  onClick={() => setStep('sign')}
                 >
-                  {decideMut.isPending ? 'Accepting…' : 'Accept quote'}
+                  <PenLine size={18} />
+                  Review & sign quote
                 </Button>
                 <button
                   type="button"
                   className="w-full text-sm py-2"
                   style={{ color: 'var(--ms-text-muted)' }}
-                  onClick={() => setDeclineConfirm(true)}
-                  disabled={decideMut.isPending}
+                  onClick={() => setStep('decline-confirm')}
                 >
                   Decline quote
                 </button>
@@ -210,13 +352,10 @@ export default function MobileQuotePage() {
           </div>
         )}
 
-        {/* Contact */}
         {quote.shop_phone && (
           <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
             Questions? Call{' '}
-            <a href={`tel:${quote.shop_phone}`} style={{ color: 'var(--ms-accent)' }}>
-              {quote.shop_phone}
-            </a>
+            <a href={`tel:${quote.shop_phone}`} style={{ color: 'var(--ms-accent)' }}>{quote.shop_phone}</a>
           </p>
         )}
       </div>
