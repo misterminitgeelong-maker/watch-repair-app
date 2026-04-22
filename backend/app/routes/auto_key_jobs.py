@@ -358,10 +358,12 @@ def get_quote_suggestions(
     job_type: str | None = Query(default=None, max_length=120),
     key_quantity: int = Query(default=1, ge=1, le=100),
     pricing_tier: str = Query(default="retail", pattern="^(retail|b2b|tier1|tier2|tier3)$"),
+    additional_presets: str | None = Query(default=None, description="Comma-separated list of additional job type presets"),
     _auth=Depends(get_auth_context),
 ):
     """Return suggested line items and total for a given job type and pricing tier."""
-    items = suggest_line_items(job_type, key_quantity, pricing_tier)
+    presets = [p.strip() for p in additional_presets.split(",") if p.strip()] if additional_presets else None
+    items = suggest_line_items(job_type, key_quantity, pricing_tier, presets)
     subtotal = sum(int(round(q * p)) for _, q, p in items)
     tax = gst_tax_cents(subtotal)
     return {

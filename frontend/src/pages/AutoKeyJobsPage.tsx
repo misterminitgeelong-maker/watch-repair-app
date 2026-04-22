@@ -444,13 +444,15 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 
   const suggestionQty = Math.max(1, Number.parseInt(form.key_quantity, 10) || 1)
   const pricingTier = form.customer_account_id ? 'b2b' : 'retail'
+  const additionalPresets = extraServices.map(s => s.preset.trim()).filter(Boolean)
   const { data: quoteSuggestion, isFetching: quoteSuggestionLoading } = useQuery({
-    queryKey: ['auto-key-quote-suggestions', form.job_type, suggestionQty, pricingTier],
+    queryKey: ['auto-key-quote-suggestions', form.job_type, suggestionQty, pricingTier, additionalPresets],
     queryFn: () =>
       getAutoKeyQuoteSuggestions({
         job_type: form.job_type.trim() || undefined,
         key_quantity: suggestionQty,
         pricing_tier: pricingTier,
+        additional_presets: additionalPresets.length ? additionalPresets : undefined,
       }).then(r => r.data),
   })
 

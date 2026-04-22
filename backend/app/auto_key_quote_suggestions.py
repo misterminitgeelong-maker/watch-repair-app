@@ -35,6 +35,7 @@ def suggest_line_items(
     job_type: str | None,
     key_quantity: int,
     pricing_tier: str = "retail",
+    additional_presets: list[str] | None = None,
 ) -> list[tuple[str, float, int]]:
     """Return (description, quantity, unit_price_cents) per line."""
     qty = max(1, int(key_quantity))
@@ -43,9 +44,18 @@ def suggest_line_items(
     if job_type and job_type in _JOB_TYPE_DEFAULT_CENTS:
         desc, base_unit = _JOB_TYPE_DEFAULT_CENTS[job_type]
         unit = int(round(base_unit * multiplier))
-        return [(desc, float(qty), unit)]
-    unit = int(round(_FALLBACK_UNIT_CENTS * multiplier))
-    return [(_FALLBACK_DESCRIPTION, float(qty), unit)]
+        lines: list[tuple[str, float, int]] = [(desc, float(qty), unit)]
+    else:
+        unit = int(round(_FALLBACK_UNIT_CENTS * multiplier))
+        lines = [(_FALLBACK_DESCRIPTION, float(qty), unit)]
+
+    for preset in (additional_presets or []):
+        if preset and preset in _JOB_TYPE_DEFAULT_CENTS:
+            a_desc, a_base = _JOB_TYPE_DEFAULT_CENTS[preset]
+            a_unit = int(round(a_base * multiplier))
+            lines.append((a_desc, 1.0, a_unit))
+
+    return lines
 
 
 def suggested_subtotal_cents(

@@ -1950,8 +1950,11 @@ export interface AutoKeyQuoteSuggestionResult {
   line_items: AutoKeyQuoteLineItem[]
 }
 export type AutoKeyPricingTier = 'retail' | 'b2b' | 'tier1' | 'tier2' | 'tier3'
-export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number; pricing_tier?: AutoKeyPricingTier }) =>
-  api.get<AutoKeyQuoteSuggestionResult & { pricing_tier: string }>('/auto-key-jobs/quote-suggestions', { params })
+export const getAutoKeyQuoteSuggestions = (params: { job_type?: string; key_quantity?: number; pricing_tier?: AutoKeyPricingTier; additional_presets?: string[] }) => {
+  const { additional_presets, ...rest } = params
+  const p = { ...rest, ...(additional_presets?.length ? { additional_presets: additional_presets.join(',') } : {}) }
+  return api.get<AutoKeyQuoteSuggestionResult & { pricing_tier: string }>('/auto-key-jobs/quote-suggestions', { params: p })
+}
 
 // ── Vehicle key specs ─────────────────────────────────────────────────────────
 export interface VehicleKeySpecMatch {
