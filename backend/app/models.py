@@ -449,6 +449,7 @@ class SmsLog(SQLModel, table=True):
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
+    auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
     to_phone: str
     body: str
     event: str  # e.g. "quote_sent", "job_live", "status_ready"

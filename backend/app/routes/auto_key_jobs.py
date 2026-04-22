@@ -774,6 +774,7 @@ def send_auto_key_quote(
                 notify_auto_key_quote_sent(
                     session,
                     tenant_id=auth.tenant_id,
+                    auto_key_job_id=job.id,
                     to_phone=_customer.phone.strip(),
                     customer_name=_first,
                     shop_name=_shop,
