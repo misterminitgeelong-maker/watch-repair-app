@@ -452,15 +452,17 @@ def notify_auto_key_quote_sent(
     job_number: str,
     total_cents: int,
     currency: str,
+    quote_approval_token: str,
 ) -> None:
-    """SMS when a quote is sent — lets the customer know the price and to reply to confirm."""
+    """SMS when a quote is sent — lets the customer know the price and links to the approval portal."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = total_cents / 100
+    portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
     body = (
         f"Hi {customer_name}, {shop_name} — your quote for mobile job #{job_number} "
-        f"is {sym}{total:.2f} {currency}. Reply YES to confirm your booking or call us with any questions."
+        f"is {sym}{total:.2f} {currency}. View & accept your quote: {portal_url}"
     )
     if len(body) > 1500:
         body = body[:1490] + "…"

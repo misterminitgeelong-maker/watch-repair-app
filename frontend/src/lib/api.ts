@@ -2201,3 +2201,28 @@ export const getPublicAutoKeyBooking = (token: string) =>
   axios.get<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBooking(token))
 export const confirmPublicAutoKeyBooking = (token: string) =>
   axios.post<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBookingConfirm(token))
+
+export interface PublicAutoKeyQuote {
+  quote_id: string
+  status: string
+  job_number: string
+  title: string
+  vehicle_make: string | null
+  vehicle_model: string | null
+  vehicle_year: number | null
+  job_address: string | null
+  scheduled_at: string | null
+  shop_name: string
+  shop_phone: string | null
+  customer_name: string | null
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  currency: string
+  line_items: { description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
+}
+
+export const getPublicAutoKeyQuote = (token: string) =>
+  axios.get<PublicAutoKeyQuote>(withApiOrigin(`/v1/public/auto-key-quote/${token}`))
+export const decidePublicAutoKeyQuote = (token: string, decision: 'approved' | 'declined') =>
+  axios.post<{ ok: boolean; status: string; message: string }>(withApiOrigin(`/v1/public/auto-key-quote/${token}/decision`), { decision })

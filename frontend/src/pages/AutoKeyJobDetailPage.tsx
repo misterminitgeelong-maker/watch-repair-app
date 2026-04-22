@@ -40,39 +40,148 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 
+const QUOTE_PRESETS: { label: string; description: string; price: number }[] = [
+  { label: 'Key Cutting', description: 'Key cutting (in-store)', price: 35 },
+  { label: 'Transponder Programming', description: 'Transponder programming', price: 120 },
+  { label: 'Lockout – Car', description: 'Vehicle lockout service', price: 189 },
+  { label: 'Lockout – Boot/Trunk', description: 'Boot/trunk lockout', price: 189 },
+  { label: 'Lockout – Roadside', description: 'Roadside lockout', price: 220 },
+  { label: 'All Keys Lost', description: 'All keys lost — supply & program', price: 449 },
+  { label: 'Remote / Fob Sync', description: 'Remote / fob programming', price: 99 },
+  { label: 'Ignition Repair', description: 'Ignition repair', price: 159 },
+  { label: 'Ignition Replace', description: 'Ignition replacement', price: 349 },
+  { label: 'Duplicate Key', description: 'Duplicate key — cut & program', price: 89 },
+  { label: 'Broken Key Extraction', description: 'Broken key extraction', price: 129 },
+  { label: 'Door Lock Change', description: 'Door lock service', price: 199 },
+  { label: 'Diagnostic', description: 'Automotive key / immobiliser diagnostic', price: 159 },
+]
+
+interface LineItemDraft { description: string; quantity: string; unitPrice: string }
+
 function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const [err, setErr] = useState('')
-  const [description, setDescription] = useState('Mobile service')
-  const [quantity, setQuantity] = useState('1')
-  const [unitPrice, setUnitPrice] = useState('120.00')
+  const [items, setItems] = useState<LineItemDraft[]>([{ description: '', quantity: '1', unitPrice: '' }])
   const [tax, setTax] = useState('0.00')
+
+  const addPreset = (p: typeof QUOTE_PRESETS[number]) => {
+    setItems(prev => {
+      // Replace a blank first item, otherwise append
+      if (prev.length === 1 && !prev[0].description && !prev[0].unitPrice) {
+        return [{ description: p.description, quantity: '1', unitPrice: String(p.price) }]
+      }
+      return [...prev, { description: p.description, quantity: '1', unitPrice: String(p.price) }]
+    })
+  }
+
+  const updateItem = (i: number, field: keyof LineItemDraft, val: string) => {
+    setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item))
+  }
+
+  const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
+
+  const addBlankItem = () => setItems(prev => [...prev, { description: '', quantity: '1', unitPrice: '' }])
+
+  const subtotal = items.reduce((sum, item) => {
+    return sum + parseFloat(item.unitPrice || '0') * parseFloat(item.quantity || '1')
+  }, 0)
+  const taxAmt = parseFloat(tax || '0')
+  const total = subtotal + taxAmt
 
   const mut = useMutation({
     mutationFn: () =>
       createAutoKeyQuote(jobId, {
-        line_items: [{ description: description.trim() || 'Mobile service', quantity: Math.max(1, Number(quantity || '1')), unit_price_cents: Math.max(0, Math.round(parseFloat(unitPrice || '0') * 100)) }],
-        tax_cents: Math.max(0, Math.round(parseFloat(tax || '0') * 100)),
+        line_items: items
+          .filter(i => i.description.trim())
+          .map(i => ({
+            description: i.description.trim(),
+            quantity: Math.max(1, parseFloat(i.quantity || '1')),
+            unit_price_cents: Math.max(0, Math.round(parseFloat(i.unitPrice || '0') * 100)),
+          })),
+        tax_cents: Math.max(0, Math.round(taxAmt * 100)),
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] }); onClose() },
     onError: (e) => setErr(getApiErrorMessage(e, 'Failed to create quote.')),
   })
 
-  const total = (parseFloat(unitPrice || '0') * parseFloat(quantity || '1') + parseFloat(tax || '0')).toFixed(2)
-
   return (
-    <div className="space-y-3">
-      <Input label="Description" value={description} onChange={e => setDescription(e.target.value)} />
-      <div className="grid grid-cols-3 gap-3">
-        <Input label="Qty" type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
-        <Input label="Unit price ($)" type="number" step="0.01" min="0" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} />
-        <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
+    <div className="space-y-4">
+      {/* Preset grid */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+          Quick add — tap a service
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {QUOTE_PRESETS.map(p => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => addPreset(p)}
+              className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:bg-opacity-80"
+              style={{ borderColor: 'var(--ms-accent)', color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}
+            >
+              {p.label} · ${p.price}
+            </button>
+          ))}
+        </div>
       </div>
-      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Total: ${total}</p>
+
+      {/* Line items */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Line items</p>
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2 items-end">
+            <div className="flex-1 min-w-0">
+              <Input
+                label={i === 0 ? 'Description' : undefined}
+                placeholder="Description"
+                value={item.description}
+                onChange={e => updateItem(i, 'description', e.target.value)}
+              />
+            </div>
+            <div style={{ width: 52 }}>
+              <Input
+                label={i === 0 ? 'Qty' : undefined}
+                type="number" min="0.01" step="0.01"
+                value={item.quantity}
+                onChange={e => updateItem(i, 'quantity', e.target.value)}
+              />
+            </div>
+            <div style={{ width: 90 }}>
+              <Input
+                label={i === 0 ? 'Price ($)' : undefined}
+                type="number" min="0" step="0.01"
+                placeholder="0.00"
+                value={item.unitPrice}
+                onChange={e => updateItem(i, 'unitPrice', e.target.value)}
+              />
+            </div>
+            {items.length > 1 && (
+              <button type="button" onClick={() => removeItem(i)} className="pb-1 text-lg leading-none" style={{ color: 'var(--ms-text-muted)' }} aria-label="Remove">×</button>
+            )}
+          </div>
+        ))}
+        <button type="button" onClick={addBlankItem} className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
+          + Add line item
+        </button>
+      </div>
+
+      {/* GST + total */}
+      <div className="flex items-center gap-4">
+        <div style={{ width: 100 }}>
+          <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
+        </div>
+        <p className="text-sm font-bold pt-5" style={{ color: 'var(--ms-text)' }}>Total: ${total.toFixed(2)}</p>
+      </div>
+
       {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
       <div className="flex gap-2 pt-1">
         <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-        <Button className="flex-1 flex items-center justify-center gap-1" onClick={() => mut.mutate()} disabled={mut.isPending}>
+        <Button
+          className="flex-1"
+          onClick={() => mut.mutate()}
+          disabled={mut.isPending || items.every(i => !i.description.trim())}
+        >
           {mut.isPending ? 'Creating…' : 'Save Quote'}
         </Button>
       </div>

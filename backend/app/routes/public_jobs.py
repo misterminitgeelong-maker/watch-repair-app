@@ -833,3 +833,95 @@ def get_portal_session_jobs(token: str, session: Session = Depends(get_session))
 
     results.sort(key=lambda x: x["created_at"], reverse=True)
     return {"jobs": results[:50], "email": portal.email}
+
+
+# ── Public auto-key quote portal ─────────────────────────────────────────────
+
+@router.get("/auto-key-quote/{token}")
+def get_public_auto_key_quote(token: str, session: Session = Depends(get_session)):
+    quote = session.exec(
+        select(AutoKeyQuote).where(AutoKeyQuote.quote_approval_token == token)
+    ).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    job = session.get(AutoKeyJob, quote.auto_key_job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    tenant = session.get(Tenant, job.tenant_id)
+    customer = session.get(Customer, job.customer_id) if job.customer_id else None
+
+    items = session.exec(
+        select(AutoKeyQuoteLineItem)
+        .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
+        .order_by(AutoKeyQuoteLineItem.created_at)
+    ).all()
+
+    return {
+        "quote_id": str(quote.id),
+        "status": quote.status,
+        "job_number": job.job_number,
+        "title": job.title,
+        "vehicle_make": job.vehicle_make,
+        "vehicle_model": job.vehicle_model,
+        "vehicle_year": job.vehicle_year,
+        "job_address": job.job_address,
+        "scheduled_at": isoformat_z_utc(job.scheduled_at),
+        "shop_name": tenant.name if tenant else "Mobile Services",
+        "shop_phone": tenant.phone if tenant else None,
+        "customer_name": customer.full_name if customer else None,
+        "subtotal_cents": quote.subtotal_cents,
+        "tax_cents": quote.tax_cents,
+        "total_cents": quote.total_cents,
+        "currency": quote.currency or "AUD",
+        "line_items": [
+            {
+                "description": i.description,
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                "total_price_cents": i.total_price_cents,
+            }
+            for i in items
+        ],
+    }
+
+
+@router.post("/auto-key-quote/{token}/decision")
+def decide_public_auto_key_quote(
+    token: str,
+    body: dict,
+    session: Session = Depends(get_session),
+):
+    decision = (body.get("decision") or "").lower()
+    if decision not in ("approved", "declined"):
+        raise HTTPException(status_code=422, detail="decision must be 'approved' or 'declined'")
+
+    quote = session.exec(
+        select(AutoKeyQuote).where(AutoKeyQuote.quote_approval_token == token)
+    ).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    if quote.status not in ("draft", "sent"):
+        return {"ok": True, "status": quote.status, "message": f"Quote already {quote.status}."}
+
+    job = session.get(AutoKeyJob, quote.auto_key_job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    quote.status = decision
+    if decision == "approved" and job.status in ("quote_sent", "awaiting_quote"):
+        job.status = "go_ahead"
+    session.add(TenantEventLog(
+        tenant_id=job.tenant_id,
+        entity_type="auto_key_job",
+        entity_id=job.id,
+        event_type=f"quote_{decision}_portal",
+        event_summary=f"Customer {decision} quote for job #{job.job_number} via portal",
+    ))
+    session.commit()
+
+    if decision == "approved":
+        return {"ok": True, "status": "approved", "message": "Quote accepted! We'll be in touch to confirm your appointment."}
+    return {"ok": True, "status": "declined", "message": "Your quote has been declined. Contact us if you change your mind."}

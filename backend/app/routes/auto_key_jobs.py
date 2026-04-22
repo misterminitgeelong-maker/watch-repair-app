@@ -781,6 +781,7 @@ def send_auto_key_quote(
                     job_number=job.job_number,
                     total_cents=quote.total_cents,
                     currency=quote.currency or "AUD",
+                    quote_approval_token=quote.quote_approval_token,
                 )
                 session.commit()
                 logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)

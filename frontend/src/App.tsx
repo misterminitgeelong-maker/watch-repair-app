@@ -39,6 +39,7 @@ const StatusPage = lazy(() => import('@/pages/StatusPage'))
 const ShoeStatusPage = lazy(() => import('@/pages/ShoeStatusPage'))
 const MobileBookingPage = lazy(() => import('@/pages/MobileBookingPage'))
 const MobileInvoicePage = lazy(() => import('@/pages/MobileInvoicePage'))
+const MobileQuotePage = lazy(() => import('@/pages/MobileQuotePage'))
 const MobileJobIntakePage = lazy(() => import('@/pages/MobileJobIntakePage'))
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const PricingPage = lazy(() => import('@/pages/PricingPage'))
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="/shoe-approve/:token" element={<ShoeApprovePage />} />
             <Route path="/mobile-booking/:token" element={<MobileBookingPage />} />
             <Route path="/mobile-invoice/:token" element={<MobileInvoicePage />} />
+            <Route path="/mobile-quote/:token" element={<MobileQuotePage />} />
             <Route path="/mobile-job-intake/:token" element={<MobileJobIntakePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />

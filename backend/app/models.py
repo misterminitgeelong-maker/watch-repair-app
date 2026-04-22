@@ -1430,6 +1430,7 @@ class AutoKeyQuote(SQLModel, table=True):
     total_cents: int = 0
     currency: str = "AUD"
     sent_at: Optional[datetime] = None
+    quote_approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
