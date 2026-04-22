@@ -2419,7 +2419,7 @@ export default function AutoKeyJobsPage() {
                     techName={tech}
                     techKey={job.assigned_user_id ?? null}
                     accentColor={column.color}
-                    href={`/mobile-services/jobs/${job.id}`}
+                    href={`/auto-key/${job.id}`}
                     draggable={!statusMut.isPending}
                     onDragStart={e => {
                       e.dataTransfer.setData('text/job-id', job.id)
