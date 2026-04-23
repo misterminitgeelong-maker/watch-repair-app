@@ -34,11 +34,12 @@ function PriorityPill({ priority }: { priority?: string | null }) {
       style={{
         backgroundColor: bg,
         color: text,
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: 700,
-        padding: '2px 7px',
-        borderRadius: 99,
-        letterSpacing: '0.03em',
+        padding: '2px 6px',
+        borderRadius: 4,
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
       }}
     >
       {label}

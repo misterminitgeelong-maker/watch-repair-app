@@ -8,6 +8,10 @@ venv/
 
 # Environment / secrets — NEVER commit these
 .env
+
+# Runtime logs
+*.log
+*.pid
 .env.*
 !.env.example
 

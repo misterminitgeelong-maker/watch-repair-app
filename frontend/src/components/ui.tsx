@@ -20,7 +20,9 @@ export function Badge({ status }: { status: string }) {
   )
 }
 
-export function Card({ className, children, style, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function Card({
+  className, children, style, hoverable, ...props
+}: React.HTMLAttributes<HTMLDivElement> & { hoverable?: boolean }) {
   return (
     <div
       {...props}
@@ -30,8 +32,19 @@ export function Card({ className, children, style, ...props }: React.HTMLAttribu
         borderColor: 'var(--ms-border)',
         borderRadius: 'var(--ms-radius)',
         boxShadow: 'var(--ms-shadow)',
+        transition: hoverable ? 'box-shadow 0.18s ease, transform 0.18s ease' : undefined,
         ...style,
       }}
+      onMouseEnter={hoverable ? e => {
+        e.currentTarget.style.boxShadow = 'var(--ms-shadow-hover)'
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        props.onMouseEnter?.(e)
+      } : props.onMouseEnter}
+      onMouseLeave={hoverable ? e => {
+        e.currentTarget.style.boxShadow = 'var(--ms-shadow)'
+        e.currentTarget.style.transform = ''
+        props.onMouseLeave?.(e)
+      } : props.onMouseLeave}
     >
       {children}
     </div>
