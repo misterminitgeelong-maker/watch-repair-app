@@ -1916,3 +1916,83 @@ class PortalSession(SQLModel, table=True):
     token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     expires_at: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Loyalty Program ────────────────────────────────────────────────────────────
+
+class LoyaltyTier(SQLModel, table=True):
+    id: int = Field(primary_key=True)  # 1=Bronze 2=Silver 3=Gold 4=Platinum
+    name: str = Field(index=True, unique=True)
+    label: str  # Fixer / Regular / Trusted / Master
+    min_spend_cents: int  # rolling 12-month AUD threshold
+    earn_multiplier_x100: int  # 100=1.0× 125=1.25× 150=1.5× 200=2.0×
+    points_expiry_months: Optional[int] = None  # None = never expires
+
+
+class CustomerLoyalty(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "customer_id", name="uq_customerloyalty_tenant_customer"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_id: UUID = Field(index=True, foreign_key="customer.id")
+    tier_id: int = Field(default=1, foreign_key="loyaltytier.id")
+    points_balance: int = 0
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PointsLedger(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "idempotency_key", name="uq_pointsledger_idempotency"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_loyalty_id: UUID = Field(index=True, foreign_key="customerloyalty.id")
+    entry_type: str  # earn | adjust | signup_bonus
+    points_delta: int  # signed
+    source_invoice_id: Optional[UUID] = Field(default=None, foreign_key="invoice.id")
+    source_amount_cents: Optional[int] = None  # invoice total for rolling spend calc
+    note: Optional[str] = None
+    idempotency_key: Optional[str] = Field(default=None, index=True)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Loyalty read/request models ───────────────────────────────────────────────
+
+class LoyaltyTierRead(SQLModel):
+    id: int
+    name: str
+    label: str
+    min_spend_cents: int
+    earn_multiplier_x100: int
+    points_expiry_months: Optional[int]
+
+
+class PointsLedgerRead(SQLModel):
+    id: UUID
+    entry_type: str
+    points_delta: int
+    source_invoice_id: Optional[UUID]
+    note: Optional[str]
+    occurred_at: datetime
+
+
+class CustomerLoyaltyRead(SQLModel):
+    customer_id: UUID
+    tier_id: int
+    tier_name: str
+    tier_label: str
+    points_balance: int
+    points_dollar_value: float  # points_balance / 100
+    rolling_12m_spend_cents: int
+    joined_at: datetime
+
+
+class LoyaltyProfileResponse(SQLModel):
+    loyalty: CustomerLoyaltyRead
+    recent_ledger: list[PointsLedgerRead]
+
+
+class PointsAdjustRequest(SQLModel):
+    points_delta: int
+    note: str

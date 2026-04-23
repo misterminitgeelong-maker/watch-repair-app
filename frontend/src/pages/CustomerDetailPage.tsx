@@ -1,11 +1,160 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Plus, ChevronLeft, Wrench } from 'lucide-react'
-import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, type Watch, type ShoeRepairJob, type AutoKeyJob } from '@/lib/api'
+import { Plus, ChevronLeft, Wrench, Star } from 'lucide-react'
+import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, getLoyaltyProfile, adjustLoyaltyPoints, type Watch, type ShoeRepairJob, type AutoKeyJob, type LoyaltyProfileResponse } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textarea } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
+
+const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Bronze:   { bg: '#F5EDE0', text: '#7C4A1E', border: '#D4956A' },
+  Silver:   { bg: '#F0F0F0', text: '#4A4A4A', border: '#A0A0A0' },
+  Gold:     { bg: '#FFF8E1', text: '#7A5E00', border: '#D4AF37' },
+  Platinum: { bg: '#EDF4FF', text: '#1A3A6B', border: '#6A9FD4' },
+}
+
+function AdjustPointsModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [delta, setDelta] = useState('')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  const mut = useMutation({
+    mutationFn: () => adjustLoyaltyPoints(customerId, parseInt(delta, 10), note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['loyalty', customerId] })
+      onClose()
+    },
+    onError: (e: any) => setError(e?.response?.data?.detail ?? 'Failed to adjust points.'),
+  })
+  const deltaNum = parseInt(delta, 10)
+  const valid = !isNaN(deltaNum) && deltaNum !== 0 && note.trim().length > 0
+
+  return (
+    <Modal title="Adjust Points" onClose={onClose}>
+      <div className="space-y-3">
+        <Input
+          label="Points (positive to add, negative to deduct)"
+          value={delta}
+          onChange={e => setDelta(e.target.value)}
+          placeholder="e.g. 100 or -50"
+          type="number"
+        />
+        <Input
+          label="Reason"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. Goodwill adjustment"
+        />
+        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !valid}>
+            {mut.isPending ? 'Saving…' : 'Apply'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function LoyaltyPanel({ customerId }: { customerId: string }) {
+  const [showAdjust, setShowAdjust] = useState(false)
+  const { data, isLoading, isError } = useQuery<LoyaltyProfileResponse>({
+    queryKey: ['loyalty', customerId],
+    queryFn: () => getLoyaltyProfile(customerId).then(r => r.data),
+  })
+
+  if (isLoading) return (
+    <Card className="mt-6">
+      <div className="px-5 py-8 flex justify-center"><Spinner /></div>
+    </Card>
+  )
+  if (isError || !data) return null
+
+  const { loyalty, recent_ledger } = data
+  const colors = TIER_COLORS[loyalty.tier_name] ?? TIER_COLORS.Bronze
+  const ENTRY_LABELS: Record<string, string> = {
+    earn: 'Earned',
+    adjust: 'Adjusted',
+    signup_bonus: 'Welcome bonus',
+  }
+
+  return (
+    <>
+      {showAdjust && <AdjustPointsModal customerId={customerId} onClose={() => setShowAdjust(false)} />}
+      <Card className="mt-6">
+        <div
+          className="px-5 py-4 flex items-center justify-between"
+          style={{ borderBottom: '1px solid var(--ms-border)' }}
+        >
+          <div className="flex items-center gap-2 font-semibold" style={{ color: 'var(--ms-text)' }}>
+            <Star size={16} />
+            Loyalty
+          </div>
+          <Button variant="secondary" onClick={() => setShowAdjust(true)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+            Adjust points
+          </Button>
+        </div>
+
+        {/* Tier + balance summary */}
+        <div className="px-5 py-4 flex items-center gap-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+          <div
+            className="px-3 py-1 rounded-full text-xs font-bold tracking-wide"
+            style={{ backgroundColor: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
+          >
+            {loyalty.tier_name} · {loyalty.tier_label}
+          </div>
+          <div>
+            <span className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
+              {loyalty.points_balance.toLocaleString()}
+            </span>
+            <span className="ml-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>pts</span>
+            <span className="ml-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              (≈ ${loyalty.points_dollar_value.toFixed(2)})
+            </span>
+          </div>
+        </div>
+
+        {/* Rolling spend */}
+        <div className="px-5 py-3 text-xs" style={{ color: 'var(--ms-text-muted)', borderBottom: '1px solid var(--ms-border)' }}>
+          12-month spend: <span className="font-medium" style={{ color: 'var(--ms-text-mid)' }}>
+            ${(loyalty.rolling_12m_spend_cents / 100).toFixed(2)}
+          </span>
+          {' · '}Member since {formatDate(loyalty.joined_at)}
+        </div>
+
+        {/* Ledger */}
+        <div>
+          {recent_ledger.length === 0 && (
+            <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No activity yet.</p>
+          )}
+          {recent_ledger.map((row, i) => (
+            <div
+              key={row.id}
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: i < recent_ledger.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
+            >
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+                  {ENTRY_LABELS[row.entry_type] ?? row.entry_type}
+                  {row.note ? ` — ${row.note}` : ''}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(row.occurred_at)}</p>
+              </div>
+              <span
+                className="text-sm font-semibold"
+                style={{ color: row.points_delta >= 0 ? '#3A7D44' : '#C96A5A' }}
+              >
+                {row.points_delta >= 0 ? '+' : ''}{row.points_delta}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </>
+  )
+}
 
 const COMPLETED_DIRECTORY_STATUSES = ['completed', 'awaiting_collection', 'collected']
 const NON_ACTIVE_STATUSES = ['no_go', ...COMPLETED_DIRECTORY_STATUSES]
@@ -326,6 +475,8 @@ export default function CustomerDetailPage() {
           </div>
         </Card>
       )}
+
+      <LoyaltyPanel customerId={customer.id} />
     </div>
   )
 }

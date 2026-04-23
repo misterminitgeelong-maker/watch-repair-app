@@ -2248,3 +2248,42 @@ export const decidePublicAutoKeyQuote = (
     withApiOrigin(`/v1/public/auto-key-quote/${token}/decision`),
     { decision, signature_data: opts?.signatureData, signer_name: opts?.signerName }
   )
+
+// ── Loyalty ───────────────────────────────────────────────────────────────────
+
+export interface LoyaltyTierInfo {
+  id: number
+  tier_name: string
+  tier_label: string
+}
+
+export interface CustomerLoyaltyRead {
+  customer_id: string
+  tier_id: number
+  tier_name: string
+  tier_label: string
+  points_balance: number
+  points_dollar_value: number
+  rolling_12m_spend_cents: number
+  joined_at: string
+}
+
+export interface PointsLedgerEntry {
+  id: string
+  entry_type: string
+  points_delta: number
+  source_invoice_id: string | null
+  note: string | null
+  occurred_at: string
+}
+
+export interface LoyaltyProfileResponse {
+  loyalty: CustomerLoyaltyRead
+  recent_ledger: PointsLedgerEntry[]
+}
+
+export const getLoyaltyProfile = (customerId: string) =>
+  api.get<LoyaltyProfileResponse>(`/loyalty/customers/${customerId}`)
+
+export const adjustLoyaltyPoints = (customerId: string, points_delta: number, note: string) =>
+  api.post<LoyaltyProfileResponse>(`/loyalty/customers/${customerId}/adjust`, { points_delta, note })

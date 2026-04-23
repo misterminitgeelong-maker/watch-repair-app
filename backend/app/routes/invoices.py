@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,6 +8,7 @@ from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..loyalty_utils import earn_points_for_invoice
 from ..models import (
     Invoice,
     InvoiceCreateFromQuoteResponse,
@@ -20,6 +22,8 @@ from ..models import (
     QuoteLineItem,
     TenantEventLog,
 )
+
+_logger = logging.getLogger("mainspring.loyalty")
 
 router = APIRouter(prefix="/v1/invoices", tags=["invoices", "payments"])
 
@@ -257,6 +261,12 @@ def create_payment(
                 event_summary=f"Invoice {invoice.invoice_number} paid in full ({invoice.currency} {invoice.total_cents / 100:.2f})",
             )
         )
+        try:
+            pts = earn_points_for_invoice(session, auth.tenant_id, invoice)
+            if pts:
+                _logger.info("loyalty: awarded %d pts for invoice %s", pts, invoice.invoice_number)
+        except Exception:
+            _logger.exception("loyalty: earn failed for invoice %s (non-fatal)", invoice.invoice_number)
 
     session.commit()
     session.refresh(payment)
