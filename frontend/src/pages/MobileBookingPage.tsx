@@ -1,7 +1,8 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { Calendar, CheckCircle, Clock, MapPin, Wrench } from 'lucide-react'
+import { Calendar, CheckCircle, Clock, MapPin, PenLine, Wrench } from 'lucide-react'
 import {
   confirmPublicAutoKeyBooking,
   getApiErrorMessage,
@@ -15,9 +16,140 @@ function formatMoney(cents: number, currency: string) {
   return (cents / 100).toLocaleString('en-AU', { style: 'currency', currency: code })
 }
 
+function SignaturePad({
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  onSave: (dataUrl: string) => void
+  onCancel: () => void
+  isPending: boolean
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const [hasStrokes, setHasStrokes] = useState(false)
+
+  const getPos = (e: MouseEvent | Touch, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    const start = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault()
+      drawing.current = true
+      const pos = getPos('touches' in e ? e.touches[0] : e, canvas)
+      ctx.beginPath()
+      ctx.moveTo(pos.x, pos.y)
+    }
+    const move = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault()
+      if (!drawing.current) return
+      const pos = getPos('touches' in e ? e.touches[0] : e, canvas)
+      ctx.lineTo(pos.x, pos.y)
+      ctx.stroke()
+      setHasStrokes(true)
+    }
+    const end = () => { drawing.current = false }
+
+    canvas.addEventListener('mousedown', start)
+    canvas.addEventListener('mousemove', move)
+    canvas.addEventListener('mouseup', end)
+    canvas.addEventListener('touchstart', start, { passive: false })
+    canvas.addEventListener('touchmove', move, { passive: false })
+    canvas.addEventListener('touchend', end)
+
+    return () => {
+      canvas.removeEventListener('mousedown', start)
+      canvas.removeEventListener('mousemove', move)
+      canvas.removeEventListener('mouseup', end)
+      canvas.removeEventListener('touchstart', start)
+      canvas.removeEventListener('touchmove', move)
+      canvas.removeEventListener('touchend', end)
+    }
+  }, [])
+
+  const clear = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasStrokes(false)
+  }, [])
+
+  const save = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dataUrl = canvas.toDataURL('image/png')
+    const base64 = dataUrl.split(',')[1]
+    onSave(base64)
+  }
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+          Sign to confirm booking
+        </p>
+        <button
+          type="button"
+          onClick={clear}
+          className="text-xs px-2 py-0.5 rounded"
+          style={{ color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}
+        >
+          Clear
+        </button>
+      </div>
+
+      <div
+        className="rounded-lg overflow-hidden"
+        style={{ border: '1.5px solid var(--ms-border)', backgroundColor: '#fff', touchAction: 'none' }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={180}
+          style={{ width: '100%', height: 180, display: 'block', cursor: 'crosshair' }}
+        />
+      </div>
+      <p className="text-xs text-center" style={{ color: 'var(--ms-text-muted)' }}>
+        Draw your signature above
+      </p>
+
+      <div className="flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onCancel} disabled={isPending}>
+          Back
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={save}
+          disabled={!hasStrokes || isPending}
+        >
+          {isPending ? 'Confirming…' : 'Sign & confirm'}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 export default function MobileBookingPage() {
   const { token } = useParams<{ token: string }>()
   const qc = useQueryClient()
+  const [step, setStep] = useState<'view' | 'sign'>('view')
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['public-auto-key-booking', token],
@@ -27,9 +159,11 @@ export default function MobileBookingPage() {
   })
 
   const confirmMut = useMutation({
-    mutationFn: () => confirmPublicAutoKeyBooking(token!).then(r => r.data),
+    mutationFn: (signatureData: string) =>
+      confirmPublicAutoKeyBooking(token!, { signatureData }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['public-auto-key-booking', token] })
+      setStep('view')
     },
   })
 
@@ -137,29 +271,42 @@ export default function MobileBookingPage() {
             <div>
               <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>Booking confirmed</p>
               <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-                Thank you. Your booking is confirmed; the shop will complete the service at the scheduled time (the job stays open for them until then).
+                Thank you. Your booking is confirmed; the shop will complete the service at the scheduled time.
               </p>
             </div>
           </div>
         ) : canConfirm ? (
-          <div className="space-y-3">
-            <p className="text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
-              Tap confirm to accept this time and the quoted price. This only confirms your booking — the job is not marked as finished until the work is done.
-            </p>
-            <Button
-              type="button"
-              className="w-full min-h-12"
-              disabled={confirmMut.isPending}
-              onClick={() => confirmMut.mutate()}
-            >
-              {confirmMut.isPending ? 'Confirming…' : 'Confirm booking'}
-            </Button>
-            {confirmMut.isError && (
-              <p className="text-sm text-center" style={{ color: '#C96A5A' }}>
-                {getApiErrorMessage(confirmMut.error, 'Could not confirm. Try again or call the shop.')}
+          step === 'sign' ? (
+            <>
+              <p className="text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
+                By signing you accept the quoted price and confirm your booking.
               </p>
-            )}
-          </div>
+              <SignaturePad
+                isPending={confirmMut.isPending}
+                onCancel={() => setStep('view')}
+                onSave={sig => confirmMut.mutate(sig)}
+              />
+              {confirmMut.isError && (
+                <p className="text-sm text-center" style={{ color: '#C96A5A' }}>
+                  {getApiErrorMessage(confirmMut.error, 'Could not confirm. Try again or call the shop.')}
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
+                Review the details above, then sign to accept the quoted price and confirm your booking.
+              </p>
+              <Button
+                type="button"
+                className="w-full min-h-12 flex items-center justify-center gap-2"
+                onClick={() => setStep('sign')}
+              >
+                <PenLine size={18} />
+                Review &amp; sign to confirm
+              </Button>
+            </div>
+          )
         ) : (
           <p className="text-sm text-center" style={{ color: 'var(--ms-text-muted)' }}>
             This job is not awaiting confirmation. Contact the shop if you need help.

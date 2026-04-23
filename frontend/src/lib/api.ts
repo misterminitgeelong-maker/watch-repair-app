@@ -2212,8 +2212,11 @@ export interface PublicAutoKeyBooking {
 }
 export const getPublicAutoKeyBooking = (token: string) =>
   axios.get<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBooking(token))
-export const confirmPublicAutoKeyBooking = (token: string) =>
-  axios.post<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBookingConfirm(token))
+export const confirmPublicAutoKeyBooking = (token: string, body?: { signatureData?: string; signerName?: string }) =>
+  axios.post<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBookingConfirm(token), {
+    signature_data: body?.signatureData,
+    signer_name: body?.signerName,
+  })
 
 export interface PublicAutoKeyQuote {
   quote_id: string

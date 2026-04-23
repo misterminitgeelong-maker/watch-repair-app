@@ -396,8 +396,17 @@ def get_public_auto_key_booking(token: str, session: Session = Depends(get_sessi
     }
 
 
+class AutoKeyBookingConfirmBody(SQLModel):
+    signature_data: Optional[str] = None  # base64 PNG (no data: prefix)
+    signer_name: Optional[str] = None
+
+
 @router.post("/auto-key-booking/{token}/confirm")
-def confirm_public_auto_key_booking(token: str, session: Session = Depends(get_session)):
+def confirm_public_auto_key_booking(
+    token: str,
+    body: AutoKeyBookingConfirmBody = AutoKeyBookingConfirmBody(),
+    session: Session = Depends(get_session),
+):
     job = session.exec(select(AutoKeyJob).where(AutoKeyJob.booking_confirmation_token == token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -419,6 +428,21 @@ def confirm_public_auto_key_booking(token: str, session: Session = Depends(get_s
     if quote and quote.status == "draft":
         quote.status = "approved"
         session.add(quote)
+
+    if quote and body.signature_data:
+        try:
+            raw_b64 = body.signature_data
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",", 1)[1]
+            png_bytes = base64.b64decode(raw_b64)
+            storage_key = f"quote-signatures/{quote.id}/{uuid4().hex}_booking_signature.png"
+            attachment_storage.save_bytes(storage_key, png_bytes, content_type="image/png")
+            quote.signature_storage_key = storage_key
+            quote.signed_at = datetime.now(timezone.utc)
+            quote.signer_name = (body.signer_name or "").strip() or None
+            session.add(quote)
+        except Exception:
+            logger.exception("booking_signature_upload_failed job=%s", job.id)
 
     session.commit()
     session.refresh(job)
