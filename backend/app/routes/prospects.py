@@ -249,10 +249,30 @@ async def search_prospects(
     seen_place_ids: set[str] = set()
     all_prospects: list[Prospect] = []
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        if suburb_list_api:
-            for suburb in suburb_list_api:
-                search_query = f"{base} {suburb} {state_name} Australia"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            if suburb_list_api:
+                for suburb in suburb_list_api:
+                    search_query = f"{base} {suburb} {state_name} Australia"
+                    places = await _fetch_places(client, search_query, api_key)
+                    for p in places:
+                        pid = p.get("place_id", "")
+                        if pid and pid not in seen_place_ids:
+                            seen_place_ids.add(pid)
+                            all_prospects.append(
+                                Prospect(
+                                    name=p.get("name", ""),
+                                    address=p.get("formatted_address", ""),
+                                    phone=p.get("formatted_phone_number"),
+                                    website=p.get("website"),
+                                    rating=p.get("rating"),
+                                    review_count=p.get("user_ratings_total"),
+                                    category=category,
+                                    place_id=pid,
+                                )
+                            )
+            else:
+                search_query = f"{base} {state_name} Australia"
                 places = await _fetch_places(client, search_query, api_key)
                 for p in places:
                     pid = p.get("place_id", "")
@@ -270,25 +290,10 @@ async def search_prospects(
                                 place_id=pid,
                             )
                         )
-        else:
-            search_query = f"{base} {state_name} Australia"
-            places = await _fetch_places(client, search_query, api_key)
-            for p in places:
-                pid = p.get("place_id", "")
-                if pid and pid not in seen_place_ids:
-                    seen_place_ids.add(pid)
-                    all_prospects.append(
-                        Prospect(
-                            name=p.get("name", ""),
-                            address=p.get("formatted_address", ""),
-                            phone=p.get("formatted_phone_number"),
-                            website=p.get("website"),
-                            rating=p.get("rating"),
-                            review_count=p.get("user_ratings_total"),
-                            category=category,
-                            place_id=pid,
-                        )
-                    )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Google Places API timed out. Try fewer suburbs or try again shortly.")
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Could not reach Google Places API: {exc}")
 
     return ProspectSearchResponse(results=all_prospects, total=len(all_prospects), category=category)
 
