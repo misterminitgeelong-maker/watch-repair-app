@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none">
+  <!-- Star / key symbol -->
+  <g transform="translate(4,4)">
+    <polygon points="20,0 24,14 38,14 27,22 31,36 20,28 9,36 13,22 2,14 16,14" fill="#FFD200"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="52" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#FFFFFF" letter-spacing="0.5">Mister Minit</text>
+</svg>

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useTheme } from '@/context/ThemeContext'
 import { useInboxCount } from '@/pages/InboxPage'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -68,6 +69,9 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const { pathname } = useLocation()
   const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt()
   const showInstall = !isStandalone && (canInstall || isIos)
+  const { theme } = useTheme()
+  const logoSrc = theme === 'minit' ? '/minit-logo.svg' : '/mainspring-logo.svg'
+  const logoAlt = theme === 'minit' ? 'Mister Minit' : 'Mainspring'
 
   const filterItems = (items: NavLinkItem[]) =>
     items.filter((item) => !item.feature || hasFeature(item.feature))
@@ -106,8 +110,8 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       >
         <div className="flex items-center justify-between gap-3">
           <img
-            src="/mainspring-logo.svg"
-            alt="Mainspring"
+            src={logoSrc}
+            alt={logoAlt}
             style={{
               width: mobile ? 'min(100%, 152px)' : 'min(100%, 236px)',
               maxWidth: '100%',

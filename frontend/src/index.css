@@ -136,6 +136,54 @@
   --ms-overlay:         rgba(20, 18, 16, 0.52);
 }
 
+/* Mister Minit — brand red sidebar, clean white canvas */
+[data-theme="minit"] {
+  --ms-bg:              #F4F4F4;
+  --ms-surface:         #FFFFFF;
+  --ms-surface-alt:     #EBEBEB;
+  --ms-hover:           #EFEFEF;
+
+  --ms-text:            #1A1A1A;
+  --ms-text-mid:        #484848;
+  --ms-text-muted:      #787878;
+
+  --ms-border:          #E0E0E0;
+  --ms-border-strong:   #C4C4C4;
+
+  --ms-accent:          #E31837;
+  --ms-accent-hover:    #B5102A;
+  --ms-accent-light:    #FDEAED;
+  --ms-accent-pop:      rgba(227, 24, 55, 0.10);
+
+  --ms-sidebar:         #C41230;
+  --ms-sidebar-text:    rgba(255, 255, 255, 0.72);
+  --ms-sidebar-act-text:#FFFFFF;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.16);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.10);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.14);
+
+  --ms-radius:          8px;
+  --ms-radius-sm:       5px;
+
+  --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
+  --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
+
+  --ms-badge-wait-bg:   #FFF3F5;  --ms-badge-wait-text:   #B5102A;
+  --ms-badge-in-bg:     #E8F2F8;  --ms-badge-in-text:     #1E6A8A;
+  --ms-badge-done-bg:   #EBF8EF;  --ms-badge-done-text:   #1A6A3A;
+  --ms-badge-alert-bg:  #FDEAED;  --ms-badge-alert-text:  #B5102A;
+  --ms-badge-neutral-bg:#EEEEEE;  --ms-badge-neutral-text:#787878;
+  --ms-badge-blue-bg:   #EAF1FB;  --ms-badge-blue-text:   #2A5598;
+  --ms-badge-teal-bg:   #E2F4F0;  --ms-badge-teal-text:   #1A6860;
+  --ms-badge-orange-bg: #FFF0E0;  --ms-badge-orange-text: #9A5010;
+  --ms-badge-green-bg:  #E8F5ED;  --ms-badge-green-text:  #1A6838;
+
+  --ms-error:           #B5102A;
+  --ms-danger:          #9A0C22;
+  --ms-danger-hover:    #7A081A;
+  --ms-overlay:         rgba(0, 0, 0, 0.50);
+}
+
 @layer base {
   html, body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;

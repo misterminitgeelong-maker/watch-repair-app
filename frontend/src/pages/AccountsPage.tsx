@@ -617,7 +617,8 @@ function AppearanceCard() {
   const themes: { key: Theme; label: string; desc: string; swatches: string[] }[] = [
     { key: 'warm',    label: 'Refined Warmth', desc: 'Cream parchment, gold accent.',        swatches: ['#F5F1EC', '#FDFCF9', '#9A6E26', '#1C1510'] },
     { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#C07820', '#181614'] },
-    { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',  swatches: ['#121110', '#1C1A18', '#D4940A', '#0C0B0A'] },
+    { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',   swatches: ['#121110', '#1C1A18', '#D4940A', '#0C0B0A'] },
+    { key: 'minit',   label: 'Mister Minit',   desc: 'Brand red sidebar, clean white UI.',   swatches: ['#F4F4F4', '#FFFFFF', '#E31837', '#C41230'] },
   ]
   return (
     <Card className="mb-5 p-4 sm:p-5">
@@ -627,7 +628,7 @@ function AppearanceCard() {
       <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
         Choose how Mainspring looks on this device. Stored locally.
       </p>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         {themes.map(t => {
           const active = theme === t.key
           return (

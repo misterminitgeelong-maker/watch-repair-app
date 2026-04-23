@@ -1,14 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type Theme = 'warm' | 'neutral' | 'dark'
+export type Theme = 'warm' | 'neutral' | 'dark' | 'minit'
 
 const STORAGE_KEY = 'ms-theme'
 
 export function readStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'warm'
   const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (raw === 'warm' || raw === 'neutral' || raw === 'dark') return raw
+  if (raw === 'warm' || raw === 'neutral' || raw === 'dark' || raw === 'minit') return raw
   return 'warm'
 }
 
