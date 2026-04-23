@@ -722,46 +722,63 @@ function PricingSection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 max-w-3xl mx-auto">
-        {/* Basic */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 max-w-4xl mx-auto">
+        {/* Basic — 1 tab */}
         <article
-          className="lp-card rounded-3xl p-8"
+          className="lp-card rounded-3xl p-7"
           style={{
             backgroundColor: 'var(--ms-surface)',
             border: '1.5px solid var(--ms-border)',
             boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
           }}
         >
-          <p
-            className="text-xs font-semibold uppercase tracking-widest mb-3"
-            style={{ color: 'var(--ms-text-muted)' }}
-          >
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
             Basic
           </p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-            <span
-              style={{
-                fontSize: '2.4rem',
-                fontWeight: 700,
-                color: 'var(--ms-text)',
-                lineHeight: 1,
-              }}
-            >
-              A$40
-            </span>
-            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.85rem' }}>/month per login</span>
+            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-text)', lineHeight: 1 }}>A$40</span>
+            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.82rem' }}>/mo per login</span>
           </div>
-          <p className="text-sm mb-6" style={{ color: 'var(--ms-text-mid)' }}>
-            One service line
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p className="text-sm mb-5" style={{ color: 'var(--ms-text-mid)' }}>One service line</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
             {[
-              'Choose Watch, Shoe, or Mobile Services',
-              'Full job tracking, POS & invoicing',
+              'Watch, Shoe, or Mobile Services',
+              'Full job tracking & invoicing',
               'Unlimited customers and jobs',
             ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', color: 'var(--ms-text-mid)' }}>
-                <CheckCircle2 size={15} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
+              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: 'var(--ms-text-mid)' }}>
+                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        {/* Basic + 1 tab */}
+        <article
+          className="lp-card rounded-3xl p-7"
+          style={{
+            backgroundColor: 'var(--ms-surface)',
+            border: '1.5px solid var(--ms-border)',
+            boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
+          }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+            Basic + 1 Service
+          </p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-text)', lineHeight: 1 }}>A$55</span>
+            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.82rem' }}>/mo per login</span>
+          </div>
+          <p className="text-sm mb-5" style={{ color: 'var(--ms-text-mid)' }}>Two service lines</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {[
+              'Any two service lines',
+              'Full job tracking & invoicing',
+              'Unlimited customers and jobs',
+            ].map((b) => (
+              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: 'var(--ms-text-mid)' }}>
+                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
                 {b}
               </li>
             ))}
@@ -770,7 +787,7 @@ function PricingSection() {
 
         {/* Pro — highlighted */}
         <article
-          className="lp-card rounded-3xl p-8"
+          className="lp-card rounded-3xl p-7"
           style={{
             backgroundColor: '#FDF8EE',
             border: '2px solid var(--ms-accent)',
@@ -778,15 +795,10 @@ function PricingSection() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p
-              className="text-xs font-semibold uppercase tracking-widest"
-              style={{ color: '#8D6420' }}
-            >
-              Pro
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#8D6420' }}>Pro</p>
             <span
               style={{
-                fontSize: '0.65rem',
+                fontSize: '0.62rem',
                 fontWeight: 700,
                 backgroundColor: 'var(--ms-accent)',
                 color: '#fff',
@@ -800,29 +812,18 @@ function PricingSection() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-            <span
-              style={{
-                fontSize: '2.4rem',
-                fontWeight: 700,
-                color: 'var(--ms-sidebar)',
-                lineHeight: 1,
-              }}
-            >
-              A$80
-            </span>
-            <span style={{ color: '#8D6420', fontSize: '0.85rem' }}>/month per login</span>
+            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-sidebar)', lineHeight: 1 }}>A$80</span>
+            <span style={{ color: '#8D6420', fontSize: '0.82rem' }}>/mo per login</span>
           </div>
-          <p className="text-sm mb-6" style={{ color: '#7A5E2E' }}>
-            Everything, all service lines
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p className="text-sm mb-5" style={{ color: '#7A5E2E' }}>All three service lines</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
             {[
-              'All three service lines unlocked',
-              'Reports, commissions & multi-site',
+              'All service lines unlocked',
+              'Multi-site & customer accounts',
               'Priority support from the founders',
             ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', color: '#6B4F22' }}>
-                <CheckCircle2 size={15} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />
+              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: '#6B4F22' }}>
+                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />
                 {b}
               </li>
             ))}
@@ -831,12 +832,9 @@ function PricingSection() {
       </div>
 
       {/* Add-on note */}
-      <p
-        className="mt-6 text-center text-sm"
-        style={{ color: 'var(--ms-text-muted)' }}
-      >
+      <p className="mt-6 text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-        Add extra service lines for A$15/month each on the Basic plan · Each additional shop location A$25/month.
+        Each additional shop location A$25/month · 14-day free trial, no credit card required.
       </p>
     </section>
   )

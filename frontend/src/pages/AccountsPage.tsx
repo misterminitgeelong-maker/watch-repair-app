@@ -79,13 +79,6 @@ const PLAN_BUNDLES: PlanBundle[] = [
     summary: '2 service tabs',
   },
   {
-    code: 'basic_all_tabs',
-    name: 'Basic +2 Tabs (All Service Tabs)',
-    monthlyLabel: '$70/mo',
-    modules: ['Watch repairs', 'Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
-    summary: '3 service tabs',
-  },
-  {
     code: 'pro',
     name: 'Pro',
     monthlyLabel: '$80/mo',
@@ -382,7 +375,7 @@ export default function AccountsPage() {
               Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode} ({PLAN_BUNDLES.find(p => p.code === planCode)?.monthlyLabel ?? 'Custom'})
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-              Basic starts at $40/month with one service tab. Each extra service tab adds $15/month. Pro is $80/month for full access. Each additional shop location adds $25/month.
+              Basic: $40/month (1 tab) or $55/month (2 tabs). Pro: $80/month — all 3 service tabs, multi-site, customer accounts. Each extra shop location adds $25/month.
             </p>
           </div>
           <div className="mt-3 flex gap-2 sm:mt-0 sm:w-[360px]">

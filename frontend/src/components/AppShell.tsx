@@ -13,6 +13,7 @@ import {
   listShoeRepairJobs,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme } from '@/context/ThemeContext'
 import Sidebar from './Sidebar'
 import BottomTabBar from './BottomTabBar'
 import { Button, Modal } from '@/components/ui'
@@ -428,6 +429,7 @@ export default function AppShell() {
     role,
     planCode,
   } = useAuth()
+  const { theme } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
   const demoModeEnabled = isDemoModeEnabled()
@@ -873,8 +875,8 @@ export default function AppShell() {
         >
           <div style={{ width: 34 }} />
           <img
-            src="/mainspring-logo.svg"
-            alt="Mainspring"
+            src={theme === 'minit' ? '/minit-logo-dark.svg' : '/mainspring-logo.svg'}
+            alt={theme === 'minit' ? 'Mister Minit' : 'Mainspring'}
             style={{
               width: 'clamp(116px, 38vw, 172px)',
               maxWidth: '100%',
