@@ -1,8 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none">
-  <!-- Star / key symbol -->
-  <g transform="translate(4,4)">
-    <polygon points="20,0 24,14 38,14 27,22 31,36 20,28 9,36 13,22 2,14 16,14" fill="#FFD200"/>
-  </g>
-  <!-- Wordmark -->
-  <text x="52" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#FFFFFF" letter-spacing="0.5">Mister Minit</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" fill="none">
+
+  <!-- ── MASCOT (white figure for red sidebar) ── -->
+
+  <!-- Head -->
+  <ellipse cx="24" cy="11" rx="8" ry="8.5" fill="white"/>
+
+  <!-- Hair (dark swept-back) -->
+  <path d="M16 8.5 Q24 2.5 32 8.5 Q29.5 4.5 24 4 Q18.5 4.5 16 8.5Z" fill="rgba(0,0,0,0.30)"/>
+
+  <!-- Neck -->
+  <rect x="21.5" y="19" width="5" height="4" rx="1" fill="white"/>
+
+  <!-- White coat / body -->
+  <path d="M13 24 L35 24 L33 54 L15 54 Z" fill="white"/>
+
+  <!-- Coat lapels -->
+  <path d="M22 24 L24 30 L26 24 Z" fill="rgba(196,18,48,0.40)"/>
+  <path d="M13 24 L22 24 L24 30 L14 36 Z" fill="rgba(255,255,255,0.75)"/>
+  <path d="M35 24 L26 24 L24 30 L34 36 Z" fill="rgba(255,255,255,0.75)"/>
+
+  <!-- Breast pocket key hint -->
+  <line x1="19" y1="32" x2="19" y2="38" stroke="rgba(196,18,48,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="19" cy="32" r="1.5" fill="none" stroke="rgba(196,18,48,0.5)" stroke-width="1.2"/>
+
+  <!-- Right arm — extended, pointing to the right -->
+  <path d="M35 29 Q42 27 50 24" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <!-- Right hand (open) -->
+  <circle cx="51" cy="23.5" r="3.5" fill="white"/>
+
+  <!-- Left arm (akimbo / tucked) -->
+  <path d="M13 29 Q8 32 6 38" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Legs (lighter, implied trousers) -->
+  <path d="M19 54 L17 63" stroke="rgba(255,255,255,0.55)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M29 54 L32 63" stroke="rgba(255,255,255,0.55)" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- ── WORDMARK ── -->
+
+  <text x="58" y="29"
+        font-family="'Arial Black', 'Impact', Arial, sans-serif"
+        font-size="19"
+        font-weight="900"
+        fill="white"
+        letter-spacing="0.6">MISTER MINIT&#174;</text>
+
+  <!-- Tagline (italic, slightly softer) -->
+  <text x="58" y="44"
+        font-family="Georgia, 'Times New Roman', Times, serif"
+        font-size="9"
+        fill="rgba(255,255,255,0.85)"
+        font-style="italic">&#8216;Real people fixing problems&#8217;</text>
+
+  <!-- Since 1957 -->
+  <text x="58" y="56"
+        font-family="Georgia, 'Times New Roman', Times, serif"
+        font-size="8"
+        fill="rgba(255,255,255,0.62)">Since 1957</text>
+
 </svg>
