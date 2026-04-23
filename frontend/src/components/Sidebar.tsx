@@ -22,7 +22,7 @@ import {
   Target,
   Download,
   Radio,
-  LayoutKanban,
+  Kanban,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
@@ -384,7 +384,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                           }}
                         />
                       )}
-                      <LayoutKanban size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
+                      <Kanban size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                       Prospect Board
                     </>
                   )}
