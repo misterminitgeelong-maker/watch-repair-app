@@ -285,6 +285,7 @@ class ProspectLead(SQLModel, table=True):
     notes: Optional[str] = None
     status: str = Field(default="new")  # new | contacted | visited | onboarded
     visit_scheduled_at: Optional[datetime] = None
+    customer_account_id: Optional[UUID] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listProspectLeads,
@@ -33,6 +34,7 @@ const NEXT_LABEL: Record<ProspectLeadStatus, string> = {
 }
 
 function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void }) {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [contactName, setContactName] = useState(lead.contact_name ?? '')
   const [contactEmail, setContactEmail] = useState(lead.contact_email ?? '')
@@ -47,7 +49,12 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
 
   const advance = useMutation({
     mutationFn: () => advanceProspectLead(lead.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['prospect-leads'] }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['prospect-leads'] })
+      if (res.data.status === 'onboarded' && res.data.customer_account_id) {
+        navigate('/customer-accounts')
+      }
+    },
   })
 
   const remove = useMutation({
@@ -245,6 +252,14 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
               disabled={advance.isPending}
             >
               {advance.isPending ? '…' : NEXT_LABEL[lead.status]}
+            </Button>
+          )}
+          {lead.status === 'onboarded' && lead.customer_account_id && (
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/customer-accounts')}
+            >
+              View Customer Account →
             </Button>
           )}
           <div className="flex-1" />

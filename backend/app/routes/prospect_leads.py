@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import ProspectLead
+from ..models import CustomerAccount, ProspectLead
 
 router = APIRouter(prefix="/v1/prospect-leads", tags=["prospect-leads"])
 
@@ -32,6 +32,7 @@ class ProspectLeadOut(BaseModel):
     notes: Optional[str]
     status: str
     visit_scheduled_at: Optional[datetime]
+    customer_account_id: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -74,6 +75,7 @@ def _out(lead: ProspectLead) -> ProspectLeadOut:
         notes=lead.notes,
         status=lead.status,
         visit_scheduled_at=lead.visit_scheduled_at,
+        customer_account_id=str(lead.customer_account_id) if lead.customer_account_id else None,
         created_at=lead.created_at,
         updated_at=lead.updated_at,
     )
@@ -196,6 +198,21 @@ def advance_lead(
     if current_idx < len(STATUSES) - 1:
         lead.status = STATUSES[current_idx + 1]
         lead.updated_at = datetime.now(timezone.utc)
+
+        if lead.status == "onboarded" and not lead.customer_account_id:
+            account = CustomerAccount(
+                tenant_id=lead.tenant_id,
+                name=lead.name,
+                contact_name=lead.contact_name,
+                contact_email=lead.contact_email,
+                contact_phone=lead.phone,
+                billing_address=lead.address,
+                notes=lead.notes,
+            )
+            session.add(account)
+            session.flush()
+            lead.customer_account_id = account.id
+
         session.add(lead)
         session.commit()
         session.refresh(lead)

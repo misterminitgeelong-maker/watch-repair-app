@@ -2092,6 +2092,7 @@ export interface ProspectLead {
   notes?: string
   status: ProspectLeadStatus
   visit_scheduled_at?: string
+  customer_account_id?: string
   created_at: string
   updated_at: string
 }
