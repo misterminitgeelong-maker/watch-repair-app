@@ -18,16 +18,32 @@ const STATUS_COLUMNS: { key: ProspectLeadStatus; label: string; color: string }[
   { key: 'onboarded', label: 'Business Onboarded', color: '#10b981' },
 ]
 
-function LeadCard({ lead, isLast }: { lead: ProspectLead; isLast: boolean }) {
+const NEXT_STATUS: Record<ProspectLeadStatus, ProspectLeadStatus | null> = {
+  new: 'contacted',
+  contacted: 'visited',
+  visited: 'onboarded',
+  onboarded: null,
+}
+
+const NEXT_LABEL: Record<ProspectLeadStatus, string> = {
+  new: 'Mark as Contacted',
+  contacted: 'Mark as Visited',
+  visited: 'Mark as Onboarded',
+  onboarded: '',
+}
+
+function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void }) {
   const qc = useQueryClient()
-  const [expanded, setExpanded] = useState(false)
-  const [editing, setEditing] = useState(false)
   const [contactName, setContactName] = useState(lead.contact_name ?? '')
   const [contactEmail, setContactEmail] = useState(lead.contact_email ?? '')
   const [notes, setNotes] = useState(lead.notes ?? '')
   const [visitDate, setVisitDate] = useState(
     lead.visit_scheduled_at ? lead.visit_scheduled_at.slice(0, 10) : ''
   )
+  const [dirty, setDirty] = useState(false)
+
+  const col = STATUS_COLUMNS.find(c => c.key === lead.status)
+  const nextStatus = NEXT_STATUS[lead.status]
 
   const advance = useMutation({
     mutationFn: () => advanceProspectLead(lead.id),
@@ -36,10 +52,10 @@ function LeadCard({ lead, isLast }: { lead: ProspectLead; isLast: boolean }) {
 
   const remove = useMutation({
     mutationFn: () => deleteProspectLead(lead.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['prospect-leads'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['prospect-leads'] }); onClose() },
   })
 
-  const update = useMutation({
+  const save = useMutation({
     mutationFn: () =>
       updateProspectLead(lead.id, {
         contact_name: contactName || undefined,
@@ -47,193 +63,264 @@ function LeadCard({ lead, isLast }: { lead: ProspectLead; isLast: boolean }) {
         notes: notes || undefined,
         visit_scheduled_at: visitDate ? new Date(visitDate).toISOString() : null,
       }),
-    onSuccess: () => {
-      setEditing(false)
-      qc.invalidateQueries({ queryKey: ['prospect-leads'] })
-    },
+    onSuccess: () => { setDirty(false); qc.invalidateQueries({ queryKey: ['prospect-leads'] }) },
   })
 
-  const startEdit = () => {
-    setContactName(lead.contact_name ?? '')
-    setContactEmail(lead.contact_email ?? '')
-    setNotes(lead.notes ?? '')
-    setVisitDate(lead.visit_scheduled_at ? lead.visit_scheduled_at.slice(0, 10) : '')
-    setEditing(true)
-  }
+  const mapsUrl = lead.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.address)}`
+    : null
 
   return (
     <div
-      className="rounded-lg border p-3"
-      style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate" style={{ color: 'var(--ms-text)' }}>
-            {lead.name}
-          </p>
-          {lead.address && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--ms-text-muted)' }}>
-              {lead.address}
+      <div
+        className="w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ backgroundColor: 'var(--ms-surface)', maxHeight: '90vh' }}
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="font-bold text-lg leading-tight" style={{ color: 'var(--ms-text)' }}>
+                {lead.name}
+              </h2>
+              {lead.category && (
+                <p className="text-xs mt-0.5 capitalize" style={{ color: 'var(--ms-text-muted)' }}>
+                  {lead.category.replace(/_/g, ' ')}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {col && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: col.color + '22', color: col.color }}
+                >
+                  {col.label}
+                </span>
+              )}
+              <button
+                onClick={onClose}
+                className="rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
+                style={{ backgroundColor: 'var(--ms-hover)', color: 'var(--ms-text-muted)' }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+          {/* Contact info from Google */}
+          <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: 'var(--ms-hover)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+              Business info
             </p>
-          )}
-          <div className="flex flex-wrap gap-3 mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
-            {lead.phone && <span>{lead.phone}</span>}
-            {lead.rating && <span>★ {lead.rating}</span>}
+            {lead.phone && (
+              <a
+                href={`tel:${lead.phone}`}
+                className="flex items-center gap-2 text-sm font-medium"
+                style={{ color: 'var(--ms-accent)' }}
+              >
+                <span>📞</span> {lead.phone}
+              </a>
+            )}
+            {lead.address && (
+              <div className="flex items-start gap-2">
+                <span className="text-sm mt-0.5">📍</span>
+                <div>
+                  <p className="text-sm" style={{ color: 'var(--ms-text)' }}>{lead.address}</p>
+                  {mapsUrl && (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs"
+                      style={{ color: 'var(--ms-accent)' }}
+                    >
+                      Open in Google Maps ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             {lead.website && (
               <a
                 href={lead.website}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm"
                 style={{ color: 'var(--ms-accent)' }}
               >
-                Website ↗
+                <span>🌐</span> {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
               </a>
             )}
+            {lead.rating && (
+              <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                ★ {lead.rating} ({lead.review_count ?? 0} reviews)
+              </p>
+            )}
           </div>
-          {(lead.contact_name || lead.contact_email) && (
-            <div className="mt-1.5 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
-              {lead.contact_name}
-              {lead.contact_name && lead.contact_email ? ' · ' : ''}
-              {lead.contact_email}
-            </div>
-          )}
-          {lead.visit_scheduled_at && (
-            <div className="mt-1 text-xs font-medium" style={{ color: '#8b5cf6' }}>
-              Visit:{' '}
-              {new Date(lead.visit_scheduled_at).toLocaleDateString('en-AU', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </div>
-          )}
-          {lead.notes && !expanded && (
-            <p className="mt-1 text-xs truncate" style={{ color: 'var(--ms-text-muted)' }}>
-              {lead.notes}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="text-xs px-1 rounded flex-shrink-0"
-          style={{ color: 'var(--ms-text-muted)' }}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          {expanded ? '▴' : '▾'}
-        </button>
-      </div>
 
-      {expanded && (
-        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--ms-border)' }}>
-          {editing ? (
-            <div className="space-y-2">
-              <input
-                className="w-full rounded border px-2 py-1 text-xs"
-                style={{
-                  borderColor: 'var(--ms-border)',
-                  backgroundColor: 'var(--ms-bg)',
-                  color: 'var(--ms-text)',
-                }}
-                placeholder="Contact name"
-                value={contactName}
-                onChange={e => setContactName(e.target.value)}
-              />
-              <input
-                className="w-full rounded border px-2 py-1 text-xs"
-                style={{
-                  borderColor: 'var(--ms-border)',
-                  backgroundColor: 'var(--ms-bg)',
-                  color: 'var(--ms-text)',
-                }}
-                placeholder="Contact email"
-                value={contactEmail}
-                onChange={e => setContactEmail(e.target.value)}
-              />
-              <textarea
-                className="w-full rounded border px-2 py-1 text-xs resize-none"
-                style={{
-                  borderColor: 'var(--ms-border)',
-                  backgroundColor: 'var(--ms-bg)',
-                  color: 'var(--ms-text)',
-                }}
-                placeholder="Notes"
-                rows={2}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-              />
-              <div>
-                <label
-                  className="text-xs block mb-1"
-                  style={{ color: 'var(--ms-text-muted)' }}
-                >
-                  Schedule visit
-                </label>
-                <input
-                  type="date"
-                  className="rounded border px-2 py-1 text-xs"
-                  style={{
-                    borderColor: 'var(--ms-border)',
-                    backgroundColor: 'var(--ms-bg)',
-                    color: 'var(--ms-text)',
-                  }}
-                  value={visitDate}
-                  onChange={e => setVisitDate(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => update.mutate()} disabled={update.isPending}>
-                  {update.isPending ? 'Saving…' : 'Save'}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              {lead.notes && (
-                <p className="text-xs mb-2" style={{ color: 'var(--ms-text-muted)' }}>
-                  {lead.notes}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={startEdit}
-                  className="text-xs px-2 py-1 rounded"
-                  style={{ backgroundColor: 'var(--ms-hover)', color: 'var(--ms-text)' }}
-                >
-                  Edit details
-                </button>
-                {!isLast && (
-                  <button
-                    onClick={() => advance.mutate()}
-                    disabled={advance.isPending}
-                    className="text-xs px-2 py-1 rounded font-medium"
-                    style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
-                  >
-                    {advance.isPending ? '…' : 'Move to next →'}
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (window.confirm(`Remove ${lead.name} from board?`)) remove.mutate()
-                  }}
-                  className="text-xs px-2 py-1 rounded"
-                  style={{ color: 'var(--ms-badge-alert-text)' }}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
+          {/* CRM contact details */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+              Your contact
+            </p>
+            <input
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+              placeholder="Contact name"
+              value={contactName}
+              onChange={e => { setContactName(e.target.value); setDirty(true) }}
+            />
+            <input
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+              placeholder="Contact email"
+              value={contactEmail}
+              onChange={e => { setContactEmail(e.target.value); setDirty(true) }}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+              Notes
+            </p>
+            <textarea
+              className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+              style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+              placeholder="Add notes about this business…"
+              rows={3}
+              value={notes}
+              onChange={e => { setNotes(e.target.value); setDirty(true) }}
+            />
+          </div>
+
+          {/* Visit scheduling */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+              Schedule a visit
+            </p>
+            <input
+              type="date"
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+              value={visitDate}
+              onChange={e => { setVisitDate(e.target.value); setDirty(true) }}
+            />
+            {visitDate && (
+              <button
+                onClick={() => { setVisitDate(''); setDirty(true) }}
+                className="text-xs ml-2"
+                style={{ color: 'var(--ms-text-muted)' }}
+              >
+                Clear date
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Footer actions */}
+        <div
+          className="px-5 py-4 flex flex-wrap items-center gap-2"
+          style={{ borderTop: '1px solid var(--ms-border)' }}
+        >
+          {dirty && (
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? 'Saving…' : 'Save changes'}
+            </Button>
+          )}
+          {nextStatus && (
+            <Button
+              variant="secondary"
+              onClick={() => advance.mutate()}
+              disabled={advance.isPending}
+            >
+              {advance.isPending ? '…' : NEXT_LABEL[lead.status]}
+            </Button>
+          )}
+          <div className="flex-1" />
+          <button
+            onClick={() => { if (window.confirm(`Remove ${lead.name} from board?`)) remove.mutate() }}
+            className="text-xs px-3 py-1.5 rounded"
+            style={{ color: 'var(--ms-badge-alert-text)' }}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function LeadCard({ lead, onClick }: { lead: ProspectLead; onClick: () => void }) {
+  const col = STATUS_COLUMNS.find(c => c.key === lead.status)
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-lg border p-3 transition-shadow hover:shadow-md"
+      style={{
+        backgroundColor: 'var(--ms-surface)',
+        borderColor: 'var(--ms-border)',
+        cursor: 'pointer',
+      }}
+    >
+      <p className="font-semibold text-sm leading-snug" style={{ color: 'var(--ms-text)' }}>
+        {lead.name}
+      </p>
+      {lead.address && (
+        <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--ms-text-muted)' }}>
+          📍 {lead.address}
+        </p>
+      )}
+      {lead.phone && (
+        <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-mid)' }}>
+          📞 {lead.phone}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+        {lead.rating && (
+          <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+            ★ {lead.rating}
+          </span>
+        )}
+        {lead.visit_scheduled_at && (
+          <span className="text-xs font-medium" style={{ color: '#8b5cf6' }}>
+            Visit{' '}
+            {new Date(lead.visit_scheduled_at).toLocaleDateString('en-AU', {
+              day: 'numeric',
+              month: 'short',
+            })}
+          </span>
+        )}
+        {lead.notes && (
+          <span className="text-xs truncate flex-1" style={{ color: 'var(--ms-text-muted)' }}>
+            {lead.notes}
+          </span>
+        )}
+      </div>
+      {(lead.contact_name || lead.contact_email) && (
+        <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          Contact: {lead.contact_name || lead.contact_email}
+        </p>
+      )}
+    </button>
   )
 }
 
 export default function ProspectBoardPage() {
   const [view, setView] = useState<'board' | 'visits'>('board')
+  const [selectedLead, setSelectedLead] = useState<ProspectLead | null>(null)
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['prospect-leads'],
@@ -248,6 +335,11 @@ export default function ProspectBoardPage() {
       (a, b) =>
         new Date(a.visit_scheduled_at!).getTime() - new Date(b.visit_scheduled_at!).getTime()
     )
+
+  // Keep modal in sync with latest data after mutations
+  const currentSelected = selectedLead
+    ? leads.find(l => l.id === selectedLead.id) ?? null
+    : null
 
   return (
     <div className="p-6">
@@ -283,7 +375,7 @@ export default function ProspectBoardPage() {
             className="grid gap-4"
             style={{ gridTemplateColumns: 'repeat(4, minmax(230px, 1fr))', minWidth: 960 }}
           >
-            {STATUS_COLUMNS.map((col, colIdx) => (
+            {STATUS_COLUMNS.map(col => (
               <div key={col.key}>
                 <div className="flex items-center gap-2 mb-3">
                   <span
@@ -298,10 +390,7 @@ export default function ProspectBoardPage() {
                   </h3>
                   <span
                     className="text-xs rounded-full px-1.5 py-0.5"
-                    style={{
-                      backgroundColor: 'var(--ms-hover)',
-                      color: 'var(--ms-text-muted)',
-                    }}
+                    style={{ backgroundColor: 'var(--ms-hover)', color: 'var(--ms-text-muted)' }}
                   >
                     {byStatus(col.key).length}
                   </span>
@@ -310,10 +399,7 @@ export default function ProspectBoardPage() {
                   {byStatus(col.key).length === 0 ? (
                     <div
                       className="rounded-lg border border-dashed p-4 text-center text-xs"
-                      style={{
-                        borderColor: 'var(--ms-border)',
-                        color: 'var(--ms-text-muted)',
-                      }}
+                      style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text-muted)' }}
                     >
                       No businesses
                     </div>
@@ -322,7 +408,7 @@ export default function ProspectBoardPage() {
                       <LeadCard
                         key={lead.id}
                         lead={lead}
-                        isLast={colIdx === STATUS_COLUMNS.length - 1}
+                        onClick={() => setSelectedLead(lead)}
                       />
                     ))
                   )}
@@ -338,7 +424,7 @@ export default function ProspectBoardPage() {
           </h2>
           {upcomingVisits.length === 0 ? (
             <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>
-              No visits scheduled. Open the board, expand a card, and set a visit date.
+              No visits scheduled. Open the board, click a card, and set a visit date.
             </p>
           ) : (
             <div className="space-y-3">
@@ -347,13 +433,12 @@ export default function ProspectBoardPage() {
                 const isPast = d < new Date()
                 const col = STATUS_COLUMNS.find(c => c.key === lead.status)
                 return (
-                  <div
+                  <button
                     key={lead.id}
-                    className="flex items-start gap-4 p-4 rounded-lg border"
-                    style={{
-                      backgroundColor: 'var(--ms-surface)',
-                      borderColor: 'var(--ms-border)',
-                    }}
+                    type="button"
+                    onClick={() => setSelectedLead(lead)}
+                    className="w-full text-left flex items-start gap-4 p-4 rounded-lg border hover:shadow-md transition-shadow"
+                    style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}
                   >
                     <div className="text-center min-w-[48px]">
                       <div
@@ -377,26 +462,14 @@ export default function ProspectBoardPage() {
                       </p>
                       {lead.address && (
                         <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                          {lead.address}
+                          📍 {lead.address}
                         </p>
                       )}
-                      <div
-                        className="flex flex-wrap gap-3 mt-1 text-xs"
-                        style={{ color: 'var(--ms-text-mid)' }}
-                      >
-                        {lead.phone && <span>{lead.phone}</span>}
-                        {lead.contact_name && <span>Contact: {lead.contact_name}</span>}
-                        {lead.website && (
-                          <a
-                            href={lead.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: 'var(--ms-accent)' }}
-                          >
-                            Website ↗
-                          </a>
-                        )}
-                      </div>
+                      {lead.phone && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-mid)' }}>
+                          📞 {lead.phone}
+                        </p>
+                      )}
                       {lead.notes && (
                         <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                           {lead.notes}
@@ -411,12 +484,16 @@ export default function ProspectBoardPage() {
                         {col.label}
                       </span>
                     )}
-                  </div>
+                  </button>
                 )
               })}
             </div>
           )}
         </div>
+      )}
+
+      {currentSelected && (
+        <LeadModal lead={currentSelected} onClose={() => setSelectedLead(null)} />
       )}
     </div>
   )
