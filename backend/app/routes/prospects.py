@@ -172,12 +172,13 @@ async def _fetch_places(client: httpx.AsyncClient, query: str, api_key: str) -> 
         },
     )
     if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail="Google Places API request failed")
+        raise HTTPException(status_code=502, detail=f"Google Places API request failed (HTTP {resp.status_code}): {resp.text[:200]}")
     data = resp.json()
-    if data.get("status") == "REQUEST_DENIED":
+    status = data.get("status")
+    if status not in ("OK", "ZERO_RESULTS"):
         raise HTTPException(
             status_code=502,
-            detail=f"Google Places API denied: {data.get('error_message', 'Unknown error')}",
+            detail=f"Google Places API error ({status}): {data.get('error_message', 'No error message')}",
         )
     return data.get("results", [])
 
