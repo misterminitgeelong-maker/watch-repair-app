@@ -39,56 +39,56 @@ const PLAN_BUNDLES: PlanBundle[] = [
   {
     code: 'basic_watch',
     name: 'Basic - Watch',
-    monthlyLabel: '$25/mo',
+    monthlyLabel: '$40/mo',
     modules: ['Watch repairs', 'Reports', 'Customers', 'Invoices'],
     summary: '1 service tab included',
   },
   {
     code: 'basic_shoe',
     name: 'Basic - Shoe',
-    monthlyLabel: '$25/mo',
+    monthlyLabel: '$40/mo',
     modules: ['Shoe repairs', 'Reports', 'Customers', 'Invoices'],
     summary: '1 service tab included',
   },
   {
     code: 'basic_auto_key',
     name: 'Basic - Mobile Services',
-    monthlyLabel: '$25/mo',
+    monthlyLabel: '$40/mo',
     modules: ['Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '1 service tab included',
   },
   {
     code: 'basic_watch_shoe',
     name: 'Basic +1 Tab (Watch + Shoe)',
-    monthlyLabel: '$35/mo',
+    monthlyLabel: '$55/mo',
     modules: ['Watch repairs', 'Shoe repairs', 'Reports', 'Customers', 'Invoices'],
     summary: '2 service tabs',
   },
   {
     code: 'basic_watch_auto_key',
     name: 'Basic +1 Tab (Watch + Mobile Services)',
-    monthlyLabel: '$35/mo',
+    monthlyLabel: '$55/mo',
     modules: ['Watch repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '2 service tabs',
   },
   {
     code: 'basic_shoe_auto_key',
     name: 'Basic +1 Tab (Shoe + Mobile Services)',
-    monthlyLabel: '$35/mo',
+    monthlyLabel: '$55/mo',
     modules: ['Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '2 service tabs',
   },
   {
     code: 'basic_all_tabs',
     name: 'Basic +2 Tabs (All Service Tabs)',
-    monthlyLabel: '$45/mo',
+    monthlyLabel: '$70/mo',
     modules: ['Watch repairs', 'Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
     summary: '3 service tabs',
   },
   {
     code: 'pro',
     name: 'Pro',
-    monthlyLabel: '$50/mo',
+    monthlyLabel: '$80/mo',
     modules: ['All service tabs', 'Reports', 'Customer accounts', 'Multi-site', 'Priority access'],
     summary: 'Full app access',
   },
@@ -382,7 +382,7 @@ export default function AccountsPage() {
               Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode} ({PLAN_BUNDLES.find(p => p.code === planCode)?.monthlyLabel ?? 'Custom'})
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-              Basic starts at $25/month with one service tab and reports. Each extra service tab adds $10/month. Pro is $50/month for full access.
+              Basic starts at $40/month with one service tab. Each extra service tab adds $15/month. Pro is $80/month for full access. Each additional shop location adds $25/month.
             </p>
           </div>
           <div className="mt-3 flex gap-2 sm:mt-0 sm:w-[360px]">

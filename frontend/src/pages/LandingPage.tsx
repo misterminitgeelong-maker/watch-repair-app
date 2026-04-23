@@ -747,9 +747,9 @@ function PricingSection() {
                 lineHeight: 1,
               }}
             >
-              A$25
+              A$40
             </span>
-            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.85rem' }}>/month</span>
+            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.85rem' }}>/month per login</span>
           </div>
           <p className="text-sm mb-6" style={{ color: 'var(--ms-text-mid)' }}>
             One service line
@@ -808,9 +808,9 @@ function PricingSection() {
                 lineHeight: 1,
               }}
             >
-              A$50
+              A$80
             </span>
-            <span style={{ color: '#8D6420', fontSize: '0.85rem' }}>/month</span>
+            <span style={{ color: '#8D6420', fontSize: '0.85rem' }}>/month per login</span>
           </div>
           <p className="text-sm mb-6" style={{ color: '#7A5E2E' }}>
             Everything, all service lines
@@ -836,7 +836,7 @@ function PricingSection() {
         style={{ color: 'var(--ms-text-muted)' }}
       >
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-        Add extra service lines for A$10/month each on the Basic plan.
+        Add extra service lines for A$15/month each on the Basic plan · Each additional shop location A$25/month.
       </p>
     </section>
   )
