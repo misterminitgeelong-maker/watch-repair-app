@@ -253,6 +253,10 @@
     color: var(--ms-text);
   }
 
+  button { cursor: pointer; }
+  select { cursor: pointer; }
+  [role="button"] { cursor: pointer; }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--ms-bg); }
   ::-webkit-scrollbar-thumb { background: var(--ms-border-strong); border-radius: 3px; }

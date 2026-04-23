@@ -164,8 +164,8 @@ export default function CustomersPage() {
                 {filtered.map((c: Customer, i) => (
                   <tr
                     key={c.id}
-                    style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                    style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--ms-border)' : 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <td className="px-5 py-3.5">

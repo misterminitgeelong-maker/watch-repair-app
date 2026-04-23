@@ -123,7 +123,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                   key={j.id}
                   className="w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors"
                   style={{ borderBottom: '1px solid var(--ms-border)' }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   onClick={() => go(`/jobs/${j.id}`)}
                 >
@@ -149,7 +149,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                   key={c.id}
                   className="w-full text-left px-4 py-2.5 transition-colors"
                   style={{ borderBottom: '1px solid var(--ms-border)' }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   onClick={() => go(`/customers/${c.id}`)}
                 >

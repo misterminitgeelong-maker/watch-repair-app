@@ -167,7 +167,7 @@ export function InvoicesPage() {
                   </thead>
                   <tbody>
                     {filteredInvoices.map((inv: Invoice) => (
-                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--ms-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--ms-border)', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3">
                           <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
                         </td>

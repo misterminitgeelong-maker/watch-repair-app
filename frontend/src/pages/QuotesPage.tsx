@@ -437,7 +437,7 @@ export default function QuotesPage() {
                   </thead>
                   <tbody>
                     {filteredQuotes.map(q => (
-                      <tr key={q.id} style={{ borderBottom: '1px solid var(--ms-border)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                      <tr key={q.id} style={{ borderBottom: '1px solid var(--ms-border)', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3"><Badge status={q.status} /></td>
                         <td className="px-5 py-3 font-semibold">{formatCents(q.total_cents)}</td>
                         <td className="px-5 py-3">

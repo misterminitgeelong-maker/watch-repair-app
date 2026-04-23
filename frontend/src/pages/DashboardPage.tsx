@@ -722,7 +722,7 @@ export default function DashboardPage() {
                   to={item.to}
                   className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors"
                   style={{ borderBottom: index < recentItems.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F5EDE0' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ms-hover)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
                 >
                   <div className="min-w-0">

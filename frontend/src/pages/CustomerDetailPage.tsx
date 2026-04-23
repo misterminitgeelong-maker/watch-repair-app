@@ -332,7 +332,7 @@ export default function CustomerDetailPage() {
                     to={`/jobs/${job.id}`}
                     className="flex items-center justify-between px-5 py-3.5 transition-colors"
                     style={{ borderBottom: i < activeJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
@@ -361,7 +361,7 @@ export default function CustomerDetailPage() {
                     to={`/jobs/${job.id}`}
                     className="flex items-center justify-between px-5 py-3.5 transition-colors"
                     style={{ borderBottom: i < completedDirectoryJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
@@ -383,7 +383,7 @@ export default function CustomerDetailPage() {
                         to={`/jobs/${job.id}`}
                         className="flex items-center justify-between px-5 py-3.5 transition-colors"
                         style={{ borderBottom: i < noGoJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         <div>
@@ -424,7 +424,7 @@ export default function CustomerDetailPage() {
                 to={`/shoe-repairs/${job.id}`}
                 className="flex items-center justify-between px-5 py-3.5 transition-colors"
                 style={{ borderBottom: i < shoeJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <div>
@@ -458,7 +458,7 @@ export default function CustomerDetailPage() {
                 to={`/auto-key/${job.id}`}
                 className="flex items-center justify-between px-5 py-3.5 transition-colors"
                 style={{ borderBottom: i < autoKeyJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5EDE0')}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <div>
