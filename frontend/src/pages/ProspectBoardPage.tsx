@@ -262,8 +262,6 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
 }
 
 function LeadCard({ lead, onClick }: { lead: ProspectLead; onClick: () => void }) {
-  const col = STATUS_COLUMNS.find(c => c.key === lead.status)
-
   return (
     <button
       type="button"
