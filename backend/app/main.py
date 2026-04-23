@@ -68,6 +68,8 @@ if getattr(settings, "sentry_dsn", "").strip():
 
 def _run_optional_startup_tasks() -> None:
     """Run demo/bootstrap maintenance without blocking container health checks."""
+    if not settings.startup_seed_enabled:
+        return
     startup_logger = logging.getLogger("mainspring.startup")
     try:
         with Session(engine) as session:
