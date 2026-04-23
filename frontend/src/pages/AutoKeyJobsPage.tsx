@@ -923,7 +923,22 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           {step === 1 ? (
             <>
               <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-              <Button className="flex-1" type="button" onClick={() => { setError(''); setStep(2) }}>Next →</Button>
+              <Button className="flex-1" type="button" onClick={() => {
+                setError('')
+                if (customerMode === 'existing' && !form.customer_id) {
+                  setError('Please select a customer.')
+                  return
+                }
+                if (customerMode === 'new' && !newCustomer.full_name.trim()) {
+                  setError('Customer name is required.')
+                  return
+                }
+                if (MOBILE_JOB_TYPES.has(form.job_type) && !form.job_address.trim()) {
+                  setError('Address is required for this job type.')
+                  return
+                }
+                setStep(2)
+              }}>Next →</Button>
             </>
           ) : (
             <>
