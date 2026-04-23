@@ -109,17 +109,35 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}
       >
         <div className="flex items-center justify-between gap-3">
-          <img
-            src={logoSrc}
-            alt={logoAlt}
-            style={{
-              width: mobile ? 'min(100%, 152px)' : 'min(100%, 236px)',
-              maxWidth: '100%',
-              height: 'auto',
-              display: 'block',
-              objectFit: 'contain',
-            }}
-          />
+          {theme === 'minit' ? (
+            <svg viewBox="0 0 200 46" fill="none" xmlns="http://www.w3.org/2000/svg"
+              style={{ width: mobile ? 'min(100%, 152px)' : 'min(100%, 200px)', height: 'auto', display: 'block' }}>
+              {/* Key ring */}
+              <circle cx="13.5" cy="15" r="9.5" fill="none" stroke="#E31837" strokeWidth="2.6"/>
+              <circle cx="13.5" cy="15" r="3.8" fill="#E31837"/>
+              {/* Key shaft */}
+              <rect x="21.5" y="13.2" width="15" height="3.6" rx="1.8" fill="#E31837"/>
+              {/* Key teeth */}
+              <rect x="31.5" y="16.8" width="3.6" height="5.2" rx="1.3" fill="#E31837"/>
+              <rect x="25.8" y="16.8" width="3.6" height="4.2" rx="1.3" fill="#E31837"/>
+              {/* MISTER MINIT */}
+              <text x="44" y="21" fontFamily="'Arial Black', Arial, Impact, sans-serif" fontSize="17" fontWeight="900" fill="#FFFFFF" letterSpacing="0.5">MISTER MINIT</text>
+              {/* Since 1957 */}
+              <text x="44" y="37" fontFamily="Arial, Helvetica, sans-serif" fontSize="8" fill="rgba(255,255,255,0.5)" letterSpacing="2.5">SINCE  1957</text>
+            </svg>
+          ) : (
+            <img
+              src={logoSrc}
+              alt={logoAlt}
+              style={{
+                width: mobile ? 'min(100%, 152px)' : 'min(100%, 236px)',
+                maxWidth: '100%',
+                height: 'auto',
+                display: 'block',
+                objectFit: 'contain',
+              }}
+            />
+          )}
 
           {mobile && onClose && (
             <button
