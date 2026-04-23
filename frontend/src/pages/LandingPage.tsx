@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Plus,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
 const LANDING_CSS = `
@@ -893,6 +894,16 @@ function FinalCTA() {
 
 export default function LandingPage() {
   const { token, sessionReady } = useAuth()
+
+  // Always render the landing page in the default warm theme regardless of user preference.
+  useEffect(() => {
+    const saved = document.documentElement.getAttribute('data-theme')
+    document.documentElement.removeAttribute('data-theme')
+    return () => {
+      if (saved) document.documentElement.setAttribute('data-theme', saved)
+      else document.documentElement.removeAttribute('data-theme')
+    }
+  }, [])
 
   // After /auth/session succeeds, send signed-in users straight to the app.
   if (token && sessionReady) return <Navigate to="/dashboard" replace />

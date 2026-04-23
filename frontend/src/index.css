@@ -159,7 +159,7 @@
   --ms-overlay:         rgba(20, 18, 16, 0.52);
 }
 
-/* Mister Minit — brand red sidebar, clean white canvas */
+/* Mister Minit — navy sidebar (brand primary), red accent, clean white canvas */
 [data-theme="minit"] {
   --ms-bg:              #F4F4F4;
   --ms-surface:         #FFFFFF;
@@ -178,12 +178,12 @@
   --ms-accent-light:    #FDEAED;
   --ms-accent-pop:      rgba(227, 24, 55, 0.10);
 
-  --ms-sidebar:         #C41230;
-  --ms-sidebar-text:    rgba(255, 255, 255, 0.72);
+  --ms-sidebar:         #2B3990;
+  --ms-sidebar-text:    rgba(255, 255, 255, 0.68);
   --ms-sidebar-act-text:#FFFFFF;
-  --ms-sidebar-active:  rgba(255, 255, 255, 0.16);
-  --ms-sidebar-hover:   rgba(255, 255, 255, 0.10);
-  --ms-sidebar-border:  rgba(255, 255, 255, 0.14);
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.14);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.08);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.12);
 
   --ms-radius:          8px;
   --ms-radius-sm:       5px;
@@ -191,7 +191,7 @@
   --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
   --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
 
-  --ms-badge-wait-bg:   #FFF3F5;  --ms-badge-wait-text:   #B5102A;
+  --ms-badge-wait-bg:   #EEF0FB;  --ms-badge-wait-text:   #2B3990;
   --ms-badge-in-bg:     #E8F2F8;  --ms-badge-in-text:     #1E6A8A;
   --ms-badge-done-bg:   #EBF8EF;  --ms-badge-done-text:   #1A6A3A;
   --ms-badge-alert-bg:  #FDEAED;  --ms-badge-alert-text:  #B5102A;
