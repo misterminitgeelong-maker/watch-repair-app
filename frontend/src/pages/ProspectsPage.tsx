@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
+import { getApiErrorMessage, getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 
@@ -74,7 +74,9 @@ export default function ProspectsPage() {
     [category, state, suburbs, useLiveApi]
   )
 
-  const { data: searchData, refetch, isFetching } = useQuery<ProspectSearchResponse>({
+  const [searched, setSearched] = useState(false)
+
+  const { data: searchData, refetch, isFetching, error: searchError } = useQuery<ProspectSearchResponse>({
     queryKey: ['prospects', searchParams?.category, searchParams?.state, searchParams?.suburbs?.join(','), searchParams?.live],
     queryFn: () =>
       searchProspects(
@@ -83,7 +85,8 @@ export default function ProspectsPage() {
         searchParams!.suburbs,
         searchParams!.live
       ).then(r => r.data),
-    enabled: !!searchParams,
+    enabled: false,
+    retry: false,
   })
 
   const { data: collectorStatus } = useQuery({
@@ -130,7 +133,7 @@ export default function ProspectsPage() {
           </div>
           <div className="flex items-end gap-3">
             <Button
-              onClick={() => refetch()}
+              onClick={() => { setSearched(true); void refetch() }}
               disabled={!category || !state || isFetching}
             >
               {isFetching ? 'Searching…' : 'Search'}
@@ -272,26 +275,36 @@ export default function ProspectsPage() {
       <div>
         {isFetching ? (
           <Spinner />
+        ) : searchError ? (
+          <div className="rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: 'var(--ms-badge-alert-bg)', color: 'var(--ms-badge-alert-text)', border: '1px solid var(--ms-badge-alert-text)' }}>
+            <p className="font-semibold mb-1">Search failed</p>
+            <p>{getApiErrorMessage(searchError)}</p>
+          </div>
         ) : searchData?.results?.length ? (
           <ul className="space-y-3">
             {searchData.results.map((p: Prospect) => (
-              <li key={p.place_id} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
-                <div className="font-semibold">{p.name}</div>
-                <div className="text-sm">{p.address}</div>
-                <div className="text-sm mt-1">
-                  {p.phone}
-                  {p.website && (
-                    <a href={p.website} className="ml-2" style={{ color: 'var(--ms-accent)' }} target="_blank" rel="noopener noreferrer">
-                      Website
-                    </a>
-                  )}
+              <li key={p.place_id} className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{p.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{p.address}</div>
+                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                      {p.phone && <span>{p.phone}</span>}
+                      {p.rating && <span>★ {p.rating} ({p.review_count ?? 0})</span>}
+                      {p.website && (
+                        <a href={p.website} style={{ color: 'var(--ms-accent)' }} target="_blank" rel="noopener noreferrer">
+                          Website ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
-        ) : searchParams ? (
+        ) : searched ? (
           <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>
-            No results. Try a different state or suburbs.
+            No results found. Try a different category, state, or suburbs.
           </p>
         ) : (
           <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>

@@ -13,6 +13,7 @@ import {
   getBillingPortalUrl,
   listUsers,
   refreshStripeConnectStatus,
+  setDispatchBaseLocation,
   type PlanCode,
   type TenantUser,
   updateTenantPlan,
@@ -571,6 +572,8 @@ export default function AccountsPage() {
         </Card>
       )}
 
+      {(planCode.includes('auto_key') || planCode === 'pro') && <DispatchBaseLocationCard />}
+
       <AppearanceCard />
 
       <Card className="mb-5 p-4 sm:p-5">
@@ -602,6 +605,60 @@ export default function AccountsPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+function DispatchBaseLocationCard() {
+  const [address, setAddress] = useState('')
+  const [ringKm, setRingKm] = useState(10)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  const mut = useMutation({
+    mutationFn: () => setDispatchBaseLocation(address.trim(), ringKm).then(r => r.data),
+    onSuccess: () => { setSaved(true); setError('') },
+    onError: (err) => setError(getApiErrorMessage(err) || 'Could not save base location.'),
+  })
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        Dispatch base location
+      </p>
+      <p className="text-sm mt-1 mb-4" style={{ color: 'var(--ms-text-mid)' }}>
+        Set your depot or main base address. Ring 1 = 0–{ringKm}km, Ring 2 = {ringKm}–{ringKm * 2}km, etc.
+      </p>
+      <div className="space-y-3">
+        <Input
+          label="Base address"
+          value={address}
+          onChange={e => { setAddress(e.target.value); setSaved(false) }}
+          placeholder="123 Depot St, Melbourne VIC 3000"
+        />
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Ring size (km)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={200}
+            value={ringKm}
+            onChange={e => { setRingKm(Number(e.target.value)); setSaved(false) }}
+            className="w-32 px-3 py-2 rounded-lg text-sm outline-none"
+            style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-text)' }}
+          />
+        </div>
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {saved && <p className="text-sm" style={{ color: 'var(--ms-badge-done-text)' }}>Base location saved.</p>}
+        <Button
+          onClick={() => mut.mutate()}
+          disabled={!address.trim() || mut.isPending}
+        >
+          {mut.isPending ? 'Geocoding…' : 'Save base location'}
+        </Button>
+      </div>
+    </Card>
   )
 }
 

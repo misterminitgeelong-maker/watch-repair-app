@@ -2291,3 +2291,42 @@ export const getLoyaltyProfile = (customerId: string) =>
 
 export const adjustLoyaltyPoints = (customerId: string, points_delta: number, note: string) =>
   api.post<LoyaltyProfileResponse>(`/loyalty/customers/${customerId}/adjust`, { points_delta, note })
+
+// ── Intake dispatch (ring-map job pool) ──────────────────────────────────────
+
+export interface IntakePoolJob {
+  id: string
+  customer_name: string
+  job_address: string
+  vehicle_make: string | null
+  vehicle_model: string | null
+  vehicle_year: string | null
+  registration_plate: string | null
+  description: string | null
+  ring: number
+  created_at: string
+}
+
+export interface SubmitIntakeBody {
+  customer_name: string
+  customer_phone?: string
+  customer_email?: string
+  job_address: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: string
+  registration_plate?: string
+  description?: string
+}
+
+export const submitPublicIntake = (body: SubmitIntakeBody) =>
+  axios.post<{ id: string; message: string }>(withApiOrigin('/v1/public/intake'), body)
+
+export const listJobPool = (maxRing?: number) =>
+  api.get<IntakePoolJob[]>('/pool', { params: maxRing != null ? { max_ring: maxRing } : undefined })
+
+export const claimPoolJob = (jobId: string) =>
+  api.post<{ message: string; auto_key_job_id: string; job_number: string; customer_id: string }>(`/pool/${jobId}/claim`)
+
+export const setDispatchBaseLocation = (address: string, ring_radius_km = 10) =>
+  api.post<{ base_lat: number; base_lng: number; ring_radius_km: number }>('/settings/dispatch-base-location', { address, ring_radius_km })

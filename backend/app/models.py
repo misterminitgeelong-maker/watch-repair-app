@@ -90,6 +90,10 @@ class Tenant(SQLModel, table=True):
     toolkit_selected_keys: str = Field(default="[]")
     # When False, customer-facing SMS for mobile services (auto key) is skipped; tech reminders unchanged.
     mobile_services_customer_sms_enabled: bool = True
+    # Ring-map dispatch: operator's base location for distance-based job routing
+    base_lat: Optional[float] = None
+    base_lng: Optional[float] = None
+    ring_radius_km: int = Field(default=10)  # size of each priority ring in km
 
 
 class User(SQLModel, table=True):
@@ -132,6 +136,33 @@ class MobileSuburbRoute(SQLModel, table=True):
     state_code: str = Field(index=True, max_length=8)
     suburb_normalized: str = Field(index=True, max_length=200)
     target_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class IntakeJob(SQLModel, table=True):
+    """Public website job submission waiting to be claimed by an operator via ring-map dispatch."""
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    # Submitted by the website customer
+    customer_name: str = Field(max_length=300)
+    customer_phone: Optional[str] = Field(default=None, max_length=80)
+    customer_email: Optional[str] = Field(default=None, max_length=320)
+    job_address: str = Field(max_length=2000)
+    job_lat: float
+    job_lng: float
+    vehicle_make: Optional[str] = Field(default=None, max_length=120)
+    vehicle_model: Optional[str] = Field(default=None, max_length=120)
+    vehicle_year: Optional[str] = Field(default=None, max_length=10)
+    registration_plate: Optional[str] = Field(default=None, max_length=32)
+    description: Optional[str] = Field(default=None, max_length=4000)
+    # Dispatch state
+    status: str = Field(default="unclaimed", index=True)  # unclaimed | claimed | admin_review
+    current_ring: int = Field(default=1)  # escalates: ring 1 → 2 → 3 as time passes
+    ring_escalated_at: Optional[datetime] = None  # next escalation due after this
+    claimed_by_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", index=True)
+    claimed_at: Optional[datetime] = None
+    # If claimed, the resulting AutoKeyJob id
+    resulting_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

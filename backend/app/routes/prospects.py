@@ -162,12 +162,12 @@ def _state_name_for_query(code: str) -> str:
     return next((s["name"] for s in AU_STATES if s["code"] == code), code)
 
 
-async def _fetch_places(client: httpx.AsyncClient, query: str) -> list[dict]:
+async def _fetch_places(client: httpx.AsyncClient, query: str, api_key: str) -> list[dict]:
     resp = await client.get(
         PLACES_URL,
         params={
             "query": query,
-            "key": settings.google_places_api_key,
+            "key": api_key,
             "region": "au",
         },
     )
@@ -237,7 +237,8 @@ async def search_prospects(
             pass
 
     # Fallback to live Google Places API
-    if not settings.google_places_api_key:
+    api_key = settings.google_places_api_key or settings.google_maps_web_services_key
+    if not api_key:
         raise HTTPException(status_code=500, detail="Google Places API key not configured")
 
     base = CATEGORY_BASES[category]
@@ -251,7 +252,7 @@ async def search_prospects(
         if suburb_list_api:
             for suburb in suburb_list_api:
                 search_query = f"{base} {suburb} {state_name} Australia"
-                places = await _fetch_places(client, search_query)
+                places = await _fetch_places(client, search_query, api_key)
                 for p in places:
                     pid = p.get("place_id", "")
                     if pid and pid not in seen_place_ids:
@@ -270,7 +271,7 @@ async def search_prospects(
                         )
         else:
             search_query = f"{base} {state_name} Australia"
-            places = await _fetch_places(client, search_query)
+            places = await _fetch_places(client, search_query, api_key)
             for p in places:
                 pid = p.get("place_id", "")
                 if pid and pid not in seen_place_ids:

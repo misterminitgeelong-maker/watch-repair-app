@@ -62,6 +62,8 @@ const MobileServicesTeamPage = lazy(() => import('@/pages/MobileServicesTeamPage
 const SubscriptionRequiredPage = lazy(() => import('@/pages/SubscriptionRequiredPage'))
 const CustomerPortalPage = lazy(() => import('@/pages/CustomerPortalPage'))
 const ShoeApprovePage = lazy(() => import('@/pages/ShoeApprovePage'))
+const JobPoolPage = lazy(() => import('@/pages/JobPoolPage'))
+const PublicIntakePage = lazy(() => import('@/pages/PublicIntakePage'))
 
 function RouteFallback() {
   return (
@@ -109,6 +111,7 @@ export default function App() {
             <Route path="/mobile-invoice/:token" element={<MobileInvoicePage />} />
             <Route path="/mobile-quote/:token" element={<MobileQuotePage />} />
             <Route path="/mobile-job-intake/:token" element={<MobileJobIntakePage />} />
+            <Route path="/intake" element={<PublicIntakePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/signup/checkout" element={<SignupCheckoutPage />} />
@@ -142,6 +145,7 @@ export default function App() {
                 }
               >
                 <Route index element={<AutoKeyJobsPage />} />
+                <Route path="pool" element={<JobPoolPage />} />
                 <Route path="team" element={<MobileServicesTeamPage />} />
                 <Route path="prospects" element={<ProspectsPage />} />
                 <Route path="toolkit" element={<ToolkitPage />} />
