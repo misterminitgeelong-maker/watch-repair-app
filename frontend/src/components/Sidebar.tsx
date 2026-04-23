@@ -91,7 +91,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
   function linkStyle(isActive: boolean) {
     return isActive
-      ? { backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0E7DD', border: '1px solid rgba(255,255,255,0.08)' }
+      ? { backgroundColor: 'var(--ms-sidebar-active)', color: 'var(--ms-sidebar-act-text)', border: '1px solid var(--ms-sidebar-border)' }
       : { color: 'var(--ms-sidebar-text)' }
   }
 
@@ -101,7 +101,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       style={{
         backgroundColor: 'var(--ms-sidebar)',
         color: 'var(--ms-sidebar-text)',
-        ...(!mobile ? { borderRight: '1px solid rgba(160,130,90,0.15)' } : {}),
+        ...(!mobile ? { borderRight: '1px solid var(--ms-sidebar-border)' } : {}),
       }}
     >
       <div
@@ -145,7 +145,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             <button
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
               onClick={onClose}
-              style={{ color: '#C8A882' }}
+              style={{ color: 'var(--ms-sidebar-text)' }}
               aria-label="Close navigation"
             >
               {closeIcon}
@@ -188,7 +188,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                     }}
                   />
                 )}
-                <item.icon size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                <item.icon size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                 {item.label}
                 {item.to === '/inbox' && inboxCount > 0 && (
                   <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
@@ -233,7 +233,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                       }}
                     />
                   )}
-                  <KeyRound size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                  <KeyRound size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                   Mobile Services
                 </>
               )}
@@ -241,7 +241,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             {insideMobile && (
               <div
                 className="mt-0.5 mb-1 ml-2 pl-3 space-y-0.5"
-                style={{ borderLeft: '2px solid rgba(200,168,130,0.4)' }}
+                style={{ borderLeft: '2px solid var(--ms-sidebar-border)' }}
               >
                 <NavLink
                   to="/auto-key/team"
@@ -274,7 +274,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                           }}
                         />
                       )}
-                      <Users size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      <Users size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                       Team
                     </>
                   )}
@@ -310,7 +310,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                           }}
                         />
                       )}
-                      <Target size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      <Target size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                       Prospects
                     </>
                   )}
@@ -346,7 +346,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                           }}
                         />
                       )}
-                      <Toolbox size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                      <Toolbox size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                       Toolkit
                     </>
                   )}
@@ -389,7 +389,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                     }}
                   />
                 )}
-                <item.icon size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                <item.icon size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                 {item.label}
               </>
             )}
@@ -426,7 +426,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                     }}
                   />
                 )}
-                <UserCog size={16} style={{ color: isActive ? '#E8D3AE' : undefined, flexShrink: 0 }} />
+                <UserCog size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                 Platform Admin
               </>
             )}
@@ -443,9 +443,9 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 onNavigate?.()
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150"
-              style={{ color: '#C8A882', backgroundColor: 'rgba(201,162,72,0.08)', border: '1px solid rgba(201,162,72,0.2)' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(201,162,72,0.15)')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(201,162,72,0.08)')}
+              style={{ color: 'var(--ms-sidebar-text)', backgroundColor: 'var(--ms-sidebar-hover)', border: '1px solid var(--ms-sidebar-border)' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-sidebar-active)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--ms-sidebar-hover)')}
             >
               <Download size={15} />
               Install app
@@ -458,9 +458,9 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
               setShowChangelog(true)
               onNavigate?.()
             }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[#F5E8CA]"
-            style={{ color: '#7A5038' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--cafe-espresso-2)')}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[var(--ms-sidebar-act-text)]"
+            style={{ color: 'var(--ms-sidebar-text)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--ms-sidebar-hover)')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             <Sparkles size={16} />
@@ -471,9 +471,9 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
               logout()
               onNavigate?.()
             }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[#F5E8CA]"
-            style={{ color: '#7A5038' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--cafe-espresso-2)')}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 hover:text-[var(--ms-sidebar-act-text)]"
+            style={{ color: 'var(--ms-sidebar-text)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--ms-sidebar-hover)')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             <LogOut size={16} />
