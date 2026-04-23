@@ -22,6 +22,7 @@ import {
   Target,
   Download,
   Radio,
+  LayoutKanban,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
@@ -318,7 +319,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 </NavLink>
                 <NavLink
                   to="/auto-key/prospects"
-                  title="B2B prospect search and lead lists"
+                  title="B2B prospect search"
                   end
                   onClick={onNavigate}
                   className={({ isActive }) => linkClasses(isActive, { indent: true })}
@@ -348,7 +349,43 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                         />
                       )}
                       <Target size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
-                      Prospects
+                      Prospect Search
+                    </>
+                  )}
+                </NavLink>
+                <NavLink
+                  to="/auto-key/prospects/board"
+                  title="Prospect acquisition board and visit calendar"
+                  end
+                  onClick={onNavigate}
+                  className={({ isActive }) => linkClasses(isActive, { indent: true })}
+                  style={({ isActive }) => linkStyle(isActive)}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '20%',
+                            bottom: '20%',
+                            width: 3,
+                            borderRadius: 4,
+                            backgroundColor: 'var(--ms-accent)',
+                          }}
+                        />
+                      )}
+                      <LayoutKanban size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
+                      Prospect Board
                     </>
                   )}
                 </NavLink>

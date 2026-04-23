@@ -2073,6 +2073,44 @@ export const searchProspects = (category: string, state: string, suburbs?: strin
     params: { category, state, suburbs: suburbs?.join(',') || undefined, live },
   })
 
+// ── Prospect Leads (CRM board) ────────────────────────────────────────────────
+export type ProspectLeadStatus = 'new' | 'contacted' | 'visited' | 'onboarded'
+export interface ProspectLead {
+  id: string
+  tenant_id: string
+  place_id?: string
+  name: string
+  address?: string
+  phone?: string
+  website?: string
+  rating?: number
+  review_count?: number
+  category?: string
+  state_code?: string
+  contact_name?: string
+  contact_email?: string
+  notes?: string
+  status: ProspectLeadStatus
+  visit_scheduled_at?: string
+  created_at: string
+  updated_at: string
+}
+export const listProspectLeads = () =>
+  api.get<ProspectLead[]>('/prospect-leads')
+export const saveProspectLead = (data: {
+  place_id?: string; name: string; address?: string; phone?: string
+  website?: string; rating?: number; review_count?: number
+  category?: string; state_code?: string
+}) => api.post<ProspectLead>('/prospect-leads', data)
+export const updateProspectLead = (id: string, data: {
+  contact_name?: string; contact_email?: string; notes?: string
+  status?: ProspectLeadStatus; visit_scheduled_at?: string | null
+}) => api.patch<ProspectLead>(`/prospect-leads/${id}`, data)
+export const advanceProspectLead = (id: string) =>
+  api.post<ProspectLead>(`/prospect-leads/${id}/advance`)
+export const deleteProspectLead = (id: string) =>
+  api.delete(`/prospect-leads/${id}`)
+
 // ── Parent account — mobile lead ingest ──────────────────────────────────────
 export interface MobileSuburbRoute {
   id: string

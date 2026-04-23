@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getApiErrorMessage, getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, type Prospect, type ProspectSearchResponse } from '@/lib/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage, getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, listProspectLeads, saveProspectLead, type Prospect, type ProspectSearchResponse } from '@/lib/api'
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 
@@ -75,6 +75,29 @@ export default function ProspectsPage() {
   )
 
   const [searched, setSearched] = useState(false)
+
+  const qc = useQueryClient()
+
+  const { data: savedLeads = [] } = useQuery({
+    queryKey: ['prospect-leads'],
+    queryFn: () => listProspectLeads().then(r => r.data),
+  })
+  const savedPlaceIds = useMemo(() => new Set(savedLeads.map(l => l.place_id).filter(Boolean)), [savedLeads])
+
+  const saveLead = useMutation({
+    mutationFn: (p: Prospect) => saveProspectLead({
+      place_id: p.place_id,
+      name: p.name,
+      address: p.address,
+      phone: p.phone,
+      website: p.website,
+      rating: p.rating,
+      review_count: p.review_count,
+      category: p.category,
+      state_code: state || undefined,
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['prospect-leads'] }),
+  })
 
   const { data: searchData, refetch, isFetching, error: searchError } = useQuery<ProspectSearchResponse>({
     queryKey: ['prospects', searchParams?.category, searchParams?.state, searchParams?.suburbs?.join(','), searchParams?.live],
@@ -282,25 +305,44 @@ export default function ProspectsPage() {
           </div>
         ) : searchData?.results?.length ? (
           <ul className="space-y-3">
-            {searchData.results.map((p: Prospect) => (
-              <li key={p.place_id} className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{p.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{p.address}</div>
-                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
-                      {p.phone && <span>{p.phone}</span>}
-                      {p.rating && <span>★ {p.rating} ({p.review_count ?? 0})</span>}
-                      {p.website && (
-                        <a href={p.website} style={{ color: 'var(--ms-accent)' }} target="_blank" rel="noopener noreferrer">
-                          Website ↗
-                        </a>
+            {searchData.results.map((p: Prospect) => {
+              const alreadySaved = savedPlaceIds.has(p.place_id)
+              return (
+                <li key={p.place_id} className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{p.name}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{p.address}</div>
+                      <div className="flex flex-wrap gap-3 mt-1.5 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                        {p.phone && <span>{p.phone}</span>}
+                        {p.rating && <span>★ {p.rating} ({p.review_count ?? 0})</span>}
+                        {p.website && (
+                          <a href={p.website} style={{ color: 'var(--ms-accent)' }} target="_blank" rel="noopener noreferrer">
+                            Website ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {alreadySaved ? (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#10b98122', color: '#10b981' }}>
+                          ✓ On board
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => saveLead.mutate(p)}
+                          disabled={saveLead.isPending}
+                          className="text-xs px-2 py-1 rounded border font-medium"
+                          style={{ borderColor: 'var(--ms-accent)', color: 'var(--ms-accent)', backgroundColor: 'transparent' }}
+                        >
+                          + Save to board
+                        </button>
                       )}
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         ) : searched ? (
           <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>
