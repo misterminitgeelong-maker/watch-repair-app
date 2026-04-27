@@ -2428,6 +2428,7 @@ export default function AutoKeyJobsPage() {
                     title={job.title}
                     description={descParts.join(' · ') || job.description || undefined}
                     customerName={job.customer_name ?? null}
+                    customerPhone={job.customer_phone ?? null}
                     priority={job.priority}
                     daysInShop={daysInShop(job.created_at)}
                     quoteCents={job.cost_cents > 0 ? job.cost_cents : undefined}

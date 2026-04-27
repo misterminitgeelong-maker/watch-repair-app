@@ -561,6 +561,8 @@ export interface RepairJob {
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
   customer_name?: string | null
+  customer_phone?: string | null
+  customer_email?: string | null
   claimed_by_user_id?: string | null
   claimed_by_name?: string | null
 }

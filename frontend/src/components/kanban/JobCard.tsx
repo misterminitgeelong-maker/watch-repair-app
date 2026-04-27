@@ -8,6 +8,7 @@ export interface JobCardProps {
   title: string
   description?: string | null
   customerName?: string | null
+  customerPhone?: string | null
   priority?: string | null
   daysInShop: number
   quoteCents?: number
@@ -78,6 +79,7 @@ export default function JobCard({
   title,
   description,
   customerName,
+  customerPhone,
   priority,
   daysInShop,
   quoteCents,
@@ -143,9 +145,14 @@ export default function JobCard({
           {description}
         </div>
       )}
-      {customerName && (
+      {(customerName || customerPhone) && (
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ms-text-mid)', marginTop: 5 }}>
           {customerName}
+          {customerPhone && (
+            <span style={{ fontWeight: 400, color: 'var(--ms-text-muted)', marginLeft: customerName ? 6 : 0 }}>
+              {customerPhone}
+            </span>
+          )}
         </div>
       )}
       {extras && <div style={{ marginTop: 6 }}>{extras}</div>}

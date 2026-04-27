@@ -931,6 +931,8 @@ class RepairJobRead(SQLModel):
     claimed_by_user_id: Optional[UUID] = None
     claimed_by_name: Optional[str] = None
     customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_email: Optional[str] = None
 
 
 class RepairJobStatusUpdate(SQLModel):

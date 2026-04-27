@@ -82,12 +82,18 @@ def _resolve_watch_queue_transition(current_status: str, direction: str) -> str:
 def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
     watch = session.get(Watch, job.watch_id)
     customer_name = None
+    customer_phone = None
+    customer_email = None
     if watch and watch.customer_id:
         customer = session.get(Customer, watch.customer_id)
         if customer:
             customer_name = customer.full_name or ""
+            customer_phone = customer.phone
+            customer_email = customer.email
     data = job.model_dump()
     data["customer_name"] = customer_name
+    data["customer_phone"] = customer_phone
+    data["customer_email"] = customer_email
     return RepairJobRead(**data)
 
 
@@ -271,9 +277,13 @@ def list_repair_jobs(
             watches[w.id] = w
     customer_ids = list({w.customer_id for w in watches.values() if w.customer_id})
     customer_names: dict = {}
+    customer_phones: dict = {}
+    customer_emails: dict = {}
     if customer_ids:
         for c in session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all():
             customer_names[c.id] = c.full_name or ''
+            customer_phones[c.id] = c.phone
+            customer_emails[c.id] = c.email
 
     # Batch-fetch claimed_by user names
     claimed_ids = list({j.claimed_by_user_id for j in jobs if j.claimed_by_user_id})
@@ -286,9 +296,11 @@ def list_repair_jobs(
     result = []
     for j in jobs:
         w = watches.get(j.watch_id)
-        cname = customer_names.get(w.customer_id) if w and w.customer_id else None
+        cid = w.customer_id if w else None
         data = j.model_dump()
-        data['customer_name'] = cname
+        data['customer_name'] = customer_names.get(cid) if cid else None
+        data['customer_phone'] = customer_phones.get(cid) if cid else None
+        data['customer_email'] = customer_emails.get(cid) if cid else None
         data['claimed_by_name'] = claimed_names.get(j.claimed_by_user_id) if j.claimed_by_user_id else None
         result.append(RepairJobRead(**data))
     return result

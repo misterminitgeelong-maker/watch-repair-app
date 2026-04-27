@@ -704,6 +704,9 @@ export default function JobDetailPage() {
               <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Date In</span><span style={{ color: 'var(--ms-text)' }}>{formatDate(job.created_at)}</span></div>
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Collection</span><span style={{ color: 'var(--ms-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--ms-text)' }}>{job.salesperson}</span></div>}
+              {job.customer_name && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Customer</span><span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.customer_name}</span></div>}
+              {job.customer_phone && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Phone</span><a href={`tel:${job.customer_phone}`} className="font-medium" style={{ color: 'var(--ms-primary)' }}>{job.customer_phone}</a></div>}
+              {job.customer_email && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Email</span><a href={`mailto:${job.customer_email}`} className="font-medium" style={{ color: 'var(--ms-primary)', wordBreak: 'break-all' }}>{job.customer_email}</a></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
               <div className="space-y-1">
                 <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Assigned Technician</span>
