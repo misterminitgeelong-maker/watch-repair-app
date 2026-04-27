@@ -1,13 +1,13 @@
 """add customer_account_id to prospect_lead
 
-Revision ID: 20260425b_prospect_lead_customer_account
+Revision ID: 20260425b_add_cust_acct_id
 Revises: 20260425_prospect_leads
 Create Date: 2026-04-25
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "20260425b_prospect_lead_customer_account"
+revision = "20260425b_add_cust_acct_id"
 down_revision = "20260425_prospect_leads"
 branch_labels = None
 depends_on = None
