@@ -410,6 +410,7 @@ export default function JobsPage() {
                 title={job.title}
                 description={job.description ?? undefined}
                 customerName={job.customer_name ?? undefined}
+                customerPhone={job.customer_phone ?? undefined}
                 priority={job.priority}
                 daysInShop={daysInShop(job.created_at)}
                 quoteCents={displayQuoteCents(job)}
