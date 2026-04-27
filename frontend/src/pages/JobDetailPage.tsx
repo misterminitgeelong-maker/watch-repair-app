@@ -483,7 +483,7 @@ export default function JobDetailPage() {
   })
   const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
 
-  const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: tab === 'worklogs' })
+  const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: !!id })
 
   const attachmentsQuery = useOffsetPaginatedQuery({
     queryKey: ['attachments', id, 'paged', attachmentSortBy, attachmentSortDir],
@@ -871,6 +871,35 @@ export default function JobDetailPage() {
                   </>
                 )}
               </div>
+            </Card>
+
+            {/* Work Logs inline on Details tab */}
+            <Card>
+              <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                <h2 className="font-semibold flex items-center gap-1.5" style={{ color: 'var(--ms-text)' }}><Clock size={14} />Work Logs</h2>
+                <Button onClick={() => setShowLogWork(true)}><Plus size={14} />Log Work</Button>
+              </div>
+              {!workLogs ? (
+                <div className="px-5 py-5"><Spinner /></div>
+              ) : workLogs.length === 0 ? (
+                <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No work logged yet.</p>
+              ) : (
+                <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
+                  {workLogs.map(log => (
+                    <div key={log.id} className="flex items-start justify-between gap-4 px-5 py-3.5">
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1" style={{ color: 'var(--ms-text-mid)' }}>{log.note}</p>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {log.minutes_spent && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
+                            <Clock size={11} className="inline mr-0.5" />{log.minutes_spent} min
+                          </span>
+                        )}
+                        <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(log.created_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
         </div>
