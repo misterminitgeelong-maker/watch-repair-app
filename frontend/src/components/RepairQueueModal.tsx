@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
-  MessageSquare, Filter, ExternalLink,
+  MessageSquare, Filter, ExternalLink, Clock,
 } from 'lucide-react'
 import {
   listJobs, addJobNote, claimJob, releaseJob, resendJobNotification,
-  repairJobQueueSwipe,
+  repairJobQueueSwipe, createWorkLog,
   listShoeRepairJobs, updateShoeRepairJobStatus, addShoeJobNote, claimShoeJob, releaseShoeJob, resendShoeNotification,
   getJob, getShoeRepairJob,
   getRepairQueueDayState, putRepairQueueDayState, deleteRepairQueueDayState,
@@ -41,7 +41,7 @@ interface Props {
   onClose: () => void
 }
 
-type CardState = 'view' | 'advance' | 'note' | 'noUpdate'
+type CardState = 'view' | 'advance' | 'note' | 'noUpdate' | 'logwork'
 
 interface SessionStats {
   advanced: number
@@ -204,6 +204,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const [smsSending, setSmsSending] = useState(false)
   const [smsResult, setSmsResult] = useState<string | null>(null)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [logWorkNote, setLogWorkNote] = useState('')
+  const [logWorkMinutes, setLogWorkMinutes] = useState('')
+  const [logWorkSaved, setLogWorkSaved] = useState(false)
 
   // ── Swipe state ───────────────────────────────────────────────────────────
   const [dragX, setDragX] = useState(0)
@@ -403,6 +406,16 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     },
   })
 
+  const logWorkMutation = useMutation({
+    mutationFn: (vars: { id: string; note: string; minutes?: number }) =>
+      createWorkLog({ repair_job_id: vars.id, note: vars.note, minutes_spent: vars.minutes }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['worklogs', vars.id] })
+      setLogWorkSaved(true)
+      setTimeout(resetPanel, 1200)
+    },
+  })
+
   const claimMutation = useMutation<unknown, Error, { id: string; claim: boolean }>({
     mutationFn: (vars: { id: string; claim: boolean }) => {
       if (mode === 'watch') return vars.claim ? claimJob(vars.id) : releaseJob(vars.id)
@@ -419,6 +432,9 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     setDragX(0)
     setSmsResult(null)
     setNoteSaved(false)
+    setLogWorkNote('')
+    setLogWorkMinutes('')
+    setLogWorkSaved(false)
   }
 
   function handleAdvance() {
@@ -533,6 +549,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     watchQueueSwipeMutation.isPending ||
     shoeAdvanceMutation.isPending ||
     noteMutation.isPending ||
+    logWorkMutation.isPending ||
     claimMutation.isPending
 
   const chipBase = 'px-3 py-1 rounded-full text-xs font-medium transition-all border'
@@ -889,6 +906,13 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                   style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>
                   <StickyNote size={13} /> Note
                 </button>
+                {mode === 'watch' && (
+                  <button onPointerDown={e => e.stopPropagation()} onClick={() => { setCardState('logwork'); setLogWorkNote(''); setLogWorkMinutes('') }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>
+                    <Clock size={13} /> Log Work
+                  </button>
+                )}
                 <button onPointerDown={e => e.stopPropagation()} onClick={handleToggleClaim}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                   style={{ backgroundColor: isMyClaim ? 'rgba(184,149,86,0.12)' : 'var(--ms-bg)', color: isMyClaim ? 'var(--ms-accent-hover)' : 'var(--ms-text-muted)', border: `1px solid ${isMyClaim ? 'rgba(184,149,86,0.4)' : 'var(--ms-border)'}` }}>
@@ -950,6 +974,52 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 <button onClick={handleSaveNote} disabled={isPending || noteSaved || (!selectedNote && !customNote.trim())} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: noteSaved ? '#2D6A4F' : 'var(--cafe-espresso-2)', color: noteSaved ? '#fff' : '#D5C8BB', opacity: isPending || (!selectedNote && !customNote.trim()) ? 0.5 : 1 }}>{isPending ? 'Saving…' : noteSaved ? 'Saved ✓' : 'Save Note'}</button>
               </div>
               {noteMutation.isError && <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── LOG WORK panel ── */}
+        {cardState === 'logwork' && (
+          <div className="w-full max-w-sm rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+            <div className="h-2 rounded-t-2xl" style={{ backgroundColor: 'var(--ms-accent)' }} />
+            <div className="p-5">
+              <div className="font-bold text-base mb-0.5" style={{ color: 'var(--ms-text)' }}>{current.job_number} — {current.title}</div>
+              <div className="flex items-center gap-1.5 text-sm mb-4" style={{ color: 'var(--ms-accent)' }}>
+                <Clock size={13} /> Log work — status unchanged
+              </div>
+              <textarea
+                rows={4}
+                placeholder="Cleaned movement, replaced mainspring, re-lubricated escapement…"
+                value={logWorkNote}
+                onChange={e => setLogWorkNote(e.target.value)}
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg text-sm mb-3 resize-none"
+                style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', outline: 'none' }}
+              />
+              <input
+                type="number"
+                min="1"
+                placeholder="Time spent (minutes, optional)"
+                value={logWorkMinutes}
+                onChange={e => setLogWorkMinutes(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm mb-4"
+                style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', outline: 'none' }}
+              />
+              <div className="flex gap-3">
+                <button onClick={resetPanel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}>Cancel</button>
+                <button
+                  onClick={() => {
+                    if (!current || !logWorkNote.trim()) return
+                    logWorkMutation.mutate({ id: current.id, note: logWorkNote.trim(), minutes: logWorkMinutes ? parseInt(logWorkMinutes) : undefined })
+                  }}
+                  disabled={isPending || logWorkSaved || !logWorkNote.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                  style={{ backgroundColor: logWorkSaved ? '#2D6A4F' : 'var(--ms-accent)', color: '#fff', opacity: isPending || !logWorkNote.trim() ? 0.5 : 1 }}
+                >
+                  {isPending ? 'Saving…' : logWorkSaved ? 'Saved ✓' : 'Save Log'}
+                </button>
+              </div>
+              {logWorkMutation.isError && <p className="text-xs mt-2 text-center" style={{ color: '#C0392B' }}>Failed — try again.</p>}
             </div>
           </div>
         )}
