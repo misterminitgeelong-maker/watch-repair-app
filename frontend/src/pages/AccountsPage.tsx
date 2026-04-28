@@ -808,9 +808,13 @@ function StripeConnectCard() {
         </p>
       )}
       {(connectMut.isError || refreshMut.isError) && (
-        <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>
-          {getApiErrorMessage(connectMut.error ?? refreshMut.error, 'Could not reach Stripe. Try again.')}
-        </p>
+        <div
+          className="mt-3 rounded-lg px-4 py-3 text-sm"
+          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: '#C96A5A' }}
+        >
+          <strong>Setup failed:</strong>{' '}
+          {getApiErrorMessage(connectMut.error ?? refreshMut.error, 'Could not reach Stripe — check that STRIPE_SECRET_KEY is set in your deployment environment, then try again.')}
+        </div>
       )}
     </Card>
   )
