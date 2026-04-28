@@ -907,34 +907,35 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 )}
               </div>
 
-              {/* ── Notes & work log history ── */}
-              {mode === 'watch' && (
+              {/* ── Work log history ── */}
+              {mode === 'watch' && (workLogsQuery.isLoading || (workLogsQuery.data && workLogsQuery.data.length > 0) || current.description) && (
                 <div
                   className="mb-3 rounded-xl overflow-y-auto"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: 180 }}
+                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', maxHeight: 180 }}
                   onPointerDown={e => e.stopPropagation()}
                 >
                   {workLogsQuery.isLoading && (
-                    <div className="px-3 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Loading updates…</div>
+                    <div className="px-3 py-2 text-xs" style={{ color: 'var(--ms-text-muted)' }}>Loading…</div>
                   )}
-                  {workLogsQuery.data && workLogsQuery.data.length > 0
-                    ? [...workLogsQuery.data].reverse().map((log, i, arr) => (
-                      <div key={log.id} className="px-3 py-2" style={{ borderBottom: i < arr.length - 1 || current.description ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
-                        <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.8)' }}>{log.note}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  {workLogsQuery.data && workLogsQuery.data.length > 0 && (
+                    [...workLogsQuery.data].reverse().map((log, i, arr) => (
+                      <div key={log.id} className="px-3 py-2" style={{ borderBottom: i < arr.length - 1 || current.description ? '1px solid var(--ms-border)' : undefined }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs leading-relaxed whitespace-pre-wrap flex-1" style={{ color: 'var(--ms-text-mid)' }}>{log.note}</p>
+                          {log.minutes_spent > 0 && (
+                            <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--ms-accent)' }}>{log.minutes_spent}m</span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                           {new Date(log.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                          {log.minutes_spent > 0 && ` · ${log.minutes_spent} min`}
                         </p>
                       </div>
                     ))
-                    : !workLogsQuery.isLoading && (
-                      <div className="px-3 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>No work logged yet</div>
-                    )
-                  }
+                  )}
                   {current.description && (
-                    <div className="px-3 pt-2 pb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>Initial Notes</div>
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>{current.description}</p>
+                    <div className="px-3 pt-2 pb-3" style={{ borderTop: workLogsQuery.data && workLogsQuery.data.length > 0 ? '1px solid var(--ms-border)' : undefined }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--ms-text-muted)' }}>Initial Notes</div>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{current.description}</p>
                     </div>
                   )}
                 </div>
