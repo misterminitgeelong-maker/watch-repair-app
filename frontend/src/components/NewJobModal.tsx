@@ -18,6 +18,7 @@ import WatchServicePicker, { type SelectedWatchService } from '@/components/Watc
 import { STATUS_LABELS } from '@/lib/utils'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
+const MAX_WATCHES = 5
 
 function calculateRepairsTotal(
   items: { item: WatchCatalogueItem }[],
@@ -57,7 +58,7 @@ function calculateRepairsTotal(
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 function Steps({ current }: { current: number }) {
-  const steps = ['Customer', 'Watch', 'Job Details', 'Photos']
+  const steps = ['Customer', 'Watches', 'Job Details', 'Photos']
   return (
     <div className="flex items-center gap-1 mb-5">
       {steps.map((s, i) => (
@@ -79,12 +80,25 @@ function Steps({ current }: { current: number }) {
   )
 }
 
+// ── Watch form type ───────────────────────────────────────────────────────────
+interface WatchForm {
+  mode: 'existing' | 'new'
+  selectedWatchId: string
+  brand: string
+  model: string
+  serial_number: string
+  movement_type: string
+  condition_notes: string
+}
+
+function emptyWatchForm(): WatchForm {
+  return { mode: 'new', selectedWatchId: '', brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '' }
+}
+
 // ── NewJobModal ───────────────────────────────────────────────────────────────
 interface Props {
   onClose: () => void
-  /** When provided the Customer step is skipped and the watch step loads immediately */
   preselectedCustomer?: { id: string; full_name: string }
-  /** Called with the new job's id after creation so callers can navigate */
   onSuccess?: (jobId: string) => void
 }
 
@@ -92,7 +106,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const navigate = useNavigate()
   const qc = useQueryClient()
 
-  // Start at step 2 if customer is already known
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
   // Step 1 – Customer
@@ -102,24 +115,23 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [createdCustomerId, setCreatedCustomerId] = useState('')
   const [phoneMatch, setPhoneMatch] = useState<Customer | null>(null)
 
-  // Step 2 – Watch
-  const [watchMode, setWatchMode] = useState<'existing' | 'new'>('existing')
-  const [selectedWatchId, setSelectedWatchId] = useState('')
-  const [newWatch, setNewWatch] = useState({ brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '' })
-  const [createdWatchId, setCreatedWatchId] = useState('')
+  // Step 2 – Watches (multi)
+  const [watchCount, setWatchCount] = useState(1)
+  const [watchForms, setWatchForms] = useState<WatchForm[]>([emptyWatchForm()])
+  const [createdWatchIds, setCreatedWatchIds] = useState<string[]>([])
+  const [activeWatchTab, setActiveWatchTab] = useState(0)
 
   // Step 3 – Job
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_quote' as JobStatus, salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '', job_number_override: '' })
   const [selectedRepairs, setSelectedRepairs] = useState<SelectedWatchService[]>([])
   const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
-  // Step 4 – Watch Photos
-  const [frontPhoto, setFrontPhoto] = useState<File | null>(null)
-  const [backPhoto, setBackPhoto] = useState<File | null>(null)
-  const [frontPreview, setFrontPreview] = useState<string | null>(null)
-  const [backPreview, setBackPreview] = useState<string | null>(null)
-  const frontRef = useRef<HTMLInputElement>(null)
-  const backRef = useRef<HTMLInputElement>(null)
+  // Step 4 – Photos (per watch, optional for multi)
+  const [photos, setPhotos] = useState<Array<{ front: File | null; back: File | null; frontPreview: string | null; backPreview: string | null }>>(
+    [{ front: null, back: null, frontPreview: null, backPreview: null }]
+  )
+  const frontRefs = useRef<Array<HTMLInputElement | null>>([])
+  const backRefs = useRef<Array<HTMLInputElement | null>>([])
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -152,6 +164,25 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     enabled: !!activeCustomerId,
   })
 
+  function handleCountChange(count: number) {
+    setWatchCount(count)
+    setWatchForms(prev => {
+      const next = [...prev]
+      while (next.length < count) next.push(emptyWatchForm())
+      return next.slice(0, count)
+    })
+    setPhotos(prev => {
+      const next = [...prev]
+      while (next.length < count) next.push({ front: null, back: null, frontPreview: null, backPreview: null })
+      return next.slice(0, count)
+    })
+    if (activeWatchTab >= count) setActiveWatchTab(count - 1)
+  }
+
+  function updateWatchForm(idx: number, patch: Partial<WatchForm>) {
+    setWatchForms(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f))
+  }
+
   const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.value
     setNewCustomer(f => ({ ...f, [k]: value }))
@@ -159,26 +190,29 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       const match = customers.find((c: Customer) => c.phone && value && c.phone.replace(/\D/g, '') === value.replace(/\D/g, ''))
       setPhoneMatch(match || null)
     }
-    if (k === 'phone' && !value) {
-      setPhoneMatch(null)
-    }
+    if (k === 'phone' && !value) setPhoneMatch(null)
   }
-  const setW = (k: keyof typeof newWatch) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setNewWatch(f => ({ ...f, [k]: e.target.value }))
+
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setJob(f => ({ ...f, [k]: e.target.value as JobStatus }))
 
-  function handlePhoto(side: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(watchIdx: number, side: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    if (side === 'front') { setFrontPhoto(file); setFrontPreview(url) }
-    else { setBackPhoto(file); setBackPreview(url) }
+    setPhotos(prev => prev.map((p, i) => i === watchIdx
+      ? { ...p, [side]: file, [`${side}Preview`]: url }
+      : p
+    ))
   }
 
-  function removePhoto(side: 'front' | 'back') {
-    if (side === 'front') { setFrontPhoto(null); setFrontPreview(null); if (frontRef.current) frontRef.current.value = '' }
-    else { setBackPhoto(null); setBackPreview(null); if (backRef.current) backRef.current.value = '' }
+  function removePhoto(watchIdx: number, side: 'front' | 'back') {
+    setPhotos(prev => prev.map((p, i) => i === watchIdx
+      ? { ...p, [side]: null, [`${side}Preview`]: null }
+      : p
+    ))
+    const ref = side === 'front' ? frontRefs.current[watchIdx] : backRefs.current[watchIdx]
+    if (ref) ref.value = ''
   }
 
   async function nextStep1() {
@@ -201,48 +235,70 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   async function nextStep2() {
     setError('')
     const custId = createdCustomerId || selectedCustomerId
-    if (watchMode === 'new') {
-      setLoading(true)
-      try {
-        const { data } = await createWatch({ customer_id: custId, ...newWatch })
-        setCreatedWatchId(data.id)
-        qc.invalidateQueries({ queryKey: ['watches', custId] })
-      } catch (err) { setError(getApiErrorMessage(err, 'Failed to add watch.')); setLoading(false); return }
-      setLoading(false)
-    } else {
-      if (!selectedWatchId) { setError('Please select a watch.'); return }
-    }
+    setLoading(true)
+    const ids: string[] = []
+    try {
+      for (let i = 0; i < watchCount; i++) {
+        const form = watchForms[i]
+        if (form.mode === 'new') {
+          const { data } = await createWatch({
+            customer_id: custId,
+            brand: form.brand,
+            model: form.model,
+            serial_number: form.serial_number,
+            movement_type: form.movement_type,
+            condition_notes: form.condition_notes,
+          })
+          ids.push(data.id)
+          qc.invalidateQueries({ queryKey: ['watches', custId] })
+        } else {
+          if (!form.selectedWatchId) { setError(`Please select a watch for Watch ${i + 1}.`); setLoading(false); return }
+          ids.push(form.selectedWatchId)
+        }
+      }
+    } catch (err) { setError(getApiErrorMessage(err, 'Failed to add watch.')); setLoading(false); return }
+    setCreatedWatchIds(ids)
+    setLoading(false)
     setStep(3)
   }
 
   async function submit() {
     setError('')
-    if (!frontPhoto || !backPhoto) { setError('Both front and back photos are required.'); return }
     if (!job.title) { setError('Job title is required.'); return }
-    const watchId = createdWatchId || selectedWatchId
+    // Require photos only for single-watch intake
+    if (watchCount === 1 && (!photos[0].front || !photos[0].back)) {
+      setError('Both front and back photos are required.')
+      return
+    }
     setLoading(true)
+    let firstJobId: string | null = null
     try {
-      const { data } = await createJob({
-        watch_id: watchId,
-        customer_account_id: selectedCustomerAccountId || undefined,
-        title: job.title,
-        description: job.description,
-        priority: job.priority,
-        status: job.status,
-        salesperson: job.salesperson || undefined,
-        collection_date: job.collection_date || undefined,
-        deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
-        pre_quote_cents: job.pre_quote_cents ? Math.round(parseFloat(job.pre_quote_cents) * 100) : 0,
-        cost_cents: 0,
-        job_number_override: job.job_number_override.trim() || undefined,
-      })
-      // Upload the two watch photos
-      await Promise.all([
-        uploadAttachment(frontPhoto, data.id, 'watch_front'),
-        uploadAttachment(backPhoto, data.id, 'watch_back'),
-      ])
+      for (let i = 0; i < watchCount; i++) {
+        const watchId = createdWatchIds[i]
+        const jobTitle = watchCount > 1 ? `${job.title} (Watch ${i + 1} of ${watchCount})` : job.title
+        const { data } = await createJob({
+          watch_id: watchId,
+          customer_account_id: selectedCustomerAccountId || undefined,
+          title: jobTitle,
+          description: job.description,
+          priority: job.priority,
+          status: job.status,
+          salesperson: job.salesperson || undefined,
+          collection_date: job.collection_date || undefined,
+          deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
+          pre_quote_cents: job.pre_quote_cents ? Math.round(parseFloat(job.pre_quote_cents) * 100) : 0,
+          cost_cents: 0,
+          job_number_override: (watchCount === 1 && job.job_number_override.trim()) ? job.job_number_override.trim() : undefined,
+        })
+        if (!firstJobId) firstJobId = data.id
+        const p = photos[i]
+        const uploads: Promise<unknown>[] = []
+        if (p.front) uploads.push(uploadAttachment(p.front, data.id, 'watch_front'))
+        if (p.back) uploads.push(uploadAttachment(p.back, data.id, 'watch_back'))
+        await Promise.all(uploads)
+      }
       qc.invalidateQueries({ queryKey: ['jobs'] })
-      setCreatedJobId(data.id)
+      setCreatedJobId(firstJobId)
     } catch (err: unknown) {
       setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
     }
@@ -250,9 +306,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   }
 
   function finishCreate(jobId: string, shouldPrint: boolean) {
-    if (shouldPrint) {
-      navigate(`/jobs/${jobId}/intake-print?autoprint=1`)
-    }
+    if (shouldPrint) navigate(`/jobs/${jobId}/intake-print?autoprint=1`)
     onSuccess?.(jobId)
     onClose()
   }
@@ -262,25 +316,25 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
         <div className="space-y-4">
           <p className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>
-            Print job tickets now?
+            {watchCount > 1 ? `${watchCount} job tickets created!` : 'Print job ticket now?'}
           </p>
-          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
-              Recommended at intake
+          {watchCount > 1 && (
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              {watchCount} separate tickets have been created. You can print from each job's detail page.
             </p>
+          )}
+          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Recommended at intake</p>
             <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
-              Print both copies now: one for workshop, one for customer.
+              Print both copies: one for workshop, one for customer.
             </p>
           </div>
-          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-            This will open the browser print flow. You can also print later from the desktop job details page.
-          </p>
           <div className="flex gap-2 pt-2">
             <Button variant="secondary" onClick={() => finishCreate(createdJobId, false)} className="flex-1">
-              Skip Printing
+              {watchCount > 1 ? 'Done' : 'Skip Printing'}
             </Button>
             <Button onClick={() => finishCreate(createdJobId, true)} className="flex-1 font-semibold">
-              Print Tickets Now
+              Print {watchCount > 1 ? 'First Ticket' : 'Tickets Now'}
             </Button>
           </div>
         </div>
@@ -292,7 +346,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     <Modal title="New Job Ticket" onClose={onClose}>
       <Steps current={step} />
 
-      {/* Customer banner when pre-selected */}
       {preselectedCustomer && (
         <div className="mb-4 flex items-center gap-2 text-sm rounded-lg px-3 py-2" style={{ backgroundColor: '#FEF0DC', border: '1px solid #E8D4A0' }}>
           <span style={{ color: 'var(--ms-text-muted)' }}>Customer:</span>
@@ -304,22 +357,14 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {step === 1 && (
         <div className="space-y-3">
           <div className="flex gap-2 mb-1">
-            <button
-              onClick={() => setCustomerMode('existing')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={customerMode === 'existing'
-                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
-                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
-              }
-            >Existing Customer</button>
-            <button
-              onClick={() => setCustomerMode('new')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={customerMode === 'new'
-                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
-                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
-              }
-            >New Customer</button>
+            <button onClick={() => setCustomerMode('existing')} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+              style={customerMode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
+              Existing Customer
+            </button>
+            <button onClick={() => setCustomerMode('new')} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+              style={customerMode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
+              New Customer
+            </button>
           </div>
           {customerMode === 'existing' ? (
             <Select label="Select Customer" value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)}>
@@ -335,9 +380,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               </div>
               {phoneMatch && (
                 <div className="rounded bg-yellow-100 border border-yellow-300 px-3 py-2 text-sm mt-2 flex items-center gap-2">
-                  <span>Existing customer found with this phone:</span>
+                  <span>Existing customer found:</span>
                   <span className="font-semibold">{phoneMatch.full_name}</span>
-                  <Button variant="secondary" onClick={() => { setCustomerMode('existing'); setSelectedCustomerId(phoneMatch.id); setPhoneMatch(null); }}>Use</Button>
+                  <Button variant="secondary" onClick={() => { setCustomerMode('existing'); setSelectedCustomerId(phoneMatch.id); setPhoneMatch(null) }}>Use</Button>
                 </div>
               )}
               <Input label="Address" value={newCustomer.address} onChange={setC('address')} placeholder="Unit 5/36 Grange Rd, Toorak 3142" />
@@ -352,52 +397,92 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         </div>
       )}
 
-      {/* ── Step 2: Watch ── */}
+      {/* ── Step 2: Watches ── */}
       {step === 2 && (
-        <div className="space-y-3">
-          <div className="flex gap-2 mb-1">
-            <button
-              onClick={() => setWatchMode('existing')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={watchMode === 'existing'
-                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
-                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
-              }
-            >Existing Watch</button>
-            <button
-              onClick={() => setWatchMode('new')}
-              className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
-              style={watchMode === 'new'
-                ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
-                : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
-              }
-            >Add New Watch</button>
-          </div>
-          {watchMode === 'existing' ? (
-            <Select label="Select Watch" value={selectedWatchId} onChange={e => setSelectedWatchId(e.target.value)}>
-              <option value="">Choose…</option>
-              {(watches ?? []).map((w: Watch) => (
-                <option key={w.id} value={w.id}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}{w.serial_number ? ` (S/N ${w.serial_number})` : ''}</option>
+        <div className="space-y-4">
+          {/* Watch count picker */}
+          <div>
+            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              How many watches?
+            </label>
+            <div className="flex gap-2">
+              {Array.from({ length: MAX_WATCHES }, (_, i) => i + 1).map(n => (
+                <button
+                  key={n}
+                  onClick={() => handleCountChange(n)}
+                  className="w-10 h-10 rounded-lg text-sm font-bold border transition-colors"
+                  style={watchCount === n
+                    ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' }
+                    : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }
+                  }
+                >
+                  {n}
+                </button>
               ))}
-            </Select>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <BrandAutocomplete label="Brand" value={newWatch.brand} onChange={v => setNewWatch(prev => ({ ...prev, brand: v }))} placeholder="Rolex" autoFocus />
-                <Input label="Model" value={newWatch.model} onChange={setW('model')} placeholder="Submariner" />
-              </div>
-              <Input label="Serial Number" value={newWatch.serial_number} onChange={setW('serial_number')} />
-              <Select label="Movement" value={newWatch.movement_type} onChange={setW('movement_type')}>
-                <option value="">Select…</option>
-                <option value="mechanical">Mechanical</option>
-                <option value="automatic">Automatic</option>
-                <option value="quartz">Quartz</option>
-                <option value="solar">Solar</option>
-                <option value="kinetic">Kinetic</option>
-              </Select>
-              <Textarea label="Condition on Intake" value={newWatch.condition_notes} onChange={setW('condition_notes')} rows={2} placeholder="Scratches on crystal, crown missing…" />
-            </>
+            </div>
+          </div>
+
+          {/* Tabs when multiple watches */}
+          {watchCount > 1 && (
+            <div className="flex gap-1 border-b" style={{ borderColor: 'var(--ms-border)' }}>
+              {Array.from({ length: watchCount }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveWatchTab(i)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    borderBottom: activeWatchTab === i ? '2px solid var(--ms-accent)' : '2px solid transparent',
+                    color: activeWatchTab === i ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                    marginBottom: -1,
+                  }}
+                >
+                  Watch {i + 1}
+                </button>
+              ))}
+            </div>
           )}
+
+          {/* Watch form for active tab */}
+          {Array.from({ length: watchCount }, (_, i) => i).map(idx => (
+            <div key={idx} className={idx === activeWatchTab ? 'space-y-3' : 'hidden'}>
+              <div className="flex gap-2 mb-1">
+                <button onClick={() => updateWatchForm(idx, { mode: 'existing' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                  style={watchForms[idx].mode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
+                  Existing Watch
+                </button>
+                <button onClick={() => updateWatchForm(idx, { mode: 'new' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                  style={watchForms[idx].mode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
+                  Add New Watch
+                </button>
+              </div>
+              {watchForms[idx].mode === 'existing' ? (
+                <Select label="Select Watch" value={watchForms[idx].selectedWatchId} onChange={e => updateWatchForm(idx, { selectedWatchId: e.target.value })}>
+                  <option value="">Choose…</option>
+                  {(watches ?? []).map((w: Watch) => (
+                    <option key={w.id} value={w.id}>{[w.brand, w.model].filter(Boolean).join(' ') || 'Unknown watch'}{w.serial_number ? ` (S/N ${w.serial_number})` : ''}</option>
+                  ))}
+                </Select>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <BrandAutocomplete label="Brand" value={watchForms[idx].brand} onChange={v => updateWatchForm(idx, { brand: v })} placeholder="Rolex" autoFocus={idx === 0} />
+                    <Input label="Model" value={watchForms[idx].model} onChange={e => updateWatchForm(idx, { model: e.target.value })} placeholder="Submariner" />
+                  </div>
+                  <Input label="Serial Number" value={watchForms[idx].serial_number} onChange={e => updateWatchForm(idx, { serial_number: e.target.value })} />
+                  <Select label="Movement" value={watchForms[idx].movement_type} onChange={e => updateWatchForm(idx, { movement_type: e.target.value })}>
+                    <option value="">Select…</option>
+                    <option value="mechanical">Mechanical</option>
+                    <option value="automatic">Automatic</option>
+                    <option value="quartz">Quartz</option>
+                    <option value="solar">Solar</option>
+                    <option value="kinetic">Kinetic</option>
+                  </Select>
+                  <Textarea label="Condition on Intake" value={watchForms[idx].condition_notes} onChange={e => updateWatchForm(idx, { condition_notes: e.target.value })} rows={2} placeholder="Scratches on crystal, crown missing…" />
+                </>
+              )}
+            </div>
+          ))}
+
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             {preselectedCustomer
@@ -412,6 +497,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {/* ── Step 3: Job Details ── */}
       {step === 3 && (
         <div className="space-y-3">
+          {watchCount > 1 && (
+            <p className="text-xs rounded-lg px-3 py-2" style={{ backgroundColor: '#FEF0DC', color: 'var(--ms-text-mid)', border: '1px solid #E8D4A0' }}>
+              These details apply to all {watchCount} watches. Each will get its own ticket numbered Watch 1–{watchCount}.
+            </p>
+          )}
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Select repairs (optional)</label>
             <WatchServicePicker
@@ -439,12 +529,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               <option value="high">High</option>
               <option value="urgent">🔴 Urgent</option>
             </Select>
-            <Select
-              label="Initial Status"
-              value={job.status}
-              onChange={setJ('status')}
-              disabled={selectedRepairs.some(i => i.item.pricing_type === 'quote')}
-            >
+            <Select label="Initial Status" value={job.status} onChange={setJ('status')} disabled={selectedRepairs.some(i => i.item.pricing_type === 'quote')}>
               {INITIAL_STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
@@ -459,42 +544,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Your initials or name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>
-          <Input
-            label="Physical Ticket # (optional)"
-            value={job.job_number_override}
-            onChange={setJ('job_number_override')}
-            placeholder="e.g. 1234 — leave blank to auto-assign"
-          />
-          <Select
-            label="Customer Account (optional)"
-            value={selectedCustomerAccountId}
-            onChange={e => setSelectedCustomerAccountId(e.target.value)}
-          >
+          {watchCount === 1 && (
+            <Input label="Physical Ticket # (optional)" value={job.job_number_override} onChange={setJ('job_number_override')} placeholder="e.g. 1234 — leave blank to auto-assign" />
+          )}
+          <Select label="Customer Account (optional)" value={selectedCustomerAccountId} onChange={e => setSelectedCustomerAccountId(e.target.value)}>
             <option value="">No B2B account</option>
             {matchingAccounts.map((account: CustomerAccount) => (
-              <option key={account.id} value={account.id}>
-                {account.name}{account.account_code ? ` (${account.account_code})` : ''}
-              </option>
+              <option key={account.id} value={account.id}>{account.name}{account.account_code ? ` (${account.account_code})` : ''}</option>
             ))}
           </Select>
-          <Input
-            label="Deposit ($)"
-            type="number"
-            min="0"
-            step="0.01"
-            value={job.deposit_cents}
-            onChange={setJ('deposit_cents')}
-            placeholder="0.00"
-          />
-          <Input
-            label="Pre-Quote ($)"
-            type="number"
-            min="0"
-            step="0.01"
-            value={job.pre_quote_cents}
-            onChange={setJ('pre_quote_cents')}
-            placeholder="0.00"
-          />
+          <Input label="Deposit ($)" type="number" min="0" step="0.01" value={job.deposit_cents} onChange={setJ('deposit_cents')} placeholder="0.00" />
+          <Input label="Pre-Quote ($)" type="number" min="0" step="0.01" value={job.pre_quote_cents} onChange={setJ('pre_quote_cents')} placeholder="0.00" />
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(2)}>← Back</Button>
@@ -506,48 +566,92 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {/* ── Step 4: Watch Photos ── */}
       {step === 4 && (
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>Take or upload two photos of the watch — one of the <strong>front</strong> (dial) and one of the <strong>back</strong> (caseback).</p>
+          {watchCount === 1 ? (
+            <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+              Take or upload two photos of the watch — one of the <strong>front</strong> (dial) and one of the <strong>back</strong> (caseback).
+            </p>
+          ) : (
+            <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+              Photos are optional for batch intake — you can add them from each job's detail page. Front and back shown per watch below.
+            </p>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Front photo */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Front (Dial) *</label>
-              <input ref={frontRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhoto('front', e)} />
-              {frontPreview ? (
-                <div className="relative group">
-                  <img src={frontPreview} alt="Watch front" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
-                  <button onClick={() => removePhoto('front')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove"><X size={14} /></button>
-                </div>
-              ) : (
-                <button onClick={() => frontRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
-                  <Camera size={28} />
-                  <span className="text-xs font-medium">Tap to capture</span>
+          {/* Tabs for multi-watch photos */}
+          {watchCount > 1 && (
+            <div className="flex gap-1 border-b" style={{ borderColor: 'var(--ms-border)' }}>
+              {Array.from({ length: watchCount }, (_, i) => (
+                <button key={i} onClick={() => setActiveWatchTab(i)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{ borderBottom: activeWatchTab === i ? '2px solid var(--ms-accent)' : '2px solid transparent', color: activeWatchTab === i ? 'var(--ms-accent)' : 'var(--ms-text-muted)', marginBottom: -1 }}>
+                  Watch {i + 1}
+                  {(photos[i]?.front || photos[i]?.back) && <span className="ml-1 text-green-600">✓</span>}
                 </button>
-              )}
+              ))}
             </div>
+          )}
 
-            {/* Back photo */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Back (Caseback) *</label>
-              <input ref={backRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhoto('back', e)} />
-              {backPreview ? (
-                <div className="relative group">
-                  <img src={backPreview} alt="Watch back" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
-                  <button onClick={() => removePhoto('back')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove"><X size={14} /></button>
-                </div>
-              ) : (
-                <button onClick={() => backRef.current?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
-                  <Camera size={28} />
-                  <span className="text-xs font-medium">Tap to capture</span>
-                </button>
-              )}
+          {Array.from({ length: watchCount }, (_, idx) => idx).map(idx => (
+            <div key={idx} className={idx === activeWatchTab ? 'grid grid-cols-2 gap-4' : 'hidden'}>
+              {/* Front photo */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Front (Dial){watchCount === 1 ? ' *' : ''}
+                </label>
+                <input
+                  ref={el => { frontRefs.current[idx] = el }}
+                  type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={e => handlePhoto(idx, 'front', e)}
+                />
+                {photos[idx]?.frontPreview ? (
+                  <div className="relative group">
+                    <img src={photos[idx].frontPreview!} alt="Watch front" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
+                    <button onClick={() => removePhoto(idx, 'front')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => frontRefs.current[idx]?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2"
+                    style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
+                    <Camera size={28} />
+                    <span className="text-xs font-medium">Tap to capture</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Back photo */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Back (Caseback){watchCount === 1 ? ' *' : ''}
+                </label>
+                <input
+                  ref={el => { backRefs.current[idx] = el }}
+                  type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={e => handlePhoto(idx, 'back', e)}
+                />
+                {photos[idx]?.backPreview ? (
+                  <div className="relative group">
+                    <img src={photos[idx].backPreview!} alt="Watch back" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
+                    <button onClick={() => removePhoto(idx, 'back')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => backRefs.current[idx]?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2"
+                    style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
+                    <Camera size={28} />
+                    <span className="text-xs font-medium">Tap to capture</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ))}
 
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(3)}>← Back</Button>
-            <Button onClick={submit} disabled={!frontPhoto || !backPhoto || loading}>{loading ? 'Creating…' : 'Create Job Ticket'}</Button>
+            <Button onClick={submit} disabled={loading || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}>
+              {loading ? 'Creating…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
+            </Button>
           </div>
         </div>
       )}
