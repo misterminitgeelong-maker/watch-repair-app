@@ -348,7 +348,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   // ── Work logs for current card (watch mode only) ───────────────────────────
   const workLogsQuery = useQuery<WorkLog[]>({
-    queryKey: ['queue-work-logs', currentId],
+    queryKey: ['worklogs', currentId],
     queryFn: () => listWorkLogs(currentId!).then(r => r.data),
     enabled: mode === 'watch' && !!currentId,
     staleTime: 30_000,
@@ -981,6 +981,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                 </div>
               )}
 
+              {/* Work logs */}
               {/* Card actions */}
               <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
                 <button onPointerDown={e => e.stopPropagation()} onClick={() => { setCardState('note'); setSelectedNote(''); setCustomNote('') }}
