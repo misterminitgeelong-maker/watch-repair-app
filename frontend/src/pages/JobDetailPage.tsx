@@ -5,11 +5,11 @@ import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Dow
 import {
   DEFAULT_PAGE_SIZE,
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
-  listWorkLogs, createWorkLog,
+  listWorkLogs,
   listAttachments, uploadAttachment,
   getStatusHistory, getSmsLog,
   resendJobNotification,
-  listCustomerAccounts, getWatch,
+  listCustomerAccounts, getWatch, getCustomer,
   getWatchMovementQuote,
   getApiErrorMessage,
   getUploadErrorMessage,
@@ -23,6 +23,7 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
+import LogWorkModal from '@/components/LogWorkModal'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   awaiting_quote:      'awaiting_go_ahead',
@@ -337,45 +338,6 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
 }
 
 // ── Work log modal ────────────────────────────────────────────────────────────
-function LogWorkModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [note, setNote] = useState('')
-  const [minutes, setMinutes] = useState('')
-  const [error, setError] = useState('')
-  const mut = useMutation({
-    mutationFn: () => createWorkLog({ repair_job_id: jobId, note, minutes_spent: minutes ? parseInt(minutes) : undefined }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['worklogs', jobId] }); onClose() },
-    onError: () => setError('Failed to save work log.'),
-  })
-  return (
-    <Modal title="Log Work" onClose={onClose}>
-      <div className="space-y-3">
-        <Textarea
-          label="Work done *"
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          rows={4}
-          placeholder="Cleaned movement, replaced mainspring, re-lubricated escapement…"
-          autoFocus
-        />
-        <Input
-          label="Time spent (minutes)"
-          type="number"
-          min="1"
-          value={minutes}
-          onChange={e => setMinutes(e.target.value)}
-          placeholder="45"
-        />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={!note || mut.isPending}>{mut.isPending ? 'Saving…' : 'Save Log'}</Button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
 // ── Tab types ─────────────────────────────────────────────────────────────────
 type Tab = 'details' | 'worklogs' | 'attachments' | 'history' | 'messages'
 
@@ -423,6 +385,11 @@ export default function JobDetailPage() {
     queryKey: ['watch', job?.watch_id],
     queryFn: () => getWatch(job!.watch_id).then(r => r.data),
     enabled: !!job?.watch_id,
+  })
+  const { data: customer } = useQuery({
+    queryKey: ['customer', watch?.customer_id],
+    queryFn: () => getCustomer(watch!.customer_id).then(r => r.data),
+    enabled: !!watch?.customer_id,
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
@@ -695,6 +662,21 @@ export default function JobDetailPage() {
                 #{job.job_number}
               </p>
               <p style={{ fontSize: 12, marginTop: 4, color: 'var(--ms-sidebar-text)' }}>{formatDate(job.created_at)}</p>
+              {(customer?.full_name || customer?.phone) && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                  {customer.full_name && (
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{customer.full_name}</p>
+                  )}
+                  {customer.phone && (
+                    <a
+                      href={`tel:${customer.phone}`}
+                      style={{ fontSize: 12, color: 'var(--ms-sidebar-text)', textDecoration: 'none' }}
+                    >
+                      {customer.phone}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ borderTop: '1px dashed var(--ms-border-strong)', margin: '0 12px' }} />
             <div className="space-y-2.5 text-sm" style={{ padding: '16px 20px' }}>

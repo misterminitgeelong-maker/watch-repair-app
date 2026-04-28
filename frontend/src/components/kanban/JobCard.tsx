@@ -18,6 +18,7 @@ export interface JobCardProps {
   href: string
   selected?: boolean
   extras?: React.ReactNode
+  onLogWork?: () => void
   onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void
   onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void
   draggable?: boolean
@@ -89,6 +90,7 @@ export default function JobCard({
   href,
   selected,
   extras,
+  onLogWork,
   onDragStart,
   onDragEnd,
   draggable,
@@ -194,6 +196,26 @@ export default function JobCard({
             </div>
           )}
         </div>
+      )}
+      {onLogWork && (
+        <button
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onLogWork() }}
+          style={{
+            marginTop: 8,
+            width: '100%',
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '4px 0',
+            borderRadius: 4,
+            border: '1px solid var(--ms-border)',
+            background: 'var(--ms-bg)',
+            color: 'var(--ms-text-muted)',
+            cursor: 'pointer',
+            letterSpacing: '0.03em',
+          }}
+        >
+          + Log Work
+        </button>
       )}
     </Link>
   )

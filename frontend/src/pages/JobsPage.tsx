@@ -18,6 +18,7 @@ import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal, ViewToggle
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 import RepairQueueModal from '@/components/RepairQueueModal'
+import LogWorkModal from '@/components/LogWorkModal'
 import { KanbanBoard, JobCard, WATCH_KANBAN_COLUMNS } from '@/components/kanban'
 
 function daysInShop(createdAt: string): number {
@@ -39,6 +40,7 @@ export default function JobsPage() {
   const initialView: BoardView = searchParams.get('view') === 'list' ? 'list' : 'board'
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
+  const [logWorkJobId, setLogWorkJobId] = useState<string | null>(null)
   const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
@@ -419,6 +421,7 @@ export default function JobsPage() {
                 accentColor={column.color}
                 href={`/jobs/${job.id}`}
                 draggable={!updatingJobId}
+                onLogWork={() => setLogWorkJobId(job.id)}
                 onDragStart={e => {
                   e.dataTransfer.setData('text/job-id', job.id)
                   e.dataTransfer.effectAllowed = 'move'
@@ -454,6 +457,10 @@ export default function JobsPage() {
       >
         <Plus size={18} />New Job
       </button>
+
+      {logWorkJobId && (
+        <LogWorkModal jobId={logWorkJobId} onClose={() => setLogWorkJobId(null)} />
+      )}
 
       {jobToDelete && (
         <Modal
