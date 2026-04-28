@@ -6,11 +6,11 @@ import {
 } from 'lucide-react'
 import {
   listJobs, addJobNote, claimJob, releaseJob, resendJobNotification,
-  repairJobQueueSwipe, createWorkLog,
+  repairJobQueueSwipe, createWorkLog, listWorkLogs,
   listShoeRepairJobs, updateShoeRepairJobStatus, addShoeJobNote, claimShoeJob, releaseShoeJob, resendShoeNotification,
   getJob, getShoeRepairJob,
   getRepairQueueDayState, putRepairQueueDayState, deleteRepairQueueDayState,
-  type RepairJob, type ShoeRepairJob, type RepairQueueDayStateResponse,
+  type RepairJob, type ShoeRepairJob, type RepairQueueDayStateResponse, type WorkLog,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
@@ -207,6 +207,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   const [logWorkNote, setLogWorkNote] = useState('')
   const [logWorkMinutes, setLogWorkMinutes] = useState('')
   const [logWorkSaved, setLogWorkSaved] = useState(false)
+  const [quickNote, setQuickNote] = useState('')
+  const [quickNoteSaved, setQuickNoteSaved] = useState(false)
 
   // ── Swipe state ───────────────────────────────────────────────────────────
   const [dragX, setDragX] = useState(0)
@@ -344,6 +346,14 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     enabled: !!detailJobId,
   })
 
+  // ── Work logs for current card (watch mode only) ───────────────────────────
+  const workLogsQuery = useQuery<WorkLog[]>({
+    queryKey: ['queue-work-logs', currentId],
+    queryFn: () => listWorkLogs(currentId!).then(r => r.data),
+    enabled: mode === 'watch' && !!currentId,
+    staleTime: 30_000,
+  })
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   function invalidateWatchJobCaches(jobId: string) {
     qc.invalidateQueries({ queryKey: ['repair-jobs'] })
@@ -424,6 +434,18 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: mode === 'watch' ? ['repair-jobs'] : ['shoe-repair-jobs'] }),
   })
 
+  const quickNoteMutation = useMutation({
+    mutationFn: (vars: { id: string; note: string }) =>
+      createWorkLog({ repair_job_id: vars.id, note: vars.note }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['queue-work-logs', vars.id] })
+      qc.invalidateQueries({ queryKey: ['work-logs', vars.id] })
+      setQuickNote('')
+      setQuickNoteSaved(true)
+      setTimeout(() => setQuickNoteSaved(false), 2000)
+    },
+  })
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   function resetPanel() {
     setCardState('view')
@@ -435,6 +457,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     setLogWorkNote('')
     setLogWorkMinutes('')
     setLogWorkSaved(false)
+    setQuickNote('')
+    setQuickNoteSaved(false)
   }
 
   function handleAdvance() {
@@ -882,6 +906,56 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                   </>
                 )}
               </div>
+
+              {/* ── Notes & work log history ── */}
+              {mode === 'watch' && (current.description || (workLogsQuery.data && workLogsQuery.data.length > 0)) && (
+                <div
+                  className="mb-3 rounded-xl overflow-y-auto"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: 140 }}
+                  onPointerDown={e => e.stopPropagation()}
+                >
+                  {current.description && (
+                    <div className="px-3 pt-3 pb-2" style={{ borderBottom: workLogsQuery.data?.length ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Initial Notes</div>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.55)' }}>{current.description}</p>
+                    </div>
+                  )}
+                  {workLogsQuery.data?.map((log, i) => (
+                    <div key={log.id} className="px-3 py-2" style={{ borderBottom: i < (workLogsQuery.data?.length ?? 0) - 1 ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{log.note}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        {new Date(log.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        {log.minutes_spent > 0 && ` · ${log.minutes_spent} min`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Quick work note input ── */}
+              {mode === 'watch' && (
+                <div className="mb-3" onPointerDown={e => e.stopPropagation()}>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Log work update…"
+                      value={quickNote}
+                      onChange={e => setQuickNote(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && quickNote.trim()) quickNoteMutation.mutate({ id: current.id, note: quickNote.trim() }) }}
+                      className="flex-1 px-3 py-2 rounded-lg text-xs"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.1)', outline: 'none' }}
+                    />
+                    <button
+                      onClick={() => { if (quickNote.trim()) quickNoteMutation.mutate({ id: current.id, note: quickNote.trim() }) }}
+                      disabled={!quickNote.trim() || quickNoteMutation.isPending}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold shrink-0"
+                      style={{ backgroundColor: quickNoteSaved ? '#2D6A4F' : 'rgba(184,149,86,0.2)', color: quickNoteSaved ? '#fff' : '#B89556', border: '1px solid rgba(184,149,86,0.3)', opacity: !quickNote.trim() ? 0.45 : 1 }}
+                    >
+                      {quickNoteMutation.isPending ? '…' : quickNoteSaved ? '✓' : 'Log'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* SMS reminder — shoe only; watch queue is status-only (no SMS from here). */}
               {mode === 'shoe' && SMS_REMIND_STATUSES.has(current.status) && (
