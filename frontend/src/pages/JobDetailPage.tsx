@@ -886,9 +886,20 @@ export default function JobDetailPage() {
             <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>{(workLogs ?? []).length} log{(workLogs ?? []).length !== 1 ? 's' : ''}</p>
             <Button onClick={() => setShowLogWork(true)}><Plus size={15} />Log Work</Button>
           </div>
-          {!workLogs ? <Spinner /> : workLogs.length === 0 ? <EmptyState message="No work logged yet. Tap 'Log Work' to record what was done." /> : (
-            <div className="space-y-3">
-              {workLogs.map(log => (
+          <div className="space-y-3">
+            {job.description && (
+              <Card className="p-4" style={{ borderLeft: '3px solid var(--ms-border)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Initial Notes</span>
+                </div>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{job.description}</p>
+                <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(job.created_at)}</p>
+              </Card>
+            )}
+            {!workLogs ? <Spinner /> : workLogs.length === 0 && !job.description ? (
+              <EmptyState message="No work logged yet. Tap 'Log Work' to record what was done." />
+            ) : (
+              workLogs.map(log => (
                 <Card key={log.id} className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1" style={{ color: 'var(--ms-text-mid)' }}>{log.note}</p>
@@ -900,9 +911,9 @@ export default function JobDetailPage() {
                   </div>
                   <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(log.created_at)}</p>
                 </Card>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 
