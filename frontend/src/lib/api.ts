@@ -2373,3 +2373,56 @@ export const claimPoolJob = (jobId: string) =>
 
 export const setDispatchBaseLocation = (address: string, ring_radius_km = 10) =>
   api.post<{ base_lat: number; base_lng: number; ring_radius_km: number }>('/settings/dispatch-base-location', { address, ring_radius_km })
+
+// ── Customer Portal (public, no auth header) ──────────────────────────────────
+export interface PortalLoyalty {
+  tier_name: string
+  tier_label: string
+  points_balance: number
+  points_dollar_value: number
+  rolling_12m_spend_cents: number
+}
+
+export interface PortalIntakeJob {
+  id: string
+  customer_name: string
+  job_address: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: string
+  description?: string
+  status: string
+  created_at: string
+}
+
+export interface PortalProfile {
+  customer_id: string
+  name: string
+  phone?: string
+  email?: string
+  intake_jobs: PortalIntakeJob[]
+  loyalty?: PortalLoyalty
+}
+
+export const portalLookup = (slug: string, name: string, phone: string) =>
+  api.post<{ token: string; customer_id: string; name: string; phone?: string; email?: string }>(
+    `/public/portal/${slug}/lookup`,
+    { name, phone },
+  )
+
+export const portalGetProfile = (slug: string, token: string) =>
+  api.get<PortalProfile>(`/public/portal/${slug}/profile`, { params: { token } })
+
+export const portalBook = (
+  slug: string,
+  token: string,
+  data: {
+    job_address: string
+    vehicle_make?: string
+    vehicle_model?: string
+    vehicle_year?: string
+    registration_plate?: string
+    description?: string
+    preferred_date?: string
+  },
+) => api.post<{ intake_job_id: string; status: string }>(`/public/portal/${slug}/book`, data, { params: { token } })
