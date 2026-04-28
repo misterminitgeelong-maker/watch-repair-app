@@ -1,6 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+const CHUNK_RELOAD_KEY = '__ms_chunk_reload'
+
+function isChunkLoadError(error: Error): boolean {
+  return error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('Importing a module script failed') ||
+    error.name === 'ChunkLoadError'
+}
+
 interface Props {
   children: ReactNode
   fallback?: ReactNode
@@ -20,11 +28,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo)
+
+    if (isChunkLoadError(error)) {
+      const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY)
+      if (!alreadyReloaded) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
+        window.location.reload()
+      }
+    }
   }
 
   render() {
     if (this.state.hasError && this.state.error) {
       if (this.props.fallback) return this.props.fallback
+      const isChunk = isChunkLoadError(this.state.error)
       return (
         <div
           className="min-h-[60vh] flex flex-col items-center justify-center p-6"
@@ -32,7 +49,9 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           <h1 className="text-xl font-semibold mb-2">Something went wrong</h1>
           <p className="text-sm mb-3 max-w-md text-center" style={{ color: 'var(--ms-text-mid)' }}>
-            An unexpected error occurred. Please try refreshing the page or return to the dashboard.
+            {isChunk
+              ? 'A new version of the app has been deployed. Please reload to update.'
+              : 'An unexpected error occurred. Please try refreshing the page or return to the dashboard.'}
           </p>
           <p className="text-xs mb-6 max-w-md text-center font-mono px-3 py-2 rounded" style={{ color: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.08)', border: '1px solid rgba(201,106,90,0.2)' }}>
             {this.state.error.message}
