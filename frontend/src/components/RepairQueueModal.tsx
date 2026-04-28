@@ -908,27 +908,35 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               </div>
 
               {/* ── Notes & work log history ── */}
-              {mode === 'watch' && (current.description || (workLogsQuery.data && workLogsQuery.data.length > 0)) && (
+              {mode === 'watch' && (
                 <div
                   className="mb-3 rounded-xl overflow-y-auto"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: 140 }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: 180 }}
                   onPointerDown={e => e.stopPropagation()}
                 >
+                  {workLogsQuery.isLoading && (
+                    <div className="px-3 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Loading updates…</div>
+                  )}
+                  {workLogsQuery.data && workLogsQuery.data.length > 0
+                    ? [...workLogsQuery.data].reverse().map((log, i, arr) => (
+                      <div key={log.id} className="px-3 py-2" style={{ borderBottom: i < arr.length - 1 || current.description ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.8)' }}>{log.note}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                          {new Date(log.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {log.minutes_spent > 0 && ` · ${log.minutes_spent} min`}
+                        </p>
+                      </div>
+                    ))
+                    : !workLogsQuery.isLoading && (
+                      <div className="px-3 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>No work logged yet</div>
+                    )
+                  }
                   {current.description && (
-                    <div className="px-3 pt-3 pb-2" style={{ borderBottom: workLogsQuery.data?.length ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Initial Notes</div>
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.55)' }}>{current.description}</p>
+                    <div className="px-3 pt-2 pb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>Initial Notes</div>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.4)' }}>{current.description}</p>
                     </div>
                   )}
-                  {workLogsQuery.data?.map((log, i) => (
-                    <div key={log.id} className="px-3 py-2" style={{ borderBottom: i < (workLogsQuery.data?.length ?? 0) - 1 ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{log.note}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                        {new Date(log.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                        {log.minutes_spent > 0 && ` · ${log.minutes_spent} min`}
-                      </p>
-                    </div>
-                  ))}
                 </div>
               )}
 
