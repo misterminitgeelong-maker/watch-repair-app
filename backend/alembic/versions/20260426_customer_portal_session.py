@@ -1,14 +1,14 @@
 """add customer_portal_session table
 
 Revision ID: 20260426_customer_portal_session
-Revises: 20260425b_prospect_lead_cust_acc
+Revises: 20260425b_add_cust_acct_id
 Create Date: 2026-04-26
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "20260426_customer_portal_session"
-down_revision = "20260425b_prospect_lead_cust_acc"
+down_revision = "20260425b_add_cust_acct_id"
 branch_labels = None
 depends_on = None
 
