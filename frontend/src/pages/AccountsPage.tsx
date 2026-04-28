@@ -737,10 +737,15 @@ function StripeConnectCard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['billing-limits'] }),
   })
 
+  const [connectUrl, setConnectUrl] = useState<string | null>(null)
+
   const connectMut = useMutation({
     mutationFn: () => createStripeConnectAccountLink(),
     onSuccess: ({ data }) => {
-      if (data.url) window.location.assign(data.url)
+      if (data.url) {
+        setConnectUrl(data.url)
+        window.open(data.url, '_blank', 'noopener')
+      }
     },
   })
 
@@ -805,6 +810,14 @@ function StripeConnectCard() {
       {!isOwner && (
         <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
           Only an owner can complete Stripe Connect for this workspace.
+        </p>
+      )}
+      {connectUrl && !connectMut.isPending && (
+        <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
+          Stripe didn't open?{' '}
+          <a href={connectUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ms-accent)', textDecoration: 'underline' }}>
+            Click here to open it manually
+          </a>
         </p>
       )}
       {(connectMut.isError || refreshMut.isError) && (
