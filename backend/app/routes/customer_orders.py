@@ -164,28 +164,59 @@ def _derive_status_and_supplier(gang: str, ordered_date: str) -> tuple[str, str 
     return "to_order", None
 
 
-def _find_customer(session: Session, tenant_id: UUID, name: str, phone: str) -> UUID | None:
-    name = name.strip()
-    # Clean phone: remove .0 suffix from Excel numeric values
-    phone = phone.strip().rstrip("0").rstrip(".") if phone.endswith(".0") else phone.strip()
-    if not name and not phone:
+class _CustomerCache:
+    """Load all tenant customers once; resolve/create without extra DB round-trips."""
+
+    def __init__(self, session: Session, tenant_id: UUID) -> None:
+        self._session = session
+        self._tenant_id = tenant_id
+        all_customers = session.exec(
+            select(Customer).where(Customer.tenant_id == tenant_id)
+        ).all()
+        # Index by normalised name and normalised phone (spaces stripped)
+        self._by_name: dict[str, Customer] = {}
+        self._by_phone: dict[str, Customer] = {}
+        for c in all_customers:
+            if c.full_name:
+                self._by_name[c.full_name.strip().lower()] = c
+            if c.phone:
+                self._by_phone[c.phone.replace(" ", "")] = c
+
+    @staticmethod
+    def _clean_phone(raw: str) -> str:
+        raw = raw.strip().rstrip("0").rstrip(".") if raw.endswith(".0") else raw.strip()
+        return raw.replace(" ", "")
+
+    def find_or_create(self, name: str, phone: str) -> UUID | None:
+        name = name.strip()
+        phone_clean = self._clean_phone(phone)
+        if not name and not phone_clean:
+            return None
+
+        # Phone match first (most specific)
+        if phone_clean and phone_clean in self._by_phone:
+            return self._by_phone[phone_clean].id
+
+        # Name match
+        if name and name.lower() in self._by_name:
+            c = self._by_name[name.lower()]
+            return c.id
+
+        # Create new
+        if name:
+            new_c = Customer(
+                tenant_id=self._tenant_id,
+                full_name=name,
+                phone=phone.strip() or None,
+            )
+            self._session.add(new_c)
+            self._session.flush()
+            self._by_name[name.lower()] = new_c
+            if phone_clean:
+                self._by_phone[phone_clean] = new_c
+            return new_c.id
+
         return None
-    q = select(Customer).where(Customer.tenant_id == tenant_id)
-    if name:
-        q = q.where(Customer.full_name == name)
-    customers = session.exec(q).all()
-    if phone:
-        for c in customers:
-            if c.phone and c.phone.replace(" ", "") == phone.replace(" ", ""):
-                return c.id
-    if customers:
-        return customers[0].id
-    if name:
-        new_customer = Customer(tenant_id=tenant_id, full_name=name, phone=phone or None)
-        session.add(new_customer)
-        session.flush()
-        return new_customer.id
-    return None
 
 
 def _read_csv_rows(content: bytes) -> list[dict[str, str]]:
@@ -282,6 +313,7 @@ def import_customer_orders(
         skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
 
     now = datetime.now(timezone.utc)
+    customer_cache = _CustomerCache(session, auth.tenant_id) if not dry_run else None
 
     for row in rows:
         # ── Resolve title ─────────────────────────────────────────────────────
@@ -343,8 +375,8 @@ def import_customer_orders(
         supplier = (row.get("supplier") or row.get("Supplier") or "").strip() or supplier_hint or None
 
         customer_id: UUID | None = None
-        if not dry_run:
-            customer_id = _find_customer(session, auth.tenant_id, customer_name, customer_phone)
+        if not dry_run and customer_cache is not None:
+            customer_id = customer_cache.find_or_create(customer_name, customer_phone)
             order = CustomerOrder(
                 tenant_id=auth.tenant_id,
                 customer_id=customer_id,
