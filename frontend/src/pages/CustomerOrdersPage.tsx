@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
+import axios from 'axios'
 import {
   listCustomerOrders,
   createCustomerOrder,
   updateCustomerOrder,
   deleteCustomerOrder,
+  importCustomerOrders,
   listCustomers,
   getApiErrorMessage,
   type CustomerOrder,
+  type CustomerOrderImportResult,
   type CustomerOrderStatus,
 } from '@/lib/api'
 import { PageHeader, Button, Spinner, Modal } from '@/components/ui'
@@ -362,9 +365,175 @@ function OrderModal({
   )
 }
 
+function Code({ children }: { children: string }) {
+  return (
+    <code
+      className="text-xs px-1 py-0.5 rounded"
+      style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}
+    >
+      {children}
+    </code>
+  )
+}
+
+function ImportModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [dryRun, setDryRun] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState<CustomerOrderImportResult | null>(null)
+  const [error, setError] = useState('')
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setFile(f)
+    setResult(null)
+    setError('')
+  }
+
+  async function runImport(opts: { dryRun: boolean }) {
+    if (!file) return
+    setUploading(true)
+    setError('')
+    setResult(null)
+    try {
+      const { data } = await importCustomerOrders(file, opts.dryRun)
+      setResult(data)
+      if (!opts.dryRun) {
+        setFile(null)
+        if (fileRef.current) fileRef.current.value = ''
+        void qc.invalidateQueries({ queryKey: ['customer-orders'] })
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError('Too many import attempts — try again in a minute.')
+      } else {
+        setError(getApiErrorMessage(err, 'Import failed. Check column names and try again.'))
+      }
+    }
+    setUploading(false)
+  }
+
+  return (
+    <Modal title="Import Customer Orders" onClose={onClose}>
+      <div style={{ padding: '20px 22px', maxWidth: 480 }} className="space-y-5">
+        <p style={{ fontSize: 13, color: 'var(--ms-text-muted)' }}>
+          Upload a CSV or Excel file. Each row becomes one customer order.
+          Expected columns:{' '}
+          <Code>title</Code> (required),{' '}
+          <Code>customer</Code>,{' '}
+          <Code>phone</Code>,{' '}
+          <Code>supplier</Code>,{' '}
+          <Code>cost</Code>,{' '}
+          <Code>status</Code>,{' '}
+          <Code>priority</Code>,{' '}
+          <Code>notes</Code>.
+        </p>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.xlsx,.xls,.xlsm"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors"
+          style={{ borderColor: 'var(--ms-border-strong)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent' }}
+        >
+          {file ? (
+            <div className="flex flex-col items-center gap-2">
+              <FileSpreadsheet size={28} style={{ color: 'var(--ms-accent)' }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ms-text)' }}>{file.name}</p>
+              <p style={{ fontSize: 11, color: 'var(--ms-text-muted)' }}>{(file.size / 1024).toFixed(1)} KB · Click to change</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2" style={{ color: 'var(--ms-text-muted)' }}>
+              <Upload size={28} />
+              <p style={{ fontSize: 13, fontWeight: 500 }}>Click to select a CSV or Excel file</p>
+            </div>
+          )}
+        </button>
+
+        <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
+          <input
+            type="checkbox"
+            checked={dryRun}
+            onChange={e => setDryRun(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Dry run (preview only — recommended)
+            <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              Validates the file and shows a row count without writing anything. Uncheck to apply.
+            </span>
+          </span>
+        </label>
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg p-3" style={{ backgroundColor: '#FEF0EE', border: '1px solid #F5C6C0' }}>
+            <AlertCircle size={16} style={{ color: 'var(--ms-error)', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: 'var(--ms-error)' }}>{error}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="rounded-lg p-4 space-y-1" style={{ backgroundColor: '#EBF8EF', border: '1px solid #A8DABD' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle size={16} style={{ color: '#1A6A3A' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1A4A2A' }}>
+                {result.dry_run ? 'Dry run complete' : 'Import complete'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1" style={{ fontSize: 12, color: '#1A4A2A' }}>
+              <span>Total rows</span><span style={{ fontWeight: 600 }}>{result.total_rows}</span>
+              <span>Will import / Imported</span><span style={{ fontWeight: 600 }}>{result.imported}</span>
+              <span>Skipped</span><span style={{ fontWeight: 600 }}>{result.skipped}</span>
+            </div>
+            {Object.keys(result.skipped_reasons).length > 0 && (
+              <div style={{ fontSize: 12, color: '#1A4A2A', marginTop: 6 }}>
+                <p style={{ fontWeight: 600 }}>Skip reasons:</p>
+                {Object.entries(result.skipped_reasons).map(([reason, count]) => (
+                  <p key={reason}>{reason}: {count}</p>
+                ))}
+              </div>
+            )}
+            {result.dry_run && file && (
+              <div className="mt-3 rounded-lg px-3 py-3" style={{ backgroundColor: '#FEF9E8', border: '1px solid #E8D4A0' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#5A4A2A' }}>Ready to apply?</p>
+                <Button
+                  className="mt-2"
+                  disabled={uploading}
+                  onClick={() => { void runImport({ dryRun: false }); setDryRun(false) }}
+                >
+                  Run import (apply changes)
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void runImport({ dryRun })} disabled={!file || uploading}>
+            <Upload size={14} />
+            {uploading ? 'Working…' : dryRun ? 'Preview import' : 'Run import'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function CustomerOrdersPage() {
   const qc = useQueryClient()
   const [showNew, setShowNew] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editOrder, setEditOrder] = useState<CustomerOrder | null>(null)
 
   const { data: orders = [], isLoading } = useQuery({
@@ -394,10 +563,16 @@ export default function CustomerOrdersPage() {
       <PageHeader
         title="Customer Orders"
         action={
-          <Button onClick={() => setShowNew(true)}>
-            <Plus size={15} className="mr-1" />
-            New Order
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowImport(true)}>
+              <Upload size={15} className="mr-1" />
+              Import
+            </Button>
+            <Button onClick={() => setShowNew(true)}>
+              <Plus size={15} className="mr-1" />
+              New Order
+            </Button>
+          </div>
         }
       />
 
@@ -427,6 +602,7 @@ export default function CustomerOrdersPage() {
 
       {showNew && <OrderModal order={null} onClose={() => setShowNew(false)} />}
       {editOrder && <OrderModal order={editOrder} onClose={() => setEditOrder(null)} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
     </div>
   )
 }

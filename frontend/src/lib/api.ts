@@ -2479,3 +2479,21 @@ export const updateCustomerOrder = (id: string, data: CustomerOrderUpdatePayload
 
 export const deleteCustomerOrder = (id: string) =>
   api.delete(`/customer-orders/${id}`)
+
+export interface CustomerOrderImportResult {
+  dry_run: boolean
+  total_rows: number
+  imported: number
+  skipped: number
+  skipped_reasons: Record<string, number>
+}
+
+export const importCustomerOrders = (file: File, dryRun = true) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<CustomerOrderImportResult>(
+    `/customer-orders/import?dry_run=${dryRun}`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+}
