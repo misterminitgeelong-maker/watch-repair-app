@@ -1,7 +1,7 @@
 """add customer_orders table
 
-Revision ID: a1b2c3d4e5f6
-Revises: z1a2b3c4d5e6
+Revision ID: 20260503_customer_orders
+Revises: 20260426_customer_portal_session
 Create Date: 2026-05-03
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "a1b2c3d4e5f6"
-down_revision = "z1a2b3c4d5e6"
+revision = "20260503_customer_orders"
+down_revision = "20260426_customer_portal_session"
 branch_labels = None
 depends_on = None
 
@@ -19,8 +19,8 @@ def upgrade() -> None:
     op.create_table(
         "customerorder",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
-        sa.Column("customer_id", postgresql.UUID(as_uuid=True), nullable=True, index=True),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("customer_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("supplier", sa.String(), nullable=True),
@@ -33,7 +33,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["tenant_id"], ["tenant.id"]),
         sa.ForeignKeyConstraint(["customer_id"], ["customer.id"]),
     )
+    op.create_index("ix_customerorder_tenant_id", "customerorder", ["tenant_id"])
+    op.create_index("ix_customerorder_customer_id", "customerorder", ["customer_id"])
 
 
 def downgrade() -> None:
+    op.drop_index("ix_customerorder_customer_id", table_name="customerorder")
+    op.drop_index("ix_customerorder_tenant_id", table_name="customerorder")
     op.drop_table("customerorder")
