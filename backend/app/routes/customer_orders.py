@@ -224,6 +224,24 @@ def _extract_rows_from_sheet(ws, sheet_name_requested: str | None) -> list[dict[
     return rows
 
 
+@router.post("/import/sheets", response_model=list[str])
+def list_import_sheets(
+    file: UploadFile = File(...),
+    _: AuthContext = Depends(get_auth_context),
+):
+    """Return the sheet names from an uploaded Excel file (CSV returns an empty list)."""
+    content = file.file.read()
+    filename = (file.filename or "").lower()
+    if not filename.endswith((".xlsx", ".xlsm", ".xls")):
+        return []
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        return list(wb.sheetnames)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not read Excel file: {exc}")
+
+
 @router.post("/import", response_model=CustomerOrderImportResult)
 def import_customer_orders(
     file: UploadFile = File(...),

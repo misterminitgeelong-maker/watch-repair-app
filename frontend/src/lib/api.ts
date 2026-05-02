@@ -2488,6 +2488,14 @@ export interface CustomerOrderImportResult {
   skipped_reasons: Record<string, number>
 }
 
+export const listCustomerOrderSheets = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<string[]>('/customer-orders/import/sheets', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const importCustomerOrders = (file: File, dryRun = true, sheetName?: string) => {
   const form = new FormData()
   form.append('file', file)

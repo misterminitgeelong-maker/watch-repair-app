@@ -8,6 +8,7 @@ import {
   updateCustomerOrder,
   deleteCustomerOrder,
   importCustomerOrders,
+  listCustomerOrderSheets,
   listCustomers,
   getApiErrorMessage,
   type CustomerOrder,
@@ -381,17 +382,30 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [sheetName, setSheetName] = useState('')
+  const [sheets, setSheets] = useState<string[] | null>(null)
   const [dryRun, setDryRun] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CustomerOrderImportResult | null>(null)
   const [error, setError] = useState('')
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
     setFile(f)
     setResult(null)
     setError('')
+    setSheets(null)
+    setSheetName('')
+    const isExcel = /\.(xlsx|xlsm|xls)$/i.test(f.name)
+    if (isExcel) {
+      try {
+        const { data } = await listCustomerOrderSheets(f)
+        setSheets(data)
+        if (data.length > 0) setSheetName(data[0])
+      } catch {
+        setSheets([])
+      }
+    }
   }
 
   async function runImport(opts: { dryRun: boolean }) {
@@ -463,23 +477,42 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ms-text-muted)', display: 'block', marginBottom: 4 }}>
-            Excel sheet / tab name <span style={{ fontWeight: 400 }}>(optional)</span>
+            Excel sheet / tab
           </label>
-          <input
-            value={sheetName}
-            onChange={e => setSheetName(e.target.value)}
-            placeholder="e.g. Orders — leave blank to use the first sheet"
-            style={{
-              width: '100%',
-              borderRadius: 8,
-              border: '1px solid var(--ms-border)',
-              padding: '8px 10px',
-              fontSize: 13,
-              color: 'var(--ms-text)',
-              backgroundColor: 'var(--ms-input)',
-              outline: 'none',
-            }}
-          />
+          {sheets && sheets.length > 0 ? (
+            <select
+              value={sheetName}
+              onChange={e => setSheetName(e.target.value)}
+              style={{
+                width: '100%',
+                borderRadius: 8,
+                border: '1px solid var(--ms-border)',
+                padding: '8px 10px',
+                fontSize: 13,
+                color: 'var(--ms-text)',
+                backgroundColor: 'var(--ms-input)',
+                outline: 'none',
+              }}
+            >
+              {sheets.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          ) : (
+            <input
+              value={sheetName}
+              onChange={e => setSheetName(e.target.value)}
+              placeholder="Leave blank to use the first sheet"
+              style={{
+                width: '100%',
+                borderRadius: 8,
+                border: '1px solid var(--ms-border)',
+                padding: '8px 10px',
+                fontSize: 13,
+                color: 'var(--ms-text)',
+                backgroundColor: 'var(--ms-input)',
+                outline: 'none',
+              }}
+            />
+          )}
         </div>
 
         <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
