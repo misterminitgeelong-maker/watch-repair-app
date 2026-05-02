@@ -127,6 +127,44 @@ export const AUTO_KEY_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   },
 ] as const
 
+export const CUSTOMER_ORDER_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
+  {
+    key: 'to_order',
+    label: 'To Order',
+    statuses: ['to_order'],
+    color: '#9A6E26',
+    bg: '#F6EDD8',
+  },
+  {
+    key: 'ordered',
+    label: 'Ordered',
+    statuses: ['ordered'],
+    color: '#2A5FA0',
+    bg: '#EDF3FA',
+  },
+  {
+    key: 'arrived',
+    label: 'Arrived',
+    statuses: ['arrived'],
+    color: '#6840B4',
+    bg: '#F3EBF9',
+  },
+  {
+    key: 'notified',
+    label: 'Customer Notified',
+    statuses: ['notified'],
+    color: '#B06010',
+    bg: '#FFF0E0',
+  },
+  {
+    key: 'collected',
+    label: 'Collected',
+    statuses: ['collected'],
+    color: '#1A6A3A',
+    bg: '#EBF8EF',
+  },
+] as const
+
 export function findColumnForStatus<T extends KanbanColumnDef>(
   columns: readonly T[],
   status: string,

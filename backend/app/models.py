@@ -548,6 +548,62 @@ class ImportLogDetail(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+# ── Customer Orders ──────────────────────────────────────────────────────────
+
+class CustomerOrder(SQLModel, table=True):
+    """Shop-sourced items ordered on a customer's behalf (bands, remotes, parts, etc.)."""
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    customer_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customer.id")
+    title: str
+    description: Optional[str] = None
+    supplier: Optional[str] = None
+    status: str = Field(default="to_order")  # to_order | ordered | arrived | notified | collected
+    priority: str = Field(default="normal")  # normal | high | urgent
+    estimated_cost_cents: int = 0
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CustomerOrderCreate(SQLModel):
+    title: str
+    description: Optional[str] = None
+    supplier: Optional[str] = None
+    customer_id: Optional[UUID] = None
+    priority: str = "normal"
+    estimated_cost_cents: int = 0
+    notes: Optional[str] = None
+
+
+class CustomerOrderUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    supplier: Optional[str] = None
+    customer_id: Optional[UUID] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_cost_cents: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class CustomerOrderRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    customer_id: Optional[UUID]
+    customer_name: Optional[str]
+    title: str
+    description: Optional[str]
+    supplier: Optional[str]
+    status: str
+    priority: str
+    estimated_cost_cents: int
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
 class TenantBootstrap(SQLModel):
     tenant_name: str
     tenant_slug: str

@@ -2426,3 +2426,56 @@ export const portalBook = (
     preferred_date?: string
   },
 ) => api.post<{ intake_job_id: string; status: string }>(`/public/portal/${slug}/book`, data, { params: { token } })
+
+// ── Customer Orders ──────────────────────────────────────────────────────────
+
+export type CustomerOrderStatus = 'to_order' | 'ordered' | 'arrived' | 'notified' | 'collected'
+
+export interface CustomerOrder {
+  id: string
+  tenant_id: string
+  customer_id: string | null
+  customer_name: string | null
+  title: string
+  description: string | null
+  supplier: string | null
+  status: CustomerOrderStatus
+  priority: string
+  estimated_cost_cents: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerOrderCreatePayload {
+  title: string
+  description?: string
+  supplier?: string
+  customer_id?: string
+  priority?: string
+  estimated_cost_cents?: number
+  notes?: string
+}
+
+export interface CustomerOrderUpdatePayload {
+  title?: string
+  description?: string
+  supplier?: string
+  customer_id?: string | null
+  status?: CustomerOrderStatus
+  priority?: string
+  estimated_cost_cents?: number
+  notes?: string
+}
+
+export const listCustomerOrders = (params?: { status?: string }) =>
+  api.get<CustomerOrder[]>('/customer-orders', { params })
+
+export const createCustomerOrder = (data: CustomerOrderCreatePayload) =>
+  api.post<CustomerOrder>('/customer-orders', data)
+
+export const updateCustomerOrder = (id: string, data: CustomerOrderUpdatePayload) =>
+  api.patch<CustomerOrder>(`/customer-orders/${id}`, data)
+
+export const deleteCustomerOrder = (id: string) =>
+  api.delete(`/customer-orders/${id}`)

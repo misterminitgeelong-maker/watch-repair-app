@@ -65,6 +65,7 @@ const CustomerPortalPage = lazy(() => import('@/pages/CustomerPortalPage'))
 const ShoeApprovePage = lazy(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazy(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazy(() => import('@/pages/PublicIntakePage'))
+const CustomerOrdersPage = lazy(() => import('@/pages/CustomerOrdersPage'))
 
 function RouteFallback() {
   return (
@@ -156,6 +157,7 @@ export default function App() {
               <Route path="prospects" element={<Navigate to="/auto-key/prospects" replace />} />
               <Route path="toolkit" element={<Navigate to="/auto-key/toolkit" replace />} />
               <Route path="team" element={<Navigate to="/auto-key/team" replace />} />
+              <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />

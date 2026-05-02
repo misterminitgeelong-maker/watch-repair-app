@@ -23,6 +23,7 @@ import {
   Download,
   Radio,
   Kanban,
+  ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import ChangelogModal from './ChangelogModal'
@@ -43,6 +44,7 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' },
+  { to: '/customer-orders', label: 'Customer Orders', icon: ShoppingBag, title: 'Track items ordered in for customers' },
 ]
 
 const navAfterMobile: NavLinkItem[] = [
