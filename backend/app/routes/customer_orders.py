@@ -153,6 +153,7 @@ def _read_csv_rows(content: bytes) -> list[dict[str, str]]:
 def import_customer_orders(
     file: UploadFile = File(...),
     dry_run: bool = Query(default=True),
+    sheet_name: str | None = Query(default=None),
     session: Session = Depends(get_session),
     auth: AuthContext = Depends(get_auth_context),
     _: None = Depends(require_tech_or_above),
@@ -166,7 +167,10 @@ def import_customer_orders(
         try:
             import openpyxl
             wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
-            ws = wb.active
+            if sheet_name and sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.active
             headers = [str(c.value or "").strip() for c in next(ws.iter_rows(min_row=1, max_row=1))]
             for row in ws.iter_rows(min_row=2, values_only=True):
                 rows.append({headers[i]: str(v or "").strip() for i, v in enumerate(row) if i < len(headers)})

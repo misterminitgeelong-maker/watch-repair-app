@@ -380,6 +380,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [sheetName, setSheetName] = useState('')
   const [dryRun, setDryRun] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<CustomerOrderImportResult | null>(null)
@@ -399,7 +400,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setError('')
     setResult(null)
     try {
-      const { data } = await importCustomerOrders(file, opts.dryRun)
+      const { data } = await importCustomerOrders(file, opts.dryRun, sheetName || undefined)
       setResult(data)
       if (!opts.dryRun) {
         setFile(null)
@@ -459,6 +460,27 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </button>
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ms-text-muted)', display: 'block', marginBottom: 4 }}>
+            Excel sheet / tab name <span style={{ fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            value={sheetName}
+            onChange={e => setSheetName(e.target.value)}
+            placeholder="e.g. Orders — leave blank to use the first sheet"
+            style={{
+              width: '100%',
+              borderRadius: 8,
+              border: '1px solid var(--ms-border)',
+              padding: '8px 10px',
+              fontSize: 13,
+              color: 'var(--ms-text)',
+              backgroundColor: 'var(--ms-input)',
+              outline: 'none',
+            }}
+          />
+        </div>
 
         <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
           <input

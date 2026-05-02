@@ -2488,11 +2488,13 @@ export interface CustomerOrderImportResult {
   skipped_reasons: Record<string, number>
 }
 
-export const importCustomerOrders = (file: File, dryRun = true) => {
+export const importCustomerOrders = (file: File, dryRun = true, sheetName?: string) => {
   const form = new FormData()
   form.append('file', file)
+  const params = new URLSearchParams({ dry_run: String(dryRun) })
+  if (sheetName?.trim()) params.append('sheet_name', sheetName.trim())
   return api.post<CustomerOrderImportResult>(
-    `/customer-orders/import?dry_run=${dryRun}`,
+    `/customer-orders/import?${params.toString()}`,
     form,
     { headers: { 'Content-Type': 'multipart/form-data' } },
   )
