@@ -47,11 +47,12 @@ export const JOB_STATUS_ORDER = [
 ] as const
 
 export const ACTIVE_DIRECTORY_STATUSES = [
-  'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'parts_to_order', 'sent_to_labanda',
-  'quoted_by_labanda', 'awaiting_parts', 'working_on', 'service',
+  'awaiting_quote', 'awaiting_customer_details', 'awaiting_go_ahead', 'quote_sent',
+  'go_ahead', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts',
+  'working_on', 'service', 'completed', 'awaiting_collection',
 ] as const
 
-export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected'] as const
+export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'collected'] as const
 
 /** Same order as backend `_WATCH_QUEUE_SEQUENCE` — watch Tinder queue only. */
 export const WATCH_QUEUE_SWIPE_SEQUENCE = [
