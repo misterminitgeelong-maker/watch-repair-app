@@ -27,6 +27,8 @@ export default function PrintShoeIntakeTicketsPage() {
   const [customerQr, setCustomerQr] = useState('')
   const { status: btStatus, errorMessage: btError, isSupported: btSupported, labelDots, connect: btConnect, autoConnect: btAutoConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
   const [autoTriedBt, setAutoTriedBt] = useState(false)
+  const [labelCanvases, setLabelCanvases] = useState<HTMLCanvasElement[] | null>(null)
+  const [labelPreviews, setLabelPreviews] = useState<string[]>([])
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['shoe-repair-job', id],
@@ -51,9 +53,30 @@ export default function PrintShoeIntakeTicketsPage() {
     if (!job) return
     const internalUrl = `${window.location.origin}/shoe-repairs/${job.id}`
     const customerUrl = `${window.location.origin}/shoe-status/${job.status_token}`
-    QRCode.toDataURL(internalUrl, { width: 180, margin: 1 }).then(setRepairQr)
-    QRCode.toDataURL(customerUrl, { width: 180, margin: 1 }).then(setCustomerQr)
+    QRCode.toDataURL(internalUrl, { width: 300, margin: 1 }).then(setRepairQr)
+    QRCode.toDataURL(customerUrl, { width: 300, margin: 1 }).then(setCustomerQr)
   }, [job])
+
+  // Pre-render canvases when data is ready
+  useEffect(() => {
+    if (!job || !customer || !repairQr || !customerQr) return
+    const shoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
+    const shoeDescription = shoes.map(s => shoeLabel(s)).join(', ')
+    const shared = {
+      jobNumber: job.job_number,
+      customerName: customer.full_name || '—',
+      customerPhone: customer.phone || undefined,
+      shoeDescription,
+      dateIn: formatDate(job.created_at),
+    }
+    Promise.all([
+      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance), labelDots: labelDots ?? undefined }),
+      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
+    ]).then(([workshopCanvas, customerCanvas]) => {
+      setLabelCanvases([workshopCanvas, customerCanvas])
+      setLabelPreviews([workshopCanvas.toDataURL(), customerCanvas.toDataURL()])
+    })
+  }, [job, customer, repairQr, customerQr, balance, labelDots])
 
   useEffect(() => {
     if (!autoPrint || !job || !repairQr || !customerQr || autoTriedBt) return
@@ -70,21 +93,9 @@ export default function PrintShoeIntakeTicketsPage() {
   }, [autoPrint, job, repairQr, customerQr])
 
   const printToNiimbot = useCallback(async () => {
-    if (!job || !customer || !repairQr || !customerQr) return
-    const shoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
-    const shoeDescription = shoes.map(s => shoeLabel(s)).join(', ')
-    const shared = {
-      jobNumber: job.job_number,
-      customerName: customer.full_name || '—',
-      shoeDescription,
-      dateIn: formatDate(job.created_at),
-    }
-    const [workshopCanvas, customerCanvas] = await Promise.all([
-      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance), labelDots: labelDots ?? undefined }),
-      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
-    ])
-    await btPrint([workshopCanvas, customerCanvas])
-  }, [job, customer, repairQr, customerQr, balance, btPrint])
+    if (!labelCanvases) return
+    await btPrint(labelCanvases)
+  }, [labelCanvases, btPrint])
 
   if (isLoading) {
     return (
@@ -113,7 +124,7 @@ export default function PrintShoeIntakeTicketsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={printToNiimbot}
-                  disabled={btStatus === 'printing' || !repairQr || !customerQr}
+                  disabled={btStatus === 'printing' || !labelCanvases}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                   style={{ backgroundColor: '#1d6b3e', color: '#fff' }}
                 >
@@ -161,7 +172,7 @@ export default function PrintShoeIntakeTicketsPage() {
           {btStatus === 'connected' ? (
             <button
               onClick={printToNiimbot}
-              disabled={!repairQr || !customerQr}
+              disabled={!labelCanvases}
               className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold disabled:opacity-50"
               style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
             >
@@ -190,6 +201,21 @@ export default function PrintShoeIntakeTicketsPage() {
 
       <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white${autoPrint && btSupported ? ' pb-28 sm:pb-0' : ''}`}>
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
+
+          {labelPreviews.length > 0 && (
+            <div className="print:hidden bg-white rounded-xl shadow-lg p-4">
+              <p className="text-xs font-medium mb-3" style={{ color: 'var(--ms-text-muted)' }}>LABEL PREVIEW</p>
+              <div className="flex gap-4 overflow-x-auto">
+                {labelPreviews.map((src, i) => (
+                  <div key={i} className="shrink-0 text-center">
+                    <img src={src} alt={`Label ${i + 1}`} className="h-24 rounded" style={{ border: '1px solid var(--ms-border)', imageRendering: 'pixelated' }} />
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{i === 0 ? 'Workshop' : 'Customer'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <section className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none p-8 print:p-6 print:break-after-page">
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--ms-text)' }}>Repair Intake Ticket</h1>
             <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)' }}>Internal copy for workshop</p>

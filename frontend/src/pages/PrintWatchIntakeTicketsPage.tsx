@@ -51,8 +51,8 @@ export default function PrintWatchIntakeTicketsPage() {
     if (!job) return
     const internalUrl = `${window.location.origin}/jobs/${job.id}`
     const customerUrl = `${window.location.origin}/status/${job.status_token}`
-    QRCode.toDataURL(internalUrl, { width: 180, margin: 1 }).then(setRepairQr)
-    QRCode.toDataURL(customerUrl, { width: 180, margin: 1 }).then(setCustomerQr)
+    QRCode.toDataURL(internalUrl, { width: 300, margin: 1 }).then(setRepairQr)
+    QRCode.toDataURL(customerUrl, { width: 300, margin: 1 }).then(setCustomerQr)
   }, [job])
 
   // Pre-render label canvases whenever data or labelDots changes — also creates previews
@@ -62,7 +62,9 @@ export default function PrintWatchIntakeTicketsPage() {
     const shared = {
       jobNumber: job.job_number,
       customerName: customer.full_name || '—',
+      customerPhone: customer.phone || undefined,
       watchTitle,
+      services: job.title || undefined,
       dateIn: formatDate(job.created_at),
     }
     Promise.all([

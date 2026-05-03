@@ -229,7 +229,9 @@ const PAD = 12
 export interface WatchLabelData {
   jobNumber: string
   customerName: string
+  customerPhone?: string
   watchTitle: string
+  services?: string
   dateIn: string
   qrDataUrl: string
   isCustomerCopy: boolean
@@ -240,7 +242,7 @@ export interface WatchLabelData {
 
 export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvasElement> {
   const { width: W, height: H } = data.labelDots ?? DEFAULT_DOTS
-  const scale = W / 400  // scale fonts/positions relative to reference 400-wide
+  const scale = W / 400
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
@@ -249,46 +251,75 @@ export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvas
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, W, H)
   ctx.strokeStyle = '#000000'
-  ctx.lineWidth = 2
-  ctx.strokeRect(1, 1, W - 2, H - 2)
+  ctx.lineWidth = 1
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1)
 
-  const headerH = Math.round(28 * scale)
+  // Header strip
+  const headerH = Math.round(24 * scale)
   ctx.fillStyle = '#000000'
   ctx.fillRect(0, 0, W, headerH)
   ctx.fillStyle = '#ffffff'
-  ctx.font = `bold ${Math.round(13 * scale)}px sans-serif`
-  ctx.fillText('MAINSPRING', PAD, Math.round(18 * scale))
-  const copyLabel = data.isCustomerCopy ? 'CUSTOMER COPY' : 'WORKSHOP COPY'
-  ctx.font = `${Math.round(11 * scale)}px sans-serif`
-  const copyW = ctx.measureText(copyLabel).width
-  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(18 * scale))
-
-  ctx.fillStyle = '#000000'
-  ctx.font = `bold ${Math.round(22 * scale)}px monospace`
-  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(56 * scale))
-
   ctx.font = `bold ${Math.round(12 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.customerName, 30), PAD, Math.round(78 * scale))
-  ctx.font = `${Math.round(11 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.watchTitle, 32), PAD, Math.round(94 * scale))
-  ctx.fillText(data.dateIn, PAD, Math.round(110 * scale))
+  ctx.fillText('MAINSPRING', PAD, Math.round(16 * scale))
+  const copyLabel = data.isCustomerCopy ? 'CUSTOMER COPY' : 'WORKSHOP COPY'
+  ctx.font = `${Math.round(10 * scale)}px sans-serif`
+  const copyW = ctx.measureText(copyLabel).width
+  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(16 * scale))
 
-  if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = `${Math.round(10 * scale)}px sans-serif`
-    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, Math.round(126 * scale))
-    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, Math.round(140 * scale))
-  }
-
-  if (data.isCustomerCopy) {
-    ctx.font = `${Math.round(10 * scale)}px sans-serif`
-    ctx.fillStyle = '#555555'
-    ctx.fillText('Scan QR for live repair updates', PAD, H - 12)
-    ctx.fillStyle = '#000000'
-  }
-
+  // QR code — large right block, as tall as the content area
+  const qrSize = Math.round(Math.min(180 * scale, H - headerH - 6))
+  const qrX = W - PAD - qrSize
+  const qrY = headerH + 3
   if (data.qrDataUrl) {
-    const qrSize = Math.round(100 * scale)
-    await drawImage(ctx, data.qrDataUrl, W - PAD - qrSize, headerH + 4, qrSize, qrSize)
+    await drawImage(ctx, data.qrDataUrl, qrX, qrY, qrSize, qrSize)
+  }
+
+  // Text content — left column, constrained to not overlap the QR
+  ctx.fillStyle = '#000000'
+
+  // Job number
+  ctx.font = `bold ${Math.round(20 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(44 * scale))
+
+  // Customer name
+  ctx.font = `bold ${Math.round(11 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 26), PAD, Math.round(60 * scale))
+
+  let nextY = 60
+
+  // Phone
+  if (data.customerPhone) {
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
+    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 13) * scale))
+    nextY += 13
+  }
+
+  // Watch title
+  ctx.font = `${Math.round(10 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.watchTitle, 28), PAD, Math.round((nextY + 13) * scale))
+  nextY += 13
+
+  // Services (job title)
+  if (data.services) {
+    ctx.fillText(truncate(data.services, 28), PAD, Math.round((nextY + 12) * scale))
+    nextY += 12
+  }
+
+  // Date in
+  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 12) * scale))
+  nextY += 12
+
+  // Deposit + balance on one line (workshop only)
+  if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
+    ctx.font = `${Math.round(9 * scale)}px sans-serif`
+    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 11) * scale))
+  }
+
+  // Customer copy — scan prompt at bottom
+  if (data.isCustomerCopy) {
+    ctx.font = `${Math.round(9 * scale)}px sans-serif`
+    ctx.fillStyle = '#444444'
+    ctx.fillText('Scan QR for live repair updates', PAD, H - 6)
   }
 
   return canvas
@@ -297,7 +328,9 @@ export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvas
 export interface ShoeLabelData {
   jobNumber: string
   customerName: string
+  customerPhone?: string
   shoeDescription: string
+  services?: string
   dateIn: string
   qrDataUrl: string
   isCustomerCopy: boolean
@@ -317,46 +350,64 @@ export async function renderShoeLabel(data: ShoeLabelData): Promise<HTMLCanvasEl
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, W, H)
   ctx.strokeStyle = '#000000'
-  ctx.lineWidth = 2
-  ctx.strokeRect(1, 1, W - 2, H - 2)
+  ctx.lineWidth = 1
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1)
 
-  const headerH = Math.round(28 * scale)
+  const headerH = Math.round(24 * scale)
   ctx.fillStyle = '#000000'
   ctx.fillRect(0, 0, W, headerH)
   ctx.fillStyle = '#ffffff'
-  ctx.font = `bold ${Math.round(13 * scale)}px sans-serif`
-  ctx.fillText('MAINSPRING', PAD, Math.round(18 * scale))
+  ctx.font = `bold ${Math.round(12 * scale)}px sans-serif`
+  ctx.fillText('MAINSPRING', PAD, Math.round(16 * scale))
   const copyLabel = data.isCustomerCopy ? 'CUSTOMER COPY' : 'WORKSHOP COPY'
-  ctx.font = `${Math.round(11 * scale)}px sans-serif`
+  ctx.font = `${Math.round(10 * scale)}px sans-serif`
   const copyW = ctx.measureText(copyLabel).width
-  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(18 * scale))
+  ctx.fillText(copyLabel, W - PAD - copyW, Math.round(16 * scale))
+
+  const qrSize = Math.round(Math.min(180 * scale, H - headerH - 6))
+  const qrX = W - PAD - qrSize
+  const qrY = headerH + 3
+  if (data.qrDataUrl) {
+    await drawImage(ctx, data.qrDataUrl, qrX, qrY, qrSize, qrSize)
+  }
 
   ctx.fillStyle = '#000000'
-  ctx.font = `bold ${Math.round(22 * scale)}px monospace`
-  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(56 * scale))
 
-  ctx.font = `bold ${Math.round(12 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.customerName, 30), PAD, Math.round(78 * scale))
-  ctx.font = `${Math.round(11 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.shoeDescription, 32), PAD, Math.round(94 * scale))
-  ctx.fillText(data.dateIn, PAD, Math.round(110 * scale))
+  ctx.font = `bold ${Math.round(20 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(44 * scale))
+
+  ctx.font = `bold ${Math.round(11 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 26), PAD, Math.round(60 * scale))
+
+  let nextY = 60
+
+  if (data.customerPhone) {
+    ctx.font = `${Math.round(10 * scale)}px sans-serif`
+    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 13) * scale))
+    nextY += 13
+  }
+
+  ctx.font = `${Math.round(10 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.shoeDescription, 28), PAD, Math.round((nextY + 13) * scale))
+  nextY += 13
+
+  if (data.services) {
+    ctx.fillText(truncate(data.services, 28), PAD, Math.round((nextY + 12) * scale))
+    nextY += 12
+  }
+
+  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 12) * scale))
+  nextY += 12
 
   if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = `${Math.round(10 * scale)}px sans-serif`
-    ctx.fillText(`Deposit: ${data.depositLabel}`, PAD, Math.round(126 * scale))
-    ctx.fillText(`Balance: ${data.balanceLabel}`, PAD, Math.round(140 * scale))
+    ctx.font = `${Math.round(9 * scale)}px sans-serif`
+    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 11) * scale))
   }
 
   if (data.isCustomerCopy) {
-    ctx.font = `${Math.round(10 * scale)}px sans-serif`
-    ctx.fillStyle = '#555555'
-    ctx.fillText('Scan QR for live repair updates', PAD, H - 12)
-    ctx.fillStyle = '#000000'
-  }
-
-  if (data.qrDataUrl) {
-    const qrSize = Math.round(100 * scale)
-    await drawImage(ctx, data.qrDataUrl, W - PAD - qrSize, headerH + 4, qrSize, qrSize)
+    ctx.font = `${Math.round(9 * scale)}px sans-serif`
+    ctx.fillStyle = '#444444'
+    ctx.fillText('Scan QR for live repair updates', PAD, H - 6)
   }
 
   return canvas
