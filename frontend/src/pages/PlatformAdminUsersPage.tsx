@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { forcePlatformTenantLogout, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -199,6 +199,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: () => setAdminActionError('Could not force logout users. Try again.'),
   })
+  const deleteAccount = useMutation({
+    mutationFn: (tenantId: string) => deletePlatformTenant(tenantId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-reports'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+      setAdminActionError('')
+    },
+    onError: () => setAdminActionError('Could not delete account. Check backend logs.'),
+  })
   const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string } | null>(null)
   const [planModalValue, setPlanModalValue] = useState('')
   const [planModalReason, setPlanModalReason] = useState('')
@@ -235,6 +245,15 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     if (!requireSlugConfirmation(name, slug, 'force logout users for')) return
     const reason = window.prompt(`Force logout all users in ${name}? Optional reason:`, '') ?? ''
     forceLogout.mutate({ tenantId, reason: reason.trim() || undefined })
+  }
+  function handleDeleteAccount(tenantId: string, name: string, slug: string) {
+    if (!requireSlugConfirmation(name, slug, 'permanently delete')) return
+    const confirm2 = window.prompt(`This will DELETE ALL DATA for ${name}. Type DELETE to confirm:`, '') ?? ''
+    if (confirm2.trim() !== 'DELETE') {
+      window.alert('Cancelled — you must type DELETE exactly.')
+      return
+    }
+    deleteAccount.mutate(tenantId)
   }
 
   const filtered = (tenants ?? []).filter(t =>
@@ -301,6 +320,14 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       >
                         Force Logout
                       </button>
+                      <button
+                        onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
+                        disabled={deleteAccount.isPending}
+                        className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: '#C96A5A' }}
+                      >
+                        Delete Account
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -360,6 +387,14 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                         >
                           Change Plan
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
+                          disabled={deleteAccount.isPending}
+                          className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: '#C96A5A' }}
+                        >
+                          Delete Account
                         </button>
                       </td>
                     </tr>

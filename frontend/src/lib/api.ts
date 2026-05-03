@@ -1257,6 +1257,8 @@ export const setPlatformTenantStatus = (tenantId: string, is_active: boolean, re
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/status`, { is_active, reason })
 export const forcePlatformTenantLogout = (tenantId: string, reason?: string) =>
   api.post<{ ok: boolean; tenant_id: string; auth_revoked_at: string }>(`/platform-admin/tenants/${tenantId}/force-logout`, { reason })
+export const deletePlatformTenant = (tenantId: string) =>
+  api.delete(`/platform-admin/tenants/${tenantId}`)
 export const setPlatformTenantPlan = (tenantId: string, plan_code: string, reason?: string) =>
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/plan`, { plan_code, reason })
 

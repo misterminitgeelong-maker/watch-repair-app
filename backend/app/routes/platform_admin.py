@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlmodel import Session, func, select
 
 from ..database import get_session
@@ -244,6 +245,81 @@ def force_tenant_logout(
     )
     session.commit()
     return {"ok": True, "tenant_id": str(tenant_id), "auth_revoked_at": tenant.auth_revoked_at}
+
+
+@router.delete("/tenants/{tenant_id}", status_code=204)
+def delete_platform_tenant(
+    tenant_id: UUID,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+
+    tid = str(tenant_id)
+    try:
+        # Null out optional cross-tenant references on shared tables
+        session.execute(text("UPDATE intakejob SET claimed_by_tenant_id = NULL WHERE claimed_by_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("UPDATE intakejob SET resulting_job_id = NULL WHERE resulting_job_id IN (SELECT id FROM autokeyjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("UPDATE parentaccounteventlog SET tenant_id = NULL WHERE tenant_id = :tid"), {"tid": tid})
+
+        # Delete tables that have no tenant_id but FK into tenant-owned tables
+        session.execute(text("DELETE FROM importlogdetail WHERE import_log_id IN (SELECT id FROM importlog WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM shoerepairjobshoe WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM shoerepairjobitem WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM shoejobstatushistory WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
+
+        # Delete tenant-owned tables in reverse FK dependency order
+        for tbl in [
+            "pointsledger",              # → customerloyalty, invoice
+            "autokeyquotelineitem",      # → autokeyquote
+            "stocktakeline",             # → stocktakesession, stockitem
+            "stockadjustment",           # → stockitem, stocktakesession
+            "customeraccountinvoiceline",# → customeraccountinvoice
+            "payment",                   # → invoice
+            "quotelineitem",             # → quote
+            "approval",                  # → quote
+            "autokeyinvoice",            # → autokeyjob, autokeyquote
+            "autokeyquote",              # → autokeyjob
+            "invoice",                   # → repairjob, quote
+            "invoicenumbercounter",
+            "quote",                     # → repairjob
+            "jobstatushistory",          # → repairjob
+            "worklog",                   # → repairjob
+            "attachment",                # → repairjob, watch, shoerepairjob, autokeyjob
+            "repairqueuedaystate",
+            "repairjobnumbercounter",
+            "smslog",
+            "autokeyjob",
+            "repairjob",                 # → watch, customeraccount
+            "shoerepairjob",             # → shoe
+            "shoe",
+            "watch",                     # → customer
+            "customerloyalty",           # → customer
+            "customeraccountinvoice",    # → customeraccount
+            "customeraccountmembership",
+            "customeraccount",
+            "stocktakesession",
+            "stockitem",
+            "customerorder",
+            "importlog",
+            "customservice",
+            "tenanteventlog",
+            "parentaccountmembership",
+            "customer",
+            "user",
+        ]:
+            session.execute(text(f"DELETE FROM {tbl} WHERE tenant_id = :tid"), {"tid": tid})  # noqa: S608
+
+        # MobileSuburbRoute uses target_tenant_id instead of tenant_id
+        session.execute(text("DELETE FROM mobilesuburbroute WHERE target_tenant_id = :tid"), {"tid": tid})
+
+        session.execute(text("DELETE FROM tenant WHERE id = :tid"), {"tid": tid})
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed — {exc}")
 
 
 @router.get("/activity", response_model=list[TenantEventLogRead])
