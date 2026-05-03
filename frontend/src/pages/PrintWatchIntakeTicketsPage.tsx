@@ -21,6 +21,8 @@ export default function PrintWatchIntakeTicketsPage() {
   const [customerQr, setCustomerQr] = useState('')
   const { status: btStatus, errorMessage: btError, isSupported: btSupported, labelDots, connect: btConnect, autoConnect: btAutoConnect, disconnect: btDisconnect, print: btPrint } = useNiimbotPrinter()
   const [autoTriedBt, setAutoTriedBt] = useState(false)
+  const [labelCanvases, setLabelCanvases] = useState<HTMLCanvasElement[] | null>(null)
+  const [labelPreviews, setLabelPreviews] = useState<string[]>([])
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job', id],
@@ -53,11 +55,29 @@ export default function PrintWatchIntakeTicketsPage() {
     QRCode.toDataURL(customerUrl, { width: 180, margin: 1 }).then(setCustomerQr)
   }, [job])
 
+  // Pre-render label canvases whenever data or labelDots changes — also creates previews
+  useEffect(() => {
+    if (!job || !customer || !repairQr || !customerQr) return
+    const watchTitle = [watch?.brand, watch?.model].filter(Boolean).join(' ') || 'Watch'
+    const shared = {
+      jobNumber: job.job_number,
+      customerName: customer.full_name || '—',
+      watchTitle,
+      dateIn: formatDate(job.created_at),
+    }
+    Promise.all([
+      renderWatchLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents), balanceLabel: formatCents(Math.max(quoteCents - job.deposit_cents, 0)), labelDots: labelDots ?? undefined }),
+      renderWatchLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
+    ]).then(([workshopCanvas, customerCanvas]) => {
+      setLabelCanvases([workshopCanvas, customerCanvas])
+      setLabelPreviews([workshopCanvas.toDataURL(), customerCanvas.toDataURL()])
+    })
+  }, [job, customer, watch, repairQr, customerQr, quoteCents, labelDots])
+
   useEffect(() => {
     if (!autoPrint || !job || !repairQr || !customerQr || autoTriedBt) return
     setAutoTriedBt(true)
     if (btSupported) {
-      // Try to silently reconnect to a previously paired M2 and print immediately
       btAutoConnect().then(connected => {
         if (connected) printToNiimbot()
       })
@@ -69,20 +89,9 @@ export default function PrintWatchIntakeTicketsPage() {
   }, [autoPrint, job, repairQr, customerQr])
 
   const printToNiimbot = useCallback(async () => {
-    if (!job || !customer || !repairQr || !customerQr) return
-    const watchTitle = [watch?.brand, watch?.model].filter(Boolean).join(' ') || 'Watch'
-    const shared = {
-      jobNumber: job.job_number,
-      customerName: customer.full_name || '—',
-      watchTitle,
-      dateIn: formatDate(job.created_at),
-    }
-    const [workshopCanvas, customerCanvas] = await Promise.all([
-      renderWatchLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents), balanceLabel: formatCents(Math.max(quoteCents - job.deposit_cents, 0)), labelDots: labelDots ?? undefined }),
-      renderWatchLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
-    ])
-    await btPrint([workshopCanvas, customerCanvas])
-  }, [job, customer, watch, repairQr, customerQr, quoteCents, btPrint])
+    if (!labelCanvases) return
+    await btPrint(labelCanvases)
+  }, [labelCanvases, btPrint])
 
   if (isLoading) {
     return (
@@ -112,7 +121,7 @@ export default function PrintWatchIntakeTicketsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={printToNiimbot}
-                  disabled={btStatus === 'printing' || !repairQr || !customerQr}
+                  disabled={btStatus === 'printing' || !labelCanvases}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                   style={{ backgroundColor: '#1d6b3e', color: '#fff' }}
                 >
@@ -161,7 +170,7 @@ export default function PrintWatchIntakeTicketsPage() {
           {btStatus === 'connected' ? (
             <button
               onClick={printToNiimbot}
-              disabled={!repairQr || !customerQr}
+              disabled={!labelCanvases}
               className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold disabled:opacity-50"
               style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
             >
@@ -190,6 +199,22 @@ export default function PrintWatchIntakeTicketsPage() {
 
       <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white${autoPrint && btSupported ? ' pb-28 sm:pb-0' : ''}`}>
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
+
+          {/* Label canvas previews — confirm content before printing */}
+          {labelPreviews.length > 0 && (
+            <div className="print:hidden bg-white rounded-xl shadow-lg p-4">
+              <p className="text-xs font-medium mb-3" style={{ color: 'var(--ms-text-muted)' }}>LABEL PREVIEW</p>
+              <div className="flex gap-4 overflow-x-auto">
+                {labelPreviews.map((src, i) => (
+                  <div key={i} className="shrink-0 text-center">
+                    <img src={src} alt={`Label ${i + 1}`} className="h-24 rounded border" style={{ border: '1px solid var(--ms-border)', imageRendering: 'pixelated' }} />
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{i === 0 ? 'Workshop' : 'Customer'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <section className="bg-white shadow-lg print:shadow-none rounded-xl print:rounded-none p-8 print:p-6 print:break-after-page">
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--ms-text)' }}>Repair Intake Ticket</h1>
             <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)' }}>Internal copy for workshop</p>

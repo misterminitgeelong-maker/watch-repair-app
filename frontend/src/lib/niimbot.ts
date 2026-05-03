@@ -117,8 +117,16 @@ export class NiimbotPrinter {
   private async send(cmd: number, data: number[]): Promise<void> {
     if (!this.writeChar) throw new Error('Not connected to printer')
     const packet = buildPacket(cmd, data)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyChar = this.writeChar as any
     if (this.writeChar.properties.write) {
-      await this.writeChar.writeValue(packet)
+      // Prefer the newer writeValueWithResponse (handles MTU chunking automatically).
+      // Fall back to deprecated writeValue if the newer API isn't available.
+      if (typeof anyChar.writeValueWithResponse === 'function') {
+        await anyChar.writeValueWithResponse(packet)
+      } else {
+        await this.writeChar.writeValue(packet)
+      }
     } else {
       await this.writeChar.writeValueWithoutResponse(packet)
     }
