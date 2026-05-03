@@ -181,14 +181,16 @@ export default function JobsPage() {
         title="Watch Repairs"
         action={
           <div className="flex items-center gap-2">
-            <ViewToggle<BoardView>
-              value={view}
-              onChange={setView}
-              options={[
-                { value: 'board', label: 'Board' },
-                { value: 'list', label: 'List' },
-              ]}
-            />
+            {jobDirectoryView === 'active' && (
+              <ViewToggle<BoardView>
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: 'board', label: 'Board' },
+                  { value: 'list', label: 'List' },
+                ]}
+              />
+            )}
             <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
             <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
           </div>
@@ -399,7 +401,7 @@ export default function JobsPage() {
               <EmptyState message="No jobs found." />
             )}
           </Card>
-        ) : view === 'board' ? (
+        ) : (jobDirectoryView === 'completed' ? 'list' : view) === 'board' ? (
           <KanbanBoard
             jobs={filtered}
             columns={WATCH_KANBAN_COLUMNS}
