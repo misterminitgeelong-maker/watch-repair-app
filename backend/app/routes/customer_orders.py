@@ -17,15 +17,18 @@ router = APIRouter(
 )
 
 
-def _to_read(order: CustomerOrder, session: Session) -> CustomerOrderRead:
-    customer_name: str | None = None
-    if order.customer_id:
-        customer = session.get(Customer, order.customer_id)
-        if customer:
-            customer_name = customer.full_name
+def _to_read(order: CustomerOrder, customer_name: str | None) -> CustomerOrderRead:
     data = order.model_dump()
     data["customer_name"] = customer_name
     return CustomerOrderRead(**data)
+
+
+def _fetch_customer_names(session: Session, orders: list[CustomerOrder]) -> dict[UUID, str]:
+    ids = {o.customer_id for o in orders if o.customer_id}
+    if not ids:
+        return {}
+    rows = session.exec(select(Customer).where(Customer.id.in_(ids))).all()
+    return {c.id: c.full_name for c in rows}
 
 
 @router.get("", response_model=list[CustomerOrderRead])
@@ -39,7 +42,8 @@ def list_customer_orders(
         q = q.where(CustomerOrder.status == status)
     q = q.order_by(CustomerOrder.created_at.desc())
     orders = session.exec(q).all()
-    return [_to_read(o, session) for o in orders]
+    names = _fetch_customer_names(session, orders)
+    return [_to_read(o, names.get(o.customer_id)) for o in orders]
 
 
 @router.post("", response_model=CustomerOrderRead)
@@ -56,7 +60,8 @@ def create_customer_order(
     session.add(order)
     session.commit()
     session.refresh(order)
-    return _to_read(order, session)
+    customer_name = session.get(Customer, order.customer_id).full_name if order.customer_id else None
+    return _to_read(order, customer_name)
 
 
 @router.patch("/{order_id}", response_model=CustomerOrderRead)
@@ -76,7 +81,8 @@ def update_customer_order(
     session.add(order)
     session.commit()
     session.refresh(order)
-    return _to_read(order, session)
+    customer_name = session.get(Customer, order.customer_id).full_name if order.customer_id else None
+    return _to_read(order, customer_name)
 
 
 @router.delete("/{order_id}", status_code=204)
