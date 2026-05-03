@@ -289,7 +289,7 @@ def import_customer_orders(
     if filename.endswith((".xlsx", ".xlsm", ".xls")):
         try:
             import openpyxl
-            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
             if sheet_name and sheet_name in wb.sheetnames:
                 ws = wb[sheet_name]
             else:
