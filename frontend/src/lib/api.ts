@@ -2504,6 +2504,6 @@ export const importCustomerOrders = (file: File, dryRun = true, sheetName?: stri
   return api.post<CustomerOrderImportResult>(
     `/customer-orders/import?${params.toString()}`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
+    { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 },
   )
 }
