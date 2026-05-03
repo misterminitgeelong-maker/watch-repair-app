@@ -177,30 +177,30 @@ export class NiimbotPrinter {
     }
 
     await this.send(CMD.SET_LABEL_TYPE, [0x01])
-    await sleep(30)
+    await sleep(50)
     await this.send(CMD.SET_LABEL_DENSITY, [0x03])
-    await sleep(30)
+    await sleep(50)
     await this.send(CMD.START_PRINT, [0x01])
-    await sleep(200)   // printer needs time to initialise the print job
+    await sleep(400)   // mobile BLE needs more time to initialise the print job
     await this.send(CMD.START_PAGE_PRINT, [0x01])
-    await sleep(30)
+    await sleep(50)
     await this.send(CMD.SET_DIMENSION, [
       (height >> 8) & 0xff, height & 0xff,
       (width >> 8) & 0xff, width & 0xff,
     ])
-    await sleep(30)
+    await sleep(50)
     await this.send(CMD.SET_QUANTITY, [0x00, quantity & 0xff])
-    await sleep(30)
+    await sleep(50)
 
     for (let y = 0; y < rows.length; y++) {
       await this.send(CMD.WRITE_IMAGE_LINE, [(y >> 8) & 0xff, y & 0xff, ...rows[y]])
-      // Small throttle every 8 rows to avoid flooding the BLE buffer
-      if (y % 8 === 7) await sleep(5)
+      // Throttle every 4 rows — mobile GATT queues fill up faster than desktop
+      if (y % 4 === 3) await sleep(20)
     }
 
-    await sleep(100)
+    await sleep(300)   // let all row packets drain before closing the page
     await this.send(CMD.END_PAGE_PRINT, [0x01])
-    await sleep(100)
+    await sleep(200)
     await this.send(CMD.END_PRINT, [0x01])
   }
 }
