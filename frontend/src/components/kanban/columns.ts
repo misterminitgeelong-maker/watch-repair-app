@@ -45,9 +45,16 @@ export const WATCH_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   {
     key: 'collect',
     label: 'Ready to Collect',
-    statuses: ['awaiting_collection', 'collected'],
+    statuses: ['awaiting_collection'],
     color: '#5A4A3B',
     bg: '#EEEBE5',
+  },
+  {
+    key: 'collected',
+    label: 'Collected',
+    statuses: ['collected'],
+    color: '#1A6A3A',
+    bg: '#EBF8EF',
   },
 ] as const
 
