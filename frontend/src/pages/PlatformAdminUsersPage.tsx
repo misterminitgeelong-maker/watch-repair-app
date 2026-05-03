@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { deletePlatformTenant, forcePlatformTenantLogout, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -207,7 +207,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
       void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
       setAdminActionError('')
     },
-    onError: () => setAdminActionError('Could not delete account. Check backend logs.'),
+    onError: (err) => setAdminActionError(`Delete failed: ${getApiErrorMessage(err)}`),
   })
   const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string } | null>(null)
   const [planModalValue, setPlanModalValue] = useState('')
