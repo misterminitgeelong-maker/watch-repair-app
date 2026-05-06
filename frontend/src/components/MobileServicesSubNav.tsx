@@ -5,6 +5,7 @@ const tabs = [
   { to: '/auto-key', label: 'Jobs & dispatch', end: true },
   { to: '/auto-key/team', label: 'Team', end: true },
   { to: '/auto-key/prospects', label: 'Prospects', end: true },
+  { to: '/auto-key/prospects/board', label: 'Board', end: true },
   { to: '/auto-key/toolkit', label: 'Toolkit', end: true },
 ] as const
 
