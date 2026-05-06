@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage, getProspectCollectorStatus, listProspectCategories, listProspectRegions, searchProspects, listProspectLeads, saveProspectLead, type Prospect, type ProspectSearchResponse } from '@/lib/api'
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui'
@@ -120,7 +121,16 @@ export default function ProspectsPage() {
   return (
     <div className="p-6">
       <MobileServicesSubNav className="mb-4" />
-      <PageHeader title="Prospects" />
+      <div className="flex items-center justify-between mb-5">
+        <PageHeader title="Prospects" />
+        <Link
+          to="/auto-key/prospects/board"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium min-h-[44px]"
+          style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+        >
+          View board →
+        </Link>
+      </div>
       <Card className="p-5 mb-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           Search filters
