@@ -962,7 +962,7 @@ export default function JobDetailPage() {
                 <option value="asc">Oldest / A–Z</option>
               </select>
               <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
-              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+              <input ref={cameraRef} type="file" accept="image/*" className="hidden" onChange={handleCameraCapture} />
               <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={uploading}>
                 <Camera size={15} />{uploading ? 'Uploading…' : 'Take Extra Photo'}
               </Button>

@@ -267,7 +267,6 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
               ref={cameraInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={handlePhotoUpload}
             />

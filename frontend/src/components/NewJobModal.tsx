@@ -599,7 +599,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                 </label>
                 <input
                   ref={el => { frontRefs.current[idx] = el }}
-                  type="file" accept="image/*" capture="environment" className="hidden"
+                  type="file" accept="image/*" className="hidden"
                   onChange={e => handlePhoto(idx, 'front', e)}
                 />
                 {photos[idx]?.frontPreview ? (
@@ -613,7 +613,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
                     <Camera size={28} />
-                    <span className="text-xs font-medium">Tap to capture</span>
+                    <span className="text-xs font-medium">Add photo</span>
                   </button>
                 )}
               </div>
@@ -625,7 +625,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                 </label>
                 <input
                   ref={el => { backRefs.current[idx] = el }}
-                  type="file" accept="image/*" capture="environment" className="hidden"
+                  type="file" accept="image/*" className="hidden"
                   onChange={e => handlePhoto(idx, 'back', e)}
                 />
                 {photos[idx]?.backPreview ? (
@@ -639,7 +639,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
                     <Camera size={28} />
-                    <span className="text-xs font-medium">Tap to capture</span>
+                    <span className="text-xs font-medium">Add photo</span>
                   </button>
                 )}
               </div>

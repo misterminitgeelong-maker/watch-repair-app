@@ -985,7 +985,6 @@ export default function AutoKeyJobDetailPage() {
                   ref={cameraInputRef}
                   type='file'
                   accept='image/*'
-                  capture='environment'
                   onChange={handleCameraCapture}
                   className='hidden'
                 />

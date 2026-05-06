@@ -682,7 +682,7 @@ export default function ShoeJobDetailPage() {
             </button>
           </div>
         </div>
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+        <input ref={cameraInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
         <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
         {photos.length === 0 ? (
           <div
