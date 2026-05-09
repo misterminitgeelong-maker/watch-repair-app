@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send } from 'lucide-react'
 import {
   getAutoKeyJob,
+  getAutoKeyMessages,
+  sendAutoKeyMessage,
   getApiErrorMessage,
   getUploadErrorMessage,
   getCustomer,
@@ -36,6 +38,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import JobMessageThread from '@/components/JobMessageThread'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
@@ -264,7 +267,7 @@ export default function AutoKeyJobDetailPage() {
   const [editTax, setEditTax] = useState('')
   const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
-  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos'>('info')
+  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages'>('info')
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
 
@@ -640,6 +643,7 @@ export default function AutoKeyJobDetailPage() {
             { key: 'vehicle', label: 'Vehicle & Key' },
             { key: 'financial', label: 'Financial' },
             { key: 'photos', label: 'Photos' },
+            { key: 'messages', label: 'Messages' },
           ] as const).map(tab => (
             <button
               key={tab.key}
@@ -1247,6 +1251,18 @@ export default function AutoKeyJobDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Messages tab — full width below the grid */}
+      {detailTab === 'messages' && (
+        <div className="mt-4">
+          <JobMessageThread
+            jobId={id!}
+            fetchMessages={getAutoKeyMessages}
+            postMessage={sendAutoKeyMessage}
+          />
+        </div>
+      )}
+
       {invoiceToEdit && (
         <Modal title={`Edit invoice ${invoiceToEdit.invoice_number}`} onClose={() => setInvoiceToEdit(null)}>
           <div className="space-y-4">

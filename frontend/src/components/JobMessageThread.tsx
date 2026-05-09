@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import { getJobMessages, sendJobMessage, type JobThreadMessage } from '@/lib/api'
+
+type FetchFn = (jobId: string) => Promise<{ data: JobThreadMessage[] }>
+type SendFn = (jobId: string, body: string) => Promise<unknown>
 import { Spinner } from '@/components/ui'
 
 function formatTime(s: string) {
@@ -24,21 +27,23 @@ function formatTime(s: string) {
 
 interface Props {
   jobId: string
+  fetchMessages?: FetchFn
+  postMessage?: SendFn
 }
 
-export default function JobMessageThread({ jobId }: Props) {
+export default function JobMessageThread({ jobId, fetchMessages = getJobMessages, postMessage = sendJobMessage }: Props) {
   const qc = useQueryClient()
   const bottomRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ['job-messages', jobId],
-    queryFn: () => getJobMessages(jobId).then(r => r.data),
+    queryFn: () => fetchMessages(jobId).then(r => r.data),
     refetchInterval: 15_000,
   })
 
   const sendMut = useMutation({
-    mutationFn: (body: string) => sendJobMessage(jobId, body),
+    mutationFn: (body: string) => postMessage(jobId, body),
     onSuccess: () => {
       setText('')
       void qc.invalidateQueries({ queryKey: ['job-messages', jobId] })

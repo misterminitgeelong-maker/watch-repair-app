@@ -1877,6 +1877,10 @@ export const getJobMessages = (jobId: string) =>
   api.get<JobThreadMessage[]>(`/repair-jobs/${jobId}/messages`)
 export const sendJobMessage = (jobId: string, body: string) =>
   api.post<JobThreadMessage>(`/repair-jobs/${jobId}/messages`, { body })
+export const getAutoKeyMessages = (jobId: string) =>
+  api.get<JobThreadMessage[]>(`/auto-key-jobs/${jobId}/messages`)
+export const sendAutoKeyMessage = (jobId: string, body: string) =>
+  api.post<JobThreadMessage>(`/auto-key-jobs/${jobId}/messages`, { body })
 
 // ── Inbox ─────────────────────────────────────────────────────────────────────
 export interface InboxEvent {

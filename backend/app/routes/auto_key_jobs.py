@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 from sqlmodel import Session, delete, func, select
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
@@ -28,8 +29,13 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    JobMessage,
+    JobMessageRead,
+    JobThreadMessage,
+    SmsLog,
     Tenant,
 )
+from .. import sms
 from ..sms import (
     notify_auto_key_arrival_window,
     notify_auto_key_booking_request,
@@ -926,3 +932,78 @@ def get_quote_signature_admin(
     if not signed_url:
         raise HTTPException(status_code=404, detail="Signature not available")
     return RedirectResponse(url=signed_url, status_code=302)
+
+
+# ── Two-way job message thread ────────────────────────────────────────────────
+
+class _SendMessagePayload(BaseModel):
+    body: str
+
+
+@router.get("/{job_id}/messages", response_model=list[JobThreadMessage])
+def get_auto_key_job_messages(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Return the full message thread: manual outbound/inbound plus automated system SMS."""
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    manual = session.exec(
+        select(JobMessage)
+        .where(JobMessage.auto_key_job_id == job_id)
+        .where(JobMessage.tenant_id == auth.tenant_id)
+    ).all()
+
+    automated = session.exec(
+        select(SmsLog)
+        .where(SmsLog.auto_key_job_id == job_id)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+    ).all()
+
+    thread: list[JobThreadMessage] = []
+    for m in manual:
+        thread.append(JobThreadMessage(
+            id=m.id, direction=m.direction, body=m.body,
+            from_phone=m.from_phone, to_phone=m.to_phone,
+            created_at=m.created_at,
+        ))
+    for s in automated:
+        thread.append(JobThreadMessage(
+            id=s.id, direction="system", body=s.body,
+            to_phone=s.to_phone, event=s.event, status=s.status,
+            created_at=s.created_at,
+        ))
+
+    thread.sort(key=lambda m: m.created_at)
+    return thread
+
+
+@router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)
+def send_auto_key_job_message(
+    job_id: UUID,
+    payload: _SendMessagePayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Send a custom SMS to the customer and save it to the job's message thread."""
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    customer = session.get(Customer, job.customer_id)
+    if not customer or not customer.phone:
+        raise HTTPException(status_code=422, detail="No phone number on file for this customer.")
+
+    msg = sms.send_custom_job_message(
+        session,
+        tenant_id=auth.tenant_id,
+        auto_key_job_id=job_id,
+        to_phone=customer.phone,
+        body=payload.body.strip(),
+    )
+    session.commit()
+    session.refresh(msg)
+    return msg
