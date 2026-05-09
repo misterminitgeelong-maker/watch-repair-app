@@ -23,10 +23,9 @@ function eventLabel(event: string) {
 
 interface Props {
   jobId: string
-  customerPhone?: string | null
 }
 
-export default function JobMessageThread({ jobId, customerPhone }: Props) {
+export default function JobMessageThread({ jobId }: Props) {
   const qc = useQueryClient()
   const bottomRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
@@ -119,40 +118,34 @@ export default function JobMessageThread({ jobId, customerPhone }: Props) {
       </div>
 
       {/* Compose area */}
-      {customerPhone ? (
-        <div
-          className="mt-3 flex gap-2 items-end rounded-xl p-2"
-          style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}
+      <div
+        className="mt-3 flex gap-2 items-end rounded-xl p-2"
+        style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}
+      >
+        <textarea
+          className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 px-1"
+          style={{ color: 'var(--ms-text)', minHeight: 40, maxHeight: 120 }}
+          placeholder="Type a message… (Enter to send)"
+          rows={1}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={sendMut.isPending}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!text.trim() || sendMut.isPending}
+          className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity"
+          style={{
+            backgroundColor: 'var(--ms-accent)',
+            color: '#fff',
+            opacity: !text.trim() || sendMut.isPending ? 0.4 : 1,
+          }}
+          aria-label="Send"
         >
-          <textarea
-            className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 px-1"
-            style={{ color: 'var(--ms-text)', minHeight: 40, maxHeight: 120 }}
-            placeholder="Type a message… (Enter to send)"
-            rows={1}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={sendMut.isPending}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() || sendMut.isPending}
-            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity"
-            style={{
-              backgroundColor: 'var(--ms-accent)',
-              color: '#fff',
-              opacity: !text.trim() || sendMut.isPending ? 0.4 : 1,
-            }}
-            aria-label="Send"
-          >
-            <Send size={16} />
-          </button>
-        </div>
-      ) : (
-        <p className="mt-3 text-sm text-center py-3 rounded-lg" style={{ color: 'var(--ms-text-muted)', backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-          No phone number on file — add one to the customer profile to send messages.
-        </p>
-      )}
+          <Send size={16} />
+        </button>
+      </div>
 
       {sendMut.isError && (
         <p className="text-xs mt-1 text-center" style={{ color: '#C96A5A' }}>Failed to send. Please try again.</p>

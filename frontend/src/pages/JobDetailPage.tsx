@@ -1043,7 +1043,7 @@ export default function JobDetailPage() {
               <p className="text-xs self-center" style={{ color: '#C96A5A' }}>Failed to send</p>
             )}
           </div>
-          <JobMessageThread jobId={id!} customerPhone={job?.customer_phone} />
+          <JobMessageThread jobId={id!} />
         </div>
       )}
 
