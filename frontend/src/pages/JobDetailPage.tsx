@@ -7,7 +7,7 @@ import {
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
   listWorkLogs,
   listAttachments, uploadAttachment,
-  getStatusHistory, getSmsLog,
+  getStatusHistory,
   resendJobNotification,
   listCustomerAccounts, getWatch, getCustomer,
   getWatchMovementQuote,
