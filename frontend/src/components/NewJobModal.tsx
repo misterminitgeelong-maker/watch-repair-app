@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, X } from 'lucide-react'
@@ -133,6 +133,18 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const frontRefs = useRef<Array<HTMLInputElement | null>>([])
   const backRefs = useRef<Array<HTMLInputElement | null>>([])
 
+  // Revoke all blob preview URLs on unmount to prevent memory leaks
+  const photosRef = useRef(photos)
+  photosRef.current = photos
+  useEffect(() => {
+    return () => {
+      for (const p of photosRef.current) {
+        if (p.frontPreview) URL.revokeObjectURL(p.frontPreview)
+        if (p.backPreview) URL.revokeObjectURL(p.backPreview)
+      }
+    }
+  }, [])
+
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
@@ -200,17 +212,21 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    setPhotos(prev => prev.map((p, i) => i === watchIdx
-      ? { ...p, [side]: file, [`${side}Preview`]: url }
-      : p
-    ))
+    setPhotos(prev => prev.map((p, i) => {
+      if (i !== watchIdx) return p
+      const oldUrl = p[`${side}Preview` as 'frontPreview' | 'backPreview']
+      if (oldUrl) URL.revokeObjectURL(oldUrl)
+      return { ...p, [side]: file, [`${side}Preview`]: url }
+    }))
   }
 
   function removePhoto(watchIdx: number, side: 'front' | 'back') {
-    setPhotos(prev => prev.map((p, i) => i === watchIdx
-      ? { ...p, [side]: null, [`${side}Preview`]: null }
-      : p
-    ))
+    setPhotos(prev => prev.map((p, i) => {
+      if (i !== watchIdx) return p
+      const oldUrl = p[`${side}Preview` as 'frontPreview' | 'backPreview']
+      if (oldUrl) URL.revokeObjectURL(oldUrl)
+      return { ...p, [side]: null, [`${side}Preview`]: null }
+    }))
     const ref = side === 'front' ? frontRefs.current[watchIdx] : backRefs.current[watchIdx]
     if (ref) ref.value = ''
   }
@@ -301,8 +317,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       setCreatedJobId(firstJobId)
     } catch (err: unknown) {
       setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   function finishCreate(jobId: string, shouldPrint: boolean) {
