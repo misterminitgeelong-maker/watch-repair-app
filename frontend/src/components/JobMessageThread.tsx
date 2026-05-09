@@ -10,15 +10,16 @@ function formatTime(s: string) {
   const diff = now.getTime() - d.getTime()
   if (diff < 60_000) return 'Just now'
   if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`
+  if (diff < 86400_000) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-  return d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function eventLabel(event: string) {
-  return event.replace(/_/g, ' ')
+  if (d.toDateString() === yesterday.toDateString())
+    return `Yesterday ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  return (
+    d.toLocaleDateString([], { day: 'numeric', month: 'short' }) +
+    ' ' +
+    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  )
 }
 
 interface Props {
@@ -44,7 +45,6 @@ export default function JobMessageThread({ jobId }: Props) {
     },
   })
 
-  // Scroll to bottom whenever messages load or a new one arrives
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -65,91 +65,131 @@ export default function JobMessageThread({ jobId }: Props) {
   if (isLoading) return <Spinner />
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 280px)', minHeight: 320 }}>
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        height: 'calc(100vh - 280px)',
+        minHeight: 360,
+        backgroundColor: '#f0f0f0',
+      }}
+    >
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto space-y-2 pb-2 pr-1">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {(!messages || messages.length === 0) && (
-          <p className="text-sm text-center py-8" style={{ color: 'var(--ms-text-muted)' }}>
-            No messages yet. Send one below.
+          <p className="text-sm text-center mt-8" style={{ color: '#999' }}>
+            No messages yet
           </p>
         )}
+
         {messages?.map((msg: JobThreadMessage) => {
+          /* ── System / automated SMS ── */
           if (msg.direction === 'system') {
             return (
-              <div key={msg.id} className="flex justify-center">
-                <div className="max-w-xs text-center">
+              <div key={msg.id} className="flex justify-center py-2">
+                <div className="text-center max-w-xs">
                   <span
-                    className="inline-block text-xs px-3 py-1.5 rounded-full"
-                    style={{ backgroundColor: 'var(--ms-surface-raised, #f3f3f3)', color: 'var(--ms-text-muted)', border: '1px solid var(--ms-border)' }}
+                    className="inline-block text-xs px-3 py-1 rounded-full"
+                    style={{ backgroundColor: '#d0d0d0', color: '#555' }}
                   >
-                    {msg.body.length > 80 ? msg.body.slice(0, 80) + '…' : msg.body}
-                  </span>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                    Auto · {eventLabel(msg.event ?? '')} · {formatTime(msg.created_at)}
+                    {msg.event?.replace(/_/g, ' ')}
                     {msg.status === 'dry_run' && ' · dry run'}
+                  </span>
+                  <p className="text-xs mt-0.5" style={{ color: '#aaa' }}>
+                    {msg.body.length > 60 ? msg.body.slice(0, 60) + '…' : msg.body}
                   </p>
+                  <p className="text-xs" style={{ color: '#bbb' }}>{formatTime(msg.created_at)}</p>
                 </div>
               </div>
             )
           }
 
-          const isOutbound = msg.direction === 'outbound'
-          return (
-            <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-              <div className="max-w-[75%]">
+          /* ── Outbound (shop → customer) ── */
+          if (msg.direction === 'outbound') {
+            return (
+              <div key={msg.id} className="flex flex-col items-end">
                 <div
-                  className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
-                  style={
-                    isOutbound
-                      ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderBottomRightRadius: 4 }
-                      : { backgroundColor: 'var(--ms-surface-raised, #ececec)', color: 'var(--ms-text)', border: '1px solid var(--ms-border)', borderBottomLeftRadius: 4 }
-                  }
+                  className="max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: '#1E88E5',
+                    color: '#fff',
+                    borderRadius: '18px 18px 4px 18px',
+                    wordBreak: 'break-word',
+                  }}
                 >
                   {msg.body}
                 </div>
-                <p className={`text-xs mt-0.5 ${isOutbound ? 'text-right' : 'text-left'}`} style={{ color: 'var(--ms-text-muted)' }}>
-                  {isOutbound ? 'You' : (msg.from_phone ?? 'Customer')} · {formatTime(msg.created_at)}
+                <p className="text-xs mt-0.5 mr-1" style={{ color: '#999' }}>
+                  {formatTime(msg.created_at)}
                 </p>
               </div>
+            )
+          }
+
+          /* ── Inbound (customer → shop) ── */
+          return (
+            <div key={msg.id} className="flex flex-col items-start">
+              <div
+                className="max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
+                style={{
+                  backgroundColor: '#fff',
+                  color: '#111',
+                  borderRadius: '18px 18px 18px 4px',
+                  wordBreak: 'break-word',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                }}
+              >
+                {msg.body}
+              </div>
+              <p className="text-xs mt-0.5 ml-1" style={{ color: '#999' }}>
+                {msg.from_phone ?? 'Customer'} · {formatTime(msg.created_at)}
+              </p>
             </div>
           )
         })}
+
         <div ref={bottomRef} />
       </div>
 
-      {/* Compose area */}
+      {/* Error */}
+      {sendMut.isError && (
+        <p className="text-xs text-center py-1" style={{ color: '#E53935', backgroundColor: '#fff' }}>
+          Failed to send — please try again
+        </p>
+      )}
+
+      {/* Compose bar */}
       <div
-        className="mt-3 flex gap-2 items-end rounded-xl p-2"
-        style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}
+        className="flex items-end gap-2 px-3 py-2"
+        style={{ backgroundColor: '#f0f0f0', borderTop: '1px solid #ddd' }}
       >
-        <textarea
-          className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 px-1"
-          style={{ color: 'var(--ms-text)', minHeight: 40, maxHeight: 120 }}
-          placeholder="Type a message… (Enter to send)"
-          rows={1}
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={sendMut.isPending}
-        />
+        <div
+          className="flex-1 flex items-end rounded-3xl px-4 py-2"
+          style={{ backgroundColor: '#fff', border: '1px solid #ddd', minHeight: 44 }}
+        >
+          <textarea
+            className="flex-1 resize-none bg-transparent text-sm outline-none"
+            style={{ color: '#111', minHeight: 24, maxHeight: 100, lineHeight: '1.4' }}
+            placeholder="Text message"
+            rows={1}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={sendMut.isPending}
+          />
+        </div>
         <button
           onClick={handleSend}
           disabled={!text.trim() || sendMut.isPending}
-          className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity"
+          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
           style={{
-            backgroundColor: 'var(--ms-accent)',
+            backgroundColor: text.trim() && !sendMut.isPending ? '#1E88E5' : '#ccc',
             color: '#fff',
-            opacity: !text.trim() || sendMut.isPending ? 0.4 : 1,
           }}
           aria-label="Send"
         >
-          <Send size={16} />
+          <Send size={18} />
         </button>
       </div>
-
-      {sendMut.isError && (
-        <p className="text-xs mt-1 text-center" style={{ color: '#C96A5A' }}>Failed to send. Please try again.</p>
-      )}
     </div>
   )
 }
