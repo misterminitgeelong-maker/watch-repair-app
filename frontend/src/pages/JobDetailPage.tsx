@@ -466,8 +466,6 @@ export default function JobDetailPage() {
   })
   const attachments = useMemo(() => flattenInfinitePages(attachmentsQuery.data), [attachmentsQuery.data])
   const { data: history } = useQuery({ queryKey: ['history', id], queryFn: () => getStatusHistory(id!).then(r => r.data), enabled: tab === 'history' })
-  const { data: smsLog } = useQuery({ queryKey: ['sms-log', id], queryFn: () => getSmsLog(id!).then(r => r.data), enabled: tab === 'messages' })
-
   const nextStatus = job ? STATUS_FLOW[job.status] : null
 
   async function uploadFile(file: File, label?: string) {
