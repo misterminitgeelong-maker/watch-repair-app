@@ -14,6 +14,7 @@ INBOX_EVENT_TYPES = [
     "quote_declined",
     "mobile_lead_quote_needed",
     "invoice_paid",
+    "customer_sms_reply",
 ]
 
 

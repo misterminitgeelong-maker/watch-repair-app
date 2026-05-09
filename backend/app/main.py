@@ -51,6 +51,7 @@ from .routes.loyalty import router as loyalty_router
 from .routes.intake_dispatch import router as intake_dispatch_router
 from .routes.prospect_leads import router as prospect_leads_router
 from .routes.customer_orders import router as customer_orders_router
+from .routes.sms_webhook import router as sms_webhook_router
 
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
@@ -332,6 +333,7 @@ app.include_router(custom_services_router)
 app.include_router(toolkit_router)
 app.include_router(loyalty_router)
 app.include_router(customer_orders_router)
+app.include_router(sms_webhook_router)
 
 # ---------- Serve the built React frontend ----------
 _static = Path(settings.static_dir) if settings.static_dir else None

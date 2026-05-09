@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound, DollarSign } from 'lucide-react'
+import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound, DollarSign, MessageSquare } from 'lucide-react'
 import { getInbox, deleteInboxEvent } from '@/lib/api'
 import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
 
@@ -22,6 +22,7 @@ function eventStyle(eventType: string): { iconBg: string; iconColor: string } {
     case 'quote_approved': return { iconBg: 'rgba(31,109,76,0.12)', iconColor: '#1F6D4C' }
     case 'quote_declined': return { iconBg: 'rgba(139,58,58,0.12)', iconColor: '#8B3A3A' }
     case 'invoice_paid': return { iconBg: 'rgba(31,76,109,0.12)', iconColor: '#1F4C6D' }
+    case 'customer_sms_reply': return { iconBg: 'rgba(79,130,201,0.12)', iconColor: '#4F82C9' }
     default: return { iconBg: 'rgba(180,120,40,0.15)', iconColor: '#B47828' }
   }
 }
@@ -30,6 +31,7 @@ function EventIcon({ eventType }: { eventType: string }) {
   if (eventType === 'quote_approved') return <CheckCircle size={20} />
   if (eventType === 'quote_declined') return <XCircle size={20} />
   if (eventType === 'invoice_paid') return <DollarSign size={20} />
+  if (eventType === 'customer_sms_reply') return <MessageSquare size={20} />
   return <KeyRound size={20} />
 }
 
@@ -64,7 +66,7 @@ export default function InboxPage() {
     <div>
       <PageHeader title="Inbox" />
       {alerts.length === 0 && page === 0 ? (
-        <EmptyState message="No alerts yet. Quote approvals, declines, invoice payments, and new website mobile key leads will show up here." />
+        <EmptyState message="No alerts yet. Quote approvals, declines, invoice payments, new website mobile key leads, and customer SMS replies will show up here." />
       ) : (
         <div className="space-y-3">
           {alerts.map(ev => {
