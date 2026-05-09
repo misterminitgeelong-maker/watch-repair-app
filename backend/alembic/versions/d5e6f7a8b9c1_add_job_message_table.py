@@ -1,15 +1,15 @@
 """add job_message table for two-way per-job SMS thread
 
-Revision ID: a2b3c4d5e6f7
-Revises: z1a2b3c4d5e6
+Revision ID: d5e6f7a8b9c1
+Revises: 20260503_customer_orders
 Create Date: 2026-05-09
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "a2b3c4d5e6f7"
-down_revision = "z1a2b3c4d5e6"
+revision = "d5e6f7a8b9c1"
+down_revision = "20260503_customer_orders"
 branch_labels = None
 depends_on = None
 
