@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from .config import settings
 from .datetime_utils import format_in_timezone
-from .models import SmsLog, Tenant
+from .models import JobMessage, SmsLog, Tenant
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,37 @@ def _persist(
     )
     session.add(log)
     # Caller is responsible for committing the session.
+
+
+# ---------------------------------------------------------------------------
+# Manual two-way messaging
+# ---------------------------------------------------------------------------
+
+def send_custom_job_message(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID | None = None,
+    shoe_repair_job_id: UUID | None = None,
+    auto_key_job_id: UUID | None = None,
+    to_phone: str,
+    body: str,
+) -> JobMessage:
+    """Send a free-text SMS to a customer and persist it as an outbound JobMessage."""
+    sid = _send_sms(to_phone, body)
+    msg = JobMessage(
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        shoe_repair_job_id=shoe_repair_job_id,
+        auto_key_job_id=auto_key_job_id,
+        direction="outbound",
+        body=body,
+        from_phone=settings.twilio_from_number or None,
+        to_phone=to_phone,
+        twilio_sid=sid,
+    )
+    session.add(msg)
+    return msg
 
 
 # ---------------------------------------------------------------------------

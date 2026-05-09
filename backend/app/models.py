@@ -523,6 +523,42 @@ class SmsLogRead(SQLModel):
     created_at: datetime
 
 
+class JobMessage(SQLModel, table=True):
+    """Manual two-way SMS messages between shop and customer, linked to a job."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
+    auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
+    direction: str  # "outbound" | "inbound"
+    body: str
+    from_phone: Optional[str] = None
+    to_phone: Optional[str] = None
+    twilio_sid: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class JobMessageRead(SQLModel):
+    id: UUID
+    direction: str
+    body: str
+    from_phone: Optional[str] = None
+    to_phone: Optional[str] = None
+    created_at: datetime
+
+
+class JobThreadMessage(SQLModel):
+    """Unified view of a job's message thread: manual outbound, customer inbound, and automated system SMS."""
+    id: UUID
+    direction: str  # "outbound" | "inbound" | "system"
+    body: str
+    from_phone: Optional[str] = None
+    to_phone: Optional[str] = None
+    event: Optional[str] = None   # set for system messages
+    status: Optional[str] = None  # set for system messages
+    created_at: datetime
+
+
 class ImportLog(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")

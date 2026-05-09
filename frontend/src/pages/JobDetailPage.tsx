@@ -18,6 +18,7 @@ import {
   type JobStatus, type RepairJob, type CustomerAccount, type TenantUser,
 } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
+import JobMessageThread from '@/components/JobMessageThread'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
@@ -1020,10 +1021,10 @@ export default function JobDetailPage() {
         </div>
       )}
 
-      {/* ── Tab: Messages (SMS log) ───────────────────────────────────────────── */}
+      {/* ── Tab: Messages ────────────────────────────────────────────────────── */}
       {tab === 'messages' && (
         <div>
-          <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>Texts sent to the customer for this job.</p>
+          {/* Resend automated SMS shortcuts */}
           <div className="mb-4 flex flex-wrap gap-2">
             {(['job_live', 'job_ready', 'quote_sent'] as const).map(evt => (
               <Button
@@ -1032,7 +1033,7 @@ export default function JobDetailPage() {
                 onClick={() => resendMut.mutate(evt)}
                 disabled={resendMut.isPending}
               >
-                {evt === 'job_live' ? 'Resend: Job live SMS' : evt === 'job_ready' ? 'Resend: Job ready' : 'Resend: Quote'}
+                {evt === 'job_live' ? 'Resend: Job live' : evt === 'job_ready' ? 'Resend: Job ready' : 'Resend: Quote'}
               </Button>
             ))}
             {resendMut.isSuccess && resendMut.data && (
@@ -1044,24 +1045,7 @@ export default function JobDetailPage() {
               <p className="text-xs self-center" style={{ color: '#C96A5A' }}>Failed to send</p>
             )}
           </div>
-          {!smsLog ? <Spinner /> : smsLog.length === 0 ? <EmptyState message="No messages sent yet. The customer will receive a text when the job goes live and when a quote is sent." /> : (
-            <div className="space-y-3">
-              {smsLog.map(log => (
-                <Card key={log.id} className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{log.body}</p>
-                      <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
-                        To: {log.to_phone} · {log.event.replace(/_/g, ' ')}
-                        {log.status === 'dry_run' && ' (dry run)'}
-                      </p>
-                    </div>
-                    <span className="text-xs whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(log.created_at)}</span>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+          <JobMessageThread jobId={id!} customerPhone={job?.customer_phone} />
         </div>
       )}
 

@@ -3,7 +3,7 @@ from fastapi.responses import Response
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import SmsLog, TenantEventLog
+from ..models import JobMessage, SmsLog, TenantEventLog
 
 router = APIRouter(prefix="/v1", tags=["sms-webhook"])
 
@@ -18,13 +18,13 @@ def twilio_incoming_sms(
 ):
     """
     Twilio webhook — configure your Twilio number's inbound webhook URL here.
-    Stores the customer's reply in the inbox and returns empty TwiML so
-    Twilio doesn't auto-reply.
+    Saves the reply to the job's message thread and the inbox, then returns
+    empty TwiML so Twilio doesn't auto-reply.
     """
     from_phone = From.strip()
     body_text = Body.strip()
 
-    # Match the sender to a tenant by finding the most recent outbound SMS we sent them
+    # Match the sender to a tenant + job by finding the most recent outbound SMS we sent them
     row = session.exec(
         select(SmsLog)
         .where(SmsLog.to_phone == from_phone)
@@ -43,6 +43,18 @@ def twilio_incoming_sms(
         else:
             entity_type = "customer"
 
+        # Save to the job's message thread so it appears in the chat UI
+        session.add(JobMessage(
+            tenant_id=row.tenant_id,
+            repair_job_id=row.repair_job_id,
+            shoe_repair_job_id=row.shoe_repair_job_id,
+            auto_key_job_id=row.auto_key_job_id,
+            direction="inbound",
+            body=body_text,
+            from_phone=from_phone,
+        ))
+
+        # Also add an inbox alert so the shop sees the reply without opening each job
         session.add(TenantEventLog(
             tenant_id=row.tenant_id,
             entity_type=entity_type,

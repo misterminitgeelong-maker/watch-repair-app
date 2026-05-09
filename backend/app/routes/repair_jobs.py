@@ -18,8 +18,11 @@ from ..models import (
     CustomerAccount,
     CustomerAccountMembership,
     Invoice,
+    JobMessage,
+    JobMessageRead,
     JobStatusHistory,
     JobStatusHistoryRead,
+    JobThreadMessage,
     Payment,
     RepairJob,
     RepairJobCreate,
@@ -839,3 +842,92 @@ def delete_repair_job(
     session.delete(job)
     session.commit()
     return Response(status_code=204)
+
+
+# ── Two-way job message thread ────────────────────────────────────────────────
+
+class SendMessagePayload(BaseModel):
+    body: str
+
+
+@router.get("/{job_id}/messages", response_model=list[JobThreadMessage])
+def get_job_messages(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Return the full message thread for a job: manual outbound/inbound plus automated system SMS, oldest first."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    manual = session.exec(
+        select(JobMessage)
+        .where(JobMessage.repair_job_id == job_id)
+        .where(JobMessage.tenant_id == auth.tenant_id)
+    ).all()
+
+    automated = session.exec(
+        select(SmsLog)
+        .where(SmsLog.repair_job_id == job_id)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+    ).all()
+
+    thread: list[JobThreadMessage] = []
+    for m in manual:
+        thread.append(JobThreadMessage(
+            id=m.id,
+            direction=m.direction,
+            body=m.body,
+            from_phone=m.from_phone,
+            to_phone=m.to_phone,
+            created_at=m.created_at,
+        ))
+    for s in automated:
+        thread.append(JobThreadMessage(
+            id=s.id,
+            direction="system",
+            body=s.body,
+            to_phone=s.to_phone,
+            event=s.event,
+            status=s.status,
+            created_at=s.created_at,
+        ))
+
+    thread.sort(key=lambda m: m.created_at)
+    return thread
+
+
+@router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)
+def send_job_message(
+    job_id: UUID,
+    payload: SendMessagePayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Send a custom SMS to the customer and save it to the job's message thread."""
+    job = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+
+    # Resolve customer phone
+    watch = session.get(Watch, job.watch_id)
+    customer_phone = None
+    if watch and watch.customer_id:
+        customer = session.get(Customer, watch.customer_id)
+        if customer:
+            customer_phone = customer.phone
+
+    if not customer_phone:
+        raise HTTPException(status_code=422, detail="No phone number on file for this customer.")
+
+    msg = sms.send_custom_job_message(
+        session,
+        tenant_id=auth.tenant_id,
+        repair_job_id=job_id,
+        to_phone=customer_phone,
+        body=payload.body.strip(),
+    )
+    session.commit()
+    session.refresh(msg)
+    return msg

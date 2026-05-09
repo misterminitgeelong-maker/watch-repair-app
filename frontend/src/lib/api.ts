@@ -1862,6 +1862,22 @@ export const getSmsLog = (jobId: string) =>
 export const resendJobNotification = (jobId: string, eventType: 'job_live' | 'job_ready' | 'quote_sent') =>
   api.post<{ sent: { sms: boolean; email: boolean } }>(`/repair-jobs/${jobId}/resend-notification`, { event_type: eventType })
 
+// ── Job message thread ────────────────────────────────────────────────────────
+export interface JobThreadMessage {
+  id: string
+  direction: 'outbound' | 'inbound' | 'system'
+  body: string
+  from_phone?: string
+  to_phone?: string
+  event?: string
+  status?: string
+  created_at: string
+}
+export const getJobMessages = (jobId: string) =>
+  api.get<JobThreadMessage[]>(`/repair-jobs/${jobId}/messages`)
+export const sendJobMessage = (jobId: string, body: string) =>
+  api.post<JobThreadMessage>(`/repair-jobs/${jobId}/messages`, { body })
+
 // ── Inbox ─────────────────────────────────────────────────────────────────────
 export interface InboxEvent {
   id: string
