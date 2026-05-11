@@ -7,6 +7,7 @@ import {
   listQuotes,
   createQuote,
   sendQuote,
+  resendQuote,
   createInvoiceFromQuote,
   listJobs,
   getApiErrorMessage,
@@ -252,6 +253,11 @@ export default function QuotesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['quotes'] }),
   })
 
+  const resendMut = useMutation({
+    mutationFn: (id: string) => resendQuote(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['quotes'] }),
+  })
+
   const invoiceMut = useMutation({
     mutationFn: (quoteId: string) => createInvoiceFromQuote(quoteId).then(r => r.data),
     onSuccess: (data) => {
@@ -396,7 +402,17 @@ export default function QuotesPage() {
                             </button>
                           )}
                           {q.status === 'sent' && (
-                            <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
+                            <>
+                              <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
+                              <button
+                                className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
+                                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+                                onClick={() => resendMut.mutate(q.id)}
+                                disabled={resendMut.isPending}
+                              >
+                                <MessageSquare size={11} /> Resend
+                              </button>
+                            </>
                           )}
                           {q.status === 'approved' && (
                             <button
@@ -464,7 +480,12 @@ export default function QuotesPage() {
                               </Button>
                             )}
                             {q.status === 'sent' && (
-                              <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
+                              <>
+                                <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
+                                <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => resendMut.mutate(q.id)} disabled={resendMut.isPending}>
+                                  <MessageSquare size={12} /> Resend
+                                </Button>
+                              </>
                             )}
                             {q.status === 'approved' && (
                               <Button

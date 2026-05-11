@@ -336,6 +336,9 @@ class RepairJob(SQLModel, table=True):
     pre_quote_cents: int = 0
     cost_cents: int = 0
     claimed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    internal_notes: Optional[str] = None
+    parts_eta: Optional[date] = None
+    status_changed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -1019,6 +1022,9 @@ class RepairJobRead(SQLModel):
     deposit_cents: int
     pre_quote_cents: int
     cost_cents: int
+    internal_notes: Optional[str] = None
+    parts_eta: Optional[date] = None
+    status_changed_at: Optional[datetime] = None
     created_at: datetime
     claimed_by_user_id: Optional[UUID] = None
     claimed_by_name: Optional[str] = None
@@ -1058,6 +1064,8 @@ class RepairJobFieldUpdate(SQLModel):
     description: Optional[str] = None
     assigned_user_id: Optional[UUID] = None
     clear_assigned_user: bool = False
+    internal_notes: Optional[str] = None
+    parts_eta: Optional[date] = None
 
 
 class JobStatusHistoryRead(SQLModel):

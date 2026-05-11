@@ -559,7 +559,11 @@ export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'n
 export interface RepairJob {
   id: string; tenant_id: string; watch_id: string; assigned_user_id?: string; customer_account_id?: string
   job_number: string; status_token: string; title: string; description?: string; priority: string
-  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number; created_at: string
+  status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number
+  internal_notes?: string | null
+  parts_eta?: string | null
+  status_changed_at?: string | null
+  created_at: string
   customer_name?: string | null
   customer_phone?: string | null
   customer_email?: string | null
@@ -598,6 +602,8 @@ export const updateJob = (id: string, data: {
   description?: string
   assigned_user_id?: string | null
   clear_assigned_user?: boolean
+  internal_notes?: string | null
+  parts_eta?: string | null
 }) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
 export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post(`/repair-jobs/${id}/status`, { status, note })
@@ -661,13 +667,14 @@ export const listQuotes = (repairJobId?: string, params?: { limit?: number; offs
 export const createQuote = (data: { repair_job_id: string; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
   api.post<Quote>('/quotes', data)
 export const sendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/send`)
+export const resendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/resend`)
 export const createInvoiceFromQuote = (quoteId: string) =>
   api.post<{ invoice: { id: string; invoice_number: string; total_cents: number; status: string } }>(`/invoices/from-quote/${quoteId}`)
 export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineItemInput & { id: string; total_price_cents: number }>>(`/quotes/${quoteId}/line-items`)
 
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
-  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
+  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 

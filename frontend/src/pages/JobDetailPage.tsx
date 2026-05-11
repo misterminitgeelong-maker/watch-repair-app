@@ -342,6 +342,82 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 type Tab = 'details' | 'worklogs' | 'attachments' | 'history' | 'messages'
 
+function InternalNotesCard({ job }: { job: RepairJob }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(job.internal_notes ?? '')
+  const mut = useMutation({
+    mutationFn: (notes: string) => updateJob(job.id, { internal_notes: notes || null }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job', job.id] }); setEditing(false) },
+  })
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Internal Notes</h2>
+        {!editing && (
+          <button onClick={() => { setDraft(job.internal_notes ?? ''); setEditing(true) }} className="opacity-50 hover:opacity-100 transition-opacity">
+            <Pencil size={13} style={{ color: 'var(--ms-text-muted)' }} />
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <Textarea value={draft} onChange={e => setDraft(e.target.value)} rows={3} placeholder="Staff-only notes — not visible to the customer…" autoFocus />
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button onClick={() => mut.mutate(draft)} disabled={mut.isPending}>{mut.isPending ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </div>
+      ) : job.internal_notes ? (
+        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{job.internal_notes}</p>
+      ) : (
+        <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>
+          No internal notes.{' '}
+          <button onClick={() => { setDraft(''); setEditing(true) }} className="underline" style={{ color: 'var(--ms-accent)' }}>Add one</button>
+        </p>
+      )}
+    </Card>
+  )
+}
+
+function PartsEtaCard({ job }: { job: RepairJob }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(job.parts_eta ?? '')
+  const mut = useMutation({
+    mutationFn: (eta: string) => updateJob(job.id, { parts_eta: eta || null }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job', job.id] }); setEditing(false) },
+  })
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Parts ETA</h2>
+        {!editing && (
+          <button onClick={() => { setDraft(job.parts_eta ?? ''); setEditing(true) }} className="opacity-50 hover:opacity-100 transition-opacity">
+            <Pencil size={13} style={{ color: 'var(--ms-text-muted)' }} />
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <Input type="date" value={draft} onChange={e => setDraft(e.target.value)} autoFocus />
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button onClick={() => mut.mutate(draft)} disabled={mut.isPending}>{mut.isPending ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </div>
+      ) : job.parts_eta ? (
+        <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Expected {job.parts_eta}</p>
+      ) : (
+        <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>
+          No ETA set.{' '}
+          <button onClick={() => { setDraft(''); setEditing(true) }} className="underline" style={{ color: 'var(--ms-accent)' }}>Add ETA</button>
+        </p>
+      )}
+    </Card>
+  )
+}
+
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -810,6 +886,11 @@ export default function JobDetailPage() {
                 <h2 className="font-semibold text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>Description / Fault Report</h2>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{job.description}</p>
               </Card>
+            )}
+
+            <InternalNotesCard job={job} />
+            {(['awaiting_parts', 'parts_to_order'] as JobStatus[]).includes(job.status) && (
+              <PartsEtaCard job={job} />
             )}
 
             <Card>

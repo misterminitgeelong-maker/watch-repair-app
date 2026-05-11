@@ -226,6 +226,64 @@ def send_quote(
     )
 
 
+@router.post("/quotes/{quote_id}/resend", response_model=QuoteSendResponse)
+def resend_quote(
+    quote_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    quote = get_tenant_quote(session, quote_id, auth.tenant_id)
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    if quote.status not in ("sent", "expired"):
+        raise HTTPException(status_code=400, detail="Only sent or expired quotes can be resent")
+
+    now = datetime.now(timezone.utc)
+    quote.status = "sent"
+    quote.sent_at = now
+    quote.approval_token_expires_at = now + timedelta(hours=max(settings.quote_approval_token_ttl_hours, 1))
+    session.add(quote)
+
+    job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)
+    if job:
+        watch = session.get(Watch, job.watch_id)
+        if watch:
+            customer = session.get(Customer, watch.customer_id)
+            if customer and customer.phone:
+                line_items_db = session.exec(
+                    select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)
+                ).all()
+                line_items_data = [
+                    {
+                        "description": li.description,
+                        "quantity": li.quantity,
+                        "unit_price_cents": li.unit_price_cents,
+                        "total_price_cents": li.total_price_cents,
+                    }
+                    for li in line_items_db
+                ]
+                sms.notify_quote_sent(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    repair_job_id=job.id,
+                    customer_name=customer.full_name,
+                    to_phone=customer.phone,
+                    total_cents=quote.total_cents,
+                    approval_token=quote.approval_token,
+                    line_items=line_items_data,
+                )
+
+    session.commit()
+    session.refresh(quote)
+
+    return QuoteSendResponse(
+        id=quote.id,
+        status=quote.status,
+        sent_at=quote.sent_at,
+        approval_token=quote.approval_token,
+    )
+
+
 @router.post("/public/quotes/{token}/decision", response_model=QuoteDecisionResponse)
 @limiter.limit(get_public_quote_decision_rate_limit)
 def quote_decision(
@@ -322,6 +380,7 @@ def get_public_quote(request: Request, token: str, session: Session = Depends(ge
         "total_cents": quote.total_cents,
         "currency": quote.currency,
         "sent_at": quote.sent_at,
+        "approval_token_expires_at": quote.approval_token_expires_at,
         "line_items": [
             {
                 "item_type": i.item_type,

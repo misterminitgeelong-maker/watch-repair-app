@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -334,6 +335,7 @@ def update_repair_job_status(
 
     previous_status = job.status
     job.status = payload.status
+    job.status_changed_at = datetime.now(timezone.utc)
     session.add(job)
 
     history = JobStatusHistory(
@@ -408,6 +410,7 @@ def repair_job_queue_swipe(
     new_status = _resolve_watch_queue_transition(job.status, payload.direction)
     previous_status = job.status
     job.status = new_status
+    job.status_changed_at = datetime.now(timezone.utc)
     session.add(job)
     session.add(
         JobStatusHistory(
@@ -466,6 +469,8 @@ def submit_job_intake(
         next_status = job.status
 
     job.status = next_status
+    if next_status != previous_status:
+        job.status_changed_at = datetime.now(timezone.utc)
     job.pre_quote_cents = max(payload.pre_quote_cents, 0)
     if payload.intake_notes and payload.intake_notes.strip():
         existing_description = (job.description or "").strip()
@@ -534,6 +539,10 @@ def update_repair_job_fields(
         job.assigned_user_id = None
     elif payload.assigned_user_id is not None:
         job.assigned_user_id = payload.assigned_user_id
+    if "internal_notes" in payload.model_fields_set:
+        job.internal_notes = payload.internal_notes
+    if "parts_eta" in payload.model_fields_set:
+        job.parts_eta = payload.parts_eta
 
     session.add(job)
     session.commit()

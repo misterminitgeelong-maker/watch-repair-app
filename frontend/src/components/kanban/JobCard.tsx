@@ -11,6 +11,7 @@ export interface JobCardProps {
   customerPhone?: string | null
   priority?: string | null
   daysInShop: number
+  daysInCurrentStatus?: number
   quoteCents?: number
   techName?: string | null
   techKey?: string | null
@@ -83,6 +84,7 @@ export default function JobCard({
   customerPhone,
   priority,
   daysInShop,
+  daysInCurrentStatus,
   quoteCents,
   techName,
   techKey,
@@ -96,6 +98,7 @@ export default function JobCard({
   draggable,
 }: JobCardProps) {
   const tech = techColor(techKey ?? techName ?? null)
+  const overdue = daysInCurrentStatus !== undefined && daysInCurrentStatus >= 7
 
   return (
     <Link
@@ -106,13 +109,13 @@ export default function JobCard({
       className="block"
       style={{
         backgroundColor: 'var(--ms-surface)',
-        border: '1px solid var(--ms-border)',
-        borderLeft: `3px solid ${accentColor}`,
+        border: overdue ? '1px solid #E8B4AA' : '1px solid var(--ms-border)',
+        borderLeft: `3px solid ${overdue ? '#C96A5A' : accentColor}`,
         borderRadius: 'var(--ms-radius-sm)',
         padding: '11px 12px',
         marginBottom: 8,
         boxShadow: selected ? `0 0 0 2px ${accentColor}22, var(--ms-shadow)` : 'var(--ms-shadow)',
-        borderColor: selected ? accentColor : 'var(--ms-border)',
+        borderColor: selected ? accentColor : overdue ? '#E8B4AA' : 'var(--ms-border)',
         cursor: draggable ? 'grab' : 'pointer',
         textDecoration: 'none',
         color: 'inherit',
@@ -126,6 +129,11 @@ export default function JobCard({
         <div className="flex items-center gap-1.5">
           <PriorityPill priority={priority} />
           <AgingPill days={daysInShop} />
+          {overdue && (
+            <span style={{ backgroundColor: '#FEEEED', color: 'var(--ms-error)', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Stale
+            </span>
+          )}
         </div>
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ms-text)', marginTop: 4, lineHeight: 1.3 }}>

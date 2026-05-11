@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import axios from 'axios'
@@ -8,6 +8,36 @@ import SignaturePad from '@/components/SignaturePad'
 
 function formatCents(c: number) {
   return (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState(() => new Date(expiresAt).getTime() - Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(new Date(expiresAt).getTime() - Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [expiresAt])
+
+  if (remaining <= 0) return null
+
+  const totalHours = Math.floor(remaining / 3_600_000)
+  const days = Math.floor(totalHours / 24)
+  const hours = totalHours % 24
+  const label = days > 0 ? `${days}d ${hours}h` : `${hours}h`
+  const isUrgent = totalHours < 24
+  return (
+    <div
+      className="mb-5 rounded-xl px-4 py-3 text-sm flex items-center gap-2"
+      style={{
+        backgroundColor: isUrgent ? '#FDF0EE' : '#FFF8EE',
+        border: `1px solid ${isUrgent ? '#E8B4AA' : '#F5D9A0'}`,
+        color: isUrgent ? '#9B3D2A' : '#8A5010',
+      }}
+    >
+      <Clock size={14} />
+      <span>This quote expires in <strong>{label}</strong> — please respond before then.</span>
+    </div>
+  )
 }
 
 function loadErrorCopy(error: unknown): { title: string; body: string } {
@@ -177,6 +207,8 @@ export default function ApprovePage() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>Your Repair Quote</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>Review the quote below and let us know your decision.</p>
         </div>
+
+        {q.approval_token_expires_at && <ExpiryCountdown expiresAt={q.approval_token_expires_at} />}
 
         <div className="rounded-2xl shadow-sm overflow-hidden mb-5" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
           <table className="w-full text-sm">

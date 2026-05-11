@@ -25,6 +25,13 @@ function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
+function daysInCurrentStatus(job: { status: string; status_changed_at?: string | null; created_at: string }): number {
+  const TERMINAL = new Set(['collected', 'no_go', 'awaiting_collection'])
+  if (TERMINAL.has(job.status)) return 0
+  const from = job.status_changed_at ?? job.created_at
+  return Math.floor((Date.now() - new Date(from).getTime()) / 86_400_000)
+}
+
 const JOB_SORT_FIELDS = ['created_at', 'job_number', 'status', 'priority'] as const
 type JobSortField = (typeof JOB_SORT_FIELDS)[number]
 type BoardView = 'board' | 'list'
@@ -417,6 +424,7 @@ export default function JobsPage() {
                 customerPhone={job.customer_phone ?? undefined}
                 priority={job.priority}
                 daysInShop={daysInShop(job.created_at)}
+                daysInCurrentStatus={daysInCurrentStatus(job)}
                 quoteCents={displayQuoteCents(job)}
                 techName={assigneeName.get(job.assigned_user_id ?? '') ?? null}
                 techKey={job.assigned_user_id ?? null}
