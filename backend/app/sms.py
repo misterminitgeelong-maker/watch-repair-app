@@ -179,13 +179,26 @@ def notify_quote_sent(
     total_cents: int,
     approval_token: str,
     shop_name: str = "your watch repair shop",
+    line_items: list[dict] | None = None,
 ) -> None:
     """Send the quote approval SMS to the customer."""
     total = total_cents / 100
     currency_symbol = "$"
     approval_url = f"{settings.public_base_url}/approve/{approval_token}"
+
+    work_summary = ""
+    if line_items:
+        filled = [li for li in line_items if li.get("description", "").strip()]
+        if filled:
+            parts = []
+            for li in filled:
+                desc = li["description"].strip()
+                item_total = li.get("total_price_cents") or (li.get("quantity", 1) * li.get("unit_price_cents", 0))
+                parts.append(f"{desc} ({currency_symbol}{item_total / 100:.2f})")
+            work_summary = " Work includes: " + ", ".join(parts) + "."
+
     body = (
-        f"Hi {customer_name}, your watch repair quote is {currency_symbol}{total:.2f}. "
+        f"Hi {customer_name}, your watch repair quote is {currency_symbol}{total:.2f}.{work_summary} "
         f"Reply YES to approve or NO to decline, or tap the link to view details: {approval_url}"
     )
     sid = _send_sms(to_phone, body)

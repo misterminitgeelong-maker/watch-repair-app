@@ -180,6 +180,18 @@ def send_quote(
         if watch:
             customer = session.get(Customer, watch.customer_id)
             if customer and customer.phone:
+                line_items_db = session.exec(
+                    select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)
+                ).all()
+                line_items_data = [
+                    {
+                        "description": li.description,
+                        "quantity": li.quantity,
+                        "unit_price_cents": li.unit_price_cents,
+                        "total_price_cents": li.total_price_cents,
+                    }
+                    for li in line_items_db
+                ]
                 sms.notify_quote_sent(
                     session,
                     tenant_id=auth.tenant_id,
@@ -188,6 +200,7 @@ def send_quote(
                     to_phone=customer.phone,
                     total_cents=quote.total_cents,
                     approval_token=quote.approval_token,
+                    line_items=line_items_data,
                 )
             if customer and customer.email:
                 from ..email_client import send_quote_sent_email

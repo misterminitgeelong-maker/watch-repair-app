@@ -116,7 +116,12 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
   const [jobId, setJobId] = useState('')
   const [taxCents, setTaxCents] = useState(0)
-  const [items, setItems] = useState<QuoteLineItemInput[]>([{ item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 }])
+  const [items, setItems] = useState<QuoteLineItemInput[]>([
+    { item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 },
+    { item_type: 'part', description: '', quantity: 1, unit_price_cents: 0 },
+    { item_type: 'part', description: '', quantity: 1, unit_price_cents: 0 },
+    { item_type: 'fee', description: '', quantity: 1, unit_price_cents: 0 },
+  ])
   const [error, setError] = useState('')
 
   const updateItem = (i: number, key: keyof QuoteLineItemInput, value: string | number) =>
