@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, X, ListOrdered } from 'lucide-react'
 import {
   deleteJob,
@@ -38,6 +38,7 @@ type BoardView = 'board' | 'list'
 
 export default function JobsPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatus = searchParams.get('status')
   const statusIsClosed = initialStatus != null && (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(initialStatus as JobStatus)
@@ -203,7 +204,7 @@ export default function JobsPage() {
           </div>
         }
       />
-      {showAdd && <NewJobModal onClose={() => setShowAdd(false)} />}
+      {showAdd && <NewJobModal onClose={() => setShowAdd(false)} onSuccess={jobId => navigate(`/jobs/${jobId}`)} />}
       {showQueue && <RepairQueueModal mode="watch" onClose={() => setShowQueue(false)} />}
 
       <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
