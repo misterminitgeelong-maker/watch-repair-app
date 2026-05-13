@@ -614,7 +614,7 @@ export default function AccountsPage() {
 
 function SmsSenderCard() {
   const qc = useQueryClient()
-  const [sid, setSid] = useState('')
+  const [name, setName] = useState('')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
@@ -624,11 +624,11 @@ function SmsSenderCard() {
   })
 
   useEffect(() => {
-    if (data !== undefined) setSid(data.messaging_service_sid ?? '')
-  }, [data?.messaging_service_sid])
+    if (data !== undefined) setName(data.sms_sender_name ?? '')
+  }, [data?.sms_sender_name])
 
   const mut = useMutation({
-    mutationFn: () => patchSmsSender(sid.trim() || null),
+    mutationFn: () => patchSmsSender(name.trim() || null),
     onSuccess: () => {
       setSaved(true)
       setError('')
@@ -646,11 +646,9 @@ function SmsSenderCard() {
         SMS sender name
       </p>
       <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--ms-text-mid)' }}>
-        By default, customer SMS are sent from the platform's shared number. To show your business name as the
-        sender, create a{' '}
-        <span className="font-medium" style={{ color: 'var(--ms-text)' }}>Twilio Messaging Service</span> named
-        after your business and paste its SID (starts with <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>MG</code>) below.
-        Leave blank to use the platform default.
+        Enter your business name to use it as the SMS sender shown to customers. Leave blank to use the
+        platform default. This works without any Twilio configuration — the name is sent directly to Twilio
+        as the alphanumeric sender ID.
       </p>
       {isLoading ? (
         <Spinner />
@@ -658,10 +656,10 @@ function SmsSenderCard() {
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex-1 max-w-sm">
             <Input
-              label="Messaging Service SID"
-              value={sid}
-              onChange={(e) => { setSid(e.target.value); setSaved(false) }}
-              placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              label="Sender name"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setSaved(false) }}
+              placeholder="Your Business Name"
             />
           </div>
           <Button

@@ -90,9 +90,9 @@ class Tenant(SQLModel, table=True):
     toolkit_selected_keys: str = Field(default="[]")
     # When False, customer-facing SMS for mobile services (auto key) is skipped; tech reminders unchanged.
     mobile_services_customer_sms_enabled: bool = True
-    # Twilio Messaging Service SID (starts with "MG") for this tenant's SMS sender name.
-    # When set, outbound SMS uses this Messaging Service instead of the global from-number.
-    twilio_messaging_service_sid: Optional[str] = Field(default=None, max_length=64)
+    # Custom alphanumeric SMS sender name (shown to customers instead of the platform number).
+    # Passed directly to Twilio as the `from_` field — no Twilio dashboard setup required.
+    sms_sender_name: Optional[str] = Field(default=None, max_length=64)
     # Ring-map dispatch: operator's base location for distance-based job routing
     base_lat: Optional[float] = None
     base_lng: Optional[float] = None

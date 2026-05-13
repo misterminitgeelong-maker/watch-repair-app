@@ -1,4 +1,4 @@
-"""add tenant.twilio_messaging_service_sid for per-tenant SMS sender name
+"""add tenant.sms_sender_name for per-tenant alphanumeric SMS sender
 
 Revision ID: a2b3c4d5e6f7
 Revises: z1a2b3c4d5e6
@@ -18,7 +18,7 @@ def upgrade() -> None:
     op.add_column(
         "tenant",
         sa.Column(
-            "twilio_messaging_service_sid",
+            "sms_sender_name",
             sa.String(length=64),
             nullable=True,
         ),
@@ -26,4 +26,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("tenant", "twilio_messaging_service_sid")
+    op.drop_column("tenant", "sms_sender_name")

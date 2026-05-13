@@ -2207,9 +2207,9 @@ export const getToolkitMobileNotifications = () =>
 export const patchToolkitMobileNotifications = (customer_sms_enabled: boolean) =>
   api.patch<{ customer_sms_enabled: boolean }>('/toolkit/mobile-notifications', { customer_sms_enabled })
 export const getSmsSender = () =>
-  api.get<{ messaging_service_sid: string | null }>('/toolkit/sms-sender')
-export const patchSmsSender = (messaging_service_sid: string | null) =>
-  api.patch<{ messaging_service_sid: string | null }>('/toolkit/sms-sender', { messaging_service_sid })
+  api.get<{ sms_sender_name: string | null }>('/toolkit/sms-sender')
+export const patchSmsSender = (sms_sender_name: string | null) =>
+  api.patch<{ sms_sender_name: string | null }>('/toolkit/sms-sender', { sms_sender_name })
 export const recommendToolkit = (scenario_id: string) =>
   api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
 export const postToolkitRecommend = recommendToolkit

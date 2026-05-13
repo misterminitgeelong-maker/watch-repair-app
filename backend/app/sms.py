@@ -30,41 +30,37 @@ def mobile_services_customer_sms_enabled(session: Session, tenant_id: UUID) -> b
 # ---------------------------------------------------------------------------
 
 def _get_sender(session: Session, tenant_id: UUID) -> str | None:
-    """Return the tenant's Messaging Service SID if configured, otherwise None (falls back to global from-number)."""
+    """Return the tenant's custom SMS sender name if set, otherwise None (falls back to global from-number)."""
     tenant = session.get(Tenant, tenant_id)
-    if tenant and getattr(tenant, "twilio_messaging_service_sid", None):
-        return tenant.twilio_messaging_service_sid
+    if tenant:
+        name = getattr(tenant, "sms_sender_name", None)
+        if name and name.strip():
+            return name.strip()
     return None
 
 
 def _send_sms(to: str, body: str, *, sender: str | None = None) -> str | None:
     """Send an SMS and return the provider SID, or None on failure/dry-run.
 
-    sender: Twilio Messaging Service SID (starts with "MG") for per-tenant sender name,
-            or a phone number override. Falls back to settings.twilio_from_number when None.
+    sender: alphanumeric sender name or phone number to use as the Twilio `from_` field.
+            Falls back to settings.twilio_from_number when None.
     """
     if not (settings.twilio_account_sid and settings.twilio_auth_token):
         logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
         return None
-    if not sender and not settings.twilio_from_number:
+    from_value = sender or settings.twilio_from_number
+    if not from_value:
         logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
         return None
 
     try:
         from twilio.rest import Client  # type: ignore[import]
         client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
-        if sender and sender.startswith("MG"):
-            message = client.messages.create(
-                body=body,
-                messaging_service_sid=sender,
-                to=to,
-            )
-        else:
-            message = client.messages.create(
-                body=body,
-                from_=sender or settings.twilio_from_number,
-                to=to,
-            )
+        message = client.messages.create(
+            body=body,
+            from_=from_value,
+            to=to,
+        )
         logger.info("[SMS SENT] sid=%s to=%s", message.sid, to)
         return message.sid
     except Exception as exc:  # noqa: BLE001
