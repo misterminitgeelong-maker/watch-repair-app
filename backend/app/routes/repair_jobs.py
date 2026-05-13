@@ -211,6 +211,7 @@ def create_repair_job(
     # Send "job is live" SMS so customer can track it
     customer = session.get(Customer, watch.customer_id)
     if customer and customer.phone:
+        _tenant = session.get(Tenant, auth.tenant_id)
         sms.notify_job_live(
             session,
             tenant_id=auth.tenant_id,
@@ -219,6 +220,7 @@ def create_repair_job(
             to_phone=customer.phone,
             status_token=job.status_token,
             job_number=job.job_number,
+            shop_name=(_tenant.name if _tenant else "") or "",
         )
 
     session.commit()
@@ -606,6 +608,8 @@ def resend_notification(
 
     sms_sent = False
     email_sent = False
+    _tenant = session.get(Tenant, auth.tenant_id)
+    _shop_name = (_tenant.name if _tenant else "") or ""
 
     if payload.event_type == "job_live":
         if not customer.phone and not customer.email:
@@ -619,6 +623,7 @@ def resend_notification(
                 to_phone=customer.phone,
                 status_token=job.status_token,
                 job_number=job.job_number,
+                shop_name=_shop_name,
             )
             sms_sent = True
 
@@ -635,6 +640,7 @@ def resend_notification(
                 job_number=job.job_number,
                 status_token=job.status_token,
                 new_status="awaiting_collection",
+                shop_name=_shop_name,
             )
             sms_sent = True
         if customer.email:
@@ -667,6 +673,7 @@ def resend_notification(
                 to_phone=customer.phone,
                 total_cents=quote.total_cents,
                 approval_token=quote.approval_token,
+                shop_name=_shop_name,
             )
             sms_sent = True
         if customer.email:

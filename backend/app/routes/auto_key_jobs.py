@@ -216,6 +216,9 @@ def create_auto_key_job(
     session.refresh(job)
     logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
 
+    tenant = session.get(Tenant, auth.tenant_id)
+    shop_name = (tenant.name if tenant else None) or ""
+
     phone = (customer.phone or "").strip()
     if phone and getattr(job, "customer_intake_token", None):
         intake_url = f"{settings.public_base_url.rstrip('/')}/mobile-job-intake/{job.customer_intake_token}"
@@ -225,7 +228,7 @@ def create_auto_key_job(
                 tenant_id=auth.tenant_id,
                 to_phone=phone,
                 customer_name=customer.full_name or "Customer",
-                shop_name="Workshop",
+                shop_name=shop_name,
                 job_number=job.job_number,
                 intake_url=intake_url,
             )
@@ -252,7 +255,7 @@ def create_auto_key_job(
                 scheduled_at=job.scheduled_at,
                 quote_total_cents=job.cost_cents,
                 currency="AUD",
-                shop_name="Workshop",
+                shop_name=shop_name,
                 confirm_url=confirm_url,
             )
         except Exception as exc:
@@ -294,6 +297,9 @@ def create_auto_key_quick_intake(
     session.add(job)
     session.flush()
 
+    tenant = session.get(Tenant, auth.tenant_id)
+    shop_name = (tenant.name if tenant else None) or ""
+
     intake_url = f"{settings.public_base_url.rstrip('/')}/mobile-job-intake/{job.customer_intake_token}"
     try:
         notify_auto_key_customer_intake(
@@ -301,7 +307,7 @@ def create_auto_key_quick_intake(
             tenant_id=auth.tenant_id,
             to_phone=phone,
             customer_name=full_name,
-            shop_name="Workshop",
+            shop_name=shop_name,
             job_number=job.job_number,
             intake_url=intake_url,
         )

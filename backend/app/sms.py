@@ -122,12 +122,15 @@ def notify_job_live(
     to_phone: str,
     status_token: str,
     job_number: str,
+    shop_name: str = "",
 ) -> None:
     """Send 'your job is live' SMS with link to track status."""
     status_url = f"{settings.public_base_url}/status/{status_token}"
+    shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, your watch repair job #{job_number} is now live! "
-        f"Track it here: {status_url}"
+        f"Hi {customer_name}, thanks for bringing your watch in to {shop}. "
+        f"Your job (#{job_number}) has been logged and we'll be in touch once we've had a chance to assess it. "
+        f"Track your job here: {status_url}"
     )
     sid = _send_sms(to_phone, body)
     _persist(
@@ -153,8 +156,8 @@ def notify_work_started(
 ) -> None:
     """Notify customer that work has started on their watch."""
     body = (
-        f"Hi {customer_name}, we have started work on your watch (job #{job_number}). "
-        f"You will hear from us in the coming days when your watch is ready for collection."
+        f"Hi {customer_name}, great news — we've started work on your watch (job #{job_number}). "
+        f"We'll be in touch in the coming days once it's ready for collection."
     )
     sid = _send_sms(to_phone, body)
     _persist(
@@ -186,6 +189,7 @@ def notify_quote_sent(
     currency_symbol = "$"
     approval_url = f"{settings.public_base_url}/approve/{approval_token}"
 
+    shop = shop_name.strip() or "us"
     work_summary = ""
     if line_items:
         filled = [li for li in line_items if li.get("description", "").strip()]
@@ -195,11 +199,11 @@ def notify_quote_sent(
                 desc = li["description"].strip()
                 item_total = li.get("total_price_cents") or (li.get("quantity", 1) * li.get("unit_price_cents", 0))
                 parts.append(f"{desc} ({currency_symbol}{item_total / 100:.2f})")
-            work_summary = " Work includes: " + ", ".join(parts) + "."
+            work_summary = " This includes: " + ", ".join(parts) + "."
 
     body = (
-        f"Hi {customer_name}, your watch repair quote is {currency_symbol}{total:.2f}.{work_summary} "
-        f"Reply YES to approve or NO to decline, or tap the link to view details: {approval_url}"
+        f"Hi {customer_name}, your repair quote from {shop} is {currency_symbol}{total:.2f}.{work_summary} "
+        f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
     sid = _send_sms(to_phone, body)
     _persist(
@@ -227,30 +231,32 @@ def notify_job_status_changed(
     shop_name: str = "your watch repair shop",
 ) -> None:
     """Send a status-update SMS to the customer on milestone transitions."""
+    shop = shop_name.strip() or "us"
+    status_url = f"{settings.public_base_url}/status/{status_token}"
     message_map: dict[str, str] = {
         "awaiting_go_ahead": (
-            f"Hi {customer_name}, we've received your watch (job #{job_number}). "
-            f"We'll be in touch once we've assessed it."
+            f"Hi {customer_name}, we've received your watch (job #{job_number}) and it's now in our queue. "
+            f"We'll be in touch once we've assessed it. Track your job here: {status_url}"
         ),
         "go_ahead": (
-            f"Hi {customer_name}, your repair for job #{job_number} has been approved. "
-            f"We'll get started and keep you updated."
+            f"Hi {customer_name}, your repair has been approved — we'll get started on job #{job_number} shortly "
+            f"and keep you updated along the way. Track your job here: {status_url}"
         ),
         "working_on": (
-            f"Hi {customer_name}, great news — we've started work on your watch (job #{job_number}). "
-            f"We'll let you know when it's done."
+            f"Hi {customer_name}, we're now working on your watch (job #{job_number}). "
+            f"We'll let you know as soon as it's ready. Track your job here: {status_url}"
         ),
         "completed": (
-            f"Hi {customer_name}, your watch (job #{job_number}) is ready for collection! "
-            f"Please contact us to arrange pick-up."
+            f"Hi {customer_name}, your watch (job #{job_number}) is ready for collection. "
+            f"Please come in or give us a call to arrange pick-up. Track your job here: {status_url}"
         ),
         "awaiting_collection": (
-            f"Hi {customer_name}, your watch (job #{job_number}) is ready and waiting for collection! "
-            f"Please contact us to arrange pick-up."
+            f"Hi {customer_name}, your watch (job #{job_number}) is ready for collection. "
+            f"Please come in or give us a call to arrange pick-up. Track your job here: {status_url}"
         ),
         "collected": (
-            f"Thank you {customer_name}! Your watch (job #{job_number}) has been collected. "
-            f"We hope you enjoy it — don't hesitate to reach out if you need anything."
+            f"Hi {customer_name}, thanks for collecting your watch — we hope you're happy with the repair. "
+            f"Don't hesitate to get in touch if you need anything. {shop}"
         ),
     }
 
@@ -258,8 +264,6 @@ def notify_job_status_changed(
     if not body:
         # No notification for diagnosis, qc, cancelled, etc.
         return
-
-    body = f"{body} Track live status: {settings.public_base_url}/status/{status_token}"
 
     sid = _send_sms(to_phone, body)
     _persist(
@@ -322,7 +326,10 @@ def notify_auto_key_customer_scheduled(
         when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else ""
-    body = f"Hi {customer_name}, your auto key technician is scheduled for {when}."
+    body = (
+        f"Hi {customer_name}, your appointment has been confirmed for {when}. "
+        f"We'll be in touch the day before to confirm. If you need to reschedule, please reply to this message."
+    )
     if job_address:
         body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
     sid = _send_sms(to_phone, body)
@@ -360,10 +367,10 @@ def notify_auto_key_customer_day_before(
         when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else "tomorrow"
-    body = f"Hi {customer_name}, your technician is scheduled for {when}."
+    body = f"Hi {customer_name}, just a reminder that your technician is scheduled for tomorrow, {when}."
     if job_address:
         body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
-    body += " We'll SMS you with your arrival window on the day."
+    body += " We'll send you an arrival window on the day."
     sid = _send_sms(to_phone, body)
     _persist(
         session,
@@ -393,7 +400,7 @@ def notify_auto_key_en_route(
         return
     from datetime import datetime
 
-    body = f"Hi {customer_name}, {shop_name} — your technician is on the way for mobile job #{job_number}."
+    body = f"Hi {customer_name}, your technician is now on the way to you."
     if scheduled_at:
         try:
             dt = (
@@ -401,12 +408,13 @@ def notify_auto_key_en_route(
                 if isinstance(scheduled_at, datetime)
                 else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
             )
-            body += f" Planned time: {format_in_timezone(dt, settings.schedule_calendar_timezone)}."
+            body += f" Scheduled arrival: {format_in_timezone(dt, settings.schedule_calendar_timezone)}."
         except (ValueError, TypeError):
             pass
     if job_address and job_address.strip():
         a = job_address.strip()
-        body += f" Location: {a[:70]}{'…' if len(a) > 70 else ''}."
+        body += f" {a[:70]}{'…' if len(a) > 70 else ''}."
+    body += " Reply to this message if you need to reach us."
     if len(body) > 1500:
         body = body[:1490] + "…"
     sid = _send_sms(to_phone, body)
@@ -434,7 +442,10 @@ def notify_auto_key_arrival_window(
     """Notify customer: tech on the way, arriving in time window (e.g. 9–11am)."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
-    body = f"Hi {customer_name}, your technician is on the way and will arrive between {time_window}."
+    body = (
+        f"Hi {customer_name}, your technician is on the way and will arrive between {time_window}. "
+        f"Please ensure someone is available at the vehicle. Reply to this message if you need to reach us."
+    )
     sid = _send_sms(to_phone, body)
     _persist(
         session,
@@ -466,9 +477,11 @@ def notify_auto_key_invoice_ready(
         return
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = total_cents / 100
+    shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, {shop_name} — job #{job_number} is complete. "
-        f"Invoice {invoice_number}: {sym}{total:.2f} {currency}. Details: {view_url}"
+        f"Hi {customer_name}, your job #{job_number} with {shop} is now complete. "
+        f"Your invoice total is {sym}{total:.2f}. You can view your invoice here: {view_url} — "
+        f"Thank you for your business."
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
@@ -504,9 +517,10 @@ def notify_auto_key_quote_sent(
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = total_cents / 100
     portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
+    shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, {shop_name} — your quote for mobile job #{job_number} "
-        f"is {sym}{total:.2f} {currency}. View & accept your quote: {portal_url}"
+        f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {sym}{total:.2f}. "
+        f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
@@ -538,9 +552,11 @@ def notify_auto_key_customer_intake(
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
     first = (customer_name or "there").strip().split()[0] if (customer_name or "").strip() else "there"
+    shop = shop_name.strip() or "us"
     body = (
-        f"Hi {first}, {shop_name} here — job #{job_number}. "
-        f"Please complete your details: {intake_url}"
+        f"Hi {first}, thanks for getting in touch with {shop}. "
+        f"We've created your job (#{job_number}) — please follow the link to fill in your vehicle details "
+        f"and preferred appointment time: {intake_url}"
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
@@ -578,19 +594,20 @@ def notify_auto_key_booking_request(
         return
     from datetime import datetime
 
+    shop = shop_name.strip() or "us"
     veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x).strip()
     veh_bit = f" ({veh})" if veh else ""
     try:
         dt = scheduled_at if isinstance(scheduled_at, datetime) else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
-        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b %H:%M")
+        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b at %I:%M%p").replace(" 0", " ")
     except (ValueError, TypeError):
         when = str(scheduled_at)[:16] if scheduled_at else ""
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = quote_total_cents / 100
     body = (
-        f"Hi {customer_name}, {shop_name} — job #{job_number}{veh_bit}: {title.strip()}. "
-        f"Quoted total {sym}{total:.2f} {currency}. Booked time: {when}. "
-        f"Please confirm: {confirm_url}"
+        f"Hi {customer_name}, your booking with {shop} is confirmed — "
+        f"job #{job_number}{veh_bit} on {when}. "
+        f"Quoted total: {sym}{total:.2f}. Please confirm your booking here: {confirm_url}"
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
