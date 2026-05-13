@@ -877,6 +877,7 @@ class PlatformTenantRead(SQLModel):
     name: str
     plan_code: str
     is_active: bool
+    signup_payment_pending: bool
     user_count: int
     created_at: datetime
 

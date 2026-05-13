@@ -1182,6 +1182,7 @@ export interface PlatformTenant {
   name: string
   plan_code: string
   is_active: boolean
+  signup_payment_pending: boolean
   user_count: number
   created_at: string
 }
@@ -1268,6 +1269,8 @@ export const deletePlatformTenant = (tenantId: string) =>
   api.delete(`/platform-admin/tenants/${tenantId}`)
 export const setPlatformTenantPlan = (tenantId: string, plan_code: string, reason?: string) =>
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/plan`, { plan_code, reason })
+export const markPlatformTenantPaid = (tenantId: string) =>
+  api.post<PlatformTenant>(`/platform-admin/tenants/${tenantId}/mark-paid`)
 
 // ── Shoe Catalogue ────────────────────────────────────────────────────────────
 export interface ShoeCatalogueGroup {

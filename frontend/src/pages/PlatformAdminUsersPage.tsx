@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -226,6 +226,14 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: () => setAdminActionError('Could not change plan. Try again.'),
   })
+  const markPaid = useMutation({
+    mutationFn: (tenantId: string) => markPlatformTenantPaid(tenantId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+    },
+    onError: () => setAdminActionError('Could not mark as paid. Try again.'),
+  })
   const PLAN_OPTIONS = ['basic_watch', 'basic_shoe', 'basic_auto_key', 'basic_watch_shoe', 'basic_watch_auto_key', 'basic_shoe_auto_key', 'basic_all_tabs', 'pro']
   function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
     const typed = window.prompt(`Type shop slug "${shopSlug}" to ${actionLabel} ${shopName}:`, '') ?? ''
@@ -350,7 +358,10 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>#{t.slug}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{t.plan_code}</td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{t.user_count}</td>
-                      <td className="px-5 py-3.5 font-medium" style={{ color: t.is_active ? '#497A59' : '#A06757' }}>{t.is_active ? 'Active' : 'Suspended'}</td>
+                      <td className="px-5 py-3.5 font-medium" style={{ color: t.is_active ? '#497A59' : '#A06757' }}>
+                        {t.is_active ? 'Active' : 'Suspended'}
+                        {t.signup_payment_pending && <span className="ml-2 text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>Payment pending</span>}
+                      </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>
                         {new Date(t.created_at).toLocaleDateString()}
                       </td>
@@ -388,6 +399,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         >
                           Change Plan
                         </button>
+                        {t.signup_payment_pending && (
+                          <button
+                            onClick={() => markPaid.mutate(t.id)}
+                            disabled={markPaid.isPending}
+                            className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={{ backgroundColor: '#E8F6EE', border: '1px solid #A8D5B5', color: '#1F6D4C' }}
+                          >
+                            Mark Paid
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
                           disabled={deleteAccount.isPending}

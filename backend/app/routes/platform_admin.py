@@ -75,6 +75,7 @@ def list_all_tenants(
             name=t.name,
             plan_code=t.plan_code,
             is_active=t.is_active,
+            signup_payment_pending=t.signup_payment_pending,
             user_count=user_counts.get(t.id, 0),
             created_at=t.created_at,
         )
@@ -172,6 +173,7 @@ def set_tenant_status(
         name=tenant.name,
         plan_code=tenant.plan_code,
         is_active=tenant.is_active,
+        signup_payment_pending=tenant.signup_payment_pending,
         user_count=user_count,
         created_at=tenant.created_at,
     )
@@ -211,6 +213,48 @@ def set_tenant_plan(
         name=tenant.name,
         plan_code=tenant.plan_code,
         is_active=tenant.is_active,
+        signup_payment_pending=tenant.signup_payment_pending,
+        user_count=user_count,
+        created_at=tenant.created_at,
+    )
+
+
+@router.post("/tenants/{tenant_id}/mark-paid", response_model=PlatformTenantRead)
+def mark_tenant_paid(
+    tenant_id: UUID,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    """Clear signup_payment_pending — use for testers/accounts paid outside Stripe."""
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    tenant.signup_payment_pending = False
+    if not tenant.subscription_status:
+        tenant.subscription_status = "active"
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="tenant",
+            entity_id=tenant_id,
+            event_type="platform_admin_marked_paid",
+            event_summary="Platform admin manually marked account as paid.",
+        )
+    )
+    session.commit()
+    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+    return PlatformTenantRead(
+        id=tenant.id,
+        slug=tenant.slug,
+        name=tenant.name,
+        plan_code=tenant.plan_code,
+        is_active=tenant.is_active,
+        signup_payment_pending=tenant.signup_payment_pending,
         user_count=user_count,
         created_at=tenant.created_at,
     )
