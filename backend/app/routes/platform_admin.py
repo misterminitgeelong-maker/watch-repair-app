@@ -354,7 +354,8 @@ def delete_platform_tenant(
             "customer",
             "user",
         ]:
-            session.execute(text(f"DELETE FROM {tbl} WHERE tenant_id = :tid"), {"tid": tid})  # noqa: S608
+            quoted = f'"{tbl}"' if tbl == "user" else tbl
+            session.execute(text(f"DELETE FROM {quoted} WHERE tenant_id = :tid"), {"tid": tid})  # noqa: S608
 
         # MobileSuburbRoute uses target_tenant_id instead of tenant_id
         session.execute(text("DELETE FROM mobilesuburbroute WHERE target_tenant_id = :tid"), {"tid": tid})
