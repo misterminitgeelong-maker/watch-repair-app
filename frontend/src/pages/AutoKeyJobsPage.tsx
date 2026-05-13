@@ -15,6 +15,7 @@ import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clo
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
+  createAutoKeyQuickIntake,
   createAutoKeyQuote,
   createCustomer,
   deleteAutoKeyJob,
@@ -370,6 +371,58 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
         </ul>
       )}
     </div>
+  )
+}
+
+function SendBookingRequestModal({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate()
+  const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+
+  const mut = useMutation({
+    mutationFn: () => createAutoKeyQuickIntake({ phone: phone.trim(), full_name: name.trim() || 'Customer' }),
+    onSuccess: (res) => {
+      navigate(`/auto-key/${res.data.id}`)
+      onClose()
+    },
+    onError: (e: unknown) => setError(getApiErrorMessage(e, 'Could not send booking request.')),
+  })
+
+  return (
+    <Modal title="Send booking request" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+          Enter the customer's mobile number. They'll receive an SMS with a link to fill in their vehicle details and preferred date &amp; time.
+        </p>
+        <Input
+          label="Mobile number *"
+          type="tel"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          placeholder="e.g. 0412 345 678"
+          autoFocus
+        />
+        <Input
+          label="Customer name (optional)"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="e.g. Sam Taylor"
+        />
+        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        <div className="flex gap-2 justify-end">
+          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button
+            type="button"
+            disabled={mut.isPending || !phone.trim()}
+            onClick={() => { setError(''); mut.mutate() }}
+          >
+            <Phone size={16} />
+            {mut.isPending ? 'Sending…' : 'Send SMS'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -2010,6 +2063,7 @@ export default function AutoKeyJobsPage() {
     plannerDetailJobId,
     setPlannerDetailJobId,
   } = useMobileServicesModals()
+  const [showBookingRequest, setShowBookingRequest] = useState(false)
   const moreActionsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!showMoreActions) return
@@ -2300,6 +2354,7 @@ export default function AutoKeyJobsPage() {
                 )}
               </div>
               <Button onClick={() => setShowCreate(true)} type="button" className="sm:hidden"><Plus size={16} />New Job</Button>
+              <Button variant="secondary" onClick={() => setShowBookingRequest(true)} type="button" className="sm:hidden"><Phone size={16} />Send request</Button>
               {/* Desktop: show all buttons */}
               {role === 'owner' && (
                 <Button variant="secondary" onClick={() => setShowAddTech(true)} type="button" className="hidden sm:inline-flex">
@@ -2314,6 +2369,7 @@ export default function AutoKeyJobsPage() {
               <Button variant="secondary" onClick={() => navigate('/auto-key/team')} type="button" className="hidden sm:inline-flex">
                 <Users size={16} />Team
               </Button>
+              <Button variant="secondary" onClick={() => setShowBookingRequest(true)} type="button" className="hidden sm:inline-flex"><Phone size={16} />Send booking request</Button>
               <Button onClick={() => setShowCreate(true)} type="button" className="hidden sm:inline-flex"><Plus size={16} />New Job</Button>
             </div>
           )}
@@ -2375,6 +2431,7 @@ export default function AutoKeyJobsPage() {
       </div>
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
+      {showBookingRequest && <SendBookingRequestModal onClose={() => setShowBookingRequest(false)} />}
       {showAddTech && (
         <AddTechnicianModal
           onClose={() => setShowAddTech(false)}
