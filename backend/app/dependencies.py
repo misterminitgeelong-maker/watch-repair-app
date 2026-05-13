@@ -137,13 +137,13 @@ ALL_PLAN_FEATURES = {
 }
 
 PLAN_FEATURES: dict[str, set[str]] = {
-    "basic_watch": {"watch"},
-    "basic_shoe": {"shoe"},
-    "basic_auto_key": {"auto_key"},
-    "basic_watch_shoe": {"watch", "shoe"},
-    "basic_watch_auto_key": {"watch", "auto_key"},
-    "basic_shoe_auto_key": {"shoe", "auto_key"},
-    "basic_all_tabs": {"watch", "shoe", "auto_key"},
+    "basic_watch": {"watch", "customer_accounts"},
+    "basic_shoe": {"shoe", "customer_accounts"},
+    "basic_auto_key": {"auto_key", "customer_accounts"},
+    "basic_watch_shoe": {"watch", "shoe", "customer_accounts"},
+    "basic_watch_auto_key": {"watch", "auto_key", "customer_accounts"},
+    "basic_shoe_auto_key": {"shoe", "auto_key", "customer_accounts"},
+    "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts"},
     "pro": set(ALL_PLAN_FEATURES),
 }
 
