@@ -286,7 +286,7 @@ def create_auto_key_quick_intake(
         assigned_user_id=auth.user_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),
         title=f"{full_name.split()[0]} - Job",
-        status="awaiting_quote",
+        status="awaiting_customer_details",
         programming_status="pending",
         key_quantity=1,
         customer_intake_token=uuid4().hex,
