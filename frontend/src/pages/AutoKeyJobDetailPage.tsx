@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
 import {
   getAutoKeyJob,
   getAutoKeyMessages,
@@ -19,6 +19,7 @@ import {
   sendAutoKeyQuote,
   createAutoKeyInvoiceFromQuote,
   sendAutoKeyInvoice,
+  deleteAutoKeyJob,
   searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
   updateAutoKeyInvoice,
@@ -248,8 +249,11 @@ function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: strin
 export default function AutoKeyJobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { hasFeature } = useAuth()
   const [error, setError] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [vLookupMake, setVLookupMake] = useState('')
   const [vLookupModel, setVLookupModel] = useState('')
   const [vLookupYear, setVLookupYear] = useState('')
@@ -378,6 +382,15 @@ export default function AutoKeyJobDetailPage() {
     queryKey: ['auto-key-invoices', id],
     queryFn: () => listAutoKeyInvoices(id!).then(r => r.data),
     enabled: !!id,
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteAutoKeyJob(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      navigate('/auto-key')
+    },
+    onError: (e: unknown) => setDeleteError(getApiErrorMessage(e, 'Failed to delete job.')),
   })
 
   const statusMut = useMutation({
@@ -601,7 +614,14 @@ export default function AutoKeyJobDetailPage() {
         <MobileServicesSubNav className='mt-4' />
       </div>
 
-      <PageHeader title={`#${job.job_number} · ${job.title}`} />
+      <PageHeader
+        title={`#${job.job_number} · ${job.title}`}
+        action={(
+          <Button variant="secondary" type="button" onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
+            <Trash2 size={15} />Delete job
+          </Button>
+        )}
+      />
 
       {/* Mobile quick-action strip */}
       <div className="lg:hidden mb-3 flex items-center gap-2 flex-wrap">
@@ -1335,6 +1355,26 @@ export default function AutoKeyJobDetailPage() {
               >
                 <CheckCircle size={14} />
                 {recordPaymentMut.isPending ? 'Recording…' : 'Mark paid'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {showDeleteConfirm && (
+        <Modal
+          title="Delete job"
+          onClose={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text)' }}>Are you sure you want to delete this job? This cannot be undone.</p>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.title}</p>
+            </div>
+            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }} disabled={deleteMut.isPending}>Cancel</Button>
+              <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
+                {deleteMut.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
           </div>

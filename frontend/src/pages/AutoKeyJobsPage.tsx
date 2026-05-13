@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, UserPlus, Users, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, CreditCard, GripVertical, LayoutGrid, List, Map as MapIcon, MapPin, Minus, Phone, Search, ShoppingCart, Trash2, UserPlus, Users, X } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -2064,6 +2064,17 @@ export default function AutoKeyJobsPage() {
     setPlannerDetailJobId,
   } = useMobileServicesModals()
   const [showBookingRequest, setShowBookingRequest] = useState(false)
+  const [deleteJob, setDeleteJob] = useState<{ id: string; job_number: string; title: string } | null>(null)
+  const [deleteError, setDeleteError] = useState('')
+  const deleteMut = useMutation({
+    mutationFn: (jobId: string) => deleteAutoKeyJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setDeleteJob(null)
+      setDeleteError('')
+    },
+    onError: (e: unknown) => setDeleteError(getApiErrorMessage(e, 'Failed to delete job.')),
+  })
   const moreActionsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!showMoreActions) return
@@ -2432,6 +2443,26 @@ export default function AutoKeyJobsPage() {
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
       {showBookingRequest && <SendBookingRequestModal onClose={() => setShowBookingRequest(false)} />}
+      {deleteJob && (
+        <Modal
+          title="Delete job"
+          onClose={() => { if (!deleteMut.isPending) { setDeleteJob(null); setDeleteError('') } }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text)' }}>Are you sure you want to delete this job? This cannot be undone.</p>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{deleteJob.job_number} · {deleteJob.title}</p>
+            </div>
+            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => { setDeleteJob(null); setDeleteError('') }} disabled={deleteMut.isPending}>Cancel</Button>
+              <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate(deleteJob.id)} disabled={deleteMut.isPending}>
+                {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {showAddTech && (
         <AddTechnicianModal
           onClose={() => setShowAddTech(false)}
@@ -2642,6 +2673,17 @@ export default function AutoKeyJobsPage() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap font-semibold" style={{ color: job.cost_cents > 0 ? 'var(--ms-text)' : 'var(--ms-text-muted)' }}>
                             {job.cost_cents > 0 ? formatCents(job.cost_cents) : '—'}
+                          </td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              aria-label={`Delete job ${job.job_number}`}
+                              className="opacity-0 group-hover:opacity-100 h-7 w-7 rounded-full flex items-center justify-center transition-opacity"
+                              style={{ color: '#A4664A', border: '1px solid #E7C6B7', backgroundColor: '#FFF7F3' }}
+                              onClick={() => { setDeleteError(''); setDeleteJob({ id: job.id, job_number: job.job_number, title: job.title }) }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </td>
                         </tr>
                       )
