@@ -1271,6 +1271,8 @@ export const setPlatformTenantPlan = (tenantId: string, plan_code: string, reaso
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/plan`, { plan_code, reason })
 export const markPlatformTenantPaid = (tenantId: string) =>
   api.post<PlatformTenant>(`/platform-admin/tenants/${tenantId}/mark-paid`)
+export const updatePlatformTenant = (tenantId: string, payload: { name?: string; slug?: string; owner_email?: string; new_password?: string }) =>
+  api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}`, payload)
 
 // ── Shoe Catalogue ────────────────────────────────────────────────────────────
 export interface ShoeCatalogueGroup {

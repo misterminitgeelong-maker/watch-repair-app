@@ -14,6 +14,7 @@ from ..models import (
     PlatformTenantForceLogoutRequest,
     PlatformTenantPlanUpdateRequest,
     PlatformTenantStatusUpdateRequest,
+    PlatformTenantUpdateRequest,
     PlatformTenantRead,
     PlatformUserRead,
     RepairJob,
@@ -23,7 +24,7 @@ from ..models import (
     TenantEventLogRead,
     User,
 )
-from ..security import create_access_token, create_refresh_token
+from ..security import create_access_token, create_refresh_token, hash_password
 
 router = APIRouter(prefix="/v1/platform-admin", tags=["platform-admin"])
 
@@ -247,6 +248,95 @@ def mark_tenant_paid(
         )
     )
     session.commit()
+    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+    return PlatformTenantRead(
+        id=tenant.id,
+        slug=tenant.slug,
+        name=tenant.name,
+        plan_code=tenant.plan_code,
+        is_active=tenant.is_active,
+        signup_payment_pending=tenant.signup_payment_pending,
+        user_count=user_count,
+        created_at=tenant.created_at,
+    )
+
+
+@router.patch("/tenants/{tenant_id}", response_model=PlatformTenantRead)
+def update_tenant(
+    tenant_id: UUID,
+    payload: PlatformTenantUpdateRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    """Edit shop name, slug, owner email, or reset owner password."""
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+
+    changes: list[str] = []
+
+    if payload.name is not None:
+        new_name = payload.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=422, detail="Shop name cannot be empty.")
+        old_name = tenant.name
+        tenant.name = new_name
+        changes.append(f"name: '{old_name}' → '{new_name}'")
+
+    if payload.slug is not None:
+        new_slug = payload.slug.strip().lower()
+        if not new_slug:
+            raise HTTPException(status_code=422, detail="Shop slug cannot be empty.")
+        existing = session.exec(
+            select(Tenant).where(Tenant.slug == new_slug).where(Tenant.id != tenant_id)
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Slug '{new_slug}' is already in use.")
+        old_slug = tenant.slug
+        tenant.slug = new_slug
+        changes.append(f"slug: '{old_slug}' → '{new_slug}'")
+
+    session.add(tenant)
+
+    owner = session.exec(
+        select(User)
+        .where(User.tenant_id == tenant_id)
+        .where(User.role == "owner")
+        .order_by(User.created_at)
+    ).first()
+
+    if payload.owner_email is not None and owner:
+        new_email = payload.owner_email.strip().lower()
+        if new_email:
+            old_email = owner.email
+            owner.email = new_email
+            changes.append(f"owner email: '{old_email}' → '{new_email}'")
+            session.add(owner)
+
+    if payload.new_password is not None and owner:
+        pwd = payload.new_password.strip()
+        if len(pwd) < 8:
+            raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
+        owner.hashed_password = hash_password(pwd)
+        changes.append("owner password reset")
+        session.add(owner)
+
+    if changes:
+        session.add(
+            TenantEventLog(
+                tenant_id=tenant_id,
+                actor_user_id=auth.user_id,
+                actor_email=admin_email,
+                entity_type="tenant",
+                entity_id=tenant_id,
+                event_type="platform_admin_tenant_updated",
+                event_summary=f"Platform admin updated shop: {'; '.join(changes)}",
+            )
+        )
+        session.commit()
+
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
         id=tenant.id,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, platformAdminEnterShop, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -212,6 +212,12 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
   const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string } | null>(null)
   const [planModalValue, setPlanModalValue] = useState('')
   const [planModalReason, setPlanModalReason] = useState('')
+  const [editModal, setEditModal] = useState<{ tenantId: string; name: string; slug: string } | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editSlug, setEditSlug] = useState('')
+  const [editOwnerEmail, setEditOwnerEmail] = useState('')
+  const [editPassword, setEditPassword] = useState('')
+  const [editError, setEditError] = useState('')
   const changePlan = useMutation({
     mutationFn: ({ tenantId, plan_code, reason }: { tenantId: string; plan_code: string; reason?: string }) =>
       setPlatformTenantPlan(tenantId, plan_code, reason),
@@ -233,6 +239,21 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
       void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
     },
     onError: () => setAdminActionError('Could not mark as paid. Try again.'),
+  })
+  const editTenant = useMutation({
+    mutationFn: ({ tenantId, payload }: { tenantId: string; payload: { name?: string; slug?: string; owner_email?: string; new_password?: string } }) =>
+      updatePlatformTenant(tenantId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+      setEditModal(null)
+      setEditName('')
+      setEditSlug('')
+      setEditOwnerEmail('')
+      setEditPassword('')
+      setEditError('')
+    },
+    onError: (err) => setEditError(getApiErrorMessage(err)),
   })
   const PLAN_OPTIONS = ['basic_watch', 'basic_shoe', 'basic_auto_key', 'basic_watch_shoe', 'basic_watch_auto_key', 'basic_shoe_auto_key', 'basic_all_tabs', 'pro']
   function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
@@ -329,6 +350,13 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         Force Logout
                       </button>
                       <button
+                        onClick={() => { setEditModal({ tenantId: t.id, name: t.name, slug: t.slug }); setEditName(t.name); setEditSlug(t.slug); setEditOwnerEmail(''); setEditPassword(''); setEditError('') }}
+                        className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                      >
+                        Edit
+                      </button>
+                      <button
                         onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
                         disabled={deleteAccount.isPending}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
@@ -399,6 +427,13 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         >
                           Change Plan
                         </button>
+                        <button
+                          onClick={() => { setEditModal({ tenantId: t.id, name: t.name, slug: t.slug }); setEditName(t.name); setEditSlug(t.slug); setEditOwnerEmail(''); setEditPassword(''); setEditError('') }}
+                          className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                        >
+                          Edit
+                        </button>
                         {t.signup_payment_pending && (
                           <button
                             onClick={() => markPaid.mutate(t.id)}
@@ -425,6 +460,80 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
             </>
           )}
         </Card>
+      )}
+
+      {/* Edit Shop Modal */}
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'var(--ms-overlay)' }}>
+          <div className="rounded-2xl shadow-xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border-strong)' }}>
+            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Edit Shop — {editModal.name}</h3>
+            <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>Leave a field blank to keep its current value.</p>
+            {editError && (
+              <div className="mb-3 text-xs rounded-lg px-3 py-2" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+                {editError}
+              </div>
+            )}
+            <label className="block text-xs mb-1" style={{ color: 'var(--ms-text-muted)' }}>Shop name</label>
+            <input
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              placeholder={editModal.name}
+            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--ms-text-muted)' }}>Shop slug (ID)</label>
+            <input
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={editSlug}
+              onChange={e => setEditSlug(e.target.value.toLowerCase())}
+              placeholder={editModal.slug}
+            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--ms-text-muted)' }}>Owner email (optional)</label>
+            <input
+              type="email"
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={editOwnerEmail}
+              onChange={e => setEditOwnerEmail(e.target.value)}
+              placeholder="Leave blank to keep current"
+            />
+            <label className="block text-xs mb-1" style={{ color: 'var(--ms-text-muted)' }}>New password (optional, min 8 chars)</label>
+            <input
+              type="password"
+              className="w-full rounded-lg px-3 py-2.5 text-sm mb-4 outline-none"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={editPassword}
+              onChange={e => setEditPassword(e.target.value)}
+              placeholder="Leave blank to keep current"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setEditModal(null); setEditError('') }}
+                className="px-4 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={editTenant.isPending}
+                onClick={() => {
+                  const payload: { name?: string; slug?: string; owner_email?: string; new_password?: string } = {}
+                  if (editName.trim() && editName.trim() !== editModal.name) payload.name = editName.trim()
+                  if (editSlug.trim() && editSlug.trim() !== editModal.slug) payload.slug = editSlug.trim()
+                  if (editOwnerEmail.trim()) payload.owner_email = editOwnerEmail.trim()
+                  if (editPassword.trim()) payload.new_password = editPassword.trim()
+                  if (Object.keys(payload).length === 0) { setEditError('No changes made.'); return }
+                  editTenant.mutate({ tenantId: editModal.tenantId, payload })
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: editTenant.isPending ? 0.6 : 1 }}
+              >
+                {editTenant.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Change Plan Modal */}

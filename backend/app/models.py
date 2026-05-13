@@ -905,6 +905,13 @@ class PlatformTenantPlanUpdateRequest(SQLModel):
     reason: Optional[str] = None
 
 
+class PlatformTenantUpdateRequest(SQLModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    owner_email: Optional[str] = None
+    new_password: Optional[str] = None
+
+
 class BootstrapResponse(SQLModel):
     tenant_id: UUID
     owner_user: PublicUser
