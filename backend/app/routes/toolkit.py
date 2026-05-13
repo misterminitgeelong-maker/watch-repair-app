@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_feature, require_tech_or_above
+from ..dependencies import AuthContext, get_auth_context, require_feature, require_owner, require_tech_or_above
 from ..models import Tenant
 
 router = APIRouter(prefix="/v1/toolkit", tags=["toolkit"])
@@ -93,6 +93,50 @@ def patch_mobile_notifications(
     session.commit()
     session.refresh(tenant)
     return MobileNotificationsRead(customer_sms_enabled=bool(tenant.mobile_services_customer_sms_enabled))
+
+
+class SmsSenderRead(BaseModel):
+    messaging_service_sid: str | None = None
+
+
+class SmsSenderPatch(BaseModel):
+    messaging_service_sid: str | None = Field(default=None, max_length=64)
+
+
+@router.get("/sms-sender", response_model=SmsSenderRead)
+def get_sms_sender(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Return the Twilio Messaging Service SID configured for this account's outbound SMS."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return SmsSenderRead(messaging_service_sid=getattr(tenant, "twilio_messaging_service_sid", None))
+
+
+@router.patch("/sms-sender", response_model=SmsSenderRead)
+def patch_sms_sender(
+    body: SmsSenderPatch,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Set or clear the Twilio Messaging Service SID for this account's outbound SMS.
+
+    When set, all customer SMS will be sent via this Messaging Service (whose name in
+    Twilio appears as the sender). Set to null to revert to the platform default number.
+    """
+    sid = (body.messaging_service_sid or "").strip() or None
+    if sid and not sid.startswith("MG"):
+        raise HTTPException(status_code=422, detail="messaging_service_sid must start with 'MG'")
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    tenant.twilio_messaging_service_sid = sid
+    session.add(tenant)
+    session.commit()
+    session.refresh(tenant)
+    return SmsSenderRead(messaging_service_sid=getattr(tenant, "twilio_messaging_service_sid", None))
 
 
 @router.get("/catalog")

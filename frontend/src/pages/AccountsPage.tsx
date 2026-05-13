@@ -14,6 +14,8 @@ import {
   listUsers,
   refreshStripeConnectStatus,
   setDispatchBaseLocation,
+  getSmsSender,
+  patchSmsSender,
   type PlanCode,
   type TenantUser,
   updateTenantPlan,
@@ -574,6 +576,8 @@ export default function AccountsPage() {
 
       {(planCode.includes('auto_key') || planCode === 'pro') && <DispatchBaseLocationCard />}
 
+      <SmsSenderCard />
+
       <AppearanceCard />
 
       <Card className="mb-5 p-4 sm:p-5">
@@ -605,6 +609,78 @@ export default function AccountsPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+function SmsSenderCard() {
+  const qc = useQueryClient()
+  const [sid, setSid] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['sms-sender'],
+    queryFn: () => getSmsSender().then((r) => r.data),
+  })
+
+  useEffect(() => {
+    if (data !== undefined) setSid(data.messaging_service_sid ?? '')
+  }, [data?.messaging_service_sid])
+
+  const mut = useMutation({
+    mutationFn: () => patchSmsSender(sid.trim() || null),
+    onSuccess: () => {
+      setSaved(true)
+      setError('')
+      void qc.invalidateQueries({ queryKey: ['sms-sender'] })
+    },
+    onError: (err) => {
+      setError(getApiErrorMessage(err) || 'Could not save.')
+      setSaved(false)
+    },
+  })
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        SMS sender name
+      </p>
+      <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--ms-text-mid)' }}>
+        By default, customer SMS are sent from the platform's shared number. To show your business name as the
+        sender, create a{' '}
+        <span className="font-medium" style={{ color: 'var(--ms-text)' }}>Twilio Messaging Service</span> named
+        after your business and paste its SID (starts with <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>MG</code>) below.
+        Leave blank to use the platform default.
+      </p>
+      {isLoading ? (
+        <Spinner />
+      ) : (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1 max-w-sm">
+            <Input
+              label="Messaging Service SID"
+              value={sid}
+              onChange={(e) => { setSid(e.target.value); setSaved(false) }}
+              placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={() => mut.mutate()}
+            disabled={mut.isPending}
+            className="min-h-11"
+          >
+            {mut.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      )}
+      {saved && (
+        <p className="text-xs mt-2" style={{ color: '#2A6B65' }}>Saved.</p>
+      )}
+      {error && (
+        <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>{error}</p>
+      )}
+    </Card>
   )
 }
 

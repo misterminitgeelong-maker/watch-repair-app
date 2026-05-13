@@ -29,20 +29,42 @@ def mobile_services_customer_sms_enabled(session: Session, tenant_id: UUID) -> b
 # Internal send helper
 # ---------------------------------------------------------------------------
 
-def _send_sms(to: str, body: str) -> str | None:
-    """Send an SMS and return the provider SID, or None on failure/dry-run."""
-    if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
+def _get_sender(session: Session, tenant_id: UUID) -> str | None:
+    """Return the tenant's Messaging Service SID if configured, otherwise None (falls back to global from-number)."""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant and getattr(tenant, "twilio_messaging_service_sid", None):
+        return tenant.twilio_messaging_service_sid
+    return None
+
+
+def _send_sms(to: str, body: str, *, sender: str | None = None) -> str | None:
+    """Send an SMS and return the provider SID, or None on failure/dry-run.
+
+    sender: Twilio Messaging Service SID (starts with "MG") for per-tenant sender name,
+            or a phone number override. Falls back to settings.twilio_from_number when None.
+    """
+    if not (settings.twilio_account_sid and settings.twilio_auth_token):
+        logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
+        return None
+    if not sender and not settings.twilio_from_number:
         logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
         return None
 
     try:
         from twilio.rest import Client  # type: ignore[import]
         client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
-        message = client.messages.create(
-            body=body,
-            from_=settings.twilio_from_number,
-            to=to,
-        )
+        if sender and sender.startswith("MG"):
+            message = client.messages.create(
+                body=body,
+                messaging_service_sid=sender,
+                to=to,
+            )
+        else:
+            message = client.messages.create(
+                body=body,
+                from_=sender or settings.twilio_from_number,
+                to=to,
+            )
         logger.info("[SMS SENT] sid=%s to=%s", message.sid, to)
         return message.sid
     except Exception as exc:  # noqa: BLE001
@@ -93,7 +115,8 @@ def send_custom_job_message(
     body: str,
 ) -> JobMessage:
     """Send a free-text SMS to a customer and persist it as an outbound JobMessage."""
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     msg = JobMessage(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,
@@ -132,7 +155,8 @@ def notify_job_live(
         f"Your job (#{job_number}) has been logged and we'll be in touch once we've had a chance to assess it. "
         f"Track your job here: {status_url}"
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -159,7 +183,8 @@ def notify_work_started(
         f"Hi {customer_name}, great news — we've started work on your watch (job #{job_number}). "
         f"We'll be in touch in the coming days once it's ready for collection."
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -205,7 +230,8 @@ def notify_quote_sent(
         f"Hi {customer_name}, your repair quote from {shop} is {currency_symbol}{total:.2f}.{work_summary} "
         f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -265,7 +291,8 @@ def notify_job_status_changed(
         # No notification for diagnosis, qc, cancelled, etc.
         return
 
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -291,7 +318,8 @@ def notify_auto_key_day_before_reminder(
     lines = "Tomorrow's jobs: " + "; ".join(job_summaries[:5])
     if len(job_summaries) > 5:
         lines += f" (+{len(job_summaries) - 5} more)"
-    sid = _send_sms(to_phone, lines)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, lines, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -332,7 +360,8 @@ def notify_auto_key_customer_scheduled(
     )
     if job_address:
         body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -371,7 +400,8 @@ def notify_auto_key_customer_day_before(
     if job_address:
         body += f" Address: {job_address[:50]}{'…' if len(job_address) > 50 else ''}"
     body += " We'll send you an arrival window on the day."
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -417,7 +447,8 @@ def notify_auto_key_en_route(
     body += " Reply to this message if you need to reach us."
     if len(body) > 1500:
         body = body[:1490] + "…"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -446,7 +477,8 @@ def notify_auto_key_arrival_window(
         f"Hi {customer_name}, your technician is on the way and will arrive between {time_window}. "
         f"Please ensure someone is available at the vehicle. Reply to this message if you need to reach us."
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -485,7 +517,8 @@ def notify_auto_key_invoice_ready(
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -524,7 +557,8 @@ def notify_auto_key_quote_sent(
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -560,7 +594,8 @@ def notify_auto_key_customer_intake(
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -611,7 +646,8 @@ def notify_auto_key_booking_request(
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -644,7 +680,8 @@ def notify_shoe_job_live(
         f"Hi {customer_name}, your shoe repair job #{job_number} is now live! "
         f"Track it here: {status_url}"
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -677,7 +714,8 @@ def notify_shoe_quote_sent(
         f"Hi {customer_name}, your shoe repair quote from {shop_name} is {currency_symbol}{total:.2f}. "
         f"Tap to approve or decline: {approval_url}"
     )
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -731,7 +769,8 @@ def notify_shoe_job_status_changed(
 
     body = f"{body} Track live status: {settings.public_base_url}/shoe-status/{status_token}"
 
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
@@ -772,7 +811,8 @@ def notify_auto_key_schedule_changed(
     body = "".join(parts).strip()
     if len(body) <= 10:
         return
-    sid = _send_sms(to_phone, body)
+    sender = _get_sender(session, tenant_id)
+    sid = _send_sms(to_phone, body, sender=sender)
     _persist(
         session,
         tenant_id=tenant_id,
