@@ -2,11 +2,20 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
 from ..models import Customer, CustomerCreate, CustomerRead, Watch, WatchCreate, WatchRead
+
+
+class CustomerUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
 
 router = APIRouter(prefix="/v1", tags=["customers", "watches"])
 
@@ -61,6 +70,25 @@ def get_customer(
     customer = session.get(Customer, customer_id)
     if not customer or customer.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+@router.patch("/customers/{customer_id}", response_model=CustomerRead)
+def update_customer(
+    customer_id: UUID,
+    payload: CustomerUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    customer = session.get(Customer, customer_id)
+    if not customer or customer.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(customer, key, value)
+    session.add(customer)
+    session.commit()
+    session.refresh(customer)
     return customer
 
 

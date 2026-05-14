@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare } from 'lucide-react'
@@ -9,7 +9,7 @@ import {
   listAttachments, uploadAttachment,
   getStatusHistory,
   resendJobNotification,
-  listCustomerAccounts, getWatch, getCustomer,
+  listCustomerAccounts, getWatch, getCustomer, updateCustomer,
   getWatchMovementQuote,
   getApiErrorMessage,
   getUploadErrorMessage,
@@ -138,6 +138,76 @@ const STATUS_STEP_NOTES: Partial<Record<JobStatus, string[]>> = {
     'Collected by customer — payment received.',
     'Watch collected.',
   ],
+}
+
+// ── Edit customer modal ────────────────────────────────────────────────────────
+function EditCustomerModal({
+  customerId,
+  initialName,
+  initialPhone,
+  initialEmail,
+  onClose,
+  onSaved,
+}: {
+  customerId: string
+  initialName: string
+  initialPhone: string
+  initialEmail: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState(initialName)
+  const [phone, setPhone] = useState(initialPhone)
+  const [email, setEmail] = useState(initialEmail)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    setName(initialName)
+    setPhone(initialPhone)
+    setEmail(initialEmail)
+  }, [initialName, initialPhone, initialEmail])
+
+  const mut = useMutation({
+    mutationFn: () => updateCustomer(customerId, {
+      full_name: name.trim(),
+      phone: phone.trim() || undefined,
+      email: email.trim() || undefined,
+    }),
+    onSuccess: () => { onSaved(); onClose() },
+    onError: (err) => setError(getApiErrorMessage(err) || 'Could not save changes.'),
+  })
+
+  return (
+    <Modal title="Edit customer details" onClose={onClose}>
+      <div className="space-y-3">
+        <Input
+          label="Full name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          autoFocus
+        />
+        <Input
+          label="Phone"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          type="tel"
+        />
+        <Input
+          label="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          type="email"
+        />
+        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !name.trim()}>
+            {mut.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
 }
 
 // ── Step-note modal ────────────────────────────────────────────────────────────
@@ -426,6 +496,7 @@ export default function JobDetailPage() {
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
   const [showCreateQuote, setShowCreateQuote] = useState(false)
+  const [showEditCustomer, setShowEditCustomer] = useState(false)
   const [pendingStepStatus, setPendingStepStatus] = useState<JobStatus | null>(null)
   const [editingQuote, setEditingQuote] = useState(false)
   const [quoteInput, setQuoteInput] = useState('')
@@ -632,6 +703,19 @@ export default function JobDetailPage() {
       />
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
       {showLogWork && <LogWorkModal jobId={id!} onClose={() => setShowLogWork(false)} />}
+      {showEditCustomer && customer && (
+        <EditCustomerModal
+          customerId={customer.id}
+          initialName={customer.full_name ?? ''}
+          initialPhone={customer.phone ?? ''}
+          initialEmail={customer.email ?? ''}
+          onClose={() => setShowEditCustomer(false)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ['customer', customer.id] })
+            qc.invalidateQueries({ queryKey: ['job', id] })
+          }}
+        />
+      )}
       {showCreateQuote && (
         <CreateSendQuoteModal
           jobId={id!}
@@ -739,9 +823,18 @@ export default function JobDetailPage() {
               <p style={{ fontSize: 12, marginTop: 4, color: 'var(--ms-sidebar-text)' }}>{formatDate(job.created_at)}</p>
               {(customer?.full_name || customer?.phone) && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                  {customer.full_name && (
-                    <p style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{customer.full_name}</p>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    {customer.full_name && (
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: 0 }}>{customer.full_name}</p>
+                    )}
+                    <button
+                      onClick={() => setShowEditCustomer(true)}
+                      title="Edit customer details"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--ms-sidebar-text)', flexShrink: 0, lineHeight: 1 }}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
                   {customer.phone && (
                     <a
                       href={`tel:${customer.phone}`}
