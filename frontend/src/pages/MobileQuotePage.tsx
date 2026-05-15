@@ -278,14 +278,21 @@ export default function MobileQuotePage() {
             ))}
           </div>
           <div className="mt-4 pt-3 space-y-1" style={{ borderTop: '1px solid var(--ms-border)' }}>
-            {quote.tax_cents > 0 && (
+            {(quote.tax_cents > 0 || quote.discount_cents > 0) && (
               <>
                 <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                   <span>Subtotal</span><span>{formatMoney(quote.subtotal_cents, quote.currency)}</span>
                 </div>
-                <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-                  <span>GST</span><span>{formatMoney(quote.tax_cents, quote.currency)}</span>
-                </div>
+                {quote.discount_cents > 0 && (
+                  <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                    <span>Discount</span><span>−{formatMoney(quote.discount_cents, quote.currency)}</span>
+                  </div>
+                )}
+                {quote.tax_cents > 0 && (
+                  <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                    <span>GST</span><span>{formatMoney(quote.tax_cents, quote.currency)}</span>
+                  </div>
+                )}
               </>
             )}
             <div className="flex justify-between font-bold text-base pt-1" style={{ color: 'var(--ms-text)' }}>

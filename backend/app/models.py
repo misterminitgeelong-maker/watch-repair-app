@@ -424,6 +424,7 @@ class Quote(SQLModel, table=True):
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
     status: str = "draft"
     subtotal_cents: int = 0
+    discount_cents: int = 0
     tax_cents: int = 0
     total_cents: int = 0
     currency: str = "USD"
@@ -472,6 +473,7 @@ class Invoice(SQLModel, table=True):
     invoice_number: str = Field(index=True)
     status: str = "unpaid"
     subtotal_cents: int = 0
+    discount_cents: int = 0
     tax_cents: int = 0
     total_cents: int = 0
     currency: str = "USD"
@@ -1146,6 +1148,7 @@ class QuoteLineItemCreate(SQLModel):
 class QuoteCreate(SQLModel):
     repair_job_id: UUID
     line_items: list[QuoteLineItemCreate]
+    discount_cents: int = 0
     tax_cents: int = 0
 
 
@@ -1155,6 +1158,7 @@ class QuoteRead(SQLModel):
     repair_job_id: UUID
     status: QuoteStatus
     subtotal_cents: int
+    discount_cents: int = 0
     tax_cents: int
     total_cents: int
     currency: str
@@ -1189,6 +1193,7 @@ class InvoiceRead(SQLModel):
     invoice_number: str
     status: Literal["unpaid", "paid", "refunded", "void"]
     subtotal_cents: int
+    discount_cents: int = 0
     tax_cents: int
     total_cents: int
     currency: str

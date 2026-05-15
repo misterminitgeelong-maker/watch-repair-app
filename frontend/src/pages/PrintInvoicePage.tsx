@@ -113,6 +113,11 @@ export default function PrintInvoicePage() {
               <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                 <span>Subtotal</span><span>{formatCents(invoice.subtotal_cents)}</span>
               </div>
+              {invoice.discount_cents > 0 && (
+                <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                  <span>Discount</span><span>−{formatCents(invoice.discount_cents)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                 <span>Tax</span><span>{formatCents(invoice.tax_cents)}</span>
               </div>

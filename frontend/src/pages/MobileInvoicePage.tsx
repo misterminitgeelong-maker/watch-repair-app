@@ -165,6 +165,12 @@ export default function MobileInvoicePage() {
                 <span>Subtotal</span>
                 <span className="tabular-nums">{formatMoney(inv.subtotal_cents, inv.currency)}</span>
               </div>
+              {inv.discount_cents > 0 && (
+                <div className="flex justify-between">
+                  <span>Discount</span>
+                  <span className="tabular-nums">−{formatMoney(inv.discount_cents, inv.currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Tax</span>
                 <span className="tabular-nums">{formatMoney(inv.tax_cents, inv.currency)}</span>

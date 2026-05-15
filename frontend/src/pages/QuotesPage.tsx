@@ -116,6 +116,7 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   })
   const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
   const [jobId, setJobId] = useState('')
+  const [discountCents, setDiscountCents] = useState(0)
   const [taxCents, setTaxCents] = useState(0)
   const [items, setItems] = useState<QuoteLineItemInput[]>([
     { item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 },
@@ -131,10 +132,10 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   const addItem = () => setItems(prev => [...prev, { item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 }])
 
   const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price_cents, 0)
-  const total = subtotal + taxCents
+  const total = Math.max(0, subtotal - discountCents + taxCents)
 
   const mut = useMutation({
-    mutationFn: () => createQuote({ repair_job_id: jobId, tax_cents: taxCents, line_items: items }),
+    mutationFn: () => createQuote({ repair_job_id: jobId, discount_cents: discountCents, tax_cents: taxCents, line_items: items }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['quotes'] }); onClose() },
     onError: () => setError('Failed to create quote.'),
   })
@@ -168,7 +169,17 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
           <button onClick={addItem} className="text-sm flex items-center gap-1 font-medium transition-colors" style={{ color: 'var(--ms-accent)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}><Plus size={14} />Add line</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            label="Discount (cents)"
+            type="number"
+            min="0"
+            value={discountCents}
+            onChange={e => {
+              const next = Number.parseInt(e.target.value, 10)
+              setDiscountCents(Number.isFinite(next) ? next : 0)
+            }}
+          />
           <Input
             label="Tax (cents)"
             type="number"

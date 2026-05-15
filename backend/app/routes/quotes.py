@@ -126,8 +126,9 @@ def create_quote(
         tenant_id=auth.tenant_id,
         repair_job_id=payload.repair_job_id,
         subtotal_cents=subtotal,
+        discount_cents=payload.discount_cents,
         tax_cents=payload.tax_cents,
-        total_cents=subtotal + payload.tax_cents,
+        total_cents=max(0, subtotal - payload.discount_cents + payload.tax_cents),
         currency=tenant_currency,
     )
     session.add(quote)
@@ -376,6 +377,7 @@ def get_public_quote(request: Request, token: str, session: Session = Depends(ge
         "id": quote.id,
         "status": quote.status,
         "subtotal_cents": quote.subtotal_cents,
+        "discount_cents": quote.discount_cents,
         "tax_cents": quote.tax_cents,
         "total_cents": quote.total_cents,
         "currency": quote.currency,

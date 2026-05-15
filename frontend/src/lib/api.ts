@@ -659,12 +659,12 @@ export interface QuoteLineItemInput {
 }
 export interface Quote {
   id: string; tenant_id: string; repair_job_id: string; status: QuoteStatus
-  subtotal_cents: number; tax_cents: number; total_cents: number; currency: string
+  subtotal_cents: number; discount_cents: number; tax_cents: number; total_cents: number; currency: string
   approval_token: string; sent_at?: string; created_at: string
 }
 export const listQuotes = (repairJobId?: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
   api.get<Quote[]>('/quotes', { params: { ...(repairJobId ? { repair_job_id: repairJobId } : {}), ...params } })
-export const createQuote = (data: { repair_job_id: string; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
+export const createQuote = (data: { repair_job_id: string; discount_cents?: number; tax_cents: number; line_items: QuoteLineItemInput[] }) =>
   api.post<Quote>('/quotes', data)
 export const sendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/send`)
 export const resendQuote = (id: string) => api.post<{ id: string; status: string; sent_at: string; approval_token: string }>(`/quotes/${id}/resend`)
@@ -674,7 +674,7 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
-  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
+  axios.get<{ id: string; status: string; subtotal_cents: number; discount_cents: number; tax_cents: number; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
@@ -976,7 +976,7 @@ export const getStatusHistory = (jobId: string) =>
 export interface Invoice {
   id: string; tenant_id: string; repair_job_id: string; quote_id?: string
   invoice_number: string; status: string; subtotal_cents: number
-  tax_cents: number; total_cents: number; currency: string; created_at: string
+  discount_cents: number; tax_cents: number; total_cents: number; currency: string; created_at: string
   invoice?: Invoice
 }
 export const listInvoices = (params?: { limit?: number }) =>
