@@ -1,15 +1,17 @@
 import csv
 import io
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import case
 from sqlmodel import Session, func, select, col
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
 from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
 from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
@@ -19,6 +21,296 @@ router = APIRouter(prefix="/v1/reports", tags=["reports"])
 # (e.g. dollars stored as cents multiple times). Clamp cost aggregation to sane per-job caps
 # so dashboard gross profit remains actionable.
 _MAX_REASONABLE_JOB_COST_CENTS = 5_000_000  # $50,000 per job
+_SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
+
+
+def _compute_period_summary(
+    session: Session,
+    tenant_id: UUID,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> dict[str, Any]:
+    """Financial and operations metrics for a single calendar period (UTC day bounds)."""
+    watch_jobs_opened = int(
+        session.exec(
+            select(func.count())
+            .select_from(RepairJob)
+            .where(RepairJob.tenant_id == tenant_id)
+            .where(RepairJob.created_at >= start_dt)
+            .where(RepairJob.created_at <= end_dt)
+        ).one()
+    )
+    shoe_jobs_opened = int(
+        session.exec(
+            select(func.count())
+            .select_from(ShoeRepairJob)
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .where(ShoeRepairJob.created_at >= start_dt)
+            .where(ShoeRepairJob.created_at <= end_dt)
+        ).one()
+    )
+    ak_jobs_opened = int(
+        session.exec(
+            select(func.count())
+            .select_from(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant_id)
+            .where(AutoKeyJob.created_at >= start_dt)
+            .where(AutoKeyJob.created_at <= end_dt)
+        ).one()
+    )
+    jobs_opened = watch_jobs_opened + shoe_jobs_opened + ak_jobs_opened
+
+    payment_revenue = int(
+        session.exec(
+            select(func.coalesce(func.sum(Payment.amount_cents), 0))
+            .where(Payment.tenant_id == tenant_id)
+            .where(Payment.status == "succeeded")
+            .where(Payment.created_at >= start_dt)
+            .where(Payment.created_at <= end_dt)
+        ).one()
+    )
+    invoiced_payment_ids = select(Payment.invoice_id).where(Payment.status == "succeeded")
+    orphan_paid_cents = int(
+        session.exec(
+            select(func.coalesce(func.sum(Invoice.total_cents), 0))
+            .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.status == "paid")
+            .where(Invoice.id.not_in(invoiced_payment_ids))
+            .where(Invoice.created_at >= start_dt)
+            .where(Invoice.created_at <= end_dt)
+        ).one()
+    )
+    ak_revenue = int(
+        session.exec(
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.status == "paid")
+            .where(AutoKeyInvoice.created_at >= start_dt)
+            .where(AutoKeyInvoice.created_at <= end_dt)
+        ).one()
+    )
+    shoe_revenue = int(
+        session.exec(
+            select(func.coalesce(func.sum(ShoeRepairJobItem.unit_price_cents * ShoeRepairJobItem.quantity), 0))
+            .join(ShoeRepairJob, ShoeRepairJobItem.shoe_repair_job_id == ShoeRepairJob.id)
+            .where(ShoeRepairJobItem.tenant_id == tenant_id)
+            .where(ShoeRepairJobItem.unit_price_cents.isnot(None))
+            .where(ShoeRepairJob.status.in_(_SHOE_PAID_STATUSES))
+            .where(ShoeRepairJob.created_at >= start_dt)
+            .where(ShoeRepairJob.created_at <= end_dt)
+        ).one() or 0
+    )
+    revenue_cents = payment_revenue + orphan_paid_cents + ak_revenue + shoe_revenue
+
+    watch_cost = int(
+        session.exec(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (RepairJob.cost_cents <= _MAX_REASONABLE_JOB_COST_CENTS, RepairJob.cost_cents),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                )
+            )
+            .where(RepairJob.tenant_id == tenant_id)
+            .where(RepairJob.created_at >= start_dt)
+            .where(RepairJob.created_at <= end_dt)
+        ).one()
+    )
+    shoe_cost = int(
+        session.exec(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (ShoeRepairJob.cost_cents <= _MAX_REASONABLE_JOB_COST_CENTS, ShoeRepairJob.cost_cents),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                )
+            )
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .where(ShoeRepairJob.created_at >= start_dt)
+            .where(ShoeRepairJob.created_at <= end_dt)
+        ).one()
+    )
+    cost_cents = watch_cost + shoe_cost
+    gross_profit_cents = revenue_cents - cost_cents
+    gross_margin_percent = round((gross_profit_cents / revenue_cents) * 100, 2) if revenue_cents > 0 else 0.0
+
+    watch_billed = int(
+        session.exec(
+            select(func.coalesce(func.sum(Invoice.total_cents), 0))
+            .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.created_at >= start_dt)
+            .where(Invoice.created_at <= end_dt)
+        ).one()
+    )
+    ak_billed = int(
+        session.exec(
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.created_at >= start_dt)
+            .where(AutoKeyInvoice.created_at <= end_dt)
+        ).one()
+    )
+    billed_cents = watch_billed + ak_billed
+
+    quotes_sent = int(
+        session.exec(
+            select(func.count())
+            .select_from(Quote)
+            .where(Quote.tenant_id == tenant_id)
+            .where(Quote.status == "sent")
+            .where(Quote.sent_at.isnot(None))
+            .where(Quote.sent_at >= start_dt)
+            .where(Quote.sent_at <= end_dt)
+        ).one()
+    )
+    quotes_approved = int(
+        session.exec(
+            select(func.count())
+            .select_from(Quote)
+            .where(Quote.tenant_id == tenant_id)
+            .where(Quote.status == "approved")
+            .where(Quote.sent_at.isnot(None))
+            .where(Quote.sent_at >= start_dt)
+            .where(Quote.sent_at <= end_dt)
+        ).one()
+    )
+    quotes_declined = int(
+        session.exec(
+            select(func.count())
+            .select_from(Quote)
+            .where(Quote.tenant_id == tenant_id)
+            .where(Quote.status == "declined")
+            .where(Quote.sent_at.isnot(None))
+            .where(Quote.sent_at >= start_dt)
+            .where(Quote.sent_at <= end_dt)
+        ).one()
+    )
+    funnel_total = quotes_sent + quotes_declined
+    approval_rate_percent = round((quotes_approved / max(funnel_total, 1)) * 100, 2)
+
+    work_minutes = int(
+        session.exec(
+            select(func.coalesce(func.sum(WorkLog.minutes_spent), 0))
+            .where(WorkLog.tenant_id == tenant_id)
+            .where(WorkLog.created_at >= start_dt)
+            .where(WorkLog.created_at <= end_dt)
+        ).one()
+    )
+
+    customers_new = int(
+        session.exec(
+            select(func.count())
+            .select_from(Customer)
+            .where(Customer.tenant_id == tenant_id)
+            .where(Customer.created_at >= start_dt)
+            .where(Customer.created_at <= end_dt)
+        ).one()
+    )
+
+    return {
+        "jobs_opened": jobs_opened,
+        "watch_jobs_opened": watch_jobs_opened,
+        "shoe_jobs_opened": shoe_jobs_opened,
+        "auto_key_jobs_opened": ak_jobs_opened,
+        "customers_new": customers_new,
+        "financials": {
+            "billed_cents": billed_cents,
+            "revenue_cents": revenue_cents,
+            "cost_cents": cost_cents,
+            "gross_profit_cents": gross_profit_cents,
+            "gross_margin_percent": gross_margin_percent,
+        },
+        "sales_funnel": {
+            "quotes_sent": quotes_sent,
+            "quotes_approved": quotes_approved,
+            "quotes_declined": quotes_declined,
+            "approval_rate_percent": approval_rate_percent,
+        },
+        "operations": {
+            "work_minutes": work_minutes,
+            "avg_revenue_per_job_cents": int(revenue_cents / jobs_opened) if jobs_opened > 0 else 0,
+        },
+    }
+
+
+def _period_report_payload(
+    session: Session,
+    tenant_id: UUID,
+    period: str,
+    reference_date: str | None,
+) -> dict[str, Any]:
+    if period not in VALID_PERIODS:
+        raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
+    ref = parse_reference_date(reference_date)
+    start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
+    metrics = _compute_period_summary(session, tenant_id, start_dt, end_dt)
+    return {
+        "period": period,
+        "reference_date": ref.isoformat(),
+        "period_start": start_ymd,
+        "period_end": end_ymd,
+        **metrics,
+    }
+
+
+def _period_summary_csv_row(payload: dict[str, Any]) -> list[str | int | float]:
+    fin = payload["financials"]
+    funnel = payload["sales_funnel"]
+    ops = payload["operations"]
+    return [
+        payload["period"],
+        payload["reference_date"],
+        payload["period_start"],
+        payload["period_end"],
+        payload["jobs_opened"],
+        payload["watch_jobs_opened"],
+        payload["shoe_jobs_opened"],
+        payload["auto_key_jobs_opened"],
+        payload["customers_new"],
+        fin["billed_cents"],
+        fin["revenue_cents"],
+        fin["cost_cents"],
+        fin["gross_profit_cents"],
+        fin["gross_margin_percent"],
+        funnel["quotes_sent"],
+        funnel["quotes_approved"],
+        funnel["quotes_declined"],
+        funnel["approval_rate_percent"],
+        ops["work_minutes"],
+        ops["avg_revenue_per_job_cents"],
+    ]
+
+
+_PERIOD_CSV_HEADERS = [
+    "period",
+    "reference_date",
+    "period_start",
+    "period_end",
+    "jobs_opened",
+    "watch_jobs_opened",
+    "shoe_jobs_opened",
+    "auto_key_jobs_opened",
+    "customers_new",
+    "billed_cents",
+    "revenue_cents",
+    "cost_cents",
+    "gross_profit_cents",
+    "gross_margin_percent",
+    "quotes_sent",
+    "quotes_approved",
+    "quotes_declined",
+    "approval_rate_percent",
+    "work_minutes",
+    "avg_revenue_per_job_cents",
+]
 
 
 @router.get("/summary")
@@ -113,7 +405,6 @@ def get_reports_summary(
         ).one()
     )
     # Shoe revenue = service items on collected/completed jobs
-    _SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
     shoe_revenue = int(
         session.exec(
             select(func.coalesce(func.sum(ShoeRepairJobItem.unit_price_cents * ShoeRepairJobItem.quantity), 0))
@@ -803,3 +1094,37 @@ def get_auto_key_commission_report(
         })
 
     return {"technicians": technicians}
+
+
+@router.get("/period-summary", summary="Reports metrics for a calendar period")
+def get_period_summary(
+    period: str = Query(..., description="day | week | month | quarter"),
+    reference_date: str | None = Query(
+        default=None,
+        description="Civil date YYYY-MM-DD within the period (default: today UTC)",
+    ),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    return _period_report_payload(session, auth.tenant_id, period, reference_date)
+
+
+@router.get("/export/period-summary", summary="Export period report metrics as CSV")
+def export_period_summary_csv(
+    period: str = Query(..., description="day | week | month | quarter"),
+    reference_date: str | None = Query(default=None, description="Civil date YYYY-MM-DD within the period"),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    payload = _period_report_payload(session, auth.tenant_id, period, reference_date)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(_PERIOD_CSV_HEADERS)
+    w.writerow(_period_summary_csv_row(payload))
+    buf.seek(0)
+    filename = f"report-{payload['period']}-{payload['period_start']}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

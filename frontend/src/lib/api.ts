@@ -1103,6 +1103,43 @@ export const getExportJobsCsv = () => api.get<Blob>('/reports/export/jobs', { re
 export const getExportCustomersCsv = () => api.get<Blob>('/reports/export/customers', { responseType: 'blob' })
 export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoices', { responseType: 'blob' })
 
+export type ReportPeriod = 'day' | 'week' | 'month' | 'quarter'
+
+export interface PeriodReportSummary {
+  period: ReportPeriod
+  reference_date: string
+  period_start: string
+  period_end: string
+  jobs_opened: number
+  watch_jobs_opened: number
+  shoe_jobs_opened: number
+  auto_key_jobs_opened: number
+  customers_new: number
+  financials: {
+    billed_cents: number
+    revenue_cents: number
+    cost_cents: number
+    gross_profit_cents: number
+    gross_margin_percent: number
+  }
+  sales_funnel: {
+    quotes_sent: number
+    quotes_approved: number
+    quotes_declined: number
+    approval_rate_percent: number
+  }
+  operations: {
+    work_minutes: number
+    avg_revenue_per_job_cents: number
+  }
+}
+
+export const getPeriodReportSummary = (params: { period: ReportPeriod; reference_date?: string }) =>
+  api.get<PeriodReportSummary>('/reports/period-summary', { params })
+
+export const getExportPeriodSummaryCsv = (params: { period: ReportPeriod; reference_date?: string }) =>
+  api.get<Blob>('/reports/export/period-summary', { params, responseType: 'blob' })
+
 export const getExportMyData = () => api.get<Record<string, unknown>>('/auth/export-my-data')
 
 // ── Tenant Activity ───────────────────────────────────────────────────────────

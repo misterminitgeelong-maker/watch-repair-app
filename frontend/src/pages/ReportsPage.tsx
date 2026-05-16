@@ -6,10 +6,12 @@ import {
   getExportInvoicesCsv,
   getExportJobsCsv,
   getExportMyData,
+  getExportPeriodSummaryCsv,
   getReportsSummary,
   getReportsTrends,
   getReportsTechBreakdown,
   getTenantActivity,
+  type ReportPeriod,
 } from '@/lib/api'
 import { Button, Card, PageHeader, Spinner } from '@/components/ui'
 import { formatCents } from '@/lib/utils'
@@ -20,6 +22,18 @@ const PERIODS: { key: PeriodKey; label: string; months: number }[] = [
   { key: '6m', label: '6 months', months: 6 },
   { key: '12m', label: '12 months', months: 12 },
 ]
+
+const EXPORT_PERIODS: { key: ReportPeriod; label: string }[] = [
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'quarter', label: 'Quarter' },
+]
+
+function todayYmd(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function MetricCard({
   label,
@@ -155,10 +169,25 @@ export default function ReportsPage() {
     },
   })
 
+  const [exportPeriod, setExportPeriod] = useState<ReportPeriod>('week')
+  const [exportReferenceDate, setExportReferenceDate] = useState(todayYmd())
+  const exportPeriodMut = useMutation({
+    mutationFn: () =>
+      getExportPeriodSummaryCsv({ period: exportPeriod, reference_date: exportReferenceDate }).then(r => {
+        downloadBlob(r.data, `report-${exportPeriod}-${exportReferenceDate}.csv`)
+        return r
+      }),
+  })
+
   const [exportOpen, setExportOpen] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
 
-  const anyExporting = exportJobsMut.isPending || exportCustomersMut.isPending || exportInvoicesMut.isPending || exportMyDataMut.isPending
+  const anyExporting =
+    exportJobsMut.isPending ||
+    exportCustomersMut.isPending ||
+    exportInvoicesMut.isPending ||
+    exportMyDataMut.isPending ||
+    exportPeriodMut.isPending
 
   if (isLoading) return <div><PageHeader title="Reports" /><Spinner /></div>
   if (!data) return <div><PageHeader title="Reports" /><p className="mt-4" style={{ color: 'var(--ms-text-muted)' }}>No report data available.</p></div>
@@ -209,10 +238,61 @@ export default function ReportsPage() {
               </Button>
               {exportOpen && (
                 <div
-                  className="absolute right-0 mt-1 w-44 rounded-lg shadow-lg z-20 py-1"
+                  className="absolute right-0 mt-1 w-72 rounded-lg shadow-lg z-20 py-2 px-3"
                   style={{ backgroundColor: 'var(--ms-card)', border: '1px solid var(--ms-border)' }}
                   onBlur={() => setExportOpen(false)}
                 >
+                  <p className="text-[10px] uppercase tracking-wide font-medium px-1 mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+                    Period report
+                  </p>
+                  <div
+                    className="inline-flex rounded-lg p-0.5 mb-2 w-full"
+                    style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
+                  >
+                    {EXPORT_PERIODS.map(p => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => setExportPeriod(p.key)}
+                        className="flex-1 px-2 py-1 text-[10px] font-medium rounded-md transition-colors"
+                        style={{
+                          backgroundColor: exportPeriod === p.key ? 'var(--ms-surface)' : 'transparent',
+                          color: exportPeriod === p.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="block text-xs mb-2 px-1" style={{ color: 'var(--ms-text-muted)' }}>
+                    Reference date
+                    <input
+                      type="date"
+                      value={exportReferenceDate}
+                      onChange={e => setExportReferenceDate(e.target.value)}
+                      className="mt-1 w-full rounded-md px-2 py-1.5 text-sm"
+                      style={{
+                        backgroundColor: 'var(--ms-bg)',
+                        border: '1px solid var(--ms-border)',
+                        color: 'var(--ms-text)',
+                      }}
+                    />
+                  </label>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full mb-3"
+                    disabled={exportPeriodMut.isPending}
+                    onClick={() => { exportPeriodMut.mutate(); setExportOpen(false) }}
+                  >
+                    Download period CSV
+                  </Button>
+                  <p
+                    className="text-[10px] uppercase tracking-wide font-medium px-1 mb-1 pt-2 border-t"
+                    style={{ color: 'var(--ms-text-muted)', borderColor: 'var(--ms-border)' }}
+                  >
+                    Data exports
+                  </p>
                   {[
                     { label: 'Jobs CSV', action: () => exportJobsMut.mutate() },
                     { label: 'Customers CSV', action: () => exportCustomersMut.mutate() },
