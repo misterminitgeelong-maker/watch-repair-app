@@ -7,7 +7,6 @@ import {
   listCustomerAccounts,
   uploadAttachment,
   getApiErrorMessage,
-  getUploadErrorMessage,
   trackingSmsWarning,
   getWatchRepairsConfig,
   type JobStatus, type Customer, type Watch, type CustomerAccount,
@@ -17,7 +16,7 @@ import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
-import { preparePhotoFile, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
+import { preparePhotoFile, getPhotoPrepareErrorMessage, getIntakeSubmitErrorMessage, yieldToMainThread } from '@/lib/photoUpload'
 import { pushModalCloseHandler } from '@/lib/modalBackStack'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
@@ -241,6 +240,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     setPhotoLoading(slotKey)
     try {
       const compressed = await preparePhotoFile(file)
+      await yieldToMainThread()
       const url = URL.createObjectURL(compressed)
       setPhotos(prev => prev.map((p, i) => {
         if (i !== watchIdx) return p
@@ -253,6 +253,16 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     } finally {
       setPhotoLoading(cur => (cur === slotKey ? null : cur))
     }
+  }
+
+  function releaseAllPhotoPreviews() {
+    setPhotos(prev => {
+      for (const p of prev) {
+        if (p.frontPreview) URL.revokeObjectURL(p.frontPreview)
+        if (p.backPreview) URL.revokeObjectURL(p.backPreview)
+      }
+      return prev.map(p => ({ ...p, frontPreview: null, backPreview: null }))
+    })
   }
 
   function removePhoto(watchIdx: number, side: 'front' | 'back') {
@@ -304,6 +314,10 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       return
     }
     setLoading(true)
+    const photoSnapshot = photos.map(p => ({ front: p.front, back: p.back }))
+    releaseAllPhotoPreviews()
+    await yieldToMainThread()
+
     const warnings: string[] = []
     let firstJobId: string | null = null
     let createdCount = 0
@@ -313,7 +327,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         const { data } = await createCustomer(newCustomer)
         customerId = data.id
         setCreatedCustomerId(data.id)
-        qc.invalidateQueries({ queryKey: ['customers'] })
       }
 
       const watchIds: string[] = []
@@ -333,8 +346,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           watchIds.push(data.id)
         }
       }
-      qc.invalidateQueries({ queryKey: ['watches', customerId] })
-
       for (let i = 0; i < watchCount; i++) {
         const watchId = watchIds[i]
         const jobTitle = watchCount > 1 ? `${job.title} (Watch ${i + 1} of ${watchCount})` : job.title
@@ -356,17 +367,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         if (!firstJobId) firstJobId = data.id
         const smsMsg = trackingSmsWarning(data.tracking_sms_skipped_reason)
         if (smsMsg) warnings.push(smsMsg)
-        const p = photos[i]
+        const p = photoSnapshot[i]
         for (const [file, label] of [[p.front, 'watch_front'], [p.back, 'watch_back']] as const) {
           if (!file) continue
           try {
             await uploadAttachment(file, data.id, label)
+            await yieldToMainThread()
           } catch (uploadErr: unknown) {
-            warnings.push(getUploadErrorMessage(uploadErr, 'One or more photos could not be uploaded. Open the job to add photos.'))
+            warnings.push(getPhotoPrepareErrorMessage(uploadErr, 'One or more photos could not be uploaded. Open the job to add photos.'))
           }
         }
       }
-      qc.invalidateQueries({ queryKey: ['jobs'] })
       if (firstJobId) {
         if (createdCount < watchCount) {
           warnings.unshift(`Only ${createdCount} of ${watchCount} job tickets were created. Check the customer profile for missing tickets.`)
@@ -378,7 +389,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     } catch (err: unknown) {
       if (firstJobId) {
         warnings.push(
-          getUploadErrorMessage(err, getApiErrorMessage(err, 'Some jobs may not have been created. Open the job list to verify.')),
+          getIntakeSubmitErrorMessage(err, getApiErrorMessage(err, 'Some jobs may not have been created. Open the job list to verify.')),
         )
         if (createdCount < watchCount) {
           warnings.unshift(`Only ${createdCount} of ${watchCount} job tickets were created.`)
@@ -387,7 +398,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         setIntakeWarnings(warnings)
         setCreatedJobId(firstJobId)
       } else {
-        setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
+        setError(getIntakeSubmitErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
       }
     } finally {
       setLoading(false)
@@ -395,6 +406,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   }
 
   function finishCreate(jobId: string, shouldPrint: boolean) {
+    qc.invalidateQueries({ queryKey: ['jobs'] })
+    qc.invalidateQueries({ queryKey: ['customers'] })
     if (shouldPrint) navigate(`/jobs/${jobId}/intake-print?autoprint=1`)
     onSuccess?.(jobId)
     onClose()
