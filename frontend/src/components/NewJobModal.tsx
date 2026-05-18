@@ -16,6 +16,7 @@ import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
+import { compressImage } from '@/lib/imageCompression'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
 const MAX_WATCHES = 5
@@ -147,6 +148,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [photoLoading, setPhotoLoading] = useState<string | null>(null)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
 
   const { data: customers } = useQuery({
@@ -208,16 +210,24 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const setJ = (k: keyof typeof job) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setJob(f => ({ ...f, [k]: e.target.value as JobStatus }))
 
-  function handlePhoto(watchIdx: number, side: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhoto(watchIdx: number, side: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setPhotos(prev => prev.map((p, i) => {
-      if (i !== watchIdx) return p
-      const oldUrl = p[`${side}Preview` as 'frontPreview' | 'backPreview']
-      if (oldUrl) URL.revokeObjectURL(oldUrl)
-      return { ...p, [side]: file, [`${side}Preview`]: url }
-    }))
+    const slotKey = `${watchIdx}-${side}`
+    setPhotoLoading(slotKey)
+    try {
+      const compressed = await compressImage(file)
+      const url = URL.createObjectURL(compressed)
+      setPhotos(prev => prev.map((p, i) => {
+        if (i !== watchIdx) return p
+        const oldUrl = p[`${side}Preview` as 'frontPreview' | 'backPreview']
+        if (oldUrl) URL.revokeObjectURL(oldUrl)
+        return { ...p, [side]: compressed, [`${side}Preview`]: url }
+      }))
+    } finally {
+      setPhotoLoading(cur => (cur === slotKey ? null : cur))
+    }
   }
 
   function removePhoto(watchIdx: number, side: 'front' | 'back') {
@@ -288,6 +298,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     }
     setLoading(true)
     let firstJobId: string | null = null
+    let uploadWarning = ''
     try {
       for (let i = 0; i < watchCount; i++) {
         const watchId = createdWatchIds[i]
@@ -308,15 +319,29 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         })
         if (!firstJobId) firstJobId = data.id
         const p = photos[i]
-        const uploads: Promise<unknown>[] = []
-        if (p.front) uploads.push(uploadAttachment(p.front, data.id, 'watch_front'))
-        if (p.back) uploads.push(uploadAttachment(p.back, data.id, 'watch_back'))
-        await Promise.all(uploads)
+        for (const [file, label] of [[p.front, 'watch_front'], [p.back, 'watch_back']] as const) {
+          if (!file) continue
+          try {
+            await uploadAttachment(file, data.id, label)
+          } catch (uploadErr: unknown) {
+            uploadWarning = getUploadErrorMessage(uploadErr, 'One or more photos could not be uploaded.')
+          }
+        }
       }
       qc.invalidateQueries({ queryKey: ['jobs'] })
-      setCreatedJobId(firstJobId)
+      if (firstJobId) {
+        if (uploadWarning) setError(uploadWarning)
+        setCreatedJobId(firstJobId)
+      }
     } catch (err: unknown) {
-      setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
+      if (firstJobId) {
+        setError(
+          `${getUploadErrorMessage(err, getApiErrorMessage(err, 'Job was created but something went wrong.'))} Open the job to finish intake photos.`,
+        )
+        setCreatedJobId(firstJobId)
+      } else {
+        setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
+      }
     } finally {
       setLoading(false)
     }
@@ -666,8 +691,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(3)}>← Back</Button>
-            <Button onClick={submit} disabled={loading || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}>
-              {loading ? 'Creating…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
+            <Button
+              onClick={submit}
+              disabled={loading || !!photoLoading || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}
+            >
+              {loading ? 'Creating…' : photoLoading ? 'Processing photo…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
             </Button>
           </div>
         </div>

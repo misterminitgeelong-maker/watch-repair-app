@@ -23,6 +23,7 @@ import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffset
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
+import { compressImage } from '@/lib/imageCompression'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import LogWorkModal from '@/components/LogWorkModal'
 
@@ -54,33 +55,6 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   work_completed:                null,
   invoice_paid:                  null,
   failed_job:                    null,
-}
-
-// ── Image compression helper ──────────────────────────────────────────────────
-function compressImage(file: File, maxDim = 1500, quality = 0.8): Promise<File> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      let { width, height } = img
-      if (width > maxDim || height > maxDim) {
-        if (width >= height) { height = Math.round((height / width) * maxDim); width = maxDim }
-        else { width = Math.round((width / height) * maxDim); height = maxDim }
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(
-        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
-        'image/jpeg',
-        quality,
-      )
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
-    img.src = url
-  })
 }
 
 // ── Step note suggestions per destination status ──────────────────────────────
