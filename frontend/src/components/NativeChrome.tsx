@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { refreshSessionOnNativeResume } from '@/lib/api'
 import { inAppPathFromUniversalUrl } from '@/lib/nativeDeepLinks'
+import { handleNativeBackButton } from '@/lib/modalBackStack'
 
 /**
  * Android hardware back → in-app history when possible (Capacitor WebView only).
@@ -37,6 +38,7 @@ export default function NativeChrome() {
     })
 
     void App.addListener('backButton', () => {
+      if (handleNativeBackButton()) return
       if (window.history.length > 1) navigate(-1)
     }).then((h) => {
       if (!canceled) backHandle = h

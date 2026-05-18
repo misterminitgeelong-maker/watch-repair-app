@@ -30,6 +30,7 @@ from ..models import (
     RepairJobFieldUpdate,
     RepairJobIntakeUpdate,
     RepairJobRead,
+    RepairJobCreateResponse,
     RepairJobStatusUpdate,
     JobNotePayload,
     Quote,
@@ -143,7 +144,7 @@ def _next_job_number(session: Session, tenant_id: UUID) -> str:
     raise HTTPException(status_code=500, detail="Could not allocate repair job number")
 
 
-@router.post("", response_model=RepairJobRead, status_code=201)
+@router.post("", response_model=RepairJobCreateResponse, status_code=201)
 def create_repair_job(
     payload: RepairJobCreate,
     auth: AuthContext = Depends(get_auth_context),
@@ -210,9 +211,11 @@ def create_repair_job(
 
     # Send "job is live" SMS so customer can track it
     customer = session.get(Customer, watch.customer_id)
-    if customer and customer.phone:
+    tracking_sms_sent = False
+    has_phone = bool(customer and customer.phone)
+    if has_phone:
         _tenant = session.get(Tenant, auth.tenant_id)
-        sms.notify_job_live(
+        tracking_sms_sent = sms.notify_job_live(
             session,
             tenant_id=auth.tenant_id,
             repair_job_id=job.id,
@@ -225,7 +228,12 @@ def create_repair_job(
 
     session.commit()
     session.refresh(job)
-    return job
+    read = _repair_job_to_read(session, job)
+    return RepairJobCreateResponse(
+        **read.model_dump(),
+        tracking_sms_sent=tracking_sms_sent,
+        tracking_sms_skipped_reason=sms.tracking_sms_skip_reason(tracking_sms_sent, has_phone),
+    )
 
 
 @router.get("", response_model=list[RepairJobRead])

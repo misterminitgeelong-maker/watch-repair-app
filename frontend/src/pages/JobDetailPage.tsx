@@ -23,7 +23,7 @@ import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffset
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
-import { compressImage } from '@/lib/imageCompression'
+import { preparePhotoFile } from '@/lib/photoUpload'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import LogWorkModal from '@/components/LogWorkModal'
 
@@ -523,7 +523,7 @@ export default function JobDetailPage() {
     setUploading(true)
     setUploadError('')
     try {
-      const toUpload = file.type.startsWith('image/') ? await compressImage(file) : file
+      const toUpload = file.type.startsWith('image/') ? await preparePhotoFile(file) : file
       await uploadAttachment(toUpload, id, label)
       qc.invalidateQueries({ queryKey: ['attachments', id] })
     } catch (err: unknown) {

@@ -15,6 +15,7 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS } from '@/lib/utils'
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 import RepairQueueModal from '@/components/RepairQueueModal'
+import { preparePhotoFile, uploadFilesSequential, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
 import {
   KanbanBoard,
   JobCard as KanbanJobCard,
@@ -83,10 +84,11 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
     setUploading(true)
     setUploadError('')
     try {
-      await Promise.all(files.map(f => uploadShoeAttachment(f, job.id)))
+      const prepared = await Promise.all(files.map(f => preparePhotoFile(f)))
+      await uploadFilesSequential(prepared, f => uploadShoeAttachment(f, job.id))
       qc.invalidateQueries({ queryKey: ['shoe-attachments', job.id] })
     } catch (err: unknown) {
-      setUploadError(getUploadErrorMessage(err, 'Upload failed.'))
+      setUploadError(getPhotoPrepareErrorMessage(err, getUploadErrorMessage(err, 'Upload failed.')))
     } finally {
       setUploading(false)
       e.target.value = ''

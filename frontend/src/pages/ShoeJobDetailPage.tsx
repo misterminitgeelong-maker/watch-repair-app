@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw, History } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
-  listShoeAttachments, uploadShoeAttachment,
+  listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
   listCustomerAccounts,
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
@@ -17,6 +17,7 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { preparePhotoFile, uploadFilesSequential, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
   'from', 'pair_from', 'each_from', 'from_per_boot', 'from_per_strap', 'quoted_upon_inspection',
@@ -479,6 +480,7 @@ export default function ShoeJobDetailPage() {
   const [editingCost, setEditingCost] = useState(false)
   const [costInput, setCostInput] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -529,9 +531,13 @@ export default function ShoeJobDetailPage() {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
+    setUploadError('')
     try {
-      await Promise.all(files.map(f => uploadShoeAttachment(f, id!)))
+      const prepared = await Promise.all(files.map(f => preparePhotoFile(f)))
+      await uploadFilesSequential(prepared, f => uploadShoeAttachment(f, id!))
       qc.invalidateQueries({ queryKey: ['shoe-attachments', id] })
+    } catch (err: unknown) {
+      setUploadError(getPhotoPrepareErrorMessage(err, getUploadErrorMessage(err, 'Upload failed.')))
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -684,6 +690,9 @@ export default function ShoeJobDetailPage() {
         </div>
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
         <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+        {uploadError && (
+          <p className="px-5 pb-2 text-sm" style={{ color: '#C96A5A' }}>{uploadError}</p>
+        )}
         {photos.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"

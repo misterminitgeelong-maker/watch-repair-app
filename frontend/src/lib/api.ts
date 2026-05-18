@@ -569,6 +569,8 @@ export interface RepairJob {
   customer_email?: string | null
   claimed_by_user_id?: string | null
   claimed_by_name?: string | null
+  tracking_sms_sent?: boolean
+  tracking_sms_skipped_reason?: 'no_phone' | 'sms_not_configured' | 'send_failed' | null
 }
 export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string; q?: string; cost_outlier?: boolean }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
@@ -589,6 +591,13 @@ export interface RepairJobCreatePayload {
   cost_cents: number
   job_number_override?: string
 }
+export function trackingSmsWarning(reason: RepairJob['tracking_sms_skipped_reason']): string | null {
+  if (!reason) return null
+  if (reason === 'no_phone') return 'Tracking SMS was not sent — customer has no phone number on file.'
+  if (reason === 'sms_not_configured') return 'Tracking SMS was not sent — SMS is not configured for this shop.'
+  return 'Tracking SMS could not be sent. Check the job and send the tracking link manually if needed.'
+}
+
 export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJob = (id: string, data: {
@@ -945,6 +954,7 @@ export const uploadShoeAttachment = (file: File, shoeRepairJobId: string, label?
   if (label) params.append('label', label)
   return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 export const getAttachmentDownloadUrl = (storageKey: string) => {
@@ -1586,6 +1596,8 @@ export interface ShoeRepairJob {
   estimated_days_min?: number | null
   estimated_days_max?: number | null
   items: ShoeRepairJobItem[]
+  tracking_sms_sent?: boolean
+  tracking_sms_skipped_reason?: 'no_phone' | 'sms_not_configured' | 'send_failed' | null
 }
 
 export interface ShoeRepairJobCreatePayload {
@@ -1955,6 +1967,7 @@ export const uploadAutoKeyAttachment = (file: File, jobId: string, label?: strin
   if (label) params.append('label', label)
   return api.post<Attachment>(`/attachments?${params.toString()}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 

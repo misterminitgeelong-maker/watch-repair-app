@@ -245,8 +245,10 @@ interface ModalProps {
   children: React.ReactNode
   onClose: () => void
   size?: 'default' | 'wide'
+  /** When true, the close button is disabled (e.g. during submit). */
+  closeDisabled?: boolean
 }
-export function Modal({ title, children, onClose, size = 'default' }: ModalProps) {
+export function Modal({ title, children, onClose, size = 'default', closeDisabled = false }: ModalProps) {
   const maxWidth = size === 'wide' ? 'sm:max-w-[780px]' : 'sm:max-w-[480px]'
   return (
     <div
@@ -274,11 +276,14 @@ export function Modal({ title, children, onClose, size = 'default' }: ModalProps
             {title}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-colors"
+            disabled={closeDisabled}
+            aria-disabled={closeDisabled}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             style={{ color: 'var(--ms-text-muted)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-text)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
+            onMouseEnter={e => { if (!closeDisabled) e.currentTarget.style.color = 'var(--ms-text)' }}
+            onMouseLeave={e => { if (!closeDisabled) e.currentTarget.style.color = 'var(--ms-text-muted)' }}
           >
             &times;
           </button>

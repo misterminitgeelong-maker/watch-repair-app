@@ -22,6 +22,7 @@ from ..models import (
     ShoeRepairJobItemRead,
     ShoeRepairJobItemsAppend,
     ShoeRepairJobRead,
+    ShoeRepairJobCreateResponse,
     ShoeRepairJobShoe,
     ShoeRepairJobShoeRead,
     ShoeRepairJobStatusUpdate,
@@ -137,7 +138,7 @@ def list_shoes(
 
 # ── Shoe Repair Jobs ──────────────────────────────────────────────────────────
 
-@router.post("", response_model=ShoeRepairJobRead, status_code=201)
+@router.post("", response_model=ShoeRepairJobCreateResponse, status_code=201)
 def create_shoe_repair_job(
     payload: ShoeRepairJobCreate,
     auth: AuthContext = Depends(get_auth_context),
@@ -198,8 +199,10 @@ def create_shoe_repair_job(
 
     # Send "job live" SMS if customer has a phone
     customer = session.get(Customer, shoe.customer_id)
-    if customer and customer.phone:
-        sms_service.notify_shoe_job_live(
+    tracking_sms_sent = False
+    has_phone = bool(customer and customer.phone)
+    if has_phone:
+        tracking_sms_sent = sms_service.notify_shoe_job_live(
             session,
             tenant_id=auth.tenant_id,
             shoe_repair_job_id=job.id,
@@ -210,7 +213,12 @@ def create_shoe_repair_job(
         )
         session.commit()
 
-    return _job_to_read(job, session)
+    read = _job_to_read(job, session)
+    return ShoeRepairJobCreateResponse(
+        **read.model_dump(),
+        tracking_sms_sent=tracking_sms_sent,
+        tracking_sms_skipped_reason=sms_service.tracking_sms_skip_reason(tracking_sms_sent, has_phone),
+    )
 
 
 @router.get("", response_model=list[ShoeRepairJobRead])

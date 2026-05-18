@@ -1041,6 +1041,13 @@ class RepairJobRead(SQLModel):
     customer_email: Optional[str] = None
 
 
+class RepairJobCreateResponse(RepairJobRead):
+    """POST /repair-jobs — includes whether tracking SMS was sent."""
+
+    tracking_sms_sent: bool = False
+    tracking_sms_skipped_reason: Optional[str] = None
+
+
 class RepairJobStatusUpdate(SQLModel):
     status: JobStatus
     note: Optional[str] = None
@@ -1384,6 +1391,13 @@ class ShoeRepairJobRead(SQLModel):
     estimated_ready_by: Optional[date] = None
     claimed_by_user_id: Optional[UUID] = None
     claimed_by_name: Optional[str] = None
+
+
+class ShoeRepairJobCreateResponse(ShoeRepairJobRead):
+    """POST /shoe-repair-jobs — includes whether tracking SMS was sent."""
+
+    tracking_sms_sent: bool = False
+    tracking_sms_skipped_reason: Optional[str] = None
 
 
 class ShoeRepairJobStatusUpdate(SQLModel):

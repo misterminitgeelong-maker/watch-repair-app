@@ -44,6 +44,7 @@ import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { preparePhotoFile } from '@/lib/photoUpload'
 
 const QUOTE_PRESETS: { label: string; description: string; price: number }[] = [
   { label: 'Key Cutting', description: 'Key cutting (in-store)', price: 35 },
@@ -229,8 +230,19 @@ function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: strin
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     let active = true
-    resolveQuoteSignatureUrl(quoteId).then(u => { if (active) setUrl(u) }).catch(() => {})
-    return () => { active = false }
+    let blobUrl: string | null = null
+    resolveQuoteSignatureUrl(quoteId).then(u => {
+      if (!active) {
+        URL.revokeObjectURL(u)
+        return
+      }
+      blobUrl = u
+      setUrl(u)
+    }).catch(() => {})
+    return () => {
+      active = false
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+    }
   }, [quoteId])
   if (!url) return null
   return (
@@ -530,7 +542,10 @@ export default function AutoKeyJobDetailPage() {
   })
 
   const uploadAttachmentMut = useMutation({
-    mutationFn: (file: File) => uploadAutoKeyAttachment(file, id!),
+    mutationFn: async (file: File) => {
+      const prepared = file.type.startsWith('image/') ? await preparePhotoFile(file) : file
+      return uploadAutoKeyAttachment(prepared, id!)
+    },
     onSuccess: () => {
       refetchAttachments()
       qc.invalidateQueries({ queryKey: ['auto-key-attachments', id] })

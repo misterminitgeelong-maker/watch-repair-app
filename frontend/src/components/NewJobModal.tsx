@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, X } from 'lucide-react'
@@ -8,6 +8,7 @@ import {
   uploadAttachment,
   getApiErrorMessage,
   getUploadErrorMessage,
+  trackingSmsWarning,
   getWatchRepairsConfig,
   type JobStatus, type Customer, type Watch, type CustomerAccount,
   type WatchCatalogueItem,
@@ -16,7 +17,9 @@ import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
-import { compressImage } from '@/lib/imageCompression'
+import { preparePhotoFile, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
+import { pushModalCloseHandler } from '@/lib/modalBackStack'
+import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
 const MAX_WATCHES = 5
@@ -119,7 +122,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   // Step 2 – Watches (multi)
   const [watchCount, setWatchCount] = useState(1)
   const [watchForms, setWatchForms] = useState<WatchForm[]>([emptyWatchForm()])
-  const [createdWatchIds, setCreatedWatchIds] = useState<string[]>([])
   const [activeWatchTab, setActiveWatchTab] = useState(0)
 
   // Step 3 – Job
@@ -150,6 +152,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [loading, setLoading] = useState(false)
   const [photoLoading, setPhotoLoading] = useState<string | null>(null)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const [jobsCreatedCount, setJobsCreatedCount] = useState(0)
+  const [intakeWarnings, setIntakeWarnings] = useState<string[]>([])
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -178,6 +182,21 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     enabled: !!activeCustomerId,
   })
 
+  const busy = loading || photoLoading !== null
+
+  const requestClose = useCallback(() => {
+    if (busy) return
+    if (step > 1 && !createdJobId) {
+      if (!window.confirm('Discard this intake? Nothing will be saved until you create the job ticket.')) return
+    }
+    onClose()
+  }, [busy, step, createdJobId, onClose])
+
+  useEffect(() => {
+    if (createdJobId) return
+    return pushModalCloseHandler(requestClose)
+  }, [createdJobId, requestClose])
+
   function handleCountChange(count: number) {
     setWatchCount(count)
     setWatchForms(prev => {
@@ -188,6 +207,10 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     setPhotos(prev => {
       const next = [...prev]
       while (next.length < count) next.push({ front: null, back: null, frontPreview: null, backPreview: null })
+      for (const p of next.slice(count)) {
+        if (p.frontPreview) URL.revokeObjectURL(p.frontPreview)
+        if (p.backPreview) URL.revokeObjectURL(p.backPreview)
+      }
       return next.slice(0, count)
     })
     if (activeWatchTab >= count) setActiveWatchTab(count - 1)
@@ -217,7 +240,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     const slotKey = `${watchIdx}-${side}`
     setPhotoLoading(slotKey)
     try {
-      const compressed = await compressImage(file)
+      const compressed = await preparePhotoFile(file)
       const url = URL.createObjectURL(compressed)
       setPhotos(prev => prev.map((p, i) => {
         if (i !== watchIdx) return p
@@ -225,6 +248,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         if (oldUrl) URL.revokeObjectURL(oldUrl)
         return { ...p, [side]: compressed, [`${side}Preview`]: url }
       }))
+    } catch (err: unknown) {
+      setError(getPhotoPrepareErrorMessage(err, 'Could not process this photo.'))
     } finally {
       setPhotoLoading(cur => (cur === slotKey ? null : cur))
     }
@@ -241,67 +266,77 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     if (ref) ref.value = ''
   }
 
-  async function nextStep1() {
+  function nextStep1() {
     setError('')
     if (customerMode === 'new') {
       if (!newCustomer.full_name) { setError('Customer name is required.'); return }
-      setLoading(true)
-      try {
-        const { data } = await createCustomer(newCustomer)
-        setCreatedCustomerId(data.id)
-        qc.invalidateQueries({ queryKey: ['customers'] })
-      } catch (err) { setError(getApiErrorMessage(err, 'Failed to create customer.')); setLoading(false); return }
-      setLoading(false)
-    } else {
-      if (!selectedCustomerId) { setError('Please select a customer.'); return }
+    } else if (!selectedCustomerId) {
+      setError('Please select a customer.')
+      return
     }
     setStep(2)
   }
 
-  async function nextStep2() {
+  function nextStep2() {
     setError('')
     const custId = createdCustomerId || selectedCustomerId
-    setLoading(true)
-    const ids: string[] = []
-    try {
-      for (let i = 0; i < watchCount; i++) {
-        const form = watchForms[i]
-        if (form.mode === 'new') {
-          const { data } = await createWatch({
-            customer_id: custId,
-            brand: form.brand,
-            model: form.model,
-            serial_number: form.serial_number,
-            movement_type: form.movement_type,
-            condition_notes: form.condition_notes,
-          })
-          ids.push(data.id)
-          qc.invalidateQueries({ queryKey: ['watches', custId] })
-        } else {
-          if (!form.selectedWatchId) { setError(`Please select a watch for Watch ${i + 1}.`); setLoading(false); return }
-          ids.push(form.selectedWatchId)
+    for (let i = 0; i < watchCount; i++) {
+      const form = watchForms[i]
+      if (form.mode === 'existing') {
+        if (!custId) {
+          setError('Select an existing customer on step 1 to use an existing watch.')
+          return
+        }
+        if (!form.selectedWatchId) {
+          setError(`Please select a watch for Watch ${i + 1}.`)
+          return
         }
       }
-    } catch (err) { setError(getApiErrorMessage(err, 'Failed to add watch.')); setLoading(false); return }
-    setCreatedWatchIds(ids)
-    setLoading(false)
+    }
     setStep(3)
   }
 
   async function submit() {
     setError('')
     if (!job.title) { setError('Job title is required.'); return }
-    // Require photos only for single-watch intake
     if (watchCount === 1 && (!photos[0].front || !photos[0].back)) {
       setError('Both front and back photos are required.')
       return
     }
     setLoading(true)
+    const warnings: string[] = []
     let firstJobId: string | null = null
-    let uploadWarning = ''
+    let createdCount = 0
     try {
+      let customerId = createdCustomerId || selectedCustomerId
+      if (customerMode === 'new' && !customerId) {
+        const { data } = await createCustomer(newCustomer)
+        customerId = data.id
+        setCreatedCustomerId(data.id)
+        qc.invalidateQueries({ queryKey: ['customers'] })
+      }
+
+      const watchIds: string[] = []
       for (let i = 0; i < watchCount; i++) {
-        const watchId = createdWatchIds[i]
+        const form = watchForms[i]
+        if (form.mode === 'existing') {
+          watchIds.push(form.selectedWatchId)
+        } else {
+          const { data } = await createWatch({
+            customer_id: customerId,
+            brand: form.brand,
+            model: form.model,
+            serial_number: form.serial_number,
+            movement_type: form.movement_type,
+            condition_notes: form.condition_notes,
+          })
+          watchIds.push(data.id)
+        }
+      }
+      qc.invalidateQueries({ queryKey: ['watches', customerId] })
+
+      for (let i = 0; i < watchCount; i++) {
+        const watchId = watchIds[i]
         const jobTitle = watchCount > 1 ? `${job.title} (Watch ${i + 1} of ${watchCount})` : job.title
         const { data } = await createJob({
           watch_id: watchId,
@@ -317,27 +352,39 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           cost_cents: 0,
           job_number_override: (watchCount === 1 && job.job_number_override.trim()) ? job.job_number_override.trim() : undefined,
         })
+        createdCount += 1
         if (!firstJobId) firstJobId = data.id
+        const smsMsg = trackingSmsWarning(data.tracking_sms_skipped_reason)
+        if (smsMsg) warnings.push(smsMsg)
         const p = photos[i]
         for (const [file, label] of [[p.front, 'watch_front'], [p.back, 'watch_back']] as const) {
           if (!file) continue
           try {
             await uploadAttachment(file, data.id, label)
           } catch (uploadErr: unknown) {
-            uploadWarning = getUploadErrorMessage(uploadErr, 'One or more photos could not be uploaded.')
+            warnings.push(getUploadErrorMessage(uploadErr, 'One or more photos could not be uploaded. Open the job to add photos.'))
           }
         }
       }
       qc.invalidateQueries({ queryKey: ['jobs'] })
       if (firstJobId) {
-        if (uploadWarning) setError(uploadWarning)
+        if (createdCount < watchCount) {
+          warnings.unshift(`Only ${createdCount} of ${watchCount} job tickets were created. Check the customer profile for missing tickets.`)
+        }
+        setJobsCreatedCount(createdCount)
+        setIntakeWarnings(warnings)
         setCreatedJobId(firstJobId)
       }
     } catch (err: unknown) {
       if (firstJobId) {
-        setError(
-          `${getUploadErrorMessage(err, getApiErrorMessage(err, 'Job was created but something went wrong.'))} Open the job to finish intake photos.`,
+        warnings.push(
+          getUploadErrorMessage(err, getApiErrorMessage(err, 'Some jobs may not have been created. Open the job list to verify.')),
         )
+        if (createdCount < watchCount) {
+          warnings.unshift(`Only ${createdCount} of ${watchCount} job tickets were created.`)
+        }
+        setJobsCreatedCount(createdCount)
+        setIntakeWarnings(warnings)
         setCreatedJobId(firstJobId)
       } else {
         setError(getUploadErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
@@ -357,10 +404,13 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     return (
       <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
         <div className="space-y-4">
+          <IntakeWarningBanner messages={intakeWarnings} />
           <p className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>
-            {watchCount > 1 ? `${watchCount} job tickets created!` : 'Print job ticket now?'}
+            {jobsCreatedCount === watchCount
+              ? (watchCount > 1 ? `${watchCount} job tickets created!` : 'Print job ticket now?')
+              : `${jobsCreatedCount} of ${watchCount} job tickets created`}
           </p>
-          {watchCount > 1 && (
+          {watchCount > 1 && jobsCreatedCount === watchCount && (
             <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
               {watchCount} separate tickets have been created. You can print from each job's detail page.
             </p>
@@ -385,7 +435,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   }
 
   return (
-    <Modal title="New Job Ticket" onClose={onClose}>
+    <Modal title="New Job Ticket" onClose={requestClose} closeDisabled={busy}>
       <Steps current={step} />
 
       {preselectedCustomer && (
@@ -433,8 +483,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           )}
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={nextStep1} disabled={loading}>{loading ? 'Saving…' : 'Next →'}</Button>
+            <Button variant="secondary" onClick={requestClose} disabled={busy}>Cancel</Button>
+            <Button onClick={nextStep1} disabled={busy}>Next →</Button>
           </div>
         </div>
       )}
@@ -488,10 +538,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           {Array.from({ length: watchCount }, (_, i) => i).map(idx => (
             <div key={idx} className={idx === activeWatchTab ? 'space-y-3' : 'hidden'}>
               <div className="flex gap-2 mb-1">
+                {activeCustomerId && (
                 <button onClick={() => updateWatchForm(idx, { mode: 'existing' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
                   style={watchForms[idx].mode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
                   Existing Watch
                 </button>
+                )}
                 <button onClick={() => updateWatchForm(idx, { mode: 'new' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
                   style={watchForms[idx].mode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
                   Add New Watch
@@ -528,10 +580,10 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             {preselectedCustomer
-              ? <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              : <Button variant="ghost" onClick={() => setStep(1)}>← Back</Button>
+              ? <Button variant="ghost" onClick={requestClose} disabled={busy}>Cancel</Button>
+              : <Button variant="ghost" onClick={() => setStep(1)} disabled={busy}>← Back</Button>
             }
-            <Button onClick={nextStep2} disabled={loading}>{loading ? 'Saving…' : 'Next →'}</Button>
+            <Button onClick={nextStep2} disabled={busy}>Next →</Button>
           </div>
         </div>
       )}

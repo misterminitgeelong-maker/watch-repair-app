@@ -17,6 +17,17 @@ from .models import JobMessage, SmsLog, Tenant
 logger = logging.getLogger(__name__)
 
 
+def tracking_sms_skip_reason(sent: bool, has_phone: bool) -> str | None:
+    """Why intake tracking SMS was not delivered (for API responses)."""
+    if sent:
+        return None
+    if not has_phone:
+        return "no_phone"
+    if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
+        return "sms_not_configured"
+    return "send_failed"
+
+
 def mobile_services_customer_sms_enabled(session: Session, tenant_id: UUID) -> bool:
     """When False, skip customer-facing SMS for mobile services (auto key); tech SMS may still send."""
     tenant = session.get(Tenant, tenant_id)
@@ -123,8 +134,8 @@ def notify_job_live(
     status_token: str,
     job_number: str,
     shop_name: str = "",
-) -> None:
-    """Send 'your job is live' SMS with link to track status."""
+) -> bool:
+    """Send 'your job is live' SMS with link to track status. Returns True if provider accepted the message."""
     status_url = f"{settings.public_base_url}/status/{status_token}"
     shop = shop_name.strip() or "us"
     body = (
@@ -143,6 +154,7 @@ def notify_job_live(
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )
+    return sid is not None
 
 
 def notify_work_started(
@@ -637,8 +649,8 @@ def notify_shoe_job_live(
     to_phone: str,
     status_token: str,
     job_number: str,
-) -> None:
-    """Send 'your shoe job is live' SMS with link to track status."""
+) -> bool:
+    """Send 'your shoe job is live' SMS with link to track status. Returns True if provider accepted the message."""
     status_url = f"{settings.public_base_url}/shoe-status/{status_token}"
     body = (
         f"Hi {customer_name}, your shoe repair job #{job_number} is now live! "
@@ -656,6 +668,7 @@ def notify_shoe_job_live(
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )
+    return sid is not None
 
 
 def notify_shoe_quote_sent(

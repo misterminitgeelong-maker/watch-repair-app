@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
@@ -6,13 +6,19 @@ import {
   listCustomers, createCustomer, createShoe, createShoeRepairJob,
   addShoeToJob, appendShoeRepairJobItems,
   listCustomerAccounts,
+  uploadShoeAttachment,
   getApiErrorMessage,
+  getUploadErrorMessage,
+  trackingSmsWarning,
   type Customer,
   type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService, SHOE_TYPE_GROUPS } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import { STATUS_LABELS } from '@/lib/utils'
+import { preparePhotoFile, getPhotoPrepareErrorMessage, uploadFilesSequential } from '@/lib/photoUpload'
+import { pushModalCloseHandler } from '@/lib/modalBackStack'
+import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 
@@ -93,9 +99,33 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const [job, setJob] = useState({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '', collection_date: '' })
   const [selectedCustomerAccountId, setSelectedCustomerAccountId] = useState('')
 
+  const [intakePhotos, setIntakePhotos] = useState<Array<{ file: File; preview: string }>>([])
+  const [photoLoading, setPhotoLoading] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const [intakeWarnings, setIntakeWarnings] = useState<string[]>([])
+
+  const busy = loading || photoLoading
+
+  const requestClose = useCallback(() => {
+    if (busy) return
+    if (step > 1 && !createdJobId) {
+      if (!window.confirm('Discard this intake? Nothing will be saved until you create the job.')) return
+    }
+    onClose()
+  }, [busy, step, createdJobId, onClose])
+
+  useEffect(() => {
+    if (createdJobId) return
+    return pushModalCloseHandler(requestClose)
+  }, [createdJobId, requestClose])
+
+  useEffect(() => () => {
+    intakePhotos.forEach(p => URL.revokeObjectURL(p.preview))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- revoke on unmount only
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -150,21 +180,47 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     })
   }
 
-  async function nextStep1() {
+  function nextStep1() {
     setError('')
     if (customerMode === 'new') {
       if (!newCustomer.full_name) { setError('Customer name is required.'); return }
-      setLoading(true)
-      try {
-        const { data } = await createCustomer(newCustomer)
-        setCreatedCustomerId(data.id)
-        qc.invalidateQueries({ queryKey: ['customers'] })
-      } catch (err) { setError(getApiErrorMessage(err, 'Failed to create customer.')); setLoading(false); return }
-      setLoading(false)
-    } else {
-      if (!selectedCustomerId) { setError('Please select a customer.'); return }
+    } else if (!selectedCustomerId) {
+      setError('Please select a customer.')
+      return
     }
     setStep(2)
+  }
+
+  async function handleIntakePhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length) return
+    setPhotoLoading(true)
+    setError('')
+    try {
+      const prepared: Array<{ file: File; preview: string }> = []
+      for (const file of files) {
+        const compressed = await preparePhotoFile(file)
+        prepared.push({ file: compressed, preview: URL.createObjectURL(compressed) })
+      }
+      setIntakePhotos(prev => {
+        for (const p of prev) URL.revokeObjectURL(p.preview)
+        return prepared
+      })
+    } catch (err: unknown) {
+      setError(getPhotoPrepareErrorMessage(err, 'Could not process photos.'))
+    } finally {
+      setPhotoLoading(false)
+    }
+  }
+
+  function removeIntakePhoto(index: number) {
+    setIntakePhotos(prev => {
+      const next = [...prev]
+      const removed = next.splice(index, 1)[0]
+      if (removed) URL.revokeObjectURL(removed.preview)
+      return next
+    })
   }
 
   async function submit() {
@@ -174,13 +230,21 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
       setError('Please add a job title or select at least one service for a pair.')
       return
     }
-    const custId = createdCustomerId || selectedCustomerId
     setLoading(true)
+    const warnings: string[] = []
     try {
+      let customerId = createdCustomerId || selectedCustomerId
+      if (customerMode === 'new' && !customerId) {
+        const { data } = await createCustomer(newCustomer)
+        customerId = data.id
+        setCreatedCustomerId(data.id)
+        qc.invalidateQueries({ queryKey: ['customers'] })
+      }
+
       const createdShoeIds: string[] = []
       for (const intakeShoe of shoes) {
         const { data } = await createShoe({
-          customer_id: custId,
+          customer_id: customerId,
           shoe_type: intakeShoe.shoe_type || undefined,
           brand: intakeShoe.brand || undefined,
           color: intakeShoe.color || undefined,
@@ -210,6 +274,9 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         items: firstItems,
       })
 
+      const smsMsg = trackingSmsWarning(jobData.tracking_sms_skipped_reason)
+      if (smsMsg) warnings.push(smsMsg)
+
       for (let i = 1; i < createdShoeIds.length; i += 1) {
         await addShoeToJob(jobData.id, createdShoeIds[i])
         const itemsForPair = toItemPayload(shoes[i].services, i, shoes.length)
@@ -218,7 +285,19 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         }
       }
 
+      if (intakePhotos.length > 0) {
+        try {
+          await uploadFilesSequential(
+            intakePhotos.map(p => p.file),
+            f => uploadShoeAttachment(f, jobData.id, 'intake'),
+          )
+        } catch (uploadErr: unknown) {
+          warnings.push(getUploadErrorMessage(uploadErr, 'Intake photos could not be uploaded. Add them from the job page.'))
+        }
+      }
+
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      setIntakeWarnings(warnings)
       setCreatedJobId(jobData.id)
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to create job. Please try again.'))
@@ -238,6 +317,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     return (
       <Modal title="Print Tickets" onClose={() => finishCreate(createdJobId, false)}>
         <div className="space-y-4">
+          <IntakeWarningBanner messages={intakeWarnings} />
           <p className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>
             Print job tickets now?
           </p>
@@ -266,7 +346,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   }
 
   return (
-    <Modal title="New Shoe Repair Job" onClose={onClose}>
+    <Modal title="New Shoe Repair Job" onClose={requestClose} closeDisabled={busy}>
       <Steps current={step} />
 
       {error && (
@@ -383,14 +463,35 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
               Intake Photos (optional)
             </p>
-            <input type="file" accept="image/*" multiple className="block" style={{ marginBottom: 8 }} />
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              className="hidden"
+              onChange={handleIntakePhotos}
+            />
+            <Button type="button" variant="secondary" disabled={photoLoading} onClick={() => photoInputRef.current?.click()}>
+              {photoLoading ? 'Processing…' : intakePhotos.length ? 'Replace photos' : 'Add photos'}
+            </Button>
+            {intakePhotos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {intakePhotos.map((p, i) => (
+                  <div key={i} className="relative">
+                    <img src={p.preview} alt="" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
+                    <button type="button" onClick={() => removeIntakePhoto(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full px-1.5 text-xs">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-              You can upload photos of shoes at intake. Photos will be attached to the job after creation.
+              Photos attach to the job when you submit on the next step.
             </p>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(1)} className="flex-1">Back</Button>
+            <Button variant="secondary" onClick={() => setStep(1)} className="flex-1" disabled={busy}>Back</Button>
             <Button onClick={() => setStep(3)} className="flex-1">Continue</Button>
           </div>
         </div>

@@ -1136,6 +1136,14 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
 
       return { job }
     },
+    onError: (err: unknown) => {
+      setError(
+        getApiErrorMessage(
+          err,
+          'POS sale could not be completed. Check Mobile Services jobs and invoices — a partial sale may have been saved.',
+        ),
+      )
+    },
     onSuccess: ({ job }) => {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
       qc.invalidateQueries({ queryKey: ['auto-key-job', job.id] })
@@ -1147,7 +1155,6 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
       setSuccessJobId(job.id)
       onComplete()
     },
-    onError: (err) => setError(getApiErrorMessage(err, 'Sale failed.')),
   })
 
   if (successJobId) {
