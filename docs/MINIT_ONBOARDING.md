@@ -73,7 +73,18 @@ Pilot retail/operator sites initially use the **same owner email/password as HQ*
 
 ## Bulk import all shops (TSS Excel)
 
-Source workbook (local, **do not commit**): `TSS Dec25 Report (1).xlsx` — sheet **TSS Scores**, columns **Shop #**, **Shop Name**, **Area**, **Region**. The Dec 2025 export contains **379** retail shops (pilot shops `3269` / `4278` are skipped automatically if already seeded).
+Source workbook (local, **do not commit**): `TSS Dec25 Report (1).xlsx` — sheet **TSS Scores**. The Dec 2025 export contains **379** retail shops (pilot shops `3269` / `4278` are updated in place if area/region/name changed on re-run).
+
+### Column mapping (TSS Scores sheet)
+
+| Excel column | Tenant / API field | Example | Notes |
+|--------------|------------------|---------|-------|
+| Shop # | `shop_number` | `3269` | Digits only; slug becomes `minit-{shop_number}` |
+| Shop Name | `tenant.name` | `Chadstone` | Display name in HQ Shops / Accounts |
+| Area | `minit_area` → API `area` | `VIC SOUTH` | TSS area grouping |
+| Region | `minit_region` → API `region` | `VIC`, `SW`, `NZ`, `SEA` | TSS region code |
+
+**Region values** in the Dec 2025 export: `VIC`, `NSW`, `QLD` (AU states), `SW` (WA + South Australia), `NZ`, `SEA` (e.g. Malaysia). AU state for routing is derived from **Area** when Region is a cluster code (`SW` / `NZ` / `SEA`) — see `derive_au_state_from_area_region()` in `backend/app/minit_shops.py`.
 
 ### Local
 
@@ -87,7 +98,7 @@ python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/TSS Dec25 Rep
 python scripts/seed_minit_pilot.py
 python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --check-db
 
-# Apply (idempotent — safe to re-run; skips existing shop numbers and slugs)
+# Apply (idempotent — creates new shops; updates name/area/region on existing shop numbers)
 python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --apply --verbose
 ```
 
@@ -99,7 +110,7 @@ Each imported shop:
 |-------|--------|
 | Slug | `minit-{shop_number}` |
 | Plan | `booking_only` |
-| Metadata | `tenant.shop_number`, name, business address from Area/Region |
+| Metadata | `shop_number`, `name`, `minit_area`, `minit_region`, `business_address` (name + area + region) |
 | Parent | Linked under **Mister Minit** (`MINIT_HQ_OWNER_EMAIL`) |
 
 ### Production (Railway one-off)
@@ -127,14 +138,14 @@ railway run --service <api-service-name> python scripts/import_minit_shops_from_
   --input "/path/on/container/TSS Dec25 Report (1).xlsx" --check-db
 ```
 
-Re-run `--apply` any time; existing shops are skipped (`duplicate_shop_number` / `duplicate_slug`).
+Re-run `--apply` any time; new shop numbers are created; existing shop numbers get metadata updates when Area/Region/Name changed in the spreadsheet.
 
 ### After import — what HQ sees
 
 Sign in as **mmsupport** (`minit_hq`):
 
-- **Shops** — retail list shows all linked `booking_only` sites (~379 + any operators); use search by name, shop #, or slug.
-- **Accounts** — same sites under the parent account; add/remove individual shops still works.
+- **Shops** — retail list shows shop #, name, area, region; search by name/shop #/area/region; filter by region dropdown.
+- **Accounts** — same sites with area/region; add/remove individual shops still works.
 - **Dashboard / Reports / Inbox** — aggregate across the full linked network.
 - Site switcher — jump into any retail shop context.
 

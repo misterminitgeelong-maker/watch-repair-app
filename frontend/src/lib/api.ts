@@ -306,6 +306,8 @@ export interface ParentAccountSite {
   tenant_slug: string
   tenant_name: string
   shop_number?: string | null
+  area?: string | null
+  region?: string | null
   plan_code: string
   owner_user_id: string
   owner_email: string

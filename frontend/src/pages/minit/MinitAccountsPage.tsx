@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   formatTenantLabel,
@@ -24,6 +24,11 @@ function isRetailShop(planCode: string) {
   return !OPERATOR_PLANS.has(planCode)
 }
 
+function formatAreaRegion(area?: string | null, region?: string | null) {
+  const parts = [area?.trim(), region?.trim()].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export default function MinitAccountsPage() {
   const { refreshSession } = useAuth()
   const qc = useQueryClient()
@@ -36,6 +41,7 @@ export default function MinitAccountsPage() {
   const [linkEmail, setLinkEmail] = useState('')
   const [addMode, setAddMode] = useState<'provision' | 'link'>('provision')
   const [removingId, setRemovingId] = useState('')
+  const [search, setSearch] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['parent-account-me'],
@@ -92,6 +98,21 @@ export default function MinitAccountsPage() {
   const retailSites = (data?.sites ?? []).filter(s => isRetailShop(s.plan_code))
   const operators = (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code))
 
+  const searchLower = search.trim().toLowerCase()
+  const filteredRetail = useMemo(() => {
+    if (!searchLower) return retailSites
+    return retailSites.filter(site => {
+      const label = formatTenantLabel(site.tenant_name, site.shop_number).toLowerCase()
+      return (
+        label.includes(searchLower)
+        || site.tenant_slug.toLowerCase().includes(searchLower)
+        || (site.shop_number ?? '').includes(searchLower)
+        || (site.area ?? '').toLowerCase().includes(searchLower)
+        || (site.region ?? '').toLowerCase().includes(searchLower)
+      )
+    })
+  }, [retailSites, searchLower])
+
   async function handleRemove(tenantId: string) {
     if (!window.confirm('Remove this shop from the network? The tenant is not deleted.')) return
     setRemovingId(tenantId)
@@ -121,13 +142,35 @@ export default function MinitAccountsPage() {
       )}
 
       <Card className="mb-6 overflow-hidden">
-        <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
-          Retail shops ({retailSites.length})
+        <div
+          className="px-5 py-3 flex flex-wrap items-center justify-between gap-3"
+          style={{ borderBottom: '1px solid var(--ms-border)' }}
+        >
+          <span className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
+            Retail shops ({retailSites.length})
+          </span>
+          {retailSites.length > 0 && (
+            <div className="w-full sm:w-64">
+              <Input
+                type="search"
+                placeholder="Search name, shop #, area…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                aria-label="Search retail shops"
+              />
+            </div>
+          )}
         </div>
         {retailSites.length === 0 ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops linked yet.</p>
+        ) : filteredRetail.length === 0 ? (
+          <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+            No shops match your search.
+          </p>
         ) : (
-          retailSites.map(site => (
+          filteredRetail.map(site => {
+            const areaRegion = formatAreaRegion(site.area, site.region)
+            return (
             <div
               key={site.tenant_id}
               className="px-5 py-4 flex flex-wrap items-center justify-between gap-3"
@@ -138,7 +181,7 @@ export default function MinitAccountsPage() {
                   {formatTenantLabel(site.tenant_name, site.shop_number)}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                  login {site.tenant_slug} · {site.plan_code}
+                  {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
               <Button
@@ -150,7 +193,8 @@ export default function MinitAccountsPage() {
                 {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
               </Button>
             </div>
-          ))
+            )
+          })
         )}
       </Card>
 
@@ -159,7 +203,9 @@ export default function MinitAccountsPage() {
           <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
             Mobile operators ({operators.length})
           </div>
-          {operators.map(site => (
+          {operators.map(site => {
+            const areaRegion = formatAreaRegion(site.area, site.region)
+            return (
             <div
               key={site.tenant_id}
               className="px-5 py-4 flex flex-wrap items-center justify-between gap-3"
@@ -170,7 +216,7 @@ export default function MinitAccountsPage() {
                   {formatTenantLabel(site.tenant_name, site.shop_number)}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                  {site.tenant_slug} · {site.plan_code}
+                  {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
               <Button
@@ -182,7 +228,8 @@ export default function MinitAccountsPage() {
                 {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
               </Button>
             </div>
-          ))}
+            )
+          })}
         </Card>
       )}
 

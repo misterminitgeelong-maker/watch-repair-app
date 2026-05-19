@@ -36,6 +36,41 @@ def existing_slugs_in_parent(session: Session, parent_id: UUID) -> set[str]:
     return {t.slug for t in linked_tenants_for_parent(session, parent_id)}
 
 
+def tenant_for_shop_number_in_parent(
+    session: Session,
+    parent_id: UUID,
+    shop_number: str,
+) -> Tenant | None:
+    for tenant in linked_tenants_for_parent(session, parent_id):
+        if tenant.shop_number == shop_number:
+            return tenant
+    return None
+
+
+def _shop_metadata_changed(tenant: Tenant, shop: MinitShopRow, shop_number: str) -> bool:
+    addr = shop.business_address[:2000] if shop.business_address else None
+    return (
+        tenant.name != shop.name
+        or tenant.shop_number != shop_number
+        or tenant.minit_area != shop.area
+        or tenant.minit_region != shop.region
+        or tenant.business_address != addr
+    )
+
+
+def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
+    """Apply TSS row metadata to an existing tenant. Returns True if anything changed."""
+    shop_number = normalize_shop_number(shop.shop_number)
+    if not shop_number or not _shop_metadata_changed(tenant, shop, shop_number):
+        return False
+    tenant.name = shop.name
+    tenant.shop_number = shop_number
+    tenant.minit_area = shop.area
+    tenant.minit_region = shop.region
+    tenant.business_address = shop.business_address[:2000] if shop.business_address else None
+    return True
+
+
 def _get_or_create_parent(
     session: Session,
     *,
@@ -137,10 +172,7 @@ def _create_child_tenant(
 
     existing = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if existing:
-        if existing.shop_number != shop_number:
-            existing.shop_number = shop_number
-            existing.name = shop.name
-            existing.business_address = shop.business_address[:2000]
+        if sync_tenant_from_minit_shop(existing, shop):
             session.add(existing)
         tenant = existing
     else:
@@ -150,6 +182,8 @@ def _create_child_tenant(
             plan_code=plan_code,
             business_address=shop.business_address[:2000] if shop.business_address else None,
             shop_number=shop_number,
+            minit_area=shop.area,
+            minit_region=shop.region,
         )
         session.add(tenant)
         session.flush()
@@ -235,7 +269,11 @@ def ensure_minit_pilot_account(
             region=spec.get("region"),
         )
         if shop.shop_number in existing_numbers:
-            skipped.append(shop.shop_number)
+            tenant = tenant_for_shop_number_in_parent(session, parent.id, shop.shop_number)
+            if tenant and sync_tenant_from_minit_shop(tenant, shop):
+                session.add(tenant)
+            else:
+                skipped.append(shop.shop_number)
             continue
         tenant = _create_child_tenant(
             session,
@@ -266,7 +304,11 @@ def ensure_minit_pilot_account(
         if op_tenant:
             created.append(op_tenant.slug)
     else:
-        skipped.append(op.shop_number)
+        tenant = tenant_for_shop_number_in_parent(session, parent.id, op.shop_number)
+        if tenant and sync_tenant_from_minit_shop(tenant, op):
+            session.add(tenant)
+        else:
+            skipped.append(op.shop_number)
 
     sync_hq_owner_password_to_parent_sites(session, parent_id=parent.id, hq_owner=hq_owner)
 
@@ -279,6 +321,18 @@ def ensure_minit_pilot_account(
         created_tenant_slugs=created,
         skipped_shop_numbers=skipped,
     )
+
+
+def _shop_entry(shop: MinitShopRow) -> dict[str, str]:
+    return {
+        "shop_number": shop.shop_number,
+        "name": shop.name,
+        "slug": tenant_slug_for_shop(shop),
+        "area": shop.area or "",
+        "region": shop.region or "",
+        "business_address": shop.business_address,
+        "state_code": shop.state_code or "",
+    }
 
 
 def import_minit_shops(
@@ -295,18 +349,11 @@ def import_minit_shops(
     email = hq_owner_email.strip().lower()
     parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
     if not parent:
-        preview = [
-            {
-                "shop_number": s.shop_number,
-                "name": s.name,
-                "slug": tenant_slug_for_shop(s),
-                "business_address": s.business_address,
-            }
-            for s in shops
-        ]
+        preview = [_shop_entry(s) for s in shops]
         return {
             "parent_found": False,
             "would_create_count": len(shops),
+            "would_update_count": 0,
             "would_skip_count": 0,
             "note": "Parent account not found — run seed_minit_pilot.py first for accurate duplicate skips",
             "would_create": preview[:20],
@@ -315,26 +362,29 @@ def import_minit_shops(
 
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id)
     existing_slugs = existing_slugs_in_parent(session, parent.id)
+    tenants_by_number = {
+        t.shop_number: t
+        for t in linked_tenants_for_parent(session, parent.id)
+        if t.shop_number
+    }
 
     would_create: list[dict[str, str]] = []
+    would_update: list[dict[str, str]] = []
     would_skip: list[dict[str, str]] = []
 
     for shop in shops:
         slug = tenant_slug_for_shop(shop)
-        reason = None
+        entry = _shop_entry(shop)
         if shop.shop_number in existing_numbers:
-            reason = "duplicate_shop_number"
+            tenant = tenants_by_number.get(shop.shop_number)
+            if tenant and _shop_metadata_changed(tenant, shop, shop.shop_number):
+                entry["update_reason"] = "metadata_changed"
+                would_update.append(entry)
+            else:
+                entry["skip_reason"] = "unchanged"
+                would_skip.append(entry)
         elif slug in existing_slugs:
-            reason = "duplicate_slug"
-        entry = {
-            "shop_number": shop.shop_number,
-            "name": shop.name,
-            "slug": slug,
-            "business_address": shop.business_address,
-            "state_code": shop.state_code or "",
-        }
-        if reason:
-            entry["skip_reason"] = reason
+            entry["skip_reason"] = "duplicate_slug"
             would_skip.append(entry)
         else:
             would_create.append(entry)
@@ -344,12 +394,16 @@ def import_minit_shops(
         "parent_account_id": str(parent.id),
         "parent_account_name": parent.name,
         "would_create_count": len(would_create),
+        "would_update_count": len(would_update),
         "would_skip_count": len(would_skip),
         "would_create": would_create[:20],
+        "would_update": would_update[:20],
         "would_skip": would_skip[:20],
     }
     if len(would_create) > 20:
         result["would_create_truncated"] = True
+    if len(would_update) > 20:
+        result["would_update_truncated"] = True
     if len(would_skip) > 20:
         result["would_skip_truncated"] = True
 
@@ -362,13 +416,21 @@ def import_minit_shops(
         return result
 
     created_slugs: list[str] = []
+    updated_count = 0
     skipped_apply = 0
     total = len(shops)
     for index, shop in enumerate(shops, start=1):
         if shop.shop_number in existing_numbers:
-            skipped_apply += 1
-            if on_progress and index % 25 == 0:
-                on_progress(index, total, "skip")
+            tenant = tenants_by_number.get(shop.shop_number)
+            if tenant and sync_tenant_from_minit_shop(tenant, shop):
+                session.add(tenant)
+                updated_count += 1
+                if on_progress and (index % 25 == 0 or index == total):
+                    on_progress(index, total, "update")
+            else:
+                skipped_apply += 1
+                if on_progress and index % 25 == 0:
+                    on_progress(index, total, "skip")
             continue
         slug = tenant_slug_for_shop(shop)
         if slug in existing_slugs or session.exec(select(Tenant).where(Tenant.slug == slug)).first():
@@ -376,28 +438,24 @@ def import_minit_shops(
             if on_progress and index % 25 == 0:
                 on_progress(index, total, "skip")
             continue
-        row = MinitShopRow(
-            shop_number=shop.shop_number,
-            name=shop.name,
-            area=shop.area,
-            region=shop.region,
-        )
         tenant = _create_child_tenant(
             session,
             parent=parent,
             hq_owner=hq_owner,
-            shop=row,
+            shop=shop,
             plan_code=plan_code,
         )
         if tenant:
             created_slugs.append(tenant.slug)
             existing_numbers.add(shop.shop_number)
             existing_slugs.add(tenant.slug)
+            tenants_by_number[shop.shop_number] = tenant
         if on_progress and (index % 25 == 0 or index == total):
             on_progress(index, total, "create")
 
     session.commit()
     result["created_count"] = len(created_slugs)
+    result["updated_count"] = updated_count
     result["skipped_count"] = skipped_apply
     result["created_slugs"] = created_slugs[:50]
     if len(created_slugs) > 50:

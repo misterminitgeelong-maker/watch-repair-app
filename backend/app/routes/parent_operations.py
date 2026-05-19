@@ -273,6 +273,8 @@ def get_operations_bookings_report(
                 tenant_id=shop.id,
                 tenant_name=shop.name,
                 shop_number=shop.shop_number,
+                area=shop.minit_area,
+                region=shop.minit_region,
                 total=0,
                 pending=0,
                 accepted=0,

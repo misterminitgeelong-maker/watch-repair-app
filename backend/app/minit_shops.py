@@ -15,13 +15,41 @@ DEFAULT_TSS_XLSX_PATH = r"c:\Users\samme\Downloads\TSS Dec25 Report (1).xlsx"
 _SHOP_HEADER_MARKERS = ("shop #", "shop#")
 _SUBHEADER_MARKERS = ("raw score", "tss score")
 
+# TSS column mapping (sheet "TSS Scores", header row with "Shop #"):
+# | Excel column | Field        | Example        |
+# |--------------|--------------|----------------|
+# | Shop #       | shop_number  | 3269           |
+# | Shop Name    | name         | Chadstone      |
+# | Area         | area         | VIC SOUTH      |
+# | Region       | region       | VIC, SW, NZ, … |
+#
+# Region values in the Dec 2025 export:
+#   VIC, NSW, QLD — Australian state codes (matches shops in that state)
+#   SW            — South-West cluster (WA + South Australia areas)
+#   NZ            — New Zealand (areas NZ NORTH / NZ SOUTH)
+#   SEA           — South-East Asia (areas e.g. MALAYSIA)
+#
+# AU state for filtering is derived from Area when Region is a cluster code (SW/SEA/NZ).
+
+_AU_STATE_AREA_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("SOUTH AUSTRALIA", "SA"),
+    ("VIC", "VIC"),
+    ("NSW", "NSW"),
+    ("QLD", "QLD"),
+    ("WA", "WA"),
+    ("TAS", "TAS"),
+    ("NT", "NT"),
+    ("ACT", "ACT"),
+)
+_AU_STATE_REGION_CODES = frozenset({"VIC", "NSW", "QLD", "WA", "SA", "TAS", "NT", "ACT"})
+
 
 @dataclass(frozen=True)
 class MinitShopRow:
     shop_number: str
     name: str
     area: str | None
-    region: str | None  # AU state code when present (VIC, NSW, …)
+    region: str | None  # TSS Region column (VIC, SW, NZ, SEA, …)
 
     @property
     def business_address(self) -> str:
@@ -30,12 +58,21 @@ class MinitShopRow:
 
     @property
     def state_code(self) -> str | None:
-        if not self.region:
-            return None
-        code = self.region.strip().upper()
-        if re.fullmatch(r"[A-Z]{2,3}", code):
+        """Best AU state code for routing/filtering (derived from Area, then Region)."""
+        return derive_au_state_from_area_region(self.area, self.region)
+
+
+def derive_au_state_from_area_region(area: str | None, region: str | None) -> str | None:
+    if area:
+        upper = area.strip().upper()
+        for prefix, code in _AU_STATE_AREA_PREFIXES:
+            if upper == prefix or upper.startswith(f"{prefix} "):
+                return code
+    if region:
+        code = region.strip().upper()
+        if code in _AU_STATE_REGION_CODES:
             return code
-        return None
+    return None
 
 
 def _cell_str(value: Any) -> str:

@@ -110,6 +110,10 @@ class Tenant(SQLModel, table=True):
     mobile_dispatch_phone: Optional[str] = Field(default=None, max_length=80)
     #: Minit shop or mobile-operator number (e.g. 3269 Chadstone, 3904 operator).
     shop_number: Optional[str] = Field(default=None, max_length=10, index=True)
+    #: TSS export Area column (e.g. VIC SOUTH, QLD WEST).
+    minit_area: Optional[str] = Field(default=None, max_length=120)
+    #: TSS export Region column (AU state, SW, NZ, SEA, …).
+    minit_region: Optional[str] = Field(default=None, max_length=40, index=True)
 
 
 class User(SQLModel, table=True):
@@ -804,6 +808,8 @@ class ParentAccountSiteRead(SQLModel):
     tenant_slug: str
     tenant_name: str
     shop_number: Optional[str] = None
+    area: Optional[str] = None
+    region: Optional[str] = None
     plan_code: str
     owner_user_id: UUID
     owner_email: str
@@ -929,6 +935,8 @@ class ParentShopBookingVolume(SQLModel):
     tenant_id: UUID
     tenant_name: str
     shop_number: Optional[str] = None
+    area: Optional[str] = None
+    region: Optional[str] = None
     total: int
     pending: int
     accepted: int

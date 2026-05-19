@@ -107,6 +107,8 @@ def main() -> int:
                 {
                     "shop_number": s.shop_number,
                     "name": s.name,
+                    "area": s.area,
+                    "region": s.region,
                     "slug": f"minit-{s.shop_number}",
                     "business_address": s.business_address,
                 }
@@ -147,6 +149,7 @@ def main() -> int:
     if args.verbose and args.apply:
         print(
             f"[import] Done: created={summary.get('created_count', 0)} "
+            f"updated={summary.get('updated_count', 0)} "
             f"skipped={summary.get('skipped_count', summary.get('would_skip_count', 0))}",
             file=sys.stderr,
             flush=True,

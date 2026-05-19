@@ -102,6 +102,8 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
                 shop_number=tenant.shop_number,
+                area=tenant.minit_area,
+                region=tenant.minit_region,
                 plan_code=normalize_plan_code(tenant.plan_code),
                 owner_user_id=user.id,
                 owner_email=user.email,

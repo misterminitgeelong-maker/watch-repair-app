@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 _TEST_DB = Path(__file__).with_name(f"test_minit_import_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
@@ -51,7 +51,7 @@ def test_import_minit_shops_dry_run_skips_pilot_shops() -> None:
     skipped = summary["would_skip"]
     assert isinstance(skipped, list)
     assert skipped[0]["shop_number"] == "3269"
-    assert skipped[0]["skip_reason"] == "duplicate_shop_number"
+    assert skipped[0]["skip_reason"] == "unchanged"
 
 
 def test_import_minit_shops_apply_is_idempotent() -> None:
@@ -79,7 +79,51 @@ def test_import_minit_shops_apply_is_idempotent() -> None:
         )
     assert first["created_count"] == 2
     assert second["created_count"] == 0
+    assert second["updated_count"] == 0
     assert second["would_skip_count"] == 3
+
+
+def test_import_minit_shops_apply_updates_changed_metadata() -> None:
+    create_db_and_tables()
+    initial = [
+        MinitShopRow(shop_number="3269", name="Chadstone", area="VIC SOUTH", region="VIC"),
+    ]
+    updated = [
+        MinitShopRow(shop_number="3269", name="Chadstone SC", area="VIC METRO", region="VIC"),
+    ]
+    with Session(engine) as session:
+        _seed_parent(session)
+        import_minit_shops(
+            session,
+            parent_name="Mister Minit",
+            hq_owner_email="minit-hq@test.mainspring.au",
+            shops=initial,
+            apply=True,
+        )
+        dry = import_minit_shops(
+            session,
+            parent_name="Mister Minit",
+            hq_owner_email="minit-hq@test.mainspring.au",
+            shops=updated,
+            apply=False,
+        )
+        result = import_minit_shops(
+            session,
+            parent_name="Mister Minit",
+            hq_owner_email="minit-hq@test.mainspring.au",
+            shops=updated,
+            apply=True,
+        )
+        tenant = next(
+            t for t in linked_tenants_for_parent(session, UUID(str(dry["parent_account_id"])))
+            if t.shop_number == "3269"
+        )
+    assert dry["would_update_count"] == 1
+    assert result["updated_count"] == 1
+    assert result["created_count"] == 0
+    assert tenant.name == "Chadstone SC"
+    assert tenant.minit_area == "VIC METRO"
+    assert tenant.minit_region == "VIC"
 
 
 def test_linked_tenants_for_parent_batch_load() -> None:
@@ -98,3 +142,6 @@ def test_linked_tenants_for_parent_batch_load() -> None:
     assert "mmsupport" in slugs
     assert "minit-3269" in slugs
     assert "minit-mobile-3904" in slugs
+    chadstone = next(t for t in tenants if t.shop_number == "3269")
+    assert chadstone.minit_area == "VIC SOUTH"
+    assert chadstone.minit_region == "VIC"
