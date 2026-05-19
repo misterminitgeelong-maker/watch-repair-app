@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     testing_owner_password: str = ""
     allow_ensure_testing_tenant: bool = False  # When True, enables POST /auth/ensure-testing-tenant
 
+    # Mister Minit pilot parent account + HQ (dev/staging; see docs/MINIT_ONBOARDING.md)
+    minit_seed_enabled: bool = False
+    minit_parent_account_name: str = "Mister Minit"
+    minit_hq_tenant_slug: str = "mister-minit-hq"
+    minit_hq_tenant_name: str = "Mister Minit HQ"
+    minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
+    minit_hq_owner_password: str = "MinitPilot2026!"
+
     # Optional global platform admin account (cross-tenant visibility)
     platform_admin_enabled: bool = False
     platform_admin_email: str = ""

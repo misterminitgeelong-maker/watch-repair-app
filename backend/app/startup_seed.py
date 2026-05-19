@@ -12,6 +12,7 @@ from sqlmodel import Session, func, select
 
 from .config import settings
 from .models import AutoKeyJob, Customer, CustomerAccount, MobileSuburbRoute, ParentAccount, ParentAccountMembership, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
+from .minit_provision import ensure_minit_pilot_account
 from .security import hash_password
 
 # Victorian B2B demo accounts (used at startup and by demo-seed)
@@ -555,6 +556,32 @@ def ensure_platform_admin_account(session: Session) -> None:
         )
 
     session.commit()
+
+
+def ensure_minit_pilot_if_enabled(session: Session) -> dict[str, object] | None:
+    """Create Mister Minit HQ + pilot shops when MINIT_SEED_ENABLED=true."""
+    if not settings.minit_seed_enabled:
+        return None
+    password = settings.minit_hq_owner_password or ""
+    if len(password) < 8:
+        return {"ok": False, "reason": "minit_hq_owner_password_too_short"}
+    result = ensure_minit_pilot_account(
+        session,
+        parent_name=settings.minit_parent_account_name,
+        hq_tenant_slug=settings.minit_hq_tenant_slug.strip().lower(),
+        hq_tenant_name=settings.minit_hq_tenant_name,
+        hq_owner_email=settings.minit_hq_owner_email,
+        hq_owner_password=password,
+    )
+    return {
+        "ok": True,
+        "parent_account_id": str(result.parent_account_id),
+        "parent_account_name": result.parent_account_name,
+        "hq_tenant_slug": result.hq_tenant_slug,
+        "hq_owner_email": result.hq_owner_email,
+        "created_tenant_slugs": result.created_tenant_slugs,
+        "skipped_shop_numbers": result.skipped_shop_numbers,
+    }
 
 
 def ensure_demo_parent_account(session: Session, demo_tenant: Tenant) -> None:
