@@ -6,12 +6,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from .minit_shops import MinitShopRow, tenant_slug_for_shop
 from .models import ParentAccount, ParentAccountMembership, Tenant, User
 from .security import hash_password
-from .shop_number import linked_tenants_for_parent, normalize_shop_number
+from .shop_number import linked_tenant_ids_for_parent, linked_tenants_for_parent, normalize_shop_number
+
+# Flush every N shops during bulk import (fewer round-trips to Postgres).
+_BULK_IMPORT_FLUSH_EVERY = 50
 
 
 @dataclass
@@ -139,7 +142,20 @@ def _link_tenant_to_parent(
     parent: ParentAccount,
     tenant: Tenant,
     owner: User,
+    linked_tenant_ids: set[UUID] | None = None,
 ) -> None:
+    if linked_tenant_ids is not None:
+        if tenant.id in linked_tenant_ids:
+            return
+        session.add(
+            ParentAccountMembership(
+                parent_account_id=parent.id,
+                tenant_id=tenant.id,
+                user_id=owner.id,
+            )
+        )
+        linked_tenant_ids.add(tenant.id)
+        return
     existing = session.exec(
         select(ParentAccountMembership)
         .where(ParentAccountMembership.parent_account_id == parent.id)
@@ -163,6 +179,10 @@ def _create_child_tenant(
     shop: MinitShopRow,
     plan_code: str,
     tenant_slug: str | None = None,
+    existing_by_slug: dict[str, Tenant] | None = None,
+    hq_users_by_tenant_id: dict[UUID, User] | None = None,
+    linked_tenant_ids: set[UUID] | None = None,
+    flush: bool = True,
 ) -> Tenant | None:
     """Create a site tenant owned by HQ credentials. Returns None if slug exists elsewhere."""
     slug = (tenant_slug or tenant_slug_for_shop(shop)).strip().lower()
@@ -170,7 +190,10 @@ def _create_child_tenant(
     if not shop_number:
         return None
 
-    existing = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
+    if existing_by_slug is not None:
+        existing = existing_by_slug.get(slug)
+    else:
+        existing = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if existing:
         if sync_tenant_from_minit_shop(existing, shop):
             session.add(existing)
@@ -186,11 +209,20 @@ def _create_child_tenant(
             minit_region=shop.region,
         )
         session.add(tenant)
-        session.flush()
+        if existing_by_slug is not None:
+            existing_by_slug[slug] = tenant
+        if flush:
+            session.flush()
+        elif tenant.id is None:
+            # Bulk import: need tenant PK before user + membership rows.
+            session.flush()
 
-    site_owner = session.exec(
-        select(User).where(User.tenant_id == tenant.id).where(User.email == hq_owner.email)
-    ).first()
+    if hq_users_by_tenant_id is not None:
+        site_owner = hq_users_by_tenant_id.get(tenant.id)
+    else:
+        site_owner = session.exec(
+            select(User).where(User.tenant_id == tenant.id).where(User.email == hq_owner.email)
+        ).first()
     if not site_owner:
         site_owner = User(
             tenant_id=tenant.id,
@@ -201,9 +233,18 @@ def _create_child_tenant(
             is_active=True,
         )
         session.add(site_owner)
-        session.flush()
+        if hq_users_by_tenant_id is not None and tenant.id:
+            hq_users_by_tenant_id[tenant.id] = site_owner
+        if flush:
+            session.flush()
 
-    _link_tenant_to_parent(session, parent=parent, tenant=tenant, owner=site_owner)
+    _link_tenant_to_parent(
+        session,
+        parent=parent,
+        tenant=tenant,
+        owner=site_owner,
+        linked_tenant_ids=linked_tenant_ids,
+    )
     return tenant
 
 
@@ -415,16 +456,30 @@ def import_minit_shops(
         result["error"] = "HQ owner user not found; run pilot seed first"
         return result
 
+    slugs_needed = {tenant_slug_for_shop(s) for s in shops}
+    existing_by_slug: dict[str, Tenant] = {}
+    if slugs_needed:
+        for tenant in session.exec(select(Tenant).where(col(Tenant.slug).in_(list(slugs_needed)))).all():
+            existing_by_slug[tenant.slug] = tenant
+
+    hq_users_by_tenant_id = {
+        user.tenant_id: user
+        for user in session.exec(select(User).where(User.email == hq_owner.email)).all()
+    }
+    linked_tenant_ids = set(linked_tenant_ids_for_parent(session, parent.id))
+
     created_slugs: list[str] = []
     updated_count = 0
     skipped_apply = 0
     total = len(shops)
+    pending_flush = 0
     for index, shop in enumerate(shops, start=1):
         if shop.shop_number in existing_numbers:
             tenant = tenants_by_number.get(shop.shop_number)
             if tenant and sync_tenant_from_minit_shop(tenant, shop):
                 session.add(tenant)
                 updated_count += 1
+                pending_flush += 1
                 if on_progress and (index % 25 == 0 or index == total):
                     on_progress(index, total, "update")
             else:
@@ -433,7 +488,7 @@ def import_minit_shops(
                     on_progress(index, total, "skip")
             continue
         slug = tenant_slug_for_shop(shop)
-        if slug in existing_slugs or session.exec(select(Tenant).where(Tenant.slug == slug)).first():
+        if slug in existing_slugs or slug in existing_by_slug:
             skipped_apply += 1
             if on_progress and index % 25 == 0:
                 on_progress(index, total, "skip")
@@ -444,15 +499,25 @@ def import_minit_shops(
             hq_owner=hq_owner,
             shop=shop,
             plan_code=plan_code,
+            existing_by_slug=existing_by_slug,
+            hq_users_by_tenant_id=hq_users_by_tenant_id,
+            linked_tenant_ids=linked_tenant_ids,
+            flush=False,
         )
         if tenant:
             created_slugs.append(tenant.slug)
             existing_numbers.add(shop.shop_number)
             existing_slugs.add(tenant.slug)
             tenants_by_number[shop.shop_number] = tenant
+            pending_flush += 1
         if on_progress and (index % 25 == 0 or index == total):
             on_progress(index, total, "create")
+        if pending_flush >= _BULK_IMPORT_FLUSH_EVERY:
+            session.flush()
+            pending_flush = 0
 
+    if pending_flush:
+        session.flush()
     session.commit()
     result["created_count"] = len(created_slugs)
     result["updated_count"] = updated_count

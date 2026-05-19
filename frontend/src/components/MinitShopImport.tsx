@@ -32,7 +32,12 @@ export function MinitShopImport() {
     },
     onError: err => {
       setResult(null)
-      setError(getApiErrorMessage(err, 'Import failed.'))
+      const msg = getApiErrorMessage(err, 'Import failed.')
+      setError(
+        msg.toLowerCase().includes('timeout')
+          ? 'Import timed out. The server may still be processing — refresh Shops in a minute and re-import only if counts are low.'
+          : msg,
+      )
     },
   })
 
@@ -78,6 +83,7 @@ export function MinitShopImport() {
         <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           Upload a workbook with columns Shop #, Shop Name, Area, and Region (sheet &quot;Shops&quot; or
           &quot;TSS Scores&quot;). Existing shop numbers are updated; new ones are created as booking-only shops.
+          Large imports (hundreds of shops) can take a few minutes — keep this window open until finished.
         </p>
 
         <input

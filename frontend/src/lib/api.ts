@@ -392,7 +392,7 @@ export const importParentShopsFromXlsx = (file: File) => {
   form.append('file', file)
   return api.post<ParentImportShopsResult>('/parent-accounts/me/import-shops', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000,
+    timeout: 600000, // ~379 shops: bulk DB work can exceed 2 min on cold Postgres
   })
 }
 
