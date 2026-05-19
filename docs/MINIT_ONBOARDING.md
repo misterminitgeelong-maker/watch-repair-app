@@ -9,7 +9,7 @@ Add to `backend/.env` (or deployment secrets):
 ```env
 MINIT_SEED_ENABLED=true
 MINIT_PARENT_ACCOUNT_NAME=Mister Minit
-MINIT_HQ_TENANT_SLUG=mister-minit-hq
+MINIT_HQ_TENANT_SLUG=mmsupport
 MINIT_HQ_TENANT_NAME=Mister Minit HQ
 MINIT_HQ_OWNER_EMAIL=minit-hq@test.mainspring.au
 MINIT_HQ_OWNER_PASSWORD=MinitPilot2026!
@@ -21,7 +21,7 @@ MINIT_HQ_OWNER_PASSWORD=MinitPilot2026!
 
 | Role | Shop # | Slug | Plan |
 |------|--------|------|------|
-| HQ | — | `mister-minit-hq` | `enterprise` |
+| HQ | — | `mmsupport` | `enterprise` |
 | Retail | 3269 Chadstone | `minit-3269` | `booking_only` |
 | Retail | 4278 Toowoomba | `minit-4278` | `booking_only` |
 | Mobile operator | 3904 | `minit-mobile-3904` | `basic_auto_key` |
@@ -38,7 +38,7 @@ python scripts/seed_minit_pilot.py
 ## HQ login
 
 1. Open the web app login.
-2. **Tenant slug:** `mister-minit-hq`
+2. **Tenant slug:** `mmsupport` (login label may show as MMSupport; slug is stored lowercase)
 3. **Email:** value of `MINIT_HQ_OWNER_EMAIL` (default `minit-hq@test.mainspring.au`)
 4. **Password:** value of `MINIT_HQ_OWNER_PASSWORD`
 
@@ -82,6 +82,15 @@ python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --
 - Skips shops whose `shop_number` is already linked under the parent account.
 - New tenants use slug `minit-{shop_number}` and plan `booking_only` unless `--plan-code` is set.
 - Does **not** import mobile operators from the sheet; operator **3904** is pilot-seeded only.
+
+## Existing databases
+
+If you already ran the pilot seed with slug `mister-minit-hq`, either:
+
+- Re-run `python scripts/seed_minit_pilot.py` after setting `MINIT_HQ_TENANT_SLUG=mmsupport` and removing or renaming the old HQ tenant, or
+- Manually update the HQ row: `UPDATE tenant SET slug = 'mmsupport' WHERE slug = 'mister-minit-hq';` (and set `MINIT_HQ_TENANT_SLUG=mmsupport` in env so startup seed stays consistent).
+
+Retail slugs (`minit-3269`, etc.) are unchanged.
 
 ## Security notes
 

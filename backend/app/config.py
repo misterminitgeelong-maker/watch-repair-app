@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # Mister Minit pilot parent account + HQ (dev/staging; see docs/MINIT_ONBOARDING.md)
     minit_seed_enabled: bool = False
     minit_parent_account_name: str = "Mister Minit"
-    minit_hq_tenant_slug: str = "mister-minit-hq"
+    minit_hq_tenant_slug: str = "mmsupport"
     minit_hq_tenant_name: str = "Mister Minit HQ"
     minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
     minit_hq_owner_password: str = "MinitPilot2026!"
