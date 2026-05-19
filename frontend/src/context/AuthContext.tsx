@@ -16,11 +16,13 @@ import {
   type PlanCode,
   type SiteOption,
 } from '@/lib/api'
+import { applyMinitBrandingIfNeeded } from '@/lib/minitBranding'
 
 interface AuthCtx {
   token: string | null
   role: string | null
   tenantId: string | null
+  tenantSlug: string | null
   /** Set after a successful `/auth/session` load; null when logged out or session not ready. */
   sessionUserId: string | null
   activeSiteTenantId: string | null
@@ -118,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(() => parseRoleFromToken(getStoredAccessToken()))
   const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
@@ -163,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!stored) {
       setRole(null)
       setTenantId(null)
+      setTenantSlug(null)
       setSessionUserId(null)
       setActiveSiteTenantId(null)
       setAvailableSites([])
@@ -180,11 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await getAuthSession()
     setRole(data.user.role)
     setTenantId(data.tenant_id)
+    setTenantSlug(data.tenant_slug)
     setSessionUserId(data.user.id)
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
     setPlanCode(data.plan_code)
     setEnabledFeatures(data.enabled_features)
+    applyMinitBrandingIfNeeded(data.tenant_slug, data.plan_code)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
     setSubscriptionStatus(data.subscription_status ?? null)
     setTrialEnd(data.trial_end ?? null)
@@ -200,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(parseRoleFromToken(nextToken))
       if (!nextToken) {
         setTenantId(null)
+        setTenantSlug(null)
         setSessionUserId(null)
         setActiveSiteTenantId(null)
         setAvailableSites([])
@@ -266,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setToken(null)
               setRole(null)
               setTenantId(null)
+              setTenantSlug(null)
               setSessionUserId(null)
               setActiveSiteTenantId(null)
               setAvailableSites([])
@@ -307,6 +315,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null)
         setRole(null)
         setTenantId(null)
+        setTenantSlug(null)
         setSessionUserId(null)
         setActiveSiteTenantId(null)
         setAvailableSites([])
@@ -334,6 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null)
           setRole(null)
           setTenantId(null)
+          setTenantSlug(null)
           setSessionUserId(null)
           setActiveSiteTenantId(null)
           setAvailableSites([])
@@ -371,6 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setRole(null)
     setTenantId(null)
+    setTenantSlug(null)
     setSessionUserId(null)
     setActiveSiteTenantId(null)
     setAvailableSites([])
@@ -381,6 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTrialEnd(null)
     setShopCalendarTodayYmd(null)
     setScheduleCalendarTimezone('Australia/Sydney')
+    setTenantBusinessAddress(null)
   }
 
   async function switchSite(nextTenantId: string) {
@@ -404,6 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         role,
         tenantId,
+        tenantSlug,
         sessionUserId,
         activeSiteTenantId,
         availableSites,

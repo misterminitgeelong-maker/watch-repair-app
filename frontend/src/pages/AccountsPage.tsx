@@ -23,6 +23,7 @@ import {
   updateUser,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { isMinitTenantSlug } from '@/lib/minitBranding'
 import { useTheme, type Theme } from '@/context/ThemeContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
@@ -670,6 +671,19 @@ function DispatchBaseLocationCard() {
 
 function AppearanceCard() {
   const { theme, setTheme } = useTheme()
+  const { tenantSlug } = useAuth()
+  if (isMinitTenantSlug(tenantSlug)) {
+    return (
+      <Card className="mb-5 p-4 sm:p-5">
+        <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+          Appearance
+        </p>
+        <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
+          Mister Minit branding is applied automatically for your organisation.
+        </p>
+      </Card>
+    )
+  }
   const themes: { key: Theme; label: string; desc: string; swatches: string[] }[] = [
     { key: 'warm',    label: 'Refined Warmth', desc: 'Cream parchment, gold accent.',        swatches: ['#F5F1EC', '#FDFCF9', '#9A6E26', '#1C1510'] },
     { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#C07820', '#181614'] },

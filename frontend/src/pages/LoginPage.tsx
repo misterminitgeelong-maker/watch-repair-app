@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
 const ANIM_CSS = `
@@ -36,6 +37,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [btnHover, setBtnHover] = useState(false)
+  const showMinitBranding = isMinitTenantSlug(slug)
 
   useEffect(() => {
     if (searchParams.get('demo') !== '1') return
@@ -43,6 +45,10 @@ export default function LoginPage() {
     setEmail(demoCreds.email)
     setPassword(demoCreds.password)
   }, [demoCreds.email, demoCreds.password, demoCreds.slug, searchParams])
+
+  useEffect(() => {
+    applyMinitBrandingIfNeeded(slug)
+  }, [slug])
 
   if (token && sessionReady) return <Navigate to="/dashboard" replace />
 
@@ -57,6 +63,7 @@ export default function LoginPage() {
         : await login(slug, email, password)
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
+      if (mode === 'single') applyMinitBrandingIfNeeded(slug)
       navigate('/dashboard')
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
@@ -126,10 +133,10 @@ export default function LoginPage() {
               display: 'inline-block',
             }}>
               <img
-                src="/mainspring-logo.svg"
-                alt="Mainspring"
+                src={showMinitBranding ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
+                alt={showMinitBranding ? 'Mister Minit' : 'Mainspring'}
                 style={{
-                  width: 'min(88vw, 458px)',
+                  width: showMinitBranding ? 'min(72vw, 280px)' : 'min(88vw, 458px)',
                   height: 'auto',
                   display: 'block',
                   maxWidth: '100%',
@@ -144,7 +151,7 @@ export default function LoginPage() {
               textTransform: 'uppercase',
               color: 'var(--ms-text-muted)',
             }}>
-              Repair OS for the modern bench.
+              {showMinitBranding ? 'Mobile services booking' : 'Repair OS for the modern bench.'}
             </p>
           </div>
 

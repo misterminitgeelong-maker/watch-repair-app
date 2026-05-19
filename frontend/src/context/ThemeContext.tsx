@@ -5,6 +5,8 @@ export type Theme = 'warm' | 'neutral' | 'dark' | 'minit'
 
 const STORAGE_KEY = 'ms-theme'
 
+export const THEME_PERSISTED_EVENT = 'ms-theme-persisted'
+
 export function readStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'warm'
   const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -19,6 +21,18 @@ export function applyTheme(theme: Theme) {
   } else {
     document.documentElement.setAttribute('data-theme', theme)
   }
+}
+
+/** Apply theme to DOM, localStorage, and sync ThemeProvider state (via custom event). */
+export function persistTheme(theme: Theme) {
+  applyTheme(theme)
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(STORAGE_KEY, theme)
+  } catch {
+    /* storage unavailable */
+  }
+  window.dispatchEvent(new CustomEvent(THEME_PERSISTED_EVENT, { detail: { theme } }))
 }
 
 interface ThemeCtx {
@@ -39,6 +53,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       /* storage unavailable */
     }
   }, [theme])
+
+  useEffect(() => {
+    function onThemePersisted(e: Event) {
+      const next = (e as CustomEvent<{ theme: Theme }>).detail?.theme
+      if (next === 'warm' || next === 'neutral' || next === 'dark' || next === 'minit') {
+        setThemeState(next)
+      }
+    }
+    window.addEventListener(THEME_PERSISTED_EVENT, onThemePersisted)
+    return () => window.removeEventListener(THEME_PERSISTED_EVENT, onThemePersisted)
+  }, [])
 
   const value: ThemeCtx = {
     theme,

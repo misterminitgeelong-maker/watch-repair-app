@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     minit_hq_tenant_name: str = "Mister Minit HQ"
     minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
     minit_hq_owner_password: str = "MinitPilot2026!"
+    allow_ensure_minit_pilot: bool = False  # Enables POST /auth/ensure-minit-pilot (one-off prod seed)
 
     # Optional global platform admin account (cross-tenant visibility)
     platform_admin_enabled: bool = False

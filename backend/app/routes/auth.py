@@ -185,6 +185,13 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
 
 
 def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -> AuthSessionResponse:
+    from ..minit_branding import ensure_minit_corporate_plan
+
+    if tenant.slug == "mmsupport" and tenant.plan_code != "minit_hq":
+        tenant = ensure_minit_corporate_plan(session, tenant)
+        session.commit()
+        session.refresh(tenant)
+
     normalized_plan = _normalize_plan_code(tenant.plan_code)
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["pro"]))
     available_sites = _build_available_sites_for_email(session, user.email)
@@ -976,6 +983,41 @@ def ensure_testing_tenant_endpoint(session: Session = Depends(get_session)):
             "detail": "Testing tenant not configured. Set TESTING_TENANT_SLUG, TESTING_OWNER_EMAIL, TESTING_OWNER_PASSWORD in .env",
         }
     return {"ok": True, "tenant_slug": result.slug, "detail": "Testing tenant ready. Try signing in."}
+
+
+@router.post("/ensure-minit-pilot")
+def ensure_minit_pilot_endpoint(session: Session = Depends(get_session)):
+    """Create or refresh Mister Minit HQ + pilot shops from MINIT_* env vars.
+
+    Use when Minit login returns 'Invalid credentials' because the pilot was never seeded on this database.
+    Enable with ALLOW_ENSURE_MINIT_PILOT=true (set false again after seeding).
+    """
+    if settings.app_env.lower() == "production" and not settings.allow_ensure_minit_pilot:
+        raise HTTPException(status_code=403, detail="Set ALLOW_ENSURE_MINIT_PILOT=true to enable on production")
+    password = settings.minit_hq_owner_password or ""
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="MINIT_HQ_OWNER_PASSWORD must be at least 8 characters")
+    from ..minit_provision import ensure_minit_pilot_account
+
+    result = ensure_minit_pilot_account(
+        session,
+        parent_name=settings.minit_parent_account_name,
+        hq_tenant_slug=settings.minit_hq_tenant_slug.strip().lower(),
+        hq_tenant_name=settings.minit_hq_tenant_name,
+        hq_owner_email=settings.minit_hq_owner_email,
+        hq_owner_password=password,
+    )
+    return {
+        "ok": True,
+        "hq_tenant_slug": result.hq_tenant_slug,
+        "hq_owner_email": result.hq_owner_email,
+        "created_tenant_slugs": result.created_tenant_slugs,
+        "skipped_shop_numbers": result.skipped_shop_numbers,
+        "detail": (
+            f"Log in with Shop ID '{result.hq_tenant_slug}', email {result.hq_owner_email}, "
+            "and MINIT_HQ_OWNER_PASSWORD. Retail: minit-3269. Operator: minit-mobile-3904."
+        ),
+    }
 
 
 @router.post("/dev-auto-login", response_model=TokenResponse)
