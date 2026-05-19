@@ -396,6 +396,26 @@ export const importParentShopsFromXlsx = (file: File) => {
   })
 }
 
+export interface ParentDashboardBookingSnippet {
+  id: string
+  customer_name: string
+  status: string
+  requesting_shop_name: string
+  requesting_shop_number?: string | null
+  target_operator_name: string
+  region?: string | null
+  area?: string | null
+  created_at: string
+}
+
+export interface ParentRegionDashboardStat {
+  region: string
+  shop_count: number
+  bookings_30d: number
+  pending: number
+  active_shops_30d: number
+}
+
 export interface ParentOperationsOverview {
   retail_shop_count: number
   operator_count: number
@@ -404,6 +424,16 @@ export interface ParentOperationsOverview {
   shops_without_recent_booking: number
   problem_bookings_7d: number
   operators_missing_dispatch_phone: number
+  bookings_7d: number
+  accepted_7d: number
+  declined_7d: number
+  bookings_30d: number
+  accepted_30d: number
+  stale_pending_count: number
+  acceptance_rate_7d: number | null
+  region_stats: ParentRegionDashboardStat[]
+  recent_bookings: ParentDashboardBookingSnippet[]
+  attention_items: ParentTroubleshootingItem[]
 }
 
 export interface ParentShopBookingVolume {

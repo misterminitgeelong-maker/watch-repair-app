@@ -930,6 +930,26 @@ class ParentImportShopsResponse(SQLModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class ParentDashboardBookingSnippet(SQLModel):
+    id: UUID
+    customer_name: str
+    status: str
+    requesting_shop_name: str
+    requesting_shop_number: Optional[str] = None
+    target_operator_name: str
+    region: Optional[str] = None
+    area: Optional[str] = None
+    created_at: datetime
+
+
+class ParentRegionDashboardStat(SQLModel):
+    region: str
+    shop_count: int
+    bookings_30d: int
+    pending: int
+    active_shops_30d: int
+
+
 class ParentOperationsOverview(SQLModel):
     retail_shop_count: int
     operator_count: int
@@ -938,6 +958,16 @@ class ParentOperationsOverview(SQLModel):
     shops_without_recent_booking: int
     problem_bookings_7d: int
     operators_missing_dispatch_phone: int
+    bookings_7d: int = 0
+    accepted_7d: int = 0
+    declined_7d: int = 0
+    bookings_30d: int = 0
+    accepted_30d: int = 0
+    stale_pending_count: int = 0
+    acceptance_rate_7d: Optional[float] = None
+    region_stats: list[ParentRegionDashboardStat] = Field(default_factory=list)
+    recent_bookings: list[ParentDashboardBookingSnippet] = Field(default_factory=list)
+    attention_items: list["ParentTroubleshootingItem"] = Field(default_factory=list)
 
 
 class ParentShopBookingVolume(SQLModel):
