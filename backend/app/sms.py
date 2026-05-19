@@ -585,6 +585,97 @@ def notify_auto_key_customer_intake(
     )
 
 
+def operator_dispatch_phone(tenant: Tenant | None) -> str | None:
+    """Phone number for operator dispatch SMS (shop booking alerts)."""
+    if not tenant:
+        return None
+    raw = getattr(tenant, "mobile_dispatch_phone", None)
+    if not raw or not str(raw).strip():
+        return None
+    return str(raw).strip()
+
+
+def notify_shop_mobile_booking_request(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    customer_phone: str | None,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    registration_plate: str | None,
+    visit_location_type: str,
+    job_address: str,
+    preferred_scheduled_at,
+    job_type: str | None,
+    notes: str | None,
+) -> bool:
+    """SMS operator when a shop submits a pending mobile booking request."""
+    from datetime import datetime
+
+    shop = shop_name.strip() or "A shop"
+    visit = "At shop" if visit_location_type == "at_shop" else "Customer site"
+    lines = [f"New shop booking from {shop} — review in app."]
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    lines.append(f"Customer: {cust_line}")
+
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
+    if registration_plate and registration_plate.strip():
+        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
+    if veh:
+        lines.append(f"Vehicle: {veh}")
+
+    type_bits = [visit]
+    if job_type and job_type.strip():
+        type_bits.append(job_type.strip())
+    lines.append(f"Visit: {' · '.join(type_bits)}")
+
+    if preferred_scheduled_at:
+        try:
+            dt = (
+                preferred_scheduled_at
+                if isinstance(preferred_scheduled_at, datetime)
+                else datetime.fromisoformat(str(preferred_scheduled_at).replace("Z", "+00:00"))
+            )
+            when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
+            lines.append(f"When: {when}")
+        except (ValueError, TypeError):
+            lines.append(f"When: {str(preferred_scheduled_at)[:32]}")
+
+    addr = (job_address or "").strip()
+    if addr:
+        short = addr[:90] + ("…" if len(addr) > 90 else "")
+        lines.append(f"Where: {short}")
+
+    if notes and notes.strip():
+        n = notes.strip()
+        lines.append(f"Notes: {n[:120]}{'…' if len(n) > 120 else ''}")
+
+    inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key"
+    lines.append(f"Open: {inbox_url}")
+
+    body = "\n".join(lines)
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_pending",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
 def notify_auto_key_booking_request(
     session: Session,
     *,

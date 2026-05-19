@@ -56,10 +56,12 @@ class ToolkitSelectionUpdate(BaseModel):
 
 class MobileNotificationsRead(BaseModel):
     customer_sms_enabled: bool
+    dispatch_phone: str | None = None
 
 
 class MobileNotificationsPatch(BaseModel):
-    customer_sms_enabled: bool
+    customer_sms_enabled: bool | None = None
+    dispatch_phone: str | None = None
 
 
 @router.get("/mobile-notifications", response_model=MobileNotificationsRead)
@@ -74,6 +76,7 @@ def get_mobile_notifications(
         raise HTTPException(status_code=404, detail="Tenant not found")
     return MobileNotificationsRead(
         customer_sms_enabled=bool(getattr(tenant, "mobile_services_customer_sms_enabled", True)),
+        dispatch_phone=getattr(tenant, "mobile_dispatch_phone", None),
     )
 
 
@@ -84,15 +87,22 @@ def patch_mobile_notifications(
     _f=Depends(require_feature("auto_key")),
     session: Session = Depends(get_session),
 ):
-    """Enable or disable customer-facing SMS for mobile services (does not affect tech reminders)."""
+    """Enable or disable customer-facing SMS; optionally set dispatch phone for shop booking alerts."""
     tenant = session.get(Tenant, auth.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    tenant.mobile_services_customer_sms_enabled = body.customer_sms_enabled
+    if body.customer_sms_enabled is not None:
+        tenant.mobile_services_customer_sms_enabled = body.customer_sms_enabled
+    if "dispatch_phone" in body.model_fields_set:
+        raw = body.dispatch_phone
+        tenant.mobile_dispatch_phone = raw.strip()[:80] if raw and raw.strip() else None
     session.add(tenant)
     session.commit()
     session.refresh(tenant)
-    return MobileNotificationsRead(customer_sms_enabled=bool(tenant.mobile_services_customer_sms_enabled))
+    return MobileNotificationsRead(
+        customer_sms_enabled=bool(tenant.mobile_services_customer_sms_enabled),
+        dispatch_phone=getattr(tenant, "mobile_dispatch_phone", None),
+    )
 
 
 @router.get("/catalog")

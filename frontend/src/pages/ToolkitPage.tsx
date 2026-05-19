@@ -38,13 +38,30 @@ export default function ToolkitPage() {
     queryFn: () => getToolkitMobileNotifications().then((r) => r.data),
   })
 
+  const [dispatchPhone, setDispatchPhone] = useState('')
+  const [dispatchDirty, setDispatchDirty] = useState(false)
+
   const smsMut = useMutation({
-    mutationFn: (enabled: boolean) => patchToolkitMobileNotifications(enabled),
+    mutationFn: (enabled: boolean) => patchToolkitMobileNotifications({ customer_sms_enabled: enabled }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['toolkit', 'mobile-notifications'] })
       void refreshSession()
     },
   })
+
+  const dispatchMut = useMutation({
+    mutationFn: (phone: string | null) => patchToolkitMobileNotifications({ dispatch_phone: phone }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['toolkit', 'mobile-notifications'] })
+      setDispatchDirty(false)
+    },
+  })
+
+  useEffect(() => {
+    if (mobileNotif && !dispatchDirty) {
+      setDispatchPhone(mobileNotif.dispatch_phone ?? '')
+    }
+  }, [mobileNotif, dispatchDirty])
 
   useEffect(() => {
     if (saved?.tool_keys) setLocalKeys(new Set(saved.tool_keys))
@@ -148,6 +165,34 @@ export default function ToolkitPage() {
             )}
           </span>
         </label>
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--ms-border)' }}>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ms-text)' }}>
+            Dispatch SMS number (new shop booking alerts)
+          </label>
+          <p className="text-xs mb-2 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
+            When a linked shop sends a pending mobile booking, this number receives an SMS with customer, vehicle,
+            address, and time. Leave blank to rely on in-app inbox only.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:max-w-md">
+            <Input
+              type="tel"
+              placeholder="e.g. 0412 345 678"
+              value={dispatchPhone}
+              disabled={!canEditMobileCustomerSms || dispatchMut.isPending}
+              onChange={(e) => {
+                setDispatchPhone(e.target.value)
+                setDispatchDirty(true)
+              }}
+            />
+            <Button
+              type="button"
+              disabled={!canEditMobileCustomerSms || !dispatchDirty || dispatchMut.isPending}
+              onClick={() => dispatchMut.mutate(dispatchPhone.trim() || null)}
+            >
+              {dispatchMut.isPending ? 'Saving…' : 'Save number'}
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

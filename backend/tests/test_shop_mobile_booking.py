@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 _TEST_DB = Path(__file__).with_name(f"test_shop_mobile_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import ShopMobileBookingRequest, Tenant
+from app.models import ShopMobileBookingRequest, SmsLog, Tenant
 
 create_db_and_tables()
 client = TestClient(app)
@@ -257,6 +257,80 @@ def test_pending_booking_expires_after_seven_days():
 
     accept = client.post(f"/v1/shop-mobile-bookings/{booking_id}/accept", headers=op_h)
     assert accept.status_code == 400
+
+
+def test_create_booking_sends_dispatch_sms_when_phone_configured():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+
+    with Session(engine) as session:
+        tenant = session.get(Tenant, UUID(op_tid))
+        assert tenant is not None
+        tenant.mobile_dispatch_phone = "+61400111222"
+        session.add(tenant)
+        session.commit()
+
+    when = datetime(2026, 7, 20, 10, 0, tzinfo=timezone.utc).isoformat()
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json={
+            "target_operator_tenant_id": op_tid,
+            "customer_name": "Jane Driver",
+            "phone": "0411222333",
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Corolla",
+            "registration_plate": "ABC123",
+            "visit_location_type": "customer_site",
+            "job_address": "10 George St, Sydney NSW",
+            "preferred_scheduled_at": when,
+            "job_type": "Lockout – Car",
+            "notes": "Urgent",
+        },
+    )
+    assert create.status_code == 201, create.text
+
+    with Session(engine) as session:
+        logs = session.exec(
+            select(SmsLog)
+            .where(SmsLog.tenant_id == UUID(op_tid))
+            .where(SmsLog.event == "shop_mobile_booking_pending")
+        ).all()
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.to_phone == "+61400111222"
+    assert "Jane Driver" in log.body
+    assert "0411222333" in log.body
+    assert "Toyota" in log.body
+    assert "10 George St" in log.body
+    assert "Urgent" in log.body
+    assert "/auto-key" in log.body
+
+
+def test_create_booking_skips_dispatch_sms_without_phone():
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json={
+            "target_operator_tenant_id": op_tid,
+            "customer_name": "No SMS",
+            "job_address": "1 Quiet St",
+        },
+    )
+    assert create.status_code == 201
+
+    with Session(engine) as session:
+        count = len(
+            session.exec(
+                select(SmsLog)
+                .where(SmsLog.tenant_id == UUID(op_tid))
+                .where(SmsLog.event == "shop_mobile_booking_pending")
+            ).all()
+        )
+    assert count == 0
 
 
 def test_at_shop_uses_tenant_business_address():

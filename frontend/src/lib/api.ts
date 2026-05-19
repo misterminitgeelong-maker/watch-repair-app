@@ -2228,9 +2228,15 @@ export const getToolkitMySelection = () =>
 export const putToolkitMySelection = (tool_keys: string[]) =>
   api.put('/toolkit/my-selection', { tool_keys })
 export const getToolkitMobileNotifications = () =>
-  api.get<{ customer_sms_enabled: boolean }>('/toolkit/mobile-notifications')
-export const patchToolkitMobileNotifications = (customer_sms_enabled: boolean) =>
-  api.patch<{ customer_sms_enabled: boolean }>('/toolkit/mobile-notifications', { customer_sms_enabled })
+  api.get<{ customer_sms_enabled: boolean; dispatch_phone: string | null }>('/toolkit/mobile-notifications')
+export const patchToolkitMobileNotifications = (payload: {
+  customer_sms_enabled?: boolean
+  dispatch_phone?: string | null
+}) =>
+  api.patch<{ customer_sms_enabled: boolean; dispatch_phone: string | null }>(
+    '/toolkit/mobile-notifications',
+    payload,
+  )
 export const recommendToolkit = (scenario_id: string) =>
   api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
 export const postToolkitRecommend = recommendToolkit

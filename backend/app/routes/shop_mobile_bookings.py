@@ -1,5 +1,6 @@
 """Shop-initiated mobile operator booking requests (request → accept/decline)."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from ..dependencies import (
     normalize_plan_code,
     require_feature,
 )
+from .. import sms as sms_service
 from ..models import (
     AutoKeyJob,
     Customer,
@@ -31,6 +33,8 @@ from ..models import (
     TenantEventLog,
     User,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/shop-mobile-bookings", tags=["shop-mobile-bookings"])
 
@@ -376,9 +380,38 @@ def create_booking(
             event_summary=f"{shop_name} sent mobile booking for {body.customer_name.strip()} (pending)",
         )
     )
-    # Operator SMS skipped: owner users have no phone field; inbox poll via shop_booking_pending event.
     session.commit()
     session.refresh(row)
+
+    operator = session.get(Tenant, body.target_operator_tenant_id)
+    dispatch_phone = sms_service.operator_dispatch_phone(operator)
+    if dispatch_phone:
+        try:
+            sms_service.notify_shop_mobile_booking_request(
+                session,
+                tenant_id=body.target_operator_tenant_id,
+                to_phone=dispatch_phone,
+                shop_name=shop_name,
+                customer_name=row.customer_name,
+                customer_phone=row.phone,
+                vehicle_make=row.vehicle_make,
+                vehicle_model=row.vehicle_model,
+                registration_plate=row.registration_plate,
+                visit_location_type=row.visit_location_type,
+                job_address=row.job_address,
+                preferred_scheduled_at=row.preferred_scheduled_at,
+                job_type=row.job_type,
+                notes=row.notes,
+            )
+            session.commit()
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "shop_mobile_booking.dispatch_sms_failed booking=%s operator=%s",
+                row.id,
+                body.target_operator_tenant_id,
+                exc_info=True,
+            )
+
     return _to_read(session, row)
 
 

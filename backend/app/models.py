@@ -105,6 +105,8 @@ class Tenant(SQLModel, table=True):
     xero_default_tax_type: Optional[str] = None
     #: Physical store address for at-shop mobile bookings and provisioning.
     business_address: Optional[str] = Field(default=None, max_length=2000)
+    #: SMS destination for new shop mobile booking alerts (operator dispatch).
+    mobile_dispatch_phone: Optional[str] = Field(default=None, max_length=80)
 
 
 class User(SQLModel, table=True):
