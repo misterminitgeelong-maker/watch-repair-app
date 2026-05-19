@@ -2,12 +2,31 @@ import React from 'react'
 
 import { cn, STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
 
-export function Badge({ status }: { status: string }) {
+const VARIANT_COLORS: Record<string, string> = {
+  default: 'bg-[var(--ms-badge-neutral-bg)] text-[var(--ms-badge-neutral-text)]',
+  success: 'bg-[var(--ms-badge-done-bg)] text-[var(--ms-badge-done-text)]',
+  warning: 'bg-[var(--ms-badge-orange-bg)] text-[var(--ms-badge-orange-text)]',
+  danger: 'bg-[var(--ms-badge-alert-bg)] text-[var(--ms-badge-alert-text)]',
+}
+
+type BadgeProps =
+  | { status: string; variant?: never; children?: never; className?: string }
+  | { status?: never; variant?: string; children: React.ReactNode; className?: string }
+
+export function Badge(props: BadgeProps) {
+  const colorClass =
+    props.status != null
+      ? (STATUS_COLORS[props.status] ?? VARIANT_COLORS.default)
+      : (VARIANT_COLORS[props.variant ?? 'default'] ?? VARIANT_COLORS.default)
+
+  const label = props.status != null ? (STATUS_LABELS[props.status] ?? props.status) : props.children
+
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11px] font-semibold',
-        STATUS_COLORS[status] ?? 'bg-[var(--ms-badge-neutral-bg)] text-[var(--ms-badge-neutral-text)]',
+        colorClass,
+        props.className,
       )}
       style={{ letterSpacing: '0.015em' }}
     >
@@ -15,7 +34,7 @@ export function Badge({ status }: { status: string }) {
         aria-hidden
         style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', opacity: 0.75 }}
       />
-      {STATUS_LABELS[status] ?? status}
+      {label}
     </span>
   )
 }
