@@ -493,6 +493,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function hasFeature(feature: FeatureKey) {
     if (role === 'platform_admin') return true
+    if (minitHqUi === true && (feature === 'multi_site' || feature === 'shop_mobile_booking')) {
+      return true
+    }
     if (enabledFeatures.includes(feature)) return true
     return featuresForPlan(effectiveMinitPlanCode(planCode, tenantSlug)).includes(feature)
   }

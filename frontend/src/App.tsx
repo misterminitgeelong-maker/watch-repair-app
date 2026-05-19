@@ -9,7 +9,7 @@ import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
-import { defaultHomePathForMinit, isMinitRestrictedUi } from '@/lib/minitProduct'
+import { defaultHomePathForMinit, isMinitHqUi, isMinitRestrictedUi } from '@/lib/minitProduct'
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
@@ -101,6 +101,27 @@ function FeatureGate({ feature, children }: { feature: FeatureKey; children: Rea
   return <Navigate to={fallback} replace />
 }
 
+/** Minit HQ pages — allow when server/session says HQ, not only when multi_site is in enabled_features. */
+function MinitHqGate({ children }: { children: React.ReactNode }) {
+  const { role, product, planCode, tenantSlug, minitHqUi, hasFeature } = useAuth()
+  const { pathname } = useLocation()
+  const hq =
+    role === 'platform_admin' ||
+    minitHqUi === true ||
+    isMinitHqUi(product, planCode, tenantSlug) ||
+    hasFeature('multi_site')
+  if (hq) return <>{children}</>
+  const fallback = defaultHomePathForMinit(planCode, tenantSlug)
+  if (pathname === fallback) {
+    return (
+      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+        Minit HQ pages are only available on the support account (mmsupport). Switch back to HQ in the site menu.
+      </div>
+    )
+  }
+  return <Navigate to={fallback} replace />
+}
+
 function AutoKeySection() {
   return <Outlet />
 }
@@ -179,16 +200,16 @@ export default function App() {
               <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
-              <Route path="minit/dashboard" element={<FeatureGate feature="multi_site"><MinitOperationsPage /></FeatureGate>} />
+              <Route path="minit/dashboard" element={<MinitHqGate><MinitOperationsPage /></MinitHqGate>} />
               <Route path="minit/operations" element={<Navigate to="/minit/dashboard" replace />} />
-              <Route path="minit/inbox" element={<FeatureGate feature="multi_site"><MinitInboxPage /></FeatureGate>} />
-              <Route path="minit/shops" element={<FeatureGate feature="multi_site"><MinitShopsPage /></FeatureGate>} />
-              <Route path="minit/mobile-services" element={<FeatureGate feature="multi_site"><MinitMobileReportsPage /></FeatureGate>} />
-              <Route path="minit/accounts" element={<FeatureGate feature="multi_site"><MinitAccountsPage /></FeatureGate>} />
-              <Route path="minit/reports" element={<FeatureGate feature="multi_site"><MinitReportsHubPage /></FeatureGate>} />
-              <Route path="minit/reports/shops" element={<FeatureGate feature="multi_site"><MinitShopReportsPage /></FeatureGate>} />
+              <Route path="minit/inbox" element={<MinitHqGate><MinitInboxPage /></MinitHqGate>} />
+              <Route path="minit/shops" element={<MinitHqGate><MinitShopsPage /></MinitHqGate>} />
+              <Route path="minit/mobile-services" element={<MinitHqGate><MinitMobileReportsPage /></MinitHqGate>} />
+              <Route path="minit/accounts" element={<MinitHqGate><MinitAccountsPage /></MinitHqGate>} />
+              <Route path="minit/reports" element={<MinitHqGate><MinitReportsHubPage /></MinitHqGate>} />
+              <Route path="minit/reports/shops" element={<MinitHqGate><MinitShopReportsPage /></MinitHqGate>} />
               <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
-              <Route path="minit/troubleshooting" element={<FeatureGate feature="multi_site"><MinitTroubleshootingPage /></FeatureGate>} />
+              <Route path="minit/troubleshooting" element={<MinitHqGate><MinitTroubleshootingPage /></MinitHqGate>} />
               <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />

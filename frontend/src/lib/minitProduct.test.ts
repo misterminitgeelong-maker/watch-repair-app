@@ -54,6 +54,17 @@ describe('resolveMinitHqUi', () => {
     expect(resolveMinitHqUi({ tenantSlug: 'minit-3269', planCode: 'pro', product: 'minit' })).toBe(false)
   })
 
+  it('does not use last login slug when session is a retail shop', () => {
+    expect(
+      resolveMinitHqUi({
+        tenantSlug: 'minit-3269',
+        planCode: 'booking_only',
+        product: 'minit',
+        lastLoginSlug: 'mmsupport',
+      }),
+    ).toBe(false)
+  })
+
   it('honours debug force flag', () => {
     expect(resolveMinitHqUi({ tenantSlug: 'myshop', planCode: 'pro', debugForce: true })).toBe(true)
   })

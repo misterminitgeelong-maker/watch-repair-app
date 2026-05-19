@@ -74,15 +74,20 @@ export function resolveMinitHqUi(ctx: MinitHqUiContext): boolean {
   if (ctx.serverMinitHqUi === false) return false
 
   const sessionSlug = (ctx.tenantSlug || '').trim().toLowerCase()
-  const loginSlug = (ctx.lastLoginSlug || readLastLoginTenantSlug() || '').trim().toLowerCase()
-  const slug = sessionSlug || loginSlug
 
-  if (isMinitHqTenantSlug(sessionSlug)) return true
+  // Active session tenant wins — do not show HQ nav when switched into minit-3269 etc.
+  if (sessionSlug) {
+    if (isMinitHqTenantSlug(sessionSlug)) return true
+    const effective = effectiveMinitPlanCode(ctx.planCode, sessionSlug)
+    return isMinitHqPlan(effective)
+  }
+
+  const loginSlug = (ctx.lastLoginSlug || readLastLoginTenantSlug() || '').trim().toLowerCase()
   if (isMinitHqTenantSlug(loginSlug)) return true
   if (isMinitHqPlan(ctx.planCode)) return true
   if (ctx.product === 'minit' && isMinitHqPlan(ctx.planCode)) return true
 
-  const effective = effectiveMinitPlanCode(ctx.planCode, slug || ctx.tenantSlug)
+  const effective = effectiveMinitPlanCode(ctx.planCode, loginSlug || null)
   if (isMinitHqPlan(effective)) return true
 
   return false
