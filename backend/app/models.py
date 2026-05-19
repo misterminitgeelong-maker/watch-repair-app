@@ -752,6 +752,8 @@ class AuthSessionResponse(SQLModel):
     user: PublicUser
     tenant_id: UUID
     tenant_slug: str
+    #: ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops.
+    product: str = "mainspring"
     plan_code: PlanCode
     enabled_features: list[str]
     active_site_tenant_id: UUID

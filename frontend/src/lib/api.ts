@@ -238,6 +238,8 @@ export interface AuthSession {
   }
   tenant_id: string
   tenant_slug: string
+  /** ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops. */
+  product?: 'minit' | 'mainspring'
   plan_code: PlanCode
   enabled_features: FeatureKey[]
   active_site_tenant_id: string

@@ -185,15 +185,17 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
 
 
 def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -> AuthSessionResponse:
-    from ..minit_branding import ensure_minit_corporate_plan
+    from ..minit_branding import ensure_minit_tenant_plan, effective_plan_code, tenant_product
 
-    if tenant.slug == "mmsupport" and tenant.plan_code != "minit_hq":
-        tenant = ensure_minit_corporate_plan(session, tenant)
+    before_plan = tenant.plan_code
+    tenant = ensure_minit_tenant_plan(session, tenant)
+    if tenant.plan_code != before_plan:
         session.commit()
         session.refresh(tenant)
 
-    normalized_plan = _normalize_plan_code(tenant.plan_code)
+    normalized_plan = effective_plan_code(tenant)
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["pro"]))
+    product = tenant_product(tenant.slug)
     available_sites = _build_available_sites_for_email(session, user.email)
     if not available_sites:
         available_sites = [
@@ -212,6 +214,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         user=_build_public_user(user),
         tenant_id=tenant.id,
         tenant_slug=tenant.slug,
+        product=product,
         plan_code=normalized_plan,
         enabled_features=enabled,
         active_site_tenant_id=tenant.id,

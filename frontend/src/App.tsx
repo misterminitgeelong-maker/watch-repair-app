@@ -9,6 +9,7 @@ import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
+import { defaultHomePathForMinit, isMinitRestrictedUi } from '@/lib/minitProduct'
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
@@ -76,9 +77,12 @@ function RouteFallback() {
 }
 
 function FeatureGate({ feature, children }: { feature: FeatureKey; children: React.ReactNode }) {
-  const { hasFeature, role } = useAuth()
+  const { hasFeature, role, product, planCode, tenantSlug } = useAuth()
   if (role === 'platform_admin' || hasFeature(feature)) return <>{children}</>
-  return <Navigate to="/dashboard" replace />
+  const fallback = isMinitRestrictedUi(product, planCode, tenantSlug)
+    ? defaultHomePathForMinit(planCode)
+    : '/dashboard'
+  return <Navigate to={fallback} replace />
 }
 
 function AutoKeySection() {

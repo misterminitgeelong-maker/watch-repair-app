@@ -26,6 +26,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { isMinitHqPlan, isMinitBookingOnlyPlan, isMinitRestrictedUi } from '@/lib/minitProduct'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
@@ -80,9 +81,10 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
-  const { logout, role, hasFeature, planCode } = useAuth()
-  const isBookingOnly = planCode === 'booking_only'
-  const isMinitHq = planCode === 'minit_hq'
+  const { logout, role, hasFeature, planCode, product, tenantSlug } = useAuth()
+  const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
+  const isBookingOnly = isMinitBookingOnlyPlan(planCode)
+  const isMinitHq = isMinitHqPlan(planCode)
   const inboxCount = useInboxCount()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
@@ -101,8 +103,8 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     : isMinitHq
       ? filterItems(minitHqNav)
       : filterItems(navBeforeMobile)
-  const filteredAfter = isBookingOnly || isMinitHq ? [] : filterItems(navAfterMobile)
-  const showMobile = !isBookingOnly && !isMinitHq && hasFeature('auto_key')
+  const filteredAfter = isMinitUi ? [] : filterItems(navAfterMobile)
+  const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 
   function linkClasses(isActive: boolean, opts?: { indent?: boolean }) {

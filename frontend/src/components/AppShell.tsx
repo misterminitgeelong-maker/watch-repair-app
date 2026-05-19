@@ -14,6 +14,14 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
+import {
+  defaultHomePathForMinit,
+  isMinitBookingOnlyPlan,
+  isMinitHqPlan,
+  isMinitRestrictedUi,
+  minitBookingOnlyAllowedPath,
+  minitHqAllowedPath,
+} from '@/lib/minitProduct'
 import Sidebar from './Sidebar'
 import BottomTabBar from './BottomTabBar'
 import { Button, Modal } from '@/components/ui'
@@ -428,6 +436,8 @@ export default function AppShell() {
     trialEnd,
     role,
     planCode,
+    product,
+    tenantSlug,
   } = useAuth()
   const { theme } = useTheme()
   const location = useLocation()
@@ -726,23 +736,26 @@ export default function AppShell() {
     ? guidedTourSteps[currentGuidedStepIndex]
     : guidedTourSteps[guidedStep] ?? null
 
-  useEffect(() => {
-    if (planCode === 'booking_only' && location.pathname === '/dashboard') {
-      navigate('/shop-mobile-bookings', { replace: true })
-    }
-    if (planCode === 'minit_hq' && location.pathname === '/dashboard') {
-      navigate('/parent-account', { replace: true })
-    }
-  }, [planCode, location.pathname, navigate])
+  const minitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
 
   useEffect(() => {
-    if (planCode !== 'minit_hq') return
-    const allowed =
-      /^\/(parent-account|shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(location.pathname)
-    if (!allowed) {
-      navigate('/parent-account', { replace: true })
+    if (!minitUi) return
+    if (location.pathname === '/dashboard') {
+      navigate(defaultHomePathForMinit(planCode), { replace: true })
     }
-  }, [planCode, location.pathname, navigate])
+  }, [minitUi, planCode, location.pathname, navigate])
+
+  useEffect(() => {
+    if (!minitUi) return
+    const allowed = isMinitHqPlan(planCode)
+      ? minitHqAllowedPath(location.pathname)
+      : isMinitBookingOnlyPlan(planCode)
+        ? minitBookingOnlyAllowedPath(location.pathname)
+        : minitHqAllowedPath(location.pathname)
+    if (!allowed) {
+      navigate(defaultHomePathForMinit(planCode), { replace: true })
+    }
+  }, [minitUi, planCode, location.pathname, navigate])
 
   useEffect(() => {
     if (!token) return
@@ -960,7 +973,7 @@ export default function AppShell() {
         </main>
       </div>
 
-      <BottomTabBar />
+      {!minitUi && <BottomTabBar />}
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>

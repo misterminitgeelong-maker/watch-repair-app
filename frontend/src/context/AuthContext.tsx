@@ -17,6 +17,13 @@ import {
   type SiteOption,
 } from '@/lib/api'
 import { applyMinitBrandingIfNeeded } from '@/lib/minitBranding'
+import {
+  clearSessionSnapshot,
+  readSessionSnapshot,
+  tenantProductFromSlug,
+  writeSessionSnapshot,
+  type TenantProduct,
+} from '@/lib/minitProduct'
 
 interface AuthCtx {
   token: string | null
@@ -28,6 +35,8 @@ interface AuthCtx {
   activeSiteTenantId: string | null
   availableSites: SiteOption[]
   planCode: PlanCode
+  /** ``minit`` for Mister Minit network; ``mainspring`` for standard shops. */
+  product: TenantProduct
   enabledFeatures: FeatureKey[]
   /** True when signup finished but Stripe subscription not confirmed yet (API returns subscription_required). */
   signupPaymentPending: boolean
@@ -107,9 +116,27 @@ function isSessionDeferPath(pathname: string) {
   return pathname === '/' || pathname === '/pricing'
 }
 
+function initialAuthStateFromStorage(): {
+  planCode: PlanCode
+  product: TenantProduct
+  tenantSlug: string | null
+  enabledFeatures: FeatureKey[]
+} {
+  const snap = readSessionSnapshot()
+  if (snap) {
+    return {
+      planCode: snap.planCode,
+      product: snap.product,
+      tenantSlug: snap.tenantSlug,
+      enabledFeatures: snap.enabledFeatures,
+    }
+  }
+  return { planCode: 'pro', product: 'mainspring', tenantSlug: null, enabledFeatures: [] }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const defaultFeatures: FeatureKey[] = ['watch', 'shoe', 'auto_key', 'customer_accounts', 'multi_site', 'rego_lookup']
+  const initialAuth = initialAuthStateFromStorage()
   const [token, setToken] = useState<string | null>(() => {
     try {
       return getStoredAccessToken()
@@ -120,12 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(() => parseRoleFromToken(getStoredAccessToken()))
   const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
-  const [tenantSlug, setTenantSlug] = useState<string | null>(null)
+  const [tenantSlug, setTenantSlug] = useState<string | null>(initialAuth.tenantSlug)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
-  const [planCode, setPlanCode] = useState<PlanCode>('pro')
-  const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(defaultFeatures)
+  const [planCode, setPlanCode] = useState<PlanCode>(initialAuth.planCode)
+  const [product, setProduct] = useState<TenantProduct>(initialAuth.product)
+  const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(initialAuth.enabledFeatures)
   const [signupPaymentPending, setSignupPaymentPending] = useState(false)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
@@ -171,17 +199,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveSiteTenantId(null)
       setAvailableSites([])
       setPlanCode('pro')
-      setEnabledFeatures(defaultFeatures)
+      setProduct('mainspring')
+      setEnabledFeatures([])
       setSignupPaymentPending(false)
       setSubscriptionStatus(null)
       setTrialEnd(null)
       setShopCalendarTodayYmd(null)
       setScheduleCalendarTimezone('Australia/Sydney')
       setTenantBusinessAddress(null)
+      clearSessionSnapshot()
       clearStoredTokens()
       return
     }
     const { data } = await getAuthSession()
+    const sessionProduct: TenantProduct =
+      data.product === 'minit' || data.product === 'mainspring'
+        ? data.product
+        : tenantProductFromSlug(data.tenant_slug)
     setRole(data.user.role)
     setTenantId(data.tenant_id)
     setTenantSlug(data.tenant_slug)
@@ -189,7 +223,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
     setPlanCode(data.plan_code)
+    setProduct(sessionProduct)
     setEnabledFeatures(data.enabled_features)
+    writeSessionSnapshot({
+      product: sessionProduct,
+      planCode: data.plan_code,
+      tenantSlug: data.tenant_slug,
+      enabledFeatures: data.enabled_features,
+    })
     applyMinitBrandingIfNeeded(data.tenant_slug, data.plan_code)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
     setSubscriptionStatus(data.subscription_status ?? null)
@@ -211,13 +252,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveSiteTenantId(null)
         setAvailableSites([])
         setPlanCode('pro')
-        setEnabledFeatures(defaultFeatures)
+        setProduct('mainspring')
+        setEnabledFeatures([])
         setSignupPaymentPending(false)
         setSubscriptionStatus(null)
         setTrialEnd(null)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
         setTenantBusinessAddress(null)
+        clearSessionSnapshot()
       }
     }
 
@@ -278,10 +321,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setActiveSiteTenantId(null)
               setAvailableSites([])
               setPlanCode('pro')
-              setEnabledFeatures(defaultFeatures)
+              setProduct('mainspring')
+              setEnabledFeatures([])
               setSignupPaymentPending(false)
               setShopCalendarTodayYmd(null)
               setScheduleCalendarTimezone('Australia/Sydney')
+              clearSessionSnapshot()
             }
           }
         } finally {
@@ -320,10 +365,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActiveSiteTenantId(null)
         setAvailableSites([])
         setPlanCode('pro')
-        setEnabledFeatures(defaultFeatures)
+        setProduct('mainspring')
+        setEnabledFeatures([])
         setSignupPaymentPending(false)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
+        clearSessionSnapshot()
         setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
@@ -348,10 +395,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setActiveSiteTenantId(null)
           setAvailableSites([])
           setPlanCode('pro')
-          setEnabledFeatures(defaultFeatures)
+          setProduct('mainspring')
+          setEnabledFeatures([])
           setSignupPaymentPending(false)
           setShopCalendarTodayYmd(null)
           setScheduleCalendarTimezone('Australia/Sydney')
+          clearSessionSnapshot()
         }
       } finally {
         clearTimeout(timeoutId)
@@ -386,13 +435,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveSiteTenantId(null)
     setAvailableSites([])
     setPlanCode('pro')
-    setEnabledFeatures(defaultFeatures)
+    setProduct('mainspring')
+    setEnabledFeatures([])
     setSignupPaymentPending(false)
     setSubscriptionStatus(null)
     setTrialEnd(null)
     setShopCalendarTodayYmd(null)
     setScheduleCalendarTimezone('Australia/Sydney')
     setTenantBusinessAddress(null)
+    clearSessionSnapshot()
   }
 
   async function switchSite(nextTenantId: string) {
@@ -421,6 +472,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeSiteTenantId,
         availableSites,
         planCode,
+        product,
         enabledFeatures,
         signupPaymentPending,
         subscriptionStatus,

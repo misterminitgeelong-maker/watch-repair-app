@@ -210,7 +210,9 @@ def get_auth_context(
         if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
             raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
-        plan_code = normalize_plan_code(tenant.plan_code, default_if_empty="pro")
+        from .minit_branding import effective_plan_code
+
+        plan_code = effective_plan_code(tenant)
         signup_pending = bool(getattr(tenant, "signup_payment_pending", False))
 
         if (
