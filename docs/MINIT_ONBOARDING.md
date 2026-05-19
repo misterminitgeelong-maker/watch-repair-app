@@ -42,6 +42,12 @@ Optional: `MINIT_SEED_ENABLED=true` on API startup re-applies the same seed idem
 
 Ops-only: `POST /v1/auth/ensure-minit-pilot` when `ALLOW_ENSURE_MINIT_PILOT=true` (same as script).
 
+## HQ operations UI
+
+After signing in as **mmsupport** (`minit_hq`), the app opens **Operations** (`/minit/operations`) with network KPIs, shop control (`/minit/shops`), shop and mobile reports, and troubleshooting. Use **Lead routing** (`/parent-account`) for website ingest and suburb maps.
+
+Provision a single shop from the UI: **Shops → Add shop** (creates `minit-{shop_number}`, plan `booking_only`). Bulk import still uses the TSS script below.
+
 ## What the seed creates (pilot)
 
 | Role | Shop # | Slug | Plan |

@@ -906,6 +906,81 @@ class ShopBookingUsageResponse(SQLModel):
     shops: list[ShopBookingUsageShopBreakdown]
 
 
+class ParentProvisionShopRequest(SQLModel):
+    shop_number: str = Field(..., min_length=1, max_length=10)
+    tenant_name: str = Field(..., min_length=1, max_length=200)
+    business_address: Optional[str] = Field(default=None, max_length=2000)
+
+
+class ParentOperationsOverview(SQLModel):
+    retail_shop_count: int
+    operator_count: int
+    pending_bookings: int
+    active_mobile_jobs: int
+    shops_without_recent_booking: int
+    problem_bookings_7d: int
+    operators_missing_dispatch_phone: int
+
+
+class ParentShopBookingVolume(SQLModel):
+    tenant_id: UUID
+    tenant_name: str
+    shop_number: Optional[str] = None
+    total: int
+    pending: int
+    accepted: int
+    declined: int
+    cancelled: int
+    expired: int
+
+
+class ParentShopBookingsReport(SQLModel):
+    from_date: Optional[datetime] = None
+    to_date: Optional[datetime] = None
+    totals: ParentShopBookingVolume
+    by_shop: list[ParentShopBookingVolume] = Field(default_factory=list)
+    bookings: list["ShopMobileBookingRead"] = Field(default_factory=list)
+
+
+class ParentMobileJobNetworkRead(SQLModel):
+    id: UUID
+    job_number: str
+    status: str
+    title: str
+    operator_tenant_id: UUID
+    operator_name: str
+    operator_shop_number: Optional[str] = None
+    referring_shop_tenant_id: Optional[UUID] = None
+    referring_shop_name: Optional[str] = None
+    referring_shop_number: Optional[str] = None
+    shop_mobile_booking_request_id: Optional[UUID] = None
+    scheduled_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class ParentMobileJobsReport(SQLModel):
+    from_date: Optional[datetime] = None
+    to_date: Optional[datetime] = None
+    active_count: int
+    total_count: int
+    jobs: list[ParentMobileJobNetworkRead] = Field(default_factory=list)
+
+
+class ParentTroubleshootingItem(SQLModel):
+    kind: str
+    severity: str
+    title: str
+    detail: str
+    tenant_id: Optional[UUID] = None
+    tenant_slug: Optional[str] = None
+    related_id: Optional[UUID] = None
+    created_at: Optional[datetime] = None
+
+
+class ParentTroubleshootingResponse(SQLModel):
+    items: list[ParentTroubleshootingItem] = Field(default_factory=list)
+
+
 class ParentMobileLeadWebhookSecretBody(SQLModel):
     webhook_secret: str = Field(..., min_length=16, max_length=512)
 

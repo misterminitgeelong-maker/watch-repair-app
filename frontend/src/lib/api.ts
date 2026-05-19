@@ -368,6 +368,101 @@ export interface ShopBookingUsage {
 export const getParentShopBookingUsage = (month: string) =>
   api.get<ShopBookingUsage>('/parent-accounts/me/shop-booking-usage', { params: { month } })
 
+export const provisionMinitShop = (payload: {
+  shop_number: string
+  tenant_name: string
+  business_address?: string
+}) => api.post<ParentAccountSummary>('/parent-accounts/me/provision-shop', payload)
+
+export interface ParentOperationsOverview {
+  retail_shop_count: number
+  operator_count: number
+  pending_bookings: number
+  active_mobile_jobs: number
+  shops_without_recent_booking: number
+  problem_bookings_7d: number
+  operators_missing_dispatch_phone: number
+}
+
+export interface ParentShopBookingVolume {
+  tenant_id: string
+  tenant_name: string
+  shop_number?: string | null
+  total: number
+  pending: number
+  accepted: number
+  declined: number
+  cancelled: number
+  expired: number
+}
+
+export interface ParentShopBookingsReport {
+  from_date?: string | null
+  to_date?: string | null
+  totals: ParentShopBookingVolume
+  by_shop: ParentShopBookingVolume[]
+  bookings: ShopMobileBooking[]
+}
+
+export interface ParentMobileJobNetwork {
+  id: string
+  job_number: string
+  status: string
+  title: string
+  operator_tenant_id: string
+  operator_name: string
+  operator_shop_number?: string | null
+  referring_shop_tenant_id?: string | null
+  referring_shop_name?: string | null
+  referring_shop_number?: string | null
+  shop_mobile_booking_request_id?: string | null
+  scheduled_at?: string | null
+  created_at: string
+}
+
+export interface ParentMobileJobsReport {
+  from_date?: string | null
+  to_date?: string | null
+  active_count: number
+  total_count: number
+  jobs: ParentMobileJobNetwork[]
+}
+
+export interface ParentTroubleshootingItem {
+  kind: string
+  severity: string
+  title: string
+  detail: string
+  tenant_id?: string | null
+  tenant_slug?: string | null
+  related_id?: string | null
+  created_at?: string | null
+}
+
+export const getParentOperationsOverview = () =>
+  api.get<ParentOperationsOverview>('/parent-accounts/me/operations/overview')
+
+export const getParentShopBookingsReport = (params?: {
+  from_date?: string
+  to_date?: string
+  status?: string
+  shop_tenant_id?: string
+  limit?: number
+}) => api.get<ParentShopBookingsReport>('/parent-accounts/me/operations/bookings', { params })
+
+export const getParentMobileJobsReport = (params?: {
+  from_date?: string
+  to_date?: string
+  status?: string
+  operator_tenant_id?: string
+  limit?: number
+}) => api.get<ParentMobileJobsReport>('/parent-accounts/me/operations/mobile-jobs', { params })
+
+export const getParentTroubleshooting = (limit = 50) =>
+  api.get<{ items: ParentTroubleshootingItem[] }>('/parent-accounts/me/operations/troubleshooting', {
+    params: { limit },
+  })
+
 // ── Shop mobile operator bookings ─────────────────────────────────────────────
 export type ShopMobileBookingStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
 export type ShopMobileVisitLocationType = 'customer_site' | 'at_shop'

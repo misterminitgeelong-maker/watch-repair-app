@@ -47,8 +47,13 @@ const bookingOnlyNav: NavLinkItem[] = [
 
 /** Mister Minit corporate HQ — mobile booking network only (no watch/shoe/repair POS). */
 const minitHqNav: NavLinkItem[] = [
-  { to: '/parent-account', label: 'Shops & operators', icon: Building2, feature: 'multi_site' },
-  { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/minit/operations', label: 'Operations', icon: LayoutDashboard, feature: 'multi_site' },
+  { to: '/minit/shops', label: 'Shops', icon: Building2, feature: 'multi_site' },
+  { to: '/minit/reports/shops', label: 'Shop reports', icon: BarChart3, feature: 'multi_site' },
+  { to: '/minit/reports/mobile', label: 'Mobile reports', icon: KeyRound, feature: 'multi_site' },
+  { to: '/minit/troubleshooting', label: 'Troubleshooting', icon: Wrench, feature: 'multi_site' },
+  { to: '/shop-mobile-bookings', label: 'Book mobile', icon: Radio, feature: 'shop_mobile_booking' },
+  { to: '/parent-account', label: 'Lead routing', icon: ClipboardList, feature: 'multi_site', title: 'Website lead ingest and suburb map' },
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 

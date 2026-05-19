@@ -40,7 +40,7 @@ export function isMinitRestrictedUi(
 }
 
 export function minitHqAllowedPath(pathname: string): boolean {
-  return /^\/(parent-account|shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(pathname)
+  return /^\/(minit\/|parent-account|shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(pathname)
 }
 
 export function minitBookingOnlyAllowedPath(pathname: string): boolean {
@@ -48,7 +48,7 @@ export function minitBookingOnlyAllowedPath(pathname: string): boolean {
 }
 
 export function defaultHomePathForMinit(planCode: PlanCode | null | undefined): string {
-  if (isMinitHqPlan(planCode)) return '/parent-account'
+  if (isMinitHqPlan(planCode)) return '/minit/operations'
   if (isMinitBookingOnlyPlan(planCode)) return '/shop-mobile-bookings'
   return '/parent-account'
 }

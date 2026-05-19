@@ -67,6 +67,11 @@ const JobPoolPage = lazy(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazy(() => import('@/pages/PublicIntakePage'))
 const CustomerOrdersPage = lazy(() => import('@/pages/CustomerOrdersPage'))
 const ShopMobileBookingsPage = lazy(() => import('@/pages/ShopMobileBookingsPage'))
+const MinitOperationsPage = lazy(() => import('@/pages/minit/MinitOperationsPage'))
+const MinitShopsPage = lazy(() => import('@/pages/minit/MinitShopsPage'))
+const MinitShopReportsPage = lazy(() => import('@/pages/minit/MinitShopReportsPage'))
+const MinitMobileReportsPage = lazy(() => import('@/pages/minit/MinitMobileReportsPage'))
+const MinitTroubleshootingPage = lazy(() => import('@/pages/minit/MinitTroubleshootingPage'))
 
 function RouteFallback() {
   return (
@@ -163,6 +168,11 @@ export default function App() {
               <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
+              <Route path="minit/operations" element={<FeatureGate feature="multi_site"><MinitOperationsPage /></FeatureGate>} />
+              <Route path="minit/shops" element={<FeatureGate feature="multi_site"><MinitShopsPage /></FeatureGate>} />
+              <Route path="minit/reports/shops" element={<FeatureGate feature="multi_site"><MinitShopReportsPage /></FeatureGate>} />
+              <Route path="minit/reports/mobile" element={<FeatureGate feature="multi_site"><MinitMobileReportsPage /></FeatureGate>} />
+              <Route path="minit/troubleshooting" element={<FeatureGate feature="multi_site"><MinitTroubleshootingPage /></FeatureGate>} />
               <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />

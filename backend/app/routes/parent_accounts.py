@@ -22,6 +22,7 @@ from ..models import (
     MobileSuburbRouteRead,
     ParentAccount,
     ParentAccountCreateTenantRequest,
+    ParentProvisionShopRequest,
     ParentAccountEventLog,
     ParentAccountEventLogRead,
     ParentAccountLinkTenantRequest,
@@ -37,9 +38,11 @@ from ..models import (
     User,
 )
 from ..security import hash_password
+from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
     assert_shop_number_unique_in_parent,
     format_tenant_label,
+    normalize_shop_number,
     validate_shop_number_format,
 )
 
@@ -645,6 +648,77 @@ def create_tenant_from_parent_account(
         event_summary=f"Created and linked site '{tenant.name}' ({tenant.slug})",
     )
 
+    session.commit()
+    session.refresh(parent)
+    return _to_summary(session, parent)
+
+
+@router.post("/me/provision-shop", response_model=ParentAccountSummaryResponse)
+def provision_minit_retail_shop(
+    payload: ParentProvisionShopRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+    shop_number = validate_shop_number_format(payload.shop_number)
+    if not shop_number:
+        raise HTTPException(status_code=400, detail="shop_number is required")
+    assert_shop_number_unique_in_parent(session, parent_id=parent.id, shop_number=shop_number)
+
+    tenant_name = payload.tenant_name.strip()
+    if not tenant_name:
+        raise HTTPException(status_code=400, detail="tenant_name is required")
+    tenant_slug = tenant_slug_for_shop(
+        MinitShopRow(shop_number=normalize_shop_number(shop_number) or shop_number, name=tenant_name, area=None, region=None)
+    )
+
+    existing_tenant = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
+    if existing_tenant:
+        raise HTTPException(status_code=409, detail="Shop slug already exists")
+
+    business_address = payload.business_address.strip()[:2000] if payload.business_address else None
+    tenant = Tenant(
+        name=tenant_name,
+        slug=tenant_slug,
+        plan_code="booking_only",
+        business_address=business_address,
+        shop_number=shop_number,
+    )
+    session.add(tenant)
+    session.flush()
+
+    new_owner = User(
+        tenant_id=tenant.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        role="owner",
+        password_hash=current_user.password_hash,
+        is_active=True,
+    )
+    session.add(new_owner)
+    session.flush()
+
+    session.add(
+        ParentAccountMembership(
+            parent_account_id=parent.id,
+            tenant_id=tenant.id,
+            user_id=new_owner.id,
+        )
+    )
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=tenant.id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="provision_shop",
+        event_summary=f"Provisioned Minit shop '{tenant.name}' ({tenant.slug})",
+    )
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)
