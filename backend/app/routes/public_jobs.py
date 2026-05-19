@@ -1024,6 +1024,13 @@ def decide_public_auto_key_quote(
     session.commit()
 
     if decision == "approved":
+        created_invoice = session.exec(
+            select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
+        ).first()
+        if created_invoice:
+            from ..xero_service import sync_auto_key_invoice_after_create
+
+            sync_auto_key_invoice_after_create(session, created_invoice)
         return {"ok": True, "status": "approved", "message": "Quote accepted! We'll be in touch to confirm your appointment."}
     return {"ok": True, "status": "declined", "message": "Your quote has been declined. Contact us if you change your mind."}
 

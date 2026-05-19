@@ -1189,6 +1189,9 @@ export interface BillingLimitsResponse {
   stripe_customer_id?: string | null
   stripe_connect_account_present?: boolean
   stripe_connect_charges_enabled?: boolean
+  xero_configured?: boolean
+  xero_connected?: boolean
+  xero_connection_status?: string | null
 }
 export const getBillingLimits = () => api.get<BillingLimitsResponse>('/billing/limits')
 export const getBillingPortalUrl = () => api.get<{ url: string }>('/billing/portal-url')
@@ -1512,6 +1515,10 @@ export interface AutoKeyInvoice {
   currency: string
   created_at: string
   payment_method?: string | null
+  xero_invoice_id?: string | null
+  xero_sync_status?: string | null
+  xero_sync_error?: string | null
+  xero_synced_at?: string | null
 }
 
 export interface AutoKeyQuoteCreatePayload {
@@ -2128,6 +2135,23 @@ export const refreshStripeConnectStatus = () =>
   api.post<BillingLimitsResponse>('/billing/connect/refresh')
 export const createStripeConnectAccountLink = () =>
   api.post<{ url: string }>('/billing/connect/account-link')
+
+// ── Billing — Xero (Mobile Services invoices) ─────────────────────────────────
+export interface XeroConnectionStatus {
+  configured: boolean
+  connected: boolean
+  connection_status?: string | null
+  xero_tenant_id?: string | null
+  default_sales_account_code?: string | null
+  default_tax_type?: string | null
+}
+
+export const getXeroConnectionStatus = () =>
+  api.get<XeroConnectionStatus>('/billing/xero/status')
+export const getXeroConnectUrl = () => api.get<{ url: string }>('/billing/xero/connect')
+export const disconnectXero = () => api.post<XeroConnectionStatus>('/billing/xero/disconnect')
+export const retryAutoKeyInvoiceXeroSync = (invoiceId: string) =>
+  api.post<AutoKeyInvoice>(`/auto-key-jobs/invoices/${invoiceId}/xero/retry`)
 
 // ── Users — delete ────────────────────────────────────────────────────────────
 export const deleteUser = (userId: string) => api.delete(`/users/${userId}`)

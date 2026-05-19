@@ -23,6 +23,8 @@ import {
   searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
   updateAutoKeyInvoice,
+  retryAutoKeyInvoiceXeroSync,
+  getBillingLimits,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
   uploadAutoKeyAttachment,
@@ -394,6 +396,18 @@ export default function AutoKeyJobDetailPage() {
     queryKey: ['auto-key-invoices', id],
     queryFn: () => listAutoKeyInvoices(id!).then(r => r.data),
     enabled: !!id,
+  })
+
+  const { data: billing } = useQuery({
+    queryKey: ['billing-limits'],
+    queryFn: () => getBillingLimits().then(r => r.data),
+  })
+  const showXero = Boolean(billing?.xero_configured)
+
+  const retryXeroMut = useMutation({
+    mutationFn: (invoiceId: string) => retryAutoKeyInvoiceXeroSync(invoiceId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] }),
+    onError: err => setError(getApiErrorMessage(err, 'Xero sync retry failed.')),
   })
 
   const deleteMut = useMutation({
@@ -1241,6 +1255,23 @@ export default function AutoKeyJobDetailPage() {
                         {inv.payment_method && inv.status === 'paid' ? ` · ${inv.payment_method}` : ''}
                         {' · '}{formatDate(inv.created_at)}
                       </p>
+                      {showXero && (
+                        <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
+                          Xero:{' '}
+                          {inv.xero_sync_status === 'synced'
+                            ? 'synced'
+                            : inv.xero_sync_status === 'failed'
+                              ? 'failed'
+                              : inv.xero_sync_status === 'pending'
+                                ? 'pending'
+                                : inv.xero_sync_status === 'skipped'
+                                  ? 'not configured'
+                                  : '—'}
+                          {inv.xero_sync_status === 'failed' && inv.xero_sync_error
+                            ? ` — ${inv.xero_sync_error.slice(0, 80)}`
+                            : ''}
+                        </p>
+                      )}
                     </div>
                     <p className='font-semibold' style={{ color: inv.status === 'paid' ? '#4A8A4A' : 'var(--ms-text)' }}>{formatCents(inv.total_cents)}</p>
                   </div>
@@ -1275,6 +1306,16 @@ export default function AutoKeyJobDetailPage() {
                           <CheckCircle size={12} /> Record Payment
                         </Button>
                       </>
+                    )}
+                    {showXero && inv.xero_sync_status === 'failed' && (
+                      <Button
+                        variant="secondary"
+                        className="text-xs py-1 px-2"
+                        onClick={() => retryXeroMut.mutate(inv.id)}
+                        disabled={retryXeroMut.isPending}
+                      >
+                        {retryXeroMut.isPending ? 'Retrying Xero…' : 'Retry Xero sync'}
+                      </Button>
                     )}
                   </div>
                   {sendInvoiceFeedback && inv.id && (

@@ -114,6 +114,12 @@ class Settings(BaseSettings):
     # Number of trial days added to new Stripe subscriptions (0 = no trial).
     stripe_trial_period_days: int = 14
 
+    # Xero — Mobile Services invoice sync (register app at developer.xero.com)
+    xero_client_id: str = ""
+    xero_client_secret: str = ""
+    xero_redirect_uri: str = ""  # e.g. https://api.example.com/v1/billing/xero/callback
+    xero_webhook_key: str = ""  # signing key from Xero developer portal (webhooks)
+
     # Rate limiting (slowapi format, e.g. "20/minute")
     rate_limit_auth_login: str = "20/minute"
     rate_limit_auth_login_test: str = "1000/minute"

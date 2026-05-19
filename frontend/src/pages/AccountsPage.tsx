@@ -7,8 +7,11 @@ import {
   createStripeConnectAccountLink,
   createUser,
   deleteUser,
+  disconnectXero,
   getApiErrorMessage,
   getBillingLimits,
+  getXeroConnectUrl,
+  getXeroConnectionStatus,
   isDuplicateTenantUserEmailError,
   getBillingPortalUrl,
   listUsers,
@@ -447,6 +450,7 @@ export default function AccountsPage() {
       <BillingCard />
 
       <StripeConnectCard />
+      <XeroConnectCard />
 
       <div className="mb-4 flex items-center justify-between">
         <div className="relative w-full max-w-md">
@@ -827,6 +831,120 @@ function StripeConnectCard() {
         >
           <strong>Setup failed:</strong>{' '}
           {getApiErrorMessage(connectMut.error ?? refreshMut.error, 'Could not reach Stripe — check that STRIPE_SECRET_KEY is set in your deployment environment, then try again.')}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function XeroConnectCard() {
+  const { role } = useAuth()
+  const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { data: billing } = useQuery({
+    queryKey: ['billing-limits'],
+    queryFn: () => getBillingLimits().then((r) => r.data),
+  })
+  const { data: xeroStatus, refetch: refetchXero } = useQuery({
+    queryKey: ['xero-status'],
+    queryFn: () => getXeroConnectionStatus().then((r) => r.data),
+    enabled: Boolean(billing?.xero_configured && (billing?.limits.max_auto_key_jobs ?? 0) > 0),
+  })
+
+  const isOwner = role === 'owner' || role === 'platform_admin'
+  const showXero =
+    Boolean(billing?.xero_configured) && (billing?.limits.max_auto_key_jobs ?? 0) > 0
+
+  const connectMut = useMutation({
+    mutationFn: () => getXeroConnectUrl(),
+    onSuccess: ({ data }) => {
+      if (data.url) window.open(data.url, '_blank', 'noopener')
+    },
+  })
+
+  const disconnectMut = useMutation({
+    mutationFn: () => disconnectXero(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['billing-limits'] })
+      void refetchXero()
+    },
+  })
+
+  useEffect(() => {
+    const xero = searchParams.get('xero')
+    if (xero !== 'return' && xero !== 'connected') return
+    let cancelled = false
+    void (async () => {
+      try {
+        await refetchXero()
+        if (!cancelled) await qc.invalidateQueries({ queryKey: ['billing-limits'] })
+      } finally {
+        if (!cancelled) {
+          const next = new URLSearchParams(searchParams)
+          next.delete('xero')
+          next.delete('xero_error')
+          setSearchParams(next, { replace: true })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!billing || !showXero) return null
+
+  const connected = Boolean(xeroStatus?.connected)
+  const statusLine = !connected
+    ? 'Connect Xero to sync Mobile Services invoices to your accounting.'
+    : 'Mobile Services invoices are pushed to Xero when created locally.'
+
+  const xeroError = searchParams.get('xero_error')
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        Mobile Services accounting (Xero)
+      </p>
+      <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
+        {statusLine}
+      </p>
+      {xeroError && (
+        <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>
+          Connection failed ({xeroError}). Try again.
+        </p>
+      )}
+      {isOwner && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            onClick={() => connectMut.mutate()}
+            disabled={connectMut.isPending || disconnectMut.isPending}
+          >
+            {connectMut.isPending ? 'Opening Xero…' : connected ? 'Reconnect Xero' : 'Connect Xero'}
+          </Button>
+          {connected && (
+            <Button
+              variant="secondary"
+              onClick={() => disconnectMut.mutate()}
+              disabled={disconnectMut.isPending || connectMut.isPending}
+            >
+              {disconnectMut.isPending ? 'Disconnecting…' : 'Disconnect'}
+            </Button>
+          )}
+        </div>
+      )}
+      {!isOwner && (
+        <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
+          Only an owner can connect Xero for this workspace.
+        </p>
+      )}
+      {(connectMut.isError || disconnectMut.isError) && (
+        <div
+          className="mt-3 rounded-lg px-4 py-3 text-sm"
+          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: '#C96A5A' }}
+        >
+          <strong>Setup failed:</strong>{' '}
+          {getApiErrorMessage(connectMut.error ?? disconnectMut.error, 'Could not reach Xero — check server env vars.')}
         </div>
       )}
     </Card>

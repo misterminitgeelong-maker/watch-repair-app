@@ -143,6 +143,15 @@ def get_billing_limits(
     conn_charges = bool(tenant and tenant.stripe_connect_charges_enabled)
     conn_payouts = bool(tenant and tenant.stripe_connect_payouts_enabled)
     conn_details = bool(tenant and tenant.stripe_connect_details_submitted)
+    xero_cfg = bool(
+        (getattr(settings, "xero_client_id", "") or "").strip()
+        and (getattr(settings, "xero_client_secret", "") or "").strip()
+    )
+    xero_conn = bool(
+        tenant
+        and (tenant.xero_connection_status or "") == "connected"
+        and (tenant.xero_access_token or "").strip()
+    )
 
     return BillingLimitsResponse(
         plan_code=plan_code,
@@ -165,6 +174,9 @@ def get_billing_limits(
         stripe_connect_charges_enabled=conn_charges,
         stripe_connect_payouts_enabled=conn_payouts,
         stripe_connect_details_submitted=conn_details,
+        xero_configured=xero_cfg,
+        xero_connected=xero_conn,
+        xero_connection_status=tenant.xero_connection_status if tenant else None,
     )
 
 

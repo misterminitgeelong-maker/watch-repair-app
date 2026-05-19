@@ -159,6 +159,10 @@ def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
         payment_method=invoice.payment_method,
         paid_at=invoice.paid_at,
         created_at=invoice.created_at,
+        xero_invoice_id=invoice.xero_invoice_id,
+        xero_sync_status=invoice.xero_sync_status,
+        xero_sync_error=invoice.xero_sync_error,
+        xero_synced_at=invoice.xero_synced_at,
     )
 
 
@@ -581,6 +585,18 @@ def update_auto_key_job_status(
     session.commit()
     session.refresh(job)
 
+    if moved_to_completed:
+        created_invoice = session.exec(
+            select(AutoKeyInvoice)
+            .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
+            .where(AutoKeyInvoice.auto_key_job_id == job.id)
+            .order_by(AutoKeyInvoice.created_at.desc())
+        ).first()
+        if created_invoice:
+            from ..xero_service import sync_auto_key_invoice_after_create
+
+            sync_auto_key_invoice_after_create(session, created_invoice)
+
     # ── Post-commit side-effects (SMS) ────────────────────────────────────────
     moved_to_en_route = previous_status != "en_route" and job.status == "en_route"
     moved_to_booking_completed = previous_status != "booking_completed" and job.status == "booking_completed"
@@ -916,6 +932,28 @@ def create_auto_key_invoice_from_quote(
     session.add(invoice)
     session.commit()
     session.refresh(invoice)
+    from ..xero_service import sync_auto_key_invoice_after_create
+
+    sync_auto_key_invoice_after_create(session, invoice)
+    return _to_invoice_read(invoice)
+
+
+@router.post("/invoices/{invoice_id}/xero/retry", response_model=AutoKeyInvoiceRead)
+def retry_auto_key_invoice_xero_sync(
+    invoice_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    invoice = session.get(AutoKeyInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    invoice.xero_sync_status = None
+    invoice.xero_sync_error = None
+    session.add(invoice)
+    session.commit()
+    from ..xero_service import sync_auto_key_invoice_after_create
+
+    sync_auto_key_invoice_after_create(session, invoice)
     return _to_invoice_read(invoice)
 
 

@@ -94,6 +94,14 @@ class Tenant(SQLModel, table=True):
     base_lat: Optional[float] = None
     base_lng: Optional[float] = None
     ring_radius_km: int = Field(default=10)  # size of each priority ring in km
+    # Xero OAuth (Mobile Services invoice sync)
+    xero_tenant_id: Optional[str] = Field(default=None, index=True)
+    xero_access_token: Optional[str] = None
+    xero_refresh_token: Optional[str] = None
+    xero_token_expires_at: Optional[datetime] = None
+    xero_connection_status: Optional[str] = None  # disconnected, connected, error
+    xero_default_sales_account_code: Optional[str] = None
+    xero_default_tax_type: Optional[str] = None
 
 
 class User(SQLModel, table=True):
@@ -814,6 +822,9 @@ class BillingLimitsResponse(SQLModel):
     stripe_connect_charges_enabled: bool = False
     stripe_connect_payouts_enabled: bool = False
     stripe_connect_details_submitted: bool = False
+    xero_configured: bool = False
+    xero_connected: bool = False
+    xero_connection_status: Optional[str] = None
 
 
 class BillingCheckoutRequest(SQLModel):
@@ -1651,6 +1662,10 @@ class AutoKeyInvoice(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     #: Opaque token for customer-facing invoice page (SMS); not exposed on authenticated reads.
     customer_view_token: Optional[str] = Field(default=None, index=True, unique=True)
+    xero_invoice_id: Optional[str] = Field(default=None, index=True)
+    xero_sync_status: Optional[str] = None  # pending, synced, failed, skipped
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
 
 
 class AutoKeyQuoteLineItemCreate(SQLModel):
@@ -1704,6 +1719,19 @@ class AutoKeyInvoiceRead(SQLModel):
     payment_method: Optional[str] = None
     paid_at: Optional[datetime] = None
     created_at: datetime
+    xero_invoice_id: Optional[str] = None
+    xero_sync_status: Optional[str] = None
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
+
+
+class XeroConnectionStatusResponse(SQLModel):
+    configured: bool
+    connected: bool
+    connection_status: Optional[str] = None
+    xero_tenant_id: Optional[str] = None
+    default_sales_account_code: Optional[str] = None
+    default_tax_type: Optional[str] = None
 
 
 class CustomerAccount(SQLModel, table=True):
