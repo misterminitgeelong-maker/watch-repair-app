@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import time
 import uuid
@@ -260,6 +261,11 @@ def health():
     from sqlmodel import select
     from .config import settings
     from .models import Tenant
+    git_commit = (
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_COMMIT")
+        or "unknown"
+    )
     testing_configured = bool(
         (settings.testing_tenant_slug or "").strip()
         and (settings.testing_owner_email or "").strip()
@@ -280,6 +286,7 @@ def health():
 
     return {
         "status": "ok",
+        "git_commit": git_commit,
         "startup_seed": get_seed_status(),
         "testing_tenant_configured": testing_configured,
         "testing_tenant_exists": testing_tenant_exists,

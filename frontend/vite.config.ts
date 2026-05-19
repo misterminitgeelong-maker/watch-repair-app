@@ -4,8 +4,16 @@ import react from '@vitejs/plugin-react'
 import type { UserConfigExport } from 'vite'
 import { defineConfig } from 'vite'
 
+const appBuildId =
+  process.env.VITE_APP_BUILD_ID?.trim() ||
+  process.env.RAILWAY_GIT_COMMIT_SHA?.trim() ||
+  'dev'
+
 const config: UserConfigExport & { test?: { environment: string; include: string[]; setupFiles?: string[] } } = {
   plugins: [react(), tailwindcss()],
+  define: {
+    'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(appBuildId),
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],

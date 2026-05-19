@@ -3,7 +3,7 @@
  * Static assets: cache-first. API /v1/*: network-first (no JSON cache). Navigation: network, then shell, then offline page.
  */
 // Bump when shell assets (index, offline, icons, manifest) change so deploys replace old caches.
-const CACHE_VERSION = 'mainspring-app-v8'
+const CACHE_VERSION = 'mainspring-app-v9-minit-hq-nav'
 const STATIC_CACHE = `mainspring-static-${CACHE_VERSION}`
 
 const PRECACHE_URLS = [
@@ -75,6 +75,22 @@ self.addEventListener('fetch', (event) => {
           const offline = await caches.match('/offline.html')
           return offline || new Response('Offline', { status: 503, statusText: 'Offline' })
         })
+    )
+    return
+  }
+
+  // Hashed Vite bundles: network-first so deploys replace stale JS without waiting for SW version bump.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, copy))
+          }
+          return res
+        })
+        .catch(() => caches.match(event.request))
     )
     return
   }

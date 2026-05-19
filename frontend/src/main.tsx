@@ -4,8 +4,10 @@ import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
 import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
+import { stampBuildMetaTag } from '@/lib/buildInfo'
 
 applyTheme(readStoredTheme())
+stampBuildMetaTag()
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

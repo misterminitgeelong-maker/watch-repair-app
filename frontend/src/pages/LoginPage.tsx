@@ -6,6 +6,7 @@ import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
+import { seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
 const ANIM_CSS = `
@@ -61,6 +62,7 @@ export default function LoginPage() {
       const { data } = mode === 'multi'
         ? await multiSiteLogin(email, password)
         : await login(slug, email, password)
+      if (mode === 'single') seedLoginTenantHint(slug)
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       if (mode === 'single') applyMinitBrandingIfNeeded(slug)

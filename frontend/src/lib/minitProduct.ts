@@ -16,6 +16,9 @@ const MINIT_DISALLOWED_PLANS = new Set([
 ])
 
 const SESSION_SNAPSHOT_KEY = 'mainspring.sessionSnapshot.v1'
+const LAST_LOGIN_TENANT_SLUG_KEY = 'mainspring.lastLoginTenantSlug.v1'
+
+let minitHqNavMismatchWarned = false
 
 export type SessionSnapshot = {
   product: TenantProduct
@@ -40,14 +43,107 @@ export function isMinitHqTenantSlug(tenantSlug: string | null | undefined): bool
   return (tenantSlug || '').trim().toLowerCase() === MINIT_HQ_SLUG
 }
 
+export type MinitHqUiContext = {
+  product?: TenantProduct | null
+  planCode?: PlanCode | null
+  tenantSlug?: string | null
+  /** Persisted from login form — used before /auth/session returns. */
+  lastLoginSlug?: string | null
+  /** Dev/diagnostic: ?minit_hq=1 forces HQ nav. */
+  debugForce?: boolean
+}
+
+/** True when `?minit_hq=1` is in the URL (diagnostic override). */
+export function isMinitHqDebugForced(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('minit_hq') === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Single gate for Minit HQ UI — any matching signal renders the six-item sidebar only.
+ * Retail `minit-*` shops (booking_only) are explicitly excluded unless plan is minit_hq.
+ */
+export function resolveMinitHqUi(ctx: MinitHqUiContext): boolean {
+  if (ctx.debugForce || isMinitHqDebugForced()) return true
+
+  const sessionSlug = (ctx.tenantSlug || '').trim().toLowerCase()
+  const loginSlug = (ctx.lastLoginSlug || readLastLoginTenantSlug() || '').trim().toLowerCase()
+  const slug = sessionSlug || loginSlug
+
+  if (isMinitHqTenantSlug(sessionSlug)) return true
+  if (isMinitHqTenantSlug(loginSlug)) return true
+  if (isMinitHqPlan(ctx.planCode)) return true
+  if (ctx.product === 'minit' && isMinitHqPlan(ctx.planCode)) return true
+
+  const effective = effectiveMinitPlanCode(ctx.planCode, slug || ctx.tenantSlug)
+  if (isMinitHqPlan(effective)) return true
+
+  return false
+}
+
 /** True when the signed-in tenant should see the six-item Minit HQ sidebar. */
 export function isMinitHqUi(
-  _product: TenantProduct | null | undefined,
+  product: TenantProduct | null | undefined,
   planCode: PlanCode | null | undefined,
   tenantSlug: string | null | undefined,
 ): boolean {
-  if (isMinitHqPlan(planCode)) return true
-  return isMinitHqTenantSlug(tenantSlug)
+  return resolveMinitHqUi({ product, planCode, tenantSlug })
+}
+
+/** Warn once when HQ tenant would get non-HQ nav (stale bundle / session). */
+export function warnIfMinitHqNavMismatch(showingHqNav: boolean, ctx: MinitHqUiContext): void {
+  if (showingHqNav || minitHqNavMismatchWarned) return
+  const slug =
+    (ctx.tenantSlug || ctx.lastLoginSlug || readLastLoginTenantSlug() || '').trim().toLowerCase()
+  if (!isMinitHqTenantSlug(slug) && !isMinitHqPlan(ctx.planCode)) return
+  minitHqNavMismatchWarned = true
+  console.warn(
+    '[Minit HQ] Expected six-item HQ sidebar but rendered standard nav. Hard refresh (Ctrl+Shift+R) or clear site data.',
+    { tenantSlug: ctx.tenantSlug, planCode: ctx.planCode, product: ctx.product, slugHint: slug },
+  )
+}
+
+export function readLastLoginTenantSlug(): string | null {
+  try {
+    const raw = localStorage.getItem(LAST_LOGIN_TENANT_SLUG_KEY)
+    return raw?.trim() || null
+  } catch {
+    return null
+  }
+}
+
+export function writeLastLoginTenantSlug(slug: string): void {
+  try {
+    localStorage.setItem(LAST_LOGIN_TENANT_SLUG_KEY, slug.trim().toLowerCase())
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearLastLoginTenantSlug(): void {
+  try {
+    localStorage.removeItem(LAST_LOGIN_TENANT_SLUG_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Called immediately after login so HQ nav is correct before /auth/session. */
+export function seedLoginTenantHint(tenantSlug: string): void {
+  const slug = tenantSlug.trim().toLowerCase()
+  if (!slug) return
+  writeLastLoginTenantSlug(slug)
+  if (!isMinitHqTenantSlug(slug)) return
+  const planCode: PlanCode = 'minit_hq'
+  writeSessionSnapshot({
+    product: 'minit',
+    planCode,
+    tenantSlug: slug,
+    enabledFeatures: mergeEnabledFeatures(planCode, []),
+  })
 }
 
 export function isMinitBookingOnlyPlan(planCode: PlanCode | null | undefined): boolean {
@@ -165,4 +261,9 @@ export function clearSessionSnapshot(): void {
   } catch {
     /* ignore */
   }
+}
+
+export function clearMinitSessionHints(): void {
+  clearSessionSnapshot()
+  clearLastLoginTenantSlug()
 }

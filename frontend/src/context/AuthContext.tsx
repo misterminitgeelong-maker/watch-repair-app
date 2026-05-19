@@ -18,12 +18,15 @@ import {
 } from '@/lib/api'
 import { applyMinitBrandingIfNeeded } from '@/lib/minitBranding'
 import {
-  clearSessionSnapshot,
+  clearMinitSessionHints,
   effectiveMinitPlanCode,
   featuresForPlan,
+  isMinitHqTenantSlug,
   mergeEnabledFeatures,
+  readLastLoginTenantSlug,
   readSessionSnapshot,
   tenantProductFromSlug,
+  writeLastLoginTenantSlug,
   writeSessionSnapshot,
   type TenantProduct,
 } from '@/lib/minitProduct'
@@ -134,6 +137,16 @@ function initialAuthStateFromStorage(): {
       enabledFeatures: mergeEnabledFeatures(snap.planCode, snap.enabledFeatures),
     }
   }
+  const lastSlug = readLastLoginTenantSlug()
+  if (lastSlug && isMinitHqTenantSlug(lastSlug)) {
+    const planCode = effectiveMinitPlanCode(null, lastSlug)
+    return {
+      planCode,
+      product: tenantProductFromSlug(lastSlug),
+      tenantSlug: lastSlug,
+      enabledFeatures: mergeEnabledFeatures(planCode, []),
+    }
+  }
   return { planCode: 'pro', product: 'mainspring', tenantSlug: null, enabledFeatures: [] }
 }
 
@@ -210,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShopCalendarTodayYmd(null)
       setScheduleCalendarTimezone('Australia/Sydney')
       setTenantBusinessAddress(null)
-      clearSessionSnapshot()
+      clearMinitSessionHints()
       clearStoredTokens()
       return
     }
@@ -236,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tenantSlug: data.tenant_slug,
       enabledFeatures: mergedFeatures,
     })
+    writeLastLoginTenantSlug(data.tenant_slug)
     applyMinitBrandingIfNeeded(data.tenant_slug, data.plan_code)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
     setSubscriptionStatus(data.subscription_status ?? null)
@@ -265,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
         setTenantBusinessAddress(null)
-        clearSessionSnapshot()
+        clearMinitSessionHints()
       }
     }
 
@@ -331,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setSignupPaymentPending(false)
               setShopCalendarTodayYmd(null)
               setScheduleCalendarTimezone('Australia/Sydney')
-              clearSessionSnapshot()
+              clearMinitSessionHints()
             }
           }
         } finally {
@@ -375,7 +389,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSignupPaymentPending(false)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
-        clearSessionSnapshot()
+        clearMinitSessionHints()
         setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
@@ -405,7 +419,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSignupPaymentPending(false)
           setShopCalendarTodayYmd(null)
           setScheduleCalendarTimezone('Australia/Sydney')
-          clearSessionSnapshot()
+          clearMinitSessionHints()
         }
       } finally {
         clearTimeout(timeoutId)
@@ -448,7 +462,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setShopCalendarTodayYmd(null)
     setScheduleCalendarTimezone('Australia/Sydney')
     setTenantBusinessAddress(null)
-    clearSessionSnapshot()
+    clearMinitSessionHints()
   }
 
   async function switchSite(nextTenantId: string) {

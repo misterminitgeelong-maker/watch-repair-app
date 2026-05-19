@@ -7,6 +7,9 @@ ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
 # Optional: API origin when UI and API are on different hosts (e.g. https://mainspring.au). Omit for same-origin Docker deploy.
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Git commit for deploy verification (Railway sets RAILWAY_GIT_COMMIT_SHA automatically).
+ARG RAILWAY_GIT_COMMIT_SHA=
+ENV VITE_APP_BUILD_ID=$RAILWAY_GIT_COMMIT_SHA
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
