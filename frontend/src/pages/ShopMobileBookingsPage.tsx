@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cancelShopMobileBooking,
   createShopMobileBooking,
+  formatTenantLabel,
   getApiErrorMessage,
   listShopMobileBookings,
   listShopMobileOperators,
@@ -122,7 +123,7 @@ export default function ShopMobileBookingsPage() {
       const suggested = res.data
       if (suggested) {
         setOperatorId(suggested.tenant_id)
-        setSuggestedName(suggested.tenant_name)
+        setSuggestedName(formatTenantLabel(suggested.tenant_name, suggested.shop_number))
       } else {
         setSuggestedName('No operator mapped for this suburb')
       }
@@ -169,7 +170,9 @@ export default function ShopMobileBookingsPage() {
           <Select label="Mobile operator" value={operatorId} onChange={e => setOperatorId(e.target.value)}>
             <option value="">Select operator…</option>
             {operators.map(op => (
-              <option key={op.tenant_id} value={op.tenant_id}>{op.tenant_name}</option>
+              <option key={op.tenant_id} value={op.tenant_id}>
+                {formatTenantLabel(op.tenant_name, op.shop_number)}
+              </option>
             ))}
           </Select>
           <Input label="Customer name" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
@@ -225,7 +228,7 @@ export default function ShopMobileBookingsPage() {
                     <Badge variant={statusVariant(b.status)}>{STATUS_LABEL[b.status] ?? b.status}</Badge>
                   </div>
                   <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-                    Operator: {b.target_operator_name} · {formatDate(b.created_at)}
+                    Operator: {formatTenantLabel(b.target_operator_name, b.target_operator_shop_number)} · {formatDate(b.created_at)}
                   </p>
                   {b.status === 'accepted' && b.resulting_job_number && (
                     <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>

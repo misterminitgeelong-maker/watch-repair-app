@@ -107,6 +107,8 @@ class Tenant(SQLModel, table=True):
     business_address: Optional[str] = Field(default=None, max_length=2000)
     #: SMS destination for new shop mobile booking alerts (operator dispatch).
     mobile_dispatch_phone: Optional[str] = Field(default=None, max_length=80)
+    #: Minit shop or mobile-operator number (e.g. 3269 Chadstone, 3904 operator).
+    shop_number: Optional[str] = Field(default=None, max_length=10, index=True)
 
 
 class User(SQLModel, table=True):
@@ -796,6 +798,7 @@ class ParentAccountSiteRead(SQLModel):
     tenant_id: UUID
     tenant_slug: str
     tenant_name: str
+    shop_number: Optional[str] = None
     plan_code: str
     owner_user_id: UUID
     owner_email: str
@@ -876,6 +879,7 @@ class BillingCheckoutPlanRequest(SQLModel):
 class ParentAccountLinkTenantRequest(SQLModel):
     tenant_slug: str
     owner_email: str
+    shop_number: Optional[str] = Field(default=None, max_length=10)
 
 
 class ParentAccountCreateTenantRequest(SQLModel):
@@ -883,11 +887,13 @@ class ParentAccountCreateTenantRequest(SQLModel):
     tenant_slug: str
     plan_code: Optional[PlanCode] = None
     business_address: Optional[str] = Field(default=None, max_length=2000)
+    shop_number: Optional[str] = Field(default=None, max_length=10)
 
 
 class ShopBookingUsageShopBreakdown(SQLModel):
     tenant_id: UUID
     tenant_name: str
+    shop_number: Optional[str] = None
     accepted_bookings_count: int
     pending_count: int
 
@@ -1572,6 +1578,7 @@ class ShopMobileOperatorOption(SQLModel):
     tenant_id: UUID
     tenant_slug: str
     tenant_name: str
+    shop_number: Optional[str] = None
     plan_code: str
 
 
@@ -1580,8 +1587,10 @@ class ShopMobileBookingRead(SQLModel):
     parent_account_id: UUID
     requesting_tenant_id: UUID
     requesting_shop_name: str
+    requesting_shop_number: Optional[str] = None
     target_operator_tenant_id: UUID
     target_operator_name: str
+    target_operator_shop_number: Optional[str] = None
     created_by_user_id: UUID
     status: ShopMobileBookingStatus
     customer_name: str

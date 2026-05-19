@@ -8,6 +8,7 @@ import {
   createTenantFromParentAccount,
   deleteMobileSuburbRoute,
   enableParentMobileLeadIngest,
+  formatTenantLabel,
   getApiErrorMessage,
   getMyParentAccount,
   getParentShopBookingUsage,
@@ -54,6 +55,8 @@ export default function ParentAccountPage() {
   // Create new
   const [newTenantName, setNewTenantName] = useState('')
   const [newTenantSlug, setNewTenantSlug] = useState('')
+  const [newShopNumber, setNewShopNumber] = useState('')
+  const [linkShopNumber, setLinkShopNumber] = useState('')
   const [newTenantPlanCode, setNewTenantPlanCode] = useState<PlanCode>('basic_watch')
 
   const [error, setError] = useState('')
@@ -170,11 +173,17 @@ export default function ParentAccountPage() {
   })
 
   const linkMut = useMutation({
-    mutationFn: () => linkTenantToParentAccount({ tenant_slug: tenantSlug.trim(), owner_email: ownerEmail.trim().toLowerCase() }),
+    mutationFn: () =>
+      linkTenantToParentAccount({
+        tenant_slug: tenantSlug.trim(),
+        owner_email: ownerEmail.trim().toLowerCase(),
+        shop_number: linkShopNumber.trim() || undefined,
+      }),
     onSuccess: () => {
       setError('')
       setTenantSlug('')
       setOwnerEmail('')
+      setLinkShopNumber('')
       setShowAddModal(false)
       void refreshSession()
       qc.invalidateQueries({ queryKey: ['parent-account-me'] })
@@ -184,11 +193,18 @@ export default function ParentAccountPage() {
   })
 
   const createTenantMut = useMutation({
-    mutationFn: () => createTenantFromParentAccount({ tenant_name: newTenantName.trim(), tenant_slug: newTenantSlug.trim().toLowerCase(), plan_code: newTenantPlanCode }),
+    mutationFn: () =>
+      createTenantFromParentAccount({
+        tenant_name: newTenantName.trim(),
+        tenant_slug: newTenantSlug.trim().toLowerCase(),
+        plan_code: newTenantPlanCode,
+        shop_number: newShopNumber.trim() || undefined,
+      }),
     onSuccess: () => {
       setError('')
       setNewTenantName('')
       setNewTenantSlug('')
+      setNewShopNumber('')
       setNewTenantPlanCode('basic_watch')
       setShowAddModal(false)
       void refreshSession()
@@ -256,7 +272,7 @@ export default function ParentAccountPage() {
             )}
           </div>
           <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
-            #{site.tenant_slug} · {site.plan_code} · {site.owner_email}
+            {site.shop_number ? `Minit #${site.shop_number} · ` : ''}login {site.tenant_slug} · {site.plan_code} · {site.owner_email}
           </p>
         </div>
         {site.tenant_id !== activeSiteTenantId && (
@@ -298,7 +314,7 @@ export default function ParentAccountPage() {
 
   function siteLabel(tenantId: string) {
     const s = data?.sites.find(x => x.tenant_id === tenantId)
-    return s ? `${s.tenant_name} (#${s.tenant_slug})` : tenantId
+    return s ? formatTenantLabel(s.tenant_name, s.shop_number ?? undefined) : tenantId
   }
 
   async function copyIngestUrl() {
@@ -317,6 +333,8 @@ export default function ParentAccountPage() {
     setOwnerEmail('')
     setNewTenantName('')
     setNewTenantSlug('')
+    setNewShopNumber('')
+    setLinkShopNumber('')
     setNewTenantPlanCode('basic_watch')
   }
 
@@ -363,7 +381,7 @@ export default function ParentAccountPage() {
               <div className='divide-y' style={{ borderColor: 'var(--ms-border)' }}>
                 {bookingUsage.shops.map(shop => (
                   <div key={shop.tenant_id} className='py-2 flex justify-between gap-4 text-sm'>
-                    <span style={{ color: 'var(--ms-text)' }}>{shop.tenant_name}</span>
+                    <span style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(shop.tenant_name, shop.shop_number)}</span>
                     <span style={{ color: 'var(--ms-text-muted)' }}>
                       {shop.accepted_bookings_count} accepted · {shop.pending_count} pending
                     </span>
@@ -418,13 +436,20 @@ export default function ParentAccountPage() {
                 autoFocus
               />
               <Input
-                label='Shop Number'
+                label='Minit shop number'
+                value={newShopNumber}
+                onChange={e => setNewShopNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder='3269'
+                inputMode='numeric'
+              />
+              <Input
+                label='Login slug'
                 value={newTenantSlug}
                 onChange={e => setNewTenantSlug(e.target.value)}
                 placeholder='mainspring-north'
               />
               <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
-                The shop number is used to log in. Use lowercase letters, numbers and hyphens only.
+                The login slug is used to sign in. Use lowercase letters, numbers and hyphens only.
               </p>
               <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
                 <option value='basic_watch'>Basic - Watch ($25/mo)</option>
@@ -453,14 +478,21 @@ export default function ParentAccountPage() {
           {addMode === 'link' && (
             <div className='space-y-3'>
               <p className='text-sm' style={{ color: 'var(--ms-text-mid)' }}>
-                Already have a shop on the system? Enter its shop number and owner email to link it to your account.
+                Already have a shop on the system? Enter its login slug and owner email to link it to your account.
               </p>
               <Input
-                label='Shop Number'
+                label='Login slug'
                 value={tenantSlug}
                 onChange={e => setTenantSlug(e.target.value)}
                 placeholder='mainspring-south'
                 autoFocus
+              />
+              <Input
+                label='Minit shop number (optional)'
+                value={linkShopNumber}
+                onChange={e => setLinkShopNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder='3269'
+                inputMode='numeric'
               />
               <Input
                 label='Owner email'

@@ -17,6 +17,7 @@ from ..dependencies import (
     require_feature,
 )
 from .. import sms as sms_service
+from ..shop_number import format_tenant_label
 from ..models import (
     AutoKeyJob,
     Customer,
@@ -202,8 +203,10 @@ def _to_read(
         parent_account_id=row.parent_account_id,
         requesting_tenant_id=row.requesting_tenant_id,
         requesting_shop_name=shop.name if shop else "Unknown shop",
+        requesting_shop_number=shop.shop_number if shop else None,
         target_operator_tenant_id=row.target_operator_tenant_id,
         target_operator_name=op.name if op else "Unknown operator",
+        target_operator_shop_number=op.shop_number if op else None,
         created_by_user_id=row.created_by_user_id,
         status=row.status,  # type: ignore[arg-type]
         customer_name=row.customer_name,
@@ -270,6 +273,7 @@ def list_operators(
                 tenant_id=tenant.id,
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
+                shop_number=tenant.shop_number,
                 plan_code=normalize_plan_code(tenant.plan_code),
             )
         )
@@ -311,6 +315,7 @@ def suggest_operator(
         tenant_id=tenant.id,
         tenant_slug=tenant.slug,
         tenant_name=tenant.name,
+        shop_number=tenant.shop_number,
         plan_code=normalize_plan_code(tenant.plan_code),
     )
 
@@ -359,6 +364,7 @@ def create_booking(
 
     actor = session.get(User, auth.user_id)
     shop_name = shop.name if shop else "Shop"
+    shop_label = format_tenant_label(shop_name, shop.shop_number if shop else None)
     session.add(
         TenantEventLog(
             tenant_id=body.target_operator_tenant_id,
@@ -367,7 +373,7 @@ def create_booking(
             entity_type="shop_mobile_booking",
             entity_id=row.id,
             event_type="shop_booking_pending",
-            event_summary=f"New shop booking from {shop_name} — {body.customer_name.strip()} (pending accept)",
+            event_summary=f"New shop booking from {shop_label} — {body.customer_name.strip()} (pending accept)",
         )
     )
     session.add(
@@ -377,7 +383,7 @@ def create_booking(
             actor_user_id=auth.user_id,
             actor_email=actor.email if actor else None,
             event_type="shop_booking_created",
-            event_summary=f"{shop_name} sent mobile booking for {body.customer_name.strip()} (pending)",
+            event_summary=f"{shop_label} sent mobile booking for {body.customer_name.strip()} (pending)",
         )
     )
     session.commit()
@@ -391,7 +397,7 @@ def create_booking(
                 session,
                 tenant_id=body.target_operator_tenant_id,
                 to_phone=dispatch_phone,
-                shop_name=shop_name,
+                shop_name=shop_label,
                 customer_name=row.customer_name,
                 customer_phone=row.phone,
                 vehicle_make=row.vehicle_make,

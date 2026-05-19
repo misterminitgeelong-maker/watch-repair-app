@@ -69,6 +69,7 @@ def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], 
             "tenant_name": f"Retail Shop {suffix}",
             "tenant_slug": shop_slug,
             "plan_code": "booking_only",
+            "shop_number": "3269",
         },
     )
     assert create_shop.status_code == 200, create_shop.text
@@ -356,3 +357,76 @@ def test_at_shop_uses_tenant_business_address():
     )
     assert create.status_code == 201
     assert create.json()["job_address"] == "100 Retail Parade, Chadstone VIC"
+
+
+def test_shop_number_on_create_and_duplicate_rejected_within_parent():
+    suffix = uuid4().hex[:8]
+    hq_email = f"hq-sn-{suffix}@test.local"
+    hq_slug = f"hq-sn-{suffix}"
+    shop_a = f"shop-a-{suffix}"
+    shop_b = f"shop-b-{suffix}"
+
+    _bootstrap(hq_slug, hq_email, "enterprise")
+    hq_h = _headers(_login(hq_slug, hq_email)["access_token"])
+
+    first = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers=hq_h,
+        json={
+            "tenant_name": "Chadstone",
+            "tenant_slug": shop_a,
+            "plan_code": "booking_only",
+            "shop_number": "3269",
+        },
+    )
+    assert first.status_code == 200, first.text
+    site_a = next(s for s in first.json()["sites"] if s["tenant_slug"] == shop_a)
+    assert site_a["shop_number"] == "3269"
+
+    dup = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers=hq_h,
+        json={
+            "tenant_name": "Other Shop",
+            "tenant_slug": shop_b,
+            "plan_code": "booking_only",
+            "shop_number": "3269",
+        },
+    )
+    assert dup.status_code == 409
+
+    bad = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers=hq_h,
+        json={
+            "tenant_name": "Bad Number",
+            "tenant_slug": f"bad-{suffix}",
+            "plan_code": "booking_only",
+            "shop_number": "ABC",
+        },
+    )
+    assert bad.status_code == 400
+
+
+def test_booking_read_includes_requesting_shop_number():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json={
+            "target_operator_tenant_id": op_tid,
+            "customer_name": "Jane Doe",
+            "visit_location_type": "customer_site",
+            "job_address": "1 Test St",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert body["requesting_shop_number"] == "3269"
+
+    listed = client.get("/v1/shop-mobile-bookings", headers=op_h)
+    assert listed.status_code == 200
+    row = next(r for r in listed.json() if r["id"] == body["id"])
+    assert row["requesting_shop_number"] == "3269"

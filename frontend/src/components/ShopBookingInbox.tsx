@@ -5,6 +5,7 @@ import {
   acceptShopMobileBooking,
   declineShopMobileBooking,
   getApiErrorMessage,
+  formatTenantLabel,
   listShopMobileBookings,
   type ShopMobileBooking,
 } from '@/lib/api'
@@ -79,7 +80,10 @@ export default function ShopBookingInbox() {
               <div>
                 <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
                   {b.customer_name}
-                  <span className="font-normal" style={{ color: 'var(--ms-text-muted)' }}> · from {b.requesting_shop_name}</span>
+                  <span className="font-normal" style={{ color: 'var(--ms-text-muted)' }}>
+                    {' '}
+                    · from {formatTenantLabel(b.requesting_shop_name, b.requesting_shop_number)}
+                  </span>
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                   {b.job_address} · {formatDate(b.created_at)}
@@ -113,7 +117,7 @@ export default function ShopBookingInbox() {
       {declineTarget && (
         <Modal title="Decline booking" onClose={() => setDeclineTarget(null)}>
           <p className="text-sm mb-3" style={{ color: 'var(--ms-text-mid)' }}>
-            Decline request from {declineTarget.requesting_shop_name} for {declineTarget.customer_name}?
+            Decline request from {formatTenantLabel(declineTarget.requesting_shop_name, declineTarget.requesting_shop_number)} for {declineTarget.customer_name}?
           </p>
           <Textarea label="Reason (optional)" value={declineReason} onChange={e => setDeclineReason(e.target.value)} rows={3} />
           <div className="flex justify-end gap-2 mt-4">

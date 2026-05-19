@@ -300,10 +300,17 @@ export interface ParentAccountSite {
   tenant_id: string
   tenant_slug: string
   tenant_name: string
+  shop_number?: string | null
   plan_code: string
   owner_user_id: string
   owner_email: string
   owner_full_name: string
+}
+
+export function formatTenantLabel(name: string, shopNumber?: string | null): string {
+  const base = name.trim() || 'Unknown'
+  const num = shopNumber?.trim()
+  return num ? `${base} (#${num})` : base
 }
 
 export interface ParentAccountSummary {
@@ -330,16 +337,21 @@ export interface ParentAccountActivityEvent {
 export const getMyParentAccount = () => api.get<ParentAccountSummary>('/parent-accounts/me')
 export const listParentAccountActivity = (limit = 50, offset = 0) =>
   api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit, offset } })
-export const linkTenantToParentAccount = (payload: { tenant_slug: string; owner_email: string }) =>
+export const linkTenantToParentAccount = (payload: { tenant_slug: string; owner_email: string; shop_number?: string }) =>
   api.post<ParentAccountSummary>('/parent-accounts/me/link-tenant', payload)
-export const createTenantFromParentAccount = (payload: { tenant_name: string; tenant_slug: string; plan_code?: PlanCode }) =>
-  api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
+export const createTenantFromParentAccount = (payload: {
+  tenant_name: string
+  tenant_slug: string
+  plan_code?: PlanCode
+  shop_number?: string
+}) => api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
 
 export interface ShopBookingUsageShop {
   tenant_id: string
   tenant_name: string
+  shop_number?: string | null
   accepted_bookings_count: number
   pending_count: number
 }
@@ -361,6 +373,7 @@ export interface ShopMobileOperatorOption {
   tenant_id: string
   tenant_slug: string
   tenant_name: string
+  shop_number?: string | null
   plan_code: string
 }
 
@@ -369,8 +382,10 @@ export interface ShopMobileBooking {
   parent_account_id: string
   requesting_tenant_id: string
   requesting_shop_name: string
+  requesting_shop_number?: string | null
   target_operator_tenant_id: string
   target_operator_name: string
+  target_operator_shop_number?: string | null
   created_by_user_id: string
   status: ShopMobileBookingStatus
   customer_name: string

@@ -37,6 +37,11 @@ from ..models import (
     User,
 )
 from ..security import hash_password
+from ..shop_number import (
+    assert_shop_number_unique_in_parent,
+    format_tenant_label,
+    validate_shop_number_format,
+)
 
 router = APIRouter(
     prefix="/v1/parent-accounts",
@@ -82,6 +87,7 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
                 tenant_id=tenant.id,
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
+                shop_number=tenant.shop_number,
                 plan_code=normalize_plan_code(tenant.plan_code),
                 owner_user_id=user.id,
                 owner_email=user.email,
@@ -438,6 +444,7 @@ def get_shop_booking_usage(
             ShopBookingUsageShopBreakdown(
                 tenant_id=tid,
                 tenant_name=tenant.name,
+                shop_number=tenant.shop_number,
                 accepted_bookings_count=accepted,
                 pending_count=pending,
             )
@@ -532,6 +539,17 @@ def link_tenant_to_parent_account(
     if not owner_user:
         raise HTTPException(status_code=404, detail="Owner user not found for tenant")
 
+    shop_number = validate_shop_number_format(payload.shop_number)
+    if shop_number:
+        assert_shop_number_unique_in_parent(
+            session,
+            parent_id=parent.id,
+            shop_number=shop_number,
+            exclude_tenant_id=tenant.id,
+        )
+        tenant.shop_number = shop_number
+        session.add(tenant)
+
     existing = session.exec(
         select(ParentAccountMembership)
         .where(ParentAccountMembership.parent_account_id == parent.id)
@@ -584,12 +602,17 @@ def create_tenant_from_parent_account(
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
 
+    shop_number = validate_shop_number_format(payload.shop_number)
+    if shop_number:
+        assert_shop_number_unique_in_parent(session, parent_id=parent.id, shop_number=shop_number)
+
     business_address = payload.business_address.strip()[:2000] if payload.business_address else None
     tenant = Tenant(
         name=tenant_name,
         slug=tenant_slug,
         plan_code=_normalize_plan_code(payload.plan_code),
         business_address=business_address,
+        shop_number=shop_number,
     )
     session.add(tenant)
     session.flush()
