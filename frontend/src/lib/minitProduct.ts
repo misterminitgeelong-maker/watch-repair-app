@@ -28,6 +28,23 @@ export function isMinitBookingOnlyPlan(planCode: PlanCode | null | undefined): b
   return planCode === 'booking_only'
 }
 
+/** Plan defaults mirrored from backend `PLAN_FEATURES` (subset used by Minit UI). */
+const PLAN_FEATURE_DEFAULTS: Partial<Record<PlanCode, FeatureKey[]>> = {
+  booking_only: ['shop_mobile_booking'],
+  minit_hq: ['shop_mobile_booking', 'multi_site'],
+}
+
+export function featuresForPlan(planCode: PlanCode | null | undefined): FeatureKey[] {
+  if (!planCode) return []
+  return PLAN_FEATURE_DEFAULTS[planCode] ?? []
+}
+
+export function mergeEnabledFeatures(planCode: PlanCode, enabled: FeatureKey[]): FeatureKey[] {
+  const fromPlan = featuresForPlan(planCode)
+  if (!fromPlan.length && enabled.length) return enabled
+  return [...new Set([...enabled, ...fromPlan])]
+}
+
 /** True when the tenant should see the Minit mobile-network UI (not Mainspring repair POS). */
 export function isMinitRestrictedUi(
   product: TenantProduct | null | undefined,
@@ -59,7 +76,11 @@ export function readSessionSnapshot(): SessionSnapshot | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as SessionSnapshot
     if (!parsed?.tenantSlug || !parsed?.planCode || !Array.isArray(parsed.enabledFeatures)) return null
-    return parsed
+    const product =
+      parsed.product === 'minit' || parsed.product === 'mainspring'
+        ? parsed.product
+        : tenantProductFromSlug(parsed.tenantSlug)
+    return { ...parsed, product }
   } catch {
     return null
   }

@@ -19,6 +19,8 @@ import {
 import { applyMinitBrandingIfNeeded } from '@/lib/minitBranding'
 import {
   clearSessionSnapshot,
+  featuresForPlan,
+  mergeEnabledFeatures,
   readSessionSnapshot,
   tenantProductFromSlug,
   writeSessionSnapshot,
@@ -128,7 +130,7 @@ function initialAuthStateFromStorage(): {
       planCode: snap.planCode,
       product: snap.product,
       tenantSlug: snap.tenantSlug,
-      enabledFeatures: snap.enabledFeatures,
+      enabledFeatures: mergeEnabledFeatures(snap.planCode, snap.enabledFeatures),
     }
   }
   return { planCode: 'pro', product: 'mainspring', tenantSlug: null, enabledFeatures: [] }
@@ -222,14 +224,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionUserId(data.user.id)
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
+    const mergedFeatures = mergeEnabledFeatures(data.plan_code, data.enabled_features)
     setPlanCode(data.plan_code)
     setProduct(sessionProduct)
-    setEnabledFeatures(data.enabled_features)
+    setEnabledFeatures(mergedFeatures)
     writeSessionSnapshot({
       product: sessionProduct,
       planCode: data.plan_code,
       tenantSlug: data.tenant_slug,
-      enabledFeatures: data.enabled_features,
+      enabledFeatures: mergedFeatures,
     })
     applyMinitBrandingIfNeeded(data.tenant_slug, data.plan_code)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
@@ -458,7 +461,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function hasFeature(feature: FeatureKey) {
     if (role === 'platform_admin') return true
-    return enabledFeatures.includes(feature)
+    if (enabledFeatures.includes(feature)) return true
+    return featuresForPlan(planCode).includes(feature)
   }
 
   return (

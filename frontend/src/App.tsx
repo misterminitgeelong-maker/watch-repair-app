@@ -83,10 +83,18 @@ function RouteFallback() {
 
 function FeatureGate({ feature, children }: { feature: FeatureKey; children: React.ReactNode }) {
   const { hasFeature, role, product, planCode, tenantSlug } = useAuth()
+  const { pathname } = useLocation()
   if (role === 'platform_admin' || hasFeature(feature)) return <>{children}</>
   const fallback = isMinitRestrictedUi(product, planCode, tenantSlug)
     ? defaultHomePathForMinit(planCode)
     : '/dashboard'
+  if (pathname === fallback || pathname.startsWith(`${fallback}/`)) {
+    return (
+      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+        This page is not available on your plan. Open Account or sign in again if the problem persists.
+      </div>
+    )
+  }
   return <Navigate to={fallback} replace />
 }
 
