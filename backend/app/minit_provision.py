@@ -63,7 +63,11 @@ def _get_or_create_hq_tenant(
     email = owner_email.strip().lower()
     tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if not tenant:
-        tenant = Tenant(name=name, slug=slug, plan_code="enterprise")
+        tenant = Tenant(name=name, slug=slug, plan_code="minit_hq")
+        session.add(tenant)
+        session.flush()
+    elif tenant.plan_code != "minit_hq":
+        tenant.plan_code = "minit_hq"
         session.add(tenant)
         session.flush()
 
@@ -165,6 +169,23 @@ def _create_child_tenant(
     return tenant
 
 
+def sync_hq_owner_password_to_parent_sites(session: Session, *, parent_id: UUID, hq_owner: User) -> int:
+    """Keep pilot site logins in sync when HQ password is reset. Returns count of users updated."""
+    updated = 0
+    for tid in linked_tenant_ids_for_parent(session, parent_id):
+        if tid == hq_owner.tenant_id:
+            continue
+        site_owner = session.exec(
+            select(User).where(User.tenant_id == tid).where(User.email == hq_owner.email)
+        ).first()
+        if site_owner and site_owner.password_hash != hq_owner.password_hash:
+            site_owner.password_hash = hq_owner.password_hash
+            site_owner.is_active = True
+            session.add(site_owner)
+            updated += 1
+    return updated
+
+
 # Pilot sites for dev/staging (shop numbers from TSS export + mobile operator 3904).
 MINIT_PILOT_RETAIL_SHOPS: tuple[dict[str, str], ...] = (
     {"shop_number": "3269", "name": "Chadstone", "area": "VIC SOUTH", "region": "VIC"},
@@ -242,6 +263,8 @@ def ensure_minit_pilot_account(
             created.append(op_tenant.slug)
     else:
         skipped.append(op.shop_number)
+
+    sync_hq_owner_password_to_parent_sites(session, parent_id=parent.id, hq_owner=hq_owner)
 
     session.commit()
     return MinitProvisionResult(

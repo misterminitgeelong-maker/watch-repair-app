@@ -44,6 +44,13 @@ const bookingOnlyNav: NavLinkItem[] = [
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 
+/** Mister Minit corporate HQ — mobile booking network only (no watch/shoe/repair POS). */
+const minitHqNav: NavLinkItem[] = [
+  { to: '/parent-account', label: 'Shops & operators', icon: Building2, feature: 'multi_site' },
+  { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/accounts', label: 'Account', icon: UserCog },
+]
+
 const navBeforeMobile: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
@@ -75,6 +82,7 @@ interface SidebarProps {
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode } = useAuth()
   const isBookingOnly = planCode === 'booking_only'
+  const isMinitHq = planCode === 'minit_hq'
   const inboxCount = useInboxCount()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
@@ -88,9 +96,13 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const filterItems = (items: NavLinkItem[]) =>
     items.filter((item) => !item.feature || hasFeature(item.feature))
 
-  const filteredBefore = isBookingOnly ? filterItems(bookingOnlyNav) : filterItems(navBeforeMobile)
-  const filteredAfter = isBookingOnly ? [] : filterItems(navAfterMobile)
-  const showMobile = !isBookingOnly && hasFeature('auto_key')
+  const filteredBefore = isBookingOnly
+    ? filterItems(bookingOnlyNav)
+    : isMinitHq
+      ? filterItems(minitHqNav)
+      : filterItems(navBeforeMobile)
+  const filteredAfter = isBookingOnly || isMinitHq ? [] : filterItems(navAfterMobile)
+  const showMobile = !isBookingOnly && !isMinitHq && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 
   function linkClasses(isActive: boolean, opts?: { indent?: boolean }) {

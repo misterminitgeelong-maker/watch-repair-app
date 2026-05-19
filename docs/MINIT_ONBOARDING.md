@@ -1,99 +1,79 @@
-# Mister Minit onboarding (pilot)
+# Mister Minit onboarding
 
-Pilot setup for the Mister Minit parent account, HQ login, retail shop booking sites, and one mobile operator — plus bulk import from the TSS shop spreadsheet.
+Minit does **not** self-register on the public signup page for the corporate / pilot program. **You provision their account** (email, password, slug) via seed scripts or env vars, then hand them login details privately — same as any enterprise customer.
 
-## Environment
+## Account model
 
-Add to `backend/.env` (or deployment secrets):
+| Who | Login slug (Shop ID) | Minit shop # | How they get access |
+|-----|----------------------|--------------|---------------------|
+| **Minit HQ / support** | `mmsupport` | — | You seed with **their** corporate email + password |
+| **Retail shop** (e.g. Chadstone) | `minit-3269` | 3269 | Seeded under parent; can share HQ login via site switcher or separate users later |
+| **Mobile operator** (e.g. you) | `minit-mobile-3904` | 3904 | Seeded under parent; operator’s own email optional later |
+
+- **Parent account** owner email = Minit HQ email (controls My Shops, suburb map, bulk import).
+- **Shop number** (`3269`, `3904`) is metadata on the tenant — not the login Shop ID.
+- **Public signup** (`/signup`) is for independent shops; not used for the Minit rollout.
+
+## Provision Minit HQ (you run this)
+
+Set **their** credentials in Railway / `backend/.env` (do not use test defaults in production):
 
 ```env
-MINIT_SEED_ENABLED=true
 MINIT_PARENT_ACCOUNT_NAME=Mister Minit
 MINIT_HQ_TENANT_SLUG=mmsupport
-MINIT_HQ_TENANT_NAME=Mister Minit HQ
-MINIT_HQ_OWNER_EMAIL=minit-hq@test.mainspring.au
-MINIT_HQ_OWNER_PASSWORD=MinitPilot2026!
+MINIT_HQ_TENANT_NAME=Mister Minit Support
+MINIT_HQ_OWNER_EMAIL=support@misterminit.com.au
+MINIT_HQ_OWNER_PASSWORD=<strong password you generate>
 ```
 
-`MINIT_SEED_ENABLED=true` runs the same pilot seed on API startup (with `STARTUP_SEED_ENABLED` optional). Prefer running the script once in shared environments.
-
-## Pilot sites (created once)
-
-| Role | Shop # | Slug | Plan |
-|------|--------|------|------|
-| HQ | — | `mmsupport` | `enterprise` |
-| Retail | 3269 Chadstone | `minit-3269` | `booking_only` |
-| Retail | 4278 Toowoomba | `minit-4278` | `booking_only` |
-| Mobile operator | 3904 | `minit-mobile-3904` | `basic_auto_key` |
-
-All child sites share the HQ owner email/password (site switcher in the app).
-
-## Manual seed
+Then seed once:
 
 ```bash
 cd backend
 python scripts/seed_minit_pilot.py
 ```
 
-## HQ login
+The script prints `hq_tenant_slug` and `hq_owner_email` (password comes from env). Send Minit only what they need:
 
-1. Open the web app login.
-2. **Tenant slug:** `mmsupport` (login label may show as MMSupport; slug is stored lowercase)
-3. **Email:** value of `MINIT_HQ_OWNER_EMAIL` (default `minit-hq@test.mainspring.au`)
-4. **Password:** value of `MINIT_HQ_OWNER_PASSWORD`
+- **Shop ID:** `mmsupport`
+- **Email / password:** what you set above
 
-From HQ (enterprise plan), use **Parent account** to view linked sites, create more shops, or link operators.
+Optional: `MINIT_SEED_ENABLED=true` on API startup re-applies the same seed idempotently (safe; updates HQ password if env changes).
 
-### Pilot shop login (booking only)
+Ops-only: `POST /v1/auth/ensure-minit-pilot` when `ALLOW_ENSURE_MINIT_PILOT=true` (same as script).
 
-- Slug: `minit-3269` — Chadstone (#3269)
-- Same email/password as HQ
+## What the seed creates (pilot)
 
-### Mobile operator login
+| Role | Shop # | Slug | Plan |
+|------|--------|------|------|
+| HQ | — | `mmsupport` | `minit_hq` (mobile + parent account only) |
+| Retail | 3269 Chadstone | `minit-3269` | `booking_only` |
+| Retail | 4278 Toowoomba | `minit-4278` | `booking_only` |
+| Mobile operator | 3904 | `minit-mobile-3904` | `basic_auto_key` |
 
-- Slug: `minit-mobile-3904` — operator #3904
-- Plan: Basic – Mobile Services (`basic_auto_key`)
+Pilot retail/operator sites initially use the **same owner email/password as HQ** so you can test with one login and the site switcher. For production, add per-shop users from **Parent account → Add shop** or extend import to create store-manager emails.
 
-## Bulk import from TSS Excel
+## Bulk import all shops (TSS Excel)
 
-Source file (local; not in repo):  
-`c:\Users\samme\Downloads\TSS Dec25 Report (1).xlsx`  
-Sheet **TSS Scores**, columns: **Shop #**, **Shop Name**, **Area**, **Region** (no street address — import builds `business_address` from name + area + region).
-
-**Dry-run (default)** — parse-only, no database (always run this first):
+Source (local): `TSS Dec25 Report (1).xlsx`, sheet **TSS Scores** — columns **Shop #**, **Shop Name**, **Area**, **Region**.
 
 ```bash
 cd backend
-python scripts/import_minit_shops_from_xlsx.py --input "C:/Users/samme/Downloads/TSS Dec25 Report (1).xlsx"
-```
+# Preview (~379 shops)
+python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/TSS Dec25 Report (1).xlsx"
 
-After pilot seed, dry-run with duplicate detection:
-
-```bash
+# After HQ exists
 python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --check-db
+python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --apply
 ```
 
-**Apply** (after pilot/HQ exists):
+Each shop: slug `minit-{shop_number}`, plan `booking_only`, linked under Minit parent account.
 
-```bash
-python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --seed-pilot --apply
-```
+## Dev-only defaults
 
-- Skips shops whose `shop_number` is already linked under the parent account.
-- New tenants use slug `minit-{shop_number}` and plan `booking_only` unless `--plan-code` is set.
-- Does **not** import mobile operators from the sheet; operator **3904** is pilot-seeded only.
+Repo defaults (`minit-hq@test.mainspring.au` / `MinitPilot2026!`) are for **local dev only**. Production must use Minit’s real email before seeding.
 
-## Existing databases
+## Security
 
-If you already ran the pilot seed with slug `mister-minit-hq`, either:
-
-- Re-run `python scripts/seed_minit_pilot.py` after setting `MINIT_HQ_TENANT_SLUG=mmsupport` and removing or renaming the old HQ tenant, or
-- Manually update the HQ row: `UPDATE tenant SET slug = 'mmsupport' WHERE slug = 'mister-minit-hq';` (and set `MINIT_HQ_TENANT_SLUG=mmsupport` in env so startup seed stays consistent).
-
-Retail slugs (`minit-3269`, etc.) are unchanged.
-
-## Security notes
-
-- Change `MINIT_HQ_OWNER_PASSWORD` before any shared/staging host is exposed.
-- Do not commit the TSS `.xlsx` (large, customer data).
-- Set `MINIT_SEED_ENABLED=false` in production unless you intend automatic pilot recreation on deploy.
+- Never commit Minit passwords or the TSS `.xlsx`.
+- Turn off `ALLOW_ENSURE_MINIT_PILOT` and `MINIT_SEED_ENABLED` in production after initial provision unless you intend automatic re-sync.

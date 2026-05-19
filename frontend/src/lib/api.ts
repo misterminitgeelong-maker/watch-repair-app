@@ -208,6 +208,7 @@ export type PlanCode =
   | 'basic_shoe_auto_key'
   | 'basic_all_tabs'
   | 'booking_only'
+  | 'minit_hq'
   | 'pro'
 export type FeatureKey =
   | 'watch'

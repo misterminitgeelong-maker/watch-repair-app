@@ -730,6 +730,18 @@ export default function AppShell() {
     if (planCode === 'booking_only' && location.pathname === '/dashboard') {
       navigate('/shop-mobile-bookings', { replace: true })
     }
+    if (planCode === 'minit_hq' && location.pathname === '/dashboard') {
+      navigate('/parent-account', { replace: true })
+    }
+  }, [planCode, location.pathname, navigate])
+
+  useEffect(() => {
+    if (planCode !== 'minit_hq') return
+    const allowed =
+      /^\/(parent-account|shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(location.pathname)
+    if (!allowed) {
+      navigate('/parent-account', { replace: true })
+    }
   }, [planCode, location.pathname, navigate])
 
   useEffect(() => {

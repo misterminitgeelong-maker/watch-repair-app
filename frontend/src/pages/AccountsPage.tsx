@@ -369,6 +369,7 @@ export default function AccountsPage() {
       )}
 
 
+      {planCode !== 'minit_hq' && (
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Pricing and plan access
@@ -446,6 +447,7 @@ export default function AccountsPage() {
           )}
         </div>
       </Card>
+      )}
 
       <BillingCard />
 
