@@ -16,8 +16,9 @@ import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
+  effectiveMinitPlanCode,
   isMinitBookingOnlyPlan,
-  isMinitHqPlan,
+  isMinitHqUi,
   isMinitRestrictedUi,
   minitBookingOnlyAllowedPath,
   minitHqAllowedPath,
@@ -737,13 +738,15 @@ export default function AppShell() {
     : guidedTourSteps[guidedStep] ?? null
 
   const minitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
+  const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
+  const minitHq = isMinitHqUi(product, planCode, tenantSlug)
 
   useEffect(() => {
     if (!minitUi) return
     if (location.pathname === '/dashboard') {
-      navigate(defaultHomePathForMinit(planCode), { replace: true })
+      navigate(defaultHomePathForMinit(planCode, tenantSlug), { replace: true })
     }
-    if (isMinitHqPlan(planCode)) {
+    if (minitHq) {
       if (location.pathname === '/minit/operations') {
         navigate('/minit/dashboard', { replace: true })
       } else if (location.pathname === '/accounts') {
@@ -756,19 +759,19 @@ export default function AppShell() {
         navigate('/minit/inbox', { replace: true })
       }
     }
-  }, [minitUi, planCode, location.pathname, navigate])
+  }, [minitUi, minitHq, planCode, tenantSlug, location.pathname, navigate])
 
   useEffect(() => {
     if (!minitUi) return
-    const allowed = isMinitHqPlan(planCode)
+    const allowed = minitHq
       ? minitHqAllowedPath(location.pathname)
-      : isMinitBookingOnlyPlan(planCode)
+      : isMinitBookingOnlyPlan(effectivePlan)
         ? minitBookingOnlyAllowedPath(location.pathname)
         : minitHqAllowedPath(location.pathname)
     if (!allowed) {
-      navigate(defaultHomePathForMinit(planCode), { replace: true })
+      navigate(defaultHomePathForMinit(planCode, tenantSlug), { replace: true })
     }
-  }, [minitUi, planCode, location.pathname, navigate])
+  }, [minitUi, minitHq, effectivePlan, planCode, tenantSlug, location.pathname, navigate])
 
   useEffect(() => {
     if (!token) return

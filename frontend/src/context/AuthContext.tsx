@@ -19,6 +19,7 @@ import {
 import { applyMinitBrandingIfNeeded } from '@/lib/minitBranding'
 import {
   clearSessionSnapshot,
+  effectiveMinitPlanCode,
   featuresForPlan,
   mergeEnabledFeatures,
   readSessionSnapshot,
@@ -224,13 +225,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionUserId(data.user.id)
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
-    const mergedFeatures = mergeEnabledFeatures(data.plan_code, data.enabled_features)
-    setPlanCode(data.plan_code)
+    const effectivePlan = effectiveMinitPlanCode(data.plan_code, data.tenant_slug)
+    const mergedFeatures = mergeEnabledFeatures(effectivePlan, data.enabled_features)
+    setPlanCode(effectivePlan)
     setProduct(sessionProduct)
     setEnabledFeatures(mergedFeatures)
     writeSessionSnapshot({
       product: sessionProduct,
-      planCode: data.plan_code,
+      planCode: effectivePlan,
       tenantSlug: data.tenant_slug,
       enabledFeatures: mergedFeatures,
     })
@@ -462,7 +464,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function hasFeature(feature: FeatureKey) {
     if (role === 'platform_admin') return true
     if (enabledFeatures.includes(feature)) return true
-    return featuresForPlan(planCode).includes(feature)
+    return featuresForPlan(effectiveMinitPlanCode(planCode, tenantSlug)).includes(feature)
   }
 
   return (

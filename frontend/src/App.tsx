@@ -89,7 +89,7 @@ function FeatureGate({ feature, children }: { feature: FeatureKey; children: Rea
   const { pathname } = useLocation()
   if (role === 'platform_admin' || hasFeature(feature)) return <>{children}</>
   const fallback = isMinitRestrictedUi(product, planCode, tenantSlug)
-    ? defaultHomePathForMinit(planCode)
+    ? defaultHomePathForMinit(planCode, tenantSlug)
     : '/dashboard'
   if (pathname === fallback || pathname.startsWith(`${fallback}/`)) {
     return (

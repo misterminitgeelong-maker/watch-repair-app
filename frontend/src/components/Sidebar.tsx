@@ -26,7 +26,12 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { isMinitHqPlan, isMinitBookingOnlyPlan, isMinitRestrictedUi } from '@/lib/minitProduct'
+import {
+  isMinitHqUi,
+  isMinitBookingOnlyPlan,
+  isMinitRestrictedUi,
+  effectiveMinitPlanCode,
+} from '@/lib/minitProduct'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
@@ -47,12 +52,12 @@ const bookingOnlyNav: NavLinkItem[] = [
 
 /** Mister Minit corporate HQ — mobile booking network only (no watch/shoe/repair POS). */
 const minitHqNav: NavLinkItem[] = [
-  { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'multi_site' },
-  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, feature: 'multi_site', title: 'Customer enquiries from the Mister Minit website' },
-  { to: '/minit/shops', label: 'Shops', icon: Building2, feature: 'multi_site' },
-  { to: '/minit/mobile-services', label: 'Mobile Services', icon: KeyRound, feature: 'multi_site' },
-  { to: '/minit/reports', label: 'Reports', icon: BarChart3, feature: 'multi_site' },
-  { to: '/minit/accounts', label: 'Accounts', icon: UserCog, feature: 'multi_site' },
+  { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Customer enquiries from the Mister Minit website' },
+  { to: '/minit/shops', label: 'Shops', icon: Building2 },
+  { to: '/minit/mobile-services', label: 'Mobile Services', icon: KeyRound },
+  { to: '/minit/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/minit/accounts', label: 'Accounts', icon: UserCog },
 ]
 
 const navBeforeMobile: NavLinkItem[] = [
@@ -85,9 +90,10 @@ interface SidebarProps {
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode, product, tenantSlug } = useAuth()
+  const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
   const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
-  const isBookingOnly = isMinitBookingOnlyPlan(planCode)
-  const isMinitHq = isMinitHqPlan(planCode)
+  const isBookingOnly = isMinitBookingOnlyPlan(effectivePlan) && !isMinitHqUi(product, planCode, tenantSlug)
+  const isMinitHq = isMinitHqUi(product, planCode, tenantSlug)
   const inboxCount = useInboxCount()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
@@ -101,10 +107,10 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const filterItems = (items: NavLinkItem[]) =>
     items.filter((item) => !item.feature || hasFeature(item.feature))
 
-  const filteredBefore = isBookingOnly
-    ? filterItems(bookingOnlyNav)
-    : isMinitHq
-      ? filterItems(minitHqNav)
+  const filteredBefore = isMinitHq
+    ? minitHqNav
+    : isBookingOnly
+      ? filterItems(bookingOnlyNav)
       : filterItems(navBeforeMobile)
   const filteredAfter = isMinitUi ? [] : filterItems(navAfterMobile)
   const showMobile = !isMinitUi && hasFeature('auto_key')
