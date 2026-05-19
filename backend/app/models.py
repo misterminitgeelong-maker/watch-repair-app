@@ -59,6 +59,7 @@ PlanCode = Literal[
     "basic_shoe_auto_key",
     "basic_all_tabs",
     "booking_only",
+    "minit_hq",
     "pro",
 ]
 
@@ -754,6 +755,8 @@ class AuthSessionResponse(SQLModel):
     tenant_slug: str
     #: ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops.
     product: str = "mainspring"
+    #: When true, the SPA renders the six-item Minit HQ navigation (authoritative server signal).
+    is_minit_hq_ui: bool = False
     plan_code: PlanCode
     enabled_features: list[str]
     active_site_tenant_id: UUID

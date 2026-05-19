@@ -3,7 +3,7 @@
  * Static assets: cache-first. API /v1/*: network-first (no JSON cache). Navigation: network, then shell, then offline page.
  */
 // Bump when shell assets (index, offline, icons, manifest) change so deploys replace old caches.
-const CACHE_VERSION = 'mainspring-app-v9-minit-hq-nav'
+const CACHE_VERSION = 'mainspring-app-v10-minit-hq-session'
 const STATIC_CACHE = `mainspring-static-${CACHE_VERSION}`
 
 const PRECACHE_URLS = [

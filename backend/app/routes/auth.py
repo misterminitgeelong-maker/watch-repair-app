@@ -185,7 +185,7 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
 
 
 def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -> AuthSessionResponse:
-    from ..minit_branding import ensure_minit_tenant_plan, effective_plan_code, tenant_product
+    from ..minit_branding import ensure_minit_tenant_plan, effective_plan_code, is_minit_hq_ui, tenant_product
 
     before_plan = tenant.plan_code
     tenant = ensure_minit_tenant_plan(session, tenant)
@@ -215,6 +215,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         tenant_id=tenant.id,
         tenant_slug=tenant.slug,
         product=product,
+        is_minit_hq_ui=is_minit_hq_ui(tenant),
         plan_code=normalized_plan,
         enabled_features=enabled,
         active_site_tenant_id=tenant.id,

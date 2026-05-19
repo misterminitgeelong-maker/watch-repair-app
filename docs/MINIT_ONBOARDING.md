@@ -44,7 +44,19 @@ Ops-only: `POST /v1/auth/ensure-minit-pilot` when `ALLOW_ENSURE_MINIT_PILOT=true
 
 ## HQ operations UI
 
-After signing in as **mmsupport** (`minit_hq`), the app opens **Operations** (`/minit/operations`) with network KPIs, shop control (`/minit/shops`), shop and mobile reports, and troubleshooting. Use **Lead routing** (`/parent-account`) for website ingest and suburb maps.
+After signing in as **mmsupport** (`minit_hq`), the left sidebar (desktop) or bottom tabs (mobile) show **six items only**: Dashboard, Inbox, Shops, Mobile Services, Reports, Accounts (`data-nav="minit-hq"`). Dashboard is the network operations overview (`/minit/dashboard`).
+
+## Verify production deploy
+
+After pushing to `main`, confirm Railway rebuilt the **single Docker service** (frontend is baked into the image at `/app/static`, not a separate CDN).
+
+1. **API commit** — `curl https://mainspring.au/v1/health` → `git_commit` should match the latest GitHub `main` SHA (full hash).
+2. **Frontend build** — View page source on `https://mainspring.au/` → `<meta name="app-build" content="…">` should be the **same** SHA (not `dev`). After login, DevTools → sidebar `<aside data-nav="minit-hq">` when Shop ID is `mmsupport`.
+3. **Session flag** — While logged in as HQ, `GET /v1/auth/session` (Bearer token) must include `"is_minit_hq_ui": true`.
+4. **If `git_commit` is new but sidebar is old** — Hard refresh, unregister service worker (Application → Service Workers), clear site data, sign in again. If `app-build` stays `dev`, redeploy: Railway → service → **Redeploy** (clear build cache if offered).
+5. **Local UI against prod API** — `cd frontend && VITE_API_BASE_URL=https://mainspring.au npm run dev` (omit variable for same-origin local backend).
+
+Railway: one service from repo root `Dockerfile`; `railway.toml` passes `RAILWAY_GIT_COMMIT_SHA` into the Vite build. Manual redeploy: Railway dashboard → your Mainspring service → **Deployments** → **Redeploy** on latest `main`.
 
 Provision a single shop from the UI: **Shops → Add shop** (creates `minit-{shop_number}`, plan `booking_only`). Bulk import still uses the TSS script below.
 

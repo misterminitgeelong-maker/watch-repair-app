@@ -6,6 +6,25 @@ import {
 } from '@/lib/minitProduct'
 
 describe('resolveMinitHqUi', () => {
+  it('prefers server is_minit_hq_ui when provided', () => {
+    expect(
+      resolveMinitHqUi({
+        tenantSlug: 'other',
+        planCode: 'pro',
+        product: 'mainspring',
+        serverMinitHqUi: true,
+      }),
+    ).toBe(true)
+    expect(
+      resolveMinitHqUi({
+        tenantSlug: 'mmsupport',
+        planCode: 'minit_hq',
+        product: 'minit',
+        serverMinitHqUi: false,
+      }),
+    ).toBe(false)
+  })
+
   it('detects mmsupport slug regardless of plan', () => {
     expect(resolveMinitHqUi({ tenantSlug: 'mmsupport', planCode: 'pro', product: 'mainspring' })).toBe(true)
     expect(resolveMinitHqUi({ tenantSlug: 'MMSupport', planCode: 'pro', product: 'mainspring' })).toBe(true)

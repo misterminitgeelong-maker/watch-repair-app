@@ -56,6 +56,8 @@ interface AuthCtx {
   scheduleCalendarTimezone: string
   /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
   sessionReady: boolean
+  /** Authoritative HQ nav flag from /auth/session (null before first session load). */
+  minitHqUi: boolean | null
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
   initializing: boolean
   /** Store address for at-shop mobile bookings (from tenant.business_address). */
@@ -177,6 +179,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [scheduleCalendarTimezone, setScheduleCalendarTimezone] = useState('Australia/Sydney')
   const [tenantBusinessAddress, setTenantBusinessAddress] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
+  const [minitHqUi, setMinitHqUi] = useState<boolean | null>(() => {
+    const snap = readSessionSnapshot()
+    if (snap && isMinitHqTenantSlug(snap.tenantSlug)) return true
+    const lastSlug = readLastLoginTenantSlug()
+    if (lastSlug && isMinitHqTenantSlug(lastSlug)) return true
+    return null
+  })
 
   const initializing = useMemo(
     () => Boolean(token && !sessionReady && !isSessionDeferPath(location.pathname)),
@@ -217,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPlanCode('pro')
       setProduct('mainspring')
       setEnabledFeatures([])
+      setMinitHqUi(null)
       setSignupPaymentPending(false)
       setSubscriptionStatus(null)
       setTrialEnd(null)
@@ -242,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mergedFeatures = mergeEnabledFeatures(effectivePlan, data.enabled_features)
     setPlanCode(effectivePlan)
     setProduct(sessionProduct)
+    setMinitHqUi(Boolean(data.is_minit_hq_ui))
     setEnabledFeatures(mergedFeatures)
     writeSessionSnapshot({
       product: sessionProduct,
@@ -273,6 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPlanCode('pro')
         setProduct('mainspring')
         setEnabledFeatures([])
+        setMinitHqUi(null)
         setSignupPaymentPending(false)
         setSubscriptionStatus(null)
         setTrialEnd(null)
@@ -342,6 +354,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setPlanCode('pro')
               setProduct('mainspring')
               setEnabledFeatures([])
+              setMinitHqUi(null)
               setSignupPaymentPending(false)
               setShopCalendarTodayYmd(null)
               setScheduleCalendarTimezone('Australia/Sydney')
@@ -386,6 +399,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPlanCode('pro')
         setProduct('mainspring')
         setEnabledFeatures([])
+        setMinitHqUi(null)
         setSignupPaymentPending(false)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
@@ -416,6 +430,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPlanCode('pro')
           setProduct('mainspring')
           setEnabledFeatures([])
+          setMinitHqUi(null)
           setSignupPaymentPending(false)
           setShopCalendarTodayYmd(null)
           setScheduleCalendarTimezone('Australia/Sydney')
@@ -456,6 +471,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode('pro')
     setProduct('mainspring')
     setEnabledFeatures([])
+    setMinitHqUi(null)
     setSignupPaymentPending(false)
     setSubscriptionStatus(null)
     setTrialEnd(null)
@@ -500,6 +516,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shopCalendarTodayYmd,
         scheduleCalendarTimezone,
         sessionReady,
+        minitHqUi,
         initializing,
         tenantBusinessAddress,
         login,

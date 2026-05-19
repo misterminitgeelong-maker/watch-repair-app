@@ -18,13 +18,15 @@ import {
   defaultHomePathForMinit,
   effectiveMinitPlanCode,
   isMinitBookingOnlyPlan,
-  isMinitHqUi,
+  resolveMinitHqUi,
   isMinitRestrictedUi,
+  readLastLoginTenantSlug,
   minitBookingOnlyAllowedPath,
   minitHqAllowedPath,
 } from '@/lib/minitProduct'
 import Sidebar from './Sidebar'
 import BottomTabBar from './BottomTabBar'
+import MinitHqBottomTabBar from './MinitHqBottomTabBar'
 import { Button, Modal } from '@/components/ui'
 import {
   getDemoTourMode,
@@ -439,6 +441,7 @@ export default function AppShell() {
     planCode,
     product,
     tenantSlug,
+    minitHqUi,
   } = useAuth()
   const { theme } = useTheme()
   const location = useLocation()
@@ -739,7 +742,13 @@ export default function AppShell() {
 
   const minitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
   const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
-  const minitHq = isMinitHqUi(product, planCode, tenantSlug)
+  const minitHq = resolveMinitHqUi({
+    product,
+    planCode,
+    tenantSlug,
+    lastLoginSlug: readLastLoginTenantSlug(),
+    serverMinitHqUi: minitHqUi,
+  })
 
   useEffect(() => {
     if (!minitUi) return
@@ -989,7 +998,7 @@ export default function AppShell() {
         </main>
       </div>
 
-      {!minitUi && <BottomTabBar />}
+      {minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>

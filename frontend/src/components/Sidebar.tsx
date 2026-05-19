@@ -83,8 +83,14 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
-  const { logout, role, hasFeature, planCode, product, tenantSlug } = useAuth()
-  const hqCtx = { product, planCode, tenantSlug, lastLoginSlug: readLastLoginTenantSlug() }
+  const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi } = useAuth()
+  const hqCtx = {
+    product,
+    planCode,
+    tenantSlug,
+    lastLoginSlug: readLastLoginTenantSlug(),
+    serverMinitHqUi: minitHqUi,
+  }
   const isMinitHq = resolveMinitHqUi(hqCtx)
 
   useEffect(() => {

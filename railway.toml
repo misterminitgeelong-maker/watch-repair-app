@@ -1,5 +1,7 @@
 [build]
 builder = "dockerfile"
+# Pass git SHA into the frontend Vite build (see Dockerfile frontend-build stage).
+buildArgs = { RAILWAY_GIT_COMMIT_SHA = "${{RAILWAY_GIT_COMMIT_SHA}}" }
 
 [deploy]
 healthcheckPath = "/v1/health"

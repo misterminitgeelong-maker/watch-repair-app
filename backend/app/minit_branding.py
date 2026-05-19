@@ -56,6 +56,14 @@ def effective_plan_code(tenant: Tenant) -> str:
     return normalize_plan_code(tenant.plan_code)
 
 
+def is_minit_hq_ui(tenant: Tenant) -> bool:
+    """True when the active tenant should see the six-item Minit HQ sidebar."""
+    slug = (tenant.slug or "").strip().lower()
+    if slug == MINIT_HQ_SLUG:
+        return True
+    return effective_plan_code(tenant) == MINIT_HQ_PLAN
+
+
 def ensure_minit_tenant_plan(session: Session, tenant: Tenant) -> Tenant:
     """Persist correct plan for Minit HQ and retail shops stuck on Mainspring plans."""
     target = target_plan_for_minit_tenant(tenant)

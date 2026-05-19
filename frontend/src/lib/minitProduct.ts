@@ -49,6 +49,8 @@ export type MinitHqUiContext = {
   tenantSlug?: string | null
   /** Persisted from login form — used before /auth/session returns. */
   lastLoginSlug?: string | null
+  /** From GET /auth/session — overrides client heuristics when present. */
+  serverMinitHqUi?: boolean | null
   /** Dev/diagnostic: ?minit_hq=1 forces HQ nav. */
   debugForce?: boolean
 }
@@ -68,6 +70,8 @@ export function isMinitHqDebugForced(): boolean {
  */
 export function resolveMinitHqUi(ctx: MinitHqUiContext): boolean {
   if (ctx.debugForce || isMinitHqDebugForced()) return true
+  if (ctx.serverMinitHqUi === true) return true
+  if (ctx.serverMinitHqUi === false) return false
 
   const sessionSlug = (ctx.tenantSlug || '').trim().toLowerCase()
   const loginSlug = (ctx.lastLoginSlug || readLastLoginTenantSlug() || '').trim().toLowerCase()

@@ -14,6 +14,12 @@ const config: UserConfigExport & { test?: { environment: string; include: string
   define: {
     'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(appBuildId),
   },
+  transformIndexHtml(html) {
+    return html.replace(
+      /(<meta\s+name="app-build"\s+content=")[^"]*("\s*\/?>)/i,
+      `$1${appBuildId}$2`,
+    )
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],

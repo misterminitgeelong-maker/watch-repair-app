@@ -240,6 +240,8 @@ export interface AuthSession {
   tenant_slug: string
   /** ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops. */
   product?: 'minit' | 'mainspring'
+  /** When true, render the six-item Minit HQ sidebar (authoritative server signal). */
+  is_minit_hq_ui?: boolean
   plan_code: PlanCode
   enabled_features: FeatureKey[]
   active_site_tenant_id: string

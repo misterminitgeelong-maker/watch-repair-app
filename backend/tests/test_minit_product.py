@@ -10,11 +10,11 @@ os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.minit_branding import effective_plan_code, ensure_minit_tenant_plan, tenant_product
+from app.minit_branding import effective_plan_code, ensure_minit_tenant_plan, is_minit_hq_ui, tenant_product
 from app.models import Tenant
 
 create_db_and_tables()
@@ -60,6 +60,40 @@ def test_ensure_minit_hq_persists_plan():
         session.commit()
         session.refresh(tenant)
         assert tenant.plan_code == "minit_hq"
+
+
+def test_minit_hq_session_flag():
+    from app.models import User
+    from app.routes.auth import _build_auth_session_response
+    from app.security import hash_password
+
+    with Session(engine) as session:
+        tenant = session.exec(select(Tenant).where(Tenant.slug == "mmsupport")).first()
+        if not tenant:
+            tenant = Tenant(name="Minit HQ", slug="mmsupport", plan_code="enterprise")
+            session.add(tenant)
+            session.commit()
+            session.refresh(tenant)
+        user = User(
+            tenant_id=tenant.id,
+            email=f"hq-{uuid4().hex[:8]}@minit.test",
+            full_name="HQ",
+            role="owner",
+            password_hash=hash_password("password12345"),
+            is_active=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        payload = _build_auth_session_response(session, tenant, user)
+    assert payload.is_minit_hq_ui is True
+    assert payload.plan_code == "minit_hq"
+    assert payload.tenant_slug == "mmsupport"
+
+
+def test_minit_hq_ui_helper():
+    assert is_minit_hq_ui(Tenant(name="HQ", slug="mmsupport", plan_code="enterprise")) is True
+    assert is_minit_hq_ui(Tenant(name="Shop", slug="minit-3269", plan_code="booking_only")) is False
 
 
 def test_minit_retail_session_strips_repair_features():
