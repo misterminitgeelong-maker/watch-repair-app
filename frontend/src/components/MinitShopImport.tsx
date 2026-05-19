@@ -6,6 +6,7 @@ import {
   importParentShopsFromXlsx,
   type ParentImportShopsResult,
 } from '@/lib/api'
+import { PARENT_ACCOUNT_QUERY_KEY } from '@/hooks/useParentAccount'
 import { Button, Card, Modal } from '@/components/ui'
 
 const ACCEPT = '.xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -27,7 +28,7 @@ export function MinitShopImport() {
     onSuccess: data => {
       setResult(data)
       setError('')
-      void qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      void qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
       void qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
     },
     onError: err => {

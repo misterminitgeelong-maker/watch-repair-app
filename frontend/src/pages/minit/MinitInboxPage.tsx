@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { KeyRound, MessageSquare } from 'lucide-react'
-import { API_ORIGIN, getInbox, getMyParentAccount } from '@/lib/api'
+import { API_ORIGIN, getInbox } from '@/lib/api'
+import { useParentAccount } from '@/hooks/useParentAccount'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
 function formatDate(s: string) {
@@ -20,10 +21,7 @@ export default function MinitInboxPage() {
     queryFn: () => getInbox(50, 0).then(r => r.data),
   })
 
-  const { data: parent, isLoading: parentLoading } = useQuery({
-    queryKey: ['parent-account-me'],
-    queryFn: () => getMyParentAccount().then(r => r.data),
-  })
+  const { data: parent, isLoading: parentLoading } = useParentAccount()
 
   if (inboxLoading || parentLoading) return <Spinner />
 

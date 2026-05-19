@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   formatTenantLabel,
   getApiErrorMessage,
-  getMyParentAccount,
   linkTenantToParentAccount,
   provisionMinitShop,
   unlinkTenantFromParentAccount,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 const OPERATOR_PLANS = new Set([
@@ -43,10 +43,7 @@ export default function MinitAccountsPage() {
   const [removingId, setRemovingId] = useState('')
   const [search, setSearch] = useState('')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['parent-account-me'],
-    queryFn: () => getMyParentAccount().then(r => r.data),
-  })
+  const { data, isLoading } = useParentAccount()
 
   const provisionMut = useMutation({
     mutationFn: () =>
@@ -62,7 +59,7 @@ export default function MinitAccountsPage() {
       setTenantName('')
       setBusinessAddress('')
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
       qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not add shop.')),
@@ -79,7 +76,7 @@ export default function MinitAccountsPage() {
       setError('')
       setShowAdd(false)
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not link shop.')),
   })
@@ -88,7 +85,7 @@ export default function MinitAccountsPage() {
     mutationFn: (tenantId: string) => unlinkTenantFromParentAccount(tenantId).then(r => r.data),
     onSuccess: () => {
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not remove shop.')),
   })
