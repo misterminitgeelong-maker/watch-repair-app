@@ -18,6 +18,7 @@ const OPERATOR_PLANS = new Set([
 const REGION_ORDER = ['VIC', 'NSW', 'QLD', 'SW', 'NZ', 'SEA'] as const
 
 const UNASSIGNED_REGION = 'Unassigned'
+const UNASSIGNED_AREA = 'Unassigned'
 
 function isRetailShop(planCode: string) {
   return !OPERATOR_PLANS.has(planCode)
@@ -49,19 +50,23 @@ function groupRetailByRegion(sites: ParentAccountSite[]): { region: string; shop
       if (diff !== 0) return diff
       return a.localeCompare(b)
     })
-    .map(([region, shops]) => {
-      shops.sort(compareShopNumber)
-      return { region, shops }
-    })
+    .map(([region, shops]) => ({ region, shops }))
 }
 
-function regionAreaSummary(shops: ParentAccountSite[]): string | null {
-  const areas = [...new Set(shops.map(s => s.area?.trim()).filter(Boolean) as string[])].sort((a, b) =>
-    a.localeCompare(b),
-  )
-  if (areas.length === 0) return null
-  if (areas.length <= 4) return areas.join(', ')
-  return `${areas.slice(0, 3).join(', ')} +${areas.length - 3} more`
+function groupByArea(shops: ParentAccountSite[]): { area: string; shops: ParentAccountSite[] }[] {
+  const map = new Map<string, ParentAccountSite[]>()
+  for (const site of shops) {
+    const area = site.area?.trim() || UNASSIGNED_AREA
+    const list = map.get(area) ?? []
+    list.push(site)
+    map.set(area, list)
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    .map(([area, list]) => {
+      list.sort(compareShopNumber)
+      return { area, shops: list }
+    })
 }
 
 function ShopRow({
@@ -94,7 +99,6 @@ function ShopRow({
           )}
         </p>
         <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--ms-text-muted)' }}>
-          {site.area?.trim() ? `${site.area.trim()} · ` : ''}
           {site.tenant_slug}
         </p>
       </div>
@@ -119,6 +123,101 @@ function RegionSkeleton() {
       <div className="space-y-2">
         {[1, 2, 3].map(i => (
           <div key={i} className="h-14 rounded-md" style={{ backgroundColor: 'var(--ms-border)' }} />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function RegionShopsCard({
+  region,
+  shops,
+  activeSiteTenantId,
+  switchingId,
+  onSwitch,
+}: {
+  region: string
+  shops: ParentAccountSite[]
+  activeSiteTenantId: string | null
+  switchingId: string
+  onSwitch: (tenantId: string) => void
+}) {
+  const areaGroups = useMemo(() => groupByArea(shops), [shops])
+  const [activeArea, setActiveArea] = useState(() => areaGroups[0]?.area ?? UNASSIGNED_AREA)
+
+  const safeActiveArea = areaGroups.some(g => g.area === activeArea)
+    ? activeArea
+    : (areaGroups[0]?.area ?? UNASSIGNED_AREA)
+
+  const visibleShops = useMemo(
+    () => areaGroups.find(g => g.area === safeActiveArea)?.shops ?? [],
+    [areaGroups, safeActiveArea],
+  )
+
+  return (
+    <Card className="flex flex-col overflow-hidden" style={{ maxHeight: 'min(70vh, 520px)' }}>
+      <div
+        className="px-4 py-3 shrink-0"
+        style={{
+          borderBottom: areaGroups.length > 1 ? undefined : '1px solid var(--ms-border)',
+          backgroundColor: 'var(--ms-surface-raised, var(--ms-surface))',
+        }}
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="font-semibold text-base" style={{ color: 'var(--ms-text)' }}>
+            {region}
+          </h2>
+          <span
+            className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: 'var(--ms-accent-light)', color: 'var(--ms-accent)' }}
+          >
+            {shops.length}
+          </span>
+        </div>
+      </div>
+
+      {areaGroups.length > 0 && (
+        <div
+          className="shrink-0 px-2 pt-2 overflow-x-auto"
+          style={{ borderBottom: '1px solid var(--ms-border)' }}
+          role="tablist"
+          aria-label={`${region} areas`}
+        >
+          <div className="flex gap-1 min-w-min pb-2">
+            {areaGroups.map(({ area, shops: areaShops }) => {
+              const selected = area === safeActiveArea
+              return (
+                <button
+                  key={area}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setActiveArea(area)}
+                  className="shrink-0 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+                  style={{
+                    backgroundColor: selected ? 'var(--ms-accent-light)' : 'transparent',
+                    color: selected ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                    border: selected ? '1px solid var(--ms-accent)' : '1px solid transparent',
+                  }}
+                >
+                  {area}
+                  <span className="ml-1.5 tabular-nums opacity-80">{areaShops.length}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2" role="tabpanel" aria-label={safeActiveArea}>
+        {visibleShops.map(site => (
+          <ShopRow
+            key={site.tenant_id}
+            site={site}
+            activeSiteTenantId={activeSiteTenantId}
+            switchingId={switchingId}
+            onSwitch={onSwitch}
+          />
         ))}
       </div>
     </Card>
@@ -182,7 +281,7 @@ export default function MinitShopsPage() {
     <div>
       <PageHeader title="Shops" action={<MinitShopImport />} />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Retail shops grouped by region. Import from Excel or manage accounts under Accounts.
+        Retail shops grouped by region and area. Import from Excel or manage accounts under Accounts.
         {isFetching && !isLoading && (
           <span className="ml-2 opacity-70">Refreshing…</span>
         )}
@@ -245,55 +344,16 @@ export default function MinitShopsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {regionGroups.map(({ region, shops }) => {
-            const areaLine = regionAreaSummary(shops)
-            return (
-              <Card
-                key={region}
-                className="flex flex-col overflow-hidden"
-                style={{ maxHeight: 'min(70vh, 520px)' }}
-              >
-                <div
-                  className="px-4 py-3 shrink-0"
-                  style={{
-                    borderBottom: '1px solid var(--ms-border)',
-                    backgroundColor: 'var(--ms-surface-raised, var(--ms-surface))',
-                  }}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h2 className="font-semibold text-base" style={{ color: 'var(--ms-text)' }}>
-                      {region}
-                    </h2>
-                    <span
-                      className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: 'var(--ms-accent-light)',
-                        color: 'var(--ms-accent)',
-                      }}
-                    >
-                      {shops.length}
-                    </span>
-                  </div>
-                  {areaLine && (
-                    <p className="text-xs mt-1 leading-snug" style={{ color: 'var(--ms-text-muted)' }}>
-                      {areaLine}
-                    </p>
-                  )}
-                </div>
-                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
-                  {shops.map(site => (
-                    <ShopRow
-                      key={site.tenant_id}
-                      site={site}
-                      activeSiteTenantId={activeSiteTenantId}
-                      switchingId={switchingId}
-                      onSwitch={handleSwitch}
-                    />
-                  ))}
-                </div>
-              </Card>
-            )
-          })}
+          {regionGroups.map(({ region, shops }) => (
+            <RegionShopsCard
+              key={region}
+              region={region}
+              shops={shops}
+              activeSiteTenantId={activeSiteTenantId}
+              switchingId={switchingId}
+              onSwitch={handleSwitch}
+            />
+          ))}
         </div>
       )}
 
