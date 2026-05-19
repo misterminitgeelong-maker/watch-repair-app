@@ -394,7 +394,7 @@ export default function MinitOperationsPage() {
         {[
           { to: '/minit/shops', icon: Building2, label: 'Shops' },
           { to: '/minit/mobile-services', icon: KeyRound, label: 'Mobile Services' },
-          { to: '/minit/inbox', icon: Clock, label: 'Inbox' },
+          { to: '/minit/inbox', icon: Inbox, label: 'Inbox' },
           { to: '/minit/accounts', icon: Building2, label: 'Accounts' },
         ].map(({ to, icon: Icon, label }) => (
           <Link
