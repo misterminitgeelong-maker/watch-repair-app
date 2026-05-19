@@ -1,6 +1,6 @@
 """Add tenant.minit_area and tenant.minit_region from TSS shop import.
 
-Revision ID: 20260519_tenant_minit_area_region
+Revision ID: 20260519_minit_area_region
 Revises: 20260519_tenant_shop_number
 Create Date: 2026-05-19
 
@@ -8,7 +8,8 @@ Create Date: 2026-05-19
 from alembic import op
 import sqlalchemy as sa
 
-revision = "20260519_tenant_minit_area_region"
+# revision identifiers, used by Alembic. (Keep <= 32 chars for alembic_version.version_num)
+revision = "20260519_minit_area_region"
 down_revision = "20260519_tenant_shop_number"
 branch_labels = None
 depends_on = None
