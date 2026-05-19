@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core'
 import { compressImage, ImageCompressionError } from '@/lib/imageCompression'
 import { getUploadErrorMessage } from '@/lib/api'
 
@@ -37,28 +36,24 @@ export function getIntakeSubmitErrorMessage(err: unknown, fallback: string): str
   return getUploadErrorMessage(err, getUploadErrorMessage(err, fallback))
 }
 
-/** Let the WebView breathe between heavy native uploads. */
+/** Let the browser breathe between heavy uploads on constrained devices. */
 export async function yieldToMainThread(): Promise<void> {
   await new Promise<void>(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
-  if (Capacitor.isNativePlatform()) {
-    await new Promise(r => setTimeout(r, 80))
-  }
 }
 
-/** Upload files one-by-one on native (memory); optional parallel on desktop. */
+/** Upload files one-by-one or in parallel on desktop. */
 export async function uploadFilesSequential<T>(
   files: File[],
   uploadOne: (file: File) => Promise<T>,
   options?: { parallelOnWeb?: boolean },
 ): Promise<T[]> {
-  const parallel = options?.parallelOnWeb && !Capacitor.isNativePlatform()
-  if (parallel) return Promise.all(files.map(uploadOne))
+  if (options?.parallelOnWeb) return Promise.all(files.map(uploadOne))
   const results: T[] = []
   for (const file of files) {
     results.push(await uploadOne(file))
-    if (Capacitor.isNativePlatform()) await yieldToMainThread()
+    await yieldToMainThread()
   }
   return results
 }

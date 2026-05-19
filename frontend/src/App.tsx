@@ -7,7 +7,6 @@ import { useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import NativeChrome from '@/components/NativeChrome'
 import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
 
@@ -94,7 +93,6 @@ export default function App() {
   const inner = (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
-        <NativeChrome />
         <ThemeProvider>
         <AuthProvider>
           <LocationBoundary>

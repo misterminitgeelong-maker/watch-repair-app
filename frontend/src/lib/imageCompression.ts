@@ -1,6 +1,4 @@
-import { Capacitor } from '@capacitor/core'
-
-/** Resize camera/gallery images before upload or preview (reduces mobile WebView memory pressure). */
+/** Resize camera/gallery images before upload or preview (reduces memory pressure on mobile browsers). */
 export class ImageCompressionError extends Error {
   constructor(message: string) {
     super(message)
@@ -11,14 +9,11 @@ export class ImageCompressionError extends Error {
 export interface CompressionOptions {
   maxDim: number
   quality: number
-  /** Cap total canvas pixels (avoids GPU/memory blow-ups on low-end WebViews). */
+  /** Cap total canvas pixels (avoids GPU/memory blow-ups on low-end devices). */
   maxPixels: number
 }
 
 export function getCompressionOptions(): CompressionOptions {
-  if (Capacitor.isNativePlatform()) {
-    return { maxDim: 1024, quality: 0.72, maxPixels: 1_200_000 }
-  }
   return { maxDim: 1500, quality: 0.8, maxPixels: 2_250_000 }
 }
 
