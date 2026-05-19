@@ -6,7 +6,7 @@ import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
-import { seedLoginTenantHint } from '@/lib/minitProduct'
+import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 
 const ANIM_CSS = `
@@ -19,7 +19,7 @@ const ANIM_CSS = `
 `
 
 export default function LoginPage() {
-  const { token, sessionReady, login: setToken } = useAuth()
+  const { token, sessionReady, login: setToken, planCode, tenantSlug } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
@@ -51,7 +51,9 @@ export default function LoginPage() {
     applyMinitBrandingIfNeeded(slug)
   }, [slug])
 
-  if (token && sessionReady) return <Navigate to="/dashboard" replace />
+  if (token && sessionReady) {
+    return <Navigate to={defaultHomePathForMinit(planCode, tenantSlug)} replace />
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,7 +68,10 @@ export default function LoginPage() {
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       if (mode === 'single') applyMinitBrandingIfNeeded(slug)
-      navigate('/dashboard')
+      if (mode === 'single' && isMinitHqTenantSlug(slug)) {
+        void import('@/pages/minit/MinitOperationsPage')
+      }
+      navigate(mode === 'single' ? homePathAfterLogin(slug) : '/dashboard')
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
         setError('Server is temporarily unavailable. Please try again in a moment.')
@@ -102,7 +107,8 @@ export default function LoginPage() {
         .catch(() => { /* Non-fatal */ })
       resetDemoTour()
       resetAllPageTutorials()
-      navigate('/dashboard')
+      seedLoginTenantHint(demoCreds.slug)
+      navigate(homePathAfterLogin(demoCreds.slug))
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {

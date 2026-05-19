@@ -38,7 +38,7 @@ from ..models import (
     Tenant,
     User,
 )
-from ..shop_number import format_tenant_label, linked_tenants_for_parent
+from ..shop_number import format_tenant_label, linked_tenant_ids_for_parent, linked_tenants_for_parent
 from .parent_accounts import _get_parent_account_for_user, _record_event
 from .shop_mobile_bookings import (
     BOOKABLE_OPERATOR_PLAN_CODES,
@@ -288,17 +288,44 @@ def _collect_troubleshooting_items(
     return items[:limit]
 
 
+def _classify_linked_tenants(
+    session: Session,
+    parent_id: UUID,
+) -> tuple[list[UUID], list[UUID], dict[str, int], int]:
+    """Lightweight plan/region scan — avoids loading full Tenant ORM rows for every shop."""
+    ids = linked_tenant_ids_for_parent(session, parent_id)
+    if not ids:
+        return [], [], {}, 0
+    rows = session.exec(
+        select(
+            Tenant.id,
+            Tenant.plan_code,
+            Tenant.minit_region,
+            Tenant.mobile_dispatch_phone,
+        ).where(col(Tenant.id).in_(ids))  # type: ignore[attr-defined]
+    ).all()
+    retail_ids: list[UUID] = []
+    operator_ids: list[UUID] = []
+    region_shops: dict[str, int] = defaultdict(int)
+    missing_dispatch = 0
+    for tid, plan_code, region, phone in rows:
+        if _is_retail_shop(plan_code):
+            retail_ids.append(tid)
+            reg = (region or "").strip() or _UNASSIGNED_REGION
+            region_shops[reg] += 1
+        elif _is_operator(plan_code):
+            operator_ids.append(tid)
+            if not (phone or "").strip():
+                missing_dispatch += 1
+    return retail_ids, operator_ids, dict(region_shops), missing_dispatch
+
+
 def _region_dashboard_stats(
     session: Session,
     parent_id: UUID,
-    retail: list[Tenant],
+    region_shops: dict[str, int],
     since_30d: datetime,
 ) -> list[ParentRegionDashboardStat]:
-    region_shops: dict[str, int] = defaultdict(int)
-    for shop in retail:
-        region = (shop.minit_region or "").strip() or _UNASSIGNED_REGION
-        region_shops[region] += 1
-
     booking_rows = session.exec(
         select(
             Tenant.minit_region,
@@ -393,11 +420,14 @@ def get_operations_overview(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
     parent = _resolve_parent(session, user)
-    tenants = _linked_tenants(session, parent.id)
-    retail = [t for t in tenants if _is_retail_shop(t.plan_code)]
-    operators = [t for t in tenants if _is_operator(t.plan_code)]
-    retail_ids = [t.id for t in retail]
-    operator_ids = [t.id for t in operators]
+    retail_ids, operator_ids, region_shop_counts, missing_dispatch = _classify_linked_tenants(
+        session, parent.id
+    )
+    operators = (
+        session.exec(select(Tenant).where(col(Tenant.id).in_(operator_ids))).all()  # type: ignore[attr-defined]
+        if operator_ids
+        else []
+    )
 
     pending = int(
         session.exec(
@@ -438,7 +468,9 @@ def get_operations_overview(
             .distinct()
         ).all()
     }
-    shops_without_recent = sum(1 for shop in retail if shop.id not in active_shop_ids)
+    retail_id_set = set(retail_ids)
+    active_retail = active_shop_ids & retail_id_set
+    shops_without_recent = len(retail_ids) - len(active_retail)
 
     problem_bookings = int(
         session.exec(
@@ -460,10 +492,6 @@ def get_operations_overview(
         ).one()
     )
 
-    missing_dispatch = sum(
-        1 for op in operators if not (getattr(op, "mobile_dispatch_phone", None) or "").strip()
-    )
-
     counts_7d = _booking_status_counts(session, parent.id, week_ago)
     counts_30d = _booking_status_counts(session, parent.id, cutoff_30d)
     bookings_7d = sum(counts_7d.values())
@@ -473,12 +501,22 @@ def get_operations_overview(
     acceptance_rate_7d = round(accepted_7d / resolved_7d * 100, 1) if resolved_7d else None
 
     attention_items = _collect_troubleshooting_items(
-        session, parent, retail, operators, limit=12, max_quiet_shops=0
+        session, parent, [], operators, limit=12, max_quiet_shops=0
     )
+    if shops_without_recent > 0 and not any(i.kind == "shops_quiet_summary" for i in attention_items):
+        attention_items.append(
+            ParentTroubleshootingItem(
+                kind="shops_quiet_summary",
+                severity="info",
+                title=f"{shops_without_recent} shops with no bookings in 30 days",
+                detail="See Shop reports for adoption across the network.",
+            )
+        )
+        attention_items = attention_items[:12]
 
     return ParentOperationsOverview(
-        retail_shop_count=len(retail),
-        operator_count=len(operators),
+        retail_shop_count=len(retail_ids),
+        operator_count=len(operator_ids),
         pending_bookings=pending,
         active_mobile_jobs=active_jobs,
         shops_without_recent_booking=shops_without_recent,
@@ -491,7 +529,7 @@ def get_operations_overview(
         accepted_30d=counts_30d.get("accepted", 0),
         stale_pending_count=stale_pending,
         acceptance_rate_7d=acceptance_rate_7d,
-        region_stats=_region_dashboard_stats(session, parent.id, retail, cutoff_30d),
+        region_stats=_region_dashboard_stats(session, parent.id, region_shop_counts, cutoff_30d),
         recent_bookings=_recent_booking_snippets(session, parent.id),
         attention_items=attention_items,
     )

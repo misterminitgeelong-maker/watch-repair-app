@@ -11,6 +11,20 @@ import { Spinner } from '@/components/ui'
 import type { FeatureKey } from '@/lib/api'
 import { defaultHomePathForMinit, isMinitHqUi, isMinitRestrictedUi } from '@/lib/minitProduct'
 
+function DashboardRoute() {
+  const { role, product, planCode, tenantSlug, minitHqUi } = useAuth()
+  const hq =
+    role === 'platform_admin'
+    || minitHqUi === true
+    || isMinitHqUi(product, planCode, tenantSlug)
+  if (hq) return <Navigate to="/minit/dashboard" replace />
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <DashboardPage />
+    </Suspense>
+  )
+}
+
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
 const qc = new QueryClient({
@@ -159,7 +173,7 @@ export default function App() {
             <Route path="/signup/checkout" element={<SignupCheckoutPage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
-              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="dashboard" element={<DashboardRoute />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailPage />} />
               <Route path="jobs" element={<FeatureGate feature="watch"><JobsPage /></FeatureGate>} />

@@ -18,7 +18,7 @@ import {
   type ParentTroubleshootingItem,
 } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { Card, PageHeader, Spinner } from '@/components/ui'
+import { Card, PageHeader } from '@/components/ui'
 
 function relativeTime(iso: string) {
   const d = new Date(iso)
@@ -154,21 +154,49 @@ function needsAttentionCount(data: ParentOperationsOverview) {
   )
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map(i => (
+          <Card key={i} className="h-24" style={{ backgroundColor: 'var(--ms-border)' }} />
+        ))}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="h-64" style={{ backgroundColor: 'var(--ms-border)' }} />
+        <Card className="h-64" style={{ backgroundColor: 'var(--ms-border)' }} />
+      </div>
+    </div>
+  )
+}
+
 export default function MinitOperationsPage() {
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ['minit-operations-overview'],
     queryFn: () => getParentOperationsOverview().then(r => r.data),
+    staleTime: 120_000,
     refetchInterval: 60_000,
   })
 
-  if (isLoading) return <Spinner />
-  if (isError || !data) {
+  if (isError || (!isLoading && !data)) {
     return (
       <div>
         <PageHeader title="Dashboard" />
         <p className="text-sm" style={{ color: '#C96A5A' }}>
           Could not load dashboard. Confirm you are signed in as Minit HQ (mmsupport).
         </p>
+      </div>
+    )
+  }
+
+  if (isLoading || !data) {
+    return (
+      <div>
+        <PageHeader title="Dashboard" />
+        <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
+          Loading network overview…
+        </p>
+        <DashboardSkeleton />
       </div>
     )
   }

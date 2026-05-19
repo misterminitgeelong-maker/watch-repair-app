@@ -212,6 +212,17 @@ export function minitBookingOnlyAllowedPath(pathname: string): boolean {
   return /^\/(shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(pathname)
 }
 
+/** Post-login destination from shop ID (before /auth/session completes). */
+export function homePathAfterLogin(tenantSlug: string): string {
+  const slug = tenantSlug.trim().toLowerCase()
+  if (!slug) return '/dashboard'
+  return defaultHomePathForMinit(isMinitHqTenantSlug(slug) ? 'minit_hq' : null, slug)
+}
+
+export function hasOptimisticSessionHint(): boolean {
+  return Boolean(readSessionSnapshot() || readLastLoginTenantSlug())
+}
+
 export function defaultHomePathForMinit(
   planCode: PlanCode | null | undefined,
   tenantSlug?: string | null,

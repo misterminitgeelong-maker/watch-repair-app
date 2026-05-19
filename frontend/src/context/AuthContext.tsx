@@ -23,6 +23,7 @@ import {
   featuresForPlan,
   isMinitHqTenantSlug,
   mergeEnabledFeatures,
+  hasOptimisticSessionHint,
   readLastLoginTenantSlug,
   readSessionSnapshot,
   tenantProductFromSlug,
@@ -178,7 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [shopCalendarTodayYmd, setShopCalendarTodayYmd] = useState<string | null>(null)
   const [scheduleCalendarTimezone, setScheduleCalendarTimezone] = useState('Australia/Sydney')
   const [tenantBusinessAddress, setTenantBusinessAddress] = useState<string | null>(null)
-  const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
+  const [sessionReady, setSessionReady] = useState(() => {
+    if (!getStoredAccessToken()) return true
+    return hasOptimisticSessionHint()
+  })
   const [minitHqUi, setMinitHqUi] = useState<boolean | null>(() => {
     const snap = readSessionSnapshot()
     if (snap && isMinitHqTenantSlug(snap.tenantSlug)) return true
@@ -321,7 +325,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let canceled = false
       let timedOut = false
 
-      setSessionReady(false)
+      const optimistic = hasOptimisticSessionHint()
+      if (!optimistic) {
+        setSessionReady(false)
+      } else {
+        // Snapshot from last session or seedLoginTenantHint — render shell while refreshing.
+        setSessionReady(true)
+      }
 
       const timeoutId = setTimeout(() => {
         timedOut = true

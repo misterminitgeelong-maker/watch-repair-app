@@ -30,6 +30,7 @@ import {
 } from '@/lib/api'
 import { Badge, Button, Card, Input, Modal, PageHeader } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
+import { isMinitRestrictedUi } from '@/lib/minitProduct'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Link, useNavigate } from 'react-router-dom'
@@ -240,52 +241,63 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function DashboardPage() {
-  const { tenantId, role, planCode, availableSites, hasFeature } = useAuth()
+  const { tenantId, role, planCode, product, tenantSlug, availableSites, hasFeature } = useAuth()
+  const mainspringDashboard = !isMinitRestrictedUi(product, planCode, tenantSlug)
   const navigate = useNavigate()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
-  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data) })
-  const reportsQ = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then((r) => r.data) })
+  const invoicesQ = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data),
+    enabled: mainspringDashboard,
+  })
+  const reportsQ = useQuery({
+    queryKey: ['reports-summary'],
+    queryFn: () => getReportsSummary().then((r) => r.data),
+    enabled: mainspringDashboard,
+  })
   const invoices = invoicesQ.data ?? []
   const reports = reportsQ.data
   const recentWatchJobsQ = useQuery({
     queryKey: ['jobs', 'dashboard', 'recent', DEFAULT_PAGE_SIZE],
     queryFn: () =>
       listJobs({ limit: DEFAULT_PAGE_SIZE, offset: 0, sort_by: 'created_at', sort_dir: 'desc' }).then((r) => r.data),
-    enabled: hasFeature('watch'),
+    enabled: mainspringDashboard && hasFeature('watch'),
     refetchInterval: 30_000,
   })
   const shoeJobsQ = useQuery({
     queryKey: ['shoe-repair-jobs', 'dashboard'],
     queryFn: () => listShoeRepairJobs().then((r) => r.data),
-    enabled: hasFeature('shoe'),
+    enabled: mainspringDashboard && hasFeature('shoe'),
     refetchInterval: 30_000,
   })
   const autoKeyJobsQ = useQuery({
     queryKey: ['auto-key-jobs', 'dashboard'],
     queryFn: () => listAutoKeyJobs().then((r) => r.data),
-    enabled: hasFeature('auto_key'),
+    enabled: mainspringDashboard && hasFeature('auto_key'),
     refetchInterval: 30_000,
   })
   const { data: customerAccounts } = useQuery({
     queryKey: ['customer-accounts', 'dashboard'],
     queryFn: () => listCustomerAccounts().then((r) => r.data),
-    enabled: hasFeature('customer_accounts'),
+    enabled: mainspringDashboard && hasFeature('customer_accounts'),
   })
   const { data: users } = useQuery({
     queryKey: ['users', 'dashboard'],
     queryFn: () => listUsers().then((r) => r.data),
-    enabled: canViewAccountMetrics,
+    enabled: mainspringDashboard && canViewAccountMetrics,
   })
   const widgetsQ = useQuery({
     queryKey: ['reports-widgets'],
     queryFn: () => getReportsWidgets().then((r) => r.data),
+    enabled: mainspringDashboard,
   })
   const inboxAlertsQ = useQuery({
     queryKey: ['inbox', 0],
     queryFn: () => getInbox(50, 0).then((r) => r.data),
+    enabled: mainspringDashboard,
   })
   const recentWatchJobs = recentWatchJobsQ.data
   const shoeJobs = shoeJobsQ.data
