@@ -10,15 +10,21 @@ const appBuildId =
   'dev'
 
 const config: UserConfigExport & { test?: { environment: string; include: string[]; setupFiles?: string[] } } = {
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'inject-app-build-id',
+      transformIndexHtml(html: string) {
+        return html.replace(
+          /(<meta\s+name="app-build"\s+content=")[^"]*("\s*\/?>)/i,
+          `$1${appBuildId}$2`,
+        )
+      },
+    },
+  ],
   define: {
     'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(appBuildId),
-  },
-  transformIndexHtml(html) {
-    return html.replace(
-      /(<meta\s+name="app-build"\s+content=")[^"]*("\s*\/?>)/i,
-      `$1${appBuildId}$2`,
-    )
   },
   test: {
     environment: 'node',
