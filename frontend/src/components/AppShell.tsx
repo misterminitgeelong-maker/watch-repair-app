@@ -743,6 +743,19 @@ export default function AppShell() {
     if (location.pathname === '/dashboard') {
       navigate(defaultHomePathForMinit(planCode), { replace: true })
     }
+    if (isMinitHqPlan(planCode)) {
+      if (location.pathname === '/minit/operations') {
+        navigate('/minit/dashboard', { replace: true })
+      } else if (location.pathname === '/accounts') {
+        navigate('/minit/accounts', { replace: true })
+      } else if (location.pathname === '/parent-account') {
+        navigate('/minit/dashboard', { replace: true })
+      } else if (location.pathname === '/shop-mobile-bookings') {
+        navigate('/minit/mobile-services', { replace: true })
+      } else if (location.pathname === '/inbox') {
+        navigate('/minit/inbox', { replace: true })
+      }
+    }
   }, [minitUi, planCode, location.pathname, navigate])
 
   useEffect(() => {

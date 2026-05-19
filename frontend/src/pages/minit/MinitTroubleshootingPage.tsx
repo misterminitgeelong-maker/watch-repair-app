@@ -73,7 +73,7 @@ export default function MinitTroubleshootingPage() {
                   )}
                   {item.kind.startsWith('job_') && (
                     <Link
-                      to="/minit/reports/mobile"
+                      to="/minit/mobile-services"
                       className="font-medium underline"
                       style={{ color: 'var(--ms-accent)' }}
                     >

@@ -72,6 +72,9 @@ const MinitShopsPage = lazy(() => import('@/pages/minit/MinitShopsPage'))
 const MinitShopReportsPage = lazy(() => import('@/pages/minit/MinitShopReportsPage'))
 const MinitMobileReportsPage = lazy(() => import('@/pages/minit/MinitMobileReportsPage'))
 const MinitTroubleshootingPage = lazy(() => import('@/pages/minit/MinitTroubleshootingPage'))
+const MinitInboxPage = lazy(() => import('@/pages/minit/MinitInboxPage'))
+const MinitAccountsPage = lazy(() => import('@/pages/minit/MinitAccountsPage'))
+const MinitReportsHubPage = lazy(() => import('@/pages/minit/MinitReportsHubPage'))
 
 function RouteFallback() {
   return (
@@ -176,10 +179,15 @@ export default function App() {
               <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
-              <Route path="minit/operations" element={<FeatureGate feature="multi_site"><MinitOperationsPage /></FeatureGate>} />
+              <Route path="minit/dashboard" element={<FeatureGate feature="multi_site"><MinitOperationsPage /></FeatureGate>} />
+              <Route path="minit/operations" element={<Navigate to="/minit/dashboard" replace />} />
+              <Route path="minit/inbox" element={<FeatureGate feature="multi_site"><MinitInboxPage /></FeatureGate>} />
               <Route path="minit/shops" element={<FeatureGate feature="multi_site"><MinitShopsPage /></FeatureGate>} />
+              <Route path="minit/mobile-services" element={<FeatureGate feature="multi_site"><MinitMobileReportsPage /></FeatureGate>} />
+              <Route path="minit/accounts" element={<FeatureGate feature="multi_site"><MinitAccountsPage /></FeatureGate>} />
+              <Route path="minit/reports" element={<FeatureGate feature="multi_site"><MinitReportsHubPage /></FeatureGate>} />
               <Route path="minit/reports/shops" element={<FeatureGate feature="multi_site"><MinitShopReportsPage /></FeatureGate>} />
-              <Route path="minit/reports/mobile" element={<FeatureGate feature="multi_site"><MinitMobileReportsPage /></FeatureGate>} />
+              <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
               <Route path="minit/troubleshooting" element={<FeatureGate feature="multi_site"><MinitTroubleshootingPage /></FeatureGate>} />
               <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />

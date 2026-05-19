@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Building2, BarChart3, KeyRound, Wrench } from 'lucide-react'
+import { Building2, BarChart3, Inbox, KeyRound } from 'lucide-react'
 import { getParentOperationsOverview } from '@/lib/api'
 import { Card, PageHeader, Spinner } from '@/components/ui'
 
@@ -63,9 +63,9 @@ export default function MinitOperationsPage() {
   if (isError || !data) {
     return (
       <div>
-        <PageHeader title="Operations" />
+        <PageHeader title="Dashboard" />
         <p className="text-sm" style={{ color: '#C96A5A' }}>
-          Could not load operations overview. Confirm you are signed in as Minit HQ (mmsupport).
+          Could not load dashboard. Confirm you are signed in as Minit HQ (mmsupport).
         </p>
       </div>
     )
@@ -73,9 +73,9 @@ export default function MinitOperationsPage() {
 
   return (
     <div>
-      <PageHeader title="Operations" />
+      <PageHeader title="Dashboard" />
       <p className="text-sm mb-6" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Network control centre for shop bookings and mobile services across {data.retail_shop_count} shops and{' '}
+        Operations overview for shop bookings and mobile services across {data.retail_shop_count} shops and{' '}
         {data.operator_count} operators.
       </p>
 
@@ -84,13 +84,13 @@ export default function MinitOperationsPage() {
           label="Pending bookings"
           value={data.pending_bookings}
           hint="Awaiting operator accept/decline"
-          to="/minit/troubleshooting"
+          to="/minit/reports"
         />
         <KpiCard
           label="Active mobile jobs"
           value={data.active_mobile_jobs}
           hint="In progress across the network"
-          to="/minit/reports/mobile"
+          to="/minit/mobile-services"
         />
         <KpiCard
           label="Shops quiet (30d)"
@@ -102,13 +102,13 @@ export default function MinitOperationsPage() {
           label="Problem bookings (7d)"
           value={data.problem_bookings_7d}
           hint="Declined, cancelled, or expired"
-          to="/minit/troubleshooting"
+          to="/minit/reports"
         />
         <KpiCard
           label="Operators missing SMS"
           value={data.operators_missing_dispatch_phone}
           hint="No dispatch phone for booking alerts"
-          to="/minit/troubleshooting"
+          to="/minit/reports"
         />
         <KpiCard label="Retail shops" value={data.retail_shop_count} hint="Linked booking-only sites" to="/minit/shops" />
       </div>
@@ -117,12 +117,11 @@ export default function MinitOperationsPage() {
         Quick links
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <QuickLink to="/minit/shops" icon={Building2} label="Shop control" />
-        <QuickLink to="/minit/reports/shops" icon={BarChart3} label="Shop reports" />
-        <QuickLink to="/minit/reports/mobile" icon={KeyRound} label="Mobile reports" />
-        <QuickLink to="/minit/troubleshooting" icon={Wrench} label="Troubleshooting" />
-        <QuickLink to="/shop-mobile-bookings" icon={AlertTriangle} label="Test booking" />
-        <QuickLink to="/parent-account" icon={Building2} label="Lead routing" />
+        <QuickLink to="/minit/shops" icon={Building2} label="Shops" />
+        <QuickLink to="/minit/inbox" icon={Inbox} label="Inbox" />
+        <QuickLink to="/minit/mobile-services" icon={KeyRound} label="Mobile Services" />
+        <QuickLink to="/minit/reports" icon={BarChart3} label="Reports" />
+        <QuickLink to="/minit/accounts" icon={Building2} label="Accounts" />
       </div>
     </div>
   )

@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   formatTenantLabel,
-  getApiErrorMessage,
   getMyParentAccount,
-  linkTenantToParentAccount,
-  provisionMinitShop,
-  unlinkTenantFromParentAccount,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import { Button, Card, PageHeader, Spinner } from '@/components/ui'
 
 const OPERATOR_PLANS = new Set([
   'basic_auto_key',
@@ -25,100 +21,35 @@ function isRetailShop(planCode: string) {
 }
 
 export default function MinitShopsPage() {
-  const { activeSiteTenantId, switchSite, refreshSession } = useAuth()
-  const qc = useQueryClient()
-  const [error, setError] = useState('')
-  const [showAdd, setShowAdd] = useState(false)
-  const [shopNumber, setShopNumber] = useState('')
-  const [tenantName, setTenantName] = useState('')
-  const [businessAddress, setBusinessAddress] = useState('')
-  const [linkSlug, setLinkSlug] = useState('')
-  const [linkEmail, setLinkEmail] = useState('')
-  const [addMode, setAddMode] = useState<'provision' | 'link'>('provision')
-  const [removingId, setRemovingId] = useState('')
+  const { activeSiteTenantId, switchSite } = useAuth()
 
   const { data, isLoading } = useQuery({
     queryKey: ['parent-account-me'],
     queryFn: () => getMyParentAccount().then(r => r.data),
   })
 
-  const provisionMut = useMutation({
-    mutationFn: () =>
-      provisionMinitShop({
-        shop_number: shopNumber.trim(),
-        tenant_name: tenantName.trim(),
-        business_address: businessAddress.trim() || undefined,
-      }).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      setShowAdd(false)
-      setShopNumber('')
-      setTenantName('')
-      setBusinessAddress('')
-      void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
-      qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not add shop.')),
-  })
-
-  const linkMut = useMutation({
-    mutationFn: () =>
-      linkTenantToParentAccount({
-        tenant_slug: linkSlug.trim().toLowerCase(),
-        owner_email: linkEmail.trim().toLowerCase(),
-        shop_number: shopNumber.trim() || undefined,
-      }).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      setShowAdd(false)
-      void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not link shop.')),
-  })
-
-  const unlinkMut = useMutation({
-    mutationFn: (tenantId: string) => unlinkTenantFromParentAccount(tenantId).then(r => r.data),
-    onSuccess: () => {
-      void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not remove shop.')),
-  })
+  const [switchingId, setSwitchingId] = useState('')
 
   if (isLoading) return <Spinner />
 
   const retailSites = (data?.sites ?? []).filter(s => isRetailShop(s.plan_code))
   const operators = (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code))
 
-  async function handleRemove(tenantId: string) {
-    if (!window.confirm('Remove this shop from the network? The tenant is not deleted.')) return
-    setRemovingId(tenantId)
+  async function handleSwitch(tenantId: string) {
+    setSwitchingId(tenantId)
     try {
-      await unlinkMut.mutateAsync(tenantId)
+      await switchSite(tenantId)
     } finally {
-      setRemovingId('')
+      setSwitchingId('')
     }
   }
 
   return (
     <div>
-      <PageHeader
-        title="Shops"
-        action={
-          <Button onClick={() => { setError(''); setShowAdd(true) }}>+ Add shop</Button>
-        }
-      />
+      <PageHeader title="Shops" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Provision retail shops (slug minit-{'{shop_number}'}, plan booking_only) or link existing tenants.
+        View and switch between retail shops and mobile operators on the network. Add or remove shops in Accounts.
       </p>
-
-      {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
-          {error}
-        </div>
-      )}
 
       <Card className="mb-6 overflow-hidden">
         <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
@@ -136,28 +67,24 @@ export default function MinitShopsPage() {
               <div>
                 <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
                   {formatTenantLabel(site.tenant_name, site.shop_number)}
+                  {site.tenant_id === activeSiteTenantId && (
+                    <span className="ml-2 text-xs font-normal" style={{ color: 'var(--ms-accent)' }}>Active</span>
+                  )}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   login {site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
-              <div className="flex gap-2">
-                {site.tenant_id !== activeSiteTenantId && (
-                  <>
-                    <Button variant="secondary" className="text-xs px-3 py-1.5" onClick={() => switchSite(site.tenant_id)}>
-                      Switch site
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="text-xs px-3 py-1.5"
-                      onClick={() => handleRemove(site.tenant_id)}
-                      disabled={removingId === site.tenant_id}
-                    >
-                      {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
-                    </Button>
-                  </>
-                )}
-              </div>
+              {site.tenant_id !== activeSiteTenantId && (
+                <Button
+                  variant="secondary"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => handleSwitch(site.tenant_id)}
+                  disabled={switchingId === site.tenant_id}
+                >
+                  {switchingId === site.tenant_id ? 'Switching…' : 'Switch site'}
+                </Button>
+              )}
             </div>
           ))
         )}
@@ -169,48 +96,35 @@ export default function MinitShopsPage() {
             Mobile operators ({operators.length})
           </div>
           {operators.map(site => (
-            <div key={site.tenant_id} className="px-5 py-3 text-sm" style={{ borderBottom: '1px solid var(--ms-border)' }}>
-              <span style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(site.tenant_name, site.shop_number)}</span>
-              <span className="text-xs ml-2" style={{ color: 'var(--ms-text-muted)' }}>
-                {site.tenant_slug} · {site.plan_code}
-              </span>
+            <div
+              key={site.tenant_id}
+              className="px-5 py-4 flex flex-wrap items-center justify-between gap-3"
+              style={{ borderBottom: '1px solid var(--ms-border)' }}
+            >
+              <div>
+                <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
+                  {formatTenantLabel(site.tenant_name, site.shop_number)}
+                  {site.tenant_id === activeSiteTenantId && (
+                    <span className="ml-2 text-xs font-normal" style={{ color: 'var(--ms-accent)' }}>Active</span>
+                  )}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
+                  {site.tenant_slug} · {site.plan_code}
+                </p>
+              </div>
+              {site.tenant_id !== activeSiteTenantId && (
+                <Button
+                  variant="secondary"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => handleSwitch(site.tenant_id)}
+                  disabled={switchingId === site.tenant_id}
+                >
+                  {switchingId === site.tenant_id ? 'Switching…' : 'Switch site'}
+                </Button>
+              )}
             </div>
           ))}
         </Card>
-      )}
-
-      {showAdd && (
-        <Modal title="Add shop" onClose={() => setShowAdd(false)}>
-          <div className="space-y-4">
-            <Select label="Mode" value={addMode} onChange={e => setAddMode(e.target.value as 'provision' | 'link')}>
-              <option value="provision">New Minit shop (minit-{'{number}'})</option>
-              <option value="link">Link existing tenant</option>
-            </Select>
-            {addMode === 'provision' ? (
-              <>
-                <Input label="Minit shop number" value={shopNumber} onChange={e => setShopNumber(e.target.value)} placeholder="3269" />
-                <Input label="Shop name" value={tenantName} onChange={e => setTenantName(e.target.value)} placeholder="Chadstone" />
-                <Input label="Address (optional)" value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} />
-              </>
-            ) : (
-              <>
-                <Input label="Tenant slug" value={linkSlug} onChange={e => setLinkSlug(e.target.value)} />
-                <Input label="Owner email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} />
-                <Input label="Shop number (optional)" value={shopNumber} onChange={e => setShopNumber(e.target.value)} />
-              </>
-            )}
-            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button
-                onClick={() => (addMode === 'provision' ? provisionMut.mutate() : linkMut.mutate())}
-                disabled={provisionMut.isPending || linkMut.isPending}
-              >
-                {provisionMut.isPending || linkMut.isPending ? 'Saving…' : 'Add shop'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   )

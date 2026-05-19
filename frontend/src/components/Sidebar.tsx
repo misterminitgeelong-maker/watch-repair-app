@@ -47,14 +47,12 @@ const bookingOnlyNav: NavLinkItem[] = [
 
 /** Mister Minit corporate HQ — mobile booking network only (no watch/shoe/repair POS). */
 const minitHqNav: NavLinkItem[] = [
-  { to: '/minit/operations', label: 'Operations', icon: LayoutDashboard, feature: 'multi_site' },
+  { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'multi_site' },
+  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, feature: 'multi_site', title: 'Customer enquiries from the Mister Minit website' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, feature: 'multi_site' },
-  { to: '/minit/reports/shops', label: 'Shop reports', icon: BarChart3, feature: 'multi_site' },
-  { to: '/minit/reports/mobile', label: 'Mobile reports', icon: KeyRound, feature: 'multi_site' },
-  { to: '/minit/troubleshooting', label: 'Troubleshooting', icon: Wrench, feature: 'multi_site' },
-  { to: '/shop-mobile-bookings', label: 'Book mobile', icon: Radio, feature: 'shop_mobile_booking' },
-  { to: '/parent-account', label: 'Lead routing', icon: ClipboardList, feature: 'multi_site', title: 'Website lead ingest and suburb map' },
-  { to: '/accounts', label: 'Account', icon: UserCog },
+  { to: '/minit/mobile-services', label: 'Mobile Services', icon: KeyRound, feature: 'multi_site' },
+  { to: '/minit/reports', label: 'Reports', icon: BarChart3, feature: 'multi_site' },
+  { to: '/minit/accounts', label: 'Accounts', icon: UserCog, feature: 'multi_site' },
 ]
 
 const navBeforeMobile: NavLinkItem[] = [
@@ -221,7 +219,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 )}
                 <item.icon size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                 {item.label}
-                {item.to === '/inbox' && inboxCount > 0 && (
+                {(item.to === '/inbox' || item.to === '/minit/inbox') && inboxCount > 0 && (
                   <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
                     {inboxCount > 99 ? '99+' : inboxCount}
                   </span>
