@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -10,7 +11,7 @@ from sqlmodel import Session, select
 from .minit_shops import MinitShopRow, tenant_slug_for_shop
 from .models import ParentAccount, ParentAccountMembership, Tenant, User
 from .security import hash_password
-from .shop_number import linked_tenant_ids_for_parent, normalize_shop_number
+from .shop_number import linked_tenants_for_parent, normalize_shop_number
 
 
 @dataclass
@@ -24,12 +25,15 @@ class MinitProvisionResult:
 
 
 def existing_shop_numbers_in_parent(session: Session, parent_id: UUID) -> set[str]:
-    numbers: set[str] = set()
-    for tid in linked_tenant_ids_for_parent(session, parent_id):
-        tenant = session.get(Tenant, tid)
-        if tenant and tenant.shop_number:
-            numbers.add(tenant.shop_number)
-    return numbers
+    return {
+        num
+        for tenant in linked_tenants_for_parent(session, parent_id)
+        if (num := tenant.shop_number)
+    }
+
+
+def existing_slugs_in_parent(session: Session, parent_id: UUID) -> set[str]:
+    return {t.slug for t in linked_tenants_for_parent(session, parent_id)}
 
 
 def _get_or_create_parent(
@@ -172,11 +176,11 @@ def _create_child_tenant(
 def sync_hq_owner_password_to_parent_sites(session: Session, *, parent_id: UUID, hq_owner: User) -> int:
     """Keep pilot site logins in sync when HQ password is reset. Returns count of users updated."""
     updated = 0
-    for tid in linked_tenant_ids_for_parent(session, parent_id):
-        if tid == hq_owner.tenant_id:
+    for tenant in linked_tenants_for_parent(session, parent_id):
+        if tenant.id == hq_owner.tenant_id:
             continue
         site_owner = session.exec(
-            select(User).where(User.tenant_id == tid).where(User.email == hq_owner.email)
+            select(User).where(User.tenant_id == tenant.id).where(User.email == hq_owner.email)
         ).first()
         if site_owner and site_owner.password_hash != hq_owner.password_hash:
             site_owner.password_hash = hq_owner.password_hash
@@ -285,6 +289,7 @@ def import_minit_shops(
     shops: list[MinitShopRow],
     plan_code: str = "booking_only",
     apply: bool = False,
+    on_progress: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, object]:
     """Dry-run or apply bulk retail shop creation under the Minit parent account."""
     email = hq_owner_email.strip().lower()
@@ -309,11 +314,7 @@ def import_minit_shops(
         }
 
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id)
-    existing_slugs = {
-        t.slug
-        for tid in linked_tenant_ids_for_parent(session, parent.id)
-        if (t := session.get(Tenant, tid))
-    }
+    existing_slugs = existing_slugs_in_parent(session, parent.id)
 
     would_create: list[dict[str, str]] = []
     would_skip: list[dict[str, str]] = []
@@ -361,11 +362,19 @@ def import_minit_shops(
         return result
 
     created_slugs: list[str] = []
-    for shop in shops:
+    skipped_apply = 0
+    total = len(shops)
+    for index, shop in enumerate(shops, start=1):
         if shop.shop_number in existing_numbers:
+            skipped_apply += 1
+            if on_progress and index % 25 == 0:
+                on_progress(index, total, "skip")
             continue
         slug = tenant_slug_for_shop(shop)
-        if session.exec(select(Tenant).where(Tenant.slug == slug)).first():
+        if slug in existing_slugs or session.exec(select(Tenant).where(Tenant.slug == slug)).first():
+            skipped_apply += 1
+            if on_progress and index % 25 == 0:
+                on_progress(index, total, "skip")
             continue
         row = MinitShopRow(
             shop_number=shop.shop_number,
@@ -383,8 +392,14 @@ def import_minit_shops(
         if tenant:
             created_slugs.append(tenant.slug)
             existing_numbers.add(shop.shop_number)
+            existing_slugs.add(tenant.slug)
+        if on_progress and (index % 25 == 0 or index == total):
+            on_progress(index, total, "create")
 
     session.commit()
     result["created_count"] = len(created_slugs)
+    result["skipped_count"] = skipped_apply
     result["created_slugs"] = created_slugs[:50]
+    if len(created_slugs) > 50:
+        result["created_slugs_truncated"] = True
     return result

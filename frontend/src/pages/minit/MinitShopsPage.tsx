@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   formatTenantLabel,
   getMyParentAccount,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { Button, Card, PageHeader, Spinner } from '@/components/ui'
+import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui'
 
 const OPERATOR_PLANS = new Set([
   'basic_auto_key',
@@ -29,11 +29,31 @@ export default function MinitShopsPage() {
   })
 
   const [switchingId, setSwitchingId] = useState('')
+  const [search, setSearch] = useState('')
+
+  const retailSites = useMemo(
+    () => (data?.sites ?? []).filter(s => isRetailShop(s.plan_code)),
+    [data?.sites],
+  )
+  const operators = useMemo(
+    () => (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code)),
+    [data?.sites],
+  )
+
+  const searchLower = search.trim().toLowerCase()
+  const filteredRetail = useMemo(() => {
+    if (!searchLower) return retailSites
+    return retailSites.filter(site => {
+      const label = formatTenantLabel(site.tenant_name, site.shop_number).toLowerCase()
+      return (
+        label.includes(searchLower)
+        || site.tenant_slug.toLowerCase().includes(searchLower)
+        || (site.shop_number ?? '').includes(searchLower)
+      )
+    })
+  }, [retailSites, searchLower])
 
   if (isLoading) return <Spinner />
-
-  const retailSites = (data?.sites ?? []).filter(s => isRetailShop(s.plan_code))
-  const operators = (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code))
 
   async function handleSwitch(tenantId: string) {
     setSwitchingId(tenantId)
@@ -52,13 +72,33 @@ export default function MinitShopsPage() {
       </p>
 
       <Card className="mb-6 overflow-hidden">
-        <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
-          Retail shops ({retailSites.length})
+        <div
+          className="px-5 py-3 flex flex-wrap items-center justify-between gap-3"
+          style={{ borderBottom: '1px solid var(--ms-border)' }}
+        >
+          <span className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
+            Retail shops ({retailSites.length})
+          </span>
+          {retailSites.length > 0 && (
+            <div className="w-full sm:w-64">
+              <Input
+                type="search"
+                placeholder="Search name, shop #, slug…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                aria-label="Search retail shops"
+              />
+            </div>
+          )}
         </div>
         {retailSites.length === 0 ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops linked yet.</p>
+        ) : filteredRetail.length === 0 ? (
+          <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+            No shops match &ldquo;{search.trim()}&rdquo;.
+          </p>
         ) : (
-          retailSites.map(site => (
+          filteredRetail.map(site => (
             <div
               key={site.tenant_id}
               className="px-5 py-4 flex flex-wrap items-center justify-between gap-3"

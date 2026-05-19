@@ -73,19 +73,72 @@ Pilot retail/operator sites initially use the **same owner email/password as HQ*
 
 ## Bulk import all shops (TSS Excel)
 
-Source (local): `TSS Dec25 Report (1).xlsx`, sheet **TSS Scores** — columns **Shop #**, **Shop Name**, **Area**, **Region**.
+Source workbook (local, **do not commit**): `TSS Dec25 Report (1).xlsx` — sheet **TSS Scores**, columns **Shop #**, **Shop Name**, **Area**, **Region**. The Dec 2025 export contains **379** retail shops (pilot shops `3269` / `4278` are skipped automatically if already seeded).
+
+### Local
 
 ```bash
 cd backend
-# Preview (~379 shops)
+
+# Parse only (no DB) — prints parsed_shop_count
 python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/TSS Dec25 Report (1).xlsx"
 
-# After HQ exists
+# Dry-run against DB (HQ + pilot must exist; shows would_create / would_skip)
+python scripts/seed_minit_pilot.py
 python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --check-db
-python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --apply
+
+# Apply (idempotent — safe to re-run; skips existing shop numbers and slugs)
+python scripts/import_minit_shops_from_xlsx.py --input "C:/path/to/file.xlsx" --apply --verbose
 ```
 
-Each shop: slug `minit-{shop_number}`, plan `booking_only`, linked under Minit parent account.
+Optional: `--seed-pilot` runs HQ + pilot seed before import (dev only).
+
+Each imported shop:
+
+| Field | Value |
+|-------|--------|
+| Slug | `minit-{shop_number}` |
+| Plan | `booking_only` |
+| Metadata | `tenant.shop_number`, name, business address from Area/Region |
+| Parent | Linked under **Mister Minit** (`MINIT_HQ_OWNER_EMAIL`) |
+
+### Production (Railway one-off)
+
+1. Ensure Minit HQ is provisioned (`seed_minit_pilot.py` or `MINIT_SEED_ENABLED` with real `MINIT_HQ_*` env).
+2. Upload the `.xlsx` to the API container (Railway shell, volume, or `railway run` with a mounted path).
+3. Run from the **backend** working directory inside the container:
+
+```bash
+cd /app/backend   # adjust if your image uses a different WORKDIR
+
+python scripts/import_minit_shops_from_xlsx.py \
+  --input "/path/on/container/TSS Dec25 Report (1).xlsx" \
+  --check-db
+
+python scripts/import_minit_shops_from_xlsx.py \
+  --input "/path/on/container/TSS Dec25 Report (1).xlsx" \
+  --apply --verbose
+```
+
+From your machine (linked Railway project):
+
+```bash
+railway run --service <api-service-name> python scripts/import_minit_shops_from_xlsx.py \
+  --input "/path/on/container/TSS Dec25 Report (1).xlsx" --check-db
+```
+
+Re-run `--apply` any time; existing shops are skipped (`duplicate_shop_number` / `duplicate_slug`).
+
+### After import — what HQ sees
+
+Sign in as **mmsupport** (`minit_hq`):
+
+- **Shops** — retail list shows all linked `booking_only` sites (~379 + any operators); use search by name, shop #, or slug.
+- **Accounts** — same sites under the parent account; add/remove individual shops still works.
+- **Dashboard / Reports / Inbox** — aggregate across the full linked network.
+- Site switcher — jump into any retail shop context.
+
+Pilot mobile operator `minit-mobile-3904` stays on `basic_auto_key` and appears under **Mobile operators**, not retail shops.
 
 ## Dev-only defaults
 

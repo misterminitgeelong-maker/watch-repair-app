@@ -4,7 +4,7 @@ import re
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from .models import ParentAccountMembership, Tenant
 
@@ -47,6 +47,16 @@ def linked_tenant_ids_for_parent(session: Session, parent_id: UUID) -> list[UUID
     return list(dict.fromkeys(rows))
 
 
+def linked_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
+    """Load all linked tenants in one query (avoids N+1 session.get loops)."""
+    ids = linked_tenant_ids_for_parent(session, parent_id)
+    if not ids:
+        return []
+    tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all()
+    by_id = {t.id: t for t in tenants}
+    return [by_id[tid] for tid in ids if tid in by_id]
+
+
 def assert_shop_number_unique_in_parent(
     session: Session,
     *,
@@ -54,11 +64,10 @@ def assert_shop_number_unique_in_parent(
     shop_number: str,
     exclude_tenant_id: UUID | None = None,
 ) -> None:
-    for tid in linked_tenant_ids_for_parent(session, parent_id):
-        if exclude_tenant_id is not None and tid == exclude_tenant_id:
+    for other in linked_tenants_for_parent(session, parent_id):
+        if exclude_tenant_id is not None and other.id == exclude_tenant_id:
             continue
-        other = session.get(Tenant, tid)
-        if other and other.shop_number == shop_number:
+        if other.shop_number == shop_number:
             raise HTTPException(
                 status_code=409,
                 detail=f"shop_number '{shop_number}' is already used by another site in this account",

@@ -75,11 +75,22 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
         .order_by(ParentAccountMembership.created_at)
     ).all()
 
+    tenant_ids = list(dict.fromkeys(m.tenant_id for m in memberships))
+    user_ids = list(dict.fromkeys(m.user_id for m in memberships))
+    tenants_by_id = {
+        t.id: t
+        for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
+    } if tenant_ids else {}
+    users_by_id = {
+        u.id: u
+        for u in session.exec(select(User).where(col(User.id).in_(user_ids))).all()
+    } if user_ids else {}
+
     sites: list[ParentAccountSiteRead] = []
     seen_tenants: set[str] = set()
     for membership in memberships:
-        tenant = session.get(Tenant, membership.tenant_id)
-        user = session.get(User, membership.user_id)
+        tenant = tenants_by_id.get(membership.tenant_id)
+        user = users_by_id.get(membership.user_id)
         if not tenant or not user:
             continue
         if str(tenant.id) in seen_tenants:

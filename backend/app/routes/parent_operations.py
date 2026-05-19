@@ -35,7 +35,7 @@ from ..models import (
     Tenant,
     User,
 )
-from ..shop_number import format_tenant_label, linked_tenant_ids_for_parent
+from ..shop_number import format_tenant_label, linked_tenants_for_parent
 from .parent_accounts import _get_parent_account_for_user, _record_event
 from .shop_mobile_bookings import (
     BOOKABLE_OPERATOR_PLAN_CODES,
@@ -80,13 +80,7 @@ def _resolve_parent(session: Session, user: User) -> ParentAccount:
 
 
 def _linked_tenants(session: Session, parent_id: UUID) -> list[Tenant]:
-    ids = linked_tenant_ids_for_parent(session, parent_id)
-    tenants: list[Tenant] = []
-    for tid in ids:
-        t = session.get(Tenant, tid)
-        if t:
-            tenants.append(t)
-    return tenants
+    return linked_tenants_for_parent(session, parent_id)
 
 
 def _is_retail_shop(plan_code: str) -> bool:
