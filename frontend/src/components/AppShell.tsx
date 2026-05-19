@@ -727,6 +727,12 @@ export default function AppShell() {
     : guidedTourSteps[guidedStep] ?? null
 
   useEffect(() => {
+    if (planCode === 'booking_only' && location.pathname === '/dashboard') {
+      navigate('/shop-mobile-bookings', { replace: true })
+    }
+  }, [planCode, location.pathname, navigate])
+
+  useEffect(() => {
     if (!token) return
     if (!demoModeEnabled) return
 

@@ -219,6 +219,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
             else None
         ),
         mobile_services_customer_sms_enabled=bool(getattr(tenant, "mobile_services_customer_sms_enabled", True)),
+        tenant_business_address=getattr(tenant, "business_address", None),
     )
 
 

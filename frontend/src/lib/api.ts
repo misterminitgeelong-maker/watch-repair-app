@@ -207,8 +207,16 @@ export type PlanCode =
   | 'basic_watch_auto_key'
   | 'basic_shoe_auto_key'
   | 'basic_all_tabs'
+  | 'booking_only'
   | 'pro'
-export type FeatureKey = 'watch' | 'shoe' | 'auto_key' | 'customer_accounts' | 'multi_site' | 'rego_lookup'
+export type FeatureKey =
+  | 'watch'
+  | 'shoe'
+  | 'auto_key'
+  | 'customer_accounts'
+  | 'multi_site'
+  | 'rego_lookup'
+  | 'shop_mobile_booking'
 
 export interface SiteOption {
   tenant_id: string
@@ -242,6 +250,7 @@ export interface AuthSession {
   schedule_calendar_timezone?: string
   /** When false, customer SMS for mobile services is off (session mirrors tenant setting). */
   mobile_services_customer_sms_enabled?: boolean
+  tenant_business_address?: string | null
 }
 
 export const getAuthSession = () => api.get<AuthSession>('/auth/session')
@@ -291,6 +300,7 @@ export interface ParentAccountSite {
   tenant_id: string
   tenant_slug: string
   tenant_name: string
+  plan_code: string
   owner_user_id: string
   owner_email: string
   owner_full_name: string
@@ -326,6 +336,98 @@ export const createTenantFromParentAccount = (payload: { tenant_name: string; te
   api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
+
+export interface ShopBookingUsageShop {
+  tenant_id: string
+  tenant_name: string
+  accepted_bookings_count: number
+  pending_count: number
+}
+
+export interface ShopBookingUsage {
+  month: string
+  booking_tenant_count: number
+  shops: ShopBookingUsageShop[]
+}
+
+export const getParentShopBookingUsage = (month: string) =>
+  api.get<ShopBookingUsage>('/parent-accounts/me/shop-booking-usage', { params: { month } })
+
+// ── Shop mobile operator bookings ─────────────────────────────────────────────
+export type ShopMobileBookingStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
+export type ShopMobileVisitLocationType = 'customer_site' | 'at_shop'
+
+export interface ShopMobileOperatorOption {
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  plan_code: string
+}
+
+export interface ShopMobileBooking {
+  id: string
+  parent_account_id: string
+  requesting_tenant_id: string
+  requesting_shop_name: string
+  target_operator_tenant_id: string
+  target_operator_name: string
+  created_by_user_id: string
+  status: ShopMobileBookingStatus
+  customer_name: string
+  phone?: string | null
+  email?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  registration_plate?: string | null
+  visit_location_type: ShopMobileVisitLocationType
+  job_address: string
+  preferred_scheduled_at?: string | null
+  job_type?: string | null
+  notes?: string | null
+  operator_response_at?: string | null
+  operator_response_by_user_id?: string | null
+  decline_reason?: string | null
+  resulting_auto_key_job_id?: string | null
+  resulting_job_number?: string | null
+  job_status?: string | null
+  job_scheduled_at?: string | null
+  schedule_conflict_warning?: string | null
+  created_at: string
+}
+
+export interface ShopMobileBookingCreate {
+  target_operator_tenant_id: string
+  customer_name: string
+  phone?: string
+  email?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  registration_plate?: string
+  visit_location_type?: ShopMobileVisitLocationType
+  job_address: string
+  preferred_scheduled_at?: string
+  job_type?: string
+  notes?: string
+}
+
+export const listShopMobileOperators = () =>
+  api.get<ShopMobileOperatorOption[]>('/shop-mobile-bookings/operators')
+export const suggestShopMobileOperator = (suburb: string, state_code: string) =>
+  api.get<ShopMobileOperatorOption | null>('/shop-mobile-bookings/suggest-operator', {
+    params: { suburb, state_code },
+  })
+export const createShopMobileBooking = (payload: ShopMobileBookingCreate) =>
+  api.post<ShopMobileBooking>('/shop-mobile-bookings', payload)
+export const listShopMobileBookings = (status?: ShopMobileBookingStatus) =>
+  api.get<ShopMobileBooking[]>('/shop-mobile-bookings', { params: status ? { status } : {} })
+export const getShopMobileBooking = (id: string) =>
+  api.get<ShopMobileBooking>(`/shop-mobile-bookings/${id}`)
+export const cancelShopMobileBooking = (id: string) =>
+  api.post<ShopMobileBooking>(`/shop-mobile-bookings/${id}/cancel`)
+export const acceptShopMobileBooking = (id: string) =>
+  api.post<ShopMobileBooking>(`/shop-mobile-bookings/${id}/accept`)
+export const declineShopMobileBooking = (id: string, decline_reason?: string) =>
+  api.post<ShopMobileBooking>(`/shop-mobile-bookings/${id}/decline`, { decline_reason })
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 export interface Customer {

@@ -63,6 +63,7 @@ VALID_PLAN_CODES: set[str] = {
     "basic_watch_auto_key",
     "basic_shoe_auto_key",
     "basic_all_tabs",
+    "booking_only",
     "pro",
 }
 
@@ -98,6 +99,7 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
     "basic_watch_auto_key": {"max_users": 8, "max_repair_jobs": 2000, "max_shoe_jobs": 0, "max_auto_key_jobs": 1000},
     "basic_shoe_auto_key": {"max_users": 8, "max_repair_jobs": 0, "max_shoe_jobs": 2000, "max_auto_key_jobs": 1000},
     "basic_all_tabs": {"max_users": 10, "max_repair_jobs": 2000, "max_shoe_jobs": 2000, "max_auto_key_jobs": 1000},
+    "booking_only": {"max_users": 5, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
     "pro": {"max_users": 0, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
 }
 
@@ -134,16 +136,18 @@ ALL_PLAN_FEATURES = {
     "customer_accounts",
     "multi_site",
     "rego_lookup",
+    "shop_mobile_booking",
 }
 
 PLAN_FEATURES: dict[str, set[str]] = {
-    "basic_watch": {"watch", "customer_accounts"},
+    "basic_watch": {"watch", "customer_accounts", "shop_mobile_booking"},
     "basic_shoe": {"shoe", "customer_accounts"},
     "basic_auto_key": {"auto_key", "customer_accounts"},
-    "basic_watch_shoe": {"watch", "shoe", "customer_accounts"},
-    "basic_watch_auto_key": {"watch", "auto_key", "customer_accounts"},
+    "basic_watch_shoe": {"watch", "shoe", "customer_accounts", "shop_mobile_booking"},
+    "basic_watch_auto_key": {"watch", "auto_key", "customer_accounts", "shop_mobile_booking"},
     "basic_shoe_auto_key": {"shoe", "auto_key", "customer_accounts"},
-    "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts"},
+    "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts", "shop_mobile_booking"},
+    "booking_only": {"shop_mobile_booking"},
     "pro": set(ALL_PLAN_FEATURES),
 }
 

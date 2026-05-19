@@ -65,6 +65,7 @@ const ShoeApprovePage = lazy(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazy(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazy(() => import('@/pages/PublicIntakePage'))
 const CustomerOrdersPage = lazy(() => import('@/pages/CustomerOrdersPage'))
+const ShopMobileBookingsPage = lazy(() => import('@/pages/ShopMobileBookingsPage'))
 
 function RouteFallback() {
   return (
@@ -158,6 +159,7 @@ export default function App() {
               <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
+              <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
               <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
               <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />

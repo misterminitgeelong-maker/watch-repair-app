@@ -58,6 +58,7 @@ PlanCode = Literal[
     "basic_watch_auto_key",
     "basic_shoe_auto_key",
     "basic_all_tabs",
+    "booking_only",
     "pro",
 ]
 
@@ -102,6 +103,8 @@ class Tenant(SQLModel, table=True):
     xero_connection_status: Optional[str] = None  # disconnected, connected, error
     xero_default_sales_account_code: Optional[str] = None
     xero_default_tax_type: Optional[str] = None
+    #: Physical store address for at-shop mobile bookings and provisioning.
+    business_address: Optional[str] = Field(default=None, max_length=2000)
 
 
 class User(SQLModel, table=True):
@@ -179,6 +182,37 @@ class ParentAccountMembership(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     user_id: UUID = Field(index=True, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+ShopMobileBookingStatus = Literal["pending", "accepted", "declined", "cancelled", "expired"]
+ShopMobileVisitLocationType = Literal["customer_site", "at_shop"]
+
+
+class ShopMobileBookingRequest(SQLModel, table=True):
+    """Shop-initiated request for a mobile operator to accept before a job is created."""
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    requesting_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    target_operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    created_by_user_id: UUID = Field(index=True, foreign_key="user.id")
+    status: str = Field(default="pending", index=True, max_length=32)
+    customer_name: str = Field(max_length=300)
+    phone: Optional[str] = Field(default=None, max_length=80)
+    email: Optional[str] = Field(default=None, max_length=320)
+    vehicle_make: Optional[str] = Field(default=None, max_length=120)
+    vehicle_model: Optional[str] = Field(default=None, max_length=120)
+    registration_plate: Optional[str] = Field(default=None, max_length=32)
+    visit_location_type: str = Field(default="customer_site", max_length=32)
+    job_address: str = Field(max_length=2000)
+    preferred_scheduled_at: Optional[datetime] = None
+    job_type: Optional[str] = Field(default=None, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=4000)
+    operator_response_at: Optional[datetime] = None
+    operator_response_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    decline_reason: Optional[str] = Field(default=None, max_length=2000)
+    resulting_auto_key_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id", unique=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -729,6 +763,7 @@ class AuthSessionResponse(SQLModel):
     trial_end: Optional[str] = None
     #: When False, the shop does not send SMS to customers for mobile services (auto key) jobs.
     mobile_services_customer_sms_enabled: bool = True
+    tenant_business_address: Optional[str] = None
 
 
 class MultiSiteLoginResponse(SQLModel):
@@ -759,6 +794,7 @@ class ParentAccountSiteRead(SQLModel):
     tenant_id: UUID
     tenant_slug: str
     tenant_name: str
+    plan_code: str
     owner_user_id: UUID
     owner_email: str
     owner_full_name: str
@@ -844,6 +880,20 @@ class ParentAccountCreateTenantRequest(SQLModel):
     tenant_name: str
     tenant_slug: str
     plan_code: Optional[PlanCode] = None
+    business_address: Optional[str] = Field(default=None, max_length=2000)
+
+
+class ShopBookingUsageShopBreakdown(SQLModel):
+    tenant_id: UUID
+    tenant_name: str
+    accepted_bookings_count: int
+    pending_count: int
+
+
+class ShopBookingUsageResponse(SQLModel):
+    month: str
+    booking_tenant_count: int
+    shops: list[ShopBookingUsageShopBreakdown]
 
 
 class ParentMobileLeadWebhookSecretBody(SQLModel):
@@ -1495,6 +1545,71 @@ class AutoKeyJob(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     #: Revenue share tier key — must match keys in technician rates_bp (shop_referred, tech_sourced, minit_sourced).
     commission_lead_source: str = Field(default="shop_referred", max_length=64)
+    referring_shop_tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")
+    shop_mobile_booking_request_id: Optional[UUID] = Field(
+        default=None, foreign_key="shopmobilebookingrequest.id", unique=True
+    )
+
+
+class ShopMobileBookingCreate(SQLModel):
+    target_operator_tenant_id: UUID
+    customer_name: str = Field(min_length=1, max_length=300)
+    phone: Optional[str] = Field(default=None, max_length=80)
+    email: Optional[str] = Field(default=None, max_length=320)
+    vehicle_make: Optional[str] = Field(default=None, max_length=120)
+    vehicle_model: Optional[str] = Field(default=None, max_length=120)
+    registration_plate: Optional[str] = Field(default=None, max_length=32)
+    visit_location_type: ShopMobileVisitLocationType = "customer_site"
+    job_address: str = Field(min_length=1, max_length=2000)
+    preferred_scheduled_at: Optional[datetime] = None
+    job_type: Optional[str] = Field(default=None, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=4000)
+
+
+class ShopMobileOperatorOption(SQLModel):
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    plan_code: str
+
+
+class ShopMobileBookingRead(SQLModel):
+    id: UUID
+    parent_account_id: UUID
+    requesting_tenant_id: UUID
+    requesting_shop_name: str
+    target_operator_tenant_id: UUID
+    target_operator_name: str
+    created_by_user_id: UUID
+    status: ShopMobileBookingStatus
+    customer_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    registration_plate: Optional[str] = None
+    visit_location_type: ShopMobileVisitLocationType
+    job_address: str
+    preferred_scheduled_at: Optional[datetime] = None
+    job_type: Optional[str] = None
+    notes: Optional[str] = None
+    operator_response_at: Optional[datetime] = None
+    operator_response_by_user_id: Optional[UUID] = None
+    decline_reason: Optional[str] = None
+    resulting_auto_key_job_id: Optional[UUID] = None
+    resulting_job_number: Optional[str] = None
+    job_status: Optional[str] = None
+    job_scheduled_at: Optional[datetime] = None
+    schedule_conflict_warning: Optional[str] = None
+    created_at: datetime
+
+    @field_serializer("preferred_scheduled_at", "operator_response_at", "job_scheduled_at", "created_at")
+    def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        return as_utc_for_json(v) if v is not None else None
+
+
+class ShopMobileBookingDeclineBody(SQLModel):
+    decline_reason: Optional[str] = Field(default=None, max_length=2000)
 
 
 class AutoKeyJobCreate(SQLModel):
@@ -1568,6 +1683,8 @@ class AutoKeyJobRead(SQLModel):
     visit_order: Optional[int] = None
     additional_services_json: Optional[str] = None
     commission_lead_source: str = "shop_referred"
+    referring_shop_tenant_id: Optional[UUID] = None
+    shop_mobile_booking_request_id: Optional[UUID] = None
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
 

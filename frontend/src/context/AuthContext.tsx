@@ -41,6 +41,8 @@ interface AuthCtx {
   sessionReady: boolean
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
   initializing: boolean
+  /** Store address for at-shop mobile bookings (from tenant.business_address). */
+  tenantBusinessAddress: string | null
   login: (accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) => void
   logout: () => void
   hasFeature: (feature: FeatureKey) => boolean
@@ -126,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
   const [shopCalendarTodayYmd, setShopCalendarTodayYmd] = useState<string | null>(null)
   const [scheduleCalendarTimezone, setScheduleCalendarTimezone] = useState('Australia/Sydney')
+  const [tenantBusinessAddress, setTenantBusinessAddress] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(() => !getStoredAccessToken())
 
   const initializing = useMemo(
@@ -170,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTrialEnd(null)
       setShopCalendarTodayYmd(null)
       setScheduleCalendarTimezone('Australia/Sydney')
+      setTenantBusinessAddress(null)
       clearStoredTokens()
       return
     }
@@ -186,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTrialEnd(data.trial_end ?? null)
     setShopCalendarTodayYmd(data.shop_calendar_today_ymd ?? null)
     setScheduleCalendarTimezone(data.schedule_calendar_timezone ?? 'Australia/Sydney')
+    setTenantBusinessAddress(data.tenant_business_address?.trim() || null)
   }
 
   useEffect(() => {
@@ -205,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTrialEnd(null)
         setShopCalendarTodayYmd(null)
         setScheduleCalendarTimezone('Australia/Sydney')
+        setTenantBusinessAddress(null)
       }
     }
 
@@ -410,6 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         scheduleCalendarTimezone,
         sessionReady,
         initializing,
+        tenantBusinessAddress,
         login,
         logout,
         hasFeature,

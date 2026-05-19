@@ -10,6 +10,7 @@ import {
   enableParentMobileLeadIngest,
   getApiErrorMessage,
   getMyParentAccount,
+  getParentShopBookingUsage,
   linkTenantToParentAccount,
   listMobileSuburbRoutes,
   listParentAccountActivity,
@@ -20,6 +21,22 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+
+const OPERATOR_PLAN_CODES = new Set([
+  'basic_auto_key',
+  'basic_shoe_auto_key',
+  'basic_watch_auto_key',
+  'basic_all_tabs',
+  'auto_key',
+])
+
+function isOperatorSite(planCode: string) {
+  return OPERATOR_PLAN_CODES.has(planCode)
+}
+
+function isRetailShopSite(planCode: string) {
+  return !isOperatorSite(planCode)
+}
 
 export default function ParentAccountPage() {
   const navigate = useNavigate()
@@ -50,6 +67,10 @@ export default function ParentAccountPage() {
   const [routeTargetTenantId, setRouteTargetTenantId] = useState('')
   const [deletingRouteId, setDeletingRouteId] = useState('')
   const [defaultTenantDraft, setDefaultTenantDraft] = useState('')
+  const [usageMonth, setUsageMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['parent-account-me'],
@@ -64,6 +85,12 @@ export default function ParentAccountPage() {
   const { data: suburbRoutes = [] } = useQuery({
     queryKey: ['parent-account-mobile-routes'],
     queryFn: () => listMobileSuburbRoutes().then(r => r.data),
+    enabled: !!data,
+  })
+
+  const { data: bookingUsage } = useQuery({
+    queryKey: ['parent-shop-booking-usage', usageMonth],
+    queryFn: () => getParentShopBookingUsage(usageMonth).then(r => r.data),
     enabled: !!data,
   })
 
@@ -209,6 +236,53 @@ export default function ParentAccountPage() {
     }
   }
 
+  function renderSiteRow(site: (typeof retailSites)[number]) {
+    return (
+      <div
+        key={site.tenant_id}
+        className='px-5 py-4 flex items-center justify-between gap-4'
+        style={{ borderBottom: '1px solid var(--ms-border)' }}
+      >
+        <div className='min-w-0'>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <p className='font-semibold text-sm' style={{ color: 'var(--ms-text)' }}>{site.tenant_name}</p>
+            {site.tenant_id === activeSiteTenantId && (
+              <span
+                className='text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide'
+                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
+              >
+                Active
+              </span>
+            )}
+          </div>
+          <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
+            #{site.tenant_slug} · {site.plan_code} · {site.owner_email}
+          </p>
+        </div>
+        {site.tenant_id !== activeSiteTenantId && (
+          <div className='flex gap-2 shrink-0'>
+            <Button
+              variant='secondary'
+              className='px-3 py-1.5 text-xs'
+              onClick={() => handleSwitchSite(site.tenant_id)}
+              disabled={switchingTenantId === site.tenant_id || removingTenantId === site.tenant_id}
+            >
+              {switchingTenantId === site.tenant_id ? 'Switching…' : 'Switch to this site'}
+            </Button>
+            <Button
+              variant='ghost'
+              className='px-3 py-1.5 text-xs'
+              onClick={() => handleUnlinkSite(site.tenant_id)}
+              disabled={switchingTenantId === site.tenant_id || removingTenantId === site.tenant_id}
+            >
+              {removingTenantId === site.tenant_id ? 'Removing…' : 'Remove'}
+            </Button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (isLoading) return <Spinner />
 
   const ingestPublicId = data?.mobile_lead_ingest_public_id ?? null
@@ -219,6 +293,8 @@ export default function ParentAccountPage() {
   const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
   const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
   const defaultTenantDirty = defaultTenantDraft !== savedDefaultTenantId
+  const retailSites = (data?.sites ?? []).filter(s => isRetailShopSite(s.plan_code ?? ''))
+  const operatorSites = (data?.sites ?? []).filter(s => isOperatorSite(s.plan_code ?? ''))
 
   function siteLabel(tenantId: string) {
     const s = data?.sites.find(x => x.tenant_id === tenantId)
@@ -260,6 +336,46 @@ export default function ParentAccountPage() {
           {error}
         </div>
       )}
+
+      <Card className='mb-6 p-5'>
+        <h2 className='font-semibold mb-3' style={{ color: 'var(--ms-text)' }}>
+          Shop mobile booking usage
+        </h2>
+        <div className='flex flex-wrap items-end gap-3 mb-4'>
+          <Input
+            label='Month'
+            type='month'
+            value={usageMonth}
+            onChange={e => setUsageMonth(e.target.value)}
+            className='w-44'
+          />
+        </div>
+        {bookingUsage ? (
+          <>
+            <p className='text-sm mb-3' style={{ color: 'var(--ms-text-mid)' }}>
+              {bookingUsage.booking_tenant_count} shop{bookingUsage.booking_tenant_count === 1 ? '' : 's'} with booking access
+              {' · '}
+              {bookingUsage.shops.reduce((n, s) => n + s.accepted_bookings_count, 0)} accepted in {bookingUsage.month}
+            </p>
+            {bookingUsage.shops.length === 0 ? (
+              <p className='text-sm' style={{ color: 'var(--ms-text-muted)' }}>No booking shops linked yet.</p>
+            ) : (
+              <div className='divide-y' style={{ borderColor: 'var(--ms-border)' }}>
+                {bookingUsage.shops.map(shop => (
+                  <div key={shop.tenant_id} className='py-2 flex justify-between gap-4 text-sm'>
+                    <span style={{ color: 'var(--ms-text)' }}>{shop.tenant_name}</span>
+                    <span style={{ color: 'var(--ms-text-muted)' }}>
+                      {shop.accepted_bookings_count} accepted · {shop.pending_count} pending
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <Spinner />
+        )}
+      </Card>
 
       {/* Add Shop Modal */}
       {showAddModal && (
@@ -318,6 +434,7 @@ export default function ParentAccountPage() {
                 <option value='basic_watch_auto_key'>Watch + Mobile Services ($35/mo)</option>
                 <option value='basic_shoe_auto_key'>Shoe + Mobile Services ($35/mo)</option>
                 <option value='basic_all_tabs'>All service tabs ($45/mo)</option>
+                <option value='booking_only'>Shop booking only ($15/mo)</option>
                 <option value='pro'>Pro — full access ($50/mo)</option>
               </Select>
               {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
@@ -367,11 +484,11 @@ export default function ParentAccountPage() {
         </Modal>
       )}
 
-      {/* Shops list */}
+      {/* Sites list — retail vs operators */}
       <Card className='mb-6'>
         <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--ms-border)' }}>
           <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>
-            Your Shops {data ? `(${data.sites.length})` : ''}
+            Linked sites {data ? `(${data.sites.length})` : ''}
           </h2>
           {data && (
             <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
@@ -385,50 +502,22 @@ export default function ParentAccountPage() {
           </div>
         ) : (
           <div>
-            {data.sites.map(site => (
-              <div
-                key={site.tenant_id}
-                className='px-5 py-4 flex items-center justify-between gap-4'
-                style={{ borderBottom: '1px solid var(--ms-border)' }}
-              >
-                <div className='min-w-0'>
-                  <div className='flex items-center gap-2 flex-wrap'>
-                    <p className='font-semibold text-sm' style={{ color: 'var(--ms-text)' }}>{site.tenant_name}</p>
-                    {site.tenant_id === activeSiteTenantId && (
-                      <span
-                        className='text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide'
-                        style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
-                      >
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
-                    Shop #{site.tenant_slug} · {site.owner_email}
-                  </p>
-                </div>
-                {site.tenant_id !== activeSiteTenantId && (
-                  <div className='flex gap-2 shrink-0'>
-                    <Button
-                      variant='secondary'
-                      className='px-3 py-1.5 text-xs'
-                      onClick={() => handleSwitchSite(site.tenant_id)}
-                      disabled={switchingTenantId === site.tenant_id || removingTenantId === site.tenant_id}
-                    >
-                      {switchingTenantId === site.tenant_id ? 'Switching…' : 'Switch to this shop'}
-                    </Button>
-                    <Button
-                      variant='ghost'
-                      className='px-3 py-1.5 text-xs'
-                      onClick={() => handleUnlinkSite(site.tenant_id)}
-                      disabled={switchingTenantId === site.tenant_id || removingTenantId === site.tenant_id}
-                    >
-                      {removingTenantId === site.tenant_id ? 'Removing…' : 'Remove'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+            {retailSites.length > 0 && (
+              <>
+                <p className='px-5 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide' style={{ color: 'var(--ms-text-muted)' }}>
+                  Retail shops ({retailSites.length})
+                </p>
+                {retailSites.map(site => renderSiteRow(site))}
+              </>
+            )}
+            {operatorSites.length > 0 && (
+              <>
+                <p className='px-5 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide' style={{ color: 'var(--ms-text-muted)' }}>
+                  Mobile operators ({operatorSites.length})
+                </p>
+                {operatorSites.map(site => renderSiteRow(site))}
+              </>
+            )}
           </div>
         )}
       </Card>
@@ -517,22 +606,22 @@ export default function ParentAccountPage() {
         <div>
           <div className='flex items-center gap-2 mb-2'>
             <StepBadge n={3} done={suburbRoutes.length > 0 || !!savedDefaultTenantId} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Map suburbs to shops</p>
+            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Operator work areas (suburb map)</p>
           </div>
           <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
-            When a customer picks their suburb, the lead goes to the matching shop. Set a fallback shop for any suburbs you haven't mapped.
+            Map suburbs to mobile operators for website leads and shop booking suggestions. Set a fallback operator for unmapped suburbs.
           </p>
 
           {/* Default shop */}
           <div className='ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg'>
             <div className='flex-1 min-w-0'>
               <Select
-                label='Fallback shop (unrecognised suburbs)'
+                label='Fallback operator (unrecognised suburbs)'
                 value={defaultTenantDraft}
                 onChange={e => setDefaultTenantDraft(e.target.value)}
               >
                 <option value=''>No fallback — only mapped suburbs accepted</option>
-                {(data?.sites ?? []).map(s => (
+                {operatorSites.map(s => (
                   <option key={s.tenant_id} value={s.tenant_id}>
                     {s.tenant_name} (#{s.tenant_slug})
                   </option>
@@ -561,9 +650,9 @@ export default function ParentAccountPage() {
               onChange={e => setRouteSuburb(e.target.value)}
               placeholder='e.g. Parramatta'
             />
-            <Select label='Goes to' value={routeTargetTenantId} onChange={e => setRouteTargetTenantId(e.target.value)}>
-              <option value=''>Select shop</option>
-              {(data?.sites ?? []).map(s => (
+            <Select label='Mobile operator' value={routeTargetTenantId} onChange={e => setRouteTargetTenantId(e.target.value)}>
+              <option value=''>Select operator</option>
+              {operatorSites.map(s => (
                 <option key={s.tenant_id} value={s.tenant_id}>{s.tenant_name}</option>
               ))}
             </Select>

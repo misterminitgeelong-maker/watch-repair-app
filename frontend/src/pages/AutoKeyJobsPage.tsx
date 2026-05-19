@@ -43,6 +43,7 @@ import { useAuth } from '@/context/AuthContext'
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
+import ShopBookingInbox from '@/components/ShopBookingInbox'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
@@ -2342,6 +2343,7 @@ export default function AutoKeyJobsPage() {
 
   return (
     <div>
+      <ShopBookingInbox />
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <PageHeader
           title="Mobile Services"

@@ -1015,6 +1015,7 @@ def get_auto_key_reports(
 def get_auto_key_commission_report(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    referring_shop_tenant_id: UUID | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -1028,6 +1029,8 @@ def get_auto_key_commission_report(
     ).all()
 
     stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+    if referring_shop_tenant_id is not None:
+        stmt = stmt.where(AutoKeyJob.referring_shop_tenant_id == referring_shop_tenant_id)
     if date_from:
         try:
             df = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)

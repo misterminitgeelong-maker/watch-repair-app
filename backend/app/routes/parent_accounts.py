@@ -1,12 +1,15 @@
+from calendar import monthrange
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, func, select
 
 from ..database import get_session
 from ..dependencies import (
     AuthContext,
+    PLAN_FEATURES,
     VALID_PLAN_CODES,
     get_auth_context,
     normalize_plan_code,
@@ -27,6 +30,9 @@ from ..models import (
     ParentAccountSummaryResponse,
     ParentMobileLeadDefaultTenantBody,
     ParentMobileLeadWebhookSecretBody,
+    ShopBookingUsageResponse,
+    ShopBookingUsageShopBreakdown,
+    ShopMobileBookingRequest,
     Tenant,
     User,
 )
@@ -76,6 +82,7 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
                 tenant_id=tenant.id,
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
+                plan_code=normalize_plan_code(tenant.plan_code),
                 owner_user_id=user.id,
                 owner_email=user.email,
                 owner_full_name=user.full_name,
@@ -352,6 +359,97 @@ def delete_mobile_suburb_route(
     return {"ok": True}
 
 
+def _tenant_has_shop_mobile_booking(plan_code: str) -> bool:
+    plan = normalize_plan_code(plan_code)
+    return "shop_mobile_booking" in PLAN_FEATURES.get(plan, set())
+
+
+@router.get("/me/shop-booking-usage", response_model=ShopBookingUsageResponse)
+def get_shop_booking_usage(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Calendar month YYYY-MM"),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Per-shop booking counts for Minit-style billing (accepted + pending in month)."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        year_s, mon_s = month.split("-", 1)
+        year, mon = int(year_s), int(mon_s)
+        if mon < 1 or mon > 12:
+            raise ValueError("month")
+        last_day = monthrange(year, mon)[1]
+        month_start = datetime(year, mon, 1, tzinfo=timezone.utc)
+        month_end = datetime(year, mon, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="month must be YYYY-MM") from exc
+
+    parent = _get_parent_account_for_user(session, current_user)
+    memberships = session.exec(
+        select(ParentAccountMembership).where(ParentAccountMembership.parent_account_id == parent.id)
+    ).all()
+
+    shop_tenant_ids: list[UUID] = []
+    booking_tenant_count = 0
+    seen_shops: set[UUID] = set()
+    for m in memberships:
+        if m.tenant_id in seen_shops:
+            continue
+        tenant = session.get(Tenant, m.tenant_id)
+        if not tenant:
+            continue
+        seen_shops.add(m.tenant_id)
+        plan = normalize_plan_code(tenant.plan_code)
+        if plan == "booking_only" or _tenant_has_shop_mobile_booking(plan):
+            booking_tenant_count += 1
+            if _tenant_has_shop_mobile_booking(plan):
+                shop_tenant_ids.append(m.tenant_id)
+
+    shops: list[ShopBookingUsageShopBreakdown] = []
+    for tid in shop_tenant_ids:
+        tenant = session.get(Tenant, tid)
+        if not tenant:
+            continue
+        accepted = int(
+            session.exec(
+                select(func.count())
+                .select_from(ShopMobileBookingRequest)
+                .where(ShopMobileBookingRequest.parent_account_id == parent.id)
+                .where(ShopMobileBookingRequest.requesting_tenant_id == tid)
+                .where(ShopMobileBookingRequest.status == "accepted")
+                .where(col(ShopMobileBookingRequest.created_at) >= month_start)
+                .where(col(ShopMobileBookingRequest.created_at) <= month_end)
+            ).one()
+        )
+        pending = int(
+            session.exec(
+                select(func.count())
+                .select_from(ShopMobileBookingRequest)
+                .where(ShopMobileBookingRequest.parent_account_id == parent.id)
+                .where(ShopMobileBookingRequest.requesting_tenant_id == tid)
+                .where(ShopMobileBookingRequest.status == "pending")
+                .where(col(ShopMobileBookingRequest.created_at) >= month_start)
+                .where(col(ShopMobileBookingRequest.created_at) <= month_end)
+            ).one()
+        )
+        shops.append(
+            ShopBookingUsageShopBreakdown(
+                tenant_id=tid,
+                tenant_name=tenant.name,
+                accepted_bookings_count=accepted,
+                pending_count=pending,
+            )
+        )
+
+    return ShopBookingUsageResponse(
+        month=month,
+        booking_tenant_count=booking_tenant_count,
+        shops=sorted(shops, key=lambda s: s.tenant_name.lower()),
+    )
+
+
 @router.get("/me", response_model=ParentAccountSummaryResponse)
 def get_parent_account_summary(
     auth: AuthContext = Depends(get_auth_context),
@@ -486,10 +584,12 @@ def create_tenant_from_parent_account(
     if existing_tenant:
         raise HTTPException(status_code=409, detail="Tenant slug already exists")
 
+    business_address = payload.business_address.strip()[:2000] if payload.business_address else None
     tenant = Tenant(
         name=tenant_name,
         slug=tenant_slug,
         plan_code=_normalize_plan_code(payload.plan_code),
+        business_address=business_address,
     )
     session.add(tenant)
     session.flush()
