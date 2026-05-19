@@ -921,6 +921,15 @@ class ParentProvisionShopRequest(SQLModel):
     business_address: Optional[str] = Field(default=None, max_length=2000)
 
 
+class ParentImportShopsResponse(SQLModel):
+    created_count: int = 0
+    updated_count: int = 0
+    skipped_count: int = 0
+    parsed_count: int = 0
+    sheet_name: Optional[str] = None
+    errors: list[str] = Field(default_factory=list)
+
+
 class ParentOperationsOverview(SQLModel):
     retail_shop_count: int
     operator_count: int

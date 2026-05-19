@@ -73,9 +73,21 @@ Pilot retail/operator sites initially use the **same owner email/password as HQ*
 
 ## Bulk import all shops (TSS Excel)
 
-Source workbook (local, **do not commit**): `TSS Dec25 Report (1).xlsx` — sheet **TSS Scores**. The Dec 2025 export contains **379** retail shops (pilot shops `3269` / `4278` are updated in place if area/region/name changed on re-run).
+Source workbooks (local, **do not commit**):
 
-### Column mapping (TSS Scores sheet)
+- **Claude done tss.xlsx** — sheet **Shops**, header on row 1 (379 shops).
+- **TSS Dec25 Report (1).xlsx** — sheet **TSS Scores** (same columns; extra preamble rows).
+
+The parser auto-selects a **Shops** or **TSS Scores** worksheet, or the first sheet whose header row includes **Shop #**.
+
+### HQ UI import (no Railway CLI)
+
+1. Sign in as **mmsupport** (`minit_hq`).
+2. Open **Shops** → **Import shops**.
+3. Upload `.xlsx` / `.xlsm` (max 5 MB). The API is `POST /v1/parent-accounts/me/import-shops` (`multipart/form-data`, field `file`).
+4. Review the summary (created / updated / skipped) and any row warnings.
+
+### Column mapping (Shops or TSS Scores sheet)
 
 | Excel column | Tenant / API field | Example | Notes |
 |--------------|------------------|---------|-------|
@@ -144,7 +156,7 @@ Re-run `--apply` any time; new shop numbers are created; existing shop numbers g
 
 Sign in as **mmsupport** (`minit_hq`):
 
-- **Shops** — retail list shows shop #, name, area, region; search by name/shop #/area/region; filter by region dropdown.
+- **Shops** — retail list shows shop #, name, area, region; **Import shops** for bulk Excel upload; search by name/shop #/area/region; filter by region dropdown.
 - **Accounts** — same sites with area/region; add/remove individual shops still works.
 - **Dashboard / Reports / Inbox** — aggregate across the full linked network.
 - Site switcher — jump into any retail shop context.

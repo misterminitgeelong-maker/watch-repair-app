@@ -378,6 +378,24 @@ export const provisionMinitShop = (payload: {
   business_address?: string
 }) => api.post<ParentAccountSummary>('/parent-accounts/me/provision-shop', payload)
 
+export interface ParentImportShopsResult {
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  parsed_count: number
+  sheet_name?: string | null
+  errors: string[]
+}
+
+export const importParentShopsFromXlsx = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<ParentImportShopsResult>('/parent-accounts/me/import-shops', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  })
+}
+
 export interface ParentOperationsOverview {
   retail_shop_count: number
   operator_count: number

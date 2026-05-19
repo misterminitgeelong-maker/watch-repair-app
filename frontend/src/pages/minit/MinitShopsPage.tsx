@@ -5,6 +5,7 @@ import {
   getMyParentAccount,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { MinitShopImport } from '@/components/MinitShopImport'
 import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui'
 
 const OPERATOR_PLANS = new Set([
@@ -83,9 +84,9 @@ export default function MinitShopsPage() {
 
   return (
     <div>
-      <PageHeader title="Shops" />
+      <PageHeader title="Shops" action={<MinitShopImport />} />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        View and switch between retail shops and mobile operators on the network. Add or remove shops in Accounts.
+        View and switch between retail shops and mobile operators on the network. Import from Excel or add individual shops in Accounts.
       </p>
 
       <Card className="mb-6 overflow-hidden">

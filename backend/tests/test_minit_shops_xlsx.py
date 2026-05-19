@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from app.minit_shops import derive_au_state_from_area_region, parse_minit_shops_xlsx, tenant_slug_for_shop
+from app.minit_shops import (
+    derive_au_state_from_area_region,
+    parse_minit_shops_xlsx,
+    parse_minit_shops_xlsx_detailed,
+    tenant_slug_for_shop,
+)
 
 
 def _write_sample_xlsx(path: Path) -> None:
@@ -52,6 +57,34 @@ def test_derive_au_state_from_area_region() -> None:
     assert derive_au_state_from_area_region("SOUTH AUSTRALIA", "SW") == "SA"
     assert derive_au_state_from_area_region("MALAYSIA", "SEA") is None
     assert derive_au_state_from_area_region("NZ NORTH", "NZ") is None
+
+
+def _write_claude_shops_sheet_xlsx(path: Path) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Shops"
+    ws.append(["Shop #", "Shop Name", "Area", "Region"])
+    ws.append([4278, "Toowoomba", "QLD WEST", "QLD"])
+    ws.append([9999, "First", "NSW", "NSW"])
+    ws.append([9999, "Duplicate", "NSW", "NSW"])
+    ws.append(["bad-id", "Bad Shop", "X", "X"])
+    ws.append([8888, "", "QLD", "QLD"])
+    wb.save(path)
+    wb.close()
+
+
+def test_parse_claude_shops_sheet_format(tmp_path: Path) -> None:
+    xlsx = tmp_path / "claude_shops.xlsx"
+    _write_claude_shops_sheet_xlsx(xlsx)
+    result = parse_minit_shops_xlsx_detailed(xlsx, collect_row_errors=True)
+    assert result.sheet_name == "Shops"
+    assert len(result.shops) == 2
+    by_num = {s.shop_number: s for s in result.shops}
+    assert by_num["4278"].name == "Toowoomba"
+    assert by_num["9999"].name == "First"
+    assert any("duplicate" in e.lower() for e in result.errors)
+    assert any("invalid shop number" in e.lower() for e in result.errors)
+    assert any("8888" in e for e in result.errors)
 
 
 def test_parse_minit_shops_xlsx_missing_header_raises(tmp_path: Path) -> None:

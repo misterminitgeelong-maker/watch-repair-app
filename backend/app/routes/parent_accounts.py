@@ -2,7 +2,7 @@ from calendar import monthrange
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select
 
@@ -16,12 +16,16 @@ from ..dependencies import (
     require_feature,
     require_owner,
 )
+from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..minit_provision import import_minit_shops
+from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
     MobileSuburbRoute,
     MobileSuburbRouteCreateRequest,
     MobileSuburbRouteRead,
     ParentAccount,
     ParentAccountCreateTenantRequest,
+    ParentImportShopsResponse,
     ParentProvisionShopRequest,
     ParentAccountEventLog,
     ParentAccountEventLogRead,
@@ -53,10 +57,23 @@ router = APIRouter(
 )
 
 AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
+MAX_IMPORT_SHOPS_XLSX_BYTES = 5 * 1024 * 1024
+_ALLOWED_XLSX_SUFFIXES = frozenset({".xlsx", ".xlsm"})
 
 
 def _normalize_suburb(name: str) -> str:
     return " ".join(name.strip().lower().split())
+
+
+def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
+        raise HTTPException(status_code=403, detail="Minit HQ plan required")
+    if tenant_product(tenant.slug) != "minit":
+        raise HTTPException(status_code=403, detail="Minit product required")
+    return tenant
 
 
 def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
@@ -664,6 +681,87 @@ def create_tenant_from_parent_account(
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)
+
+
+@router.post("/me/import-shops", response_model=ParentImportShopsResponse)
+async def import_shops_from_xlsx(
+    file: UploadFile = File(...),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Bulk create/update retail shops from a Minit shop-list Excel workbook (HQ only)."""
+    _require_minit_hq(auth, session)
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+    suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if f".{suffix}" not in _ALLOWED_XLSX_SUFFIXES:
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xlsm workbooks are supported")
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(raw_bytes) > MAX_IMPORT_SHOPS_XLSX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum size of {MAX_IMPORT_SHOPS_XLSX_BYTES // (1024 * 1024)} MB",
+        )
+
+    try:
+        parsed = parse_minit_shops_xlsx_detailed(file_obj=raw_bytes, collect_row_errors=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not parsed.shops:
+        return ParentImportShopsResponse(
+            parsed_count=0,
+            sheet_name=parsed.sheet_name,
+            errors=parsed.errors or ["No valid shop rows found in workbook"],
+        )
+
+    summary = import_minit_shops(
+        session,
+        parent_name=parent.name,
+        hq_owner_email=current_user.email,
+        shops=parsed.shops,
+        apply=True,
+    )
+
+    errors: list[str] = list(parsed.errors)
+    if summary.get("error"):
+        errors.append(str(summary["error"]))
+
+    created = int(summary.get("created_count", 0))
+    updated = int(summary.get("updated_count", 0))
+    skipped = int(summary.get("skipped_count", summary.get("would_skip_count", 0)))
+
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="import_shops",
+        event_summary=(
+            f"Imported shops from {filename}: "
+            f"{created} created, {updated} updated, {skipped} skipped"
+        ),
+    )
+    session.commit()
+
+    return ParentImportShopsResponse(
+        created_count=created,
+        updated_count=updated,
+        skipped_count=skipped,
+        parsed_count=len(parsed.shops),
+        sheet_name=parsed.sheet_name,
+        errors=errors[:100],
+    )
 
 
 @router.post("/me/provision-shop", response_model=ParentAccountSummaryResponse)
