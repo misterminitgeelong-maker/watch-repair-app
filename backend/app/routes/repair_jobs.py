@@ -685,14 +685,15 @@ def resend_notification(
             )
             sms_sent = True
         if customer.email:
-            send_quote_sent_email(
+            sent = send_quote_sent_email(
                 to_email=customer.email,
                 customer_name=customer.full_name or "there",
                 total_cents=quote.total_cents,
                 approval_token=quote.approval_token,
                 job_number=job.job_number,
+                shop_name=_shop_name,
             )
-            email_sent = True
+            email_sent = bool(sent)
 
     else:
         raise HTTPException(status_code=400, detail=f"Unknown event_type: {payload.event_type!r}")

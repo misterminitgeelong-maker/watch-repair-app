@@ -9,18 +9,24 @@ from sqlmodel import Session, func, select
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..loyalty_utils import earn_points_for_invoice
+from ..config import settings
 from ..models import (
+    Customer,
     Invoice,
     InvoiceCreateFromQuoteResponse,
     InvoiceNumberCounter,
     InvoiceRead,
+    InvoiceSendResponse,
     InvoiceWithPayments,
     Payment,
     PaymentCreate,
     PaymentRead,
     Quote,
     QuoteLineItem,
+    RepairJob,
+    Tenant,
     TenantEventLog,
+    Watch,
 )
 
 _logger = logging.getLogger("mainspring.loyalty")
@@ -184,6 +190,93 @@ def get_invoice(
             )
             for p in payments
         ],
+    )
+
+
+def _line_items_payload(session: Session, quote_id: UUID | None) -> list[dict]:
+    if not quote_id:
+        return []
+    items = session.exec(
+        select(QuoteLineItem).where(QuoteLineItem.quote_id == quote_id).order_by(QuoteLineItem.created_at)
+    ).all()
+    return [
+        {
+            "description": li.description,
+            "quantity": li.quantity,
+            "unit_price_cents": li.unit_price_cents,
+            "total_price_cents": li.total_price_cents,
+        }
+        for li in items
+    ]
+
+
+@router.post("/{invoice_id}/send", response_model=InvoiceSendResponse)
+def send_invoice(
+    invoice_id: UUID,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    job = session.get(RepairJob, invoice.repair_job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    customer: Customer | None = None
+    if job.watch_id:
+        watch = session.get(Watch, job.watch_id)
+        if watch:
+            customer = session.get(Customer, watch.customer_id)
+
+    if not customer or not (customer.email or "").strip():
+        raise HTTPException(status_code=400, detail="Customer has no email address on file")
+
+    if not settings.enable_email_notifications:
+        return InvoiceSendResponse(
+            invoice_id=invoice.id,
+            email_sent=False,
+            email_skipped_reason="email_disabled",
+        )
+    if not (settings.sendgrid_api_key or "").strip():
+        return InvoiceSendResponse(
+            invoice_id=invoice.id,
+            email_sent=False,
+            email_skipped_reason="sendgrid_not_configured",
+        )
+
+    tenant = session.get(Tenant, auth.tenant_id)
+    shop_name = (tenant.name if tenant else None) or "Your repair shop"
+    from ..email_client import send_invoice_email
+
+    email_sent = send_invoice_email(
+        to_email=customer.email,
+        customer_name=customer.full_name,
+        invoice_number=invoice.invoice_number,
+        job_number=job.job_number,
+        total_cents=invoice.total_cents,
+        currency=invoice.currency,
+        shop_name=shop_name,
+        line_items=_line_items_payload(session, invoice.quote_id),
+    )
+    if email_sent:
+        session.add(
+            TenantEventLog(
+                tenant_id=auth.tenant_id,
+                actor_user_id=auth.user_id,
+                entity_type="invoice",
+                entity_id=invoice.id,
+                event_type="invoice_sent_email",
+                event_summary=f"Invoice {invoice.invoice_number} emailed to customer",
+            )
+        )
+        session.commit()
+
+    return InvoiceSendResponse(
+        invoice_id=invoice.id,
+        email_sent=email_sent,
+        email_skipped_reason=None if email_sent else "send_failed",
     )
 
 

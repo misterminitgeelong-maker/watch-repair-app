@@ -87,9 +87,10 @@ class Settings(BaseSettings):
     enable_customer_portal: bool = True
     enable_email_notifications: bool = False
 
-    # Email (when enable_email_notifications is True)
+    # Email via Twilio SendGrid (Console → Email → API Keys). Not the same as TWILIO_ACCOUNT_SID.
     sendgrid_api_key: str = ""
-    postmark_api_key: str = ""
+    email_from_address: str = ""  # Verified sender in SendGrid, e.g. quotes@yourshop.com
+    email_from_name: str = ""  # Display name; defaults to shop name when sending
 
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""

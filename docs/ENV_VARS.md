@@ -27,7 +27,10 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `TESTING_TENANT_SLUG` / `TESTING_OWNER_EMAIL` / `TESTING_OWNER_PASSWORD` | (empty) | No | Optional testing tenant for QA. When set, creates a separate tenant at startup; testing login has no demo prompts. |
 | `STARTUP_SEED_*` | (varies) | No | One-time CSV seed and demo tenant settings. |
 | `SENTRY_DSN` | (empty) | No | Sentry DSN for backend error reporting. Leave blank to disable. |
-| `SENDGRID_API_KEY` / `POSTMARK_API_KEY` | (empty) | No | Optional email provider API key when `enable_email_notifications` is true. |
+| `ENABLE_EMAIL_NOTIFICATIONS` | `false` | No | When `true`, sends quote/invoice/job-ready email via Twilio SendGrid. |
+| `SENDGRID_API_KEY` | (empty) | No | API key from **Twilio Console → Email** (SendGrid). Not the same as `TWILIO_ACCOUNT_SID`. |
+| `EMAIL_FROM_ADDRESS` | (empty) | No | Verified sender address in SendGrid (e.g. `quotes@yourshop.com`). Defaults to `noreply@mainspring.au` if unset. |
+| `EMAIL_FROM_NAME` | (empty) | No | Default display name for outbound email; falls back to tenant shop name. |
 | `GOOGLE_PLACES_API_KEY` | (empty) | No | Google Places API key for Prospects search (/prospects). Leave blank to disable; endpoints return 500 if key is missing. |
 | `GOOGLE_MAPS_WEB_SERVICES_KEY` | (empty) | No | Google Maps **Directions** API (server). Enables Mobile Services map **Driving** stop order (`POST /v1/maps/optimize-driving-route`). If unset, the backend may fall back to `GOOGLE_PLACES_API_KEY` when that key has Directions enabled. |
 

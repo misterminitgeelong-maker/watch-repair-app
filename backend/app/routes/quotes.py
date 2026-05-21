@@ -174,12 +174,13 @@ def send_quote(
             )
         )
 
-    # Send SMS to customer if they have a phone number
+    # Notify customer (SMS and/or email)
     if job:
         watch = session.get(Watch, job.watch_id)
         if watch:
             customer = session.get(Customer, watch.customer_id)
-            if customer and customer.phone:
+            line_items_data: list[dict] = []
+            if customer:
                 line_items_db = session.exec(
                     select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)
                 ).all()
@@ -192,6 +193,7 @@ def send_quote(
                     }
                     for li in line_items_db
                 ]
+            if customer and customer.phone:
                 sms.notify_quote_sent(
                     session,
                     tenant_id=auth.tenant_id,
@@ -213,6 +215,7 @@ def send_quote(
                     approval_token=quote.approval_token,
                     job_number=job.job_number,
                     shop_name=shop_name,
+                    line_items=line_items_data,
                 )
 
     session.commit()
@@ -249,7 +252,8 @@ def resend_quote(
         watch = session.get(Watch, job.watch_id)
         if watch:
             customer = session.get(Customer, watch.customer_id)
-            if customer and customer.phone:
+            line_items_data: list[dict] = []
+            if customer:
                 line_items_db = session.exec(
                     select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)
                 ).all()
@@ -262,6 +266,7 @@ def resend_quote(
                     }
                     for li in line_items_db
                 ]
+            if customer and customer.phone:
                 sms.notify_quote_sent(
                     session,
                     tenant_id=auth.tenant_id,
@@ -270,6 +275,19 @@ def resend_quote(
                     to_phone=customer.phone,
                     total_cents=quote.total_cents,
                     approval_token=quote.approval_token,
+                    line_items=line_items_data,
+                )
+            if customer and customer.email:
+                from ..email_client import send_quote_sent_email
+                tenant = session.get(Tenant, auth.tenant_id)
+                shop_name = (tenant.name if tenant else None) or "Your repair shop"
+                send_quote_sent_email(
+                    to_email=customer.email,
+                    customer_name=customer.full_name,
+                    total_cents=quote.total_cents,
+                    approval_token=quote.approval_token,
+                    job_number=job.job_number,
+                    shop_name=shop_name,
                     line_items=line_items_data,
                 )
 

@@ -1423,6 +1423,12 @@ class InvoiceCreateFromQuoteResponse(SQLModel):
     invoice: InvoiceRead
 
 
+class InvoiceSendResponse(SQLModel):
+    invoice_id: UUID
+    email_sent: bool
+    email_skipped_reason: Optional[str] = None
+
+
 # ── Shoe Repairs ──────────────────────────────────────────────────────────────
 
 class Shoe(SQLModel, table=True):

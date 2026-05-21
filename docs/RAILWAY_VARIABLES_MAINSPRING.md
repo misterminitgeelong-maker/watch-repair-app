@@ -21,7 +21,13 @@ PLATFORM_ADMIN_TENANT_NAME=Platform
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
+ENABLE_EMAIL_NOTIFICATIONS=true
+SENDGRID_API_KEY=
+EMAIL_FROM_ADDRESS=
+EMAIL_FROM_NAME=
 ```
+
+`SENDGRID_API_KEY` comes from **Twilio Console → Email** (not the same as `TWILIO_ACCOUNT_SID`). Complete domain authentication in SendGrid before going live.
 
 Notes:
 

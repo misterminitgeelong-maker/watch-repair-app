@@ -1112,6 +1112,10 @@ export const getInvoiceLineItems = (invoiceId: string) =>
   api.get<Array<{ id: string; item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }>>(`/invoices/${invoiceId}/line-items`)
 export const recordPayment = (invoiceId: string, amount_cents: number) =>
   api.post(`/invoices/${invoiceId}/payments`, { amount_cents })
+export const sendWatchInvoice = (invoiceId: string) =>
+  api.post<{ invoice_id: string; email_sent: boolean; email_skipped_reason?: string | null }>(
+    `/invoices/${invoiceId}/send`,
+  )
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 export interface CsvImportResult {

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, CheckCircle, Printer } from 'lucide-react'
-import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, type Invoice } from '@/lib/api'
+import { ChevronLeft, CheckCircle, Printer, Send } from 'lucide-react'
+import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, getApiErrorMessage, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 
@@ -228,7 +228,24 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [showPay, setShowPay] = useState(false)
+  const [sendFeedback, setSendFeedback] = useState('')
   const { data: invoice, isLoading } = useQuery({ queryKey: ['invoice', id], queryFn: () => getInvoice(id!).then(r => r.data?.invoice ?? r.data) })
+  const sendMut = useMutation({
+    mutationFn: () => sendWatchInvoice(id!),
+    onSuccess: (res) => {
+      const data = res.data
+      if (data?.email_sent) {
+        setSendFeedback('Invoice emailed to customer.')
+      } else if (data?.email_skipped_reason === 'email_disabled') {
+        setSendFeedback('Email is disabled. Set ENABLE_EMAIL_NOTIFICATIONS=true in production.')
+      } else if (data?.email_skipped_reason === 'sendgrid_not_configured') {
+        setSendFeedback('Add SENDGRID_API_KEY from Twilio Console → Email.')
+      } else {
+        setSendFeedback('Email could not be sent. Check SendGrid domain verification.')
+      }
+    },
+    onError: (err) => setSendFeedback(getApiErrorMessage(err, 'Failed to send invoice.')),
+  })
   const { data: lineItems } = useQuery({
     queryKey: ['invoice-line-items', id],
     queryFn: () => getInvoiceLineItems(id!).then(r => r.data),
@@ -254,12 +271,22 @@ export function InvoiceDetailPage() {
       <PageHeader
         title={`Invoice #${invoice.invoice_number}`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => { setSendFeedback(''); sendMut.mutate() }}
+              disabled={sendMut.isPending}
+            >
+              <Send size={15} />{sendMut.isPending ? 'Sending…' : 'Email Customer'}
+            </Button>
             <Button variant="secondary" onClick={() => navigate(`/invoices/${id}/print`)}><Printer size={15} />Print / PDF</Button>
             {invoice.status === 'unpaid' && <Button onClick={() => setShowPay(true)}><CheckCircle size={15} />Record Payment</Button>}
           </div>
         }
       />
+      {sendFeedback && (
+        <p className="mb-4 text-sm rounded-lg px-3 py-2" style={{ backgroundColor: '#F0FAF0', color: '#2A6A2A' }}>{sendFeedback}</p>
+      )}
       {showPay && <PaymentModal invoice={invoice} onClose={() => setShowPay(false)} />}
 
       {lineItems && lineItems.length > 0 && (
