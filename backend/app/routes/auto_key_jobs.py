@@ -210,14 +210,14 @@ def _send_mobile_quote_email(
     quote: AutoKeyQuote,
     job: AutoKeyJob,
     shop_name: str,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, str | None]:
     from ..email_client import email_skip_reason, send_mobile_quote_email
 
     email = (customer.email or "").strip()
     skip = email_skip_reason(email)
     if skip:
-        return False, skip
-    sent = send_mobile_quote_email(
+        return False, skip, None
+    sent, err = send_mobile_quote_email(
         to_email=email,
         customer_name=_customer_first_name(customer),
         total_cents=quote.total_cents,
@@ -227,7 +227,7 @@ def _send_mobile_quote_email(
         quote_approval_token=quote.quote_approval_token,
         line_items=_auto_key_quote_line_items(session, quote.id),
     )
-    return sent, None if sent else "send_failed"
+    return sent, None if sent else "send_failed", err
 
 
 def _send_mobile_invoice_notifications(
@@ -238,7 +238,7 @@ def _send_mobile_invoice_notifications(
     invoice: AutoKeyInvoice,
     job: AutoKeyJob,
     shop_name: str,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, str | None]:
     """SMS + email for Mobile Services invoice (same content as manual Send to Customer)."""
     from ..email_client import email_skip_reason, send_mobile_invoice_email
 
@@ -260,8 +260,8 @@ def _send_mobile_invoice_notifications(
     email = (customer.email or "").strip()
     skip = email_skip_reason(email)
     if skip:
-        return False, skip
-    sent = send_mobile_invoice_email(
+        return False, skip, None
+    sent, err = send_mobile_invoice_email(
         to_email=email,
         customer_name=first,
         invoice_number=invoice.invoice_number,
@@ -272,7 +272,7 @@ def _send_mobile_invoice_notifications(
         customer_view_token=invoice.customer_view_token or "",
         line_items=_auto_key_invoice_line_items(session, invoice, job),
     )
-    return sent, None if sent else "send_failed"
+    return sent, None if sent else "send_failed", err
 
 
 @router.post("", response_model=AutoKeyJobRead, status_code=201)
@@ -912,6 +912,7 @@ def send_auto_key_quote(
 
     email_sent = False
     email_skipped_reason: str | None = "no_customer"
+    email_error_detail: str | None = None
     if job and job.status == "quote_sent":
         try:
             _customer = session.get(Customer, job.customer_id)
@@ -933,7 +934,7 @@ def send_auto_key_quote(
                         quote_approval_token=quote.quote_approval_token,
                     )
                     logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
-                email_sent, email_skipped_reason = _send_mobile_quote_email(
+                email_sent, email_skipped_reason, email_error_detail = _send_mobile_quote_email(
                     session,
                     tenant_id=auth.tenant_id,
                     customer=_customer,
@@ -951,6 +952,7 @@ def send_auto_key_quote(
         quote=_to_quote_read(session, quote),
         email_sent=email_sent,
         email_skipped_reason=email_skipped_reason,
+        email_error_detail=email_error_detail,
     )
 
 
@@ -970,13 +972,14 @@ def send_auto_key_invoice(
 
     email_sent = False
     email_skipped_reason: str | None = "no_customer"
+    email_error_detail: str | None = None
     try:
         _customer = session.get(Customer, job.customer_id)
         _tenant = session.get(Tenant, auth.tenant_id)
         _shop = (_tenant.name if _tenant else None) or "Mobile Services"
         if _customer:
             email_skipped_reason = None
-            email_sent, email_skipped_reason = _send_mobile_invoice_notifications(
+            email_sent, email_skipped_reason, email_error_detail = _send_mobile_invoice_notifications(
                 session,
                 tenant_id=auth.tenant_id,
                 customer=_customer,
@@ -986,11 +989,12 @@ def send_auto_key_invoice(
             )
             session.commit()
             logger.info(
-                "auto_key_invoice.send tenant=%s invoice=%s email_sent=%s reason=%s",
+                "auto_key_invoice.send tenant=%s invoice=%s email_sent=%s reason=%s detail=%s",
                 auth.tenant_id,
                 invoice_id,
                 email_sent,
                 email_skipped_reason,
+                email_error_detail,
             )
     except Exception:
         logger.exception("auto_key_invoice.send_failed tenant=%s invoice=%s", auth.tenant_id, invoice_id)
@@ -999,6 +1003,7 @@ def send_auto_key_invoice(
         invoice=_to_invoice_read(invoice),
         email_sent=email_sent,
         email_skipped_reason=email_skipped_reason,
+        email_error_detail=email_error_detail,
     )
 
 

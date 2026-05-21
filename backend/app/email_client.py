@@ -27,7 +27,7 @@ def _api_key() -> str:
 
 
 def _from_email() -> str:
-    return (getattr(settings, "email_from_address", "") or "noreply@mainspring.au").strip()
+    return (getattr(settings, "email_from_address", "") or "noreply@em695.mainspring.au").strip()
 
 
 def _from_name(shop_name: str | None = None) -> str:
@@ -72,10 +72,10 @@ def send_quote_sent_email(
     job_number: str,
     shop_name: str = "Your repair shop",
     line_items: Sequence[dict] | None = None,
-) -> bool:
+) -> tuple[bool, str | None]:
     """Send email when a watch repair quote is sent to the customer."""
     if not (to_email or "").strip():
-        return False
+        return False, None
     approval_url = f"{settings.public_base_url.rstrip('/')}/approve/{approval_token}"
     total = total_cents / 100
     items_block = _format_line_items(line_items or [])
@@ -107,11 +107,11 @@ def send_invoice_email(
     currency: str = "AUD",
     shop_name: str = "Your repair shop",
     line_items: Sequence[dict] | None = None,
-) -> bool:
+) -> tuple[bool, str | None]:
     """Send email when a watch repair invoice is sent to the customer."""
     if not (to_email or "").strip():
-        return False
-    sym = "$" if currency.upper() in ("AUD", "USD", "NZD", "CAD") else f"{currency} "
+        return False, None
+    sym = _currency_symbol(currency)
     total = total_cents / 100
     items_block = _format_line_items(line_items or [])
     if items_block:
@@ -143,10 +143,10 @@ def send_mobile_quote_email(
     shop_name: str,
     quote_approval_token: str,
     line_items: Sequence[dict] | None = None,
-) -> bool:
+) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) quote is sent."""
     if not (to_email or "").strip():
-        return False
+        return False, None
     sym = _currency_symbol(currency)
     total = total_cents / 100
     portal_url = f"{settings.public_base_url.rstrip('/')}/mobile-quote/{quote_approval_token}"
@@ -182,10 +182,10 @@ def send_mobile_invoice_email(
     shop_name: str,
     customer_view_token: str,
     line_items: Sequence[dict] | None = None,
-) -> bool:
+) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) invoice is sent."""
     if not (to_email or "").strip():
-        return False
+        return False, None
     sym = _currency_symbol(currency)
     total = total_cents / 100
     view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{customer_view_token}"
@@ -218,10 +218,10 @@ def send_job_ready_email(
     job_number: str,
     status_token: str,
     shop_name: str = "Your repair shop",
-) -> bool:
+) -> tuple[bool, str | None]:
     """Send email when a job is ready for collection (completed / awaiting_collection)."""
     if not (to_email or "").strip():
-        return False
+        return False, None
     status_url = f"{settings.public_base_url.rstrip('/')}/status/{status_token}"
     subject = f"Your watch is ready for collection – Job #{job_number}"
     body_plain = (
@@ -246,17 +246,18 @@ def _send_email(
     body_plain: str,
     shop_name: str,
     event: str,
-) -> bool:
+) -> tuple[bool, str | None]:
+    from_addr = _from_email()
     if not _enabled():
         logger.info("email (disabled) %s to %s: %s", event, to_email, subject)
-        return False
+        return False, None
     key = _api_key()
     if not key:
         logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
-        return False
+        return False, None
     payload = {
         "personalizations": [{"to": [{"email": to_email}]}],
-        "from": {"email": _from_email(), "name": _from_name(shop_name)},
+        "from": {"email": from_addr, "name": _from_name(shop_name)},
         "subject": subject,
         "content": [{"type": "text/plain", "value": body_plain}],
     }
@@ -268,9 +269,14 @@ def _send_email(
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             )
         if 200 <= resp.status_code < 300:
-            logger.info("Twilio SendGrid sent %s to %s", event, to_email)
-            return True
-        logger.warning("Twilio SendGrid %s returned %s for %s: %s", event, resp.status_code, to_email, resp.text[:200])
+            logger.info("Twilio SendGrid sent %s to %s from %s", event, to_email, from_addr)
+            return True, None
+        detail = (resp.text or "").strip()[:400]
+        err = f"SendGrid HTTP {resp.status_code} (from={from_addr})"
+        if detail:
+            err = f"{err}: {detail}"
+        logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
+        return False, err
     except Exception as e:
         logger.exception("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
-    return False
+        return False, str(e)[:400]

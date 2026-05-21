@@ -685,7 +685,7 @@ def resend_notification(
             )
             sms_sent = True
         if customer.email:
-            sent = send_quote_sent_email(
+            sent, _err = send_quote_sent_email(
                 to_email=customer.email,
                 customer_name=customer.full_name or "there",
                 total_cents=quote.total_cents,

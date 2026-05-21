@@ -455,7 +455,10 @@ export default function AutoKeyJobDetailPage() {
     setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
 
-  const mobileNotifyFeedback = (data: { email_sent?: boolean; email_skipped_reason?: string | null }, kind: 'quote' | 'invoice') => {
+  const mobileNotifyFeedback = (
+    data: { email_sent?: boolean; email_skipped_reason?: string | null; email_error_detail?: string | null },
+    kind: 'quote' | 'invoice',
+  ) => {
     if (data.email_sent) {
       return kind === 'quote' ? 'Quote sent via SMS and email.' : 'Invoice sent via SMS and email.'
     }
@@ -468,7 +471,12 @@ export default function AutoKeyJobDetailPage() {
       return kind === 'quote' ? 'Quote sent via SMS. Email is not configured on the server.' : 'Invoice sent via SMS. Email is not configured on the server.'
     }
     if (data.email_skipped_reason === 'send_failed') {
-      return kind === 'quote' ? 'Quote sent via SMS. Email failed — check SendGrid domain setup.' : 'Invoice sent via SMS. Email failed — check SendGrid domain setup.'
+      const detail = (data.email_error_detail || '').trim()
+      const hint = detail.includes('403') || /sender|verified|from/i.test(detail)
+        ? 'Verify the sender in Twilio Console → Email (Sender Authentication) and set EMAIL_FROM_ADDRESS to that address.'
+        : 'Check Twilio SendGrid setup.'
+      const base = kind === 'quote' ? 'Quote sent via SMS. Email failed' : 'Invoice sent via SMS. Email failed'
+      return detail ? `${base}: ${detail}. ${hint}` : `${base} — ${hint}`
     }
     return kind === 'quote' ? 'Quote sent to customer via SMS.' : 'Invoice sent to customer via SMS.'
   }

@@ -23,11 +23,11 @@ TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
 ENABLE_EMAIL_NOTIFICATIONS=true
 SENDGRID_API_KEY=
-EMAIL_FROM_ADDRESS=
-EMAIL_FROM_NAME=
+EMAIL_FROM_ADDRESS=noreply@em695.mainspring.au
+EMAIL_FROM_NAME=Mainspring
 ```
 
-`SENDGRID_API_KEY` comes from **Twilio Console → Email** (not the same as `TWILIO_ACCOUNT_SID`). Complete domain authentication in SendGrid before going live.
+`SENDGRID_API_KEY` comes from **Twilio Console → Email** (not the same as `TWILIO_ACCOUNT_SID`). `EMAIL_FROM_ADDRESS` must be on your authenticated domain (e.g. `em695.mainspring.au`), not bare `@mainspring.au`.
 
 Notes:
 

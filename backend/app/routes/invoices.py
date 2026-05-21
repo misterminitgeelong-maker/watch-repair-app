@@ -250,7 +250,7 @@ def send_invoice(
     shop_name = (tenant.name if tenant else None) or "Your repair shop"
     from ..email_client import send_invoice_email
 
-    email_sent = send_invoice_email(
+    email_sent, email_error_detail = send_invoice_email(
         to_email=customer.email,
         customer_name=customer.full_name,
         invoice_number=invoice.invoice_number,
@@ -277,6 +277,7 @@ def send_invoice(
         invoice_id=invoice.id,
         email_sent=email_sent,
         email_skipped_reason=None if email_sent else "send_failed",
+        email_error_detail=None if email_sent else email_error_detail,
     )
 
 

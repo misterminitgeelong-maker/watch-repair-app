@@ -29,7 +29,7 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `SENTRY_DSN` | (empty) | No | Sentry DSN for backend error reporting. Leave blank to disable. |
 | `ENABLE_EMAIL_NOTIFICATIONS` | `false` | No | When `true`, sends Mobile Services quote/invoice email (and watch-repair quote/invoice/job-ready) via Twilio SendGrid. |
 | `SENDGRID_API_KEY` | (empty) | No | API key from **Twilio Console → Email** (SendGrid). Not the same as `TWILIO_ACCOUNT_SID`. |
-| `EMAIL_FROM_ADDRESS` | (empty) | No | Verified sender address in SendGrid (e.g. `quotes@yourshop.com`). Defaults to `noreply@mainspring.au` if unset. |
+| `EMAIL_FROM_ADDRESS` | (empty) | No | **Must use your verified SendGrid domain** (e.g. `noreply@em695.mainspring.au`). Defaults to `noreply@em695.mainspring.au` if unset. Do not use `@mainspring.au` unless that root domain is separately verified. |
 | `EMAIL_FROM_NAME` | (empty) | No | Default display name for outbound email; falls back to tenant shop name. |
 | `GOOGLE_PLACES_API_KEY` | (empty) | No | Google Places API key for Prospects search (/prospects). Leave blank to disable; endpoints return 500 if key is missing. |
 | `GOOGLE_MAPS_WEB_SERVICES_KEY` | (empty) | No | Google Maps **Directions** API (server). Enables Mobile Services map **Driving** stop order (`POST /v1/maps/optimize-driving-route`). If unset, the backend may fall back to `GOOGLE_PLACES_API_KEY` when that key has Directions enabled. |

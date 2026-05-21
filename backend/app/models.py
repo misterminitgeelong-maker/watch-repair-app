@@ -1427,6 +1427,7 @@ class InvoiceSendResponse(SQLModel):
     invoice_id: UUID
     email_sent: bool
     email_skipped_reason: Optional[str] = None
+    email_error_detail: Optional[str] = None
 
 
 # ── Shoe Repairs ──────────────────────────────────────────────────────────────
@@ -1990,12 +1991,14 @@ class AutoKeyQuoteSendResponse(SQLModel):
     quote: AutoKeyQuoteRead
     email_sent: bool
     email_skipped_reason: Optional[str] = None
+    email_error_detail: Optional[str] = None
 
 
 class AutoKeyInvoiceSendResponse(SQLModel):
     invoice: AutoKeyInvoiceRead
     email_sent: bool
     email_skipped_reason: Optional[str] = None
+    email_error_detail: Optional[str] = None
 
 
 class XeroConnectionStatusResponse(SQLModel):

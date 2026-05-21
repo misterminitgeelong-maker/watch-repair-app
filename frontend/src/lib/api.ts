@@ -1656,6 +1656,7 @@ export const createAutoKeyQuote = (jobId: string, payload: AutoKeyQuoteCreatePay
 export interface AutoKeySendNotificationResult {
   email_sent: boolean
   email_skipped_reason?: string | null
+  email_error_detail?: string | null
 }
 
 export const sendAutoKeyQuote = (quoteId: string) =>
