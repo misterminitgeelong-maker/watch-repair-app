@@ -41,8 +41,17 @@ def _bootstrap_and_login(tenant_slug: str, email: str, password: str) -> str:
     return login_res.json()["access_token"]
 
 
-def _create_customer(headers: dict[str, str], *, full_name: str = "Contract Customer", phone: str = "0400000000") -> str:
-    res = client.post("/v1/customers", headers=headers, json={"full_name": full_name, "phone": phone})
+def _create_customer(
+    headers: dict[str, str],
+    *,
+    full_name: str = "Contract Customer",
+    phone: str = "0400000000",
+    email: str | None = None,
+) -> str:
+    payload: dict = {"full_name": full_name, "phone": phone}
+    if email:
+        payload["email"] = email
+    res = client.post("/v1/customers", headers=headers, json=payload)
     assert res.status_code == 201
     return res.json()["id"]
 
@@ -133,6 +142,62 @@ def test_auto_key_contract_routes_for_sms_and_invoice_update():
     )
     assert patch.status_code == 200
     assert patch.json()["status"] == "paid"
+
+
+def test_send_mobile_invoice_email_skipped_when_disabled():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"contract-email-{suffix}",
+        email=f"owner-{suffix}@contracts.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(
+        headers,
+        full_name="Email Customer",
+        phone="0411333444",
+        email="mobile.customer@example.com",
+    )
+
+    job = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Email send job",
+            "status": "on_site",
+            "programming_status": "pending",
+            "key_quantity": 1,
+            "cost_cents": 12000,
+        },
+    )
+    assert job.status_code == 201
+    job_id = job.json()["id"]
+
+    quote = client.post(
+        f"/v1/auto-key-jobs/{job_id}/quotes",
+        headers=headers,
+        json={
+            "line_items": [{"description": "Program key", "quantity": 1, "unit_price_cents": 10000}],
+            "tax_cents": 1000,
+        },
+    )
+    assert quote.status_code == 201
+    quote_id = quote.json()["id"]
+
+    invoice = client.post(
+        f"/v1/auto-key-jobs/{job_id}/invoices/from-quote/{quote_id}",
+        headers=headers,
+    )
+    assert invoice.status_code == 201
+    inv_id = invoice.json()["id"]
+
+    send = client.post(f"/v1/auto-key-jobs/invoices/{inv_id}/send", headers=headers)
+    assert send.status_code == 200
+    body = send.json()
+    assert body["invoice"]["id"] == inv_id
+    assert body["email_sent"] is False
+    assert body["email_skipped_reason"] == "email_disabled"
 
 
 def test_public_booking_and_invoice_singular_routes():

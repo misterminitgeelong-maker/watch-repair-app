@@ -19,6 +19,7 @@ from ..models import (
     AutoKeyQuickIntakeCreate,
     AutoKeyInvoice,
     AutoKeyInvoiceRead,
+    AutoKeyInvoiceSendResponse,
     AutoKeyJobRead,
     AutoKeyJobStatusUpdate,
     AutoKeyQuote,
@@ -26,6 +27,7 @@ from ..models import (
     AutoKeyQuoteLineItem,
     AutoKeyQuoteLineItemRead,
     AutoKeyQuoteRead,
+    AutoKeyQuoteSendResponse,
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
@@ -164,6 +166,113 @@ def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
         xero_sync_error=invoice.xero_sync_error,
         xero_synced_at=invoice.xero_synced_at,
     )
+
+
+def _auto_key_quote_line_items(session: Session, quote_id: UUID) -> list[dict]:
+    items = session.exec(
+        select(AutoKeyQuoteLineItem)
+        .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote_id)
+        .order_by(AutoKeyQuoteLineItem.created_at)
+    ).all()
+    return [
+        {
+            "description": i.description,
+            "quantity": i.quantity,
+            "unit_price_cents": i.unit_price_cents,
+            "total_price_cents": i.total_price_cents,
+        }
+        for i in items
+    ]
+
+
+def _auto_key_invoice_line_items(session: Session, invoice: AutoKeyInvoice, job: AutoKeyJob) -> list[dict]:
+    if invoice.auto_key_quote_id:
+        return _auto_key_quote_line_items(session, invoice.auto_key_quote_id)
+    return [
+        {
+            "description": job.title or "Mobile service",
+            "quantity": 1,
+            "unit_price_cents": invoice.subtotal_cents,
+            "total_price_cents": invoice.subtotal_cents,
+        }
+    ]
+
+
+def _customer_first_name(customer: Customer) -> str:
+    return ((customer.full_name or "").strip().split() or ["there"])[0]
+
+
+def _send_mobile_quote_email(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    customer: Customer,
+    quote: AutoKeyQuote,
+    job: AutoKeyJob,
+    shop_name: str,
+) -> tuple[bool, str | None]:
+    from ..email_client import email_skip_reason, send_mobile_quote_email
+
+    email = (customer.email or "").strip()
+    skip = email_skip_reason(email)
+    if skip:
+        return False, skip
+    sent = send_mobile_quote_email(
+        to_email=email,
+        customer_name=_customer_first_name(customer),
+        total_cents=quote.total_cents,
+        currency=quote.currency or "AUD",
+        job_number=job.job_number,
+        shop_name=shop_name,
+        quote_approval_token=quote.quote_approval_token,
+        line_items=_auto_key_quote_line_items(session, quote.id),
+    )
+    return sent, None if sent else "send_failed"
+
+
+def _send_mobile_invoice_notifications(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    customer: Customer,
+    invoice: AutoKeyInvoice,
+    job: AutoKeyJob,
+    shop_name: str,
+) -> tuple[bool, str | None]:
+    """SMS + email for Mobile Services invoice (same content as manual Send to Customer)."""
+    from ..email_client import email_skip_reason, send_mobile_invoice_email
+
+    first = _customer_first_name(customer)
+    view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
+    if (customer.phone or "").strip():
+        notify_auto_key_invoice_ready(
+            session,
+            tenant_id=tenant_id,
+            to_phone=customer.phone.strip(),
+            customer_name=first,
+            shop_name=shop_name,
+            job_number=job.job_number,
+            invoice_number=invoice.invoice_number,
+            total_cents=invoice.total_cents,
+            currency=invoice.currency or "AUD",
+            view_url=view_url,
+        )
+    email = (customer.email or "").strip()
+    skip = email_skip_reason(email)
+    if skip:
+        return False, skip
+    sent = send_mobile_invoice_email(
+        to_email=email,
+        customer_name=first,
+        invoice_number=invoice.invoice_number,
+        job_number=job.job_number,
+        total_cents=invoice.total_cents,
+        currency=invoice.currency or "AUD",
+        shop_name=shop_name,
+        customer_view_token=invoice.customer_view_token or "",
+        line_items=_auto_key_invoice_line_items(session, invoice, job),
+    )
+    return sent, None if sent else "send_failed"
 
 
 @router.post("", response_model=AutoKeyJobRead, status_code=201)
@@ -623,7 +732,7 @@ def update_auto_key_job_status(
             except Exception:
                 logger.exception("auto_key_job.en_route_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
 
-        if (moved_to_completed or moved_to_booking_completed) and _customer and (_customer.phone or "").strip():
+        if (moved_to_completed or moved_to_booking_completed) and _customer:
             try:
                 _invoice = session.exec(
                     select(AutoKeyInvoice)
@@ -631,20 +740,14 @@ def update_auto_key_job_status(
                     .where(AutoKeyInvoice.auto_key_job_id == job.id)
                     .order_by(AutoKeyInvoice.created_at.desc())
                 ).first()
-                if _invoice:
-                    _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
-                    _view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{_invoice.customer_view_token}"
-                    notify_auto_key_invoice_ready(
+                if _invoice and ((_customer.phone or "").strip() or (_customer.email or "").strip()):
+                    _send_mobile_invoice_notifications(
                         session,
                         tenant_id=auth.tenant_id,
-                        to_phone=_customer.phone.strip(),
-                        customer_name=_first,
+                        customer=_customer,
+                        invoice=_invoice,
+                        job=job,
                         shop_name=_shop_name,
-                        job_number=job.job_number,
-                        invoice_number=_invoice.invoice_number,
-                        total_cents=_invoice.total_cents,
-                        currency=_invoice.currency or "AUD",
-                        view_url=_view_url,
                     )
                     session.commit()
                     logger.info("auto_key_job.work_completed_sms_sent tenant=%s job=%s invoice=%s", auth.tenant_id, job.id, _invoice.id)
@@ -783,7 +886,7 @@ def create_auto_key_quote(
     return _to_quote_read(session, quote)
 
 
-@router.post("/quotes/{quote_id}/send", response_model=AutoKeyQuoteRead)
+@router.post("/quotes/{quote_id}/send", response_model=AutoKeyQuoteSendResponse)
 def send_auto_key_quote(
     quote_id: UUID,
     auth: AuthContext = Depends(require_tech_or_above),
@@ -807,35 +910,51 @@ def send_auto_key_quote(
     session.commit()
     session.refresh(quote)
 
-    # Send quote SMS — wrapped so failures don't surface as errors
+    email_sent = False
+    email_skipped_reason: str | None = "no_customer"
     if job and job.status == "quote_sent":
         try:
             _customer = session.get(Customer, job.customer_id)
             _tenant = session.get(Tenant, auth.tenant_id)
-            if _customer and (_customer.phone or "").strip():
-                _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
-                _shop = (_tenant.name if _tenant else None) or "Mobile Services"
-                notify_auto_key_quote_sent(
+            _shop = (_tenant.name if _tenant else None) or "Mobile Services"
+            if _customer:
+                email_skipped_reason = None
+                if (_customer.phone or "").strip():
+                    notify_auto_key_quote_sent(
+                        session,
+                        tenant_id=auth.tenant_id,
+                        auto_key_job_id=job.id,
+                        to_phone=_customer.phone.strip(),
+                        customer_name=_customer_first_name(_customer),
+                        shop_name=_shop,
+                        job_number=job.job_number,
+                        total_cents=quote.total_cents,
+                        currency=quote.currency or "AUD",
+                        quote_approval_token=quote.quote_approval_token,
+                    )
+                    logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
+                email_sent, email_skipped_reason = _send_mobile_quote_email(
                     session,
                     tenant_id=auth.tenant_id,
-                    auto_key_job_id=job.id,
-                    to_phone=_customer.phone.strip(),
-                    customer_name=_first,
+                    customer=_customer,
+                    quote=quote,
+                    job=job,
                     shop_name=_shop,
-                    job_number=job.job_number,
-                    total_cents=quote.total_cents,
-                    currency=quote.currency or "AUD",
-                    quote_approval_token=quote.quote_approval_token,
                 )
+                if email_sent:
+                    logger.info("auto_key_quote.quote_sent_email tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
                 session.commit()
-                logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
         except Exception:
-            logger.exception("auto_key_quote.quote_sent_sms_failed tenant=%s quote=%s", auth.tenant_id, quote_id)
+            logger.exception("auto_key_quote.quote_sent_notify_failed tenant=%s quote=%s", auth.tenant_id, quote_id)
 
-    return _to_quote_read(session, quote)
+    return AutoKeyQuoteSendResponse(
+        quote=_to_quote_read(session, quote),
+        email_sent=email_sent,
+        email_skipped_reason=email_skipped_reason,
+    )
 
 
-@router.post("/invoices/{invoice_id}/send", response_model=AutoKeyInvoiceRead)
+@router.post("/invoices/{invoice_id}/send", response_model=AutoKeyInvoiceSendResponse)
 def send_auto_key_invoice(
     invoice_id: UUID,
     auth: AuthContext = Depends(require_tech_or_above),
@@ -849,31 +968,38 @@ def send_auto_key_invoice(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Job not found")
 
+    email_sent = False
+    email_skipped_reason: str | None = "no_customer"
     try:
         _customer = session.get(Customer, job.customer_id)
         _tenant = session.get(Tenant, auth.tenant_id)
-        if _customer and (_customer.phone or "").strip():
-            _first = ((_customer.full_name or "").strip().split() or ["there"])[0]
-            _shop = (_tenant.name if _tenant else None) or "Mobile Services"
-            _view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
-            notify_auto_key_invoice_ready(
+        _shop = (_tenant.name if _tenant else None) or "Mobile Services"
+        if _customer:
+            email_skipped_reason = None
+            email_sent, email_skipped_reason = _send_mobile_invoice_notifications(
                 session,
                 tenant_id=auth.tenant_id,
-                to_phone=_customer.phone.strip(),
-                customer_name=_first,
+                customer=_customer,
+                invoice=invoice,
+                job=job,
                 shop_name=_shop,
-                job_number=job.job_number,
-                invoice_number=invoice.invoice_number,
-                total_cents=invoice.total_cents,
-                currency=invoice.currency or "AUD",
-                view_url=_view_url,
             )
             session.commit()
-            logger.info("auto_key_invoice.send_sms tenant=%s invoice=%s", auth.tenant_id, invoice_id)
+            logger.info(
+                "auto_key_invoice.send tenant=%s invoice=%s email_sent=%s reason=%s",
+                auth.tenant_id,
+                invoice_id,
+                email_sent,
+                email_skipped_reason,
+            )
     except Exception:
-        logger.exception("auto_key_invoice.send_sms_failed tenant=%s invoice=%s", auth.tenant_id, invoice_id)
+        logger.exception("auto_key_invoice.send_failed tenant=%s invoice=%s", auth.tenant_id, invoice_id)
 
-    return _to_invoice_read(invoice)
+    return AutoKeyInvoiceSendResponse(
+        invoice=_to_invoice_read(invoice),
+        email_sent=email_sent,
+        email_skipped_reason=email_skipped_reason,
+    )
 
 
 @router.get("/{job_id}/invoices", response_model=list[AutoKeyInvoiceRead])

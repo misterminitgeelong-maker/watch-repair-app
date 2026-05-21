@@ -1653,12 +1653,22 @@ export interface AutoKeyQuoteCreatePayload {
 export const listAutoKeyQuotes = (jobId: string) => api.get<AutoKeyQuote[]>(`/auto-key-jobs/${jobId}/quotes`)
 export const createAutoKeyQuote = (jobId: string, payload: AutoKeyQuoteCreatePayload) =>
   api.post<AutoKeyQuote>(`/auto-key-jobs/${jobId}/quotes`, payload)
-export const sendAutoKeyQuote = (quoteId: string) => api.post<AutoKeyQuote>(`/auto-key-jobs/quotes/${quoteId}/send`)
+export interface AutoKeySendNotificationResult {
+  email_sent: boolean
+  email_skipped_reason?: string | null
+}
+
+export const sendAutoKeyQuote = (quoteId: string) =>
+  api.post<AutoKeySendNotificationResult & { quote: AutoKeyQuote }>(
+    `/auto-key-jobs/quotes/${quoteId}/send`,
+  )
 export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
 export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
   api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
 export const sendAutoKeyInvoice = (invoiceId: string) =>
-  api.post<AutoKeyInvoice>(`/auto-key-jobs/invoices/${invoiceId}/send`)
+  api.post<AutoKeySendNotificationResult & { invoice: AutoKeyInvoice }>(
+    `/auto-key-jobs/invoices/${invoiceId}/send`,
+  )
 
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Shoe>('/shoe-repair-jobs/shoes', data)

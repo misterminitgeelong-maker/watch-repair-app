@@ -34,7 +34,23 @@ def _from_name(shop_name: str | None = None) -> str:
     default = (getattr(settings, "email_from_name", "") or "").strip()
     if default:
         return default
-    return (shop_name or "").strip() or "Watch Repair"
+    return (shop_name or "").strip() or "Mainspring"
+
+
+def _currency_symbol(currency: str) -> str:
+    cur = (currency or "AUD").upper()
+    return "$" if cur in ("AUD", "USD", "NZD", "CAD") else f"{currency} "
+
+
+def email_skip_reason(to_email: str | None) -> str | None:
+    """Why email was not attempted; None means send may proceed."""
+    if not (to_email or "").strip():
+        return "no_email"
+    if not _enabled():
+        return "email_disabled"
+    if not _api_key():
+        return "sendgrid_not_configured"
+    return None
 
 
 def _format_line_items(line_items: Sequence[dict]) -> str:
@@ -114,6 +130,84 @@ def send_invoice_email(
         body_plain=body_plain,
         shop_name=shop_name,
         event="invoice_sent",
+    )
+
+
+def send_mobile_quote_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    total_cents: int,
+    currency: str,
+    job_number: str,
+    shop_name: str,
+    quote_approval_token: str,
+    line_items: Sequence[dict] | None = None,
+) -> bool:
+    """Send email when a Mobile Services (auto key) quote is sent."""
+    if not (to_email or "").strip():
+        return False
+    sym = _currency_symbol(currency)
+    total = total_cents / 100
+    portal_url = f"{settings.public_base_url.rstrip('/')}/mobile-quote/{quote_approval_token}"
+    items_block = _format_line_items(line_items or [])
+    if items_block:
+        items_block = f"\n\nLine items:\n{items_block}\n"
+    shop = shop_name.strip() or "us"
+    subject = f"Your quote from {shop} – Job #{job_number}"
+    body_plain = (
+        f"Hi {customer_name},\n\n"
+        f"Your quote from {shop} for job #{job_number} is {sym}{total:.2f}.{items_block}\n"
+        f"Please review and accept here:\n{portal_url}\n\n"
+        f"Reply to this email if you have any questions.\n\n"
+        f"Thanks,\n{shop_name}"
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        shop_name=shop_name,
+        event="mobile_quote_sent",
+    )
+
+
+def send_mobile_invoice_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    invoice_number: str,
+    job_number: str,
+    total_cents: int,
+    currency: str,
+    shop_name: str,
+    customer_view_token: str,
+    line_items: Sequence[dict] | None = None,
+) -> bool:
+    """Send email when a Mobile Services (auto key) invoice is sent."""
+    if not (to_email or "").strip():
+        return False
+    sym = _currency_symbol(currency)
+    total = total_cents / 100
+    view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{customer_view_token}"
+    items_block = _format_line_items(line_items or [])
+    if items_block:
+        items_block = f"\n\nLine items:\n{items_block}\n"
+    shop = shop_name.strip() or "us"
+    subject = f"Invoice {invoice_number} from {shop} – Job #{job_number}"
+    body_plain = (
+        f"Hi {customer_name},\n\n"
+        f"Your job #{job_number} with {shop} is complete. "
+        f"Invoice {invoice_number} total: {sym}{total:.2f}.{items_block}\n"
+        f"View your invoice and pay online (if available):\n{view_url}\n\n"
+        f"Thank you for your business.\n\n"
+        f"{shop_name}"
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        shop_name=shop_name,
+        event="mobile_invoice_sent",
     )
 
 

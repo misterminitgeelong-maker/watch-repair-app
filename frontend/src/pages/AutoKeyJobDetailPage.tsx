@@ -455,12 +455,31 @@ export default function AutoKeyJobDetailPage() {
     setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
 
+  const mobileNotifyFeedback = (data: { email_sent?: boolean; email_skipped_reason?: string | null }, kind: 'quote' | 'invoice') => {
+    if (data.email_sent) {
+      return kind === 'quote' ? 'Quote sent via SMS and email.' : 'Invoice sent via SMS and email.'
+    }
+    if (data.email_skipped_reason === 'no_email') {
+      return kind === 'quote'
+        ? 'Quote sent via SMS (add customer email to also send by email).'
+        : 'Invoice sent via SMS (add customer email to also send by email).'
+    }
+    if (data.email_skipped_reason === 'email_disabled' || data.email_skipped_reason === 'sendgrid_not_configured') {
+      return kind === 'quote' ? 'Quote sent via SMS. Email is not configured on the server.' : 'Invoice sent via SMS. Email is not configured on the server.'
+    }
+    if (data.email_skipped_reason === 'send_failed') {
+      return kind === 'quote' ? 'Quote sent via SMS. Email failed — check SendGrid domain setup.' : 'Invoice sent via SMS. Email failed — check SendGrid domain setup.'
+    }
+    return kind === 'quote' ? 'Quote sent to customer via SMS.' : 'Invoice sent to customer via SMS.'
+  }
+
   const sendQuoteMut = useMutation({
     mutationFn: (quoteId: string) => sendAutoKeyQuote(quoteId),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['auto-key-quotes', id] })
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      setStatusFeedback(mobileNotifyFeedback(res.data ?? {}, 'quote'))
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to send quote.')),
   })
@@ -476,7 +495,7 @@ export default function AutoKeyJobDetailPage() {
 
   const sendInvoiceMut = useMutation({
     mutationFn: (invoiceId: string) => sendAutoKeyInvoice(invoiceId),
-    onSuccess: () => setSendInvoiceFeedback('Payment link sent to customer via SMS.'),
+    onSuccess: (res) => setSendInvoiceFeedback(mobileNotifyFeedback(res.data ?? {}, 'invoice')),
     onError: err => setSendInvoiceFeedback(getApiErrorMessage(err, 'Failed to send invoice.')),
   })
 

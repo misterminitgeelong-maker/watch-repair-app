@@ -1986,6 +1986,18 @@ class AutoKeyInvoiceRead(SQLModel):
     xero_synced_at: Optional[datetime] = None
 
 
+class AutoKeyQuoteSendResponse(SQLModel):
+    quote: AutoKeyQuoteRead
+    email_sent: bool
+    email_skipped_reason: Optional[str] = None
+
+
+class AutoKeyInvoiceSendResponse(SQLModel):
+    invoice: AutoKeyInvoiceRead
+    email_sent: bool
+    email_skipped_reason: Optional[str] = None
+
+
 class XeroConnectionStatusResponse(SQLModel):
     configured: bool
     connected: bool
