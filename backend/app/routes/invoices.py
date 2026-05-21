@@ -249,6 +249,30 @@ def send_invoice(
     tenant = session.get(Tenant, auth.tenant_id)
     shop_name = (tenant.name if tenant else None) or "Your repair shop"
     from ..email_client import send_invoice_email
+    from ..pdf_invoice import build_invoice_pdf
+
+    line_items = _line_items_payload(session, invoice.quote_id)
+    try:
+        pdf_bytes = build_invoice_pdf(
+            invoice_number=invoice.invoice_number,
+            job_number=job.job_number,
+            customer_name=customer.full_name,
+            shop_name=shop_name,
+            shop_abn=tenant.abn if tenant else None,
+            shop_address=tenant.business_address if tenant else None,
+            shop_phone=tenant.shop_phone if tenant else None,
+            shop_email=tenant.shop_email if tenant else None,
+            payment_instructions=tenant.payment_instructions if tenant else None,
+            line_items=line_items,
+            subtotal_cents=invoice.subtotal_cents,
+            tax_cents=invoice.tax_cents,
+            total_cents=invoice.total_cents,
+            currency=invoice.currency,
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("PDF generation failed for invoice %s", invoice.invoice_number)
+        pdf_bytes = None
 
     email_sent, email_error_detail = send_invoice_email(
         to_email=customer.email,
@@ -258,7 +282,8 @@ def send_invoice(
         total_cents=invoice.total_cents,
         currency=invoice.currency,
         shop_name=shop_name,
-        line_items=_line_items_payload(session, invoice.quote_id),
+        line_items=line_items,
+        pdf_bytes=pdf_bytes,
     )
     if email_sent:
         session.add(

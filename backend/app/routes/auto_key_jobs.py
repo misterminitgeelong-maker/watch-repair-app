@@ -241,6 +241,8 @@ def _send_mobile_invoice_notifications(
 ) -> tuple[bool, str | None, str | None]:
     """SMS + email for Mobile Services invoice (same content as manual Send to Customer)."""
     from ..email_client import email_skip_reason, send_mobile_invoice_email
+    from ..models import Tenant
+    from ..pdf_invoice import build_invoice_pdf
 
     first = _customer_first_name(customer)
     view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
@@ -261,6 +263,31 @@ def _send_mobile_invoice_notifications(
     skip = email_skip_reason(email)
     if skip:
         return False, skip, None
+
+    tenant = session.get(Tenant, tenant_id)
+    line_items = _auto_key_invoice_line_items(session, invoice, job)
+    try:
+        pdf_bytes = build_invoice_pdf(
+            invoice_number=invoice.invoice_number,
+            job_number=job.job_number,
+            customer_name=first,
+            shop_name=shop_name,
+            shop_abn=tenant.abn if tenant else None,
+            shop_address=tenant.business_address if tenant else None,
+            shop_phone=tenant.shop_phone if tenant else None,
+            shop_email=tenant.shop_email if tenant else None,
+            payment_instructions=tenant.payment_instructions if tenant else None,
+            line_items=line_items,
+            subtotal_cents=invoice.subtotal_cents,
+            tax_cents=invoice.tax_cents,
+            total_cents=invoice.total_cents,
+            currency=invoice.currency or "AUD",
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("PDF generation failed for mobile invoice %s", invoice.invoice_number)
+        pdf_bytes = None
+
     sent, err = send_mobile_invoice_email(
         to_email=email,
         customer_name=first,
@@ -270,7 +297,8 @@ def _send_mobile_invoice_notifications(
         currency=invoice.currency or "AUD",
         shop_name=shop_name,
         customer_view_token=invoice.customer_view_token or "",
-        line_items=_auto_key_invoice_line_items(session, invoice, job),
+        line_items=line_items,
+        pdf_bytes=pdf_bytes,
     )
     return sent, None if sent else "send_failed", err
 

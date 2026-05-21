@@ -8,6 +8,7 @@ When enable_email_notifications is False or no API key is set, messages are logg
 """
 from __future__ import annotations
 
+import base64
 import logging
 from typing import Sequence
 
@@ -107,6 +108,7 @@ def send_invoice_email(
     currency: str = "AUD",
     shop_name: str = "Your repair shop",
     line_items: Sequence[dict] | None = None,
+    pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a watch repair invoice is sent to the customer."""
     if not (to_email or "").strip():
@@ -130,6 +132,8 @@ def send_invoice_email(
         body_plain=body_plain,
         shop_name=shop_name,
         event="invoice_sent",
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"Invoice-{invoice_number}.pdf",
     )
 
 
@@ -182,6 +186,7 @@ def send_mobile_invoice_email(
     shop_name: str,
     customer_view_token: str,
     line_items: Sequence[dict] | None = None,
+    pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) invoice is sent."""
     if not (to_email or "").strip():
@@ -208,6 +213,8 @@ def send_mobile_invoice_email(
         body_plain=body_plain,
         shop_name=shop_name,
         event="mobile_invoice_sent",
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"Invoice-{invoice_number}.pdf",
     )
 
 
@@ -246,6 +253,8 @@ def _send_email(
     body_plain: str,
     shop_name: str,
     event: str,
+    pdf_bytes: bytes | None = None,
+    pdf_filename: str = "invoice.pdf",
 ) -> tuple[bool, str | None]:
     from_addr = _from_email()
     if not _enabled():
@@ -255,12 +264,21 @@ def _send_email(
     if not key:
         logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
         return False, None
-    payload = {
+    payload: dict = {
         "personalizations": [{"to": [{"email": to_email}]}],
         "from": {"email": from_addr, "name": _from_name(shop_name)},
         "subject": subject,
         "content": [{"type": "text/plain", "value": body_plain}],
     }
+    if pdf_bytes:
+        payload["attachments"] = [
+            {
+                "content": base64.b64encode(pdf_bytes).decode(),
+                "type": "application/pdf",
+                "filename": pdf_filename,
+                "disposition": "attachment",
+            }
+        ]
     try:
         with httpx.Client(timeout=15.0) as client:
             resp = client.post(

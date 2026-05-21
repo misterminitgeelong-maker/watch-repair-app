@@ -2619,6 +2619,21 @@ export const claimPoolJob = (jobId: string) =>
 export const setDispatchBaseLocation = (address: string, ring_radius_km = 10) =>
   api.post<{ base_lat: number; base_lng: number; ring_radius_km: number }>('/settings/dispatch-base-location', { address, ring_radius_km })
 
+export interface ShopIdentity {
+  name: string
+  abn: string | null
+  shop_phone: string | null
+  shop_email: string | null
+  payment_instructions: string | null
+  business_address: string | null
+}
+
+export const getShopIdentity = () =>
+  api.get<ShopIdentity>('/settings/shop-identity')
+
+export const updateShopIdentity = (data: Partial<Omit<ShopIdentity, 'name' | 'business_address'>>) =>
+  api.patch<ShopIdentity>('/settings/shop-identity', data)
+
 // ── Customer Portal (public, no auth header) ──────────────────────────────────
 export interface PortalLoyalty {
   tier_name: string

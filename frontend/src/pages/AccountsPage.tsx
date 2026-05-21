@@ -17,6 +17,8 @@ import {
   listUsers,
   refreshStripeConnectStatus,
   setDispatchBaseLocation,
+  getShopIdentity,
+  updateShopIdentity,
   type PlanCode,
   type TenantUser,
   updateTenantPlan,
@@ -581,6 +583,8 @@ export default function AccountsPage() {
 
       {(planCode.includes('auto_key') || planCode === 'pro') && <DispatchBaseLocationCard />}
 
+      <ShopIdentityCard />
+
       <AppearanceCard />
 
       <Card className="mb-5 p-4 sm:p-5">
@@ -612,6 +616,103 @@ export default function AccountsPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+function ShopIdentityCard() {
+  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['shop-identity'],
+    queryFn: () => getShopIdentity().then(r => r.data),
+  })
+
+  const [abn, setAbn] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [paymentInstructions, setPaymentInstructions] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (data) {
+      setAbn(data.abn ?? '')
+      setPhone(data.shop_phone ?? '')
+      setEmail(data.shop_email ?? '')
+      setPaymentInstructions(data.payment_instructions ?? '')
+    }
+  }, [data])
+
+  const mut = useMutation({
+    mutationFn: () => updateShopIdentity({
+      abn: abn.trim() || null,
+      shop_phone: phone.trim() || null,
+      shop_email: email.trim() || null,
+      payment_instructions: paymentInstructions.trim() || null,
+    }).then(r => r.data),
+    onSuccess: () => {
+      setSaved(true)
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['shop-identity'] })
+    },
+    onError: (err) => setError(getApiErrorMessage(err) || 'Could not save shop details.'),
+  })
+
+  if (isLoading) return null
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        Invoice &amp; Payee Details
+      </p>
+      <p className="text-sm mt-1 mb-4" style={{ color: 'var(--ms-text-mid)' }}>
+        These details appear on PDF invoices emailed to customers.
+      </p>
+      <div className="space-y-3">
+        <Input
+          label="ABN"
+          value={abn}
+          onChange={e => { setAbn(e.target.value); setSaved(false) }}
+          placeholder="12 345 678 901"
+        />
+        <Input
+          label="Shop phone"
+          value={phone}
+          onChange={e => { setPhone(e.target.value); setSaved(false) }}
+          placeholder="+61 3 9000 0000"
+        />
+        <Input
+          label="Shop email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setSaved(false) }}
+          placeholder="service@yourshop.com.au"
+        />
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Payment instructions
+          </label>
+          <textarea
+            rows={4}
+            value={paymentInstructions}
+            onChange={e => { setPaymentInstructions(e.target.value); setSaved(false) }}
+            placeholder={"Bank: ANZ\nAccount name: My Shop Pty Ltd\nBSB: 012-345\nAccount: 123456789\nReference: Invoice number"}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y"
+            style={{
+              border: '1px solid var(--ms-border-strong)',
+              backgroundColor: 'var(--ms-surface)',
+              color: 'var(--ms-text)',
+            }}
+          />
+          <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Printed in the "Payment Details" section of each PDF invoice.
+          </p>
+        </div>
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {saved && <p className="text-sm" style={{ color: 'var(--ms-badge-done-text)' }}>Saved.</p>}
+        <Button onClick={() => { setSaved(false); mut.mutate() }} disabled={mut.isPending}>
+          {mut.isPending ? 'Saving…' : 'Save invoice details'}
+        </Button>
+      </div>
+    </Card>
   )
 }
 

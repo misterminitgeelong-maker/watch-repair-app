@@ -114,6 +114,14 @@ class Tenant(SQLModel, table=True):
     minit_area: Optional[str] = Field(default=None, max_length=120)
     #: TSS export Region column (AU state, SW, NZ, SEA, …).
     minit_region: Optional[str] = Field(default=None, max_length=40, index=True)
+    #: Australian Business Number shown on invoices (e.g. "12 345 678 901").
+    abn: Optional[str] = Field(default=None, max_length=20)
+    #: Shop contact phone printed on invoices (distinct from mobile_dispatch_phone).
+    shop_phone: Optional[str] = Field(default=None, max_length=40)
+    #: Shop contact email printed on invoices.
+    shop_email: Optional[str] = Field(default=None, max_length=200)
+    #: Bank / payment instructions printed on PDF invoices (e.g. BSB, account, PayID).
+    payment_instructions: Optional[str] = Field(default=None, max_length=500)
 
 
 class User(SQLModel, table=True):
