@@ -1540,6 +1540,7 @@ export interface AutoKeyJob {
   scheduled_at?: string
   job_address?: string
   job_type?: string
+  visit_order?: number | null
   additional_services_json?: string
   commission_lead_source?: string
   customer_name?: string | null
@@ -1584,6 +1585,7 @@ export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
   customer_account_id?: string | null
+  visit_order?: number | null
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)

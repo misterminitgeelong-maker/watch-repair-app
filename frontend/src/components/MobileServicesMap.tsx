@@ -56,6 +56,13 @@ interface Props {
   customers?: Customer[]
   /** Shown above the map (e.g. selected date range) */
   rangeLabel?: string
+  /**
+   * When provided, an "Apply to schedule" action appears whenever the current
+   * route is a suggested order (optimized/driving). Receives the job ids in the
+   * proposed visit order so the caller can persist `visit_order`.
+   */
+  onApplyVisitOrder?: (orderedJobIds: string[]) => void
+  applyVisitOrderPending?: boolean
 }
 
 type JobWithAddr = Job & { _addressForMap: string }
@@ -510,7 +517,7 @@ function LeafletDispatchMap({
   )
 }
 
-function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
+function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisitOrder, applyVisitOrderPending }: Props) {
   const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [mapFilter, setMapFilter] = useState<'mobile_visits' | 'all_addresses'>('mobile_visits')
@@ -909,6 +916,22 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
           <LeafletDispatchMap orderedJobs={orderedJobs} customers={customers} geocoded={geocoded} routePath={routePath} />
         )}
       </div>
+      {onApplyVisitOrder && routeOrder !== 'scheduled' && orderedJobs.length >= 2 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}>
+          <span className="text-xs font-medium" style={{ color: 'var(--ms-text-mid)' }}>
+            Save this {routeOrder === 'driving' ? 'driving' : 'optimized'} order as the day's visit order?
+          </span>
+          <button
+            type="button"
+            disabled={applyVisitOrderPending}
+            onClick={() => onApplyVisitOrder(orderedJobs.map((j) => j.id))}
+            className="px-3 py-1.5 rounded-md text-xs font-semibold touch-manipulation disabled:opacity-50"
+            style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+          >
+            {applyVisitOrderPending ? 'Applying…' : 'Apply to schedule'}
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-medium" style={{ color: 'var(--ms-text-muted)' }}>
           Stops ({routeStopsLegend}):

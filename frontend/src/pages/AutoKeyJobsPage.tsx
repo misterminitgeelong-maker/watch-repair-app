@@ -146,6 +146,21 @@ function computeSlaChip(
   return null
 }
 
+/** Order by saved visit_order (when present) first, then appointment time. */
+function compareByVisitThenTime(
+  a: { visit_order?: number | null; scheduled_at?: string | null },
+  b: { visit_order?: number | null; scheduled_at?: string | null },
+): number {
+  const va = a.visit_order ?? null
+  const vb = b.visit_order ?? null
+  if (va !== null && vb !== null && va !== vb) return va - vb
+  if (va !== null && vb === null) return -1
+  if (va === null && vb !== null) return 1
+  const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+  const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+  return ta - tb
+}
+
 /** Higher = more urgent. Used to sort the dispatch list by risk. */
 function slaRiskWeight(chip: SlaChip | null): number {
   if (!chip) return 0
@@ -2405,6 +2420,38 @@ export default function AutoKeyJobsPage() {
     customDateTo: reportDateTo,
   })
   const { tomorrowJobs, sendRemindersMut } = useAutoKeyDayBeforeReminders()
+  const [visitOrderErr, setVisitOrderErr] = useState('')
+
+  // Persist a proposed visit order (from the route assistant) onto the jobs.
+  const applyVisitOrderMut = useMutation({
+    mutationFn: async (orderedJobIds: string[]) => {
+      // Sequential to keep it simple and avoid hammering the API for a day's worth of stops.
+      for (let i = 0; i < orderedJobIds.length; i++) {
+        await updateAutoKeyJob(orderedJobIds[i], { visit_order: i + 1 })
+      }
+    },
+    onSuccess: () => {
+      setVisitOrderErr('')
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+    },
+    onError: (err: unknown) => setVisitOrderErr(getApiErrorMessage(err, 'Could not save the visit order. Please try again.')),
+  })
+
+  // 1-tap manual override: clear any saved visit order so the day falls back to appointment time.
+  const clearVisitOrderMut = useMutation({
+    mutationFn: async (jobIds: string[]) => {
+      for (const id of jobIds) {
+        await updateAutoKeyJob(id, { visit_order: null })
+      }
+    },
+    onSuccess: () => {
+      setVisitOrderErr('')
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+    },
+    onError: (err: unknown) => setVisitOrderErr(getApiErrorMessage(err, 'Could not reset the visit order. Please try again.')),
+  })
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
@@ -3382,20 +3429,32 @@ export default function AutoKeyJobsPage() {
           ) : (
             <>
               <Card className="p-5">
-                <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--ms-text-muted)' }}>
-                  {formatDate(dispatchDate)} — {dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''}
-                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+                    {formatDate(dispatchDate)} — {dispatchJobs.length} job{dispatchJobs.length !== 1 ? 's' : ''}
+                  </h3>
+                  {(dispatchJobs as AutoKeyJob[]).some(j => j.visit_order != null) && (
+                    <button
+                      type="button"
+                      disabled={clearVisitOrderMut.isPending}
+                      onClick={() => clearVisitOrderMut.mutate((dispatchJobs as AutoKeyJob[]).filter(j => j.visit_order != null).map(j => j.id))}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-md touch-manipulation disabled:opacity-50"
+                      style={{ backgroundColor: '#F7F1E8', color: 'var(--ms-text-mid)' }}
+                    >
+                      {clearVisitOrderMut.isPending ? 'Resetting…' : 'Reset to time order'}
+                    </button>
+                  )}
+                </div>
+                {visitOrderErr && (
+                  <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{visitOrderErr}</p>
+                )}
                 {dispatchJobs.length === 0 ? (
                   <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No jobs scheduled for this date.</p>
                 ) : (
                   <div className="space-y-3">
-                    {[...dispatchJobs]
-                      .sort((a: { scheduled_at?: string }, b: { scheduled_at?: string }) => {
-                        const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
-                        const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
-                        return ta - tb
-                      })
-                      .map((job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string }) => {
+                    {[...(dispatchJobs as AutoKeyJob[])]
+                      .sort(compareByVisitThenTime)
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string; visit_order?: number | null }) => {
                         const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
                         const displayName = customer?.full_name ?? job.customer_name ?? '—'
                         const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
@@ -3414,7 +3473,14 @@ export default function AutoKeyJobsPage() {
                               }
                             }}
                           >
-                            <span className="shrink-0 w-12 text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>{timeStr}</span>
+                            <div className="shrink-0 w-12 flex flex-col items-start gap-0.5">
+                              {job.visit_order != null && (
+                                <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}>
+                                  #{job.visit_order}
+                                </span>
+                              )}
+                              <span className="text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>{timeStr}</span>
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium" style={{ color: 'var(--ms-text)' }}>
                                 #{job.job_number} · {job.title}
@@ -3453,7 +3519,13 @@ export default function AutoKeyJobsPage() {
               </Card>
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Map — where to go</h3>
-                <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} />
+                <MobileServicesMap
+                  jobs={dispatchJobs}
+                  date={dispatchDate}
+                  customers={customers}
+                  onApplyVisitOrder={(ids) => applyVisitOrderMut.mutate(ids)}
+                  applyVisitOrderPending={applyVisitOrderMut.isPending}
+                />
               </div>
             </>
           )}
