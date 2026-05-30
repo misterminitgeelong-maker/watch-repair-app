@@ -20,7 +20,10 @@ DEFAULT_LABELS: dict[str, str] = {
     "minit_sourced": "Minit sourced",
 }
 
-DEFAULT_ELIGIBLE_STATUSES = ("completed", "collected")
+# Includes both watch-repair ("completed"/"collected") and Mobile Services
+# ("work_completed"/"invoice_paid") terminal statuses so mobile commission is
+# credited when a mobile job is finished or paid.
+DEFAULT_ELIGIBLE_STATUSES = ("completed", "collected", "work_completed", "invoice_paid")
 
 
 def default_mobile_commission_rules_json() -> str:

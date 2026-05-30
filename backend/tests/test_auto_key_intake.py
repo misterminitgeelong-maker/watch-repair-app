@@ -51,7 +51,8 @@ def test_quick_intake_public_flow():
     assert r.status_code == 201
     job = r.json()
     assert job["status"] == "awaiting_customer_details"
-    assert job["title"].startswith("Pending")
+    # Quick intake titles the job with the customer's first name.
+    assert "Sam" in job["title"]
 
     with Session(engine) as s:
         row = s.get(AutoKeyJob, UUID(job["id"]))

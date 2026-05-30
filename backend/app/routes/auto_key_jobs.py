@@ -168,6 +168,43 @@ def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
     )
 
 
+def _create_suggested_quote_for_job(
+    session: Session,
+    tenant_id: UUID,
+    job: AutoKeyJob,
+    additional_presets: list[str] | None = None,
+) -> AutoKeyQuote:
+    """Create a draft quote from job-type pricing suggestions."""
+    lines = suggest_line_items(
+        job.job_type, job.key_quantity or 1, "retail", additional_presets or []
+    )
+    subtotal = int(round(sum(qty * unit for _, qty, unit in lines)))
+    tax = gst_tax_cents(subtotal)
+    quote = AutoKeyQuote(
+        tenant_id=tenant_id,
+        auto_key_job_id=job.id,
+        tax_cents=tax,
+        subtotal_cents=subtotal,
+        total_cents=subtotal + tax,
+    )
+    session.add(quote)
+    session.flush()
+    for desc, qty, unit in lines:
+        session.add(
+            AutoKeyQuoteLineItem(
+                tenant_id=tenant_id,
+                auto_key_quote_id=quote.id,
+                description=desc,
+                quantity=qty,
+                unit_price_cents=unit,
+                total_price_cents=int(round(qty * unit)),
+            )
+        )
+    session.commit()
+    session.refresh(quote)
+    return quote
+
+
 def _auto_key_quote_line_items(session: Session, quote_id: UUID) -> list[dict]:
     items = session.exec(
         select(AutoKeyQuoteLineItem)
@@ -212,20 +249,51 @@ def _send_mobile_quote_email(
     shop_name: str,
 ) -> tuple[bool, str | None, str | None]:
     from ..email_client import email_skip_reason, send_mobile_quote_email
+    from ..pdf_invoice import build_quote_pdf
 
     email = (customer.email or "").strip()
     skip = email_skip_reason(email)
     if skip:
         return False, skip, None
+
+    tenant = session.get(Tenant, tenant_id)
+    line_items = _auto_key_quote_line_items(session, quote.id)
+    first = _customer_first_name(customer)
+    try:
+        pdf_bytes = build_quote_pdf(
+            job_number=job.job_number,
+            customer_name=first,
+            shop_name=shop_name,
+            shop_abn=tenant.abn if tenant else None,
+            shop_address=tenant.business_address if tenant else None,
+            shop_phone=tenant.shop_phone if tenant else None,
+            shop_email=tenant.shop_email if tenant else None,
+            line_items=line_items,
+            subtotal_cents=quote.subtotal_cents,
+            tax_cents=quote.tax_cents,
+            total_cents=quote.total_cents,
+            currency=quote.currency or "AUD",
+        )
+    except Exception:
+        logger.exception("PDF generation failed for mobile quote job %s", job.job_number)
+        pdf_bytes = None
+
     sent, err = send_mobile_quote_email(
         to_email=email,
-        customer_name=_customer_first_name(customer),
+        customer_name=first,
         total_cents=quote.total_cents,
         currency=quote.currency or "AUD",
         job_number=job.job_number,
         shop_name=shop_name,
         quote_approval_token=quote.quote_approval_token,
-        line_items=_auto_key_quote_line_items(session, quote.id),
+        line_items=line_items,
+        subtotal_cents=quote.subtotal_cents,
+        tax_cents=quote.tax_cents,
+        shop_address=tenant.business_address if tenant else None,
+        shop_phone=tenant.shop_phone if tenant else None,
+        shop_email=tenant.shop_email if tenant else None,
+        shop_abn=tenant.abn if tenant else None,
+        pdf_bytes=pdf_bytes,
     )
     return sent, None if sent else "send_failed", err
 
@@ -298,6 +366,12 @@ def _send_mobile_invoice_notifications(
         shop_name=shop_name,
         customer_view_token=invoice.customer_view_token or "",
         line_items=line_items,
+        subtotal_cents=invoice.subtotal_cents,
+        tax_cents=invoice.tax_cents,
+        shop_address=tenant.business_address if tenant else None,
+        shop_phone=tenant.shop_phone if tenant else None,
+        shop_email=tenant.shop_email if tenant else None,
+        shop_abn=tenant.abn if tenant else None,
         pdf_bytes=pdf_bytes,
     )
     return sent, None if sent else "send_failed", err
@@ -343,6 +417,9 @@ def create_auto_key_job(
     apply_suggested_quote = data.pop("apply_suggested_quote", False)
     send_booking_sms = data.pop("send_booking_sms", False)
     additional_services = data.pop("additional_services", [])
+    additional_presets = [
+        s.get("preset") for s in additional_services if isinstance(s, dict) and s.get("preset")
+    ]
     if additional_services:
         import json
         data["additional_services_json"] = json.dumps(additional_services)
@@ -356,6 +433,22 @@ def create_auto_key_job(
     session.commit()
     session.refresh(job)
     logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
+
+    # Build a suggested quote up-front when requested so the customer-facing
+    # booking confirmation can show a real price instead of $0.
+    created_quote: AutoKeyQuote | None = None
+    if apply_suggested_quote:
+        created_quote = _create_suggested_quote_for_job(
+            session, auth.tenant_id, job, additional_presets
+        )
+
+    # Texting the customer to confirm a booking moves the job into the
+    # booking-pending stage (it is awaiting their confirmation).
+    if send_booking_sms:
+        job.status = "pending_booking"
+        session.add(job)
+        session.commit()
+        session.refresh(job)
 
     tenant = session.get(Tenant, auth.tenant_id)
     shop_name = (tenant.name if tenant else None) or ""
@@ -394,7 +487,7 @@ def create_auto_key_job(
                 vehicle_make=job.vehicle_make,
                 vehicle_model=job.vehicle_model,
                 scheduled_at=job.scheduled_at,
-                quote_total_cents=job.cost_cents,
+                quote_total_cents=created_quote.total_cents if created_quote else job.cost_cents,
                 currency="AUD",
                 shop_name=shop_name,
                 confirm_url=confirm_url,

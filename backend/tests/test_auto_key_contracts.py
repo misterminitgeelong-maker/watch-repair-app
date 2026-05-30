@@ -128,7 +128,7 @@ def test_auto_key_contract_routes_for_sms_and_invoice_update():
     complete = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed"},
+        json={"status": "work_completed"},
     )
     assert complete.status_code == 200
 
@@ -243,7 +243,7 @@ def test_public_booking_and_invoice_singular_routes():
     complete = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed"},
+        json={"status": "work_completed"},
     )
     assert complete.status_code == 200
 

@@ -9,12 +9,14 @@ When enable_email_notifications is False or no API key is set, messages are logg
 from __future__ import annotations
 
 import base64
+import html as _html
 import logging
 from typing import Sequence
 
 import httpx
 
 from .config import settings
+from .email_templates import ShopInfo, render_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +91,26 @@ def send_quote_sent_email(
         f"Reply YES to approve or NO to decline, or open this link to view details:\n{approval_url}\n\n"
         f"Thanks,\n{shop_name}"
     )
+    body_html = render_transactional_email(
+        title=f"Quote · Job #{job_number}",
+        preheader=f"Your watch repair quote is ${total:.2f}",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Here is your quote for <strong>watch repair job #{_html.escape(job_number)}</strong>. "
+            "Tap below to approve or decline."
+        ),
+        shop=ShopInfo(name=shop_name),
+        cta_label="Review quote",
+        cta_url=approval_url,
+        line_items=line_items or [],
+        total_cents=total_cents,
+        currency="AUD",
+    )
     return _send_email(
         to_email=to_email.strip(),
         subject=subject,
         body_plain=body_plain,
+        body_html=body_html,
         shop_name=shop_name,
         event="quote_sent",
     )
@@ -126,10 +144,25 @@ def send_invoice_email(
         f"Contact {shop_name} to arrange payment or collection.\n\n"
         f"Thanks,\n{shop_name}"
     )
+    body_html = render_transactional_email(
+        title=f"Invoice {invoice_number}",
+        preheader=f"Invoice {invoice_number} · {sym}{total:.2f}",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Please find your invoice for <strong>watch repair job #{_html.escape(job_number)}</strong> below. "
+            f"Contact {_html.escape(shop_name)} to arrange payment or collection."
+        ),
+        shop=ShopInfo(name=shop_name),
+        line_items=line_items or [],
+        total_cents=total_cents,
+        currency=currency,
+        note_html="A PDF copy of your invoice is attached for your records." if pdf_bytes else None,
+    )
     return _send_email(
         to_email=to_email.strip(),
         subject=subject,
         body_plain=body_plain,
+        body_html=body_html,
         shop_name=shop_name,
         event="invoice_sent",
         pdf_bytes=pdf_bytes,
@@ -147,6 +180,13 @@ def send_mobile_quote_email(
     shop_name: str,
     quote_approval_token: str,
     line_items: Sequence[dict] | None = None,
+    subtotal_cents: int | None = None,
+    tax_cents: int | None = None,
+    shop_address: str | None = None,
+    shop_phone: str | None = None,
+    shop_email: str | None = None,
+    shop_abn: str | None = None,
+    pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) quote is sent."""
     if not (to_email or "").strip():
@@ -166,12 +206,34 @@ def send_mobile_quote_email(
         f"Reply to this email if you have any questions.\n\n"
         f"Thanks,\n{shop_name}"
     )
+    body_html = render_transactional_email(
+        title=f"Quote · Job #{job_number}",
+        preheader=f"Your quote from {shop} is {sym}{total:.2f}",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Here is your quote for <strong>job #{_html.escape(job_number)}</strong>. "
+            "Review the details below and tap the button to approve online."
+        ),
+        shop=ShopInfo(name=shop_name, address=shop_address, phone=shop_phone, email=shop_email, abn=shop_abn),
+        cta_label="Review & accept quote",
+        cta_url=portal_url,
+        line_items=line_items or [],
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        total_cents=total_cents,
+        currency=currency,
+        note_html="Have a question? Just reply to this email and it will reach us directly.",
+    )
     return _send_email(
         to_email=to_email.strip(),
         subject=subject,
         body_plain=body_plain,
+        body_html=body_html,
         shop_name=shop_name,
+        reply_to=shop_email,
         event="mobile_quote_sent",
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"Quote-{job_number}.pdf",
     )
 
 
@@ -186,6 +248,12 @@ def send_mobile_invoice_email(
     shop_name: str,
     customer_view_token: str,
     line_items: Sequence[dict] | None = None,
+    subtotal_cents: int | None = None,
+    tax_cents: int | None = None,
+    shop_address: str | None = None,
+    shop_phone: str | None = None,
+    shop_email: str | None = None,
+    shop_abn: str | None = None,
     pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) invoice is sent."""
@@ -207,11 +275,31 @@ def send_mobile_invoice_email(
         f"Thank you for your business.\n\n"
         f"{shop_name}"
     )
+    body_html = render_transactional_email(
+        title=f"Invoice {invoice_number}",
+        preheader=f"Invoice {invoice_number} from {shop} · {sym}{total:.2f}",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Your <strong>job #{_html.escape(job_number)}</strong> is complete — thank you. "
+            "Your invoice is below. You can view it and pay securely online."
+        ),
+        shop=ShopInfo(name=shop_name, address=shop_address, phone=shop_phone, email=shop_email, abn=shop_abn),
+        cta_label="View & pay invoice",
+        cta_url=view_url,
+        line_items=line_items or [],
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        total_cents=total_cents,
+        currency=currency,
+        note_html="A PDF copy of your invoice is attached for your records.",
+    )
     return _send_email(
         to_email=to_email.strip(),
         subject=subject,
         body_plain=body_plain,
+        body_html=body_html,
         shop_name=shop_name,
+        reply_to=shop_email,
         event="mobile_invoice_sent",
         pdf_bytes=pdf_bytes,
         pdf_filename=f"Invoice-{invoice_number}.pdf",
@@ -237,10 +325,22 @@ def send_job_ready_email(
         f"Check status: {status_url}\n\n"
         f"Thanks,\n{shop_name}"
     )
+    body_html = render_transactional_email(
+        title=f"Ready for collection · Job #{job_number}",
+        preheader="Your watch is ready for collection",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Good news — your watch (<strong>job #{_html.escape(job_number)}</strong>) is ready for collection."
+        ),
+        shop=ShopInfo(name=shop_name),
+        cta_label="Check job status",
+        cta_url=status_url,
+    )
     return _send_email(
         to_email=to_email.strip(),
         subject=subject,
         body_plain=body_plain,
+        body_html=body_html,
         shop_name=shop_name,
         event="job_ready",
     )
@@ -253,6 +353,8 @@ def _send_email(
     body_plain: str,
     shop_name: str,
     event: str,
+    body_html: str | None = None,
+    reply_to: str | None = None,
     pdf_bytes: bytes | None = None,
     pdf_filename: str = "invoice.pdf",
 ) -> tuple[bool, str | None]:
@@ -264,11 +366,27 @@ def _send_email(
     if not key:
         logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
         return False, None
+    # text/plain must precede text/html per RFC / SendGrid ordering rules.
+    content: list[dict] = [{"type": "text/plain", "value": body_plain}]
+    if body_html:
+        content.append({"type": "text/html", "value": body_html})
     payload: dict = {
         "personalizations": [{"to": [{"email": to_email}]}],
         "from": {"email": from_addr, "name": _from_name(shop_name)},
         "subject": subject,
-        "content": [{"type": "text/plain", "value": body_plain}],
+        "content": content,
+        # Category for SendGrid analytics/deliverability segmentation.
+        "categories": [event],
+    }
+    # Replies should reach the shop, not the unattended noreply sender.
+    reply = (reply_to or "").strip()
+    if reply and "@" in reply and reply.lower() != from_addr.lower():
+        payload["reply_to"] = {"email": reply, "name": _from_name(shop_name)}
+    # List-Unsubscribe improves inbox placement and is expected by Gmail/Yahoo.
+    unsub_target = reply if (reply and "@" in reply) else from_addr
+    payload["headers"] = {
+        "List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     }
     if pdf_bytes:
         payload["attachments"] = [

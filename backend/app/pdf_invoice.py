@@ -50,9 +50,93 @@ def build_invoice_pdf(
     currency: str = "AUD",
 ) -> bytes:
     """Return PDF bytes for an invoice."""
+    return _build_document_pdf(
+        doc_type="INVOICE",
+        number_label="Invoice #",
+        document_number=invoice_number,
+        job_number=job_number,
+        doc_date=invoice_date or date.today(),
+        customer_name=customer_name,
+        shop_name=shop_name,
+        shop_abn=shop_abn,
+        shop_address=shop_address,
+        shop_phone=shop_phone,
+        shop_email=shop_email,
+        footer_label="PAYMENT DETAILS",
+        footer_text=payment_instructions,
+        line_items=line_items,
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        total_cents=total_cents,
+        currency=currency,
+    )
+
+
+def build_quote_pdf(
+    *,
+    job_number: str,
+    customer_name: str,
+    shop_name: str,
+    quote_date: date | None = None,
+    quote_number: str | None = None,
+    shop_abn: str | None = None,
+    shop_address: str | None = None,
+    shop_phone: str | None = None,
+    shop_email: str | None = None,
+    line_items: Sequence[dict],
+    subtotal_cents: int = 0,
+    tax_cents: int = 0,
+    total_cents: int,
+    currency: str = "AUD",
+    note: str | None = None,
+) -> bytes:
+    """Return PDF bytes for a quote."""
+    return _build_document_pdf(
+        doc_type="QUOTE",
+        number_label="Quote #",
+        document_number=quote_number or job_number,
+        job_number=job_number,
+        doc_date=quote_date or date.today(),
+        customer_name=customer_name,
+        shop_name=shop_name,
+        shop_abn=shop_abn,
+        shop_address=shop_address,
+        shop_phone=shop_phone,
+        shop_email=shop_email,
+        footer_label="NOTES",
+        footer_text=note or "This quote is an estimate based on the information provided. Final price may vary if additional work is required.",
+        line_items=line_items,
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        total_cents=total_cents,
+        currency=currency,
+    )
+
+
+def _build_document_pdf(
+    *,
+    doc_type: str,
+    number_label: str,
+    document_number: str,
+    job_number: str,
+    doc_date: date,
+    customer_name: str,
+    shop_name: str,
+    shop_abn: str | None,
+    shop_address: str | None,
+    shop_phone: str | None,
+    shop_email: str | None,
+    footer_label: str | None,
+    footer_text: str | None,
+    line_items: Sequence[dict],
+    subtotal_cents: int,
+    tax_cents: int,
+    total_cents: int,
+    currency: str,
+) -> bytes:
+    """Shared invoice/quote PDF renderer."""
     buf = io.BytesIO()
     sym = _currency_symbol(currency)
-    doc_date = invoice_date or date.today()
 
     doc = SimpleDocTemplate(
         buf,
@@ -61,7 +145,7 @@ def build_invoice_pdf(
         rightMargin=20 * mm,
         topMargin=20 * mm,
         bottomMargin=20 * mm,
-        title=f"Invoice {invoice_number}",
+        title=f"{doc_type.title()} {document_number}",
     )
 
     styles = getSampleStyleSheet()
@@ -111,7 +195,7 @@ def build_invoice_pdf(
     header_data = [
         [
             Paragraph(shop_name, heading),
-            Paragraph("INVOICE", heading),
+            Paragraph(doc_type, heading),
         ]
     ]
     header_tbl = Table(header_data, colWidths=[col_left, col_right])
@@ -136,7 +220,7 @@ def build_invoice_pdf(
     shop_para = Paragraph("<br/>".join(shop_lines), normal) if shop_lines else Spacer(1, 1)
 
     meta_lines = [
-        f"<b>Invoice #</b> {invoice_number}",
+        f"<b>{number_label}</b> {document_number}",
         f"<b>Job #</b> {job_number}",
         f"<b>Date</b> {doc_date.strftime('%d %b %Y')}",
     ]
@@ -228,11 +312,11 @@ def build_invoice_pdf(
     ]))
     story.append(totals_tbl)
 
-    # ── Payment instructions ──
-    if payment_instructions and payment_instructions.strip():
+    # ── Footer note (payment details for invoices, terms for quotes) ──
+    if footer_text and footer_text.strip():
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph("PAYMENT DETAILS", label))
-        story.append(Paragraph(payment_instructions.strip().replace("\n", "<br/>"), normal))
+        story.append(Paragraph(footer_label or "NOTES", label))
+        story.append(Paragraph(footer_text.strip().replace("\n", "<br/>"), normal))
 
     doc.build(story)
     return buf.getvalue()
