@@ -57,7 +57,7 @@ import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminde
 import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
 import { useMobileServicesModals } from '@/hooks/useMobileServicesModals'
 import { useWeekSchedulerDnD } from '@/hooks/useWeekSchedulerDnD'
-import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES, QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
 import {
   civilAddDays,
   civilMondayOfWeekContaining,
@@ -103,6 +103,70 @@ function isYmd(value: string | null | undefined): value is string {
 
 function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
+}
+
+// ── Dispatch SLA chips ────────────────────────────────────────────────────────
+/** Statuses where the SLA clock stops (the tech is en route / on site / done). */
+const SLA_STOP_CLOCK_STATUSES = new Set<string>([
+  'en_route',
+  'on_site',
+  'work_completed',
+  'invoice_paid',
+  'booking_completed',
+  'failed_job',
+])
+
+type SlaChipKind = 'late' | 'at_risk' | 'aging'
+interface SlaChip { kind: SlaChipKind; label: string }
+
+const SLA_AT_RISK_MINUTES = 30
+const SLA_UNSCHEDULED_AGING_HOURS = 24
+
+/** Derive an at-a-glance SLA chip for a job from existing fields (pure, no API). */
+function computeSlaChip(
+  job: { scheduled_at?: string | null; status: string; created_at: string },
+  now: number = Date.now(),
+): SlaChip | null {
+  if (SLA_STOP_CLOCK_STATUSES.has(job.status)) return null
+
+  if (job.scheduled_at) {
+    const scheduled = new Date(job.scheduled_at).getTime()
+    if (Number.isFinite(scheduled)) {
+      if (scheduled < now) return { kind: 'late', label: 'Late' }
+      if (scheduled <= now + SLA_AT_RISK_MINUTES * 60_000) return { kind: 'at_risk', label: 'At risk' }
+    }
+    return null
+  }
+
+  // Unscheduled active job that has been sitting too long.
+  const created = new Date(job.created_at).getTime()
+  if (Number.isFinite(created) && now - created >= SLA_UNSCHEDULED_AGING_HOURS * 3_600_000) {
+    return { kind: 'aging', label: 'Unscheduled aging' }
+  }
+  return null
+}
+
+/** Higher = more urgent. Used to sort the dispatch list by risk. */
+function slaRiskWeight(chip: SlaChip | null): number {
+  if (!chip) return 0
+  return chip.kind === 'late' ? 3 : chip.kind === 'at_risk' ? 2 : 1
+}
+
+const SLA_CHIP_STYLES: Record<SlaChipKind, { backgroundColor: string; color: string }> = {
+  late: { backgroundColor: 'rgba(201,100,90,0.15)', color: '#C96A5A' },
+  at_risk: { backgroundColor: 'rgba(200,130,50,0.16)', color: '#B87030' },
+  aging: { backgroundColor: 'rgba(138,117,99,0.2)', color: '#7A6453' },
+}
+
+function SlaChipBadge({ chip }: { chip: SlaChip }) {
+  return (
+    <span
+      className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5"
+      style={SLA_CHIP_STYLES[chip.kind]}
+    >
+      {chip.label}
+    </span>
+  )
 }
 
 function dateFromYmdLocal(ymd: string): Date {
@@ -1326,25 +1390,44 @@ function POSView({ customers, customerAccounts, onComplete }: { customers: Custo
   )
 }
 
+interface QuoteLineItemDraft { description: string; quantity: string; unitPrice: string }
+
 function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const [error, setError] = useState('')
-  const [description, setDescription] = useState('Mobile service')
-  const [quantity, setQuantity] = useState('1')
-  const [unitPrice, setUnitPrice] = useState('120.00')
+  const [items, setItems] = useState<QuoteLineItemDraft[]>([{ description: '', quantity: '1', unitPrice: '' }])
   const [tax, setTax] = useState('0.00')
+
+  const addPreset = (p: typeof QUOTE_PRESETS[number]) => {
+    setItems(prev => {
+      // One-tap: replace a blank first row, otherwise append so bundles stack.
+      if (prev.length === 1 && !prev[0].description && !prev[0].unitPrice) {
+        return [{ description: p.description, quantity: '1', unitPrice: String(p.price) }]
+      }
+      return [...prev, { description: p.description, quantity: '1', unitPrice: String(p.price) }]
+    })
+  }
+
+  const updateItem = (i: number, field: keyof QuoteLineItemDraft, val: string) =>
+    setItems(prev => prev.map((item, idx) => (idx === i ? { ...item, [field]: val } : item)))
+  const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
+  const addBlankItem = () => setItems(prev => [...prev, { description: '', quantity: '1', unitPrice: '' }])
+
+  const subtotal = items.reduce((sum, item) => sum + parseFloat(item.unitPrice || '0') * parseFloat(item.quantity || '1'), 0)
+  const taxAmt = parseFloat(tax || '0')
+  const total = subtotal + taxAmt
 
   const quoteMut = useMutation({
     mutationFn: () =>
       createAutoKeyQuote(jobId, {
-        line_items: [
-          {
-            description: description.trim() || 'Mobile service',
-            quantity: Math.max(1, Number(quantity || '1')),
-            unit_price_cents: Math.max(0, Math.round(parseFloat(unitPrice || '0') * 100)),
-          },
-        ],
-        tax_cents: Math.max(0, Math.round(parseFloat(tax || '0') * 100)),
+        line_items: items
+          .filter(i => i.description.trim())
+          .map(i => ({
+            description: i.description.trim(),
+            quantity: Math.max(1, parseFloat(i.quantity || '1')),
+            unit_price_cents: Math.max(0, Math.round(parseFloat(i.unitPrice || '0') * 100)),
+          })),
+        tax_cents: Math.max(0, Math.round(taxAmt * 100)),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] })
@@ -1355,17 +1438,83 @@ function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: () => vo
 
   return (
     <Modal title="Create Mobile Services Quote" onClose={onClose}>
-      <div className="space-y-3">
-        <Input label="Line item" value={description} onChange={e => setDescription(e.target.value)} />
-        <div className="grid grid-cols-3 gap-3">
-          <Input label="Qty" type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
-          <Input label="Unit ($)" type="number" step="0.01" min="0" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} />
-          <Input label="Tax ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
+      <div className="space-y-4">
+        {/* One-tap preset bundles */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+            Quick add — tap a service
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {QUOTE_PRESETS.map(p => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => addPreset(p)}
+                className="text-xs px-2.5 py-1 rounded-full border transition-colors touch-manipulation"
+                style={{ borderColor: 'var(--ms-accent)', color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}
+              >
+                {p.label} · ${p.price}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Line items */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Line items</p>
+          {items.map((item, i) => (
+            <div key={i} className="flex gap-2 items-end">
+              <div className="flex-1 min-w-0">
+                <Input
+                  label={i === 0 ? 'Description' : undefined}
+                  placeholder="Description"
+                  value={item.description}
+                  onChange={e => updateItem(i, 'description', e.target.value)}
+                />
+              </div>
+              <div style={{ width: 52 }}>
+                <Input
+                  label={i === 0 ? 'Qty' : undefined}
+                  type="number" min="0.01" step="0.01"
+                  value={item.quantity}
+                  onChange={e => updateItem(i, 'quantity', e.target.value)}
+                />
+              </div>
+              <div style={{ width: 90 }}>
+                <Input
+                  label={i === 0 ? 'Price ($)' : undefined}
+                  type="number" min="0" step="0.01"
+                  placeholder="0.00"
+                  value={item.unitPrice}
+                  onChange={e => updateItem(i, 'unitPrice', e.target.value)}
+                />
+              </div>
+              {items.length > 1 && (
+                <button type="button" onClick={() => removeItem(i)} className="pb-1 text-lg leading-none" style={{ color: 'var(--ms-text-muted)' }} aria-label="Remove">×</button>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={addBlankItem} className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
+            + Add line item
+          </button>
+        </div>
+
+        {/* GST + total */}
+        <div className="flex items-center gap-4">
+          <div style={{ width: 100 }}>
+            <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
+          </div>
+          <p className="text-sm font-bold pt-5" style={{ color: 'var(--ms-text)' }}>Total: ${total.toFixed(2)}</p>
+        </div>
+
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-1">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={() => quoteMut.mutate()} disabled={quoteMut.isPending}>
+          <Button
+            className="flex-1"
+            onClick={() => quoteMut.mutate()}
+            disabled={quoteMut.isPending || items.every(i => !i.description.trim())}
+          >
             {quoteMut.isPending ? 'Creating…' : 'Create Quote'}
           </Button>
         </div>
@@ -1805,6 +1954,10 @@ function AutoKeyJobCard({
                 High
               </span>
             )}
+            {(() => {
+              const chip = computeSlaChip(job)
+              return chip ? <SlaChipBadge chip={chip} /> : null
+            })()}
             {job.customer_account_id && (
               <span className="text-[11px] font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#EAF4EA', color: '#2F6A3D' }}>
                 B2B
@@ -2129,6 +2282,7 @@ export default function AutoKeyJobsPage() {
   const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
+  const [dispatchSort, setDispatchSort] = useState<'time' | 'risk'>('time')
   const [weekStart, setWeekStart] = useState(initialWeekStart)
   /** Week grid: tap Move then tap a day/slot if you do not want to drag. */
   /** Mobile: which day index (0-6) starts the 3-day window */
@@ -2220,6 +2374,22 @@ export default function AutoKeyJobsPage() {
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
     enabled: dispatchViews && !!dispatchParams,
   })
+
+  // Dispatch list ordering: by scheduled time (default) or by SLA risk (most urgent first).
+  const sortedDispatchJobs = useMemo(() => {
+    const arr = [...dispatchJobs] as AutoKeyJob[]
+    if (dispatchSort === 'risk') {
+      const now = Date.now()
+      arr.sort((a, b) => {
+        const wb = slaRiskWeight(computeSlaChip(b, now)) - slaRiskWeight(computeSlaChip(a, now))
+        if (wb !== 0) return wb
+        const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER
+        const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER
+        return ta - tb
+      })
+    }
+    return arr
+  }, [dispatchJobs, dispatchSort])
 
   const weekEnd = civilAddDays(weekStart, 6)
   const weekParams = view === 'week' ? { date_from: weekStart, date_to: weekEnd, include_unscheduled: true } : undefined
@@ -2778,6 +2948,27 @@ export default function AutoKeyJobsPage() {
               </Select>
             </div>
             )}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Sort</label>
+              <div className="inline-flex rounded-lg p-0.5" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                {([
+                  { key: 'time' as const, label: 'Time' },
+                  { key: 'risk' as const, label: 'Risk' },
+                ]).map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setDispatchSort(opt.key)}
+                    className="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors touch-manipulation"
+                    style={dispatchSort === opt.key
+                      ? { backgroundColor: 'var(--ms-accent)', color: '#fff' }
+                      : { backgroundColor: 'transparent', color: 'var(--ms-text-muted)' }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Button
               variant="secondary"
               onClick={() => sendRemindersMut.mutate()}
@@ -2802,14 +2993,14 @@ export default function AutoKeyJobsPage() {
                   <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No jobs scheduled for this date.</p>
                 ) : isSolo || dispatchTechFilter ? (
                   <div className="space-y-2">
-                    {dispatchJobs.map((job: object) => (
+                    {sortedDispatchJobs.map((job: object) => (
                       <AutoKeyJobCard key={(job as { id: string }).id} job={job as Parameters<typeof AutoKeyJobCard>[0]['job']} users={users} isSolo={isSolo} listMode />
                     ))}
                   </div>
                 ) : (
                   (() => {
                     const byTech = new Map<string, object[]>()
-                    for (const j of dispatchJobs) {
+                    for (const j of sortedDispatchJobs) {
                       const uid = (j as { assigned_user_id?: string }).assigned_user_id ?? null
                       const key = uid ?? '__unassigned__'
                       if (!byTech.has(key)) byTech.set(key, [])

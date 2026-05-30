@@ -36,10 +36,11 @@ import {
   type JobStatus,
   type KnownIssue,
   type ToolRecommendation,
+  type VehicleJobContext,
   type VehicleKeySpecMatch,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
@@ -47,22 +48,6 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { preparePhotoFile } from '@/lib/photoUpload'
-
-const QUOTE_PRESETS: { label: string; description: string; price: number }[] = [
-  { label: 'Key Cutting', description: 'Key cutting (in-store)', price: 35 },
-  { label: 'Transponder Programming', description: 'Transponder programming', price: 120 },
-  { label: 'Lockout – Car', description: 'Vehicle lockout service', price: 189 },
-  { label: 'Lockout – Boot/Trunk', description: 'Boot/trunk lockout', price: 189 },
-  { label: 'Lockout – Roadside', description: 'Roadside lockout', price: 220 },
-  { label: 'All Keys Lost', description: 'All keys lost — supply & program', price: 449 },
-  { label: 'Remote / Fob Sync', description: 'Remote / fob programming', price: 99 },
-  { label: 'Ignition Repair', description: 'Ignition repair', price: 159 },
-  { label: 'Ignition Replace', description: 'Ignition replacement', price: 349 },
-  { label: 'Duplicate Key', description: 'Duplicate key — cut & program', price: 89 },
-  { label: 'Broken Key Extraction', description: 'Broken key extraction', price: 129 },
-  { label: 'Door Lock Change', description: 'Door lock service', price: 199 },
-  { label: 'Diagnostic', description: 'Automotive key / immobiliser diagnostic', price: 159 },
-]
 
 interface LineItemDraft { description: string; quantity: string; unitPrice: string }
 
@@ -193,6 +178,77 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
           {mut.isPending ? 'Creating…' : 'Save Quote'}
         </Button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Prominent warning banner shown near the top of the job when the vehicle
+ * matches a vehicle_key_specs entry with known issues, security-gateway (SGW)
+ * warnings, or tool recommendations. Surfaces the critical info before work
+ * starts so a solo operator does not get caught out on-site.
+ */
+function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefined }) {
+  if (!context) return null
+  const knownIssues = context.known_issues ?? []
+  const toolRecs = context.tool_recommendations ?? []
+  if (knownIssues.length === 0 && toolRecs.length === 0) return null
+
+  const mentionsGateway = (text: string | undefined | null) =>
+    !!text && /\b(sgw|security gateway|secure gateway|gateway|firewall)\b/i.test(text)
+  const hasGatewayWarning = knownIssues.some(
+    issue => mentionsGateway(issue.issue) || mentionsGateway(issue.notes) || mentionsGateway(issue.resolution),
+  )
+
+  // Distinct primary tools recommended for this vehicle/job.
+  const recommendedTools = Array.from(
+    new Set(toolRecs.map(r => r.primary_tool).filter((t): t is string => !!t && t.trim() !== '')),
+  ).slice(0, 4)
+
+  return (
+    <div
+      className="mb-5 rounded-xl border p-4 space-y-3"
+      style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.08)' }}
+      role="alert"
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-base" aria-hidden>⚠</span>
+        <h3 className="font-bold text-sm uppercase tracking-wide" style={{ color: '#A4392B' }}>
+          {hasGatewayWarning ? 'Security gateway / known-issue warning' : 'Vehicle warning'}
+        </h3>
+        {context.complexity && <AklComplexityPill complexity={context.complexity} className="px-2 text-xs" />}
+        {hasGatewayWarning && (
+          <span className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: '#A4392B' }}>
+            SGW
+          </span>
+        )}
+      </div>
+
+      {knownIssues.length > 0 && (
+        <ul className="space-y-2">
+          {knownIssues.slice(0, 4).map((issue: KnownIssue, i: number) => (
+            <li key={i} className="text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{issue.issue}</span>
+                {issue.severity && <SeverityBadge severity={issue.severity} />}
+              </div>
+              {issue.resolution && (
+                <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--ms-text)' }}>Fix: {issue.resolution}</p>
+              )}
+              {!issue.resolution && issue.notes && (
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{issue.notes}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {recommendedTools.length > 0 && (
+        <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+          <span className="font-semibold" style={{ color: 'var(--ms-text)' }}>Recommended tools: </span>
+          {recommendedTools.join(', ')}
+        </p>
+      )}
     </div>
   )
 }
@@ -678,6 +734,8 @@ export default function AutoKeyJobDetailPage() {
           </Button>
         )}
       />
+
+      <VehicleAlertBanner context={jobContext} />
 
       {/* Mobile quick-action strip */}
       <div className="lg:hidden mb-3 flex items-center gap-2 flex-wrap">
