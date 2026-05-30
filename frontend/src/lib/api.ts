@@ -2369,6 +2369,46 @@ export const advanceProspectLead = (id: string) =>
 export const deleteProspectLead = (id: string) =>
   api.delete(`/prospect-leads/${id}`)
 
+// ── Inbound lead inbox (/v1/prospects/leads) ──────────────────────────────────
+export type InboundLeadStatus = 'new' | 'quote_needed' | 'contacted' | 'follow_up_due' | 'won' | 'lost'
+export interface InboundLead {
+  id: string
+  tenant_id: string
+  place_id?: string | null
+  name: string
+  address?: string | null
+  phone?: string | null
+  website?: string | null
+  rating?: number | null
+  review_count?: number | null
+  category?: string | null
+  state_code?: string | null
+  suburb_name?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  notes?: string | null
+  status: InboundLeadStatus
+  next_follow_up_on?: string | null
+  visit_scheduled_at?: string | null
+  customer_account_id?: string | null
+  created_at: string
+  updated_at: string
+}
+export const listInboundLeads = (status?: InboundLeadStatus) =>
+  api.get<InboundLead[]>('/prospects/leads', { params: status ? { status } : undefined })
+export const createInboundLead = (data: {
+  name: string; phone?: string; address?: string; category?: string
+  state_code?: string; suburb_name?: string; website?: string
+  contact_name?: string; contact_email?: string; notes?: string; status?: InboundLeadStatus
+}) => api.post<InboundLead>('/prospects/leads', data)
+export const updateInboundLead = (id: string, data: {
+  status?: InboundLeadStatus; notes?: string; contact_name?: string
+  contact_email?: string; phone?: string; next_follow_up_on?: string | null
+}) => api.patch<InboundLead>(`/prospects/leads/${id}`, data)
+export const convertInboundLeadToAccount = (id: string, data: {
+  account_name: string; contact_name?: string; contact_phone?: string; contact_email?: string
+}) => api.post<InboundLead>(`/prospects/leads/${id}/convert-to-account`, data)
+
 // ── Parent account — mobile lead ingest ──────────────────────────────────────
 export interface MobileSuburbRoute {
   id: string

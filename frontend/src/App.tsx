@@ -73,6 +73,7 @@ const StocktakeWorkspacePage = lazy(() => import('@/pages/StocktakeWorkspacePage
 const StocktakeSummaryPage = lazy(() => import('@/pages/StocktakeSummaryPage'))
 const ProspectsPage = lazy(() => import('@/pages/ProspectsPage'))
 const ProspectBoardPage = lazy(() => import('@/pages/ProspectBoardPage'))
+const LeadInboxPage = lazy(() => import('@/pages/LeadInboxPage'))
 const MobileServicesTeamPage = lazy(() => import('@/pages/MobileServicesTeamPage'))
 const SubscriptionRequiredPage = lazy(() => import('@/pages/SubscriptionRequiredPage'))
 const CustomerPortalPage = lazy(() => import('@/pages/CustomerPortalPage'))
@@ -205,6 +206,7 @@ export default function App() {
                 <Route path="team" element={<MobileServicesTeamPage />} />
                 <Route path="prospects" element={<ProspectsPage />} />
                 <Route path="prospects/board" element={<ProspectBoardPage />} />
+                <Route path="prospects/inbox" element={<LeadInboxPage />} />
                 <Route path="toolkit" element={<ToolkitPage />} />
                 <Route path=":id" element={<AutoKeyJobDetailPage />} />
               </Route>

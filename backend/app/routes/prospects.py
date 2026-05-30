@@ -1,3 +1,6 @@
+from datetime import date, datetime, timezone
+from uuid import UUID
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -6,8 +9,8 @@ from typing import Optional
 
 from ..config import settings
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context
-from ..models import ProspectBusiness, Suburb
+from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..models import CustomerAccount, ProspectBusiness, ProspectLead, Suburb
 
 router = APIRouter(prefix="/v1/prospects", tags=["prospects"])
 
@@ -349,3 +352,188 @@ async def list_regions(
         for code, suburbs in suburbs_by_state.items()
     }
     return {"states": AU_STATES, "suburbs": suburbs_by_state, "region_groups": region_groups}
+
+
+# ── Inbound lead inbox (per-tenant CRM) ──────────────────────────────────────
+
+# Pipeline statuses. `won` is set automatically when a lead is converted to a
+# customer account; `lost` lets the operator archive dead leads.
+VALID_LEAD_STATUSES: frozenset[str] = frozenset(
+    {"new", "quote_needed", "contacted", "follow_up_due", "won", "lost"}
+)
+
+
+class ProspectLeadCreate(BaseModel):
+    name: str
+    place_id: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    category: Optional[str] = None
+    state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ProspectLeadUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
+    next_follow_up_on: Optional[date] = None
+    visit_scheduled_at: Optional[datetime] = None
+
+
+class ProspectLeadConvert(BaseModel):
+    account_name: str
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+
+
+class ProspectLeadRead(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    place_id: Optional[str] = None
+    name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    category: Optional[str] = None
+    state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    notes: Optional[str] = None
+    status: str
+    next_follow_up_on: Optional[date] = None
+    visit_scheduled_at: Optional[datetime] = None
+    customer_account_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+@router.post("/leads", response_model=ProspectLeadRead, status_code=201)
+def create_prospect_lead(
+    payload: ProspectLeadCreate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Lead name is required")
+
+    status = (payload.status or "new").strip() or "new"
+    if status not in VALID_LEAD_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {', '.join(sorted(VALID_LEAD_STATUSES))}")
+
+    lead = ProspectLead(
+        tenant_id=auth.tenant_id,
+        place_id=(payload.place_id or None),
+        name=name,
+        address=(payload.address or None),
+        phone=(payload.phone or None),
+        website=(payload.website or None),
+        rating=payload.rating,
+        review_count=payload.review_count,
+        category=(payload.category or None),
+        state_code=(payload.state_code or None),
+        suburb_name=(payload.suburb_name or None),
+        contact_name=(payload.contact_name or None),
+        contact_email=(payload.contact_email or None),
+        notes=(payload.notes or None),
+        status=status,
+    )
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return lead
+
+
+@router.get("/leads", response_model=list[ProspectLeadRead])
+def list_prospect_leads(
+    status: Optional[str] = Query(default=None, description="Filter by pipeline status"),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    stmt = select(ProspectLead).where(ProspectLead.tenant_id == auth.tenant_id)
+    if status:
+        if status not in VALID_LEAD_STATUSES:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {', '.join(sorted(VALID_LEAD_STATUSES))}")
+        stmt = stmt.where(ProspectLead.status == status)
+    stmt = stmt.order_by(ProspectLead.created_at.desc())
+    return list(session.exec(stmt).all())
+
+
+@router.patch("/leads/{lead_id}", response_model=ProspectLeadRead)
+def update_prospect_lead(
+    lead_id: UUID,
+    payload: ProspectLeadUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    lead = session.get(ProspectLead, lead_id)
+    if not lead or lead.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    if "status" in updates and updates["status"] is not None:
+        if updates["status"] not in VALID_LEAD_STATUSES:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {', '.join(sorted(VALID_LEAD_STATUSES))}")
+    for field, value in updates.items():
+        setattr(lead, field, value)
+    lead.updated_at = datetime.now(timezone.utc)
+
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return lead
+
+
+@router.post("/leads/{lead_id}/convert-to-account", response_model=ProspectLeadRead, status_code=201)
+def convert_prospect_lead_to_account(
+    lead_id: UUID,
+    payload: ProspectLeadConvert,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    lead = session.get(ProspectLead, lead_id)
+    if not lead or lead.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    account_name = (payload.account_name or lead.name or "").strip()
+    if not account_name:
+        raise HTTPException(status_code=400, detail="Account name is required")
+
+    if lead.customer_account_id:
+        existing = session.get(CustomerAccount, lead.customer_account_id)
+        if existing:
+            raise HTTPException(status_code=409, detail="Lead is already linked to a customer account")
+
+    account = CustomerAccount(
+        tenant_id=auth.tenant_id,
+        name=account_name,
+        contact_name=(payload.contact_name or lead.contact_name or None),
+        contact_email=(payload.contact_email or lead.contact_email or None),
+        contact_phone=(payload.contact_phone or lead.phone or None),
+        billing_address=lead.address,
+    )
+    session.add(account)
+    session.flush()
+
+    lead.customer_account_id = account.id
+    lead.status = "won"
+    lead.updated_at = datetime.now(timezone.utc)
+    session.add(lead)
+
+    session.commit()
+    session.refresh(lead)
+    return lead

@@ -339,11 +339,13 @@ class ProspectLead(SQLModel, table=True):
     review_count: Optional[int] = None
     category: Optional[str] = None
     state_code: Optional[str] = None
+    suburb_name: Optional[str] = None
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
     notes: Optional[str] = None
-    status: str = Field(default="new")  # new | contacted | visited | onboarded
+    status: str = Field(default="new")  # new | quote_needed | contacted | follow_up_due | won | lost
     visit_scheduled_at: Optional[datetime] = None
+    next_follow_up_on: Optional[date] = None
     customer_account_id: Optional[UUID] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
