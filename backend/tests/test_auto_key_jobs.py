@@ -93,10 +93,10 @@ def test_auto_invoice_created_once_when_job_completed():
     complete_res = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Done"},
+        json={"status": "work_completed", "note": "Done"},
     )
     assert complete_res.status_code == 200
-    assert complete_res.json()["status"] == "completed"
+    assert complete_res.json()["status"] == "work_completed"
 
     invoices_after_first = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
     assert invoices_after_first.status_code == 200
@@ -109,13 +109,55 @@ def test_auto_invoice_created_once_when_job_completed():
     complete_again_res = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Still done"},
+        json={"status": "work_completed", "note": "Still done"},
     )
     assert complete_again_res.status_code == 200
 
     invoices_after_second = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
     assert invoices_after_second.status_code == 200
     assert len(invoices_after_second.json()) == 1
+
+
+def test_no_duplicate_invoice_when_completion_re_entered():
+    """Leaving and re-entering work_completed must not create a second invoice."""
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-reentry-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Re-entry job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "on_site",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 9000,
+            "job_address": "5 Loop St",
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    for status in ("work_completed", "en_route", "on_site", "work_completed"):
+        res = client.post(
+            f"/v1/auto-key-jobs/{job_id}/status",
+            headers=headers,
+            json={"status": status},
+        )
+        assert res.status_code == 200
+
+    invoices = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
+    assert invoices.status_code == 200
+    assert len(invoices.json()) == 1
 
 
 def test_auto_invoice_from_job_cost_when_no_quote():
@@ -148,7 +190,7 @@ def test_auto_invoice_from_job_cost_when_no_quote():
     complete_res = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Done"},
+        json={"status": "work_completed", "note": "Done"},
     )
     assert complete_res.status_code == 200
 
@@ -193,7 +235,7 @@ def test_public_invoice_view_uses_customer_token_after_complete(monkeypatch):
     r = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Done"},
+        json={"status": "work_completed", "note": "Done"},
     )
     assert r.status_code == 200
 
@@ -253,7 +295,7 @@ def test_public_invoice_pay_online_requires_stripe_connect(monkeypatch):
     r = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Done"},
+        json={"status": "work_completed", "note": "Done"},
     )
     assert r.status_code == 200
 
@@ -408,7 +450,7 @@ def test_list_auto_key_jobs_active_only_filters_final_statuses():
             "title": "Done job",
             "key_quantity": 1,
             "priority": "normal",
-            "status": "completed",
+            "status": "work_completed",
             "programming_status": "pending",
             "deposit_cents": 0,
             "cost_cents": 0,
@@ -457,7 +499,7 @@ def test_update_auto_key_invoice_can_mark_paid():
     complete = client.post(
         f"/v1/auto-key-jobs/{job_id}/status",
         headers=headers,
-        json={"status": "completed", "note": "Done"},
+        json={"status": "work_completed", "note": "Done"},
     )
     assert complete.status_code == 200
 

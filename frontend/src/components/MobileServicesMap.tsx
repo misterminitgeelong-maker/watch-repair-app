@@ -331,14 +331,28 @@ function MarkerWithInfoWindow({
             <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               {displayAddress}
             </p>
-            <a
-              href={`/auto-key/${job.id}`}
-              className="mt-2 inline-block text-xs font-semibold hover:underline"
-              style={{ color: 'var(--ms-accent)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              View job →
-            </a>
+            <div className="mt-2 flex items-center gap-3">
+              <a
+                href={`/auto-key/${job.id}`}
+                className="inline-block text-xs font-semibold hover:underline"
+                style={{ color: 'var(--ms-accent)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                View job →
+              </a>
+              {displayAddress && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(displayAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-xs font-semibold hover:underline"
+                  style={{ color: 'var(--ms-accent)' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Get directions →
+                </a>
+              )}
+            </div>
           </div>
         </InfoWindow>
       )}
@@ -471,9 +485,22 @@ function LeafletDispatchMap({
                 <p className="mt-1 text-xs" style={{ color: '#6b5b4a' }}>
                   {displayAddress}
                 </p>
-                <a href={`/auto-key/${job.id}`} className="mt-2 inline-block text-xs font-semibold" style={{ color: '#B8860B' }}>
-                  View job →
-                </a>
+                <div className="mt-2 flex items-center gap-3">
+                  <a href={`/auto-key/${job.id}`} className="inline-block text-xs font-semibold" style={{ color: '#B8860B' }}>
+                    View job →
+                  </a>
+                  {displayAddress && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(displayAddress)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs font-semibold"
+                      style={{ color: '#B8860B' }}
+                    >
+                      Get directions →
+                    </a>
+                  )}
+                </div>
               </div>
             </Popup>
           </CircleMarker>
@@ -799,7 +826,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             Driving
           </button>
         </div>
-        {orderedJobs.length >= 2 && (
+        {orderedJobs.length >= 1 && (
           <a
             href={mapsDirUrl}
             target="_blank"
@@ -807,7 +834,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel }: Props) {
             className="text-xs font-semibold hover:underline touch-manipulation"
             style={{ color: 'var(--ms-accent)' }}
           >
-            Open in Google Maps →
+            {orderedJobs.length === 1 ? 'Open directions in Google Maps →' : 'Open route in Google Maps →'}
           </a>
         )}
       </div>

@@ -1671,6 +1671,7 @@ function AutoKeyJobCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
+  const [actionError, setActionError] = useState('')
   const [confirmStatus, setConfirmStatus] = useState<JobStatus | null>(null)
 
   const { data: customerAccounts = [] } = useQuery({
@@ -1699,21 +1700,25 @@ function AutoKeyJobCard({
   const statusMut = useMutation({
     mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(job.id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onError: (err) => setActionError(getApiErrorMessage(err, 'Could not update job status. Please try again.')),
   })
 
   const updateAccountMut = useMutation({
     mutationFn: (customer_account_id: string | null) => updateAutoKeyJob(job.id, { customer_account_id }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onError: (err) => setActionError(getApiErrorMessage(err, 'Could not update the linked account.')),
   })
 
   const assignTechMut = useMutation({
     mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(job.id, { assigned_user_id }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onError: (err) => setActionError(getApiErrorMessage(err, 'Could not assign the technician.')),
   })
 
   const sendQuoteMut = useMutation({
     mutationFn: (quoteId: string) => sendAutoKeyQuote(quoteId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-quotes', job.id] }),
+    onError: (err) => setActionError(getApiErrorMessage(err, 'Could not send the quote. Check the customer contact details and try again.')),
   })
 
   const invoiceMut = useMutation({
@@ -1722,6 +1727,7 @@ function AutoKeyJobCard({
       qc.invalidateQueries({ queryKey: ['auto-key-invoices', job.id] })
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
     },
+    onError: (err) => setActionError(getApiErrorMessage(err, 'Could not create the invoice from this quote.')),
   })
 
   const deleteMut = useMutation({
@@ -1740,8 +1746,14 @@ function AutoKeyJobCard({
       return
     }
     setStatusFeedback('')
+    setActionError('')
     const invoicesBefore = invoices.length
-    await statusMut.mutateAsync(status)
+    try {
+      await statusMut.mutateAsync(status)
+    } catch {
+      // onError surfaces the message; stop here so we don't show a misleading completion note.
+      return
+    }
     if (status !== 'work_completed') return
 
     const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
@@ -1952,6 +1964,14 @@ function AutoKeyJobCard({
                 {statusFeedback}
               </p>
             )}
+            {actionError && (
+              <p role="alert" className="text-xs rounded-md px-2 py-1.5 flex items-start justify-between gap-2" style={{ backgroundColor: '#FFF1ED', color: '#A4392B', border: '1px solid #E7C6B7' }}>
+                <span>{actionError}</span>
+                <button type="button" aria-label="Dismiss error" onClick={() => setActionError('')} className="shrink-0 font-semibold">
+                  <X size={12} />
+                </button>
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1974,8 +1994,13 @@ function AutoKeyJobCard({
                 const s = confirmStatus
                 setConfirmStatus(null)
                 setStatusFeedback('')
+                setActionError('')
                 const invoicesBefore = invoices.length
-                await statusMut.mutateAsync(s)
+                try {
+                  await statusMut.mutateAsync(s)
+                } catch {
+                  return
+                }
                 if (s !== 'work_completed') return
                 const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
                   listAutoKeyQuotes(job.id),
@@ -2095,6 +2120,7 @@ export default function AutoKeyJobsPage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showMoreActions])
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
+  const [boardActionErr, setBoardActionErr] = useState('')
   const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
@@ -2212,7 +2238,8 @@ export default function AutoKeyJobsPage() {
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onSuccess: () => { setBoardActionErr(''); qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }) },
+    onError: (err: unknown) => setBoardActionErr(getApiErrorMessage(err, 'Could not move the job to the new status. It has been left where it was.')),
   })
 
   const rescheduleMut = useMutation({
@@ -2449,6 +2476,15 @@ export default function AutoKeyJobsPage() {
           })}
         </div>
       </div>
+
+      {boardActionErr && (
+        <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-lg px-4 py-3 text-sm" style={{ border: '1px solid #E7C6B7', backgroundColor: '#FFF1ED', color: '#A4392B' }}>
+          <span>{boardActionErr}</span>
+          <button type="button" aria-label="Dismiss error" onClick={() => setBoardActionErr('')} className="shrink-0 font-semibold">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
       {showBookingRequest && <SendBookingRequestModal onClose={() => setShowBookingRequest(false)} />}
