@@ -1693,6 +1693,9 @@ class AutoKeyJob(SQLModel, table=True):
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: Set the first time the job transitions to work_completed. Used for KPI cycle-time,
+    #: schedule adherence, and same-day invoice metrics.
+    work_completed_at: Optional[datetime] = None
     #: Revenue share tier key — must match keys in technician rates_bp (shop_referred, tech_sourced, minit_sourced).
     commission_lead_source: str = Field(default="shop_referred", max_length=64)
     referring_shop_tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")

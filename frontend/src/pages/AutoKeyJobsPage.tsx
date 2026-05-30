@@ -3607,6 +3607,56 @@ export default function AutoKeyJobsPage() {
                 )
               })()}
 
+              {/* Mobile KPI cockpit */}
+              {autoKeyReports.kpis && (() => {
+                const k = autoKeyReports.kpis
+                const cards: { label: string; value: string; sub: string; good: boolean | null }[] = [
+                  {
+                    label: 'SAME-DAY INVOICE',
+                    value: `${k.same_day_invoice_rate_pct}%`,
+                    sub: `${k.same_day_invoiced_count}/${k.invoiced_completed_count} invoiced same day`,
+                    good: k.invoiced_completed_count > 0 ? k.same_day_invoice_rate_pct >= 80 : null,
+                  },
+                  {
+                    label: 'LEAD → QUOTE',
+                    value: `${k.lead_to_quote_pct}%`,
+                    sub: `${k.quoted_jobs_count}/${autoKeyReports.summary.total_jobs} jobs quoted`,
+                    good: autoKeyReports.summary.total_jobs > 0 ? k.lead_to_quote_pct >= 70 : null,
+                  },
+                  {
+                    label: 'CYCLE TIME',
+                    value: k.avg_cycle_hours == null ? '—' : k.avg_cycle_hours < 24 ? `${k.avg_cycle_hours}h` : `${Math.round((k.avg_cycle_hours / 24) * 10) / 10}d`,
+                    sub: `intake → completed · ${k.completed_jobs_count} done`,
+                    good: null,
+                  },
+                  {
+                    label: 'ON-TIME',
+                    value: `${k.schedule_adherence_pct}%`,
+                    sub: `${k.on_time_count}/${k.scheduled_completed_count} scheduled on time`,
+                    good: k.scheduled_completed_count > 0 ? k.schedule_adherence_pct >= 85 : null,
+                  },
+                ]
+                return (
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>KPI cockpit</h3>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      {cards.map(card => (
+                        <Card key={card.label} className="p-5">
+                          <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.08em' }}>{card.label}</p>
+                          <p
+                            className="text-2xl font-extrabold"
+                            style={{ color: card.good == null ? 'var(--ms-text)' : card.good ? '#4F7A4A' : '#C96A5A' }}
+                          >
+                            {card.value}
+                          </p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{card.sub}</p>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Weekly Revenue bar chart + Jobs by Type horizontal bars */}
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">

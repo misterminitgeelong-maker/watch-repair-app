@@ -2147,8 +2147,22 @@ export interface AutoKeyReportSummary {
   shop_revenue_pct: number
 }
 
+export interface AutoKeyReportKpis {
+  same_day_invoice_rate_pct: number
+  same_day_invoiced_count: number
+  invoiced_completed_count: number
+  lead_to_quote_pct: number
+  quoted_jobs_count: number
+  avg_cycle_hours: number | null
+  completed_jobs_count: number
+  schedule_adherence_pct: number
+  on_time_count: number
+  scheduled_completed_count: number
+}
+
 export interface AutoKeyReports {
   summary: AutoKeyReportSummary
+  kpis?: AutoKeyReportKpis
   jobs_by_type: Array<{ job_type: string; jobs: number; revenue_cents: number; avg_value_cents: number }>
   jobs_by_tech: Array<{ tech_id: string; tech_name: string; job_count: number; revenue_cents: number; revenue_share_pct?: number }>
   jobs_by_status: Array<{ status: string; count: number; label?: string }>

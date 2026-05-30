@@ -13,7 +13,7 @@ from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
 from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
-from ..models import AutoKeyInvoice, AutoKeyJob, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -990,6 +990,70 @@ def get_auto_key_reports(
         week_map[week_start]["jobs"] += 1
         week_map[week_start]["revenue_cents"] += job_revenue(j)
 
+    # ── Mobile KPI cockpit ────────────────────────────────────────────────────
+    def _as_utc(dt: datetime | None) -> datetime | None:
+        if dt is None:
+            return None
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+    completed_jobs = [j for j in jobs if j.work_completed_at is not None]
+
+    # Cycle time: created_at → work_completed_at (hours).
+    cycle_hours: list[float] = []
+    for j in completed_jobs:
+        created = _as_utc(j.created_at)
+        done = _as_utc(j.work_completed_at)
+        if created and done and done > created:
+            cycle_hours.append((done - created).total_seconds() / 3600)
+    avg_cycle_hours = round(sum(cycle_hours) / len(cycle_hours), 1) if cycle_hours else None
+
+    # Same-day invoice rate: of completed jobs with an invoice, share invoiced on the
+    # same civil (UTC) day work was completed.
+    invoiced_completed = 0
+    same_day_invoiced = 0
+    for j in completed_jobs:
+        inv = invoices_map.get(j.id)
+        if inv is None:
+            continue
+        invoiced_completed += 1
+        done = _as_utc(j.work_completed_at)
+        inv_dt = _as_utc(inv.created_at)
+        if done and inv_dt and done.date() == inv_dt.date():
+            same_day_invoiced += 1
+
+    # Lead → quote conversion: share of jobs (leads) that have at least one quote.
+    jobs_with_quote: set[UUID] = set()
+    if job_ids:
+        quoted_rows = session.exec(
+            select(AutoKeyQuote.auto_key_job_id)
+            .where(AutoKeyQuote.tenant_id == tenant_id)
+            .where(col(AutoKeyQuote.auto_key_job_id).in_(job_ids))
+        ).all()
+        jobs_with_quote = {qid for qid in quoted_rows if qid is not None}
+
+    # Schedule adherence: of scheduled jobs now completed, share completed on/before the
+    # civil (UTC) day they were scheduled for.
+    scheduled_completed = [j for j in completed_jobs if j.scheduled_at is not None]
+    on_time = 0
+    for j in scheduled_completed:
+        done = _as_utc(j.work_completed_at)
+        sched = _as_utc(j.scheduled_at)
+        if done and sched and done.date() <= sched.date():
+            on_time += 1
+
+    kpis = {
+        "same_day_invoice_rate_pct": pct(same_day_invoiced, invoiced_completed),
+        "same_day_invoiced_count": same_day_invoiced,
+        "invoiced_completed_count": invoiced_completed,
+        "lead_to_quote_pct": pct(len(jobs_with_quote), total_jobs),
+        "quoted_jobs_count": len(jobs_with_quote),
+        "avg_cycle_hours": avg_cycle_hours,
+        "completed_jobs_count": len(completed_jobs),
+        "schedule_adherence_pct": pct(on_time, len(scheduled_completed)),
+        "on_time_count": on_time,
+        "scheduled_completed_count": len(scheduled_completed),
+    }
+
     return {
         "summary": {
             "total_jobs": total_jobs,
@@ -1004,6 +1068,7 @@ def get_auto_key_reports(
             "shop_revenue_cents": shop_revenue,
             "shop_revenue_pct": pct(shop_revenue, total_revenue),
         },
+        "kpis": kpis,
         "jobs_by_type": sorted(type_map.values(), key=lambda x: -x["revenue_cents"]),
         "jobs_by_tech": sorted(tech_map.values(), key=lambda x: -x["revenue_cents"]),
         "jobs_by_status": [{"status": s, "count": c} for s, c in status_map.items()],

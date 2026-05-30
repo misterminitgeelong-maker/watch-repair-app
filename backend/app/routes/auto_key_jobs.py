@@ -765,6 +765,8 @@ def update_auto_key_job_status(
 
     # Auto-create invoice on work_completed when no invoice is present yet.
     moved_to_completed = previous_status != "work_completed" and job.status == "work_completed"
+    if moved_to_completed and job.work_completed_at is None:
+        job.work_completed_at = datetime.now(timezone.utc)
     if moved_to_completed:
       existing_invoice = session.exec(
           select(AutoKeyInvoice)
