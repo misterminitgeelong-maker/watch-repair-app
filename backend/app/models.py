@@ -2153,6 +2153,11 @@ class CustomerAccountInvoice(SQLModel, table=True):
     total_cents: int = 0
     currency: str = "AUD"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Xero sync (one aggregated invoice per B2B statement; a line per job).
+    xero_invoice_id: Optional[str] = Field(default=None, index=True)
+    xero_sync_status: Optional[str] = None  # pending | synced | failed | skipped
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
 
 
 class CustomerAccountInvoiceLine(SQLModel, table=True):
@@ -2207,6 +2212,10 @@ class CustomerAccountInvoiceRead(SQLModel):
     currency: str
     created_at: datetime
     lines: list[CustomerAccountStatementLine] = []
+    xero_invoice_id: Optional[str] = None
+    xero_sync_status: Optional[str] = None
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
 
 
 # ── Stocktake ────────────────────────────────────────────────────────────────

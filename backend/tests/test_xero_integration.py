@@ -167,6 +167,138 @@ def test_sync_auto_key_invoice_to_xero_creates_invoice(monkeypatch):
         assert invoice.xero_invoice_id == xero_invoice_id
 
 
+def test_sync_customer_account_invoice_aggregates_jobs(monkeypatch):
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"xero-b2b-{suffix}", f"b2b-{suffix}@xero.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    with Session(engine) as session:
+        from app.security import decode_access_token
+
+        claims = decode_access_token(token)
+        tenant = session.get(Tenant, claims.tenant_id)
+        assert tenant
+        tenant.xero_connection_status = "connected"
+        tenant.xero_tenant_id = "xero-org-b2b"
+        tenant.xero_access_token = "access-token"
+        tenant.xero_refresh_token = "refresh-token"
+        tenant.xero_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+        session.add(tenant)
+        session.commit()
+
+    customer_res = client.post(
+        "/v1/customers",
+        headers=headers,
+        json={"full_name": "Fleet Customer", "phone": "0400999888"},
+    )
+    assert customer_res.status_code == 201
+    customer_id = customer_res.json()["id"]
+
+    account_res = client.post(
+        "/v1/customer-accounts",
+        headers=headers,
+        json={"name": "Fleet Group", "contact_email": "ap@fleet.test", "payment_terms_days": 30},
+    )
+    assert account_res.status_code == 201
+    account_id = account_res.json()["id"]
+
+    link_res = client.post(
+        f"/v1/customer-accounts/{account_id}/customers",
+        headers=headers,
+        json={"customer_id": customer_id},
+    )
+    assert link_res.status_code == 200
+
+    created_at = None
+    for title, cost in (("Fleet job A", 15000), ("Fleet job B", 22000)):
+        job_res = client.post(
+            "/v1/auto-key-jobs",
+            headers=headers,
+            json={
+                "customer_id": customer_id,
+                "customer_account_id": account_id,
+                "title": title,
+                "key_quantity": 1,
+                "priority": "normal",
+                "status": "completed",
+                "programming_status": "programmed",
+                "deposit_cents": 0,
+                "cost_cents": cost,
+            },
+        )
+        assert job_res.status_code == 201, job_res.text
+        created_at = job_res.json()["created_at"]
+
+    period_year = int(created_at[0:4])
+    period_month = int(created_at[5:7])
+
+    invoice_res = client.post(
+        f"/v1/customer-accounts/{account_id}/invoices/monthly",
+        headers=headers,
+        json={"period_year": period_year, "period_month": period_month, "tax_cents": 3700},
+    )
+    assert invoice_res.status_code == 201, invoice_res.text
+    invoice = invoice_res.json()
+    invoice_id = invoice["id"]
+    assert invoice["subtotal_cents"] == 37000
+    assert len(invoice["lines"]) == 2
+
+    captured: dict = {}
+
+    def _ok_json(data):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.content = b"{}"
+        resp.json = lambda: data
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    xero_invoice_id = "99999999-8888-7777-6666-555555555555"
+
+    def fake_request(method, url, **kwargs):
+        if url.endswith("/Contacts") and method == "GET":
+            return _ok_json({"Contacts": []})
+        if url.endswith("/Contacts") and method == "POST":
+            return _ok_json({"Contacts": [{"ContactID": "contact-fleet", "Name": "Fleet Group"}]})
+        if url.endswith("/Invoices") and method == "POST":
+            captured["payload"] = kwargs.get("json")
+            return _ok_json(
+                {"Invoices": [{"InvoiceID": xero_invoice_id, "InvoiceNumber": "B2B-1", "Status": "AUTHORISED"}]}
+            )
+        return _ok_json({})
+
+    def fake_post(url, **kwargs):
+        if "connect/token" in url:
+            return _ok_json({"access_token": "access-token", "refresh_token": "refresh-token", "expires_in": 3600})
+        return _ok_json({})
+
+    mock_client = MagicMock()
+    mock_client.__enter__ = lambda s: mock_client
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.request = fake_request
+    mock_client.post = fake_post
+    mock_client.get = lambda url, **kwargs: _ok_json([])
+
+    with patch("app.xero_service.httpx.Client", return_value=mock_client):
+        sync_res = client.post(
+            f"/v1/customer-accounts/{account_id}/invoices/{invoice_id}/sync-xero",
+            headers=headers,
+        )
+
+    assert sync_res.status_code == 200, sync_res.text
+    body = sync_res.json()
+    assert body["xero_sync_status"] == "synced"
+    assert body["xero_invoice_id"] == xero_invoice_id
+
+    # ONE Xero invoice, one line per job + a GST line.
+    sent_invoices = captured["payload"]["Invoices"]
+    assert len(sent_invoices) == 1
+    line_items = sent_invoices[0]["LineItems"]
+    assert len(line_items) == 3  # 2 jobs + GST
+    amounts = sorted(li["UnitAmount"] for li in line_items)
+    assert amounts == [37.0, 150.0, 220.0]
+
+
 def test_xero_webhook_marks_invoice_paid(monkeypatch):
     suffix = uuid4().hex[:8]
     token = _bootstrap_and_login(f"xero-wh-{suffix}", f"wh-{suffix}@xero.test", "pass123456")

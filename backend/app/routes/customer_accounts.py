@@ -24,7 +24,9 @@ from ..models import (
     AutoKeyJob,
     RepairJob,
     ShoeRepairJob,
+    Tenant,
 )
+from ..xero_service import sync_customer_account_invoice_to_xero
 
 router = APIRouter(
     prefix="/v1/customer-accounts",
@@ -245,6 +247,10 @@ def _invoice_to_read(session: Session, invoice: CustomerAccountInvoice) -> Custo
         total_cents=invoice.total_cents,
         currency=invoice.currency,
         created_at=invoice.created_at,
+        xero_invoice_id=invoice.xero_invoice_id,
+        xero_sync_status=invoice.xero_sync_status,
+        xero_sync_error=invoice.xero_sync_error,
+        xero_synced_at=invoice.xero_synced_at,
         lines=[
             CustomerAccountStatementLine(
                 source_type=line.source_type,
@@ -510,6 +516,10 @@ def list_customer_account_invoices(
                 total_cents=invoice.total_cents,
                 currency=invoice.currency,
                 created_at=invoice.created_at,
+                xero_invoice_id=invoice.xero_invoice_id,
+                xero_sync_status=invoice.xero_sync_status,
+                xero_sync_error=invoice.xero_sync_error,
+                xero_synced_at=invoice.xero_synced_at,
                 lines=[
                     CustomerAccountStatementLine(
                         source_type=line.source_type,
@@ -584,6 +594,35 @@ def generate_customer_account_monthly_invoice(
             )
         )
 
+    session.commit()
+    session.refresh(invoice)
+    return _invoice_to_read(session, invoice)
+
+
+@router.post(
+    "/{account_id}/invoices/{invoice_id}/sync-xero",
+    response_model=CustomerAccountInvoiceRead,
+)
+def sync_customer_account_invoice(
+    account_id: UUID,
+    invoice_id: UUID,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    """Push the aggregated monthly B2B statement to Xero as ONE invoice (a line per job)."""
+    account = session.get(CustomerAccount, account_id)
+    if not account or account.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Customer account not found")
+
+    invoice = session.get(CustomerAccountInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id or invoice.customer_account_id != account_id:
+        raise HTTPException(status_code=404, detail="Statement invoice not found")
+
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    sync_customer_account_invoice_to_xero(session, invoice, tenant)
     session.commit()
     session.refresh(invoice)
     return _invoice_to_read(session, invoice)

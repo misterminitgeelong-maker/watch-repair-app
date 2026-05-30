@@ -22,8 +22,15 @@ from .models import (
     AutoKeyQuoteLineItem,
     Customer,
     CustomerAccount,
+    CustomerAccountInvoice,
+    CustomerAccountInvoiceLine,
     Tenant,
 )
+
+_MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +421,140 @@ def sync_auto_key_invoice_to_xero(session: Session, invoice: AutoKeyInvoice, ten
         )
     except Exception as exc:
         logger.exception("xero_invoice.sync_failed invoice=%s", invoice.id)
+        invoice.xero_sync_status = "failed"
+        invoice.xero_sync_error = str(exc)[:2000]
+        session.add(invoice)
+
+
+def _contact_payload_for_account(account: CustomerAccount) -> dict[str, Any]:
+    contact: dict[str, Any] = {"Name": account.name or "Customer account"}
+    email = (account.contact_email or "").strip()
+    if email:
+        contact["EmailAddress"] = email
+    phone = (account.contact_phone or account.primary_contact_phone or "").strip()
+    if phone:
+        contact["Phones"] = [{"PhoneType": "DEFAULT", "PhoneNumber": phone}]
+    if (account.billing_address or "").strip():
+        contact["Addresses"] = [
+            {"AddressType": "POBOX", "AddressLine1": account.billing_address[:500]}
+        ]
+    return contact
+
+
+def sync_customer_account_invoice_to_xero(
+    session: Session, invoice: CustomerAccountInvoice, tenant: Tenant
+) -> None:
+    """Push ONE aggregated B2B statement invoice to Xero (a line per job).
+
+    Never raises — records sync status on the invoice instead.
+    """
+    if not xero_configured():
+        invoice.xero_sync_status = "skipped"
+        invoice.xero_sync_error = "Xero is not configured on this server"
+        session.add(invoice)
+        return
+    if (tenant.xero_connection_status or "") != "connected" or not tenant.xero_access_token:
+        invoice.xero_sync_status = "pending"
+        invoice.xero_sync_error = "Xero is not connected for this workspace"
+        session.add(invoice)
+        return
+    if (invoice.xero_sync_status or "") == "synced" and invoice.xero_invoice_id:
+        return
+
+    invoice.xero_sync_status = "pending"
+    invoice.xero_sync_error = None
+    session.add(invoice)
+    session.flush()
+
+    try:
+        account = session.get(CustomerAccount, invoice.customer_account_id)
+        if not account:
+            raise ValueError("Customer account not found")
+
+        line_rows = session.exec(
+            select(CustomerAccountInvoiceLine)
+            .where(CustomerAccountInvoiceLine.tenant_id == invoice.tenant_id)
+            .where(CustomerAccountInvoiceLine.customer_account_invoice_id == invoice.id)
+            .order_by(CustomerAccountInvoiceLine.created_at)
+        ).all()
+        if not line_rows:
+            raise ValueError("Statement invoice has no line items")
+
+        contact_id = _find_or_create_contact(
+            session, tenant, _contact_payload_for_account(account)
+        )
+        account_code = _default_account_code(tenant)
+        currency = (invoice.currency or tenant.default_currency or "AUD").strip().upper()
+
+        # One Xero line per job; amounts are taken as-is (tax handled separately below)
+        # so the Xero invoice total matches the local statement total exactly.
+        line_items: list[dict[str, Any]] = [
+            {
+                "Description": f"{li.job_number} — {li.description}"[:4000],
+                "Quantity": 1.0,
+                "UnitAmount": _cents_to_amount(li.amount_cents),
+                "AccountCode": account_code,
+                "TaxType": "NONE",
+            }
+            for li in line_rows
+        ]
+        if invoice.tax_cents > 0:
+            line_items.append(
+                {
+                    "Description": "GST",
+                    "Quantity": 1.0,
+                    "UnitAmount": _cents_to_amount(invoice.tax_cents),
+                    "AccountCode": account_code,
+                    "TaxType": "NONE",
+                }
+            )
+
+        today = date.today()
+        terms = int(account.payment_terms_days or 0)
+        due = today + timedelta(days=terms if terms > 0 else 14)
+        month_name = _MONTH_NAMES[invoice.period_month - 1] if 1 <= invoice.period_month <= 12 else str(invoice.period_month)
+
+        payload = {
+            "Invoices": [
+                {
+                    "Type": "ACCREC",
+                    "Status": "AUTHORISED",
+                    "Contact": {"ContactID": contact_id},
+                    "Date": today.isoformat(),
+                    "DueDate": due.isoformat(),
+                    "CurrencyCode": currency,
+                    "LineAmountTypes": "Exclusive",
+                    "InvoiceNumber": invoice.invoice_number[:50],
+                    "Reference": f"Statement {month_name} {invoice.period_year}"[:255],
+                    "LineItems": line_items,
+                }
+            ]
+        }
+
+        result = _xero_request(session, tenant, "POST", "/Invoices", json=payload)
+        xero_invoices = result.get("Invoices") or []
+        if not xero_invoices:
+            raise ValueError("Xero did not return an invoice")
+        xero_id = xero_invoices[0].get("InvoiceID")
+        if not xero_id:
+            raise ValueError("Xero invoice missing InvoiceID")
+
+        invoice.xero_invoice_id = str(xero_id)
+        invoice.xero_sync_status = "synced"
+        invoice.xero_sync_error = None
+        invoice.xero_synced_at = datetime.now(timezone.utc)
+        tenant.xero_connection_status = "connected"
+        session.add(tenant)
+        session.add(invoice)
+        logger.info(
+            "xero_b2b_invoice.synced tenant=%s invoice=%s xero_id=%s lines=%s",
+            tenant.id,
+            invoice.id,
+            xero_id,
+            len(line_rows),
+        )
+    except Exception as exc:
+        logger.exception("xero_b2b_invoice.sync_failed invoice=%s", invoice.id)
         invoice.xero_sync_status = "failed"
         invoice.xero_sync_error = str(exc)[:2000]
         session.add(invoice)
