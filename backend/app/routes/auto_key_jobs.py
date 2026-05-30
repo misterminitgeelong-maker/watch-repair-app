@@ -268,6 +268,8 @@ def _send_mobile_quote_email(
             shop_address=tenant.business_address if tenant else None,
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
+            logo_url=tenant.logo_url if tenant else None,
+            brand_color=tenant.brand_color if tenant else None,
             line_items=line_items,
             subtotal_cents=quote.subtotal_cents,
             tax_cents=quote.tax_cents,
@@ -293,6 +295,8 @@ def _send_mobile_quote_email(
         shop_phone=tenant.shop_phone if tenant else None,
         shop_email=tenant.shop_email if tenant else None,
         shop_abn=tenant.abn if tenant else None,
+        shop_logo_url=tenant.logo_url if tenant else None,
+        shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
     )
     return sent, None if sent else "send_failed", err
@@ -345,6 +349,8 @@ def _send_mobile_invoice_notifications(
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
             payment_instructions=tenant.payment_instructions if tenant else None,
+            logo_url=tenant.logo_url if tenant else None,
+            brand_color=tenant.brand_color if tenant else None,
             line_items=line_items,
             subtotal_cents=invoice.subtotal_cents,
             tax_cents=invoice.tax_cents,
@@ -372,6 +378,8 @@ def _send_mobile_invoice_notifications(
         shop_phone=tenant.shop_phone if tenant else None,
         shop_email=tenant.shop_email if tenant else None,
         shop_abn=tenant.abn if tenant else None,
+        shop_logo_url=tenant.logo_url if tenant else None,
+        shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
     )
     return sent, None if sent else "send_failed", err

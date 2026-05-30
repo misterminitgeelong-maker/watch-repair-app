@@ -2682,6 +2682,8 @@ export interface ShopIdentity {
   shop_email: string | null
   payment_instructions: string | null
   business_address: string | null
+  logo_url: string | null
+  brand_color: string | null
 }
 
 export const getShopIdentity = () =>

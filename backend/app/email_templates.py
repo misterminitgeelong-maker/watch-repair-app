@@ -9,6 +9,7 @@ per-tenant brand colour can be wired later without changing call sites.
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -22,6 +23,9 @@ _MUTED = "#6b7280"
 _BORDER = "#e5e7eb"
 _DEFAULT_ACCENT = "#c9772a"
 
+# Lenient hex colour: #RGB, #RRGGBB or #RRGGBBAA.
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+
 
 @dataclass
 class ShopInfo:
@@ -30,6 +34,17 @@ class ShopInfo:
     phone: str | None = None
     email: str | None = None
     abn: str | None = None
+    logo_url: str | None = None
+    brand_color: str | None = None
+
+
+def _valid_hex(value: str | None) -> str | None:
+    cleaned = (value or "").strip()
+    return cleaned if cleaned and _HEX_COLOR_RE.match(cleaned) else None
+
+
+def _resolve_accent(shop: ShopInfo, fallback: str) -> str:
+    return _valid_hex(shop.brand_color) or fallback
 
 
 def _esc(value: str | None) -> str:
@@ -112,6 +127,27 @@ def _cta_button(label: str, url: str, accent: str) -> str:
     )
 
 
+def _header(shop: ShopInfo, title: str) -> str:
+    """Dark header bar with optional logo image above the shop name."""
+    logo_url = (shop.logo_url or "").strip()
+    logo_html = ""
+    if logo_url:
+        safe_src = html.escape(logo_url, quote=True)
+        safe_alt = _esc(shop.name) or "Mainspring"
+        logo_html = (
+            f'<img src="{safe_src}" alt="{safe_alt}" '
+            'style="display:block;max-height:40px;height:auto;border:0;outline:none;'
+            'text-decoration:none;margin:0 0 10px;" />'
+        )
+    return (
+        f'<td style="background:{_HEADER_BG};padding:22px 28px;">'
+        + logo_html
+        + f'<p style="margin:0;font-size:18px;font-weight:700;color:{_HEADER_TEXT};letter-spacing:.01em;">{_esc(shop.name) or "Mainspring"}</p>'
+        + f'<p style="margin:4px 0 0;font-size:12px;color:#cbd5e1;letter-spacing:.08em;text-transform:uppercase;">{_esc(title)}</p>'
+        + '</td>'
+    )
+
+
 def _footer(shop: ShopInfo) -> str:
     parts: list[str] = []
     contact_bits = [b for b in (shop.phone, shop.email) if b]
@@ -148,6 +184,8 @@ def render_transactional_email(
     accent: str = _DEFAULT_ACCENT,
 ) -> str:
     """Return a full responsive HTML email document."""
+    # A valid tenant brand colour wins over the default/passed accent.
+    accent = _resolve_accent(shop, accent)
     items_html = _line_items_table(line_items or [], currency)
     totals_html = (
         _totals_block(
@@ -181,10 +219,7 @@ def render_transactional_email(
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:{_CARD_BG};border-radius:12px;overflow:hidden;border:1px solid {_BORDER};">
   <tr>
-    <td style="background:{_HEADER_BG};padding:22px 28px;">
-      <p style="margin:0;font-size:18px;font-weight:700;color:{_HEADER_TEXT};letter-spacing:.01em;">{_esc(shop.name) or "Mainspring"}</p>
-      <p style="margin:4px 0 0;font-size:12px;color:#cbd5e1;letter-spacing:.08em;text-transform:uppercase;">{_esc(title)}</p>
-    </td>
+    {_header(shop, title)}
   </tr>
   <tr>
     <td style="padding:28px;">

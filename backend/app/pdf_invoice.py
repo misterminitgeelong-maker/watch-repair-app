@@ -6,6 +6,8 @@ Produces a byte string suitable for attaching to a SendGrid email.
 from __future__ import annotations
 
 import io
+import logging
+import re
 from datetime import date
 from typing import Sequence
 
@@ -14,6 +16,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    Image,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -21,14 +24,58 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+logger = logging.getLogger(__name__)
+
 _DARK = colors.HexColor("#1a1a2e")
 _ACCENT = colors.HexColor("#4f46e5")
 _LIGHT_GREY = colors.HexColor("#f3f4f6")
 _MID_GREY = colors.HexColor("#9ca3af")
 
+# Lenient hex colour: #RGB, #RRGGBB or #RRGGBBAA (alpha ignored by reportlab).
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+# Cap logo height in the header to keep the layout tidy.
+_LOGO_MAX_H = 16 * mm
+_LOGO_MAX_W = 60 * mm
+
 
 def _currency_symbol(currency: str) -> str:
     return "$" if (currency or "AUD").upper() in ("AUD", "USD", "NZD", "CAD") else f"{currency} "
+
+
+def _resolve_accent(brand_color: str | None) -> colors.Color:
+    cleaned = (brand_color or "").strip()
+    if cleaned and _HEX_COLOR_RE.match(cleaned):
+        try:
+            return colors.HexColor(cleaned[:7])
+        except Exception:
+            return _ACCENT
+    return _ACCENT
+
+
+def _fetch_logo(logo_url: str | None) -> Image | None:
+    """Fetch an http(s) logo into a reportlab Image; never raise on failure."""
+    url = (logo_url or "").strip()
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return None
+    try:
+        import httpx
+
+        with httpx.Client(timeout=4.0, follow_redirects=True) as client:
+            resp = client.get(url)
+        if resp.status_code != 200 or not resp.content:
+            return None
+        img = Image(io.BytesIO(resp.content))
+        iw, ih = img.imageWidth, img.imageHeight
+        if not iw or not ih:
+            return None
+        scale = min(_LOGO_MAX_H / ih, _LOGO_MAX_W / iw, 1.0)
+        img.drawHeight = ih * scale
+        img.drawWidth = iw * scale
+        img.hAlign = "LEFT"
+        return img
+    except Exception:
+        logger.warning("Logo fetch/render failed for %s; using text header", url, exc_info=True)
+        return None
 
 
 def build_invoice_pdf(
@@ -43,6 +90,8 @@ def build_invoice_pdf(
     shop_phone: str | None = None,
     shop_email: str | None = None,
     payment_instructions: str | None = None,
+    logo_url: str | None = None,
+    brand_color: str | None = None,
     line_items: Sequence[dict],
     subtotal_cents: int = 0,
     tax_cents: int = 0,
@@ -62,6 +111,8 @@ def build_invoice_pdf(
         shop_address=shop_address,
         shop_phone=shop_phone,
         shop_email=shop_email,
+        logo_url=logo_url,
+        brand_color=brand_color,
         footer_label="PAYMENT DETAILS",
         footer_text=payment_instructions,
         line_items=line_items,
@@ -83,6 +134,8 @@ def build_quote_pdf(
     shop_address: str | None = None,
     shop_phone: str | None = None,
     shop_email: str | None = None,
+    logo_url: str | None = None,
+    brand_color: str | None = None,
     line_items: Sequence[dict],
     subtotal_cents: int = 0,
     tax_cents: int = 0,
@@ -103,6 +156,8 @@ def build_quote_pdf(
         shop_address=shop_address,
         shop_phone=shop_phone,
         shop_email=shop_email,
+        logo_url=logo_url,
+        brand_color=brand_color,
         footer_label="NOTES",
         footer_text=note or "This quote is an estimate based on the information provided. Final price may vary if additional work is required.",
         line_items=line_items,
@@ -133,10 +188,13 @@ def _build_document_pdf(
     tax_cents: int,
     total_cents: int,
     currency: str,
+    logo_url: str | None = None,
+    brand_color: str | None = None,
 ) -> bytes:
     """Shared invoice/quote PDF renderer."""
     buf = io.BytesIO()
     sym = _currency_symbol(currency)
+    accent = _resolve_accent(brand_color)
 
     doc = SimpleDocTemplate(
         buf,
@@ -191,10 +249,12 @@ def _build_document_pdf(
 
     story = []
 
-    # ── Header row: shop name (left) / INVOICE label (right) ──
+    # ── Header row: logo or shop name (left) / INVOICE label (right) ──
+    logo_flowable = _fetch_logo(logo_url)
+    left_header = logo_flowable if logo_flowable is not None else Paragraph(shop_name, heading)
     header_data = [
         [
-            Paragraph(shop_name, heading),
+            left_header,
             Paragraph(doc_type, heading),
         ]
     ]
@@ -208,6 +268,9 @@ def _build_document_pdf(
 
     # ── Shop identity (left) / Invoice meta (right) ──
     shop_lines = []
+    if logo_flowable is not None and shop_name:
+        # The logo replaced the name heading; keep the name in the identity block.
+        shop_lines.append(f"<b>{shop_name}</b>")
     if shop_abn:
         shop_lines.append(f"ABN {shop_abn}")
     if shop_address:
@@ -277,7 +340,7 @@ def _build_document_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("LINEBELOW", (0, 0), (-1, 0), 0.5, _ACCENT),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.5, accent),
     ]))
     story.append(items_tbl)
     story.append(Spacer(1, 4 * mm))
@@ -306,7 +369,7 @@ def _build_document_pdf(
     totals_tbl.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEABOVE", (0, -1), (-1, -1), 0.5, _ACCENT),
+        ("LINEABOVE", (0, -1), (-1, -1), 0.5, accent),
         ("TOPPADDING", (0, -1), (-1, -1), 4),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
     ]))

@@ -263,6 +263,8 @@ def send_invoice(
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
             payment_instructions=tenant.payment_instructions if tenant else None,
+            logo_url=tenant.logo_url if tenant else None,
+            brand_color=tenant.brand_color if tenant else None,
             line_items=line_items,
             subtotal_cents=invoice.subtotal_cents,
             tax_cents=invoice.tax_cents,
@@ -283,6 +285,8 @@ def send_invoice(
         currency=invoice.currency,
         shop_name=shop_name,
         line_items=line_items,
+        shop_logo_url=tenant.logo_url if tenant else None,
+        shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
     )
     if email_sent:

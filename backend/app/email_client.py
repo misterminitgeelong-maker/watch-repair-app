@@ -126,6 +126,8 @@ def send_invoice_email(
     currency: str = "AUD",
     shop_name: str = "Your repair shop",
     line_items: Sequence[dict] | None = None,
+    shop_logo_url: str | None = None,
+    shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a watch repair invoice is sent to the customer."""
@@ -152,7 +154,7 @@ def send_invoice_email(
             f"Please find your invoice for <strong>watch repair job #{_html.escape(job_number)}</strong> below. "
             f"Contact {_html.escape(shop_name)} to arrange payment or collection."
         ),
-        shop=ShopInfo(name=shop_name),
+        shop=ShopInfo(name=shop_name, logo_url=shop_logo_url, brand_color=shop_brand_color),
         line_items=line_items or [],
         total_cents=total_cents,
         currency=currency,
@@ -186,6 +188,8 @@ def send_mobile_quote_email(
     shop_phone: str | None = None,
     shop_email: str | None = None,
     shop_abn: str | None = None,
+    shop_logo_url: str | None = None,
+    shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) quote is sent."""
@@ -214,7 +218,15 @@ def send_mobile_quote_email(
             f"Here is your quote for <strong>job #{_html.escape(job_number)}</strong>. "
             "Review the details below and tap the button to approve online."
         ),
-        shop=ShopInfo(name=shop_name, address=shop_address, phone=shop_phone, email=shop_email, abn=shop_abn),
+        shop=ShopInfo(
+            name=shop_name,
+            address=shop_address,
+            phone=shop_phone,
+            email=shop_email,
+            abn=shop_abn,
+            logo_url=shop_logo_url,
+            brand_color=shop_brand_color,
+        ),
         cta_label="Review & accept quote",
         cta_url=portal_url,
         line_items=line_items or [],
@@ -254,6 +266,8 @@ def send_mobile_invoice_email(
     shop_phone: str | None = None,
     shop_email: str | None = None,
     shop_abn: str | None = None,
+    shop_logo_url: str | None = None,
+    shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) invoice is sent."""
@@ -283,7 +297,15 @@ def send_mobile_invoice_email(
             f"Your <strong>job #{_html.escape(job_number)}</strong> is complete — thank you. "
             "Your invoice is below. You can view it and pay securely online."
         ),
-        shop=ShopInfo(name=shop_name, address=shop_address, phone=shop_phone, email=shop_email, abn=shop_abn),
+        shop=ShopInfo(
+            name=shop_name,
+            address=shop_address,
+            phone=shop_phone,
+            email=shop_email,
+            abn=shop_abn,
+            logo_url=shop_logo_url,
+            brand_color=shop_brand_color,
+        ),
         cta_label="View & pay invoice",
         cta_url=view_url,
         line_items=line_items or [],

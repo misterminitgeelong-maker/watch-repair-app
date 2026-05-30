@@ -122,6 +122,10 @@ class Tenant(SQLModel, table=True):
     shop_email: Optional[str] = Field(default=None, max_length=200)
     #: Bank / payment instructions printed on PDF invoices (e.g. BSB, account, PayID).
     payment_instructions: Optional[str] = Field(default=None, max_length=500)
+    #: Hosted https URL of the shop logo shown in branded emails and PDFs.
+    logo_url: Optional[str] = Field(default=None, max_length=1000)
+    #: Hex brand colour used to tint email/PDF accents (e.g. "#1F6FEB").
+    brand_color: Optional[str] = Field(default=None, max_length=9)
 
 
 class User(SQLModel, table=True):

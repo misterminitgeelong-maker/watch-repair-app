@@ -630,6 +630,8 @@ function ShopIdentityCard() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [paymentInstructions, setPaymentInstructions] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [brandColor, setBrandColor] = useState('')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
@@ -639,8 +641,16 @@ function ShopIdentityCard() {
       setPhone(data.shop_phone ?? '')
       setEmail(data.shop_email ?? '')
       setPaymentInstructions(data.payment_instructions ?? '')
+      setLogoUrl(data.logo_url ?? '')
+      setBrandColor(data.brand_color ?? '')
     }
   }, [data])
+
+  const trimmedColor = brandColor.trim()
+  const isValidHex = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmedColor)
+  const colorError = trimmedColor !== '' && !isValidHex
+  // Fall back to a neutral swatch when the hex is incomplete/invalid.
+  const swatchColor = isValidHex ? trimmedColor : '#1f2937'
 
   const mut = useMutation({
     mutationFn: () => updateShopIdentity({
@@ -648,6 +658,9 @@ function ShopIdentityCard() {
       shop_phone: phone.trim() || null,
       shop_email: email.trim() || null,
       payment_instructions: paymentInstructions.trim() || null,
+      logo_url: logoUrl.trim() || null,
+      // Blank or invalid hex clears the brand colour server-side.
+      brand_color: isValidHex ? trimmedColor : null,
     }).then(r => r.data),
     onSuccess: () => {
       setSaved(true)
@@ -665,7 +678,7 @@ function ShopIdentityCard() {
         Invoice &amp; Payee Details
       </p>
       <p className="text-sm mt-1 mb-4" style={{ color: 'var(--ms-text-mid)' }}>
-        These details appear on PDF invoices emailed to customers.
+        These details and branding appear on emails and PDF invoices sent to customers.
       </p>
       <div className="space-y-3">
         <Input
@@ -706,9 +719,55 @@ function ShopIdentityCard() {
             Printed in the "Payment Details" section of each PDF invoice.
           </p>
         </div>
+        <Input
+          label="Logo URL"
+          value={logoUrl}
+          onChange={e => { setLogoUrl(e.target.value); setSaved(false) }}
+          placeholder="https://yourshop.com.au/logo.png"
+        />
+        <p className="text-xs -mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          Hosted https image (PNG/JPG). Shown in branded emails and on PDF invoices.
+        </p>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Brand colour
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={swatchColor}
+              onChange={e => { setBrandColor(e.target.value.toUpperCase()); setSaved(false) }}
+              aria-label="Brand colour picker"
+              className="h-9 w-12 rounded-lg cursor-pointer"
+              style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'transparent' }}
+            />
+            <input
+              value={brandColor}
+              onChange={e => { setBrandColor(e.target.value); setSaved(false) }}
+              placeholder="#1F6FEB"
+              className="px-3 py-2 rounded-lg text-sm outline-none"
+              style={{
+                border: `1px solid ${colorError ? 'var(--ms-error)' : 'var(--ms-border-strong)'}`,
+                backgroundColor: 'var(--ms-surface)',
+                color: 'var(--ms-text)',
+                width: '8rem',
+              }}
+            />
+            <span
+              className="inline-block h-7 w-7 rounded-full"
+              style={{ backgroundColor: swatchColor, border: '1px solid var(--ms-border-strong)' }}
+              title="Accent preview"
+            />
+          </div>
+          <p className="text-xs mt-1" style={{ color: colorError ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
+            {colorError
+              ? 'Enter a hex colour like #1F6FEB (leave blank to clear).'
+              : 'Tints buttons and accents in emails and PDF invoices.'}
+          </p>
+        </div>
         {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         {saved && <p className="text-sm" style={{ color: 'var(--ms-badge-done-text)' }}>Saved.</p>}
-        <Button onClick={() => { setSaved(false); mut.mutate() }} disabled={mut.isPending}>
+        <Button onClick={() => { setSaved(false); mut.mutate() }} disabled={mut.isPending || colorError}>
           {mut.isPending ? 'Saving…' : 'Save invoice details'}
         </Button>
       </div>
