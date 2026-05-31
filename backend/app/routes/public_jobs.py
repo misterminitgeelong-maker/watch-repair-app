@@ -6,9 +6,9 @@ import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, Response
 from sqlmodel import Field, Session, SQLModel, select
 
@@ -25,6 +25,7 @@ from ..models import (
     Customer,
     JobStatusHistory,
     PortalSession,
+    Quote,
     RepairJob,
     Shoe,
     ShoeJobStatusHistory,
@@ -717,77 +718,273 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
 
 # ── Customer portal lookup ───────────────────────────────────────────────────
 
+_PORTAL_WATCH_HISTORY_STATUSES = frozenset({"collected", "cancelled"})
+_PORTAL_SHOE_HISTORY_STATUSES = frozenset({"collected", "no_go"})
+_PORTAL_AUTO_KEY_HISTORY_STATUSES = frozenset({
+    "booking_completed",
+    "work_completed",
+    "invoice_paid",
+    "failed_job",
+    "cancelled",
+})
+_PORTAL_MAX_JOBS_PER_SHOP = 50
+
+
+class CustomerPortalJobRead(SQLModel):
+    type: str  # watch | shoe | auto_key
+    job_number: str
+    title: str
+    status: str
+    created_at: str
+    status_token: str
+    status_url: str
+    detail: Optional[str] = None
+    pending_actions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CustomerPortalShopRead(SQLModel):
+    tenant_id: str
+    shop_name: str
+    logo_url: Optional[str] = None
+    brand_color: Optional[str] = None
+    jobs: list[CustomerPortalJobRead] = Field(default_factory=list)
+
+
+class CustomerPortalLookupResponse(SQLModel):
+    email: Optional[str] = None
+    shops: list[CustomerPortalShopRead] = Field(default_factory=list)
+
+
+def _portal_pending_actions_for_watch(session: Session, job: RepairJob) -> list[dict[str, Any]]:
+    quote = session.exec(
+        select(Quote)
+        .where(Quote.repair_job_id == job.id)
+        .where(Quote.status == "sent")
+        .order_by(Quote.created_at.desc())
+    ).first()
+    if quote:
+        return [{
+            "kind": "watch_quote_decision",
+            "token": quote.approval_token,
+            "url": f"/approve/{quote.approval_token}",
+        }]
+    return []
+
+
+def _portal_pending_actions_for_shoe(job: ShoeRepairJob) -> list[dict[str, Any]]:
+    if job.quote_status == "sent" and job.quote_approval_token:
+        return [{
+            "kind": "shoe_quote_decision",
+            "token": job.quote_approval_token,
+            "url": f"/shoe-approve/{job.quote_approval_token}",
+        }]
+    return []
+
+
+def _portal_pending_actions_for_auto_key(session: Session, job: AutoKeyJob) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+
+    quote = session.exec(
+        select(AutoKeyQuote)
+        .where(AutoKeyQuote.auto_key_job_id == job.id)
+        .where(AutoKeyQuote.status.in_(("draft", "sent")))  # type: ignore[attr-defined]
+        .order_by(AutoKeyQuote.created_at.desc())
+    ).first()
+    if quote and quote.status == "sent" and quote.quote_approval_token:
+        actions.append({
+            "kind": "auto_key_quote_decision",
+            "token": quote.quote_approval_token,
+            "url": f"/mobile-quote/{quote.quote_approval_token}",
+        })
+
+    if job.status == "pending_booking" and job.booking_confirmation_token:
+        actions.append({
+            "kind": "auto_key_booking_confirm",
+            "token": job.booking_confirmation_token,
+            "url": f"/mobile-booking/{job.booking_confirmation_token}",
+        })
+
+    invoice = session.exec(
+        select(AutoKeyInvoice)
+        .where(AutoKeyInvoice.auto_key_job_id == job.id)
+        .where(AutoKeyInvoice.status == "unpaid")
+        .order_by(AutoKeyInvoice.created_at.desc())
+    ).first()
+    if invoice and invoice.customer_view_token:
+        actions.append({
+            "kind": "auto_key_invoice_checkout",
+            "token": invoice.customer_view_token,
+            "url": f"/mobile-invoice/{invoice.customer_view_token}",
+        })
+
+    return actions
+
+
+def _serialize_portal_watch_job(session: Session, job: RepairJob) -> CustomerPortalJobRead:
+    watch = session.get(Watch, job.watch_id) if job.watch_id else None
+    detail = f"{watch.brand} {watch.model}".strip() if watch else None
+    return CustomerPortalJobRead(
+        type="watch",
+        job_number=job.job_number,
+        title=job.title,
+        status=job.status,
+        created_at=isoformat_z_utc(naive_utc_from_any(job.created_at)),
+        status_token=job.status_token,
+        status_url=f"/status/{job.status_token}",
+        detail=detail or None,
+        pending_actions=_portal_pending_actions_for_watch(session, job),
+    )
+
+
+def _serialize_portal_shoe_job(session: Session, job: ShoeRepairJob) -> CustomerPortalJobRead:
+    shoe = session.get(Shoe, job.shoe_id)
+    detail = " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None
+    return CustomerPortalJobRead(
+        type="shoe",
+        job_number=job.job_number,
+        title=job.title,
+        status=job.status,
+        created_at=isoformat_z_utc(naive_utc_from_any(job.created_at)),
+        status_token=job.status_token,
+        status_url=f"/shoe-status/{job.status_token}",
+        detail=detail,
+        pending_actions=_portal_pending_actions_for_shoe(job),
+    )
+
+
+def _serialize_portal_auto_key_job(session: Session, job: AutoKeyJob) -> CustomerPortalJobRead:
+    vehicle_bits = [job.vehicle_make, str(job.vehicle_year) if job.vehicle_year else None, job.vehicle_model]
+    detail = " ".join(filter(None, vehicle_bits)) or None
+    return CustomerPortalJobRead(
+        type="auto_key",
+        job_number=job.job_number,
+        title=job.title,
+        status=job.status,
+        created_at=isoformat_z_utc(naive_utc_from_any(job.created_at)),
+        status_token=job.status_token,
+        status_url=f"/customer-portal/job/auto_key/{job.status_token}",
+        detail=detail,
+        pending_actions=_portal_pending_actions_for_auto_key(session, job),
+    )
+
+
+def _collect_customer_jobs(
+    session: Session,
+    email: str,
+    *,
+    include_history: bool = False,
+) -> CustomerPortalLookupResponse:
+    """Cross-tenant job lookup grouped by shop. OTP gate can wrap this later."""
+    normalized = (email or "").strip().lower()
+    customers = session.exec(
+        select(Customer).where(Customer.email.ilike(normalized))  # type: ignore[attr-defined]
+    ).all()
+    if not customers:
+        return CustomerPortalLookupResponse(email=normalized, shops=[])
+
+    customers_by_tenant: dict[UUID, list[Customer]] = {}
+    for customer in customers:
+        customers_by_tenant.setdefault(customer.tenant_id, []).append(customer)
+
+    shops: list[CustomerPortalShopRead] = []
+    for tenant_id, tenant_customers in customers_by_tenant.items():
+        tenant = session.get(Tenant, tenant_id)
+        shop_jobs: list[CustomerPortalJobRead] = []
+        seen_job_keys: set[tuple[str, str]] = set()
+
+        for customer in tenant_customers:
+            watch_ids = session.exec(select(Watch.id).where(Watch.customer_id == customer.id)).all()
+            if watch_ids:
+                watch_query = (
+                    select(RepairJob)
+                    .where(RepairJob.watch_id.in_(watch_ids))  # type: ignore[attr-defined]
+                    .order_by(RepairJob.created_at.desc())
+                    .limit(20)
+                )
+                if not include_history:
+                    watch_query = watch_query.where(
+                        RepairJob.status.not_in(list(_PORTAL_WATCH_HISTORY_STATUSES))  # type: ignore[attr-defined]
+                    )
+                for job in session.exec(watch_query).all():
+                    key = ("watch", job.job_number)
+                    if key in seen_job_keys:
+                        continue
+                    seen_job_keys.add(key)
+                    shop_jobs.append(_serialize_portal_watch_job(session, job))
+
+            shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
+            if shoe_ids:
+                shoe_query = (
+                    select(ShoeRepairJob)
+                    .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
+                    .order_by(ShoeRepairJob.created_at.desc())
+                    .limit(20)
+                )
+                if not include_history:
+                    shoe_query = shoe_query.where(
+                        ShoeRepairJob.status.not_in(list(_PORTAL_SHOE_HISTORY_STATUSES))  # type: ignore[attr-defined]
+                    )
+                for job in session.exec(shoe_query).all():
+                    key = ("shoe", job.job_number)
+                    if key in seen_job_keys:
+                        continue
+                    seen_job_keys.add(key)
+                    shop_jobs.append(_serialize_portal_shoe_job(session, job))
+
+            auto_key_query = (
+                select(AutoKeyJob)
+                .where(AutoKeyJob.customer_id == customer.id)
+                .where(AutoKeyJob.tenant_id == tenant_id)
+                .order_by(AutoKeyJob.created_at.desc())
+                .limit(20)
+            )
+            if not include_history:
+                auto_key_query = auto_key_query.where(
+                    AutoKeyJob.status.not_in(list(_PORTAL_AUTO_KEY_HISTORY_STATUSES))  # type: ignore[attr-defined]
+                )
+            for job in session.exec(auto_key_query).all():
+                key = ("auto_key", job.job_number)
+                if key in seen_job_keys:
+                    continue
+                seen_job_keys.add(key)
+                shop_jobs.append(_serialize_portal_auto_key_job(session, job))
+
+        if shop_jobs:
+            shop_jobs.sort(key=lambda j: j.created_at, reverse=True)
+            shops.append(
+                CustomerPortalShopRead(
+                    tenant_id=str(tenant_id),
+                    shop_name=(tenant.name if tenant else None) or "Shop",
+                    logo_url=tenant.logo_url if tenant else None,
+                    brand_color=tenant.brand_color if tenant else None,
+                    jobs=shop_jobs[:_PORTAL_MAX_JOBS_PER_SHOP],
+                )
+            )
+
+    shops.sort(key=lambda s: s.shop_name.lower())
+    return CustomerPortalLookupResponse(email=normalized, shops=shops)
+
+
 class CustomerLookupRequest(SQLModel):
     email: str
+    include_history: bool = False
 
 
-@router.post("/customer-lookup")
-def customer_lookup(payload: CustomerLookupRequest, session: Session = Depends(get_session)):
-    """Return all active jobs for a customer by email address (cross-tenant, public)."""
+@router.post("/customer-lookup", response_model=CustomerPortalLookupResponse)
+def customer_lookup(
+    payload: CustomerLookupRequest,
+    include_history: bool = Query(default=False),
+    session: Session = Depends(get_session),
+):
+    """Return all jobs for a customer by email address (cross-tenant, grouped by shop)."""
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=422, detail="Please enter a valid email address.")
-
-    customers = session.exec(
-        select(Customer).where(
-            Customer.email.ilike(email)  # type: ignore[attr-defined]
-        )
-    ).all()
-
-    if not customers:
-        return {"jobs": []}
-
-    results = []
-
-    for customer in customers:
-        # Watch repair jobs
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        # Shoe repair jobs
-        shoe_ids = session.exec(
-            select(Shoe.id).where(Shoe.customer_id == customer.id)
-        ).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    # Sort by created_at descending
-    results.sort(key=lambda x: x["created_at"], reverse=True)
-
-    return {"jobs": results[:50]}
+    return _collect_customer_jobs(
+        session,
+        email,
+        include_history=include_history or payload.include_history,
+    )
 
 
 # ── Customer portal sessions ─────────────────────────────────────────────────
@@ -825,8 +1022,12 @@ def create_portal_session(payload: PortalSessionRequest, session: Session = Depe
     return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
-@router.get("/portal/session/{token}")
-def get_portal_session_jobs(token: str, session: Session = Depends(get_session)):
+@router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)
+def get_portal_session_jobs(
+    token: str,
+    include_history: bool = Query(default=False),
+    session: Session = Depends(get_session),
+):
     """Return jobs for a portal session token (same as customer-lookup but token-auth)."""
     portal = session.exec(select(PortalSession).where(PortalSession.token == token)).first()
     if not portal:
@@ -838,58 +1039,7 @@ def get_portal_session_jobs(token: str, session: Session = Depends(get_session))
     if datetime.now(timezone.utc) > exp:
         raise HTTPException(status_code=410, detail="This portal link has expired. Please request a new one.")
 
-    # Reuse customer-lookup logic
-    customers = session.exec(
-        select(Customer).where(Customer.email.ilike(portal.email))  # type: ignore[attr-defined]
-    ).all()
-
-    if not customers:
-        return {"jobs": [], "email": portal.email}
-
-    results = []
-    for customer in customers:
-        watch_jobs = session.exec(
-            select(RepairJob)
-            .where(RepairJob.customer_id == customer.id)
-            .where(RepairJob.status.not_in(["collected", "cancelled"]))  # type: ignore[attr-defined]
-            .order_by(RepairJob.created_at.desc())
-            .limit(20)
-        ).all()
-        for j in watch_jobs:
-            watch = session.get(Watch, j.watch_id) if hasattr(j, "watch_id") else None
-            results.append({
-                "type": "watch",
-                "job_number": j.job_number,
-                "title": j.title,
-                "status": j.status,
-                "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                "status_url": f"/status/{j.status_token}",
-                "detail": f"{watch.brand} {watch.model}".strip() if watch else None,
-            })
-
-        shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
-        if shoe_ids:
-            shoe_jobs = session.exec(
-                select(ShoeRepairJob)
-                .where(ShoeRepairJob.shoe_id.in_(shoe_ids))  # type: ignore[attr-defined]
-                .where(ShoeRepairJob.status.not_in(["collected", "no_go"]))  # type: ignore[attr-defined]
-                .order_by(ShoeRepairJob.created_at.desc())
-                .limit(20)
-            ).all()
-            for j in shoe_jobs:
-                shoe = session.get(Shoe, j.shoe_id)
-                results.append({
-                    "type": "shoe",
-                    "job_number": j.job_number,
-                    "title": j.title,
-                    "status": j.status,
-                    "created_at": isoformat_z_utc(naive_utc_from_any(j.created_at)),
-                    "status_url": f"/shoe-status/{j.status_token}",
-                    "detail": " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None,
-                })
-
-    results.sort(key=lambda x: x["created_at"], reverse=True)
-    return {"jobs": results[:50], "email": portal.email}
+    return _collect_customer_jobs(session, portal.email, include_history=include_history)
 
 
 # ── Public auto-key quote portal ─────────────────────────────────────────────

@@ -680,18 +680,43 @@ export interface PublicShoeJobStatus {
 export const getPublicShoeJobStatus = (token: string) =>
   axios.get<PublicShoeJobStatus>(withApiOrigin(`/v1/public/shoe-jobs/${token}`))
 
+export interface CustomerPortalPendingAction {
+  kind: 'watch_quote_decision' | 'shoe_quote_decision' | 'auto_key_quote_decision' | 'auto_key_booking_confirm' | 'auto_key_invoice_checkout'
+  token: string
+  url: string
+}
+
 export interface CustomerPortalJob {
-  type: 'watch' | 'shoe'
+  type: 'watch' | 'shoe' | 'auto_key'
   job_number: string
   title: string
   status: string
   created_at: string
+  status_token: string
   status_url: string
   detail: string | null
+  pending_actions?: CustomerPortalPendingAction[]
 }
 
-export const customerPortalLookup = (email: string) =>
-  axios.post<{ jobs: CustomerPortalJob[] }>(withApiOrigin('/v1/public/customer-lookup'), { email })
+export interface CustomerPortalShop {
+  tenant_id: string
+  shop_name: string
+  logo_url: string | null
+  brand_color: string | null
+  jobs: CustomerPortalJob[]
+}
+
+export interface CustomerPortalLookupResponse {
+  email?: string
+  shops: CustomerPortalShop[]
+}
+
+export const customerPortalLookup = (email: string, includeHistory = false) =>
+  axios.post<CustomerPortalLookupResponse>(
+    withApiOrigin('/v1/public/customer-lookup'),
+    { email, include_history: includeHistory },
+    includeHistory ? { params: { include_history: true } } : undefined,
+  )
 
 // ── Stocktake ────────────────────────────────────────────────────────────────
 export interface StockItem {
@@ -1649,8 +1674,11 @@ export const decideShoeQuote = (token: string, decision: 'approved' | 'declined'
 export const createPortalSession = (email: string) =>
   axios.post<{ session_token: string; portal_url: string; expires_days: number }>(withApiOrigin('/v1/public/portal/create-session'), { email })
 
-export const getPortalSession = (token: string) =>
-  axios.get<{ jobs: CustomerPortalJob[]; email: string }>(withApiOrigin(`/v1/public/portal/session/${token}`))
+export const getPortalSession = (token: string, includeHistory = false) =>
+  axios.get<CustomerPortalLookupResponse>(
+    withApiOrigin(`/v1/public/portal/session/${token}`),
+    includeHistory ? { params: { include_history: true } } : undefined,
+  )
 
 // Pricing type display helper (used by both modal and page)
 export function formatShoePricingType(type: ShoePricingType, priceCents: number | null): string {
