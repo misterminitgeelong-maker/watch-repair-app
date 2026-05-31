@@ -703,6 +703,8 @@ export interface CustomerPortalShop {
   shop_name: string
   logo_url: string | null
   brand_color: string | null
+  shop_phone: string | null
+  shop_email: string | null
   jobs: CustomerPortalJob[]
 }
 
@@ -2443,6 +2445,28 @@ export const decidePublicAutoKeyQuote = (
     withApiOrigin(`/v1/public/auto-key-quote/${token}/decision`),
     { decision, signature_data: opts?.signatureData, signer_name: opts?.signerName }
   )
+
+export interface PublicAutoKeyJobStatus {
+  job_number: string
+  title: string
+  status: string
+  description?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: number | null
+  job_address?: string | null
+  scheduled_at?: string | null
+  created_at: string
+  shop_name: string
+  shop_phone?: string | null
+  shop_email?: string | null
+  quote_total_cents: number
+  currency: string
+  pending_actions: CustomerPortalPendingAction[]
+}
+
+export const getPublicAutoKeyJobStatus = (token: string) =>
+  axios.get<PublicAutoKeyJobStatus>(withApiOrigin(`/v1/public/auto-key-jobs/${token}`))
 
 // ── Loyalty ───────────────────────────────────────────────────────────────────
 

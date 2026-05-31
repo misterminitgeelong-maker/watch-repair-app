@@ -1,129 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Watch, Footprints, KeyRound, ArrowRight, Search, Link2, Copy, Check, History, Sparkles } from 'lucide-react'
+import { Search, Link2, Copy, Check, History, Sparkles } from 'lucide-react'
 import {
   customerPortalLookup,
   createPortalSession,
   getPortalSession,
-  type CustomerPortalJob,
   type CustomerPortalLookupResponse,
   type CustomerPortalShop,
 } from '@/lib/api'
-import {
-  portalJobStage,
-  portalJobStatusLabel,
-  portalStageIndex,
-  portalStageLabel,
-  STAGE_ORDER,
-  type PortalStage,
-} from '@/lib/portalStatus'
-
-function formatDateShort(s: string) {
-  return new Date(s).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function jobIcon(type: CustomerPortalJob['type']) {
-  if (type === 'shoe') return Footprints
-  if (type === 'auto_key') return KeyRound
-  return Watch
-}
-
-function StageTrack({ stage }: { stage: PortalStage }) {
-  const activeIdx = portalStageIndex(stage)
-  return (
-    <div className="flex items-center gap-1 mt-2">
-      {STAGE_ORDER.map((s, idx) => (
-        <div key={s} className="flex items-center gap-1 flex-1 min-w-0">
-          <div
-            className="h-1.5 flex-1 rounded-full"
-            style={{
-              backgroundColor: idx <= activeIdx ? 'var(--ms-accent)' : 'var(--ms-border)',
-              opacity: idx <= activeIdx ? 1 : 0.55,
-            }}
-            title={portalStageLabel(s)}
-          />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function JobCard({ job, accent }: { job: CustomerPortalJob; accent?: string | null }) {
-  const Icon = jobIcon(job.type)
-  const stage = portalJobStage(job.type, job.status)
-  const label = portalJobStatusLabel(job.type, job.status)
-
-  return (
-    <Link
-      to={job.status_url}
-      className="flex items-start gap-4 p-4 rounded-xl transition-opacity active:opacity-70"
-      style={{
-        backgroundColor: 'var(--ms-surface)',
-        border: `1px solid ${accent ? `${accent}33` : 'var(--ms-border)'}`,
-        textDecoration: 'none',
-      }}
-    >
-      <div
-        className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-        style={{ backgroundColor: accent ? `${accent}18` : '#EEE6DA' }}
-      >
-        <Icon size={18} style={{ color: accent || 'var(--ms-accent-hover)' }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{job.title}</p>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-          #{job.job_number}{job.detail ? ` · ${job.detail}` : ''} · {formatDateShort(job.created_at)}
-        </p>
-        <p className="text-xs mt-1 font-medium" style={{ color: accent || 'var(--ms-accent)' }}>
-          {label}
-          <span style={{ color: 'var(--ms-text-muted)', fontWeight: 400 }}> · {portalStageLabel(stage)}</span>
-        </p>
-        <StageTrack stage={stage} />
-      </div>
-      <ArrowRight size={16} style={{ color: 'var(--ms-text-muted)', flexShrink: 0, marginTop: 4 }} />
-    </Link>
-  )
-}
-
-function ShopSection({ shop }: { shop: CustomerPortalShop }) {
-  const accent = shop.brand_color?.trim() || null
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-3">
-        {shop.logo_url ? (
-          <img
-            src={shop.logo_url}
-            alt=""
-            className="w-10 h-10 rounded-lg object-contain shrink-0"
-            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-          />
-        ) : (
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
-            style={{
-              backgroundColor: accent ? `${accent}18` : 'var(--ms-surface)',
-              color: accent || 'var(--ms-accent)',
-              border: `1px solid ${accent ? `${accent}44` : 'var(--ms-border)'}`,
-            }}
-          >
-            {shop.shop_name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{shop.shop_name}</h2>
-          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-            {shop.jobs.length} repair{shop.jobs.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {shop.jobs.map((job) => (
-          <JobCard key={`${job.type}-${job.job_number}`} job={job} accent={accent} />
-        ))}
-      </div>
-    </section>
-  )
-}
+import { CustomerPortalJobCard, PortalEmptyState } from '@/components/CustomerPortalJobCard'
 
 function ViewToggle({ mode, onChange }: { mode: 'active' | 'history'; onChange: (m: 'active' | 'history') => void }) {
   return (
@@ -150,7 +35,7 @@ function ViewToggle({ mode, onChange }: { mode: 'active' | 'history'; onChange: 
   )
 }
 
-function BookmarkBanner({ sessionToken, emailSent }: { email: string; sessionToken: string; emailSent?: boolean }) {
+function BookmarkBanner({ sessionToken }: { email: string; sessionToken: string; emailSent?: boolean }) {
   const [copied, setCopied] = useState(false)
   const url = `${window.location.origin}/customer-portal/s/${sessionToken}`
 
@@ -168,9 +53,7 @@ function BookmarkBanner({ sessionToken, emailSent }: { email: string; sessionTok
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Bookmark this page</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-            {emailSent !== false
-              ? 'We emailed you this link — valid for 30 days. You can also copy it below.'
-              : 'Save this link to check your repairs any time — valid for 30 days.'}
+            We emailed you this link — valid for 30 days. You can also copy it below.
           </p>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs truncate flex-1 font-mono" style={{ color: 'var(--ms-text-mid)' }}>{url}</span>
@@ -193,12 +76,56 @@ function BookmarkBanner({ sessionToken, emailSent }: { email: string; sessionTok
   )
 }
 
+function ShopSection({ shop, onRefresh }: { shop: CustomerPortalShop; onRefresh?: () => void }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-3">
+        {shop.logo_url ? (
+          <img
+            src={shop.logo_url}
+            alt=""
+            className="w-10 h-10 rounded-lg object-contain shrink-0"
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
+            style={{
+              backgroundColor: shop.brand_color ? `${shop.brand_color}18` : 'var(--ms-surface)',
+              color: shop.brand_color || 'var(--ms-accent)',
+              border: `1px solid ${shop.brand_color ? `${shop.brand_color}44` : 'var(--ms-border)'}`,
+            }}
+          >
+            {shop.shop_name.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{shop.shop_name}</h2>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+            {shop.jobs.length} repair{shop.jobs.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+      {shop.jobs.length === 0 ? (
+        <PortalEmptyState shop={shop} />
+      ) : (
+        <div className="space-y-2">
+          {shop.jobs.map((job) => (
+            <CustomerPortalJobCard key={`${job.type}-${job.job_number}`} job={job} shop={shop} onRefresh={onRefresh} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function PortalResults({
   data,
   email,
   sessionToken,
   viewMode,
   onViewModeChange,
+  onRefresh,
   loading,
 }: {
   data: CustomerPortalLookupResponse
@@ -206,9 +133,11 @@ function PortalResults({
   sessionToken?: string | null
   viewMode: 'active' | 'history'
   onViewModeChange: (m: 'active' | 'history') => void
+  onRefresh?: () => void
   loading?: boolean
 }) {
   const totalJobs = data.shops.reduce((n, s) => n + s.jobs.length, 0)
+  const firstShop = data.shops[0] ?? null
 
   return (
     <div className="space-y-5">
@@ -219,21 +148,9 @@ function PortalResults({
       )}
 
       {totalJobs === 0 ? (
-        <div
-          className="rounded-xl p-6 text-center space-y-2"
-          style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-        >
-          <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
-            {viewMode === 'active' ? 'No active repairs' : 'No past repairs'}
-          </p>
-          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-            {viewMode === 'active'
-              ? 'When you drop off a repair, it will appear here.'
-              : 'Completed and collected jobs will show in history.'}
-          </p>
-        </div>
+        <PortalEmptyState shop={firstShop} />
       ) : (
-        data.shops.map((shop) => <ShopSection key={shop.tenant_id} shop={shop} />)
+        data.shops.map((shop) => <ShopSection key={shop.tenant_id} shop={shop} onRefresh={onRefresh} />)
       )}
 
       {sessionToken && viewMode === 'active' && totalJobs > 0 && (
@@ -305,6 +222,7 @@ function SessionView({ token }: { token: string }) {
         email={data.email || ''}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        onRefresh={load}
         loading={loading}
       />
     </PortalShell>
@@ -362,6 +280,16 @@ function CustomerPortalLookupPage() {
     }
   }
 
+  async function refreshCurrent() {
+    if (!email.trim()) return
+    setRefreshing(true)
+    try {
+      await fetchJobs(email.trim(), viewMode === 'history')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <div className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-lg mx-auto space-y-6">
@@ -409,6 +337,7 @@ function CustomerPortalLookupPage() {
             sessionToken={sessionToken}
             viewMode={viewMode}
             onViewModeChange={handleViewChange}
+            onRefresh={refreshCurrent}
             loading={refreshing}
           />
         )}

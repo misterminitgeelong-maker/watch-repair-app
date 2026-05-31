@@ -257,9 +257,57 @@ def test_customer_lookup_includes_tenant_branding(client: TestClient):
         assert tenant is not None
         tenant.logo_url = "https://cdn.example/logo.png"
         tenant.brand_color = "#1F6D4C"
+        tenant.shop_phone = "0399999999"
+        tenant.shop_email = "hello@branded.test"
         session.add(tenant)
         session.commit()
 
     shop = client.post("/v1/public/customer-lookup", json={"email": email}).json()["shops"][0]
     assert shop["logo_url"] == "https://cdn.example/logo.png"
     assert shop["brand_color"] == "#1F6D4C"
+    assert shop["shop_phone"] == "0399999999"
+    assert shop["shop_email"] == "hello@branded.test"
+
+
+def test_customer_lookup_includes_watch_quote_pending_action(client: TestClient):
+    email = f"quote-{uuid4().hex[:8]}@portal.test"
+    headers = _bootstrap(client)
+    watch_job = _create_watch_job(client, headers, email, "Quoted watch")
+
+    quote = client.post(
+        "/v1/quotes",
+        headers=headers,
+        json={
+            "repair_job_id": str(watch_job.id),
+            "tax_cents": 0,
+            "line_items": [
+                {
+                    "item_type": "labor",
+                    "description": "Service",
+                    "quantity": 1,
+                    "unit_price_cents": 10000,
+                }
+            ],
+        },
+    )
+    assert quote.status_code == 201, quote.text
+    sent = client.post(f"/v1/quotes/{quote.json()['id']}/send", headers=headers)
+    assert sent.status_code == 200, sent.text
+
+    jobs = client.post("/v1/public/customer-lookup", json={"email": email}).json()["shops"][0]["jobs"]
+    assert jobs[0]["pending_actions"]
+    assert jobs[0]["pending_actions"][0]["kind"] == "watch_quote_decision"
+    assert jobs[0]["pending_actions"][0]["url"].startswith("/approve/")
+
+
+def test_public_auto_key_job_status_endpoint(client: TestClient):
+    email = f"ak-pub-{uuid4().hex[:8]}@portal.test"
+    headers = _bootstrap(client)
+    ak_job = _create_auto_key_job(client, headers, email, "Public status job")
+
+    res = client.get(f"/v1/public/auto-key-jobs/{ak_job.status_token}")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["job_number"] == ak_job.job_number
+    assert body["status"] == ak_job.status
+    assert "pending_actions" in body

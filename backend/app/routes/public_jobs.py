@@ -716,6 +716,40 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
     return {"checkout_url": url}
 
 
+@router.get("/auto-key-jobs/{status_token}")
+def get_public_auto_key_job_status(status_token: str, session: Session = Depends(get_session)):
+    """Public job summary for customer portal detail view (status_token is the opaque link id)."""
+    job = session.exec(select(AutoKeyJob).where(AutoKeyJob.status_token == status_token)).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    tenant = session.get(Tenant, job.tenant_id)
+    quote = session.exec(
+        select(AutoKeyQuote)
+        .where(AutoKeyQuote.auto_key_job_id == job.id)
+        .order_by(AutoKeyQuote.created_at.desc())
+    ).first()
+
+    return {
+        "job_number": job.job_number,
+        "title": job.title,
+        "status": job.status,
+        "description": job.description,
+        "vehicle_make": job.vehicle_make,
+        "vehicle_model": job.vehicle_model,
+        "vehicle_year": job.vehicle_year,
+        "job_address": job.job_address,
+        "scheduled_at": isoformat_z_utc(job.scheduled_at),
+        "created_at": isoformat_z_utc(naive_utc_from_any(job.created_at)),
+        "shop_name": tenant.name if tenant else "Mobile Services",
+        "shop_phone": tenant.shop_phone if tenant else None,
+        "shop_email": tenant.shop_email if tenant else None,
+        "quote_total_cents": quote.total_cents if quote else 0,
+        "currency": quote.currency if quote else "AUD",
+        "pending_actions": _portal_pending_actions_for_auto_key(session, job),
+    }
+
+
 # ── Customer portal lookup ───────────────────────────────────────────────────
 
 _PORTAL_WATCH_HISTORY_STATUSES = frozenset({"collected", "cancelled"})
@@ -747,6 +781,8 @@ class CustomerPortalShopRead(SQLModel):
     shop_name: str
     logo_url: Optional[str] = None
     brand_color: Optional[str] = None
+    shop_phone: Optional[str] = None
+    shop_email: Optional[str] = None
     jobs: list[CustomerPortalJobRead] = Field(default_factory=list)
 
 
@@ -957,6 +993,8 @@ def _collect_customer_jobs(
                     shop_name=(tenant.name if tenant else None) or "Shop",
                     logo_url=tenant.logo_url if tenant else None,
                     brand_color=tenant.brand_color if tenant else None,
+                    shop_phone=tenant.shop_phone if tenant else None,
+                    shop_email=tenant.shop_email if tenant else None,
                     jobs=shop_jobs[:_PORTAL_MAX_JOBS_PER_SHOP],
                 )
             )
