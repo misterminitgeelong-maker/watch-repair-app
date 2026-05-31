@@ -90,8 +90,6 @@ export default function MinitAccountsPage() {
     onError: err => setError(getApiErrorMessage(err, 'Could not remove shop.')),
   })
 
-  if (isLoading) return <Spinner />
-
   const retailSites = (data?.sites ?? []).filter(s => isRetailShop(s.plan_code))
   const operators = (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code))
 
@@ -109,6 +107,8 @@ export default function MinitAccountsPage() {
       )
     })
   }, [retailSites, searchLower])
+
+  if (isLoading) return <Spinner />
 
   async function handleRemove(tenantId: string) {
     if (!window.confirm('Remove this shop from the network? The tenant is not deleted.')) return

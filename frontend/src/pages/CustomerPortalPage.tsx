@@ -138,12 +138,7 @@ function SessionView({ token }: { token: string }) {
 }
 
 // ── Email lookup view ─────────────────────────────────────────────────────────
-export default function CustomerPortalPage() {
-  const { token } = useParams<{ token?: string }>()
-
-  // If a session token is in the URL, show session view
-  if (token) return <SessionView token={token} />
-
+function CustomerPortalLookupPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -220,4 +215,10 @@ export default function CustomerPortalPage() {
       </div>
     </div>
   )
+}
+
+export default function CustomerPortalPage() {
+  const { token } = useParams<{ token?: string }>()
+  if (token) return <SessionView token={token} />
+  return <CustomerPortalLookupPage />
 }

@@ -50,8 +50,9 @@ export default function PublicCustomerPortalPage() {
     try {
       const res = await portalGetProfile(slug, token)
       setProfile(res.data)
-    } catch (e: any) {
-      if (e.response?.status === 401) {
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401) {
         localStorage.removeItem(storageKey)
         setToken(null)
         setProfile(null)
@@ -73,8 +74,9 @@ export default function PublicCustomerPortalPage() {
       const { token: newToken } = res.data
       localStorage.setItem(storageKey, newToken)
       setToken(newToken)
-    } catch (e: any) {
-      setError(e.response?.data?.detail || 'Something went wrong. Please try again.')
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail || 'Something went wrong. Please try again.')
       setLoading(false)
     }
   }
@@ -103,8 +105,9 @@ export default function PublicCustomerPortalPage() {
       setBookDesc('')
       setBookDate('')
       await loadProfile()
-    } catch (e: any) {
-      setError(e.response?.data?.detail || 'Booking failed. Please try again.')
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail || 'Booking failed. Please try again.')
     } finally {
       setBookSubmitting(false)
     }

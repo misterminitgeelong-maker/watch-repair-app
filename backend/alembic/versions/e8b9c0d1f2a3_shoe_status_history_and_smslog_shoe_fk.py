@@ -12,6 +12,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel
+from sqlalchemy import inspect
 
 
 revision: str = "e8b9c0d1f2a3"
@@ -21,6 +22,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    if "shoerepairjob" not in inspect(bind).get_table_names():
+        return
+
     # Create shoe job status history table
     op.create_table(
         "shoejobstatushistory",
@@ -45,22 +50,31 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Add shoe_repair_job_id FK column to smslog
-    op.add_column("smslog", sa.Column("shoe_repair_job_id", sa.Uuid(), nullable=True))
-    op.create_index(op.f("ix_smslog_shoe_repair_job_id"), "smslog", ["shoe_repair_job_id"], unique=False)
-    op.create_foreign_key(
-        "fk_smslog_shoe_repair_job_id",
-        "smslog",
-        "shoerepairjob",
-        ["shoe_repair_job_id"],
-        ["id"],
-    )
+    # Add shoe_repair_job_id FK column to smslog (batch mode for SQLite ALTER support)
+    with op.batch_alter_table("smslog") as batch_op:
+        batch_op.add_column(sa.Column("shoe_repair_job_id", sa.Uuid(), nullable=True))
+        batch_op.create_index(
+            batch_op.f("ix_smslog_shoe_repair_job_id"),
+            ["shoe_repair_job_id"],
+            unique=False,
+        )
+        batch_op.create_foreign_key(
+            "fk_smslog_shoe_repair_job_id",
+            "shoerepairjob",
+            ["shoe_repair_job_id"],
+            ["id"],
+        )
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_smslog_shoe_repair_job_id", "smslog", type_="foreignkey")
-    op.drop_index(op.f("ix_smslog_shoe_repair_job_id"), table_name="smslog")
-    op.drop_column("smslog", "shoe_repair_job_id")
+    bind = op.get_bind()
+    if "shoerepairjob" not in inspect(bind).get_table_names():
+        return
+
+    with op.batch_alter_table("smslog") as batch_op:
+        batch_op.drop_constraint("fk_smslog_shoe_repair_job_id", type_="foreignkey")
+        batch_op.drop_index(batch_op.f("ix_smslog_shoe_repair_job_id"))
+        batch_op.drop_column("shoe_repair_job_id")
 
     op.drop_index(op.f("ix_shoejobstatushistory_shoe_repair_job_id"), table_name="shoejobstatushistory")
     op.drop_index(op.f("ix_shoejobstatushistory_tenant_id"), table_name="shoejobstatushistory")

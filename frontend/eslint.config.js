@@ -12,12 +12,24 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      // eslint-plugin-react-hooks v7 "recommended" includes React Compiler rules; this app
+      // only enforces the classic hooks contract until a Compiler migration is planned.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true, allowExportNames: ['useTheme', 'useAuth'] },
+      ],
     },
   },
 ])

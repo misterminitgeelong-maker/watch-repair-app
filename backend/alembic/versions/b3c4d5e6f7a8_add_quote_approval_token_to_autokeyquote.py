@@ -15,15 +15,25 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('autokeyquote', sa.Column('quote_approval_token', sa.String(), nullable=True))
-    # Backfill existing rows with unique tokens
-    op.execute(
-        "UPDATE autokeyquote SET quote_approval_token = gen_random_uuid()::text WHERE quote_approval_token IS NULL"
-    )
-    op.alter_column('autokeyquote', 'quote_approval_token', nullable=False)
-    op.create_index('ix_autokeyquote_quote_approval_token', 'autokeyquote', ['quote_approval_token'], unique=True)
+    with op.batch_alter_table('autokeyquote') as batch_op:
+        batch_op.add_column(sa.Column('quote_approval_token', sa.String(), nullable=True))
+    bind = op.get_bind()
+    rows = bind.execute(sa.text("SELECT id FROM autokeyquote WHERE quote_approval_token IS NULL")).fetchall()
+    for (row_id,) in rows:
+        bind.execute(
+            sa.text("UPDATE autokeyquote SET quote_approval_token = :tok WHERE id = :id"),
+            {"tok": uuid.uuid4().hex, "id": row_id},
+        )
+    with op.batch_alter_table('autokeyquote') as batch_op:
+        batch_op.alter_column('quote_approval_token', nullable=False)
+        batch_op.create_index(
+            'ix_autokeyquote_quote_approval_token',
+            ['quote_approval_token'],
+            unique=True,
+        )
 
 
 def downgrade():
-    op.drop_index('ix_autokeyquote_quote_approval_token', 'autokeyquote')
-    op.drop_column('autokeyquote', 'quote_approval_token')
+    with op.batch_alter_table('autokeyquote') as batch_op:
+        batch_op.drop_index('ix_autokeyquote_quote_approval_token')
+        batch_op.drop_column('quote_approval_token')

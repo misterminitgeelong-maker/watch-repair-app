@@ -77,7 +77,8 @@ type RecentItem = {
 
 function sanitizeQueueTitle(title: string | undefined): string {
   const cleaned = (title ?? '')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/[^\S\r\n]+/g, ' ')
+    .replace(/[^\x20-\x7E]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   if (!cleaned) return 'Untitled repair job'

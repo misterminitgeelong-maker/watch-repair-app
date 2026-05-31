@@ -2293,7 +2293,7 @@ export default function AutoKeyJobsPage() {
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
-  const [olderThanDays, _setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
+  const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
@@ -2308,8 +2308,8 @@ export default function AutoKeyJobsPage() {
       activationConstraint: { distance: 8 },
     }),
   )
-  const [reportDateFrom, _setReportDateFrom] = useState('')
-  const [reportDateTo, _setReportDateTo] = useState('')
+  const [reportDateFrom] = useState('')
+  const [reportDateTo] = useState('')
   const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
 
   useEffect(() => {

@@ -32,8 +32,7 @@ function daysInCurrentStatus(job: { status: string; status_changed_at?: string |
   return Math.floor((Date.now() - new Date(from).getTime()) / 86_400_000)
 }
 
-const JOB_SORT_FIELDS = ['created_at', 'job_number', 'status', 'priority'] as const
-type JobSortField = (typeof JOB_SORT_FIELDS)[number]
+type JobSortField = 'created_at' | 'job_number' | 'status' | 'priority'
 type BoardView = 'board' | 'list'
 
 export default function JobsPage() {

@@ -7,10 +7,12 @@ Depends On: None
 
 """
 from typing import Sequence, Union
+from uuid import uuid4
 
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel
+from sqlalchemy import inspect
 
 
 revision: str = 'c3d4e5f6a7b8'
@@ -20,13 +22,26 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Shoe tables are created on another Alembic branch; skip column adds when the
+    # table is absent (e.g. fresh SQLite CI DB on the auto-key branch only).
+    bind = op.get_bind()
+    if "shoerepairjob" not in inspect(bind).get_table_names():
+        _create_portal_session_table()
+        return
+
     # Add quote approval fields to shoerepairjob
     op.add_column('shoerepairjob', sa.Column('quote_approval_token', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
     op.add_column('shoerepairjob', sa.Column('quote_approval_token_expires_at', sa.DateTime(), nullable=True))
     op.add_column('shoerepairjob', sa.Column('quote_status', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
 
-    # Backfill: generate unique tokens for existing rows
-    op.execute("UPDATE shoerepairjob SET quote_approval_token = gen_random_uuid()::text WHERE quote_approval_token IS NULL")
+    rows = bind.execute(
+        sa.text("SELECT id FROM shoerepairjob WHERE quote_approval_token IS NULL")
+    ).fetchall()
+    for (row_id,) in rows:
+        bind.execute(
+            sa.text("UPDATE shoerepairjob SET quote_approval_token = :tok WHERE id = :id"),
+            {"tok": uuid4().hex, "id": row_id},
+        )
     op.execute("UPDATE shoerepairjob SET quote_status = 'none' WHERE quote_status IS NULL")
 
     op.alter_column('shoerepairjob', 'quote_approval_token', nullable=False)
@@ -35,7 +50,10 @@ def upgrade() -> None:
     op.create_index(op.f('ix_shoerepairjob_quote_approval_token'), 'shoerepairjob', ['quote_approval_token'], unique=True)
     op.create_index(op.f('ix_shoerepairjob_quote_approval_token_expires_at'), 'shoerepairjob', ['quote_approval_token_expires_at'], unique=False)
 
-    # Create portal session table
+    _create_portal_session_table()
+
+
+def _create_portal_session_table() -> None:
     op.create_table(
         'portalsession',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -50,9 +68,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_portalsession_token'), table_name='portalsession')
-    op.drop_index(op.f('ix_portalsession_email'), table_name='portalsession')
-    op.drop_table('portalsession')
+    bind = op.get_bind()
+    if "portalsession" in inspect(bind).get_table_names():
+        op.drop_index(op.f('ix_portalsession_token'), table_name='portalsession')
+        op.drop_index(op.f('ix_portalsession_email'), table_name='portalsession')
+        op.drop_table('portalsession')
+
+    if "shoerepairjob" not in inspect(bind).get_table_names():
+        return
 
     op.drop_index(op.f('ix_shoerepairjob_quote_approval_token_expires_at'), table_name='shoerepairjob')
     op.drop_index(op.f('ix_shoerepairjob_quote_approval_token'), table_name='shoerepairjob')

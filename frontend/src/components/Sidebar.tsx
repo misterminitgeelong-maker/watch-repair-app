@@ -97,6 +97,17 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     warnIfMinitHqNavMismatch(isMinitHq, hqCtx)
   }, [isMinitHq, product, planCode, tenantSlug])
 
+  const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
+  const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
+  const isBookingOnly = isMinitBookingOnlyPlan(effectivePlan) && !isMinitHqUi(product, planCode, tenantSlug)
+  const inboxCount = useInboxCount()
+  const [showChangelog, setShowChangelog] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(false)
+  const { pathname } = useLocation()
+  const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt()
+  const showInstall = !isStandalone && (canInstall || isIos)
+  const { theme } = useTheme()
+
   if (isMinitHq) {
     return (
       <MinitHqSidebar
@@ -108,17 +119,6 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       />
     )
   }
-
-  const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
-  const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
-  const isBookingOnly = isMinitBookingOnlyPlan(effectivePlan) && !isMinitHqUi(product, planCode, tenantSlug)
-  const inboxCount = useInboxCount()
-  const [showChangelog, setShowChangelog] = useState(false)
-  const [showIosHint, setShowIosHint] = useState(false)
-  const { pathname } = useLocation()
-  const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt()
-  const showInstall = !isStandalone && (canInstall || isIos)
-  const { theme } = useTheme()
   const logoSrc = theme === 'minit' ? '/minit-logo.svg' : '/mainspring-logo.svg'
   const logoAlt = theme === 'minit' ? 'Mister Minit' : 'Mainspring'
 

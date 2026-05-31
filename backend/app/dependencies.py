@@ -1,7 +1,7 @@
 import hashlib
 import time
 from dataclasses import dataclass
-from datetime import timezone
+from datetime import datetime, timezone
 from typing import Callable
 from uuid import UUID
 
@@ -26,8 +26,16 @@ _AUTH_CACHE_MAX = 2000  # clear the dict when it grows too large
 class _CachedAuth:
     ctx: "AuthContext"
     signup_payment_pending: bool
+    tenant_is_active: bool = True
+    auth_revoked_at: datetime | None = None
 
 _auth_cache: dict[str, tuple[_CachedAuth, float]] = {}
+
+
+def invalidate_auth_cache() -> None:
+    """Drop all cached auth contexts (e.g. after tenant suspend or force-logout)."""
+    _auth_cache.clear()
+
 
 def _cache_key(token: str) -> str:
     return hashlib.sha256(token.encode(), usedforsecurity=False).hexdigest()
@@ -193,6 +201,26 @@ def get_auth_context(
                     and not _path_allowed_during_signup_payment_pending(request.url.path)
                 ):
                     raise HTTPException(status_code=403, detail="subscription_required")
+                if (
+                    cached_auth.ctx.role != "platform_admin"
+                    and not cached_auth.tenant_is_active
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Shop is suspended. Contact platform admin.",
+                    )
+                revoked_at = cached_auth.auth_revoked_at
+                if revoked_at and revoked_at.tzinfo is None:
+                    revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+                if (
+                    revoked_at
+                    and claims.issued_at
+                    and claims.issued_at < revoked_at
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Session expired. Please sign in again.",
+                    )
                 return cached_auth.ctx
 
         # Slow path: validate against DB and populate the cache.
@@ -236,7 +264,15 @@ def get_auth_context(
 
         if len(_auth_cache) >= _AUTH_CACHE_MAX:
             _auth_cache.clear()
-        _auth_cache[key] = (_CachedAuth(ctx=ctx, signup_payment_pending=signup_pending), now + _AUTH_CACHE_TTL)
+        _auth_cache[key] = (
+            _CachedAuth(
+                ctx=ctx,
+                signup_payment_pending=signup_pending,
+                tenant_is_active=tenant.is_active,
+                auth_revoked_at=tenant.auth_revoked_at,
+            ),
+            now + _AUTH_CACHE_TTL,
+        )
 
         return ctx
     except HTTPException:

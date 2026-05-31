@@ -73,43 +73,41 @@ def upgrade() -> None:
         unique=False,
     )
 
-    op.add_column("autokeyjob", sa.Column("referring_shop_tenant_id", sa.Uuid(), nullable=True))
-    op.add_column("autokeyjob", sa.Column("shop_mobile_booking_request_id", sa.Uuid(), nullable=True))
-    op.create_index(
-        "ix_autokeyjob_referring_shop_tenant_id",
-        "autokeyjob",
-        ["referring_shop_tenant_id"],
-        unique=False,
-    )
-    op.create_foreign_key(
-        "fk_autokeyjob_referring_shop_tenant_id_tenant",
-        "autokeyjob",
-        "tenant",
-        ["referring_shop_tenant_id"],
-        ["id"],
-    )
-    op.create_foreign_key(
-        "fk_autokeyjob_shop_mobile_booking_request_id",
-        "autokeyjob",
-        "shopmobilebookingrequest",
-        ["shop_mobile_booking_request_id"],
-        ["id"],
-    )
-    op.create_index(
-        "ix_autokeyjob_shop_mobile_booking_request_id",
-        "autokeyjob",
-        ["shop_mobile_booking_request_id"],
-        unique=True,
-    )
+    with op.batch_alter_table("autokeyjob") as batch_op:
+        batch_op.add_column(sa.Column("referring_shop_tenant_id", sa.Uuid(), nullable=True))
+        batch_op.add_column(sa.Column("shop_mobile_booking_request_id", sa.Uuid(), nullable=True))
+        batch_op.create_index(
+            "ix_autokeyjob_referring_shop_tenant_id",
+            ["referring_shop_tenant_id"],
+            unique=False,
+        )
+        batch_op.create_foreign_key(
+            "fk_autokeyjob_referring_shop_tenant_id_tenant",
+            "tenant",
+            ["referring_shop_tenant_id"],
+            ["id"],
+        )
+        batch_op.create_foreign_key(
+            "fk_autokeyjob_shop_mobile_booking_request_id",
+            "shopmobilebookingrequest",
+            ["shop_mobile_booking_request_id"],
+            ["id"],
+        )
+        batch_op.create_index(
+            "ix_autokeyjob_shop_mobile_booking_request_id",
+            ["shop_mobile_booking_request_id"],
+            unique=True,
+        )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_autokeyjob_shop_mobile_booking_request_id", table_name="autokeyjob")
-    op.drop_constraint("fk_autokeyjob_shop_mobile_booking_request_id", "autokeyjob", type_="foreignkey")
-    op.drop_constraint("fk_autokeyjob_referring_shop_tenant_id_tenant", "autokeyjob", type_="foreignkey")
-    op.drop_index("ix_autokeyjob_referring_shop_tenant_id", table_name="autokeyjob")
-    op.drop_column("autokeyjob", "shop_mobile_booking_request_id")
-    op.drop_column("autokeyjob", "referring_shop_tenant_id")
+    with op.batch_alter_table("autokeyjob") as batch_op:
+        batch_op.drop_index("ix_autokeyjob_shop_mobile_booking_request_id")
+        batch_op.drop_constraint("fk_autokeyjob_shop_mobile_booking_request_id", type_="foreignkey")
+        batch_op.drop_constraint("fk_autokeyjob_referring_shop_tenant_id_tenant", type_="foreignkey")
+        batch_op.drop_index("ix_autokeyjob_referring_shop_tenant_id")
+        batch_op.drop_column("shop_mobile_booking_request_id")
+        batch_op.drop_column("referring_shop_tenant_id")
 
     op.drop_index("ix_shopmobilebookingrequest_target_operator_tenant_id_status", table_name="shopmobilebookingrequest")
     op.drop_index("ix_shopmobilebookingrequest_requesting_tenant_id_status", table_name="shopmobilebookingrequest")

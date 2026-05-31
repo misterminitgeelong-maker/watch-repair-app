@@ -265,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enabledFeatures: mergedFeatures,
     })
     writeLastLoginTenantSlug(data.tenant_slug)
-    applyMinitBrandingIfNeeded(data.tenant_slug, data.plan_code)
+    applyMinitBrandingIfNeeded(data.tenant_slug)
     setSignupPaymentPending(Boolean(data.signup_payment_pending))
     setSubscriptionStatus(data.subscription_status ?? null)
     setTrialEnd(data.trial_end ?? null)

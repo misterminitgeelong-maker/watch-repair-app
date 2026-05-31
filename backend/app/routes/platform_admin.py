@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, require_platform_admin
+from ..dependencies import AuthContext, invalidate_auth_cache, require_platform_admin
 from ..models import (
     AutoKeyJob,
     Invoice,
@@ -166,6 +166,7 @@ def set_tenant_status(
         )
     )
     session.commit()
+    invalidate_auth_cache()
 
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
@@ -378,6 +379,7 @@ def force_tenant_logout(
         )
     )
     session.commit()
+    invalidate_auth_cache()
     return {"ok": True, "tenant_id": str(tenant_id), "auth_revoked_at": tenant.auth_revoked_at}
 
 

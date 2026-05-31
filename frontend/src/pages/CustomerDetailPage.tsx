@@ -25,7 +25,10 @@ function AdjustPointsModal({ customerId, onClose }: { customerId: string; onClos
       qc.invalidateQueries({ queryKey: ['loyalty', customerId] })
       onClose()
     },
-    onError: (e: any) => setError(e?.response?.data?.detail ?? 'Failed to adjust points.'),
+    onError: (e: unknown) => {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail ?? 'Failed to adjust points.')
+    },
   })
   const deltaNum = parseInt(delta, 10)
   const valid = !isNaN(deltaNum) && deltaNum !== 0 && note.trim().length > 0

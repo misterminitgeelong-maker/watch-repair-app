@@ -52,9 +52,11 @@ def test_minit_hq_effective_plan_and_product():
 
 def test_ensure_minit_hq_persists_plan():
     with Session(engine) as session:
-        tenant = Tenant(name="Test HQ", slug="mmsupport", plan_code="enterprise")
-        session.add(tenant)
-        session.commit()
+        tenant = session.exec(select(Tenant).where(Tenant.slug == "mmsupport")).first()
+        if not tenant:
+            tenant = Tenant(name="Test HQ", slug="mmsupport", plan_code="enterprise")
+            session.add(tenant)
+            session.commit()
         session.refresh(tenant)
         ensure_minit_tenant_plan(session, tenant)
         session.commit()

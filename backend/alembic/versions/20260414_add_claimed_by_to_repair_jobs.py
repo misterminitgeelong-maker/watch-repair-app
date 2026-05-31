@@ -7,6 +7,7 @@ Create Date: 2026-04-14
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision = "20260414_add_claimed_by"
 down_revision = "20260414_merge_e1f2_z1a2"
@@ -19,12 +20,16 @@ def upgrade() -> None:
         "repairjob",
         sa.Column("claimed_by_user_id", sa.Uuid(), nullable=True),
     )
-    op.add_column(
-        "shoerepairjob",
-        sa.Column("claimed_by_user_id", sa.Uuid(), nullable=True),
-    )
+    bind = op.get_bind()
+    if "shoerepairjob" in inspect(bind).get_table_names():
+        op.add_column(
+            "shoerepairjob",
+            sa.Column("claimed_by_user_id", sa.Uuid(), nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("shoerepairjob", "claimed_by_user_id")
+    bind = op.get_bind()
+    if "shoerepairjob" in inspect(bind).get_table_names():
+        op.drop_column("shoerepairjob", "claimed_by_user_id")
     op.drop_column("repairjob", "claimed_by_user_id")

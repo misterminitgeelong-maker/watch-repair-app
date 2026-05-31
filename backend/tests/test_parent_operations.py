@@ -10,10 +10,13 @@ os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
-from app.database import create_db_and_tables
+from app.database import create_db_and_tables, engine
 from app.main import app
 from app.minit_branding import MINIT_HQ_SLUG
+from app.models import Tenant, User
+from app.security import hash_password
 
 create_db_and_tables()
 client = TestClient(app)
@@ -69,6 +72,32 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
         },
     )
     assert boot.status_code in (200, 409), boot.text
+    if boot.status_code == 409:
+        # Another test may have created the HQ tenant without bootstrap side effects.
+        from app.minit_branding import ensure_minit_tenant_plan
+        from app.routes.auth import _ensure_parent_membership, _get_or_create_parent_account
+
+        with Session(engine) as session:
+            tenant = session.exec(select(Tenant).where(Tenant.slug == hq_slug)).first()
+            assert tenant is not None, f"HQ tenant {hq_slug} missing after 409"
+            ensure_minit_tenant_plan(session, tenant)
+            user = session.exec(
+                select(User).where(User.tenant_id == tenant.id, User.email == hq_email)
+            ).first()
+            if not user:
+                user = User(
+                    tenant_id=tenant.id,
+                    email=hq_email,
+                    full_name="HQ Owner",
+                    role="owner",
+                    password_hash=hash_password("pass123456"),
+                    is_active=True,
+                )
+                session.add(user)
+                session.flush()
+            parent = _get_or_create_parent_account(session, hq_email, "HQ Owner")
+            _ensure_parent_membership(session, parent, user)
+            session.commit()
     op_boot = _bootstrap(op_slug, f"op-{suffix}@test.local", "basic_auto_key")
     hq_h = _headers(_login(hq_slug, hq_email))
 

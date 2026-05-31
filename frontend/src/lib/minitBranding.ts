@@ -1,5 +1,4 @@
 import { persistTheme } from '@/context/ThemeContext'
-import type { PlanCode } from '@/lib/api'
 
 export const MINIT_HQ_SLUG = 'mmsupport'
 
@@ -14,6 +13,6 @@ export function shouldUseMinitBranding(slug: string | null | undefined): boolean
   return isMinitTenantSlug(slug)
 }
 
-export function applyMinitBrandingIfNeeded(slug: string | null | undefined, _planCode?: PlanCode): void {
+export function applyMinitBrandingIfNeeded(slug: string | null | undefined): void {
   if (shouldUseMinitBranding(slug)) persistTheme('minit')
 }
