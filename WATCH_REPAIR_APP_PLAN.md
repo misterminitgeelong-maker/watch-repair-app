@@ -2,6 +2,24 @@
 
 This plan is optimized for **one founder** building with AI copilots.
 
+> **Status note (2026-05):** This is the original planning document. The shipped product ("Mainspring") has diverged from some early stack choices and now covers more than the watch-repair MVP. See **"Current Implementation Status"** below for what is actually built; the sections after it are preserved as the historical plan.
+
+## Current Implementation Status (2026-05)
+
+**Shipped and live:**
+- Web app: **React 19 + Vite + TypeScript** PWA (not Next.js); no separate native Flutter app — the PWA covers mobile intake/bench use.
+- Backend: **FastAPI + SQLModel + Alembic**, PostgreSQL (SQLite for local/dev), served with the built SPA from a single Docker image.
+- **Stripe billing/subscriptions + plan-limit gating** (`/v1/billing`, `require_feature`) — the MVP "⬜ Stripe subscriptions" item is now done.
+- Attachments via local filesystem or **Supabase object storage** abstraction.
+- CI (GitHub Actions): backend pytest, Alembic check, smoke checks, frontend lint/test/build.
+
+**Beyond the original MVP:**
+- Additional verticals: **shoe repair**, **automotive locksmith / mobile services** (dispatch, routing, prospects).
+- **B2B customer accounts** + monthly statements, **parent/multi-site accounts**, and **Minit HQ** franchise tooling.
+- Stocktake, loyalty tiers, customer orders, customer self-service portals (email-based and slug/phone mobile-key booking).
+
+**Still open / future:** see the companion `docs/PRODUCTION_READINESS_CHECKLIST.md` and `docs/CODE_REVIEW_RECOMMENDATIONS.md` for scale items (shared rate-limiter storage, object storage as default, async CSV import, per-session refresh-token revocation).
+
 ## 1) Goal
 Build one product with:
 - **Android app** for intake + bench technicians.
@@ -17,8 +35,8 @@ Build one product with:
 ## 3) Opinionated Stack (Recommended for Solo)
 
 ### Frontend
-- **Flutter** for Android app.
-- **Next.js (React + TypeScript)** for web dashboard.
+- _Originally planned:_ **Flutter** for Android app + **Next.js** web dashboard.
+- _As built:_ **React 19 + Vite + TypeScript** PWA serves both web dashboard and mobile use; no separate Flutter app.
 
 ### Backend
 - **FastAPI (Python)** for API + business rules.
@@ -91,7 +109,9 @@ Rule: every tenant-owned row must include `tenant_id` and tenant-filtered querie
 - ✅ Invoice generation + manual payment capture
 - ✅ Work logs + technician notes
 - ✅ Attachments upload (signed URLs)
-- ⬜ Stripe subscriptions + plan limits
+- ✅ Stripe subscriptions + plan limits (shipped — `/v1/billing`, feature gating)
+- ✅ Additional verticals (shoe repair, auto-key/mobile services)
+- ✅ B2B accounts, parent/multi-site accounts, Minit HQ tooling
 
 ## 6) 12-Week Solo Build Roadmap
 

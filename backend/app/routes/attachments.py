@@ -28,10 +28,8 @@ from ..models import (
 from ..security import decode_access_token
 from ..services.attachment_storage import (
     AttachmentNotFoundError,
-    AttachmentStorage,
     InvalidStorageKeyError,
-    LocalAttachmentStorage,
-    SupabaseAttachmentStorage,
+    create_attachment_storage,
 )
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
@@ -41,17 +39,7 @@ SIGNED_DOWNLOAD_TOKEN_TYP = "attachment_download"
 SIGNED_DOWNLOAD_EXPIRE_SECONDS = 300
 
 
-def _create_storage() -> AttachmentStorage:
-    if settings.supabase_url and settings.supabase_service_role_key:
-        return SupabaseAttachmentStorage(
-            url=settings.supabase_url,
-            key=settings.supabase_service_role_key,
-            bucket=settings.supabase_storage_bucket,
-        )
-    return LocalAttachmentStorage(settings.attachment_local_upload_dir)
-
-
-attachment_storage = _create_storage()
+attachment_storage = create_attachment_storage()
 
 
 def _allowed_content_types() -> set[str]:

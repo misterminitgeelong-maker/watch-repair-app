@@ -33,6 +33,10 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `EMAIL_FROM_NAME` | (empty) | No | Default display name for outbound email; falls back to tenant shop name. |
 | `GOOGLE_PLACES_API_KEY` | (empty) | No | Google Places API key for Prospects search (/prospects). Leave blank to disable; endpoints return 500 if key is missing. |
 | `GOOGLE_MAPS_WEB_SERVICES_KEY` | (empty) | No | Google Maps **Directions** API (server). Enables Mobile Services map **Driving** stop order (`POST /v1/maps/optimize-driving-route`). If unset, the backend may fall back to `GOOGLE_PLACES_API_KEY` when that key has Directions enabled. |
+| `RATE_LIMIT_STORAGE_URI` | (empty) | Recommended at scale | Shared limiter backend, e.g. `redis://host:6379/0`. Empty = in-process memory (fine for a single instance/pilot, **not** safe behind a load balancer). Requires a Redis/Memcached client package when set. |
+| `ATTACHMENT_LOCAL_UPLOAD_DIR` | `uploads` | No | Local filesystem root for attachment storage when object storage is not configured. Must be durable (mounted volume) in production. |
+| `ATTACHMENT_STORAGE_BACKEND` | `auto` | No | `auto` (use Supabase when configured, else local), `local` (force filesystem), or `supabase` (force object storage; fails fast if unconfigured). |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_STORAGE_BUCKET` | (empty) / (empty) / `attachments` | Recommended at scale | Supabase object storage for attachments. Set URL + service role key to enable. Preferred over local FS for multi-instance deploys. |
 
 ## Health and readiness
 

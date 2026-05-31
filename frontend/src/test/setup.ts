@@ -1,4 +1,6 @@
+import '@testing-library/jest-dom/vitest'
 import { afterAll, afterEach, beforeAll } from 'vitest'
+import { cleanup } from '@testing-library/react'
 import { testServer } from './msw/server'
 
 const memoryStorage = (): Storage => {
@@ -33,6 +35,7 @@ beforeAll(() => {
 })
 
 afterEach(() => {
+  cleanup()
   testServer.resetHandlers()
 })
 

@@ -4,6 +4,10 @@ This document summarizes recommendations to improve the app’s maintainability,
 
 **Implementation status (2026-03):** The following have been implemented: Alembic migration for legacy columns and removal of runtime patch; tenant-scoped get helpers; JWT refresh tokens and frontend 401 retry + proactive refresh; single source of truth for job status labels; production config hardening (JWT secret, bootstrap warning); rate limiting on public/signup; React Error Boundary; CI (GitHub Actions); broader tenant-isolation tests (quotes, invoices); ENV_VARS.md, /v1/ready, request logging; AuthContext comment and frontend unit tests (getApiErrorMessage). The “split models.py” item was skipped to avoid a large refactor.
 
+**Update (2026-05):** Scope has grown well beyond the watch-repair MVP. Now shipped: **Stripe billing/subscriptions + plan-limit gating**, additional verticals (**shoe repair**, **auto-key / mobile services**), **B2B customer accounts**, **parent/multi-site accounts**, and **Minit HQ** franchise tooling. The slug/phone **customer self-service portal** (`routes/customer_portal_public.py`) is now wired (model `CustomerPortalSession` added, router mounted, `/portal/:slug` route added).
+
+**Update (2026-05, hardening roadmap complete):** The Mainspring hardening roadmap is fully implemented. `models.py` was split into the `backend/app/models/` package and `api.ts` into `frontend/src/lib/api/` (both via re-exporting barrels, call sites unchanged). The `slowapi` limiter now supports shared storage via `RATE_LIMIT_STORAGE_URI` (in-memory fallback). Attachment backend selection is centralized in `create_attachment_storage()` (`ATTACHMENT_STORAGE_BACKEND`) with a migration/retention runbook in `docs/ATTACHMENT_STORAGE.md`. CSV import offloads heavy processing to a worker thread (`run_in_threadpool`). Refresh-token sessions are persisted (`RefreshSession`) enabling real per-device revocation via `/v1/auth/sessions/revoke-others`. A backend `conftest.py` and React Testing Library + revenue-flow/AuthContext frontend tests were added as the test foundation.
+
 ---
 
 ## 1. Backend — Database & Schema

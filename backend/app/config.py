@@ -136,6 +136,12 @@ class Settings(BaseSettings):
     rate_limit_public_quote_get: str = "30/minute"
     rate_limit_public_quote_decision: str = "20/minute"
     rate_limit_import_csv: str = "5/minute"
+    # Shared limiter storage backend for multi-instance deployments, e.g.
+    # "redis://localhost:6379/0" or "memcached://localhost:11211".
+    # Empty string = in-process memory storage, which is correct for a single
+    # instance / pilot but NOT safe behind a load balancer (each instance keeps
+    # its own counters). Set this to a shared backend before horizontal scaling.
+    rate_limit_storage_uri: str = ""
 
     # Public quote approval token lifetime from send time.
     quote_approval_token_ttl_hours: int = 168
@@ -146,6 +152,15 @@ class Settings(BaseSettings):
     )
     attachment_max_upload_bytes: int = 10 * 1024 * 1024
     attachment_local_upload_dir: str = "uploads"
+
+    # Attachment storage backend selection:
+    #   "auto"     -> use Supabase object storage when configured, else local FS
+    #   "local"    -> always use local filesystem
+    #   "supabase" -> always use Supabase object storage (fails fast if unconfigured)
+    # Object storage is the recommended default for multi-instance / production
+    # deployments; local FS is only durable for a single instance with a mounted
+    # volume. See docs/ATTACHMENT_STORAGE.md for the migration runbook.
+    attachment_storage_backend: str = "auto"
 
     # Supabase Storage (set these to switch from local FS to Supabase)
     supabase_url: str = ""

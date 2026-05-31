@@ -31,6 +31,7 @@ from .routes.csv_import import router as csv_import_router
 from .routes.reports import router as report_router
 from .routes.inbox import router as inbox_router
 from .routes.public_jobs import router as public_jobs_router
+from .routes.customer_portal_public import router as customer_portal_public_router
 from .routes.users import router as users_router
 from .routes.platform_admin import router as platform_admin_router
 from .routes.shoe_catalogue import router as shoe_catalogue_router
@@ -328,6 +329,7 @@ app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(inbox_router)
 app.include_router(public_jobs_router)
+app.include_router(customer_portal_public_router)
 app.include_router(mobile_lead_ingest_router)
 app.include_router(shop_mobile_bookings_router)
 app.include_router(intake_dispatch_router)

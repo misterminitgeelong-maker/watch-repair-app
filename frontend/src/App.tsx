@@ -77,6 +77,7 @@ const LeadInboxPage = lazy(() => import('@/pages/LeadInboxPage'))
 const MobileServicesTeamPage = lazy(() => import('@/pages/MobileServicesTeamPage'))
 const SubscriptionRequiredPage = lazy(() => import('@/pages/SubscriptionRequiredPage'))
 const CustomerPortalPage = lazy(() => import('@/pages/CustomerPortalPage'))
+const PublicCustomerPortalPage = lazy(() => import('@/pages/PublicCustomerPortalPage'))
 const ShoeApprovePage = lazy(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazy(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazy(() => import('@/pages/PublicIntakePage'))
@@ -163,6 +164,7 @@ export default function App() {
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
             <Route path="/customer-portal" element={<CustomerPortalPage />} />
             <Route path="/customer-portal/s/:token" element={<CustomerPortalPage />} />
+            <Route path="/portal/:slug" element={<PublicCustomerPortalPage />} />
             <Route path="/shoe-approve/:token" element={<ShoeApprovePage />} />
             <Route path="/mobile-booking/:token" element={<MobileBookingPage />} />
             <Route path="/mobile-invoice/:token" element={<MobileInvoicePage />} />

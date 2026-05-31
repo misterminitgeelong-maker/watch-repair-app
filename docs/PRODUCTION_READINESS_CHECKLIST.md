@@ -122,13 +122,17 @@ Use this in two passes:
 
 ### Rate Limiter and Multi-Instance Behavior
 
-- [ ] Move from in-memory limiter storage to shared backend (e.g. Redis) before horizontal scaling.
+- [x] Move from in-memory limiter storage to shared backend (e.g. Redis) before horizontal scaling. _Configurable via `RATE_LIMIT_STORAGE_URI` (`backend/app/limiter.py`); empty = in-memory dev fallback._
 - [ ] Revalidate limit behavior under multi-instance load.
 
 ### Attachment Storage Evolution
 
-- [ ] Plan migration from local filesystem storage to object storage implementation using existing storage abstraction contract.
-- [ ] Define retention and cleanup policy for orphaned attachment files.
+- [x] Plan migration from local filesystem storage to object storage implementation using existing storage abstraction contract. _Backend selection via `ATTACHMENT_STORAGE_BACKEND` + `create_attachment_storage()`; runbook in `docs/ATTACHMENT_STORAGE.md`._
+- [x] Define retention and cleanup policy for orphaned attachment files. _Documented in `docs/ATTACHMENT_STORAGE.md` (reconciliation job contract is `storage_key`-based; implementation pending)._
+
+### Session Revocation
+
+- [x] Persist refresh-token sessions for true per-device revocation. _`RefreshSession` table; `/v1/auth/sessions` lists active sessions, `/v1/auth/sessions/revoke-others` revokes all but the current device. Global revoke via `tenant.auth_revoked_at` still applies._
 
 ### Operational Maturity
 
@@ -152,6 +156,7 @@ Use this in two passes:
 
 ## Current Known Caveats
 
-- Rate limiter storage is currently process-local by default; this is acceptable for single-instance/pilot but not sufficient for scaled multi-instance deployments.
-- Attachment storage currently uses local filesystem implementation; design is ready for object storage, but migration/ops runbook must be completed before larger scale.
-- CSV import is synchronous; very large files may require operator controls and off-peak execution until a background processing model is introduced.
+- Rate limiter storage is process-local **by default**; set `RATE_LIMIT_STORAGE_URI` (e.g. Redis) before multi-instance horizontal scaling. The empty default is acceptable for single-instance/pilot only.
+- Attachment storage defaults to local filesystem; switch to object storage (`ATTACHMENT_STORAGE_BACKEND=supabase`) for multi-instance/production. The orphaned-file reconciliation/cleanup job is specified in `docs/ATTACHMENT_STORAGE.md` but not yet implemented in code.
+- CSV import now offloads the heavy work to a worker thread (`run_in_threadpool`) so it no longer blocks the event loop, but it is still a single synchronous pass per request; very large files may still warrant operator controls / off-peak execution and a future chunked/background-job model.
+- Refresh-token sessions are persisted for per-device revocation; sessions created by tokens issued before this change (or by endpoints that don't create a session) are untracked and won't appear in `/v1/auth/sessions`.

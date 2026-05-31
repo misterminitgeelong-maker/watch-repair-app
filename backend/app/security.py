@@ -17,6 +17,11 @@ class TokenClaims:
     user_id: UUID
     role: str
     issued_at: datetime | None = None
+    # Session id shared by an access token and its refresh token, and refresh
+    # token id (jti). Both optional for backward compatibility with tokens
+    # issued before per-session tracking was introduced.
+    sid: str | None = None
+    jti: str | None = None
 
 
 def hash_password(password: str) -> str:
@@ -27,7 +32,9 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), password_hash.encode())
 
 
-def create_access_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -> tuple[str, int]:
+def create_access_token(
+    tenant_id: UUID | str, user_id: UUID | str, role: str, sid: str | None = None
+) -> tuple[str, int]:
     now = datetime.now(timezone.utc)
     expires_delta = timedelta(minutes=settings.jwt_expire_minutes)
     expire = now + expires_delta
@@ -39,11 +46,19 @@ def create_access_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -
         "iat": now.timestamp(),
         "exp": expire,
     }
+    if sid:
+        payload["sid"] = sid
     encoded_jwt = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt, int(expires_delta.total_seconds())
 
 
-def create_refresh_token(tenant_id: UUID | str, user_id: UUID | str, role: str) -> tuple[str, int]:
+def create_refresh_token(
+    tenant_id: UUID | str,
+    user_id: UUID | str,
+    role: str,
+    sid: str | None = None,
+    jti: str | None = None,
+) -> tuple[str, int]:
     now = datetime.now(timezone.utc)
     expires_delta = timedelta(days=settings.jwt_refresh_expire_days)
     expire = now + expires_delta
@@ -56,6 +71,10 @@ def create_refresh_token(tenant_id: UUID | str, user_id: UUID | str, role: str) 
         "exp": expire,
         "typ": REFRESH_TOKEN_TYP,
     }
+    if sid:
+        payload["sid"] = sid
+    if jti:
+        payload["jti"] = jti
     encoded_jwt = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt, int(expires_delta.total_seconds())
 
@@ -89,7 +108,17 @@ def _parse_claims(payload: dict, *, expect_refresh: bool) -> TokenClaims:
     iat_raw = payload.get("iat")
     if isinstance(iat_raw, (int, float)):
         issued_at = datetime.fromtimestamp(iat_raw, tz=timezone.utc)
-    return TokenClaims(sub=sub, tenant_id=tenant_id, user_id=user_id, role=role, issued_at=issued_at)
+    sid_raw = payload.get("sid")
+    jti_raw = payload.get("jti")
+    return TokenClaims(
+        sub=sub,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        role=role,
+        issued_at=issued_at,
+        sid=sid_raw if isinstance(sid_raw, str) else None,
+        jti=jti_raw if isinstance(jti_raw, str) else None,
+    )
 
 
 def decode_access_token(token: str) -> TokenClaims:

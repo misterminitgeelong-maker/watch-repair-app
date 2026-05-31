@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from random import randint
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -34,6 +34,7 @@ from ..models import (
     MultiSiteLoginResponse,
     ParentAccount,
     RefreshRequest,
+    RefreshSession,
     ParentAccountEventLog,
     ParentAccountMembership,
     PublicUser,
@@ -851,6 +852,45 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_se
 def get_login_rate_limit():
     return settings.rate_limit_auth_login_test if settings.app_env == "test" else settings.rate_limit_auth_login
 
+def _issue_session_tokens(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    user_id: UUID,
+    role: str,
+    request: Request | None = None,
+) -> tuple[str, int, str, int]:
+    """Create an access+refresh token pair backed by a persisted RefreshSession.
+
+    Returns ``(access_token, access_expires, refresh_token, refresh_expires)``.
+    The session id (``sid``) is shared by both tokens and is the RefreshSession
+    primary key; the refresh token also carries a ``jti`` matching the row, so the
+    session can be revoked per-device via ``/auth/sessions/revoke-others``.
+    """
+    sid = uuid4()
+    jti = uuid4().hex
+    now = datetime.now(timezone.utc)
+    access, access_exp = create_access_token(tenant_id, user_id, role, sid=str(sid))
+    refresh, refresh_exp = create_refresh_token(tenant_id, user_id, role, sid=str(sid), jti=jti)
+    user_agent = None
+    if request is not None:
+        user_agent = (request.headers.get("user-agent") or "")[:400] or None
+    session.add(
+        RefreshSession(
+            id=sid,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            jti=jti,
+            created_at=now,
+            last_used_at=now,
+            expires_at=now + timedelta(seconds=refresh_exp),
+            user_agent=user_agent,
+        )
+    )
+    session.commit()
+    return access, access_exp, refresh, refresh_exp
+
+
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(get_login_rate_limit)
 def login(request: Request, payload: LoginRequest, session: Session = Depends(get_session)):
@@ -882,8 +922,9 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
     )
     session.commit()
 
-    token, expires = create_access_token(tenant.id, user.id, user.role)
-    refresh_token, refresh_expires = create_refresh_token(tenant.id, user.id, user.role)
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session, tenant_id=tenant.id, user_id=user.id, role=user.role, request=request
+    )
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -938,8 +979,13 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
     )
     session.commit()
 
-    token, expires = create_access_token(selected.tenant_id, selected.user_id, selected.role)
-    refresh_token, refresh_expires = create_refresh_token(selected.tenant_id, selected.user_id, selected.role)
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session,
+        tenant_id=selected.tenant_id,
+        user_id=selected.user_id,
+        role=selected.role,
+        request=request,
+    )
     return MultiSiteLoginResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -1107,6 +1153,38 @@ def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_sessi
     if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
+    # Tracked refresh token (carries a jti): validate the persisted session so a
+    # revoked device can no longer mint access tokens. The session id (sid) is
+    # kept stable across refreshes so the "current device" stays identifiable.
+    if claims.jti:
+        rs = session.exec(
+            select(RefreshSession).where(RefreshSession.jti == claims.jti)
+        ).first()
+        if rs is None or rs.revoked_at is not None:
+            raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
+        rs_expires = rs.expires_at
+        if rs_expires.tzinfo is None:
+            rs_expires = rs_expires.replace(tzinfo=timezone.utc)
+        if rs_expires < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+
+        rs.last_used_at = datetime.now(timezone.utc)
+        session.add(rs)
+        session.commit()
+
+        sid = str(rs.id)
+        token, expires = create_access_token(tenant_id, user_id, user.role, sid=sid)
+        refresh_token, refresh_expires = create_refresh_token(
+            tenant_id, user_id, user.role, sid=sid, jti=rs.jti
+        )
+        return TokenResponse(
+            access_token=token,
+            expires_in_seconds=expires,
+            refresh_token=refresh_token,
+            refresh_expires_in_seconds=refresh_expires,
+        )
+
+    # Legacy untracked refresh token (issued before per-session tracking).
     token, expires = create_access_token(tenant_id, user_id, user.role)
     refresh_token, refresh_expires = create_refresh_token(tenant_id, user_id, user.role)
     return TokenResponse(
@@ -1157,37 +1235,81 @@ def list_sessions(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    """
-    Return the currently authenticated session shape.
-    Until refresh-token persistence is introduced, we can only reliably surface
-    the active token context rather than a full device/session inventory.
+    """List the user's active (non-revoked, unexpired) persisted sessions.
+
+    Sessions are tracked from the moment the user signs in with per-session
+    tracking; tokens issued before that (or by endpoints that do not create a
+    session) won't appear here. The session matching the current access token's
+    ``sid`` is flagged ``is_current``.
     """
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)
     if not tenant or not user or user.tenant_id != tenant.id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return {
-        "sessions": [
+    now = datetime.now(timezone.utc)
+    rows = session.exec(
+        select(RefreshSession)
+        .where(RefreshSession.user_id == auth.user_id)
+        .where(RefreshSession.revoked_at.is_(None))
+        .order_by(RefreshSession.last_used_at.desc())
+    ).all()
+
+    sessions = []
+    for r in rows:
+        expires = r.expires_at if r.expires_at.tzinfo else r.expires_at.replace(tzinfo=timezone.utc)
+        if expires < now:
+            continue
+        sessions.append(
             {
-                "session_id": f"active:{auth.tenant_id}:{auth.user_id}",
-                "tenant_id": str(auth.tenant_id),
-                "user_id": str(auth.user_id),
+                "session_id": str(r.id),
+                "tenant_id": str(r.tenant_id),
+                "user_id": str(r.user_id),
                 "role": auth.role,
                 "email": user.email,
-                "is_current": True,
+                "user_agent": r.user_agent,
+                "created_at": (r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)).isoformat(),
+                "last_used_at": (r.last_used_at if r.last_used_at.tzinfo else r.last_used_at.replace(tzinfo=timezone.utc)).isoformat(),
+                "is_current": auth.sid is not None and str(r.id) == auth.sid,
             }
-        ]
-    }
+        )
+
+    return {"sessions": sessions}
 
 
 @router.post("/sessions/revoke-others", summary="Revoke all other sessions for current user")
-def revoke_other_sessions(auth: AuthContext = Depends(get_auth_context)):
+def revoke_other_sessions(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Revoke every persisted session for the user except the current device.
+
+    Requires the current access token to be tracked (carry a ``sid``). Revoked
+    sessions can no longer be used to refresh access tokens.
     """
-    Refresh tokens are not persisted yet, so there are currently no server-tracked
-    "other sessions" to revoke. Returning a deterministic result avoids a silent stub.
-    """
-    return {"revoked": 0, "message": "No persisted secondary sessions found"}
+    if not auth.sid:
+        return {
+            "revoked": 0,
+            "message": "Current session is not tracked. Sign in again to enable per-device revocation.",
+        }
+    try:
+        current_sid = UUID(auth.sid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid session id")
+
+    now = datetime.now(timezone.utc)
+    rows = session.exec(
+        select(RefreshSession)
+        .where(RefreshSession.user_id == auth.user_id)
+        .where(RefreshSession.revoked_at.is_(None))
+        .where(RefreshSession.id != current_sid)
+    ).all()
+    for r in rows:
+        r.revoked_at = now
+        session.add(r)
+    session.commit()
+
+    return {"revoked": len(rows), "message": f"Revoked {len(rows)} other session(s)."}
 
 
 @router.patch("/session/site", response_model=ActiveSiteSwitchResponse)

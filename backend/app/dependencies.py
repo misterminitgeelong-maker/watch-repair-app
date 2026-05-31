@@ -161,6 +161,9 @@ class AuthContext:
     user_id: UUID
     role: str = "owner"
     plan_code: str = "pro"
+    # Session id from the access token (present for tokens issued with per-session
+    # tracking). Used by /auth/sessions/revoke-others to keep the current device.
+    sid: str | None = None
 
 
 def get_auth_context(
@@ -223,7 +226,13 @@ def get_auth_context(
         ):
             raise HTTPException(status_code=403, detail="subscription_required")
 
-        ctx = AuthContext(tenant_id=tenant_id, user_id=user_id, role=user.role, plan_code=plan_code)
+        ctx = AuthContext(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            role=user.role,
+            plan_code=plan_code,
+            sid=claims.sid,
+        )
 
         if len(_auth_cache) >= _AUTH_CACHE_MAX:
             _auth_cache.clear()

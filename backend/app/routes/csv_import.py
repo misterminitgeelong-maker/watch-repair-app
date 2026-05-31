@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import delete as sa_delete, func
 from sqlmodel import Session, select
 import openpyxl
@@ -629,6 +630,36 @@ async def import_csv(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required")
 
+    raw_bytes = await file.read()
+    # The import is CPU/DB-heavy and fully synchronous; run it in a worker thread
+    # so a large file does not block the event loop (and therefore every other
+    # request) for the entire duration of the import.
+    return await run_in_threadpool(
+        _import_csv_sync,
+        raw_bytes=raw_bytes,
+        filename=file.filename,
+        replace_existing=replace_existing,
+        dry_run=dry_run,
+        sheet_name=sheet_name,
+        clear_tabs=clear_tabs,
+        import_target=import_target,
+        auth=auth,
+        session=session,
+    )
+
+
+def _import_csv_sync(
+    *,
+    raw_bytes: bytes,
+    filename: str,
+    replace_existing: bool,
+    dry_run: bool,
+    sheet_name: str | None,
+    clear_tabs: list[str],
+    import_target: str,
+    auth: AuthContext,
+    session: Session,
+) -> ImportSummaryResponse:
     if import_target not in ("watch", "shoe", "mobile"):
         raise HTTPException(status_code=400, detail="import_target must be watch, shoe, or mobile")
     if not _auth_has_import_target(auth, import_target):
@@ -637,8 +668,7 @@ async def import_csv(
             detail=f"Your plan does not include imports for '{import_target}'.",
         )
 
-    raw_bytes = await file.read()
-    rows, file_type, source_sheet = _load_rows(file.filename, raw_bytes, sheet_name)
+    rows, file_type, source_sheet = _load_rows(filename, raw_bytes, sheet_name)
     if not rows:
         raise HTTPException(status_code=400, detail="Import file is empty.")
 
@@ -674,7 +704,7 @@ async def import_csv(
         import_log = ImportLog(
             tenant_id=tenant_id,
             uploaded_by_user_id=auth.user_id,
-            file_name=file.filename,
+            file_name=filename,
             file_type=file_type,
             total_rows=len(rows),
         )

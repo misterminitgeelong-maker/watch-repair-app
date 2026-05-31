@@ -27,7 +27,7 @@ const config: UserConfigExport & { test?: { environment: string; include: string
     'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(appBuildId),
   },
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
   },

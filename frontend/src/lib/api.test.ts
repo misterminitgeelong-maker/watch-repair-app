@@ -36,8 +36,13 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage(err)).toBe('Session expired. Please sign in again.')
   })
 
-  it('returns fallback for plain Error values', () => {
-    expect(getApiErrorMessage(new Error('oops'), 'Custom fallback')).toBe('Custom fallback')
+  it('returns the message for plain Error values (e.g. network/timeout errors)', () => {
+    expect(getApiErrorMessage(new Error('oops'), 'Custom fallback')).toBe('oops')
+  })
+
+  it('returns fallback for non-Error, non-axios values', () => {
+    expect(getApiErrorMessage('a string', 'Custom fallback')).toBe('Custom fallback')
+    expect(getApiErrorMessage(undefined, 'Custom fallback')).toBe('Custom fallback')
   })
 
   it('returns default fallback for axios 500 without detail when not an Error instance', () => {

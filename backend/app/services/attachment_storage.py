@@ -80,3 +80,51 @@ class SupabaseAttachmentStorage(AttachmentStorage):
             expires_in=expires_in_seconds,
         )
         return response.get("signedURL") or response.get("signed_url")
+
+
+def _supabase_configured() -> bool:
+    from ..config import settings
+
+    return bool(settings.supabase_url and settings.supabase_service_role_key)
+
+
+def create_attachment_storage() -> AttachmentStorage:
+    """Build the active attachment storage backend from configuration.
+
+    Driven by ``settings.attachment_storage_backend``:
+      - ``auto`` (default): object storage when Supabase is configured, else local FS.
+      - ``local``: always local filesystem.
+      - ``supabase``: always object storage; raises if Supabase is not configured
+        so production misconfiguration fails fast instead of silently writing to
+        an ephemeral local disk.
+
+    Object storage is the recommended path for multi-instance deployments; local
+    filesystem only survives on a single instance with a durable mounted volume.
+    """
+    from ..config import settings
+
+    backend = (settings.attachment_storage_backend or "auto").strip().lower()
+
+    if backend == "local":
+        return LocalAttachmentStorage(settings.attachment_local_upload_dir)
+
+    if backend == "supabase":
+        if not _supabase_configured():
+            raise AttachmentStorageError(
+                "ATTACHMENT_STORAGE_BACKEND=supabase but SUPABASE_URL / "
+                "SUPABASE_SERVICE_ROLE_KEY are not set."
+            )
+        return SupabaseAttachmentStorage(
+            url=settings.supabase_url,
+            key=settings.supabase_service_role_key,
+            bucket=settings.supabase_storage_bucket,
+        )
+
+    # auto
+    if _supabase_configured():
+        return SupabaseAttachmentStorage(
+            url=settings.supabase_url,
+            key=settings.supabase_service_role_key,
+            bucket=settings.supabase_storage_bucket,
+        )
+    return LocalAttachmentStorage(settings.attachment_local_upload_dir)
