@@ -135,6 +135,16 @@ def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
     assert job["referring_shop_tenant_id"] == create.json()["requesting_tenant_id"]
     assert job["shop_mobile_booking_request_id"] == booking_id
 
+    delete_job = client.delete(
+        f"/v1/auto-key-jobs/{body['resulting_auto_key_job_id']}",
+        headers=op_h,
+    )
+    assert delete_job.status_code == 204, delete_job.text
+
+    booking_after = client.get(f"/v1/shop-mobile-bookings/{booking_id}", headers=shop_h)
+    assert booking_after.status_code == 200
+    assert booking_after.json()["resulting_auto_key_job_id"] is None
+
     create2 = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,

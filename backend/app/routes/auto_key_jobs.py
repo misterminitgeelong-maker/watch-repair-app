@@ -6,13 +6,14 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from sqlmodel import Session, delete, func, select
+from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
+    Attachment,
     AutoKeyJob,
     AutoKeyJobCreate,
     AutoKeyJobFieldUpdate,
@@ -31,9 +32,11 @@ from ..models import (
     Customer,
     CustomerAccount,
     CustomerAccountMembership,
+    IntakeJob,
     JobMessage,
     JobMessageRead,
     JobThreadMessage,
+    ShopMobileBookingRequest,
     SmsLog,
     Tenant,
 )
@@ -931,6 +934,32 @@ def delete_auto_key_job(
         .where(AutoKeyQuote.tenant_id == auth.tenant_id)
         .where(AutoKeyQuote.auto_key_job_id == job_id)
     ).all()
+
+    session.exec(
+        delete(Attachment)
+        .where(Attachment.tenant_id == auth.tenant_id)
+        .where(Attachment.auto_key_job_id == job_id)
+    )
+    session.exec(
+        delete(JobMessage)
+        .where(JobMessage.tenant_id == auth.tenant_id)
+        .where(JobMessage.auto_key_job_id == job_id)
+    )
+    session.exec(
+        delete(SmsLog)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+        .where(SmsLog.auto_key_job_id == job_id)
+    )
+    session.exec(
+        update(ShopMobileBookingRequest)
+        .where(ShopMobileBookingRequest.resulting_auto_key_job_id == job_id)
+        .values(resulting_auto_key_job_id=None)
+    )
+    session.exec(
+        update(IntakeJob)
+        .where(IntakeJob.resulting_job_id == job_id)
+        .values(resulting_job_id=None)
+    )
 
     session.exec(
         delete(AutoKeyInvoice)

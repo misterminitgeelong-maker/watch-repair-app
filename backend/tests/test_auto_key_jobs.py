@@ -517,3 +517,63 @@ def test_update_auto_key_invoice_can_mark_paid():
     assert data["status"] == "paid"
     assert data["payment_method"] == "eftpos"
     assert data["paid_at"] is not None
+
+
+def test_delete_auto_key_job_with_quotes_invoices_and_thread():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-del-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Delete me",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "awaiting_quote",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    quote_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/quotes",
+        headers=headers,
+        json={
+            "line_items": [
+                {"description": "Cut key", "quantity": 1, "unit_price_cents": 5000},
+            ],
+            "tax_cents": 500,
+        },
+    )
+    assert quote_res.status_code == 201
+
+    msg_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/messages",
+        headers=headers,
+        json={"body": "On my way"},
+    )
+    assert msg_res.status_code == 201
+
+    complete_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "work_completed", "note": "Done"},
+    )
+    assert complete_res.status_code == 200
+
+    delete_res = client.delete(f"/v1/auto-key-jobs/{job_id}", headers=headers)
+    assert delete_res.status_code == 204, delete_res.text
+
+    gone = client.get(f"/v1/auto-key-jobs/{job_id}", headers=headers)
+    assert gone.status_code == 404
