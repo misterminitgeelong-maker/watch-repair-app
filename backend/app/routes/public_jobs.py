@@ -1019,6 +1019,15 @@ def create_portal_session(payload: PortalSessionRequest, session: Session = Depe
     session.refresh(portal_session)
 
     portal_url = f"{settings.public_base_url}/customer-portal/s/{portal_session.token}"
+
+    from ..email_client import send_portal_bookmark_email
+
+    send_portal_bookmark_email(
+        to_email=email,
+        portal_url=portal_url,
+        expires_days=_PORTAL_SESSION_TTL_DAYS,
+    )
+
     return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 

@@ -328,6 +328,45 @@ def send_mobile_invoice_email(
     )
 
 
+def send_portal_bookmark_email(
+    *,
+    to_email: str,
+    portal_url: str,
+    expires_days: int = 30,
+    shop_name: str = "Mainspring",
+) -> tuple[bool, str | None]:
+    """Send a bookmark link for the cross-shop customer repair portal."""
+    if not (to_email or "").strip():
+        return False, None
+    subject = "Your repair tracking link"
+    body_plain = (
+        f"Hi,\n\n"
+        f"Save this link to track your repairs any time (valid for {expires_days} days):\n"
+        f"{portal_url}\n\n"
+        f"Thanks,\n{shop_name}"
+    )
+    body_html = render_transactional_email(
+        title="Track your repairs",
+        preheader=f"Bookmark this link — valid for {expires_days} days",
+        greeting="Hi,",
+        intro_html=(
+            "Use the button below to see all your active repairs. "
+            f"This link stays valid for <strong>{expires_days} days</strong>."
+        ),
+        shop=ShopInfo(name=shop_name),
+        cta_label="Open my repairs",
+        cta_url=portal_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="portal_bookmark",
+    )
+
+
 def send_job_ready_email(
     *,
     to_email: str,
