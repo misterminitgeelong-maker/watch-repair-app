@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Camera, X } from 'lucide-react'
+import { ChevronRight, Camera, Upload, X } from 'lucide-react'
 import {
   listCustomers, createCustomer, listWatches, createWatch, createJob,
   listCustomerAccounts,
@@ -132,8 +132,10 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [photos, setPhotos] = useState<Array<{ front: File | null; back: File | null; frontPreview: string | null; backPreview: string | null }>>(
     [{ front: null, back: null, frontPreview: null, backPreview: null }]
   )
-  const frontRefs = useRef<Array<HTMLInputElement | null>>([])
-  const backRefs = useRef<Array<HTMLInputElement | null>>([])
+  const frontCameraRefs = useRef<Array<HTMLInputElement | null>>([])
+  const frontGalleryRefs = useRef<Array<HTMLInputElement | null>>([])
+  const backCameraRefs = useRef<Array<HTMLInputElement | null>>([])
+  const backGalleryRefs = useRef<Array<HTMLInputElement | null>>([])
 
   // Revoke all blob preview URLs on unmount to prevent memory leaks
   const photosRef = useRef(photos)
@@ -272,8 +274,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       if (oldUrl) URL.revokeObjectURL(oldUrl)
       return { ...p, [side]: null, [`${side}Preview`]: null }
     }))
-    const ref = side === 'front' ? frontRefs.current[watchIdx] : backRefs.current[watchIdx]
-    if (ref) ref.value = ''
+    const refs = side === 'front'
+      ? [frontCameraRefs.current[watchIdx], frontGalleryRefs.current[watchIdx]]
+      : [backCameraRefs.current[watchIdx], backGalleryRefs.current[watchIdx]]
+    for (const ref of refs) {
+      if (ref) ref.value = ''
+    }
   }
 
   function nextStep1() {
@@ -705,23 +711,49 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                   Front (Dial){watchCount === 1 ? ' *' : ''}
                 </label>
                 <input
-                  ref={el => { frontRefs.current[idx] = el }}
+                  ref={el => { frontCameraRefs.current[idx] = el }}
                   type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={e => handlePhoto(idx, 'front', e)}
+                />
+                <input
+                  ref={el => { frontGalleryRefs.current[idx] = el }}
+                  type="file" accept="image/*" className="hidden"
                   onChange={e => handlePhoto(idx, 'front', e)}
                 />
                 {photos[idx]?.frontPreview ? (
                   <div className="relative group">
                     <img src={photos[idx].frontPreview!} alt="Watch front" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
-                    <button onClick={() => removePhoto(idx, 'front')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
+                    <button type="button" onClick={() => removePhoto(idx, 'front')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
                   </div>
                 ) : (
-                  <button onClick={() => frontRefs.current[idx]?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2"
+                  <div
+                    className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-3 p-3"
                     style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
-                    <Camera size={28} />
-                    <span className="text-xs font-medium">Tap to capture</span>
-                  </button>
+                  >
+                    <Camera size={24} style={{ opacity: 0.45 }} />
+                    <div className="flex flex-col w-full gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full text-xs py-2"
+                        disabled={photoLoading === `${idx}-front`}
+                        onClick={() => frontCameraRefs.current[idx]?.click()}
+                      >
+                        <Camera size={14} />
+                        {photoLoading === `${idx}-front` ? 'Processing…' : 'Take photo'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full text-xs py-2"
+                        disabled={photoLoading === `${idx}-front`}
+                        onClick={() => frontGalleryRefs.current[idx]?.click()}
+                      >
+                        <Upload size={14} />
+                        Choose from gallery
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -731,23 +763,49 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                   Back (Caseback){watchCount === 1 ? ' *' : ''}
                 </label>
                 <input
-                  ref={el => { backRefs.current[idx] = el }}
+                  ref={el => { backCameraRefs.current[idx] = el }}
                   type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={e => handlePhoto(idx, 'back', e)}
+                />
+                <input
+                  ref={el => { backGalleryRefs.current[idx] = el }}
+                  type="file" accept="image/*" className="hidden"
                   onChange={e => handlePhoto(idx, 'back', e)}
                 />
                 {photos[idx]?.backPreview ? (
                   <div className="relative group">
                     <img src={photos[idx].backPreview!} alt="Watch back" className="w-full aspect-square object-cover rounded-lg" style={{ border: '1px solid var(--ms-border)' }} />
-                    <button onClick={() => removePhoto(idx, 'back')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
+                    <button type="button" onClick={() => removePhoto(idx, 'back')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
                   </div>
                 ) : (
-                  <button onClick={() => backRefs.current[idx]?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2"
+                  <div
+                    className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-3 p-3"
                     style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ms-accent)'; e.currentTarget.style.backgroundColor = '#FEF0DC'; e.currentTarget.style.color = 'var(--ms-accent)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--ms-border-strong)'; e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--ms-text-muted)' }}>
-                    <Camera size={28} />
-                    <span className="text-xs font-medium">Tap to capture</span>
-                  </button>
+                  >
+                    <Camera size={24} style={{ opacity: 0.45 }} />
+                    <div className="flex flex-col w-full gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full text-xs py-2"
+                        disabled={photoLoading === `${idx}-back`}
+                        onClick={() => backCameraRefs.current[idx]?.click()}
+                      >
+                        <Camera size={14} />
+                        {photoLoading === `${idx}-back` ? 'Processing…' : 'Take photo'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full text-xs py-2"
+                        disabled={photoLoading === `${idx}-back`}
+                        onClick={() => backGalleryRefs.current[idx]?.click()}
+                      >
+                        <Upload size={14} />
+                        Choose from gallery
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
