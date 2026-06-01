@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import case, func
+from pydantic import BaseModel
+from sqlalchemy import case, func, or_
 from sqlmodel import Session, select
 
 from ..database import get_session
@@ -21,6 +22,11 @@ router = APIRouter(
     tags=["mobile-services-pricing"],
     dependencies=[Depends(require_feature("auto_key"))],
 )
+
+
+def _pricing_is_active(column):
+    """Treat NULL active as enabled (Supabase rows may omit the flag)."""
+    return or_(column.is_(True), column.is_(None))
 
 
 def _oem_row(row: OemKeyPricing) -> OemKeyPricingRow:
@@ -72,7 +78,7 @@ def list_oem_makes(
 ):
     rows = session.exec(
         select(OemKeyPricing.make)
-        .where(OemKeyPricing.active == True)  # noqa: E712
+        .where(_pricing_is_active(OemKeyPricing.active))
         .distinct()
         .order_by(OemKeyPricing.make)
     ).all()
@@ -96,7 +102,7 @@ def list_oem_keys_by_make(
     rows = session.exec(
         select(OemKeyPricing)
         .where(func.lower(OemKeyPricing.make) == make_clean.lower())
-        .where(OemKeyPricing.active == True)  # noqa: E712
+        .where(_pricing_is_active(OemKeyPricing.active))
         .order_by(job_type_order.asc(), OemKeyPricing.model_variant.asc())
     ).all()
     return [_oem_row(r) for r in rows]
@@ -109,7 +115,7 @@ def list_service_pricing(
 ):
     rows = session.exec(
         select(ServicePricing)
-        .where(ServicePricing.active == True)  # noqa: E712
+        .where(_pricing_is_active(ServicePricing.active))
         .order_by(ServicePricing.category, ServicePricing.service_name)
     ).all()
     return [_service_row(r) for r in rows]
@@ -122,7 +128,44 @@ def list_garage_pricing(
 ):
     rows = session.exec(
         select(GarageServicingPricing)
-        .where(GarageServicingPricing.active == True)  # noqa: E712
+        .where(_pricing_is_active(GarageServicingPricing.active))
         .order_by(GarageServicingPricing.service_name)
     ).all()
     return [_garage_row(r) for r in rows]
+
+
+class MobileServicesPricingMeta(BaseModel):
+    oem_row_count: int
+    oem_make_count: int
+    service_row_count: int
+    garage_row_count: int
+
+
+@router.get("/meta", response_model=MobileServicesPricingMeta)
+def pricing_catalogue_meta(
+    _auth=Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Row counts for empty-state diagnostics (same DB as DATABASE_URL)."""
+    oem_rows = session.exec(
+        select(func.count()).select_from(OemKeyPricing).where(_pricing_is_active(OemKeyPricing.active))
+    ).one()
+    oem_makes = session.exec(
+        select(func.count(func.distinct(OemKeyPricing.make)))
+        .select_from(OemKeyPricing)
+        .where(_pricing_is_active(OemKeyPricing.active))
+    ).one()
+    service_rows = session.exec(
+        select(func.count()).select_from(ServicePricing).where(_pricing_is_active(ServicePricing.active))
+    ).one()
+    garage_rows = session.exec(
+        select(func.count())
+        .select_from(GarageServicingPricing)
+        .where(_pricing_is_active(GarageServicingPricing.active))
+    ).one()
+    return MobileServicesPricingMeta(
+        oem_row_count=int(oem_rows or 0),
+        oem_make_count=int(oem_makes or 0),
+        service_row_count=int(service_rows or 0),
+        garage_row_count=int(garage_rows or 0),
+    )

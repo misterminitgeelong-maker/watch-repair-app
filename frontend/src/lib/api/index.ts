@@ -1465,6 +1465,15 @@ export const listMobileServicesServicePricing = () =>
 export const listGarageServicingPricing = () =>
   api.get<GarageServicingPricingRow[]>('/mobile-services-pricing/garage')
 
+export type MobileServicesPricingMeta = {
+  oem_row_count: number
+  oem_make_count: number
+  service_row_count: number
+  garage_row_count: number
+}
+export const getMobileServicesPricingMeta = () =>
+  api.get<MobileServicesPricingMeta>('/mobile-services-pricing/meta')
+
 export interface AutoKeyJobCreatePayload {
   customer_id: string
   customer_account_id?: string

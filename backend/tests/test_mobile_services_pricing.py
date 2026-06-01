@@ -163,3 +163,22 @@ def test_auto_key_job_stores_pricing_fields():
     assert body["quoted_price"] == 250.0
     assert body["callout_inclusive"] is True
     assert body["cost_cents"] == 25000
+
+
+def test_pricing_meta_endpoint():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"ms-meta-{suffix}",
+        email=f"owner-{suffix}@meta.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    _seed_pricing()
+
+    meta = client.get("/v1/mobile-services-pricing/meta", headers=headers)
+    assert meta.status_code == 200
+    body = meta.json()
+    assert body["oem_row_count"] >= 2
+    assert body["oem_make_count"] >= 1
+    assert body["service_row_count"] >= 1
+    assert body["garage_row_count"] >= 1

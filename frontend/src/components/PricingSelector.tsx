@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Check, Search, X } from 'lucide-react'
 import {
   getApiErrorMessage,
+  getMobileServicesPricingMeta,
   listGarageServicingPricing,
   listMobileServicesOemKeyPricing,
   listMobileServicesOemMakes,
@@ -97,6 +98,19 @@ export default function PricingSelector({
     }
   }, [open])
 
+  const { data: catalogueMeta } = useQuery({
+    queryKey: ['mobile-services-pricing', 'meta'],
+    queryFn: () => getMobileServicesPricingMeta().then(r => r.data),
+    enabled: open,
+    staleTime: 60_000,
+  })
+
+  const catalogueEmpty =
+    catalogueMeta != null &&
+    catalogueMeta.oem_row_count === 0 &&
+    catalogueMeta.service_row_count === 0 &&
+    catalogueMeta.garage_row_count === 0
+
   const {
     data: makes = [],
     isFetching: makesLoading,
@@ -107,6 +121,7 @@ export default function PricingSelector({
     queryFn: () => listMobileServicesOemMakes().then(r => r.data),
     enabled: open,
     staleTime: 60_000,
+    retry: 1,
   })
 
   const makeSearchNorm = makeSearch.trim().toLowerCase()
@@ -418,6 +433,16 @@ export default function PricingSelector({
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
+          {catalogueEmpty && (
+            <div
+              className="rounded-lg px-3 py-3 mb-3 text-xs leading-relaxed"
+              style={{ backgroundColor: 'rgba(201,106,90,0.1)', color: 'var(--ms-text-mid)', border: '1px solid rgba(201,106,90,0.25)' }}
+            >
+              No pricing rows found in this app database. The catalogue reads from the same Postgres as{' '}
+              <code className="text-[10px]">DATABASE_URL</code> — confirm your Supabase pricing tables are in that
+              database and that <code className="text-[10px]">active</code> is true (or unset).
+            </div>
+          )}
           {tab === 'vehicle_key' && (
             <>
               <div className="relative mb-2">
@@ -449,27 +474,36 @@ export default function PricingSelector({
               {makesLoading && !makesError && (
                 <p className="text-sm py-2 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading makes…</p>
               )}
-              {!makesLoading && !makesError && makeSearchNorm && !makeSearchMatchesSelection && filteredMakes.length > 0 && (
-                <div
-                  className="rounded-lg border overflow-y-auto mb-2"
-                  style={{ maxHeight: '140px', borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
-                >
-                  {filteredMakes.map(make => (
-                    <button
-                      key={make}
-                      type="button"
-                      onClick={() => pickMake(make)}
-                      className="w-full text-left px-3 py-2 text-sm border-b last:border-b-0"
-                      style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
-                    >
-                      {make}
-                    </button>
-                  ))}
+              {!makesLoading && !makesError && !makeSearchMatchesSelection && filteredMakes.length > 0 && (
+                <div className="mb-2">
+                  <p className="text-xs mb-1 px-1" style={{ color: 'var(--ms-text-muted)' }}>
+                    {makeSearchNorm ? 'Matching makes' : 'Select a vehicle make'}
+                  </p>
+                  <div
+                    className="rounded-lg border overflow-y-auto"
+                    style={{ maxHeight: makeSearchNorm ? '140px' : '220px', borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
+                  >
+                    {filteredMakes.map(make => (
+                      <button
+                        key={make}
+                        type="button"
+                        onClick={() => pickMake(make)}
+                        className="w-full text-left px-3 py-2 text-sm border-b last:border-b-0"
+                        style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
+                      >
+                        {make}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              {!makesLoading && !makesError && makeSearchNorm && !makeSearchMatchesSelection && filteredMakes.length === 0 && (
+              {!makesLoading && !makesError && !makeSearchMatchesSelection && filteredMakes.length === 0 && (
                 <p className="text-sm py-2 text-center italic" style={{ color: 'var(--ms-text-muted)' }}>
-                  {makes.length === 0 ? 'No makes in catalogue yet' : 'No makes match your search'}
+                  {makes.length === 0
+                    ? 'No vehicle makes in the catalogue yet'
+                    : makeSearchNorm
+                      ? 'No makes match your search — pick one from the list or clear the search'
+                      : 'Type a make name to filter the list'}
                 </p>
               )}
               {makeSearchMatchesSelection && selectedMake && (
