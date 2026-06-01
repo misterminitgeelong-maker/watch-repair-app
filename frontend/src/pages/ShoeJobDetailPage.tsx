@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw, History } from 'lucide-react'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, Camera, Upload, Tag, Pencil, Plus, X, Footprints, Printer, MessageSquare, RefreshCw, History, Copy } from 'lucide-react'
 import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
@@ -9,7 +9,7 @@ import {
   listShoes, createShoe,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
-  getShoeJobSmsLog, resendShoeNotification, sendShoeQuote,
+  getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage,
   getShoeJobHistory,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry, type ShoeJobHistoryEntry,
 } from '@/lib/api'
@@ -17,6 +17,9 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import JobMessageThread from '@/components/JobMessageThread'
+import JobCustomFields from '@/components/JobCustomFields'
+import { useToast } from '@/lib/toast'
 import { preparePhotoFile, uploadFilesSequential, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
@@ -42,6 +45,24 @@ const SHOE_STATUSES = [
   'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on',
   'completed', 'awaiting_collection', 'collected', 'no_go',
 ]
+
+function DuplicateShoeJobButton({ jobId }: { jobId: string }) {
+  const navigate = useNavigate()
+  const toast = useToast()
+  return (
+    <Button
+      variant="secondary"
+      onClick={() => {
+        void cloneShoeRepairJob(jobId).then(r => {
+          toast.success('Job duplicated')
+          navigate(`/shoe-repairs/${r.data.id}`)
+        }).catch((e: unknown) => toast.error(getApiErrorMessage(e, 'Duplicate failed')))
+      }}
+    >
+      <Copy size={15} /><span className="hidden sm:inline">Duplicate</span>
+    </Button>
+  )
+}
 
 // ── Status modal ───────────────────────────────────────────────────────────────
 function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void }) {
@@ -370,7 +391,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
         {isLoading ? (
           <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>
         ) : logs.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No messages sent yet.</p>
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No automated SMS yet.</p>
         ) : (
           <div className="space-y-3">
             {logs.map((log: SmsLogEntry) => (
@@ -393,6 +414,12 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
             ))}
           </div>
         )}
+
+        <JobMessageThread
+          jobId={job.id}
+          fetchMessages={getShoeJobMessages}
+          postMessage={sendShoeJobMessage}
+        />
       </div>
     </Card>
   )
@@ -468,7 +495,14 @@ function HistoryCard({ jobId }: { jobId: string }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function ShoeJobDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'messages') {
+      document.getElementById('messages')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [searchParams, id])
   const [showStatus, setShowStatus] = useState(false)
   const [showAddPair, setShowAddPair] = useState(false)
   const sendQuoteMut = useMutation({
@@ -594,6 +628,7 @@ export default function ShoeJobDetailPage() {
               <span className="hidden sm:inline">Change Status</span>
               <span className="sm:hidden">Status</span>
             </Button>
+            <DuplicateShoeJobButton jobId={job.id} />
           </div>
         }
       />
@@ -908,7 +943,10 @@ export default function ShoeJobDetailPage() {
           )}
 
           {/* ── Messages ──────────────────────────────────────────── */}
-          <MessagesCard job={job} />
+          <div id="messages">
+            <MessagesCard job={job} />
+          </div>
+          <JobCustomFields jobType="shoe_repair_job" jobId={job.id} initialJson={job.custom_fields_json} />
 
           {/* ── History ───────────────────────────────────────────── */}
           <HistoryCard jobId={job.id} />

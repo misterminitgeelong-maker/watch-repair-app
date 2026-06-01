@@ -29,6 +29,7 @@ import { isMinitTenantSlug } from '@/lib/minitBranding'
 import { useTheme, type Theme } from '@/context/ThemeContext'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import TenantQolSettings from '@/components/TenantQolSettings'
 
 type UserRole = 'owner' | 'manager' | 'tech' | 'intake'
 
@@ -584,6 +585,7 @@ export default function AccountsPage() {
       {(planCode.includes('auto_key') || planCode === 'pro') && <DispatchBaseLocationCard />}
 
       <ShopIdentityCard />
+      <TenantQolSettings />
 
       <AppearanceCard />
 

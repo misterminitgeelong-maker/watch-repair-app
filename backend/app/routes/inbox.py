@@ -16,6 +16,7 @@ INBOX_EVENT_TYPES = [
     "shop_booking_pending",
     "invoice_paid",
     "customer_sms_reply",
+    "portal_customer_message",
 ]
 
 

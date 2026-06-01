@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare } from 'lucide-react'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare, Copy } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
@@ -14,9 +14,11 @@ import {
   getApiErrorMessage,
   getUploadErrorMessage,
   listUsers,
-  createQuote, sendQuote,
+  createQuote, sendQuote, cloneRepairJob,
   type JobStatus, type RepairJob, type CustomerAccount, type TenantUser,
 } from '@/lib/api'
+import { useToast } from '@/lib/toast'
+import JobCustomFields from '@/components/JobCustomFields'
 import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
@@ -395,8 +397,13 @@ function PartsEtaCard({ job }: { job: RepairJob }) {
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<Tab>('details')
+  const toast = useToast()
+  const initialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    initialTab === 'messages' ? 'messages' : 'details',
+  )
   const [showStatus, setShowStatus] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
   const [showCreateQuote, setShowCreateQuote] = useState(false)
@@ -601,6 +608,17 @@ export default function JobDetailPage() {
               </Button>
             )}
             <Button variant="ghost" onClick={() => setShowStatus(true)}>Status</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void cloneRepairJob(id!).then(r => {
+                  toast.success('Job duplicated')
+                  navigate(`/jobs/${r.data.id}`)
+                }).catch((e: unknown) => toast.error(getApiErrorMessage(e, 'Duplicate failed')))
+              }}
+            >
+              <Copy size={15} /><span className="hidden sm:inline">Duplicate</span>
+            </Button>
           </div>
         }
       />
@@ -981,6 +999,9 @@ export default function JobDetailPage() {
                 </Card>
               ))
             )}
+          </div>
+          <div className="lg:col-span-3 mt-2">
+            <JobCustomFields jobType="repair_job" jobId={job.id} initialJson={job.custom_fields_json} />
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { APIProvider } from '@vis.gl/react-google-maps'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
+import { ToastProvider } from '@/lib/toast'
 import AppShell from '@/components/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Spinner } from '@/components/ui'
@@ -153,6 +154,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <ThemeProvider>
+        <ToastProvider>
         <AuthProvider>
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
@@ -242,6 +244,7 @@ export default function App() {
             </Suspense>
           </LocationBoundary>
         </AuthProvider>
+        </ToastProvider>
         </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>

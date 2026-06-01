@@ -23,6 +23,7 @@ from ..models import (
     AutoKeyQuote,
     AutoKeyQuoteLineItem,
     Customer,
+    Invoice,
     JobStatusHistory,
     PortalSession,
     Quote,
@@ -731,6 +732,7 @@ def get_public_auto_key_job_status(status_token: str, session: Session = Depends
     ).first()
 
     return {
+        "job_id": str(job.id),
         "job_number": job.job_number,
         "title": job.title,
         "status": job.status,
@@ -765,6 +767,7 @@ _PORTAL_MAX_JOBS_PER_SHOP = 50
 
 
 class CustomerPortalJobRead(SQLModel):
+    id: str
     type: str  # watch | shoe | auto_key
     job_number: str
     title: str
@@ -789,6 +792,8 @@ class CustomerPortalShopRead(SQLModel):
 class CustomerPortalLookupResponse(SQLModel):
     email: Optional[str] = None
     shops: list[CustomerPortalShopRead] = Field(default_factory=list)
+    status_notify_email: Optional[bool] = None
+    status_notify_sms: Optional[bool] = None
 
 
 def _portal_pending_actions_for_watch(session: Session, job: RepairJob) -> list[dict[str, Any]]:
@@ -856,10 +861,30 @@ def _portal_pending_actions_for_auto_key(session: Session, job: AutoKeyJob) -> l
     return actions
 
 
-def _serialize_portal_watch_job(session: Session, job: RepairJob) -> CustomerPortalJobRead:
+def _portal_receipt_actions(session: Session, job: RepairJob, *, include_history: bool) -> list[dict[str, Any]]:
+    if not include_history:
+        return []
+    inv = session.exec(
+        select(Invoice)
+        .where(Invoice.repair_job_id == job.id)
+        .where(Invoice.status == "paid")
+        .order_by(Invoice.created_at.desc())
+    ).first()
+    if not inv:
+        return []
+    return [{
+        "kind": "job_receipt",
+        "token": job.status_token,
+        "url": f"/status/{job.status_token}",
+        "label": f"Receipt · Invoice #{inv.invoice_number}",
+    }]
+
+
+def _serialize_portal_watch_job(session: Session, job: RepairJob, *, include_history: bool = False) -> CustomerPortalJobRead:
     watch = session.get(Watch, job.watch_id) if job.watch_id else None
     detail = f"{watch.brand} {watch.model}".strip() if watch else None
     return CustomerPortalJobRead(
+        id=str(job.id),
         type="watch",
         job_number=job.job_number,
         title=job.title,
@@ -868,14 +893,15 @@ def _serialize_portal_watch_job(session: Session, job: RepairJob) -> CustomerPor
         status_token=job.status_token,
         status_url=f"/status/{job.status_token}",
         detail=detail or None,
-        pending_actions=_portal_pending_actions_for_watch(session, job),
+        pending_actions=_portal_pending_actions_for_watch(session, job) + _portal_receipt_actions(session, job, include_history=include_history),
     )
 
 
-def _serialize_portal_shoe_job(session: Session, job: ShoeRepairJob) -> CustomerPortalJobRead:
+def _serialize_portal_shoe_job(session: Session, job: ShoeRepairJob, *, include_history: bool = False) -> CustomerPortalJobRead:
     shoe = session.get(Shoe, job.shoe_id)
     detail = " ".join(filter(None, [shoe.brand if shoe else None, shoe.shoe_type if shoe else None])) or None
     return CustomerPortalJobRead(
+        id=str(job.id),
         type="shoe",
         job_number=job.job_number,
         title=job.title,
@@ -888,10 +914,30 @@ def _serialize_portal_shoe_job(session: Session, job: ShoeRepairJob) -> Customer
     )
 
 
-def _serialize_portal_auto_key_job(session: Session, job: AutoKeyJob) -> CustomerPortalJobRead:
+def _portal_auto_key_receipt_actions(session: Session, job: AutoKeyJob, *, include_history: bool) -> list[dict[str, Any]]:
+    if not include_history or job.status != "invoice_paid":
+        return []
+    inv = session.exec(
+        select(AutoKeyInvoice)
+        .where(AutoKeyInvoice.auto_key_job_id == job.id)
+        .where(AutoKeyInvoice.status == "paid")
+        .order_by(AutoKeyInvoice.created_at.desc())
+    ).first()
+    if not inv or not inv.customer_view_token:
+        return []
+    return [{
+        "kind": "auto_key_invoice_receipt",
+        "token": inv.customer_view_token,
+        "url": f"/mobile-invoice/{inv.customer_view_token}",
+        "label": "View receipt",
+    }]
+
+
+def _serialize_portal_auto_key_job(session: Session, job: AutoKeyJob, *, include_history: bool = False) -> CustomerPortalJobRead:
     vehicle_bits = [job.vehicle_make, str(job.vehicle_year) if job.vehicle_year else None, job.vehicle_model]
     detail = " ".join(filter(None, vehicle_bits)) or None
     return CustomerPortalJobRead(
+        id=str(job.id),
         type="auto_key",
         job_number=job.job_number,
         title=job.title,
@@ -900,7 +946,7 @@ def _serialize_portal_auto_key_job(session: Session, job: AutoKeyJob) -> Custome
         status_token=job.status_token,
         status_url=f"/customer-portal/job/auto_key/{job.status_token}",
         detail=detail,
-        pending_actions=_portal_pending_actions_for_auto_key(session, job),
+        pending_actions=_portal_pending_actions_for_auto_key(session, job) + _portal_auto_key_receipt_actions(session, job, include_history=include_history),
     )
 
 
@@ -946,7 +992,7 @@ def _collect_customer_jobs(
                     if key in seen_job_keys:
                         continue
                     seen_job_keys.add(key)
-                    shop_jobs.append(_serialize_portal_watch_job(session, job))
+                    shop_jobs.append(_serialize_portal_watch_job(session, job, include_history=include_history))
 
             shoe_ids = session.exec(select(Shoe.id).where(Shoe.customer_id == customer.id)).all()
             if shoe_ids:
@@ -965,7 +1011,7 @@ def _collect_customer_jobs(
                     if key in seen_job_keys:
                         continue
                     seen_job_keys.add(key)
-                    shop_jobs.append(_serialize_portal_shoe_job(session, job))
+                    shop_jobs.append(_serialize_portal_shoe_job(session, job, include_history=include_history))
 
             auto_key_query = (
                 select(AutoKeyJob)
@@ -983,7 +1029,7 @@ def _collect_customer_jobs(
                 if key in seen_job_keys:
                     continue
                 seen_job_keys.add(key)
-                shop_jobs.append(_serialize_portal_auto_key_job(session, job))
+                shop_jobs.append(_serialize_portal_auto_key_job(session, job, include_history=include_history))
 
         if shop_jobs:
             shop_jobs.sort(key=lambda j: j.created_at, reverse=True)
@@ -1086,7 +1132,86 @@ def get_portal_session_jobs(
     if datetime.now(timezone.utc) > exp:
         raise HTTPException(status_code=410, detail="This portal link has expired. Please request a new one.")
 
-    return _collect_customer_jobs(session, portal.email, include_history=include_history)
+    lookup = _collect_customer_jobs(session, portal.email, include_history=include_history)
+    lookup.status_notify_email = portal.status_notify_email
+    lookup.status_notify_sms = portal.status_notify_sms
+    return lookup
+
+
+class PortalNotificationPrefsUpdate(SQLModel):
+    status_notify_email: bool | None = None
+    status_notify_sms: bool | None = None
+
+
+@router.patch("/portal/session/{token}/preferences")
+def update_portal_preferences(
+    token: str,
+    payload: PortalNotificationPrefsUpdate,
+    session: Session = Depends(get_session),
+):
+    portal = session.exec(select(PortalSession).where(PortalSession.token == token)).first()
+    if not portal:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if payload.status_notify_email is not None:
+        portal.status_notify_email = payload.status_notify_email
+    if payload.status_notify_sms is not None:
+        portal.status_notify_sms = payload.status_notify_sms
+    session.add(portal)
+    session.commit()
+    return {"ok": True}
+
+
+class PortalMessageToShopRequest(SQLModel):
+    job_type: str  # repair_job | shoe_repair_job | auto_key_job
+    job_id: UUID
+    message: str
+
+
+@router.post("/portal/session/{token}/message-to-shop", status_code=201)
+def portal_message_to_shop(
+    token: str,
+    payload: PortalMessageToShopRequest,
+    session: Session = Depends(get_session),
+):
+    """Customer message from portal → shop inbox alert."""
+    portal = session.exec(select(PortalSession).where(PortalSession.token == token)).first()
+    if not portal:
+        raise HTTPException(status_code=404, detail="Session not found")
+    body = (payload.message or "").strip()
+    if not body:
+        raise HTTPException(status_code=422, detail="Message is required")
+
+    tenant_id = None
+    entity_type = payload.job_type
+    if payload.job_type == "repair_job":
+        job = session.get(RepairJob, payload.job_id)
+        if job:
+            tenant_id = job.tenant_id
+    elif payload.job_type == "shoe_repair_job":
+        job = session.get(ShoeRepairJob, payload.job_id)
+        if job:
+            tenant_id = job.tenant_id
+    elif payload.job_type == "auto_key_job":
+        job = session.get(AutoKeyJob, payload.job_id)
+        if job:
+            tenant_id = job.tenant_id
+    else:
+        raise HTTPException(status_code=422, detail="Invalid job_type")
+
+    if not tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            entity_type=entity_type,
+            entity_id=payload.job_id,
+            event_type="portal_customer_message",
+            event_summary=f"{portal.email}: {body[:200]}",
+        )
+    )
+    session.commit()
+    return {"ok": True}
 
 
 # ── Public auto-key quote portal ─────────────────────────────────────────────

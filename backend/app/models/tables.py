@@ -298,6 +298,7 @@ class RepairJob(SQLModel, table=True):
     internal_notes: Optional[str] = None
     parts_eta: Optional[date] = None
     status_changed_at: Optional[datetime] = None
+    custom_fields_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class RepairJobNumberCounter(SQLModel, table=True):
@@ -549,6 +550,7 @@ class ShoeRepairJob(SQLModel, table=True):
     quote_approval_token_expires_at: Optional[datetime] = Field(default=None, index=True)
     quote_status: str = "none"  # "none" | "sent" | "approved" | "declined"
     claimed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    custom_fields_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShoeRepairJobShoe(SQLModel, table=True):
@@ -637,6 +639,7 @@ class AutoKeyJob(SQLModel, table=True):
     pricing_type: Optional[str] = Field(default=None, max_length=32)  # oem_key | service | garage
     quoted_price: Optional[float] = Field(default=None)  # AUD dollars from pricing catalogue
     callout_inclusive: Optional[bool] = Field(default=None)
+    custom_fields_json: Optional[str] = None
 
 class OemKeyPricing(SQLModel, table=True):
     """Global OEM key price catalogue (Supabase-managed)."""
@@ -872,6 +875,40 @@ class PortalSession(SQLModel, table=True):
     email: str = Field(index=True)
     token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     expires_at: datetime
+    status_notify_email: bool = False
+    status_notify_sms: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class UserNotificationPreference(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    user_id: UUID = Field(index=True, foreign_key="user.id")
+    email_quote_approved: bool = True
+    email_invoice_paid: bool = True
+    email_sms_reply: bool = True
+    email_daily_digest: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TenantApiKey(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    name: str = Field(max_length=120)
+    key_prefix: str = Field(max_length=16)
+    key_hash: str = Field(max_length=128)
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TenantWebhookSubscription(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    url: str = Field(max_length=512)
+    event_types: str = Field(max_length=512)  # comma-separated
+    secret: str = Field(max_length=64)
+    is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

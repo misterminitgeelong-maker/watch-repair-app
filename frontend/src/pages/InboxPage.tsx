@@ -79,17 +79,23 @@ export default function InboxPage() {
         <div className="space-y-3">
           {alerts.map(ev => {
             const { iconBg, iconColor } = eventStyle(ev.event_type)
+            const messagesTab = ev.event_type === 'customer_sms_reply' ? '?tab=messages' : ''
             const jobLink =
               ev.entity_type === 'repair_job' && ev.entity_id
-                ? `/jobs/${ev.entity_id}`
+                ? `/jobs/${ev.entity_id}${messagesTab}`
                 : ev.entity_type === 'shoe_repair_job' && ev.entity_id
-                  ? `/shoe-repairs/${ev.entity_id}`
+                  ? `/shoe-repairs/${ev.entity_id}${messagesTab}`
                   : ev.entity_type === 'auto_key_job' && ev.entity_id
-                    ? `/auto-key/${ev.entity_id}`
+                    ? `/auto-key/${ev.entity_id}${messagesTab}`
                     : ev.entity_type === 'invoice' && ev.event_type === 'invoice_paid'
                       ? '/invoices'
                       : null
-            const linkLabel = ev.event_type === 'invoice_paid' ? 'View invoices' : 'View job'
+            const linkLabel =
+              ev.event_type === 'customer_sms_reply'
+                ? 'Reply'
+                : ev.event_type === 'invoice_paid'
+                  ? 'View invoices'
+                  : 'View job'
             return (
               <Card key={ev.id} className="p-4">
                 <div className="flex items-start gap-4">

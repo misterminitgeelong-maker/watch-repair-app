@@ -370,6 +370,15 @@ def quote_decision(
 
     session.commit()
 
+    if payload.decision == "approved" and job:
+        from ..services.tenant_webhooks import dispatch_tenant_webhooks
+        dispatch_tenant_webhooks(
+            session,
+            tenant_id=job.tenant_id,
+            event_type="quote_approved",
+            payload={"job_id": str(job.id), "job_number": job.job_number, "quote_id": str(quote.id), "type": "repair_job"},
+        )
+
     return QuoteDecisionResponse(
         quote_id=quote.id,
         status=quote.status,

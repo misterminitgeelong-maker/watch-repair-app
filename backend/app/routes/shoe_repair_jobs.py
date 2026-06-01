@@ -1,5 +1,5 @@
 from datetime import timedelta, timezone, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, delete, func, select
@@ -29,11 +29,15 @@ from ..models import (
     ShoeJobStatusHistory,
     JobNotePayload,
     ShoeJobStatusHistoryRead,
+    JobMessage,
+    JobMessageRead,
+    JobThreadMessage,
     SmsLog,
     SmsLogRead,
     TenantEventLog,
 )
 from .. import sms as sms_service
+from .. import sms
 from ..config import settings
 
 router = APIRouter(
@@ -586,6 +590,134 @@ def send_shoe_quote(
         raise HTTPException(status_code=422, detail="Customer has no phone number. Update the customer record first.")
 
     return _job_to_read(job, session)
+
+
+@router.post("/{job_id}/clone", response_model=ShoeRepairJobCreateResponse, status_code=201)
+def clone_shoe_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    source = session.get(ShoeRepairJob, job_id)
+    if not source or source.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    shoe_job_count = int(
+        session.exec(select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == auth.tenant_id)).one()
+    )
+    enforce_plan_limit(auth, "shoe_job", shoe_job_count)
+
+    job = ShoeRepairJob(
+        tenant_id=auth.tenant_id,
+        shoe_id=source.shoe_id,
+        customer_account_id=source.customer_account_id,
+        job_number=_next_shoe_job_number(session, auth.tenant_id),
+        status_token=uuid4().hex,
+        title=source.title,
+        description=source.description,
+        priority=source.priority,
+        status="awaiting_go_ahead",
+        salesperson=source.salesperson,
+        deposit_cents=0,
+        cost_cents=0,
+        quote_status="none",
+    )
+    session.add(job)
+    session.flush()
+    for item in _load_items(session, source.id):
+        session.add(ShoeRepairJobItem(
+            tenant_id=auth.tenant_id,
+            shoe_repair_job_id=job.id,
+            catalogue_key=item.catalogue_key,
+            catalogue_group=item.catalogue_group,
+            item_name=item.item_name,
+            pricing_type=item.pricing_type,
+            unit_price_cents=item.unit_price_cents,
+            quantity=item.quantity,
+            notes=item.notes,
+        ))
+    session.add(ShoeJobStatusHistory(
+        tenant_id=auth.tenant_id,
+        shoe_repair_job_id=job.id,
+        old_status=None,
+        new_status=job.status,
+        changed_by_user_id=auth.user_id,
+        change_note="Cloned from job",
+    ))
+    session.commit()
+    session.refresh(job)
+    read = _job_to_read(job, session)
+    return ShoeRepairJobCreateResponse(**read.model_dump(), tracking_sms_sent=False, tracking_sms_skipped_reason="not_sent")
+
+
+# ── Two-way job message thread ────────────────────────────────────────────────
+
+class _SendMessagePayload(_BM):
+    body: str
+
+
+@router.get("/{job_id}/messages", response_model=list[JobThreadMessage])
+def get_shoe_job_messages(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+
+    manual = session.exec(
+        select(JobMessage)
+        .where(JobMessage.shoe_repair_job_id == job_id)
+        .where(JobMessage.tenant_id == auth.tenant_id)
+    ).all()
+    automated = session.exec(
+        select(SmsLog)
+        .where(SmsLog.shoe_repair_job_id == job_id)
+        .where(SmsLog.tenant_id == auth.tenant_id)
+    ).all()
+
+    thread: list[JobThreadMessage] = []
+    for m in manual:
+        thread.append(JobThreadMessage(
+            id=m.id, direction=m.direction, body=m.body,
+            from_phone=m.from_phone, to_phone=m.to_phone,
+            created_at=m.created_at,
+        ))
+    for s in automated:
+        thread.append(JobThreadMessage(
+            id=s.id, direction="system", body=s.body,
+            to_phone=s.to_phone, event=s.event, status=s.status,
+            created_at=s.created_at,
+        ))
+    thread.sort(key=lambda m: m.created_at)
+    return thread
+
+
+@router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)
+def send_shoe_job_message(
+    job_id: UUID,
+    payload: _SendMessagePayload,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(ShoeRepairJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe repair job not found")
+    shoe = session.get(Shoe, job.shoe_id)
+    customer = session.get(Customer, shoe.customer_id) if shoe else None
+    if not customer or not customer.phone:
+        raise HTTPException(status_code=422, detail="No phone number on file for this customer.")
+
+    msg = sms.send_custom_job_message(
+        session,
+        tenant_id=auth.tenant_id,
+        shoe_repair_job_id=job_id,
+        to_phone=customer.phone,
+        body=payload.body.strip(),
+    )
+    session.commit()
+    session.refresh(msg)
+    return msg
 
 
 # ── SMS log & resend ──────────────────────────────────────────────────────────

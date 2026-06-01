@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
@@ -228,6 +228,13 @@ def create_repair_job(
 
     session.commit()
     session.refresh(job)
+    from ..services.tenant_webhooks import dispatch_tenant_webhooks
+    dispatch_tenant_webhooks(
+        session,
+        tenant_id=auth.tenant_id,
+        event_type="job_created",
+        payload={"job_id": str(job.id), "job_number": job.job_number, "type": "repair_job"},
+    )
     read = _repair_job_to_read(session, job)
     return RepairJobCreateResponse(
         **read.model_dump(),
@@ -387,6 +394,10 @@ def update_repair_job_status(
 
     session.commit()
     session.refresh(job)
+    if previous_status != job.status:
+        from ..services.portal_status_notify import notify_repair_job_status, shop_name_for
+        notify_repair_job_status(session, job, previous_status, shop_name_for(session, auth.tenant_id))
+        session.commit()
     return job
 
 
@@ -867,6 +878,53 @@ def delete_repair_job(
     session.delete(job)
     session.commit()
     return Response(status_code=204)
+
+
+@router.post("/{job_id}/clone", response_model=RepairJobCreateResponse, status_code=201)
+def clone_repair_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Duplicate a watch repair job for the same customer/watch (fresh status and tokens)."""
+    source = get_tenant_repair_job(session, job_id, auth.tenant_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Repair job not found")
+    job_count = int(
+        session.exec(select(func.count()).select_from(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)).one()
+    )
+    enforce_plan_limit(auth, "repair_job", job_count)
+
+    job = RepairJob(
+        tenant_id=auth.tenant_id,
+        watch_id=source.watch_id,
+        customer_account_id=source.customer_account_id,
+        job_number=_next_job_number(session, auth.tenant_id),
+        status_token=uuid4().hex,
+        title=source.title,
+        description=source.description,
+        priority=source.priority,
+        status="awaiting_go_ahead",
+        salesperson=source.salesperson,
+        deposit_cents=0,
+        pre_quote_cents=source.pre_quote_cents,
+        cost_cents=0,
+        internal_notes=source.internal_notes,
+    )
+    session.add(job)
+    session.flush()
+    session.add(JobStatusHistory(
+        tenant_id=auth.tenant_id,
+        repair_job_id=job.id,
+        old_status=None,
+        new_status=job.status,
+        changed_by_user_id=auth.user_id,
+        change_note="Cloned from job",
+    ))
+    session.commit()
+    session.refresh(job)
+    read = _repair_job_to_read(session, job)
+    return RepairJobCreateResponse(**read.model_dump(), tracking_sms_sent=False, tracking_sms_skipped_reason="not_sent")
 
 
 # ── Two-way job message thread ────────────────────────────────────────────────

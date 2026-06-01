@@ -367,6 +367,46 @@ def send_portal_bookmark_email(
     )
 
 
+def send_portal_status_email(
+    *,
+    to_email: str,
+    shop_name: str,
+    job_label: str,
+    old_status: str,
+    new_status: str,
+    status_url: str,
+) -> tuple[bool, str | None]:
+    """Email when a portal customer opted into status change notifications."""
+    if not (to_email or "").strip():
+        return False, None
+    new_label = new_status.replace("_", " ")
+    subject = f"Job update — {job_label}"
+    body_plain = (
+        f"Hi,\n\n"
+        f"{shop_name} updated your repair ({job_label}). "
+        f"New status: {new_label}.\n\n"
+        f"View details: {status_url}\n\n"
+        f"Thanks,\n{shop_name}"
+    )
+    body_html = render_transactional_email(
+        title=f"Status update · {job_label}",
+        preheader=f"New status: {new_label}",
+        greeting="Hi,",
+        intro_html=f"<strong>{_html.escape(shop_name)}</strong> updated your job. New status: <strong>{_html.escape(new_label)}</strong>.",
+        shop=ShopInfo(name=shop_name),
+        cta_label="View job",
+        cta_url=status_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="portal_status",
+    )
+
+
 def send_job_ready_email(
     *,
     to_email: str,

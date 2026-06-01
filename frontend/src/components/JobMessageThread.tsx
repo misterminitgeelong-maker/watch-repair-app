@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import { getJobMessages, sendJobMessage, type JobThreadMessage } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api/client'
+import { useToast } from '@/lib/toast'
 
 type FetchFn = (jobId: string) => Promise<{ data: JobThreadMessage[] }>
 type SendFn = (jobId: string, body: string) => Promise<unknown>
@@ -33,6 +35,7 @@ interface Props {
 
 export default function JobMessageThread({ jobId, fetchMessages = getJobMessages, postMessage = sendJobMessage }: Props) {
   const qc = useQueryClient()
+  const toast = useToast()
   const bottomRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
 
@@ -46,8 +49,10 @@ export default function JobMessageThread({ jobId, fetchMessages = getJobMessages
     mutationFn: (body: string) => postMessage(jobId, body),
     onSuccess: () => {
       setText('')
+      toast.success('Message sent')
       void qc.invalidateQueries({ queryKey: ['job-messages', jobId] })
     },
+    onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Failed to send message')),
   })
 
   useEffect(() => {

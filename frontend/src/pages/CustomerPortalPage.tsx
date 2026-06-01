@@ -5,6 +5,7 @@ import {
   customerPortalLookup,
   createPortalSession,
   getPortalSession,
+  patchPortalNotificationPrefs,
   type CustomerPortalLookupResponse,
   type CustomerPortalShop,
 } from '@/lib/api'
@@ -76,7 +77,15 @@ function BookmarkBanner({ sessionToken }: { email: string; sessionToken: string;
   )
 }
 
-function ShopSection({ shop, onRefresh }: { shop: CustomerPortalShop; onRefresh?: () => void }) {
+function ShopSection({
+  shop,
+  sessionToken,
+  onRefresh,
+}: {
+  shop: CustomerPortalShop
+  sessionToken?: string | null
+  onRefresh?: () => void
+}) {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
@@ -111,11 +120,53 @@ function ShopSection({ shop, onRefresh }: { shop: CustomerPortalShop; onRefresh?
       ) : (
         <div className="space-y-2">
           {shop.jobs.map((job) => (
-            <CustomerPortalJobCard key={`${job.type}-${job.job_number}`} job={job} shop={shop} onRefresh={onRefresh} />
+            <CustomerPortalJobCard
+              key={`${job.type}-${job.job_number}`}
+              job={job}
+              shop={shop}
+              sessionToken={sessionToken}
+              onRefresh={onRefresh}
+            />
           ))}
         </div>
       )}
     </section>
+  )
+}
+
+function PortalNotifyPrefs({
+  sessionToken,
+  initialEmail,
+  initialSms,
+}: {
+  sessionToken: string
+  initialEmail?: boolean
+  initialSms?: boolean
+}) {
+  const [emailOn, setEmailOn] = useState(initialEmail ?? false)
+  const [smsOn, setSmsOn] = useState(initialSms ?? false)
+
+  useEffect(() => {
+    setEmailOn(initialEmail ?? false)
+    setSmsOn(initialSms ?? false)
+  }, [initialEmail, initialSms, sessionToken])
+
+  function save(patch: { status_notify_email?: boolean; status_notify_sms?: boolean }) {
+    void patchPortalNotificationPrefs(sessionToken, patch)
+  }
+
+  return (
+    <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Status notifications</p>
+      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ms-text)' }}>
+        <input type="checkbox" checked={emailOn} onChange={e => { setEmailOn(e.target.checked); save({ status_notify_email: e.target.checked }) }} />
+        Email me when job status changes
+      </label>
+      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ms-text)' }}>
+        <input type="checkbox" checked={smsOn} onChange={e => { setSmsOn(e.target.checked); save({ status_notify_sms: e.target.checked }) }} />
+        SMS me when job status changes
+      </label>
+    </div>
   )
 }
 
@@ -150,9 +201,18 @@ function PortalResults({
       {totalJobs === 0 ? (
         <PortalEmptyState shop={firstShop} />
       ) : (
-        data.shops.map((shop) => <ShopSection key={shop.tenant_id} shop={shop} onRefresh={onRefresh} />)
+        data.shops.map((shop) => (
+          <ShopSection key={shop.tenant_id} shop={shop} sessionToken={sessionToken} onRefresh={onRefresh} />
+        ))
       )}
 
+      {sessionToken && (
+        <PortalNotifyPrefs
+          sessionToken={sessionToken}
+          initialEmail={data.status_notify_email}
+          initialSms={data.status_notify_sms}
+        />
+      )}
       {sessionToken && viewMode === 'active' && totalJobs > 0 && (
         <BookmarkBanner email={email} sessionToken={sessionToken} />
       )}
@@ -220,6 +280,7 @@ function SessionView({ token }: { token: string }) {
       <PortalResults
         data={data}
         email={data.email || ''}
+        sessionToken={token}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onRefresh={load}

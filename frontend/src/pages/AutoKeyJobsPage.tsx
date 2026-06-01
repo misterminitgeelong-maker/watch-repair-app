@@ -30,6 +30,7 @@ import {
   sendAutoKeyQuote,
   updateAutoKeyJob,
   updateAutoKeyJobStatus,
+  bulkAutoKeyJobStatus,
   getAutoKeyQuoteSuggestions,
   searchVehicleKeySpecs,
   MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
@@ -67,6 +68,8 @@ import {
   zonedWallTimeToUtcIso,
 } from '@/lib/shopCalendarTime'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
+import { useToast } from '@/lib/toast'
 
 const STATUSES: JobStatus[] = [
   'awaiting_quote',
@@ -2328,12 +2331,39 @@ export default function AutoKeyJobsPage() {
   }, [showMoreActions])
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
   const [boardActionErr, setBoardActionErr] = useState('')
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState<JobStatus>('booking_confirmed')
+  const toast = useToast()
+  const bulkStatusMut = useMutation({
+    mutationFn: () => bulkAutoKeyJobStatus([...bulkSelected], bulkStatus),
+    onSuccess: () => {
+      toast.success(`Updated ${bulkSelected.size} job(s)`)
+      setBulkSelected(new Set())
+      void qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+    },
+    onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Bulk update failed')),
+  })
   const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
+
+  useEffect(() => {
+    if (searchParams.toString()) return
+    const saved = loadSavedView<import('@/lib/savedViews').AutoKeySavedView>(AUTO_KEY_VIEWS_KEY, {})
+    if (saved.view) setView(saved.view as typeof view)
+    if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView as typeof jobDirectoryView)
+    if (saved.statusFilter) setStatusFilter(saved.statusFilter)
+    if (saved.jobsLayout) setJobsLayout(saved.jobsLayout as typeof jobsLayout)
+    if (saved.mapRangeMode) setMapRangeMode(saved.mapRangeMode as typeof mapRangeMode)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    saveSavedView(AUTO_KEY_VIEWS_KEY, { view, jobDirectoryView, statusFilter, jobsLayout, mapRangeMode })
+  }, [view, jobDirectoryView, statusFilter, jobsLayout, mapRangeMode])
+
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
   const [dispatchTechFilter, setDispatchTechFilter] = useState<string>(initialDispatchTechFilter)
   const [dispatchSort, setDispatchSort] = useState<'time' | 'risk'>('time')
@@ -2908,10 +2938,30 @@ export default function AutoKeyJobsPage() {
             <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
           ) : (
             <Card className="overflow-hidden">
+              {bulkSelected.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                  <span className="text-xs font-semibold" style={{ color: 'var(--ms-text)' }}>{bulkSelected.size} selected</span>
+                  <select
+                    className="text-xs rounded-lg border px-2 py-1"
+                    value={bulkStatus}
+                    onChange={e => setBulkStatus(e.target.value as JobStatus)}
+                    style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
+                  >
+                    {STATUSES.map(s => (
+                      <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+                    ))}
+                  </select>
+                  <Button onClick={() => bulkStatusMut.mutate()} disabled={bulkStatusMut.isPending}>
+                    {bulkStatusMut.isPending ? 'Updating…' : 'Set status'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setBulkSelected(new Set())}>Clear</Button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                      <th className="px-2 py-2.5 w-8" />
                       {['#', 'CUSTOMER', 'VEHICLE', 'JOB TYPE', 'STATUS', 'TECH', 'SCHEDULED', 'QUOTE'].map(h => (
                         <th
                           key={h}
@@ -2940,6 +2990,20 @@ export default function AutoKeyJobsPage() {
                           onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                           onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                         >
+                          <td className="px-2 py-3" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={bulkSelected.has(job.id)}
+                              onChange={e => {
+                                setBulkSelected(prev => {
+                                  const next = new Set(prev)
+                                  if (e.target.checked) next.add(job.id)
+                                  else next.delete(job.id)
+                                  return next
+                                })
+                              }}
+                            />
+                          </td>
                           <td className="px-4 py-3 font-semibold whitespace-nowrap" style={{ color: 'var(--ms-accent)' }}>
                             #{job.job_number}
                           </td>

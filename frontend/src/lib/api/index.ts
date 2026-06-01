@@ -506,6 +506,7 @@ export interface RepairJob {
   claimed_by_name?: string | null
   tracking_sms_sent?: boolean
   tracking_sms_skipped_reason?: 'no_phone' | 'sms_not_configured' | 'send_failed' | null
+  custom_fields_json?: string | null
 }
 export const listJobs = (params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc'; status?: string; customer_id?: string; assigned_user_id?: string; q?: string; cost_outlier?: boolean }) =>
   api.get<RepairJob[]>('/repair-jobs', { params })
@@ -681,12 +682,21 @@ export const getPublicShoeJobStatus = (token: string) =>
   axios.get<PublicShoeJobStatus>(withApiOrigin(`/v1/public/shoe-jobs/${token}`))
 
 export interface CustomerPortalPendingAction {
-  kind: 'watch_quote_decision' | 'shoe_quote_decision' | 'auto_key_quote_decision' | 'auto_key_booking_confirm' | 'auto_key_invoice_checkout'
+  kind:
+    | 'watch_quote_decision'
+    | 'shoe_quote_decision'
+    | 'auto_key_quote_decision'
+    | 'auto_key_booking_confirm'
+    | 'auto_key_invoice_checkout'
+    | 'job_receipt'
+    | 'auto_key_invoice_receipt'
   token: string
   url: string
+  label?: string
 }
 
 export interface CustomerPortalJob {
+  id: string
   type: 'watch' | 'shoe' | 'auto_key'
   job_number: string
   title: string
@@ -711,6 +721,8 @@ export interface CustomerPortalShop {
 export interface CustomerPortalLookupResponse {
   email?: string
   shops: CustomerPortalShop[]
+  status_notify_email?: boolean
+  status_notify_sms?: boolean
 }
 
 export const customerPortalLookup = (email: string, includeHistory = false) =>
@@ -1395,6 +1407,7 @@ export interface AutoKeyJob {
   pricing_type?: 'oem_key' | 'service' | 'garage' | null
   quoted_price?: number | null
   callout_inclusive?: boolean | null
+  custom_fields_json?: string | null
 }
 
 export type MobileServicesPricingType = 'oem_key' | 'service' | 'garage'
@@ -1647,6 +1660,7 @@ export interface ShoeRepairJob {
   items: ShoeRepairJobItem[]
   tracking_sms_sent?: boolean
   tracking_sms_skipped_reason?: 'no_phone' | 'sms_not_configured' | 'send_failed' | null
+  custom_fields_json?: string | null
 }
 
 export interface ShoeRepairJobCreatePayload {
@@ -1708,6 +1722,18 @@ export const removeShoeFromJob = (jobId: string, entryId: string) =>
 
 export const removeShoeRepairJobItem = (jobId: string, itemId: string) =>
   api.delete<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/items/${itemId}`)
+
+export const getShoeJobMessages = (jobId: string) =>
+  api.get<JobThreadMessage[]>(`/shoe-repair-jobs/${jobId}/messages`)
+export const sendShoeJobMessage = (jobId: string, body: string) =>
+  api.post<JobThreadMessage>(`/shoe-repair-jobs/${jobId}/messages`, { body })
+
+export const cloneRepairJob = (jobId: string) =>
+  api.post<RepairJob>(`/repair-jobs/${jobId}/clone`)
+export const cloneAutoKeyJob = (jobId: string) =>
+  api.post<AutoKeyJob>(`/auto-key-jobs/${jobId}/clone`)
+export const cloneShoeRepairJob = (jobId: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/clone`)
 
 export const getShoeJobSmsLog = (jobId: string) =>
   api.get<SmsLogEntry[]>(`/shoe-repair-jobs/${jobId}/sms-log`)
@@ -2005,6 +2031,91 @@ export interface InboxEvent {
   entity_id?: string
   created_at: string
 }
+export type GlobalSearchHit = {
+  kind: string
+  id: string
+  title: string
+  subtitle?: string | null
+  status?: string | null
+  href: string
+}
+
+export const globalSearch = (q: string, limit = 12) =>
+  api.get<{ hits: GlobalSearchHit[] }>('/search', { params: { q, limit } })
+
+export type NotificationPrefs = {
+  email_quote_approved: boolean
+  email_invoice_paid: boolean
+  email_sms_reply: boolean
+  email_daily_digest: boolean
+}
+
+export const getNotificationPreferences = () =>
+  api.get<NotificationPrefs>('/me/notification-preferences')
+export const patchNotificationPreferences = (body: Partial<NotificationPrefs>) =>
+  api.patch<NotificationPrefs>('/me/notification-preferences', body)
+
+export type IntegrationHealth = {
+  twilio_configured: boolean
+  last_sms_sent_at: string | null
+  last_sms_failed_at: string | null
+  stripe_configured: boolean
+  stripe_connect_ready: boolean | null
+  sendgrid_configured: boolean
+  attachment_backend: string
+}
+
+export const getIntegrationHealth = () =>
+  api.get<IntegrationHealth>('/tenant/integration-health')
+
+export const mergeCustomers = (primaryId: string, duplicateId: string) =>
+  api.post('/customers/merge', { primary_customer_id: primaryId, duplicate_customer_id: duplicateId })
+
+export const bulkAutoKeyJobStatus = (jobIds: string[], status: string) =>
+  api.post('/auto-key-jobs/bulk-status', { job_ids: jobIds, status })
+
+export const exportRepairJobsCsv = () =>
+  api.get<string>('/repair-jobs/export.csv', { responseType: 'text' })
+
+export type JobTemplate = { id: string; label: string; module: string; title: string; pre_quote_cents: number }
+export const listJobTemplates = () => api.get<JobTemplate[]>('/job-templates')
+
+export const patchJobCustomFields = (
+  jobType: 'repair_job' | 'auto_key_job' | 'shoe_repair_job',
+  jobId: string,
+  fields: Record<string, string>,
+) => {
+  const path =
+    jobType === 'repair_job'
+      ? `/repair-jobs/${jobId}/custom-fields`
+      : jobType === 'auto_key_job'
+        ? `/auto-key-jobs/${jobId}/custom-fields`
+        : `/shoe-repair-jobs/${jobId}/custom-fields`
+  return api.patch<{ ok: boolean; fields: Record<string, string> }>(path, { fields })
+}
+
+export type TenantApiKeyRow = { id: string; name: string; key_prefix: string; is_active: boolean; created_at: string }
+export const listTenantApiKeys = () => api.get<TenantApiKeyRow[]>('/tenant/api-keys')
+export const createTenantApiKey = (name: string) =>
+  api.post<{ id: string; name: string; key_prefix: string; api_key: string }>('/tenant/api-keys', { name })
+export const deleteTenantApiKey = (id: string) => api.delete(`/tenant/api-keys/${id}`)
+
+export type TenantWebhookRow = { id: string; url: string; event_types: string; is_active: boolean; created_at: string }
+export const listTenantWebhooks = () => api.get<TenantWebhookRow[]>('/tenant/webhooks')
+export const createTenantWebhook = (url: string, eventTypes: string[]) =>
+  api.post<TenantWebhookRow>('/tenant/webhooks', { url, event_types: eventTypes })
+export const deleteTenantWebhook = (id: string) => api.delete(`/tenant/webhooks/${id}`)
+
+export const patchPortalNotificationPrefs = (
+  sessionToken: string,
+  body: { status_notify_email?: boolean; status_notify_sms?: boolean },
+) => api.patch(`/public/portal/session/${sessionToken}/preferences`, body)
+
+export const portalMessageToShop = (
+  sessionToken: string,
+  body: { job_type: string; job_id: string; message: string },
+) => api.post(`/public/portal/session/${sessionToken}/message-to-shop`, body)
+
 export const getInbox = (limit = 50, offset = 0) => api.get<InboxEvent[]>('/inbox', { params: { limit, offset } })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
@@ -2510,6 +2621,7 @@ export const decidePublicAutoKeyQuote = (
   )
 
 export interface PublicAutoKeyJobStatus {
+  job_id?: string
   job_number: string
   title: string
   status: string

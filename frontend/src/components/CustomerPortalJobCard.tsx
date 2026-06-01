@@ -6,6 +6,7 @@ import {
   decideShoeQuote,
   submitQuoteDecision,
   confirmPublicAutoKeyBooking,
+  portalMessageToShop,
   type CustomerPortalJob,
   type CustomerPortalPendingAction,
   type CustomerPortalShop,
@@ -60,6 +61,9 @@ function actionLabel(kind: CustomerPortalPendingAction['kind']): string {
       return 'Confirm booking'
     case 'auto_key_invoice_checkout':
       return 'Pay invoice'
+    case 'job_receipt':
+    case 'auto_key_invoice_receipt':
+      return 'View receipt'
     default:
       return 'Take action'
   }
@@ -87,6 +91,10 @@ async function runPortalAction(action: CustomerPortalPendingAction): Promise<str
       }
       throw new Error('Payment unavailable')
     }
+    case 'job_receipt':
+    case 'auto_key_invoice_receipt':
+      window.location.href = action.url.startsWith('http') ? action.url : `${window.location.origin}${action.url}`
+      return null
     default:
       return null
   }
@@ -217,13 +225,66 @@ function PendingActions({
   )
 }
 
+function MessageToShop({
+  sessionToken,
+  job,
+}: {
+  sessionToken: string
+  job: CustomerPortalJob
+}) {
+  const [text, setText] = useState('')
+  const [sent, setSent] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function send() {
+    const body = text.trim()
+    if (!body) return
+    setErr(null)
+    try {
+      const jobType =
+        job.type === 'watch' ? 'repair_job' : job.type === 'shoe' ? 'shoe_repair_job' : 'auto_key_job'
+      await portalMessageToShop(sessionToken, { job_type: jobType, job_id: job.id, message: body })
+      setSent(true)
+      setText('')
+    } catch {
+      setErr('Could not send message.')
+    }
+  }
+
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--ms-border)' }}>
+      <p className="text-xs font-medium mb-1" style={{ color: 'var(--ms-text-muted)' }}>Message the shop</p>
+      <textarea
+        rows={2}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        className="w-full text-xs rounded-lg px-2 py-1.5 outline-none resize-y"
+        style={{ border: '1px solid var(--ms-border-strong)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+        placeholder="Ask a question about this repair…"
+      />
+      <button
+        type="button"
+        onClick={() => void send()}
+        className="mt-1 text-xs font-semibold px-3 py-1 rounded-lg"
+        style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
+      >
+        Send message
+      </button>
+      {sent && <p className="text-xs mt-1" style={{ color: '#1F6D4C' }}>Message sent.</p>}
+      {err && <p className="text-xs mt-1" style={{ color: '#C96A5A' }}>{err}</p>}
+    </div>
+  )
+}
+
 export function CustomerPortalJobCard({
   job,
   shop,
+  sessionToken,
   onRefresh,
 }: {
   job: CustomerPortalJob
   shop: CustomerPortalShop
+  sessionToken?: string | null
   onRefresh?: () => void
 }) {
   const Icon = jobIcon(job.type)
@@ -262,6 +323,7 @@ export function CustomerPortalJobCard({
         <ArrowRight size={16} style={{ color: 'var(--ms-text-muted)', flexShrink: 0, marginTop: 4 }} />
       </Link>
       <PendingActions actions={actions} accent={accent} onDone={onRefresh} />
+      {sessionToken && <MessageToShop sessionToken={sessionToken} job={job} />}
     </div>
   )
 }

@@ -1272,6 +1272,61 @@ def get_quote_signature_admin(
     return RedirectResponse(url=signed_url, status_code=302)
 
 
+@router.post("/{job_id}/clone", response_model=AutoKeyJobRead, status_code=201)
+def clone_auto_key_job(
+    job_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    source = session.get(AutoKeyJob, job_id)
+    if not source or source.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+    ak_count = int(
+        session.exec(select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == auth.tenant_id)).one()
+    )
+    enforce_plan_limit(auth, "auto_key_job", ak_count)
+
+    job = AutoKeyJob(
+        tenant_id=auth.tenant_id,
+        customer_id=source.customer_id,
+        customer_account_id=source.customer_account_id,
+        job_number=_next_auto_key_job_number(session, auth.tenant_id),
+        status_token=uuid4().hex,
+        title=source.title,
+        description=source.description,
+        vehicle_make=source.vehicle_make,
+        vehicle_model=source.vehicle_model,
+        vehicle_year=source.vehicle_year,
+        registration_plate=source.registration_plate,
+        vin=source.vin,
+        key_type=source.key_type,
+        blade_code=source.blade_code,
+        chip_type=source.chip_type,
+        tech_notes=source.tech_notes,
+        key_quantity=source.key_quantity,
+        programming_status=source.programming_status,
+        priority=source.priority,
+        status="awaiting_quote",
+        job_address=source.job_address,
+        job_type=source.job_type,
+        pricing_ref_id=source.pricing_ref_id,
+        pricing_type=source.pricing_type,
+        quoted_price=source.quoted_price,
+        callout_inclusive=source.callout_inclusive,
+        cost_cents=source.cost_cents,
+        commission_lead_source=source.commission_lead_source,
+    )
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    customer = session.get(Customer, job.customer_id)
+    return AutoKeyJobRead(
+        **job.model_dump(),
+        customer_name=customer.full_name if customer else None,
+        customer_phone=customer.phone if customer else None,
+    )
+
+
 # ── Two-way job message thread ────────────────────────────────────────────────
 
 class _SendMessagePayload(BaseModel):

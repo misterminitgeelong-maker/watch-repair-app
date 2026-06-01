@@ -60,6 +60,8 @@ from .routes.prospect_leads import router as prospect_leads_router
 from .routes.customer_orders import router as customer_orders_router
 from .routes.sms_webhook import router as sms_webhook_router
 from .routes.shop_settings import router as shop_settings_router
+from .routes.global_search import router as global_search_router
+from .routes.tenant_qol import router as tenant_qol_router
 
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_minit_pilot_if_enabled, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
@@ -329,6 +331,8 @@ app.include_router(attachment_router)
 app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(inbox_router)
+app.include_router(global_search_router)
+app.include_router(tenant_qol_router)
 app.include_router(public_jobs_router)
 app.include_router(customer_portal_public_router)
 app.include_router(mobile_lead_ingest_router)

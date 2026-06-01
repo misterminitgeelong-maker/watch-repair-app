@@ -41,6 +41,7 @@ import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
 import { AdminReturnBanner } from '@/pages/PlatformAdminUsersPage'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
+import OfflineQueueBanner from './OfflineQueueBanner'
 
 function SubscriptionBanner({
   subscriptionStatus,
@@ -920,6 +921,7 @@ export default function AppShell() {
       <Sidebar className="hidden md:flex" />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <OfflineQueueBanner />
         {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
           className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 pb-3"

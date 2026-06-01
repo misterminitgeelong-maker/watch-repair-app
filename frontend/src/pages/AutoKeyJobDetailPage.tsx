@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Camera, CheckCircle, ChevronLeft, Copy, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
 import {
   getAutoKeyJob,
   getAutoKeyMessages,
@@ -20,6 +20,7 @@ import {
   createAutoKeyInvoiceFromQuote,
   sendAutoKeyInvoice,
   deleteAutoKeyJob,
+  cloneAutoKeyJob,
   searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
   updateAutoKeyInvoice,
@@ -43,6 +44,8 @@ import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
+import JobCustomFields from '@/components/JobCustomFields'
+import { useToast } from '@/lib/toast'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
@@ -318,6 +321,7 @@ function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: strin
 
 export default function AutoKeyJobDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { hasFeature } = useAuth()
@@ -341,7 +345,10 @@ export default function AutoKeyJobDetailPage() {
   const [editTax, setEditTax] = useState('')
   const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
-  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages'>('info')
+  const toast = useToast()
+  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages'>(
+    searchParams.get('tab') === 'messages' ? 'messages' : 'info',
+  )
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
 
@@ -729,9 +736,23 @@ export default function AutoKeyJobDetailPage() {
       <PageHeader
         title={`#${job.job_number} · ${job.title}`}
         action={(
-          <Button variant="secondary" type="button" onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
-            <Trash2 size={15} />Delete job
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => {
+                void cloneAutoKeyJob(id!).then(r => {
+                  toast.success('Job duplicated')
+                  navigate(`/auto-key/${r.data.id}`)
+                }).catch((e: unknown) => toast.error(getApiErrorMessage(e, 'Duplicate failed')))
+              }}
+            >
+              <Copy size={15} />Duplicate
+            </Button>
+            <Button variant="secondary" type="button" onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
+              <Trash2 size={15} />Delete job
+            </Button>
+          </div>
         )}
       />
 
@@ -1242,6 +1263,11 @@ export default function AutoKeyJobDetailPage() {
 
           {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
           </div>{/* end info tab group (status/assign/schedule) */}
+          {job && (
+            <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
+              <JobCustomFields jobType="auto_key_job" jobId={job.id} initialJson={job.custom_fields_json} />
+            </div>
+          )}
         </Card>
 
         {showArrivalSms && (

@@ -91,6 +91,22 @@ api.interceptors.response.use(
       clearStoredTokens()
       window.dispatchEvent(new Event('auth:token-cleared'))
     }
+    if (!err.response && err.config && typeof navigator !== 'undefined' && !navigator.onLine) {
+      const method = (err.config.method ?? 'get').toUpperCase()
+      if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+        try {
+          const { enqueueOffline } = await import('@/lib/offlineQueue')
+          const url = err.config.url ?? ''
+          await enqueueOffline({
+            method,
+            url: url.startsWith('http') ? url : `${err.config.baseURL ?? '/v1'}${url}`.replace(/\/v1\/v1/, '/v1'),
+            body: err.config.data != null ? JSON.stringify(err.config.data) : null,
+          })
+        } catch {
+          /* ignore queue errors */
+        }
+      }
+    }
     return Promise.reject(err)
   }
 )

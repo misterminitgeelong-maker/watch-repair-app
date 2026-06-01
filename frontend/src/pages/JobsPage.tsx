@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, X, ListOrdered } from 'lucide-react'
+import { Plus, Search, X, ListOrdered, Download } from 'lucide-react'
 import {
   deleteJob,
+  exportRepairJobsCsv,
   getApiErrorMessage,
   listJobs,
   listQuotes,
@@ -199,6 +200,21 @@ export default function JobsPage() {
               />
             )}
             <Button variant="secondary" onClick={() => setShowQueue(true)}><ListOrdered size={16} />Queue</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void exportRepairJobsCsv().then(r => {
+                  const blob = new Blob([r.data], { type: 'text/csv' })
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = 'repair-jobs.csv'
+                  a.click()
+                  URL.revokeObjectURL(a.href)
+                })
+              }}
+            >
+              <Download size={16} />Export CSV
+            </Button>
             <Button onClick={() => setShowAdd(true)}><Plus size={16} />New Job Ticket</Button>
           </div>
         }

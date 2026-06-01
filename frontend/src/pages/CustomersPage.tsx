@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
-import { DEFAULT_PAGE_SIZE, listCustomers, createCustomer, getApiErrorMessage, type Customer, type SortDir } from '@/lib/api'
-import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Textarea } from '@/components/ui'
+import { DEFAULT_PAGE_SIZE, listCustomers, createCustomer, mergeCustomers, getApiErrorMessage, type Customer, type SortDir } from '@/lib/api'
+import { useToast } from '@/lib/toast'
+import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Textarea, Select } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
@@ -38,8 +39,55 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+function MergeCustomersModal({ customers, onClose }: { customers: Customer[]; onClose: () => void }) {
+  const toast = useToast()
+  const qc = useQueryClient()
+  const [primaryId, setPrimaryId] = useState('')
+  const [duplicateId, setDuplicateId] = useState('')
+  const mut = useMutation({
+    mutationFn: () => mergeCustomers(primaryId, duplicateId),
+    onSuccess: () => {
+      toast.success('Customers merged')
+      void qc.invalidateQueries({ queryKey: ['customers'] })
+      onClose()
+    },
+    onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Merge failed')),
+  })
+  return (
+    <Modal title="Merge customers" onClose={onClose}>
+      <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+        Jobs and watches move to the primary customer; the duplicate record is removed.
+      </p>
+      <div className="space-y-3">
+        <Select label="Keep (primary)" value={primaryId} onChange={e => setPrimaryId(e.target.value)}>
+          <option value="">Select…</option>
+          {customers.map(c => (
+            <option key={c.id} value={c.id}>{c.full_name}</option>
+          ))}
+        </Select>
+        <Select label="Merge into primary (remove)" value={duplicateId} onChange={e => setDuplicateId(e.target.value)}>
+          <option value="">Select…</option>
+          {customers.filter(c => c.id !== primaryId).map(c => (
+            <option key={c.id} value={c.id}>{c.full_name}</option>
+          ))}
+        </Select>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => mut.mutate()}
+            disabled={!primaryId || !duplicateId || primaryId === duplicateId || mut.isPending}
+          >
+            {mut.isPending ? 'Merging…' : 'Merge'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function CustomersPage() {
   const [showAdd, setShowAdd] = useState(false)
+  const [showMerge, setShowMerge] = useState(false)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'created_at' | 'full_name'>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -66,8 +114,17 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <PageHeader title="Customers" action={<Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Customer</Button>} />
+      <PageHeader
+        title="Customers"
+        action={(
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowMerge(true)}>Merge duplicates</Button>
+            <Button onClick={() => setShowAdd(true)}><Plus size={16} />Add Customer</Button>
+          </div>
+        )}
+      />
       {showAdd && <AddCustomerModal onClose={() => setShowAdd(false)} />}
+      {showMerge && <MergeCustomersModal customers={customers} onClose={() => setShowMerge(false)} />}
 
       <div className="mb-5 flex flex-wrap gap-3 items-end">
         <div className="relative w-full max-w-md flex-1 min-w-[200px]">

@@ -183,6 +183,7 @@ function AutoKeyJobDetail({ token, backTo }: { token: string; backTo: string }) 
     jobs: [],
   }
   const jobCard = {
+    id: data.job_id ?? '',
     type: 'auto_key' as const,
     job_number: data.job_number,
     title: data.title,
