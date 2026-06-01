@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Check, Search, X } from 'lucide-react'
 import {
+  getApiErrorMessage,
   listGarageServicingPricing,
   listMobileServicesOemKeyPricing,
   listMobileServicesOemMakes,
@@ -96,12 +97,21 @@ export default function PricingSelector({
     }
   }, [open])
 
-  const { data: makes = [] } = useQuery({
+  const {
+    data: makes = [],
+    isFetching: makesLoading,
+    isError: makesError,
+    error: makesQueryError,
+  } = useQuery({
     queryKey: ['mobile-services-pricing', 'oem-makes'],
     queryFn: () => listMobileServicesOemMakes().then(r => r.data),
     enabled: open,
     staleTime: 60_000,
   })
+
+  const makeSearchNorm = makeSearch.trim().toLowerCase()
+  const selectedMakeNorm = selectedMake.trim().toLowerCase()
+  const makeSearchMatchesSelection = !!selectedMakeNorm && makeSearchNorm === selectedMakeNorm
 
   const filteredMakes = useMemo(() => {
     const q = makeSearch.trim().toLowerCase()
@@ -109,24 +119,45 @@ export default function PricingSelector({
     return makes.filter(m => m.toLowerCase().includes(q))
   }, [makes, makeSearch])
 
-  const { data: oemKeys = [], isFetching: oemLoading } = useQuery({
+  useEffect(() => {
+    if (!open || makesLoading || !makeSearchNorm) return
+    const exact = makes.find(m => m.toLowerCase() === makeSearchNorm)
+    if (exact && exact !== selectedMake) setSelectedMake(exact)
+  }, [open, makes, makesLoading, makeSearchNorm, selectedMake])
+
+  const pickMake = (make: string) => {
+    setSelectedMake(make)
+    setMakeSearch(make)
+  }
+
+  const { data: oemKeys = [], isFetching: oemLoading, isError: oemError, error: oemQueryError } = useQuery({
     queryKey: ['mobile-services-pricing', 'oem-keys', selectedMake],
     queryFn: () => listMobileServicesOemKeyPricing(selectedMake).then(r => r.data),
-    enabled: open && tab === 'vehicle_key' && !!selectedMake,
+    enabled: open && tab === 'vehicle_key' && makeSearchMatchesSelection,
     staleTime: 30_000,
   })
 
-  const { data: services = [], isFetching: servicesLoading } = useQuery({
+  const {
+    data: services = [],
+    isFetching: servicesLoading,
+    isError: servicesError,
+    error: servicesQueryError,
+  } = useQuery({
     queryKey: ['mobile-services-pricing', 'services'],
     queryFn: () => listMobileServicesServicePricing().then(r => r.data),
-    enabled: open && tab === 'general_service',
+    enabled: open,
     staleTime: 60_000,
   })
 
-  const { data: garageItems = [], isFetching: garageLoading } = useQuery({
+  const {
+    data: garageItems = [],
+    isFetching: garageLoading,
+    isError: garageError,
+    error: garageQueryError,
+  } = useQuery({
     queryKey: ['mobile-services-pricing', 'garage'],
     queryFn: () => listGarageServicingPricing().then(r => r.data),
-    enabled: open && tab === 'garage_door',
+    enabled: open,
     staleTime: 60_000,
   })
 
@@ -393,12 +424,32 @@ export default function PricingSelector({
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-muted)' }} />
                 <Input
                   value={makeSearch}
-                  onChange={e => setMakeSearch(e.target.value)}
+                  onChange={e => {
+                    const next = e.target.value
+                    setMakeSearch(next)
+                    if (next.trim().toLowerCase() !== selectedMake.trim().toLowerCase()) {
+                      setSelectedMake('')
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && filteredMakes.length > 0) {
+                      e.preventDefault()
+                      pickMake(filteredMakes[0])
+                    }
+                  }}
                   placeholder="Search make…"
                   className="pl-8"
                 />
               </div>
-              {!selectedMake && filteredMakes.length > 0 && (
+              {makesError && (
+                <p className="text-sm py-2 px-1" style={{ color: '#C96A5A' }}>
+                  {getApiErrorMessage(makesQueryError, 'Could not load vehicle makes')}
+                </p>
+              )}
+              {makesLoading && !makesError && (
+                <p className="text-sm py-2 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading makes…</p>
+              )}
+              {!makesLoading && !makesError && makeSearchNorm && !makeSearchMatchesSelection && filteredMakes.length > 0 && (
                 <div
                   className="rounded-lg border overflow-y-auto mb-2"
                   style={{ maxHeight: '140px', borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}
@@ -407,7 +458,7 @@ export default function PricingSelector({
                     <button
                       key={make}
                       type="button"
-                      onClick={() => { setSelectedMake(make); setMakeSearch(make) }}
+                      onClick={() => pickMake(make)}
                       className="w-full text-left px-3 py-2 text-sm border-b last:border-b-0"
                       style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
                     >
@@ -416,15 +467,27 @@ export default function PricingSelector({
                   ))}
                 </div>
               )}
-              {selectedMake && (
+              {!makesLoading && !makesError && makeSearchNorm && !makeSearchMatchesSelection && filteredMakes.length === 0 && (
+                <p className="text-sm py-2 text-center italic" style={{ color: 'var(--ms-text-muted)' }}>
+                  {makes.length === 0 ? 'No makes in catalogue yet' : 'No makes match your search'}
+                </p>
+              )}
+              {makeSearchMatchesSelection && selectedMake && (
                 <p className="text-xs mb-2" style={{ color: 'var(--ms-text-muted)' }}>
                   Showing prices for <strong style={{ color: 'var(--ms-text)' }}>{selectedMake}</strong>
                   {' · '}
                   <button type="button" className="underline" onClick={() => { setSelectedMake(''); setMakeSearch('') }}>Change</button>
                 </p>
               )}
-              {oemLoading && <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>}
-              {!oemLoading && selectedMake && addKeyRows.length === 0 && aklRows.length === 0 && (
+              {oemError && (
+                <p className="text-sm py-2 px-1" style={{ color: '#C96A5A' }}>
+                  {getApiErrorMessage(oemQueryError, 'Could not load pricing for this make')}
+                </p>
+              )}
+              {oemLoading && makeSearchMatchesSelection && !oemError && (
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading prices…</p>
+              )}
+              {!oemLoading && !oemError && makeSearchMatchesSelection && selectedMake && addKeyRows.length === 0 && aklRows.length === 0 && (
                 <p className="text-sm py-4 text-center italic" style={{ color: 'var(--ms-text-muted)' }}>No pricing for this make</p>
               )}
               {addKeyRows.length > 0 && (
@@ -448,8 +511,15 @@ export default function PricingSelector({
 
           {tab === 'general_service' && (
             <>
-              {servicesLoading && <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>}
-              {!servicesLoading && servicesByCategory.length === 0 && (
+              {servicesError && (
+                <p className="text-sm py-4 text-center" style={{ color: '#C96A5A' }}>
+                  {getApiErrorMessage(servicesQueryError, 'Could not load general services')}
+                </p>
+              )}
+              {servicesLoading && !servicesError && (
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>
+              )}
+              {!servicesLoading && !servicesError && servicesByCategory.length === 0 && (
                 <p className="text-sm py-4 text-center italic" style={{ color: 'var(--ms-text-muted)' }}>No services listed</p>
               )}
               {servicesByCategory.map(([category, rows]) => (
@@ -465,8 +535,15 @@ export default function PricingSelector({
 
           {tab === 'garage_door' && (
             <>
-              {garageLoading && <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>}
-              {!garageLoading && garageItems.length === 0 && (
+              {garageError && (
+                <p className="text-sm py-4 text-center" style={{ color: '#C96A5A' }}>
+                  {getApiErrorMessage(garageQueryError, 'Could not load garage services')}
+                </p>
+              )}
+              {garageLoading && !garageError && (
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-text-muted)' }}>Loading…</p>
+              )}
+              {!garageLoading && !garageError && garageItems.length === 0 && (
                 <p className="text-sm py-4 text-center italic" style={{ color: 'var(--ms-text-muted)' }}>No garage services listed</p>
               )}
               <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--ms-border)' }}>
