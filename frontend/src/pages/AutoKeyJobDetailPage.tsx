@@ -769,9 +769,9 @@ export default function AutoKeyJobDetailPage() {
         </p>
       )}
 
-      {/* Mobile tab bar */}
-      <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto">
-        <div className="flex gap-2 flex-nowrap pb-1">
+      {/* Tab bar — all breakpoints (matches watch job detail UX) */}
+      <div className="mb-4 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+        <div className="flex gap-0.5 flex-nowrap min-w-max">
           {([
             { key: 'info', label: 'Info' },
             { key: 'vehicle', label: 'Vehicle & Key' },
@@ -783,22 +783,25 @@ export default function AutoKeyJobDetailPage() {
               key={tab.key}
               type="button"
               onClick={() => setDetailTab(tab.key)}
-              className="px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap touch-manipulation"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap touch-manipulation transition-all duration-150"
               style={{
-                backgroundColor: detailTab === tab.key ? 'var(--ms-accent)' : 'var(--ms-surface)',
-                color: detailTab === tab.key ? '#2C1810' : 'var(--ms-text-muted)',
+                borderBottom: detailTab === tab.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
+                color: detailTab === tab.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                fontWeight: detailTab === tab.key ? 700 : 500,
               }}
             >
+              {tab.key === 'messages' && <MessageSquare size={14} />}
               {tab.label}
             </button>
           ))}
         </div>
       </div>
 
+      {detailTab !== 'messages' && (
       <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
         <Card className='p-5 space-y-4 xl:col-span-4'>
           {/* Info tab: customer, job info, status, assign, schedule */}
-          <div className={detailTab !== 'info' ? 'hidden lg:contents' : ''}>
+          <div className={detailTab !== 'info' ? 'hidden' : ''}>
           {/* Customer section */}
           {customer && (
             <div className='pb-3' style={{ borderBottom: '1px solid var(--ms-border)' }}>
@@ -887,7 +890,7 @@ export default function AutoKeyJobDetailPage() {
           </div>{/* end info tab group */}
 
           {/* Vehicle & Key tab: vehicle DB, key details, tech notes */}
-          <div className={detailTab !== 'vehicle' ? 'hidden lg:contents' : ''}>
+          <div className={detailTab !== 'vehicle' ? 'hidden' : ''}>
           {hasFeature('auto_key') && (
             <>
               <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>
@@ -1087,7 +1090,7 @@ export default function AutoKeyJobDetailPage() {
           </div>{/* end vehicle tab group */}
 
           {/* Photos tab */}
-          <div className={detailTab !== 'photos' ? 'hidden lg:contents' : ''}>
+          <div className={detailTab !== 'photos' ? 'hidden' : ''}>
           <h3 className='font-semibold text-xs uppercase tracking-widest pt-2' style={{ color: 'var(--ms-text-muted)' }}>Photo Attachments</h3>
           <div className='space-y-2'>
             {attachments.length > 0 && (
@@ -1151,7 +1154,7 @@ export default function AutoKeyJobDetailPage() {
           </div>{/* end photos tab group */}
 
           {/* Info tab continued: status, assign, lead source, account, schedule */}
-          <div className={detailTab !== 'info' ? 'hidden lg:contents' : ''}>
+          <div className={detailTab !== 'info' ? 'hidden' : ''}>
           <Select
             label='Status'
             value={job.status}
@@ -1261,7 +1264,7 @@ export default function AutoKeyJobDetailPage() {
           </Modal>
         )}
 
-        <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden lg:block' : ''}`}>
+        <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden' : ''}`}>
           {showQuoteModal && (
             <Modal title="Create Quote" onClose={() => setShowQuoteModal(false)}>
               <CreateQuoteInlineForm jobId={id!} onClose={() => setShowQuoteModal(false)} />
@@ -1412,6 +1415,7 @@ export default function AutoKeyJobDetailPage() {
           </Card>
         </div>
       </div>
+      )}
 
       {/* Messages tab — full width below the grid */}
       {detailTab === 'messages' && (

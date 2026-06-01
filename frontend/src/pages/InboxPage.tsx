@@ -82,11 +82,13 @@ export default function InboxPage() {
             const jobLink =
               ev.entity_type === 'repair_job' && ev.entity_id
                 ? `/jobs/${ev.entity_id}`
-                : ev.entity_type === 'auto_key_job' && ev.entity_id
-                  ? `/auto-key/${ev.entity_id}`
-                  : ev.entity_type === 'invoice' && ev.event_type === 'invoice_paid'
-                    ? '/invoices'
-                    : null
+                : ev.entity_type === 'shoe_repair_job' && ev.entity_id
+                  ? `/shoe-repairs/${ev.entity_id}`
+                  : ev.entity_type === 'auto_key_job' && ev.entity_id
+                    ? `/auto-key/${ev.entity_id}`
+                    : ev.entity_type === 'invoice' && ev.event_type === 'invoice_paid'
+                      ? '/invoices'
+                      : null
             const linkLabel = ev.event_type === 'invoice_paid' ? 'View invoices' : 'View job'
             return (
               <Card key={ev.id} className="p-4">
