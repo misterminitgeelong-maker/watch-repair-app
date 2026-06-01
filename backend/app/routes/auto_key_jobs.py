@@ -435,6 +435,9 @@ def create_auto_key_job(
         import json
         data["additional_services_json"] = json.dumps(additional_services)
 
+    if data.get("quoted_price") is not None:
+        data["cost_cents"] = round(float(data["quoted_price"]) * 100)
+
     job = AutoKeyJob(
         tenant_id=auth.tenant_id,
         job_number=_next_auto_key_job_number(session, auth.tenant_id),

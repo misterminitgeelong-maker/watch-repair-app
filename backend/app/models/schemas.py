@@ -965,6 +965,10 @@ class AutoKeyJobCreate(SQLModel):
     send_booking_sms: bool = False
     additional_services: list[dict[str, Any]] = Field(default_factory=list)
     commission_lead_source: str = Field(default="shop_referred", max_length=64)
+    pricing_ref_id: Optional[UUID] = None
+    pricing_type: Optional[Literal["oem_key", "service", "garage"]] = None
+    quoted_price: Optional[float] = None
+    callout_inclusive: Optional[bool] = None
 
 class AutoKeyQuickIntakeCreate(SQLModel):
     full_name: str = Field(max_length=500)
@@ -1008,11 +1012,48 @@ class AutoKeyJobRead(SQLModel):
     shop_mobile_booking_request_id: Optional[UUID] = None
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
+    pricing_ref_id: Optional[UUID] = None
+    pricing_type: Optional[str] = None
+    quoted_price: Optional[float] = None
+    callout_inclusive: Optional[bool] = None
 
     @field_serializer("scheduled_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
         """Naive DB datetimes are UTC; expose as timezone-aware so JSON is unambiguous for browsers."""
         return as_utc_for_json(v) if v is not None else None
+
+class OemKeyPricingRow(SQLModel):
+    id: UUID
+    make: str
+    model_variant: Optional[str] = None
+    job_type: str
+    key_type: Optional[str] = None
+    service_location: Optional[str] = None
+    tool_required: Optional[str] = None
+    retail_price: Optional[float] = None
+    is_poa: bool
+    callout_inclusive: bool
+    notes: Optional[str] = None
+
+class ServicePricingRow(SQLModel):
+    id: UUID
+    category: str
+    service_name: str
+    unit: Optional[str] = None
+    retail_price: Optional[float] = None
+    is_poa: bool
+    callout_inclusive: bool
+    notes: Optional[str] = None
+
+class GarageServicingPricingRow(SQLModel):
+    id: UUID
+    service_name: str
+    description: Optional[str] = None
+    part_cost_notes: Optional[str] = None
+    labour_time: Optional[str] = None
+    retail_price: float
+    callout_inclusive: bool
+    notes: Optional[str] = None
 
 class AutoKeyJobStatusUpdate(SQLModel):
     status: JobStatus
@@ -1045,6 +1086,10 @@ class AutoKeyJobFieldUpdate(SQLModel):
     cost_cents: Optional[int] = None
     additional_services_json: Optional[str] = None
     commission_lead_source: Optional[str] = Field(default=None, max_length=64)
+    pricing_ref_id: Optional[UUID] = None
+    pricing_type: Optional[Literal["oem_key", "service", "garage"]] = None
+    quoted_price: Optional[float] = None
+    callout_inclusive: Optional[bool] = None
 
 class AutoKeyQuoteLineItemCreate(SQLModel):
     description: str

@@ -633,6 +633,51 @@ class AutoKeyJob(SQLModel, table=True):
     shop_mobile_booking_request_id: Optional[UUID] = Field(
         default=None, foreign_key="shopmobilebookingrequest.id", unique=True
     )
+    pricing_ref_id: Optional[UUID] = Field(default=None, index=True)
+    pricing_type: Optional[str] = Field(default=None, max_length=32)  # oem_key | service | garage
+    quoted_price: Optional[float] = Field(default=None)  # AUD dollars from pricing catalogue
+    callout_inclusive: Optional[bool] = Field(default=None)
+
+class OemKeyPricing(SQLModel, table=True):
+    """Global OEM key price catalogue (Supabase-managed)."""
+    __tablename__ = "oem_key_pricing"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    make: str = Field(index=True)
+    model_variant: Optional[str] = None
+    job_type: str  # Add Key | AKL
+    chip_type: Optional[str] = None
+    key_type: Optional[str] = None
+    service_location: Optional[str] = None
+    tool_required: Optional[str] = None
+    retail_price: Optional[float] = None  # null = POA
+    callout_inclusive: bool = False
+    notes: Optional[str] = None
+    active: bool = True
+
+class ServicePricing(SQLModel, table=True):
+    """General mobile service price catalogue (Supabase-managed)."""
+    __tablename__ = "service_pricing"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    category: str = Field(index=True)
+    service_name: str
+    unit: Optional[str] = None
+    retail_price: Optional[float] = None  # null = POA
+    callout_inclusive: bool = False
+    notes: Optional[str] = None
+    active: bool = True
+
+class GarageServicingPricing(SQLModel, table=True):
+    """Garage door servicing price catalogue (Supabase-managed)."""
+    __tablename__ = "garage_servicing_pricing"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    service_name: str = Field(index=True)
+    description: Optional[str] = None
+    part_cost_notes: Optional[str] = None
+    labour_time: Optional[str] = None
+    retail_price: float
+    callout_inclusive: bool = False
+    notes: Optional[str] = None
+    active: bool = True
 
 class AutoKeyQuote(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)

@@ -50,6 +50,7 @@ from .routes.mobile_lead_ingest import router as mobile_lead_ingest_router
 from .routes.shop_mobile_bookings import router as shop_mobile_bookings_router
 from .routes.vehicle_lookup import router as vehicle_lookup_router
 from .routes.vehicle_key_specs import router as vehicle_key_specs_router
+from .routes.mobile_services_pricing import router as mobile_services_pricing_router
 from .routes.maps_routing import router as maps_routing_router
 from .routes.custom_services import router as custom_services_router
 from .routes.toolkit import router as toolkit_router
@@ -350,6 +351,7 @@ app.include_router(prospects_router)
 app.include_router(prospect_leads_router)
 app.include_router(vehicle_lookup_router)
 app.include_router(vehicle_key_specs_router)
+app.include_router(mobile_services_pricing_router)
 app.include_router(maps_routing_router)
 app.include_router(custom_services_router)
 app.include_router(toolkit_router)

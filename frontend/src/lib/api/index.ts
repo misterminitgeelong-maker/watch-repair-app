@@ -1391,7 +1391,66 @@ export interface AutoKeyJob {
   commission_lead_source?: string
   customer_name?: string | null
   customer_phone?: string | null
+  pricing_ref_id?: string | null
+  pricing_type?: 'oem_key' | 'service' | 'garage' | null
+  quoted_price?: number | null
+  callout_inclusive?: boolean | null
 }
+
+export type MobileServicesPricingType = 'oem_key' | 'service' | 'garage'
+
+export interface OemKeyPricingRow {
+  id: string
+  make: string
+  model_variant?: string | null
+  job_type: string
+  key_type?: string | null
+  service_location?: string | null
+  tool_required?: string | null
+  retail_price?: number | null
+  is_poa: boolean
+  callout_inclusive: boolean
+  notes?: string | null
+}
+
+export interface ServicePricingRow {
+  id: string
+  category: string
+  service_name: string
+  unit?: string | null
+  retail_price?: number | null
+  is_poa: boolean
+  callout_inclusive: boolean
+  notes?: string | null
+}
+
+export interface GarageServicingPricingRow {
+  id: string
+  service_name: string
+  description?: string | null
+  part_cost_notes?: string | null
+  labour_time?: string | null
+  retail_price: number
+  callout_inclusive: boolean
+  notes?: string | null
+}
+
+export interface MobileServicesPricingSelection {
+  pricing_ref_id: string
+  pricing_type: MobileServicesPricingType
+  quoted_price: number
+  callout_inclusive: boolean
+  label?: string
+}
+
+export const listMobileServicesOemMakes = () =>
+  api.get<string[]>('/mobile-services-pricing/oem-makes')
+export const listMobileServicesOemKeyPricing = (make: string) =>
+  api.get<OemKeyPricingRow[]>('/mobile-services-pricing/oem-keys', { params: { make } })
+export const listMobileServicesServicePricing = () =>
+  api.get<ServicePricingRow[]>('/mobile-services-pricing/services')
+export const listGarageServicingPricing = () =>
+  api.get<GarageServicingPricingRow[]>('/mobile-services-pricing/garage')
 
 export interface AutoKeyJobCreatePayload {
   customer_id: string
@@ -1423,6 +1482,10 @@ export interface AutoKeyJobCreatePayload {
   job_address?: string | null
   job_type?: string | null
   commission_lead_source?: string | null
+  pricing_ref_id?: string | null
+  pricing_type?: MobileServicesPricingType | null
+  quoted_price?: number | null
+  callout_inclusive?: boolean | null
 }
 
 export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string; assigned_user_id?: string; date_from?: string; date_to?: string; include_unscheduled?: boolean; active_only?: boolean; limit?: number }) =>

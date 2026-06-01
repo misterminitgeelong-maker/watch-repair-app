@@ -38,12 +38,14 @@ import {
   type Customer,
   type CustomerAccount,
   type JobStatus,
+  type MobileServicesPricingSelection,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import ShopBookingInbox from '@/components/ShopBookingInbox'
+import PricingSelector from '@/components/PricingSelector'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
@@ -515,6 +517,8 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
   const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
   const [sendBookingSms, setSendBookingSms] = useState(false)
+  const [showPricingSelector, setShowPricingSelector] = useState(false)
+  const [pricingSelection, setPricingSelection] = useState<MobileServicesPricingSelection | null>(null)
   const [extraServices, setExtraServices] = useState<Array<{ preset: string; custom: string }>>([])
   const [form, setForm] = useState({
     customer_id: '',
@@ -587,10 +591,10 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   })
 
   useEffect(() => {
-    if (!applySuggestedQuote || !quoteSuggestion) return
+    if (!applySuggestedQuote || !quoteSuggestion || pricingSelection) return
     const dollars = (quoteSuggestion.total_cents / 100).toFixed(2)
     setForm(f => ({ ...f, cost: dollars }))
-  }, [applySuggestedQuote, quoteSuggestion?.total_cents])
+  }, [applySuggestedQuote, quoteSuggestion?.total_cents, pricingSelection])
 
   const yearNum = form.vehicle_year.trim() ? Number.parseInt(form.vehicle_year, 10) : undefined
   const { data: specSearch } = useQuery({
@@ -723,6 +727,10 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         send_booking_sms: sendBookingSms,
         additional_services: additional_services.length ? additional_services : undefined,
         commission_lead_source: form.commission_lead_source || 'shop_referred',
+        pricing_ref_id: pricingSelection?.pricing_ref_id,
+        pricing_type: pricingSelection?.pricing_type,
+        quoted_price: pricingSelection?.quoted_price,
+        callout_inclusive: pricingSelection?.callout_inclusive,
       })
     },
     onSuccess: () => {
@@ -734,6 +742,7 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="New Mobile Services Job" onClose={onClose} size="wide">
+      <div className="relative">
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex items-center gap-1.5">
@@ -1044,7 +1053,26 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
-              <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} />
+              <div>
+                <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => {
+                  setPricingSelection(null)
+                  setForm(f => ({ ...f, cost: e.target.value }))
+                }} />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-1.5 w-full text-sm"
+                  onClick={() => setShowPricingSelector(true)}
+                >
+                  Browse pricing catalogue
+                </Button>
+                {pricingSelection && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+                    From catalogue: {pricingSelection.label ?? pricingSelection.pricing_type}
+                    {pricingSelection.callout_inclusive ? ' · Callout incl.' : ' · + Callout'}
+                  </p>
+                )}
+              </div>
             </div>
             <Input label="Salesperson" value={form.salesperson} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
           </>
@@ -1082,6 +1110,17 @@ function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             </>
           )}
         </div>
+        </div>
+        <PricingSelector
+          open={showPricingSelector}
+          onClose={() => setShowPricingSelector(false)}
+          initialMake={form.vehicle_make}
+          onConfirm={(selection) => {
+            setPricingSelection(selection)
+            setApplySuggestedQuote(false)
+            setForm(f => ({ ...f, cost: selection.quoted_price.toFixed(2) }))
+          }}
+        />
       </div>
     </Modal>
   )
