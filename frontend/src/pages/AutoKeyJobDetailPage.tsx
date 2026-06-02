@@ -1448,6 +1448,7 @@ export default function AutoKeyJobDetailPage() {
         <div className="mt-4">
           <JobMessageThread
             jobId={id!}
+            threadScope="auto_key"
             fetchMessages={getAutoKeyMessages}
             postMessage={sendAutoKeyMessage}
           />

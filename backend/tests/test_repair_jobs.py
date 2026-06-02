@@ -37,11 +37,11 @@ def _bootstrap_and_login(tenant_slug: str, email: str, password: str) -> str:
     return login_res.json()["access_token"]
 
 
-def _create_watch(headers: dict[str, str]) -> str:
+def _create_watch(headers: dict[str, str], phone: str = "0412345678") -> str:
     customer_res = client.post(
         "/v1/customers",
         headers=headers,
-        json={"full_name": "Repair Customer", "email": "repair@example.com"},
+        json={"full_name": "Repair Customer", "email": "repair@example.com", "phone": phone},
     )
     assert customer_res.status_code == 201
     customer_id = customer_res.json()["id"]
@@ -314,3 +314,26 @@ def test_status_update_with_note_appends_to_description():
     assert st.status_code == 200
     desc = st.json()["description"]
     assert "Shop note: Quote emailed" in (desc or "")
+
+
+def test_send_job_message_appears_in_thread():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-msg-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id)
+    job_id = job["id"]
+
+    sent = client.post(
+        f"/v1/repair-jobs/{job_id}/messages",
+        headers=headers,
+        json={"body": "Your watch is ready for collection"},
+    )
+    assert sent.status_code == 201
+    assert sent.json()["direction"] == "outbound"
+    assert sent.json()["body"] == "Your watch is ready for collection"
+
+    thread = client.get(f"/v1/repair-jobs/{job_id}/messages", headers=headers)
+    assert thread.status_code == 200
+    bodies = [m["body"] for m in thread.json() if m["direction"] == "outbound"]
+    assert "Your watch is ready for collection" in bodies

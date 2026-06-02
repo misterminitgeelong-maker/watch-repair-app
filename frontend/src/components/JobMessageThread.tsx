@@ -4,10 +4,25 @@ import { Send } from 'lucide-react'
 import { getJobMessages, sendJobMessage, type JobThreadMessage } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/api/client'
 import { useToast } from '@/lib/toast'
-
-type FetchFn = (jobId: string) => Promise<{ data: JobThreadMessage[] }>
-type SendFn = (jobId: string, body: string) => Promise<unknown>
 import { Spinner } from '@/components/ui'
+
+type MessageThreadScope = 'repair' | 'shoe' | 'auto_key'
+type FetchFn = (jobId: string) => Promise<{ data: JobThreadMessage[] }>
+type SendFn = (jobId: string, body: string) => Promise<{ data: JobThreadMessage }>
+
+function messagesQueryKey(scope: MessageThreadScope, jobId: string) {
+  return ['job-messages', scope, jobId] as const
+}
+
+function appendThreadMessage(
+  prev: JobThreadMessage[] | undefined,
+  sent: JobThreadMessage,
+): JobThreadMessage[] {
+  if (prev?.some(m => m.id === sent.id)) return prev
+  return [...(prev ?? []), sent].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+}
 
 function formatTime(s: string) {
   const d = new Date(s)
@@ -29,28 +44,37 @@ function formatTime(s: string) {
 
 interface Props {
   jobId: string
+  threadScope?: MessageThreadScope
   fetchMessages?: FetchFn
   postMessage?: SendFn
 }
 
-export default function JobMessageThread({ jobId, fetchMessages = getJobMessages, postMessage = sendJobMessage }: Props) {
+export default function JobMessageThread({
+  jobId,
+  threadScope = 'repair',
+  fetchMessages = getJobMessages,
+  postMessage = sendJobMessage,
+}: Props) {
   const qc = useQueryClient()
   const toast = useToast()
   const bottomRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
+  const queryKey = messagesQueryKey(threadScope, jobId)
 
   const { data: messages, isLoading } = useQuery({
-    queryKey: ['job-messages', jobId],
+    queryKey,
     queryFn: () => fetchMessages(jobId).then(r => r.data),
     refetchInterval: 15_000,
+    enabled: !!jobId,
   })
 
   const sendMut = useMutation({
-    mutationFn: (body: string) => postMessage(jobId, body),
-    onSuccess: () => {
+    mutationFn: (body: string) => postMessage(jobId, body).then(r => r.data),
+    onSuccess: (sent) => {
       setText('')
       toast.success('Message sent')
-      void qc.invalidateQueries({ queryKey: ['job-messages', jobId] })
+      qc.setQueryData<JobThreadMessage[]>(queryKey, prev => appendThreadMessage(prev, sent))
+      void qc.invalidateQueries({ queryKey })
     },
     onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Failed to send message')),
   })

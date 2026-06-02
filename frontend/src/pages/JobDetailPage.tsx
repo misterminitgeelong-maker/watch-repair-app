@@ -1119,7 +1119,7 @@ export default function JobDetailPage() {
               <p className="text-xs self-center" style={{ color: '#C96A5A' }}>Failed to send</p>
             )}
           </div>
-          <JobMessageThread jobId={id!} />
+          <JobMessageThread jobId={id!} threadScope="repair" />
         </div>
       )}
 

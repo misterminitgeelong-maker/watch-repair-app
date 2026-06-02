@@ -417,6 +417,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 
         <JobMessageThread
           jobId={job.id}
+          threadScope="shoe"
           fetchMessages={getShoeJobMessages}
           postMessage={sendShoeJobMessage}
         />
