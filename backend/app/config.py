@@ -74,9 +74,11 @@ class Settings(BaseSettings):
     schedule_calendar_timezone: str = "Australia/Sydney"
 
     # CORS — comma-separated origins allowed in production (web app + local dev)
+    # Includes Expo web dev ports (8081 Metro, 19006 legacy) for the mobile companion app.
     cors_origins: str = (
         "https://mainspring.au,https://www.mainspring.au,"
-        "http://localhost:5173,http://localhost:3000,https://localhost,http://localhost"
+        "http://localhost:5173,http://localhost:3000,https://localhost,http://localhost,"
+        "http://localhost:8081,http://localhost:19006"
     )
 
     # Path to the built frontend (set by Dockerfile / deploy)

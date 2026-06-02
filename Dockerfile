@@ -43,7 +43,7 @@ ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
     APP_ENV="production" \
     JWT_SECRET="change-me-in-production" \
     ALLOW_DEV_AUTO_LOGIN="false" \
-    CORS_ORIGINS="https://mainspring.au,https://www.mainspring.au" \
+    CORS_ORIGINS="https://mainspring.au,https://www.mainspring.au,http://localhost:8081,http://localhost:19006" \
     PUBLIC_BASE_URL="https://mainspring.au"
 
 EXPOSE 8000
