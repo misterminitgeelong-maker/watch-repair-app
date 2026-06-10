@@ -19,7 +19,6 @@ from ..models import (
     CustomerAccount,
     CustomerAccountMembership,
     Invoice,
-    JobMessage,
     JobMessageRead,
     JobStatusHistory,
     JobStatusHistoryRead,
@@ -939,46 +938,29 @@ def get_job_messages(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    """Return the full message thread for a job: manual outbound/inbound plus automated system SMS, oldest first."""
+    """Return the full message thread for a job: manual outbound/inbound plus automated system SMS, oldest first.
+
+    Includes every message exchanged with the customer's phone number, even when
+    it was logged against another of their jobs (or no job at all).
+    """
     job = get_tenant_repair_job(session, job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
-    manual = session.exec(
-        select(JobMessage)
-        .where(JobMessage.repair_job_id == job_id)
-        .where(JobMessage.tenant_id == auth.tenant_id)
-    ).all()
+    customer_phone = None
+    watch = session.get(Watch, job.watch_id)
+    if watch and watch.customer_id:
+        customer = session.get(Customer, watch.customer_id)
+        if customer:
+            customer_phone = customer.phone
 
-    automated = session.exec(
-        select(SmsLog)
-        .where(SmsLog.repair_job_id == job_id)
-        .where(SmsLog.tenant_id == auth.tenant_id)
-    ).all()
-
-    thread: list[JobThreadMessage] = []
-    for m in manual:
-        thread.append(JobThreadMessage(
-            id=m.id,
-            direction=m.direction,
-            body=m.body,
-            from_phone=m.from_phone,
-            to_phone=m.to_phone,
-            created_at=m.created_at,
-        ))
-    for s in automated:
-        thread.append(JobThreadMessage(
-            id=s.id,
-            direction="system",
-            body=s.body,
-            to_phone=s.to_phone,
-            event=s.event,
-            status=s.status,
-            created_at=s.created_at,
-        ))
-
-    thread.sort(key=lambda m: m.created_at)
-    return thread
+    from ..services.message_threads import build_job_thread
+    return build_job_thread(
+        session,
+        tenant_id=auth.tenant_id,
+        customer_phone=customer_phone,
+        repair_job_id=job_id,
+    )
 
 
 @router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)

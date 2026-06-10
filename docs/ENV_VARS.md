@@ -20,6 +20,10 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `TWILIO_ACCOUNT_SID` | (empty) | No | Twilio SID for SMS. Leave blank for dry-run. |
 | `TWILIO_AUTH_TOKEN` | (empty) | No | Twilio auth token. |
 | `TWILIO_FROM_NUMBER` | (empty) | No | E.164 number for sending SMS. |
+| `QUOTE_REMINDER_ENABLED` | `True` | No | Auto-send a reminder SMS for quotes (watch + mobile services) still awaiting a customer decision. |
+| `QUOTE_REMINDER_DAYS` | `7` | No | Days after a quote is sent before the reminder goes out. The reminder also refreshes the approval link for another `QUOTE_APPROVAL_TOKEN_TTL_HOURS`. One reminder per quote. |
+| `QUOTE_REMINDER_CHECK_INTERVAL_MINUTES` | `60` | No | How often the in-app scheduler checks for due reminders. `POST /v1/quotes/send-reminders` triggers a run manually. |
+| `QUOTE_APPROVAL_TOKEN_TTL_HOURS` | `168` | No | Lifetime of the public watch-quote approval link from send time. |
 | `STRIPE_SECRET_KEY` | (empty) | No | Stripe API key for billing. |
 | `STRIPE_WEBHOOK_SECRET` | (empty) | No | Stripe webhook signing secret. |
 | `STRIPE_PRICE_*` | (empty) | No | Various Stripe price IDs for plans. |

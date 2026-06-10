@@ -108,6 +108,27 @@ def _run_optional_startup_tasks() -> None:
         startup_logger.exception("Optional startup tasks failed.")
 
 
+def _quote_reminder_loop() -> None:
+    """Periodically send reminder SMS for quotes still waiting on a customer decision.
+
+    Runs in a daemon thread (this deployment is single-instance). Reminders are
+    idempotent — each quote records reminder_sent_at — so an extra run is safe.
+    """
+    reminder_logger = logging.getLogger("mainspring.quote_reminders")
+    interval_seconds = max(settings.quote_reminder_check_interval_minutes, 1) * 60
+    from .services.quote_reminders import send_due_quote_reminders
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = send_due_quote_reminders(session)
+            if summary.get("watch_sent") or summary.get("mobile_sent"):
+                reminder_logger.info("Quote reminders sent: %s", summary)
+        except Exception:
+            reminder_logger.exception("Quote reminder run failed.")
+        time.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -133,6 +154,12 @@ async def lifespan(app: FastAPI):
         name="mainspring-startup-seed",
         daemon=True,
     ).start()
+    if settings.quote_reminder_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_quote_reminder_loop,
+            name="mainspring-quote-reminders",
+            daemon=True,
+        ).start()
     yield
 
 

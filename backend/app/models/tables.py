@@ -384,6 +384,8 @@ class Quote(SQLModel, table=True):
     approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     approval_token_expires_at: Optional[datetime] = Field(default=None, index=True)
     sent_at: Optional[datetime] = None
+    #: When the no-decision reminder SMS went out (one reminder per quote).
+    reminder_sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class QuoteLineItem(SQLModel, table=True):
@@ -692,6 +694,8 @@ class AutoKeyQuote(SQLModel, table=True):
     total_cents: int = 0
     currency: str = "AUD"
     sent_at: Optional[datetime] = None
+    #: When the no-decision reminder SMS went out (one reminder per quote).
+    reminder_sent_at: Optional[datetime] = None
     quote_approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     signature_storage_key: Optional[str] = None
     signed_at: Optional[datetime] = None

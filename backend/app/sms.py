@@ -230,6 +230,81 @@ def notify_quote_sent(
     )
 
 
+def notify_quote_reminder(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    total_cents: int,
+    approval_token: str,
+    job_number: str,
+    shop_name: str = "your watch repair shop",
+) -> None:
+    """Remind the customer about a quote they haven't decided on yet."""
+    total = total_cents / 100
+    approval_url = f"{settings.public_base_url}/approve/{approval_token}"
+    shop = shop_name.strip() or "us"
+    body = (
+        f"Hi {customer_name}, just a friendly reminder from {shop} — your repair quote of ${total:.2f} "
+        f"for job #{job_number} is still waiting for your go-ahead. "
+        f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="quote_reminder",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
+def notify_auto_key_quote_reminder(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    auto_key_job_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    total_cents: int,
+    currency: str,
+    quote_approval_token: str,
+) -> None:
+    """Remind the customer about a mobile services quote they haven't decided on yet."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
+    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
+    total = total_cents / 100
+    portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
+    shop = shop_name.strip() or "us"
+    body = (
+        f"Hi {customer_name}, just a friendly reminder from {shop} — your quote of {sym}{total:.2f} "
+        f"for job #{job_number} is still waiting for your decision. "
+        f"Review and accept here: {portal_url} — Reply to this message if you have any questions."
+    )
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_quote_reminder",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+
+
 def notify_job_status_changed(
     session: Session,
     *,

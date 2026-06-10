@@ -247,7 +247,7 @@ def test_inbound_routes_to_open_shoe_job(client: TestClient):
         assert event.entity_id == shoe.id
 
 
-def test_inbound_known_customer_without_job_logs_inbox_only(client: TestClient):
+def test_inbound_known_customer_without_job_is_saved_and_logged(client: TestClient):
     from_phone, stored_phone = _phone_pair(4)
     headers, tenant_id = _bootstrap_tenant(client)
     customer_id = _customer_with_phone(client, headers, stored_phone)
@@ -255,11 +255,17 @@ def test_inbound_known_customer_without_job_logs_inbox_only(client: TestClient):
     _post_inbound(client, from_phone, body="Hello?")
 
     with Session(engine) as session:
-        assert session.exec(
+        # Saved without a job link so phone-matched threads can surface it.
+        msg = session.exec(
             select(JobMessage)
             .where(JobMessage.direction == "inbound")
             .where(JobMessage.from_phone == from_phone)
-        ).first() is None
+        ).first()
+        assert msg is not None
+        assert msg.tenant_id == tenant_id
+        assert msg.repair_job_id is None
+        assert msg.shoe_repair_job_id is None
+        assert msg.auto_key_job_id is None
 
         event = session.exec(
             select(TenantEventLog)
@@ -286,3 +292,93 @@ def test_inbound_unknown_sender_is_silent(client: TestClient):
             .where(TenantEventLog.event_type == "customer_sms_reply")
             .where(TenantEventLog.event_summary.contains(unknown))
         ).first() is None
+
+
+# ── YES/NO quote decisions via SMS reply ─────────────────────────────────────
+
+def _quote_for_job(client: TestClient, headers: dict[str, str], job_id) -> dict:
+    quote = client.post(
+        "/v1/quotes",
+        headers=headers,
+        json={
+            "repair_job_id": str(job_id),
+            "tax_cents": 0,
+            "line_items": [
+                {"item_type": "labor", "description": "Movement service", "quantity": 1, "unit_price_cents": 25000}
+            ],
+        },
+    )
+    assert quote.status_code == 201, quote.text
+    sent = client.post(f"/v1/quotes/{quote.json()['id']}/send", headers=headers)
+    assert sent.status_code == 200, sent.text
+    return quote.json()
+
+
+def test_inbound_yes_approves_pending_watch_quote(client: TestClient):
+    from app.models import Approval, Quote
+
+    from_phone, stored_phone = _phone_pair(5)
+    headers, tenant_id = _bootstrap_tenant(client)
+    customer_id = _customer_with_phone(client, headers, stored_phone)
+    job = _watch_job(client, headers, customer_id, "Quote via SMS")
+    quote = _quote_for_job(client, headers, job.id)
+
+    res = client.post(_WEBHOOK, data={"From": from_phone, "Body": " Yes! "})
+    assert res.status_code == 200
+    assert "approved" in res.text.lower()
+
+    with Session(engine) as session:
+        db_quote = session.get(Quote, UUID(quote["id"]))
+        assert db_quote.status == "approved"
+        approval = session.exec(
+            select(Approval).where(Approval.quote_id == db_quote.id)
+        ).first()
+        assert approval is not None
+        assert approval.decision == "approved"
+        db_job = session.get(RepairJob, job.id)
+        assert db_job.status == "go_ahead"
+        msg = session.exec(
+            select(JobMessage)
+            .where(JobMessage.repair_job_id == job.id)
+            .where(JobMessage.direction == "inbound")
+        ).first()
+        assert msg is not None
+
+
+def test_inbound_no_declines_pending_watch_quote(client: TestClient):
+    from app.models import Quote
+
+    from_phone, stored_phone = _phone_pair(6)
+    headers, tenant_id = _bootstrap_tenant(client)
+    customer_id = _customer_with_phone(client, headers, stored_phone)
+    job = _watch_job(client, headers, customer_id, "Decline via SMS")
+    quote = _quote_for_job(client, headers, job.id)
+
+    res = client.post(_WEBHOOK, data={"From": from_phone, "Body": "no"})
+    assert res.status_code == 200
+    assert "declined" in res.text.lower()
+
+    with Session(engine) as session:
+        db_quote = session.get(Quote, UUID(quote["id"]))
+        assert db_quote.status == "declined"
+        db_job = session.get(RepairJob, job.id)
+        assert db_job.status == "no_go"
+
+
+def test_inbound_yes_without_pending_quote_is_plain_reply(client: TestClient):
+    from_phone, stored_phone = _phone_pair(7)
+    headers, tenant_id = _bootstrap_tenant(client)
+    customer_id = _customer_with_phone(client, headers, stored_phone)
+    job = _watch_job(client, headers, customer_id, "No quote yet")
+
+    res = client.post(_WEBHOOK, data={"From": from_phone, "Body": "yes"})
+    assert res.status_code == 200
+    assert "<Message>" not in res.text  # nothing to approve — no auto-reply
+
+    with Session(engine) as session:
+        msg = session.exec(
+            select(JobMessage)
+            .where(JobMessage.repair_job_id == job.id)
+            .where(JobMessage.direction == "inbound")
+        ).first()
+        assert msg is not None  # still lands in the thread

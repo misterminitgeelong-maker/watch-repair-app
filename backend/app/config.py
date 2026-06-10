@@ -148,6 +148,14 @@ class Settings(BaseSettings):
     # Public quote approval token lifetime from send time.
     quote_approval_token_ttl_hours: int = 168
 
+    # Quote reminder SMS: nudge customers who haven't decided on a quote.
+    # The reminder also refreshes the approval link so it works for another
+    # full QUOTE_APPROVAL_TOKEN_TTL_HOURS window. One reminder per quote.
+    quote_reminder_enabled: bool = True
+    quote_reminder_days: int = 7
+    # How often the in-app scheduler checks for due reminders.
+    quote_reminder_check_interval_minutes: int = 60
+
     # Attachments: local storage + upload validation defaults
     attachment_allowed_content_types: str = (
         "image/jpeg,image/png,image/webp,application/pdf,text/plain"

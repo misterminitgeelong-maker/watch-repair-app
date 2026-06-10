@@ -156,6 +156,7 @@ def send_quote(
     quote.status = "sent"
     quote.sent_at = now
     quote.approval_token_expires_at = now + timedelta(hours=max(settings.quote_approval_token_ttl_hours, 1))
+    quote.reminder_sent_at = None
     session.add(quote)
 
     job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)
@@ -229,6 +230,20 @@ def send_quote(
     )
 
 
+@router.post("/quotes/send-reminders")
+def send_quote_reminders(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Manually trigger reminder SMS for this tenant's undecided quotes (watch + mobile services).
+
+    The background scheduler does this automatically; this endpoint exists for
+    testing and external cron setups.
+    """
+    from ..services.quote_reminders import send_due_quote_reminders
+    return send_due_quote_reminders(session, tenant_id=auth.tenant_id)
+
+
 @router.post("/quotes/{quote_id}/resend", response_model=QuoteSendResponse)
 def resend_quote(
     quote_id: UUID,
@@ -245,6 +260,7 @@ def resend_quote(
     quote.status = "sent"
     quote.sent_at = now
     quote.approval_token_expires_at = now + timedelta(hours=max(settings.quote_approval_token_ttl_hours, 1))
+    quote.reminder_sent_at = None
     session.add(quote)
 
     job = get_tenant_repair_job(session, quote.repair_job_id, auth.tenant_id)

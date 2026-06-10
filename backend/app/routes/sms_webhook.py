@@ -1,7 +1,7 @@
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
+from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import Response
@@ -9,9 +9,12 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..models import (
+    Approval,
     AutoKeyJob,
     Customer,
     JobMessage,
+    JobStatusHistory,
+    Quote,
     RepairJob,
     Shoe,
     ShoeRepairJob,
@@ -19,10 +22,22 @@ from ..models import (
     TenantEventLog,
     Watch,
 )
+from ..phone_utils import normalize_phone as _normalize_phone, phones_match as _phones_match
 
 router = APIRouter(prefix="/v1", tags=["sms-webhook"])
 
 _EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+
+# Keyword replies honoured for watch repair quotes ("Reply YES to approve or NO to decline").
+_APPROVE_KEYWORDS = frozenset({"yes", "y", "approve", "approved"})
+_DECLINE_KEYWORDS = frozenset({"no", "n", "decline", "declined"})
+
+
+def _reply_twiml(message: str) -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f"<Response><Message>{escape(message)}</Message></Response>"
+    )
 
 # Terminal statuses — inbound SMS should prefer an open job over stale SmsLog routing.
 _REPAIR_TERMINAL = frozenset({"collected", "no_go", "cancelled"})
@@ -34,30 +49,6 @@ _AUTO_KEY_TERMINAL = frozenset({
     "failed_job",
     "cancelled",
 })
-
-
-def _normalize_phone(raw: str) -> str | None:
-    if not raw or not raw.strip():
-        return None
-    digits = re.sub(r"\D", "", raw.strip())
-    if not digits:
-        return None
-    # AU international → local (e.g. +61412345678 → 0412345678)
-    if digits.startswith("61") and len(digits) >= 11:
-        digits = "0" + digits[2:11]
-    if len(digits) == 9 and digits[0] in ("4", "3"):
-        digits = "0" + digits
-    if len(digits) > 10:
-        digits = digits[-10:]
-    if len(digits) < 8:
-        return None
-    return digits
-
-
-def _phones_match(a: str | None, b: str | None) -> bool:
-    left = _normalize_phone(a or "")
-    right = _normalize_phone(b or "")
-    return bool(left and right and left == right)
 
 
 @dataclass
@@ -240,6 +231,88 @@ def _resolve_inbound_target(session: Session, from_phone: str) -> _InboundTarget
     return None
 
 
+@dataclass
+class _QuoteDecisionResult:
+    reply: str
+    decision: str
+    quote_id: UUID
+    job: RepairJob | None
+
+
+def _apply_keyword_quote_decision(
+    session: Session,
+    target: _InboundTarget,
+    body_text: str,
+) -> _QuoteDecisionResult | None:
+    """Honour YES/NO replies to a watch repair quote SMS.
+
+    Returns the decision outcome (with a confirmation message to text back), or
+    None when the reply is not a quote decision or there is no pending quote on
+    the matched job.
+    """
+    if not target.repair_job_id:
+        return None
+    keyword = "".join(ch for ch in body_text.lower() if ch.isalnum())
+    if keyword in _APPROVE_KEYWORDS:
+        decision = "approved"
+    elif keyword in _DECLINE_KEYWORDS:
+        decision = "declined"
+    else:
+        return None
+
+    # "expired" only means the link timed out — an explicit SMS reply still counts.
+    quote = session.exec(
+        select(Quote)
+        .where(Quote.repair_job_id == target.repair_job_id)
+        .where(Quote.tenant_id == target.tenant_id)
+        .where(Quote.status.in_(("sent", "expired")))
+        .order_by(Quote.sent_at.desc())
+    ).first()
+    if not quote:
+        return None
+
+    quote.status = decision
+    session.add(quote)
+    session.add(Approval(
+        tenant_id=quote.tenant_id,
+        quote_id=quote.id,
+        decision=decision,
+        user_agent="sms-reply",
+    ))
+
+    job = session.get(RepairJob, target.repair_job_id)
+    if job and job.status == "awaiting_go_ahead":
+        job.status = "go_ahead" if decision == "approved" else "no_go"
+        session.add(job)
+        session.add(JobStatusHistory(
+            tenant_id=job.tenant_id,
+            repair_job_id=job.id,
+            old_status="awaiting_go_ahead",
+            new_status=job.status,
+            changed_by_user_id=None,
+            change_note=f"Customer {decision} quote via SMS reply",
+        ))
+        session.add(TenantEventLog(
+            tenant_id=job.tenant_id,
+            actor_user_id=None,
+            entity_type="repair_job",
+            entity_id=job.id,
+            event_type="quote_approved" if decision == "approved" else "quote_declined",
+            event_summary=(
+                f"Customer approved quote for job #{job.job_number} via SMS"
+                if decision == "approved"
+                else f"Customer declined quote for job #{job.job_number} via SMS — return watch"
+            ),
+        ))
+
+    reply = (
+        "Thanks! Your quote has been approved and we'll get started on your repair."
+        if decision == "approved"
+        else "No problem — we've recorded that you declined the quote. We'll be in touch about returning your watch."
+    )
+    return _QuoteDecisionResult(reply=reply, decision=decision, quote_id=quote.id, job=job)
+
+
 @router.post("/webhook/sms/incoming", include_in_schema=False)
 def twilio_incoming_sms(
     From: str = Form(...),
@@ -248,13 +321,15 @@ def twilio_incoming_sms(
 ):
     """
     Twilio webhook — configure your Twilio number's inbound webhook URL here.
-    Saves the reply to the job's message thread and the inbox, then returns
+    Saves the reply to the job's message thread and the inbox. Replies with a
+    confirmation when the text is a YES/NO quote decision; otherwise returns
     empty TwiML so Twilio doesn't auto-reply.
 
     Routing order:
     1. Customer phone match → most recent open job (watch / shoe / auto key).
     2. Fallback → most recent sent SmsLog to that phone (exact or normalized).
-    3. If customer exists but no job/SmsLog match → inbox alert only (no thread).
+    3. If customer exists but no job/SmsLog match → message is still saved
+       (surfaced via phone-matched threads) plus an inbox alert.
     4. Unknown sender → no-op (no tenant context).
     """
     from_phone = From.strip()
@@ -264,16 +339,19 @@ def twilio_incoming_sms(
     if not target:
         return Response(content=_EMPTY_TWIML, media_type="text/xml")
 
-    if target.has_job:
-        session.add(JobMessage(
-            tenant_id=target.tenant_id,
-            repair_job_id=target.repair_job_id,
-            shoe_repair_job_id=target.shoe_repair_job_id,
-            auto_key_job_id=target.auto_key_job_id,
-            direction="inbound",
-            body=body_text,
-            from_phone=from_phone,
-        ))
+    # Always persist the message so it shows in phone-matched ticket threads,
+    # even when no open job could be resolved.
+    session.add(JobMessage(
+        tenant_id=target.tenant_id,
+        repair_job_id=target.repair_job_id,
+        shoe_repair_job_id=target.shoe_repair_job_id,
+        auto_key_job_id=target.auto_key_job_id,
+        direction="inbound",
+        body=body_text,
+        from_phone=from_phone,
+    ))
+
+    decision_result = _apply_keyword_quote_decision(session, target, body_text)
 
     session.add(TenantEventLog(
         tenant_id=target.tenant_id,
@@ -284,4 +362,20 @@ def twilio_incoming_sms(
     ))
     session.commit()
 
+    if decision_result and decision_result.decision == "approved" and decision_result.job:
+        from ..services.tenant_webhooks import dispatch_tenant_webhooks
+        dispatch_tenant_webhooks(
+            session,
+            tenant_id=decision_result.job.tenant_id,
+            event_type="quote_approved",
+            payload={
+                "job_id": str(decision_result.job.id),
+                "job_number": decision_result.job.job_number,
+                "quote_id": str(decision_result.quote_id),
+                "type": "repair_job",
+            },
+        )
+
+    if decision_result:
+        return Response(content=_reply_twiml(decision_result.reply), media_type="text/xml")
     return Response(content=_EMPTY_TWIML, media_type="text/xml")

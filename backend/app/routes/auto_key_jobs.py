@@ -1061,6 +1061,7 @@ def send_auto_key_quote(
 
     quote.status = "sent"
     quote.sent_at = datetime.now(timezone.utc)
+    quote.reminder_sent_at = None
     session.add(quote)
 
     # Auto-advance job to quote_sent when not already past that stage
@@ -1339,39 +1340,25 @@ def get_auto_key_job_messages(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    """Return the full message thread: manual outbound/inbound plus automated system SMS."""
+    """Return the full message thread: manual outbound/inbound plus automated system SMS.
+
+    Merges by job link AND by the customer's phone number, so automated mobile
+    services SMS saved without a job link (en route, arrival window, reminders)
+    and replies routed to the customer's other jobs all show up here.
+    """
     job = session.get(AutoKeyJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    manual = session.exec(
-        select(JobMessage)
-        .where(JobMessage.auto_key_job_id == job_id)
-        .where(JobMessage.tenant_id == auth.tenant_id)
-    ).all()
+    customer = session.get(Customer, job.customer_id)
 
-    automated = session.exec(
-        select(SmsLog)
-        .where(SmsLog.auto_key_job_id == job_id)
-        .where(SmsLog.tenant_id == auth.tenant_id)
-    ).all()
-
-    thread: list[JobThreadMessage] = []
-    for m in manual:
-        thread.append(JobThreadMessage(
-            id=m.id, direction=m.direction, body=m.body,
-            from_phone=m.from_phone, to_phone=m.to_phone,
-            created_at=m.created_at,
-        ))
-    for s in automated:
-        thread.append(JobThreadMessage(
-            id=s.id, direction="system", body=s.body,
-            to_phone=s.to_phone, event=s.event, status=s.status,
-            created_at=s.created_at,
-        ))
-
-    thread.sort(key=lambda m: m.created_at)
-    return thread
+    from ..services.message_threads import build_job_thread
+    return build_job_thread(
+        session,
+        tenant_id=auth.tenant_id,
+        customer_phone=customer.phone if customer else None,
+        auto_key_job_id=job_id,
+    )
 
 
 @router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)

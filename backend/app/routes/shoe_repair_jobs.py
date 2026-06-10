@@ -29,7 +29,6 @@ from ..models import (
     ShoeJobStatusHistory,
     JobNotePayload,
     ShoeJobStatusHistoryRead,
-    JobMessage,
     JobMessageRead,
     JobThreadMessage,
     SmsLog,
@@ -665,32 +664,16 @@ def get_shoe_job_messages(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
 
-    manual = session.exec(
-        select(JobMessage)
-        .where(JobMessage.shoe_repair_job_id == job_id)
-        .where(JobMessage.tenant_id == auth.tenant_id)
-    ).all()
-    automated = session.exec(
-        select(SmsLog)
-        .where(SmsLog.shoe_repair_job_id == job_id)
-        .where(SmsLog.tenant_id == auth.tenant_id)
-    ).all()
+    shoe = session.get(Shoe, job.shoe_id)
+    customer = session.get(Customer, shoe.customer_id) if shoe else None
 
-    thread: list[JobThreadMessage] = []
-    for m in manual:
-        thread.append(JobThreadMessage(
-            id=m.id, direction=m.direction, body=m.body,
-            from_phone=m.from_phone, to_phone=m.to_phone,
-            created_at=m.created_at,
-        ))
-    for s in automated:
-        thread.append(JobThreadMessage(
-            id=s.id, direction="system", body=s.body,
-            to_phone=s.to_phone, event=s.event, status=s.status,
-            created_at=s.created_at,
-        ))
-    thread.sort(key=lambda m: m.created_at)
-    return thread
+    from ..services.message_threads import build_job_thread
+    return build_job_thread(
+        session,
+        tenant_id=auth.tenant_id,
+        customer_phone=customer.phone if customer else None,
+        shoe_repair_job_id=job_id,
+    )
 
 
 @router.post("/{job_id}/messages", response_model=JobMessageRead, status_code=201)
