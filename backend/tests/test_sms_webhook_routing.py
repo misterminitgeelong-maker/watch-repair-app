@@ -382,3 +382,42 @@ def test_inbound_yes_without_pending_quote_is_plain_reply(client: TestClient):
             .where(JobMessage.direction == "inbound")
         ).first()
         assert msg is not None  # still lands in the thread
+
+
+def test_inbox_alert_includes_ticket_number(client: TestClient):
+    from app.models import RepairJob as _RepairJob
+
+    from_phone, stored_phone = _phone_pair(8)
+    headers, tenant_id = _bootstrap_tenant(client)
+    customer_id = _customer_with_phone(client, headers, stored_phone)
+    job = _watch_job(client, headers, customer_id, "Inbox context")
+
+    _post_inbound(client, from_phone, body="What time do you close?")
+
+    with Session(engine) as session:
+        db_job = session.get(_RepairJob, job.id)
+        event = session.exec(
+            select(TenantEventLog)
+            .where(TenantEventLog.event_type == "customer_sms_reply")
+            .where(TenantEventLog.event_summary.contains(from_phone))
+        ).first()
+        assert event is not None
+        assert f"#{db_job.job_number}" in event.event_summary
+        assert "What time do you close?" in event.event_summary
+
+
+def test_inbox_alert_without_job_says_no_open_ticket(client: TestClient):
+    from_phone, stored_phone = _phone_pair(9)
+    headers, tenant_id = _bootstrap_tenant(client)
+    _customer_with_phone(client, headers, stored_phone)
+
+    _post_inbound(client, from_phone, body="Just enquiring")
+
+    with Session(engine) as session:
+        event = session.exec(
+            select(TenantEventLog)
+            .where(TenantEventLog.event_type == "customer_sms_reply")
+            .where(TenantEventLog.event_summary.contains(from_phone))
+        ).first()
+        assert event is not None
+        assert "no open ticket" in event.event_summary

@@ -321,6 +321,20 @@ def _apply_keyword_quote_decision(
     return _QuoteDecisionResult(reply=reply, decision=decision, quote_id=quote.id, job=job)
 
 
+def _ticket_label(session: Session, target: _InboundTarget) -> str | None:
+    """Human ticket number for the matched job, e.g. '#JOB-00042' — inbox context."""
+    if target.repair_job_id:
+        job = session.get(RepairJob, target.repair_job_id)
+        return f"#{job.job_number}" if job else None
+    if target.shoe_repair_job_id:
+        job = session.get(ShoeRepairJob, target.shoe_repair_job_id)
+        return f"#{job.job_number}" if job else None
+    if target.auto_key_job_id:
+        job = session.get(AutoKeyJob, target.auto_key_job_id)
+        return f"#{job.job_number}" if job else None
+    return None
+
+
 @router.post("/webhook/sms/incoming", include_in_schema=False)
 def twilio_incoming_sms(
     From: str = Form(...),
@@ -370,12 +384,14 @@ def twilio_incoming_sms(
 
     decision_result = _apply_keyword_quote_decision(session, target, body_text)
 
+    ticket = _ticket_label(session, target)
+    summary_prefix = f"{ticket} · {from_phone}" if ticket else f"{from_phone} (no open ticket)"
     session.add(TenantEventLog(
         tenant_id=target.tenant_id,
         entity_type=target.entity_type,
         entity_id=target.entity_id,
         event_type="customer_sms_reply",
-        event_summary=f"{from_phone}: {body_text[:200]}",
+        event_summary=f"{summary_prefix}: {body_text[:200]}",
     ))
     session.commit()
 

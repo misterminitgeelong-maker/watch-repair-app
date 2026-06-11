@@ -327,11 +327,21 @@ def debug_sms_status():
         ).first()
         last_inbound_info = None
         if last_inbound:
+            from .models import AutoKeyJob, RepairJob, ShoeRepairJob
+
+            ticket = None
+            if last_inbound.repair_job_id:
+                job = session.get(RepairJob, last_inbound.repair_job_id)
+                ticket = f"watch #{job.job_number}" if job else None
+            elif last_inbound.shoe_repair_job_id:
+                job = session.get(ShoeRepairJob, last_inbound.shoe_repair_job_id)
+                ticket = f"shoe #{job.job_number}" if job else None
+            elif last_inbound.auto_key_job_id:
+                job = session.get(AutoKeyJob, last_inbound.auto_key_job_id)
+                ticket = f"mobile #{job.job_number}" if job else None
             last_inbound_info = {
                 "received_at": last_inbound.created_at.isoformat(),
-                "linked_to_watch_job": last_inbound.repair_job_id is not None,
-                "linked_to_shoe_job": last_inbound.shoe_repair_job_id is not None,
-                "linked_to_mobile_job": last_inbound.auto_key_job_id is not None,
+                "linked_ticket": ticket or "none (saved unlinked)",
             }
 
     return {
