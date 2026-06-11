@@ -288,6 +288,65 @@ def debug_demo_status():
         }
 
 
+@app.get("/v1/debug/sms-status")
+def debug_sms_status():
+    """Diagnostic: deployed commit, schema version, and inbound SMS routing stats.
+    No auth required; returns aggregate counts only — no message content or phone numbers."""
+    from datetime import datetime, timedelta, timezone
+    from sqlmodel import select, func
+    from .models import JobMessage, TenantEventLog
+
+    git_commit = (
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_COMMIT")
+        or "unknown"
+    )
+    with Session(engine) as session:
+        try:
+            schema_version = session.connection().execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar()
+        except Exception:
+            schema_version = "unknown"
+
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        inbound_24h = int(session.exec(
+            select(func.count()).select_from(JobMessage)
+            .where(JobMessage.direction == "inbound")
+            .where(JobMessage.created_at >= day_ago)
+        ).one())
+        reply_events_24h = int(session.exec(
+            select(func.count()).select_from(TenantEventLog)
+            .where(TenantEventLog.event_type == "customer_sms_reply")
+            .where(TenantEventLog.created_at >= day_ago)
+        ).one())
+        last_inbound = session.exec(
+            select(JobMessage)
+            .where(JobMessage.direction == "inbound")
+            .order_by(JobMessage.created_at.desc())
+        ).first()
+        last_inbound_info = None
+        if last_inbound:
+            last_inbound_info = {
+                "received_at": last_inbound.created_at.isoformat(),
+                "linked_to_watch_job": last_inbound.repair_job_id is not None,
+                "linked_to_shoe_job": last_inbound.shoe_repair_job_id is not None,
+                "linked_to_mobile_job": last_inbound.auto_key_job_id is not None,
+            }
+
+    return {
+        "git_commit": git_commit,
+        "schema_version": schema_version,
+        "inbound_messages_saved_last_24h": inbound_24h,
+        "inbox_sms_alerts_last_24h": reply_events_24h,
+        "last_inbound_message": last_inbound_info,
+        "note": (
+            "If inbox_sms_alerts > 0 but inbound_messages_saved is 0, the running build "
+            "predates the thread fix — check git_commit."
+        ),
+    }
+
+
 @app.get("/v1/health")
 def health():
     from sqlmodel import select

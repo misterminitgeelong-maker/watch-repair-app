@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -25,6 +26,13 @@ from ..models import (
 from ..phone_utils import normalize_phone as _normalize_phone, phones_match as _phones_match
 
 router = APIRouter(prefix="/v1", tags=["sms-webhook"])
+
+logger = logging.getLogger(__name__)
+
+
+def _mask_phone(raw: str) -> str:
+    digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+    return f"…{digits[-3:]}" if len(digits) >= 3 else "unknown"
 
 _EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
@@ -337,7 +345,16 @@ def twilio_incoming_sms(
 
     target = _resolve_inbound_target(session, from_phone)
     if not target:
+        logger.info("sms_webhook.inbound unmatched from=%s", _mask_phone(from_phone))
         return Response(content=_EMPTY_TWIML, media_type="text/xml")
+
+    logger.info(
+        "sms_webhook.inbound matched from=%s tenant=%s entity=%s entity_id=%s",
+        _mask_phone(from_phone),
+        target.tenant_id,
+        target.entity_type,
+        target.entity_id,
+    )
 
     # Always persist the message so it shows in phone-matched ticket threads,
     # even when no open job could be resolved.
