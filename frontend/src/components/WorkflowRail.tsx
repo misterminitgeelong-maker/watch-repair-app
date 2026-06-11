@@ -13,7 +13,10 @@ export const WATCH_WORKFLOW_STEPS: readonly WorkflowStep[] = [
   {
     key: 'approved',
     label: 'Approved',
-    statuses: ['go_ahead', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'at_third_party_repairer'],
+    statuses: [
+      'go_ahead', 'awaiting_parts', 'at_third_party_for_quoting', 'third_party_quote_approved',
+      'at_third_party_repairer', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda',
+    ],
   },
   { key: 'working', label: 'In Workshop', statuses: ['working_on', 'service'] },
   { key: 'complete', label: 'Completed', statuses: ['completed'] },

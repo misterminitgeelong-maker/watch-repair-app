@@ -20,7 +20,7 @@ import { preparePhotoFile, getPhotoPrepareErrorMessage, getIntakeSubmitErrorMess
 import { pushModalCloseHandler } from '@/lib/modalBackStack'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
-const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'service'] as const
+const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 const MAX_WATCHES = 5
 
 function calculateRepairsTotal(

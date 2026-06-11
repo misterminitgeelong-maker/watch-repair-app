@@ -24,20 +24,29 @@ export const WATCH_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   {
     key: 'approved',
     label: 'Approved',
-    statuses: ['go_ahead', 'awaiting_parts', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda'],
+    // parts_to_order kept for legacy pre-migration jobs
+    statuses: ['go_ahead', 'awaiting_parts', 'parts_to_order'],
     color: '#B06010',
     bg: '#FFF0E0',
   },
   {
     key: 'third_party',
     label: 'At 3rd Party Repairer',
-    statuses: ['at_third_party_repairer'],
+    // sent_to_labanda / quoted_by_labanda kept for legacy pre-migration jobs
+    statuses: [
+      'at_third_party_for_quoting',
+      'third_party_quote_approved',
+      'at_third_party_repairer',
+      'sent_to_labanda',
+      'quoted_by_labanda',
+    ],
     color: '#0F6B6B',
     bg: '#E3F2F2',
   },
   {
     key: 'in_work',
     label: 'In Work',
+    // service kept for legacy pre-migration jobs
     statuses: ['working_on', 'service'],
     color: '#6840B4',
     bg: '#F3EBF9',

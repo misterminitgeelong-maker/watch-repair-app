@@ -21,6 +21,8 @@ JobStatus = Literal[
     "parts_to_order",
     "sent_to_labanda",
     "quoted_by_labanda",
+    "at_third_party_for_quoting",
+    "third_party_quote_approved",
     "at_third_party_repairer",
     "service",
     "completed",

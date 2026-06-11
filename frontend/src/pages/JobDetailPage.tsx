@@ -36,9 +36,13 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   no_go:               null,
   working_on:          'completed',
   awaiting_parts:      'working_on',
-  parts_to_order:      'sent_to_labanda',
-  sent_to_labanda:     'quoted_by_labanda',
-  quoted_by_labanda:   'awaiting_parts',
+  // parts_to_order / sent_to_labanda / quoted_by_labanda / service are legacy —
+  // no longer selectable, flow just moves them into the new pipeline
+  parts_to_order:      'at_third_party_for_quoting',
+  sent_to_labanda:     'third_party_quote_approved',
+  quoted_by_labanda:   'third_party_quote_approved',
+  at_third_party_for_quoting: 'third_party_quote_approved',
+  third_party_quote_approved: 'at_third_party_repairer',
   at_third_party_repairer: 'working_on',
   service:             'completed',
   completed:           'awaiting_collection',
@@ -81,28 +85,20 @@ const STATUS_STEP_NOTES: Partial<Record<JobStatus, string[]>> = {
     'Service kit ordered — ETA to be confirmed.',
     'Parts on backorder.',
   ],
-  parts_to_order: [
-    'Parts identified and being ordered.',
-    'Sent parts list to supplier.',
-    'Awaiting supplier confirmation.',
+  at_third_party_for_quoting: [
+    'Sent to 3rd party repairer for quoting.',
+    'Awaiting quote from 3rd party repairer.',
+    'Quote requested — ETA to be confirmed.',
   ],
-  sent_to_labanda: [
-    'Movement sent to Labanda for specialist service.',
-    'Forwarded to Labanda — mainspring replacement required.',
-    'Sent to Labanda for full movement overhaul.',
-  ],
-  quoted_by_labanda: [
-    'Quote received from Labanda — awaiting customer approval.',
-    'Labanda quote in — will contact customer.',
+  third_party_quote_approved: [
+    '3rd party quote approved — repair to proceed.',
+    'Customer approved 3rd party repairer quote.',
+    'Quote approved — booking work with 3rd party repairer.',
   ],
   at_third_party_repairer: [
     'Sent to 3rd party repairer for specialist work.',
     'At 3rd party repairer — awaiting their assessment.',
     'With 3rd party repairer — ETA to be confirmed.',
-  ],
-  service: [
-    'Service started.',
-    'Routine service in progress.',
   ],
   completed: [
     'Full service complete — movement cleaned, lubricated, and timed.',
