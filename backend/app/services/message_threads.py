@@ -8,6 +8,7 @@ services SMS are persisted without a job link — so the thread merges:
 1. JobMessage / SmsLog rows linked to the job id, and
 2. tenant-scoped rows whose phone matches the customer's number.
 """
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -17,6 +18,13 @@ from ..phone_utils import phones_match
 
 # Cap on the phone-matched scan; well beyond a single shop's recent SMS volume.
 _PHONE_SCAN_LIMIT = 1000
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """Normalise to timezone-aware UTC. In production Postgres, jobmessage.created_at
+    is timestamptz (aware) while smslog.created_at is timestamp (naive UTC) — mixing
+    them in a sort raises TypeError, which 500'd the whole thread."""
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
 def build_job_thread(
@@ -83,7 +91,7 @@ def build_job_thread(
             body=m.body,
             from_phone=m.from_phone,
             to_phone=m.to_phone,
-            created_at=m.created_at,
+            created_at=_as_utc(m.created_at),
         ))
     for s in automated.values():
         thread.append(JobThreadMessage(
@@ -93,7 +101,7 @@ def build_job_thread(
             to_phone=s.to_phone,
             event=s.event,
             status=s.status,
-            created_at=s.created_at,
+            created_at=_as_utc(s.created_at),
         ))
 
     thread.sort(key=lambda m: m.created_at)

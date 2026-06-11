@@ -133,3 +133,50 @@ def test_unlinked_system_sms_visible_in_auto_key_thread(client: TestClient):
     assert thread.status_code == 200, thread.text
     system = [m for m in thread.json() if m["direction"] == "system"]
     assert any(m["event"] == "auto_key_en_route" for m in system)
+
+
+def test_thread_merges_mixed_tz_aware_and_naive_timestamps(client: TestClient):
+    """Production Postgres returns jobmessage.created_at tz-aware (timestamptz) but
+    smslog.created_at naive (timestamp). The merged sort must not TypeError."""
+    from datetime import timedelta
+    from uuid import UUID
+    from app.models import JobMessage
+    from app.services.message_threads import build_job_thread
+
+    headers = _bootstrap_tenant(client)
+    phone = "0400777888"
+    customer_id, tenant_id = _customer(client, headers, phone)
+    job_id = _watch_job(client, headers, customer_id, "Mixed tz")
+
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        session.add(SmsLog(
+            tenant_id=tenant_id,
+            repair_job_id=UUID(job_id),
+            to_phone=phone,
+            body="Quote sent",
+            event="quote_sent",
+            status="sent",
+            created_at=now.replace(tzinfo=None),  # naive, like prod smslog
+        ))
+        session.add(JobMessage(
+            tenant_id=tenant_id,
+            repair_job_id=UUID(job_id),
+            direction="inbound",
+            body="Sounds good",
+            from_phone=phone,
+            created_at=now + timedelta(minutes=5),  # aware, like prod jobmessage
+        ))
+        session.flush()
+
+        thread = build_job_thread(
+            session,
+            tenant_id=tenant_id,
+            customer_phone=phone,
+            repair_job_id=UUID(job_id),
+        )
+        bodies = [m.body for m in thread]
+        assert "Quote sent" in bodies
+        assert "Sounds good" in bodies
+        assert all(m.created_at.tzinfo is not None for m in thread)
+        assert bodies.index("Quote sent") < bodies.index("Sounds good")
