@@ -261,3 +261,26 @@
   ::-webkit-scrollbar-track { background: var(--ms-bg); }
   ::-webkit-scrollbar-thumb { background: var(--ms-border-strong); border-radius: 3px; }
 }
+
+/* ── Print ───────────────────────────────────────────────────────────────
+   The printable pages (intake tickets, invoices) render inside the app
+   shell, whose h-screen/overflow-hidden root and overflow-y-auto <main>
+   form a scroll container. Browsers cannot paginate content inside a
+   scroll container, so without these overrides printing produces a single
+   clipped/blank page. !important is needed to beat Tailwind utilities
+   regardless of variant ordering. */
+@media print {
+  .app-shell-root {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-shell-main {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
+}

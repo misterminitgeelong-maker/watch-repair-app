@@ -80,17 +80,26 @@ export default function PrintShoeIntakeTicketsPage() {
 
   useEffect(() => {
     if (!autoPrint || !job || !repairQr || !customerQr || autoTriedBt) return
-    setAutoTriedBt(true)
     if (btSupported) {
+      // Wait for the label canvases so a successful connect can print immediately
+      if (!labelCanvases) return
+      setAutoTriedBt(true)
       btAutoConnect().then(connected => {
-        if (connected) printToNiimbot()
+        if (connected) {
+          printToNiimbot()
+        } else if (window.matchMedia('(min-width: 640px)').matches) {
+          // The connect-and-print prompt only renders below the sm breakpoint,
+          // so on wider screens fall back to the browser print dialog
+          window.print()
+        }
       })
     } else {
+      setAutoTriedBt(true)
       const t = window.setTimeout(() => window.print(), 250)
       return () => window.clearTimeout(t)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPrint, job, repairQr, customerQr])
+  }, [autoPrint, job, repairQr, customerQr, labelCanvases, autoTriedBt])
 
   const printToNiimbot = useCallback(async () => {
     if (!labelCanvases) return

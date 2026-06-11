@@ -917,14 +917,14 @@ export default function AppShell() {
   const guidedNextLabel = !guidedIsLast ? guidedTourSteps[guidedStep + 1]?.label : null
 
   return (
-    <div className="h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
-      <Sidebar className="hidden md:flex" />
+    <div className="app-shell-root h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
+      <Sidebar className="hidden md:flex print-hide" />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <OfflineQueueBanner />
+        <div className="print-hide"><OfflineQueueBanner /></div>
         {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
         <header
-          className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 pb-3"
+          className="md:hidden print-hide sticky top-0 z-20 flex items-center justify-between px-4 pb-3"
           style={{
             backgroundColor: 'var(--ms-surface)',
             borderBottom: '1px solid var(--ms-border)',
@@ -954,9 +954,9 @@ export default function AppShell() {
         </header>
 
         {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}
-        <main className={`min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-20 md:pb-7${tourMode === 'guided' ? ' pb-28' : ''}`}>
+        <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-20 md:pb-7${tourMode === 'guided' ? ' pb-28' : ''}`}>
           {availableSites.length > 1 && (
-            <div className="mb-4 flex items-center justify-end gap-2">
+            <div className="print-hide mb-4 flex items-center justify-end gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Active site
               </span>
@@ -986,21 +986,23 @@ export default function AppShell() {
               </select>
             </div>
           )}
-          <SubscriptionBanner
-            subscriptionStatus={subscriptionStatus}
-            trialEnd={trialEnd}
-            role={role}
-            onManage={() => navigate('/accounts')}
-          />
-          <StripeConnectNudge
-            role={role}
-            hasAutoKey={hasFeature('auto_key')}
-          />
+          <div className="print-hide">
+            <SubscriptionBanner
+              subscriptionStatus={subscriptionStatus}
+              trialEnd={trialEnd}
+              role={role}
+              onManage={() => navigate('/accounts')}
+            />
+            <StripeConnectNudge
+              role={role}
+              hasAutoKey={hasFeature('auto_key')}
+            />
+          </div>
           <Outlet />
         </main>
       </div>
 
-      {minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}
+      <div className="print-hide">{minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}</div>
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>
