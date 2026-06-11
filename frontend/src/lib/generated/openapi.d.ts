@@ -3431,7 +3431,7 @@ export interface components {
              * @default awaiting_quote
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -3584,7 +3584,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -3621,7 +3621,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
             /** Note */
             note?: string | null;
         };
@@ -4997,7 +4997,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -5026,7 +5026,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
             /** Note */
             note?: string | null;
         };

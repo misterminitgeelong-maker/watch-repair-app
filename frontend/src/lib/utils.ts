@@ -38,6 +38,7 @@ export const JOB_STATUS_ORDER = [
   'parts_to_order',
   'sent_to_labanda',
   'quoted_by_labanda',
+  'at_third_party_repairer',
   'awaiting_parts',
   'working_on',
   'service',
@@ -48,8 +49,8 @@ export const JOB_STATUS_ORDER = [
 
 export const ACTIVE_DIRECTORY_STATUSES = [
   'awaiting_quote', 'awaiting_customer_details', 'awaiting_go_ahead', 'quote_sent',
-  'go_ahead', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'awaiting_parts',
-  'working_on', 'service', 'completed', 'awaiting_collection',
+  'go_ahead', 'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'at_third_party_repairer',
+  'awaiting_parts', 'working_on', 'service', 'completed', 'awaiting_collection',
 ] as const
 
 export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'collected'] as const
@@ -62,6 +63,7 @@ export const WATCH_QUEUE_SWIPE_SEQUENCE = [
   'parts_to_order',
   'sent_to_labanda',
   'quoted_by_labanda',
+  'at_third_party_repairer',
   'awaiting_parts',
   'working_on',
   'service',
@@ -98,6 +100,7 @@ export const STATUS_LABELS: Record<string, string> = {
   parts_to_order:      'Parts Ordered',
   sent_to_labanda:     'Sent to Labanda',
   quoted_by_labanda:   'Quoted by Labanda',
+  at_third_party_repairer: 'At 3rd Party Repairer',
   service:             'Service',
   completed:           'Work Completed',
   awaiting_collection: 'Ready for Collection',
@@ -137,6 +140,7 @@ export const STATUS_COLORS: Record<string, string> = {
   parts_to_order:      'bg-[var(--ms-badge-orange-bg)] text-[var(--ms-badge-orange-text)]',
   sent_to_labanda:     'bg-[var(--ms-badge-neutral-bg)] text-[var(--ms-badge-neutral-text)]',
   quoted_by_labanda:   'bg-[var(--ms-badge-neutral-bg)] text-[var(--ms-badge-neutral-text)]',
+  at_third_party_repairer: 'bg-[var(--ms-badge-teal-bg)] text-[var(--ms-badge-teal-text)]',
   service:             'bg-[var(--ms-badge-teal-bg)] text-[var(--ms-badge-teal-text)]',
   completed:           'bg-[var(--ms-badge-done-bg)] text-[var(--ms-badge-done-text)]',
   awaiting_collection: 'bg-[var(--ms-badge-wait-bg)] text-[var(--ms-badge-wait-text)]',

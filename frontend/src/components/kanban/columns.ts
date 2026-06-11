@@ -29,6 +29,13 @@ export const WATCH_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
     bg: '#FFF0E0',
   },
   {
+    key: 'third_party',
+    label: 'At 3rd Party Repairer',
+    statuses: ['at_third_party_repairer'],
+    color: '#0F6B6B',
+    bg: '#E3F2F2',
+  },
+  {
     key: 'in_work',
     label: 'In Work',
     statuses: ['working_on', 'service'],

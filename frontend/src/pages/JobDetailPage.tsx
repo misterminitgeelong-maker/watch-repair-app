@@ -39,6 +39,7 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   parts_to_order:      'sent_to_labanda',
   sent_to_labanda:     'quoted_by_labanda',
   quoted_by_labanda:   'awaiting_parts',
+  at_third_party_repairer: 'working_on',
   service:             'completed',
   completed:           'awaiting_collection',
   awaiting_collection: 'collected',
@@ -93,6 +94,11 @@ const STATUS_STEP_NOTES: Partial<Record<JobStatus, string[]>> = {
   quoted_by_labanda: [
     'Quote received from Labanda — awaiting customer approval.',
     'Labanda quote in — will contact customer.',
+  ],
+  at_third_party_repairer: [
+    'Sent to 3rd party repairer for specialist work.',
+    'At 3rd party repairer — awaiting their assessment.',
+    'With 3rd party repairer — ETA to be confirmed.',
   ],
   service: [
     'Service started.',

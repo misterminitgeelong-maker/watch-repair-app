@@ -13,6 +13,7 @@ const WATCH_STAGE: Record<string, PortalStage> = {
   parts_to_order: 'in_progress',
   sent_to_labanda: 'in_progress',
   quoted_by_labanda: 'in_progress',
+  at_third_party_repairer: 'in_progress',
   service: 'in_progress',
   completed: 'ready',
   awaiting_collection: 'ready',

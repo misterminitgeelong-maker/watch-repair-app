@@ -118,6 +118,8 @@ _STATUS_MAP = {
     "awaiting parts": "awaiting_parts",
     "parts to be ordered": "parts_to_order",
     "sent to labanda": "sent_to_labanda",
+    "at 3rd party repairer": "at_third_party_repairer",
+    "at third party repairer": "at_third_party_repairer",
     "service": "service",
     "cancelled": "no_go",
     "approved": "go_ahead",
