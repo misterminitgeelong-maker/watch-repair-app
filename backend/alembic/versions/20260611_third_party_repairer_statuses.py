@@ -2,7 +2,7 @@
 
 parts_to_order      -> at_third_party_for_quoting  (slot renamed)
 sent_to_labanda     -> third_party_quote_approved  (slot renamed)
-quoted_by_labanda   -> third_party_quote_approved  (status removed)
+quoted_by_labanda   -> at_third_party_for_quoting  (status removed)
 service             -> working_on                  (status removed)
 
 Watch repair jobs only — shoe repairs keep parts_to_order/service.
@@ -20,11 +20,11 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute(
-        "UPDATE repairjob SET status = 'at_third_party_for_quoting' WHERE status = 'parts_to_order'"
+        "UPDATE repairjob SET status = 'at_third_party_for_quoting' "
+        "WHERE status IN ('parts_to_order', 'quoted_by_labanda')"
     )
     op.execute(
-        "UPDATE repairjob SET status = 'third_party_quote_approved' "
-        "WHERE status IN ('sent_to_labanda', 'quoted_by_labanda')"
+        "UPDATE repairjob SET status = 'third_party_quote_approved' WHERE status = 'sent_to_labanda'"
     )
     op.execute(
         "UPDATE repairjob SET status = 'working_on' WHERE status = 'service'"

@@ -40,7 +40,7 @@ const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   // no longer selectable, flow just moves them into the new pipeline
   parts_to_order:      'at_third_party_for_quoting',
   sent_to_labanda:     'third_party_quote_approved',
-  quoted_by_labanda:   'third_party_quote_approved',
+  quoted_by_labanda:   'at_third_party_for_quoting',
   at_third_party_for_quoting: 'third_party_quote_approved',
   third_party_quote_approved: 'at_third_party_repairer',
   at_third_party_repairer: 'working_on',
