@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
+import { safeNextPath } from '@/lib/safeNext'
 
 const ANIM_CSS = `
   @keyframes msSlideUp {
@@ -51,9 +52,8 @@ export default function LoginPage() {
     applyMinitBrandingIfNeeded(slug)
   }, [slug])
 
-  // Optional post-login destination (?next=/jobs/…) — internal paths only
-  const rawNext = searchParams.get('next') || ''
-  const nextPath = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null
+  // Optional post-login destination (?next=/jobs/…) — same-origin paths only
+  const nextPath = safeNextPath(searchParams.get('next'))
 
   if (token && sessionReady) {
     return <Navigate to={nextPath ?? defaultHomePathForMinit(planCode, tenantSlug)} replace />
