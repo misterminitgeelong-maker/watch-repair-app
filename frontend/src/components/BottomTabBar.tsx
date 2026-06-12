@@ -23,7 +23,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import ChangelogModal from './ChangelogModal'
-import { useInboxCount } from '@/pages/InboxPage'
+import { useInboxCount } from '@/hooks/useInboxCount'
 
 /**
  * Mobile bottom tab bar — only shown on screens < md (768px).

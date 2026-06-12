@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
-import { useInboxCount } from '@/pages/InboxPage'
+import { useInboxCount } from '@/hooks/useInboxCount'
 import { MINIT_HQ_NAV } from './MinitHqSidebar'
 import { cn } from '@/lib/utils'
 

@@ -12,7 +12,7 @@ import {
   Download,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { useInboxCount } from '@/pages/InboxPage'
+import { useInboxCount } from '@/hooks/useInboxCount'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'

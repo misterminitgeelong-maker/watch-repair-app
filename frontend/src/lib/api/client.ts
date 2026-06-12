@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { enqueueOffline } from '@/lib/offlineQueue'
 
 /**
  * Optional API origin when the UI is served from a different host than the API (scheme + host, no path).
@@ -95,7 +96,6 @@ api.interceptors.response.use(
       const method = (err.config.method ?? 'get').toUpperCase()
       if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
         try {
-          const { enqueueOffline } = await import('@/lib/offlineQueue')
           const url = err.config.url ?? ''
           await enqueueOffline({
             method,

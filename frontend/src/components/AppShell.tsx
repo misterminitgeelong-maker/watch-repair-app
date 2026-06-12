@@ -38,7 +38,7 @@ import {
   setPageTutorialSeen,
 } from '@/lib/onboarding'
 import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
-import { AdminReturnBanner } from '@/pages/PlatformAdminUsersPage'
+import { AdminReturnBanner } from '@/lib/adminImpersonation'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 import OfflineQueueBanner from './OfflineQueueBanner'

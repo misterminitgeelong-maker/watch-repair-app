@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound, DollarSign, MessageSquare } from 'lucide-react'
 import { getInbox, deleteInboxEvent } from '@/lib/api'
-import { useAuth } from '@/context/AuthContext'
-import { isMinitHqUi } from '@/lib/minitProduct'
 import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
+// Re-exported for existing import sites; the hook now lives in its own module
+// so nav bars can use it without statically pulling in this page.
+export { useInboxCount } from '@/hooks/useInboxCount'
 
 const PAGE_SIZE = 50
 
@@ -35,22 +36,6 @@ function EventIcon({ eventType }: { eventType: string }) {
   if (eventType === 'invoice_paid') return <DollarSign size={20} />
   if (eventType === 'customer_sms_reply') return <MessageSquare size={20} />
   return <KeyRound size={20} />
-}
-
-/** Hook to get inbox count for nav badges — shares key with InboxPage page=0 to avoid duplicate fetch */
-export function useInboxCount() {
-  const { minitHqUi, product, planCode, tenantSlug, role } = useAuth()
-  const hqNav =
-    role === 'platform_admin'
-    || minitHqUi === true
-    || isMinitHqUi(product, planCode, tenantSlug)
-  const { data } = useQuery({
-    queryKey: ['inbox', 0],
-    queryFn: () => getInbox(PAGE_SIZE, 0).then(r => r.data),
-    staleTime: 60_000,
-    enabled: !hqNav,
-  })
-  return data?.length ?? 0
 }
 
 export default function InboxPage() {

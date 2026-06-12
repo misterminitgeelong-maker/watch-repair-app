@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { useTheme } from '@/context/ThemeContext'
-import { useInboxCount } from '@/pages/InboxPage'
+import { useInboxCount } from '@/hooks/useInboxCount'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
