@@ -13,7 +13,6 @@ import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clo
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
-  createAutoKeyQuickIntake,
   createAutoKeyQuote,
   createCustomer,
   deleteAutoKeyJob,
@@ -95,6 +94,8 @@ import {
   WeekDayHeaderDrop,
   WeekHourDropCell,
 } from '@/pages/autoKey/WeekGridCells'
+import { CustomerSearchSelect } from '@/pages/autoKey/CustomerSearchSelect'
+import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
 
 function PlannerJobDetailModal({
   jobId,
@@ -189,120 +190,6 @@ function PlannerJobDetailModal({
           </div>
         </div>
       )}
-    </Modal>
-  )
-}
-
-function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
-  const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
-  const [highlight, setHighlight] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const q = search.trim().toLowerCase()
-  const filtered = q
-    ? customers.filter(c =>
-        c.full_name.toLowerCase().includes(q) ||
-        (c.phone && c.phone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
-        (c.email && c.email.toLowerCase().includes(q))
-      )
-    : customers
-  const selected = customers.find(c => c.id === value)
-  const display = selected ? `${selected.full_name}${selected.phone ? ` · ${selected.phone}` : ''}` : search
-  const safeHighlight = filtered.length === 0 ? 0 : Math.min(highlight, filtered.length - 1)
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const h = (e: MouseEvent) => { if (!el.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-  return (
-    <div ref={containerRef} className="relative">
-      <Input
-        label="Search customer"
-        value={open ? search : display}
-        onChange={e => { setSearch(e.target.value); setOpen(true); setHighlight(0) }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={e => {
-          if (!open || filtered.length === 0) return
-          if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(i => (i + 1) % filtered.length) }
-          else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(i => (i - 1 + filtered.length) % filtered.length) }
-          else if (e.key === 'Enter') { e.preventDefault(); onChange(filtered[safeHighlight].id); setOpen(false); setSearch('') }
-          else if (e.key === 'Escape') setOpen(false)
-        }}
-        placeholder="Type name, phone or email…"
-      />
-      {open && (
-        <ul className="absolute z-50 w-full mt-1 py-1 rounded-lg border shadow-lg overflow-y-auto max-h-48" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)' }}>
-          {filtered.slice(0, 30).map((c, i) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 text-sm truncate"
-                style={{ color: 'var(--ms-text)', backgroundColor: i === safeHighlight ? '#F5EDE0' : 'transparent' }}
-                onMouseEnter={() => setHighlight(i)}
-                onMouseDown={e => { e.preventDefault(); onChange(c.id); setOpen(false); setSearch('') }}
-              >
-                {c.full_name}{c.phone ? ` · ${c.phone}` : ''}{c.email ? ` · ${c.email}` : ''}
-              </button>
-            </li>
-          ))}
-          {filtered.length === 0 && <li className="px-3 py-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No customers match</li>}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function SendBookingRequestModal({ onClose }: { onClose: () => void }) {
-  const navigate = useNavigate()
-  const [phone, setPhone] = useState('')
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-
-  const mut = useMutation({
-    mutationFn: () => createAutoKeyQuickIntake({ phone: phone.trim(), full_name: name.trim() || 'Customer' }),
-    onSuccess: (res) => {
-      navigate(`/auto-key/${res.data.id}`)
-      onClose()
-    },
-    onError: (e: unknown) => setError(getApiErrorMessage(e, 'Could not send booking request.')),
-  })
-
-  return (
-    <Modal title="Send booking request" onClose={onClose}>
-      <div className="space-y-4">
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-          Enter the customer's mobile number. They'll receive an SMS with a link to fill in their vehicle details and preferred date &amp; time.
-        </p>
-        <Input
-          label="Mobile number *"
-          type="tel"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          placeholder="e.g. 0412 345 678"
-          autoFocus
-        />
-        <Input
-          label="Customer name (optional)"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="e.g. Sam Taylor"
-        />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
-        <div className="flex gap-2 justify-end">
-          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
-          <Button
-            type="button"
-            disabled={mut.isPending || !phone.trim()}
-            onClick={() => { setError(''); mut.mutate() }}
-          >
-            <Phone size={16} />
-            {mut.isPending ? 'Sending…' : 'Send SMS'}
-          </Button>
-        </div>
-      </div>
     </Modal>
   )
 }
