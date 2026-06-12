@@ -57,6 +57,8 @@ interface AuthCtx {
   scheduleCalendarTimezone: string
   /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
   sessionReady: boolean
+  /** True once enabledFeatures reflects real data (snapshot or completed session fetch). Gates must not redirect before this. */
+  featuresKnown: boolean
   /** Authoritative HQ nav flag from /auth/session (null before first session load). */
   minitHqUi: boolean | null
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
@@ -173,6 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [planCode, setPlanCode] = useState<PlanCode>(initialAuth.planCode)
   const [product, setProduct] = useState<TenantProduct>(initialAuth.product)
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(initialAuth.enabledFeatures)
+  // True once the feature list reflects real data - either a session snapshot
+  // from a previous visit or a completed /auth/session fetch. Until then,
+  // feature gates must not redirect (deep links would bounce to /dashboard).
+  const [featuresKnown, setFeaturesKnown] = useState<boolean>(() => Boolean(readSessionSnapshot()))
   const [signupPaymentPending, setSignupPaymentPending] = useState(false)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
@@ -229,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAvailableSites([])
       setPlanCode('pro')
       setProduct('mainspring')
-      setEnabledFeatures([])
+      setEnabledFeatures([]); setFeaturesKnown(false)
       setMinitHqUi(null)
       setSignupPaymentPending(false)
       setSubscriptionStatus(null)
@@ -237,6 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShopCalendarTodayYmd(null)
       setScheduleCalendarTimezone('Australia/Sydney')
       setTenantBusinessAddress(null)
+      setFeaturesKnown(false)
       clearMinitSessionHints()
       clearStoredTokens()
       return
@@ -258,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProduct(sessionProduct)
     setMinitHqUi(Boolean(data.is_minit_hq_ui))
     setEnabledFeatures(mergedFeatures)
+    setFeaturesKnown(true)
     writeSessionSnapshot({
       product: sessionProduct,
       planCode: effectivePlan,
@@ -287,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAvailableSites([])
         setPlanCode('pro')
         setProduct('mainspring')
-        setEnabledFeatures([])
+        setEnabledFeatures([]); setFeaturesKnown(false)
         setMinitHqUi(null)
         setSignupPaymentPending(false)
         setSubscriptionStatus(null)
@@ -329,13 +337,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!optimistic) {
         setSessionReady(false)
       } else {
-        // Snapshot from last session or seedLoginTenantHint — render shell while refreshing.
+        // Snapshot from last session or seedLoginTenantHint - render shell while refreshing.
         setSessionReady(true)
       }
 
       const timeoutId = setTimeout(() => {
         timedOut = true
-        // Backend took too long (e.g. cold start after deploy) — don't wipe the
+        // Backend took too long (e.g. cold start after deploy) - don't wipe the
         // token. The user's role is already parsed from the JWT. Just unblock the
         // UI; actual API calls will 401 and trigger refresh/logout if needed.
         if (!canceled) setSessionReady(true)
@@ -347,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (canceled || timedOut) return
         } catch (err) {
           if (!canceled && !timedOut) {
-            // Only log out on a genuine 401 — the token is invalid or expired.
+            // Only log out on a genuine 401 - the token is invalid or expired.
             // Network errors / 5xx (e.g. backend cold-starting after a deploy)
             // should not wipe the token; just unblock the UI so the user can
             // continue. The existing 401 interceptor in api.ts will handle
@@ -363,7 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setAvailableSites([])
               setPlanCode('pro')
               setProduct('mainspring')
-              setEnabledFeatures([])
+              setEnabledFeatures([]); setFeaturesKnown(false)
               setMinitHqUi(null)
               setSignupPaymentPending(false)
               setShopCalendarTodayYmd(null)
@@ -408,7 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAvailableSites([])
         setPlanCode('pro')
         setProduct('mainspring')
-        setEnabledFeatures([])
+        setEnabledFeatures([]); setFeaturesKnown(false)
         setMinitHqUi(null)
         setSignupPaymentPending(false)
         setShopCalendarTodayYmd(null)
@@ -439,7 +447,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAvailableSites([])
           setPlanCode('pro')
           setProduct('mainspring')
-          setEnabledFeatures([])
+          setEnabledFeatures([]); setFeaturesKnown(false)
           setMinitHqUi(null)
           setSignupPaymentPending(false)
           setShopCalendarTodayYmd(null)
@@ -480,7 +488,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAvailableSites([])
     setPlanCode('pro')
     setProduct('mainspring')
-    setEnabledFeatures([])
+    setEnabledFeatures([]); setFeaturesKnown(false)
     setMinitHqUi(null)
     setSignupPaymentPending(false)
     setSubscriptionStatus(null)
@@ -529,6 +537,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shopCalendarTodayYmd,
         scheduleCalendarTimezone,
         sessionReady,
+        featuresKnown,
         minitHqUi,
         initializing,
         tenantBusinessAddress,

@@ -134,6 +134,20 @@ export class NiimbotPrinter {
     return waiter
   }
 
+  /** Write a pre-built buffer (possibly several packets) in one GATT operation. */
+  private async writeRaw(bytes: Uint8Array<ArrayBuffer>): Promise<void> {
+    if (!this.writeChar) throw new Error('Not connected to printer')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyChar = this.writeChar as any
+    if (this.writeChar.properties.write && typeof anyChar.writeValueWithResponse === 'function') {
+      await anyChar.writeValueWithResponse(bytes)
+    } else if (this.writeChar.properties.write) {
+      await this.writeChar.writeValue(bytes)
+    } else {
+      await this.writeChar.writeValueWithoutResponse(bytes)
+    }
+  }
+
   private async send(cmd: number, data: number[]): Promise<void> {
     if (!this.writeChar) throw new Error('Not connected to printer')
     const packet = buildPacket(cmd, data)
@@ -222,19 +236,36 @@ export class NiimbotPrinter {
     ])
     await sleep(50)
 
-    for (let y = 0; y < rows.length; y++) {
-      const row = rows[y]
-      await this.send(CMD.WRITE_IMAGE_ROW, [
-        (y >> 8) & 0xff, y & 0xff,
-        Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
-        0x01, // repeat count: print this row once
-        ...row.bytes,
-      ])
-      // Throttle every 4 packets — mobile GATT queues fill up faster than desktop
-      if (y % 4 === 3) await sleep(20)
+    // Build all row packets up front, then stream them in large batched GATT
+    // writes — one write per row costs a BLE round-trip each (~30ms × 240 rows
+    // ≈ 7s/label); batching cuts the job to a fraction of that.
+    const rowPackets = rows.map((row, y) => buildPacket(CMD.WRITE_IMAGE_ROW, [
+      (y >> 8) & 0xff, y & 0xff,
+      Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
+      0x01, // repeat count: print this row once
+      ...row.bytes,
+    ]))
+    if (this.writeChar?.properties.write) {
+      const MAX_WRITE = 500 // Web Bluetooth caps a single write at 512 bytes
+      let chunk: number[] = []
+      for (const pkt of rowPackets) {
+        if (chunk.length + pkt.length > MAX_WRITE && chunk.length > 0) {
+          await this.writeRaw(toBuffer(chunk))
+          await sleep(15) // let the printer's internal UART buffer drain
+          chunk = []
+        }
+        chunk.push(...pkt)
+      }
+      if (chunk.length) await this.writeRaw(toBuffer(chunk))
+    } else {
+      // Write-without-response only — no backpressure, so pace per packet
+      for (let i = 0; i < rowPackets.length; i++) {
+        await this.writeRaw(rowPackets[i])
+        if (i % 4 === 3) await sleep(20)
+      }
     }
 
-    await sleep(300)   // let all row packets drain before closing the page
+    await sleep(150)   // let the final row packets drain before closing the page
     await this.send(CMD.END_PAGE_PRINT, [0x01])
 
     // Wait for the printer to physically finish. Sending END_PRINT while it is
@@ -277,6 +308,13 @@ export class NiimbotPrinter {
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
+}
+
+function toBuffer(nums: number[]): Uint8Array<ArrayBuffer> {
+  const buf = new ArrayBuffer(nums.length)
+  const view = new Uint8Array(buf)
+  view.set(nums)
+  return view
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +367,7 @@ export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvas
   ctx.fillText(copyLabel, W - PAD - copyW, Math.round(19 * scale))
 
   // QR code — right block
-  const qrSize = Math.round(Math.min(150 * scale, H - headerH - 10))
+  const qrSize = Math.round(Math.min(120 * scale, H - headerH - 10))
   const qrX = W - PAD - qrSize
   const qrY = headerH + 5
   if (data.qrDataUrl) {
@@ -340,41 +378,41 @@ export async function renderWatchLabel(data: WatchLabelData): Promise<HTMLCanvas
   ctx.fillStyle = '#000000'
 
   // Job number
-  ctx.font = `bold ${Math.round(34 * scale)}px monospace`
-  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(66 * scale))
+  ctx.font = `bold ${Math.round(40 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(74 * scale))
 
   // Customer name
-  ctx.font = `bold ${Math.round(17 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.customerName, 22), PAD, Math.round(90 * scale))
+  ctx.font = `bold ${Math.round(20 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 20), PAD, Math.round(102 * scale))
 
-  let nextY = 90
+  let nextY = 102
 
   // Phone
   if (data.customerPhone) {
-    ctx.font = `${Math.round(15 * scale)}px sans-serif`
-    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 20) * scale))
-    nextY += 20
+    ctx.font = `${Math.round(17 * scale)}px sans-serif`
+    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 23) * scale))
+    nextY += 23
   }
 
   // Watch title
-  ctx.font = `${Math.round(15 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.watchTitle, 24), PAD, Math.round((nextY + 20) * scale))
-  nextY += 20
+  ctx.font = `${Math.round(17 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.watchTitle, 24), PAD, Math.round((nextY + 23) * scale))
+  nextY += 23
 
   // Services (job title)
   if (data.services) {
-    ctx.fillText(truncate(data.services, 24), PAD, Math.round((nextY + 20) * scale))
-    nextY += 20
+    ctx.fillText(truncate(data.services, 24), PAD, Math.round((nextY + 23) * scale))
+    nextY += 23
   }
 
   // Date in
-  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 20) * scale))
-  nextY += 20
+  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 23) * scale))
+  nextY += 23
 
   // Deposit + balance on one line (workshop only)
   if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = `${Math.round(13 * scale)}px sans-serif`
-    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 18) * scale))
+    ctx.font = `${Math.round(15 * scale)}px sans-serif`
+    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 21) * scale))
   }
 
   // Customer copy — scan prompt at bottom
@@ -426,7 +464,7 @@ export async function renderShoeLabel(data: ShoeLabelData): Promise<HTMLCanvasEl
   const copyW = ctx.measureText(copyLabel).width
   ctx.fillText(copyLabel, W - PAD - copyW, Math.round(19 * scale))
 
-  const qrSize = Math.round(Math.min(150 * scale, H - headerH - 10))
+  const qrSize = Math.round(Math.min(120 * scale, H - headerH - 10))
   const qrX = W - PAD - qrSize
   const qrY = headerH + 5
   if (data.qrDataUrl) {
@@ -435,35 +473,35 @@ export async function renderShoeLabel(data: ShoeLabelData): Promise<HTMLCanvasEl
 
   ctx.fillStyle = '#000000'
 
-  ctx.font = `bold ${Math.round(34 * scale)}px monospace`
-  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(66 * scale))
+  ctx.font = `bold ${Math.round(40 * scale)}px monospace`
+  ctx.fillText(`#${data.jobNumber}`, PAD, Math.round(74 * scale))
 
-  ctx.font = `bold ${Math.round(17 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.customerName, 22), PAD, Math.round(90 * scale))
+  ctx.font = `bold ${Math.round(20 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.customerName, 20), PAD, Math.round(102 * scale))
 
-  let nextY = 90
+  let nextY = 102
 
   if (data.customerPhone) {
-    ctx.font = `${Math.round(15 * scale)}px sans-serif`
-    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 20) * scale))
-    nextY += 20
+    ctx.font = `${Math.round(17 * scale)}px sans-serif`
+    ctx.fillText(data.customerPhone, PAD, Math.round((nextY + 23) * scale))
+    nextY += 23
   }
 
-  ctx.font = `${Math.round(15 * scale)}px sans-serif`
-  ctx.fillText(truncate(data.shoeDescription, 24), PAD, Math.round((nextY + 20) * scale))
-  nextY += 20
+  ctx.font = `${Math.round(17 * scale)}px sans-serif`
+  ctx.fillText(truncate(data.shoeDescription, 24), PAD, Math.round((nextY + 23) * scale))
+  nextY += 23
 
   if (data.services) {
-    ctx.fillText(truncate(data.services, 24), PAD, Math.round((nextY + 20) * scale))
-    nextY += 20
+    ctx.fillText(truncate(data.services, 24), PAD, Math.round((nextY + 23) * scale))
+    nextY += 23
   }
 
-  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 20) * scale))
-  nextY += 20
+  ctx.fillText(data.dateIn, PAD, Math.round((nextY + 23) * scale))
+  nextY += 23
 
   if (!data.isCustomerCopy && data.depositLabel && data.balanceLabel) {
-    ctx.font = `${Math.round(13 * scale)}px sans-serif`
-    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 18) * scale))
+    ctx.font = `${Math.round(15 * scale)}px sans-serif`
+    ctx.fillText(`Dep: ${data.depositLabel}  Bal: ${data.balanceLabel}`, PAD, Math.round((nextY + 21) * scale))
   }
 
   if (data.isCustomerCopy) {
