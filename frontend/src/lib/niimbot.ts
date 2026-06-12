@@ -27,7 +27,8 @@ const CMD = {
 
 export interface LabelDots { width: number; height: number }
 
-function buildPacket(cmd: number, data: number[]): Uint8Array<ArrayBuffer> {
+/** Exported for unit tests; not part of the public printer API. */
+export function buildPacket(cmd: number, data: number[]): Uint8Array<ArrayBuffer> {
   const len = data.length
   const checksum = [cmd, len, ...data].reduce((xor, b) => xor ^ b, 0)
   const bytes = [0x55, 0x55, cmd, len, ...data, checksum, 0xaa, 0xaa]
