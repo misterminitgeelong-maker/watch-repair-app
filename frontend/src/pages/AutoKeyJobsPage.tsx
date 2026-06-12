@@ -64,241 +64,38 @@ import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES, QUOTE_PRESETS } from '@/lib/autoK
 import {
   civilAddDays,
   civilMondayOfWeekContaining,
-  hourMinuteInTimeZone,
   zonedWallTimeToUtcIso,
 } from '@/lib/shopCalendarTime'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
 
-const STATUSES: JobStatus[] = [
-  'awaiting_quote',
-  'quote_sent',
-  'booking_confirmed',
-  'en_route',
-  'booking_on_hold',
-  'booking_completed',
-  'failed_job',
-]
-
-const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'failed_job'] as const
-const AUTO_KEY_ACTIVE_STATUSES = [
-  'awaiting_quote',
-  'awaiting_customer_details',
-  'quote_sent',
-  'awaiting_booking_confirmation',
-  'booking_confirmed',
-  'en_route',
-  'on_site',
-  'booking_on_hold',
-] as const
-
-function formatCents(value: number) {
-  return `$${(value / 100).toFixed(2)}`
-}
-
-function ymdLocal(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function isYmd(value: string | null | undefined): value is string {
-  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value)
-}
-
-function daysInShop(createdAt: string): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
-}
-
-// ── Dispatch SLA chips ────────────────────────────────────────────────────────
-/** Statuses where the SLA clock stops (the tech is en route / on site / done). */
-const SLA_STOP_CLOCK_STATUSES = new Set<string>([
-  'en_route',
-  'on_site',
-  'work_completed',
-  'invoice_paid',
-  'booking_completed',
-  'failed_job',
-])
-
-type SlaChipKind = 'late' | 'at_risk' | 'aging'
-interface SlaChip { kind: SlaChipKind; label: string }
-
-const SLA_AT_RISK_MINUTES = 30
-const SLA_UNSCHEDULED_AGING_HOURS = 24
-
-/** Derive an at-a-glance SLA chip for a job from existing fields (pure, no API). */
-function computeSlaChip(
-  job: { scheduled_at?: string | null; status: string; created_at: string },
-  now: number = Date.now(),
-): SlaChip | null {
-  if (SLA_STOP_CLOCK_STATUSES.has(job.status)) return null
-
-  if (job.scheduled_at) {
-    const scheduled = new Date(job.scheduled_at).getTime()
-    if (Number.isFinite(scheduled)) {
-      if (scheduled < now) return { kind: 'late', label: 'Late' }
-      if (scheduled <= now + SLA_AT_RISK_MINUTES * 60_000) return { kind: 'at_risk', label: 'At risk' }
-    }
-    return null
-  }
-
-  // Unscheduled active job that has been sitting too long.
-  const created = new Date(job.created_at).getTime()
-  if (Number.isFinite(created) && now - created >= SLA_UNSCHEDULED_AGING_HOURS * 3_600_000) {
-    return { kind: 'aging', label: 'Unscheduled aging' }
-  }
-  return null
-}
-
-/** Order by saved visit_order (when present) first, then appointment time. */
-function compareByVisitThenTime(
-  a: { visit_order?: number | null; scheduled_at?: string | null },
-  b: { visit_order?: number | null; scheduled_at?: string | null },
-): number {
-  const va = a.visit_order ?? null
-  const vb = b.visit_order ?? null
-  if (va !== null && vb !== null && va !== vb) return va - vb
-  if (va !== null && vb === null) return -1
-  if (va === null && vb !== null) return 1
-  const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
-  const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
-  return ta - tb
-}
-
-/** Higher = more urgent. Used to sort the dispatch list by risk. */
-function slaRiskWeight(chip: SlaChip | null): number {
-  if (!chip) return 0
-  return chip.kind === 'late' ? 3 : chip.kind === 'at_risk' ? 2 : 1
-}
-
-const SLA_CHIP_STYLES: Record<SlaChipKind, { backgroundColor: string; color: string }> = {
-  late: { backgroundColor: 'rgba(201,100,90,0.15)', color: '#C96A5A' },
-  at_risk: { backgroundColor: 'rgba(200,130,50,0.16)', color: '#B87030' },
-  aging: { backgroundColor: 'rgba(138,117,99,0.2)', color: '#7A6453' },
-}
-
-function SlaChipBadge({ chip }: { chip: SlaChip }) {
-  return (
-    <span
-      className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5"
-      style={SLA_CHIP_STYLES[chip.kind]}
-    >
-      {chip.label}
-    </span>
-  )
-}
-
-function dateFromYmdLocal(ymd: string): Date {
-  const [y, m, d] = ymd.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-/** Reschedule onto target civil YYYY-MM-DD in shop calendar, keeping wall time in `shopTimeZone`, or 09:00 if unscheduled. */
-function isoScheduledOnDayKeepingShopTime(
-  jobId: string,
-  targetDayYmd: string,
-  jobs: Array<{ id: string; scheduled_at?: string }>,
-  shopTimeZone: string,
-): string {
-  const job = jobs.find((j) => j.id === jobId)
-  let hour = 9
-  let minute = 0
-  if (job?.scheduled_at) {
-    const hm = hourMinuteInTimeZone(job.scheduled_at, shopTimeZone)
-    hour = hm.hour
-    minute = hm.minute
-  }
-  return zonedWallTimeToUtcIso(targetDayYmd, hour, minute, shopTimeZone)
-}
-
-/** Local hour rows for week grid: 7:00–21:00 slots (7am–9pm). */
-const WEEK_SCHEDULE_HOURS = Array.from({ length: 15 }, (_, i) => 7 + i)
-const WEEK_UNSCHEDULED_DROP_ID = 'week-unscheduled'
-const WEEK_DAY_DROP_PREFIX = 'week-day:'
-const WEEK_SLOT_DROP_PREFIX = 'week-slot:'
-
-function weekDayDropId(dayStr: string) {
-  return `${WEEK_DAY_DROP_PREFIX}${dayStr}`
-}
-
-function weekSlotDropId(dayStr: string, hour: number) {
-  return `${WEEK_SLOT_DROP_PREFIX}${dayStr}:${hour}`
-}
-
-function weekSlotScheduledAt(dayStr: string, hour: number, shopTimeZone: string): string {
-  return new Date(zonedWallTimeToUtcIso(dayStr, hour, 0, shopTimeZone)).toISOString()
-}
-
-function stopDragControlPropagation(event: { stopPropagation: () => void }) {
-  event.stopPropagation()
-}
-
-interface WeekSchedulerJob {
-  id: string
-  job_number: string
-  title: string
-  scheduled_at?: string
-  customer_id?: string
-  customer_name?: string | null
-  customer_phone?: string | null
-  assigned_user_id?: string
-  status?: JobStatus
-  vehicle_make?: string
-  vehicle_model?: string
-  vehicle_year?: number
-  registration_plate?: string
-  key_type?: string
-  key_quantity?: number
-  job_type?: string
-  job_address?: string
-  tech_notes?: string
-}
-
-function weekJobVehicleSummary(job: WeekSchedulerJob) {
-  const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
-  return [vehicle || undefined, job.registration_plate || undefined].filter(Boolean).join(' · ') || undefined
-}
-
-function weekJobSecondarySummary(job: WeekSchedulerJob, customerName?: string, assignedTechName?: string) {
-  const bits = [
-    customerName,
-    job.job_type || undefined,
-    assignedTechName ? `Tech: ${assignedTechName}` : undefined,
-  ].filter(Boolean)
-  return bits.length ? bits.join(' · ') : undefined
-}
-
-/** Monday–Sunday week in local time containing YYYY-MM-DD anchor */
-function weekRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
-  const anchor = dateFromYmdLocal(ymd)
-  const day = anchor.getDay()
-  const diff = anchor.getDate() - day + (day === 0 ? -6 : 1)
-  const mon = new Date(anchor)
-  mon.setDate(diff)
-  const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 6)
-  return { date_from: ymdLocal(mon), date_to: ymdLocal(sun) }
-}
-
-function monthRangeFromYmd(ymd: string): { date_from: string; date_to: string } {
-  const [y, m] = ymd.split('-').map(Number)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const start = `${y}-${pad(m)}-01`
-  const last = new Date(y, m, 0)
-  const end = `${y}-${pad(m)}-${pad(last.getDate())}`
-  return { date_from: start, date_to: end }
-}
-
-function nextMobileStatus(status: JobStatus): JobStatus | null {
-  if (status === 'awaiting_quote') return 'quote_sent'
-  if (status === 'quote_sent') return 'awaiting_booking_confirmation'
-  if (status === 'awaiting_booking_confirmation') return 'booking_confirmed'
-  if (status === 'booking_confirmed') return 'en_route'
-  if (status === 'en_route') return 'on_site'
-  if (status === 'on_site') return 'work_completed'
-  return null
-}
+import {
+  STATUSES,
+  AUTO_KEY_CLOSED_STATUSES,
+  AUTO_KEY_ACTIVE_STATUSES,
+  formatCents,
+  ymdLocal,
+  isYmd,
+  daysInShop,
+  computeSlaChip,
+  compareByVisitThenTime,
+  slaRiskWeight,
+  isoScheduledOnDayKeepingShopTime,
+  WEEK_SCHEDULE_HOURS,
+  WEEK_UNSCHEDULED_DROP_ID,
+  weekDayDropId,
+  weekSlotDropId,
+  weekSlotScheduledAt,
+  stopDragControlPropagation,
+  weekJobVehicleSummary,
+  weekJobSecondarySummary,
+  weekRangeFromYmd,
+  monthRangeFromYmd,
+  nextMobileStatus,
+  type WeekSchedulerJob,
+} from '@/pages/autoKey/dispatchHelpers'
+import { SlaChipBadge } from '@/pages/autoKey/SlaChipBadge'
 
 function PlannerJobDetailModal({
   jobId,
