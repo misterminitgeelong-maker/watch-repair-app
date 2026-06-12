@@ -23,7 +23,6 @@ const CMD = {
   // 0x83 is the *indexed* row format with a different payload — sending packed
   // bitmap bytes as 0x83 makes the printer feed and retract a blank label.
   WRITE_IMAGE_ROW: 0x85,
-  WRITE_EMPTY_ROWS: 0x84,
 }
 
 export interface LabelDots { width: number; height: number }
@@ -175,45 +174,33 @@ export class NiimbotPrinter {
   }
 
   async printCanvas(canvas: HTMLCanvasElement, quantity = 1): Promise<void> {
-    // M2 feeds along the long axis. If the canvas is landscape (wider than tall),
-    // rotate 90° CW so height = feed direction, width = printhead width.
-    // Portrait canvases are already in the correct orientation.
-    let src = canvas
-    if (canvas.width > canvas.height) {
-      const rotated = document.createElement('canvas')
-      rotated.width = canvas.height
-      rotated.height = canvas.width
-      const rctx = rotated.getContext('2d')!
-      rctx.translate(rotated.width, 0)
-      rctx.rotate(Math.PI / 2)
-      rctx.drawImage(canvas, 0, 0)
-      src = rotated
-    }
-
-    const ctx = src.getContext('2d')!
-    const { width, height } = src
+    // The M2 loads 50x30 labels with the 50mm side across the print head, so a
+    // landscape canvas maps directly: width = printhead dots, height = feed
+    // rows. Rotating here prints sideways and overruns the 30mm feed length,
+    // which burns through several labels per page.
+    const ctx = canvas.getContext('2d')!
+    const { width, height } = canvas
     const imageData = ctx.getImageData(0, 0, width, height)
 
     // Pack each row to 1bpp. The 0x85 header carries black-pixel counts for
-    // thirds of the print head (firmware uses them for heat management);
-    // fully-white rows are sent as 0x84 "empty rows" instead.
+    // thirds of the print head (firmware uses them for heat management).
+    // Every row is sent as a full bitmap row — the sparse 0x84 empty-row
+    // packet is not handled consistently across firmware.
     const bytesPerRow = Math.ceil(width / 8)
     type Row = { bytes: number[]; counts: [number, number, number] }
-    const rows: (Row | null)[] = []
+    const rows: Row[] = []
     for (let y = 0; y < height; y++) {
       const row = new Array<number>(bytesPerRow).fill(0)
       const counts: [number, number, number] = [0, 0, 0]
-      let hasBlack = false
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4
         const lum = 0.299 * imageData.data[idx] + 0.587 * imageData.data[idx + 1] + 0.114 * imageData.data[idx + 2]
         if (lum < 128) {
           row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
           counts[Math.min(2, Math.floor((x * 3) / width))]++
-          hasBlack = true
         }
       }
-      rows.push(hasBlack ? { bytes: row, counts } : null)
+      rows.push({ bytes: row, counts })
     }
 
     await this.send(CMD.SET_LABEL_TYPE, [0x01])
@@ -232,26 +219,16 @@ export class NiimbotPrinter {
     await this.send(CMD.SET_QUANTITY, [(quantity >> 8) & 0xff, quantity & 0xff])
     await sleep(50)
 
-    let y = 0
-    let sent = 0
-    while (y < rows.length) {
+    for (let y = 0; y < rows.length; y++) {
       const row = rows[y]
-      if (row === null) {
-        let count = 1
-        while (count < 255 && y + count < rows.length && rows[y + count] === null) count++
-        await this.send(CMD.WRITE_EMPTY_ROWS, [(y >> 8) & 0xff, y & 0xff, count])
-        y += count
-      } else {
-        await this.send(CMD.WRITE_IMAGE_ROW, [
-          (y >> 8) & 0xff, y & 0xff,
-          Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
-          0x01, // repeat count: print this row once
-          ...row.bytes,
-        ])
-        y += 1
-      }
+      await this.send(CMD.WRITE_IMAGE_ROW, [
+        (y >> 8) & 0xff, y & 0xff,
+        Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
+        0x01, // repeat count: print this row once
+        ...row.bytes,
+      ])
       // Throttle every 4 packets — mobile GATT queues fill up faster than desktop
-      if (++sent % 4 === 0) await sleep(20)
+      if (y % 4 === 3) await sleep(20)
     }
 
     await sleep(300)   // let all row packets drain before closing the page
