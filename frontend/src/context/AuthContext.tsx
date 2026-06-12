@@ -32,6 +32,8 @@ import {
   type TenantProduct,
 } from '@/lib/minitProduct'
 
+export type AuthStatus = 'anonymous' | 'authenticating' | 'authenticated'
+
 interface AuthCtx {
   token: string | null
   role: string | null
@@ -59,6 +61,8 @@ interface AuthCtx {
   sessionReady: boolean
   /** True once enabledFeatures reflects real data (snapshot or completed session fetch). Gates must not redirect before this. */
   featuresKnown: boolean
+  /** Canonical auth lifecycle state. Prefer this over the individual booleans in new code. */
+  authStatus: AuthStatus
   /** Authoritative HQ nav flag from /auth/session (null before first session load). */
   minitHqUi: boolean | null
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
@@ -201,6 +205,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => Boolean(token && !sessionReady && !isSessionDeferPath(location.pathname)),
     [token, sessionReady, location.pathname],
   )
+
+  // Single canonical view of the auth lifecycle. Prefer this over juggling
+  // token / sessionReady / featuresKnown in consumers — picking the wrong
+  // one of those individually has caused redirect races (e.g. deep links
+  // bouncing to the dashboard before features loaded).
+  //   anonymous      – no token; show login.
+  //   authenticating – token present but features not yet known; gates wait.
+  //   authenticated  – token + features known; safe to make feature decisions.
+  const authStatus: AuthStatus = useMemo(() => {
+    if (!token) return 'anonymous'
+    return featuresKnown ? 'authenticated' : 'authenticating'
+  }, [token, featuresKnown])
 
   function scheduleProactiveRefresh(expiresInSeconds: number) {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
@@ -538,6 +554,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         scheduleCalendarTimezone,
         sessionReady,
         featuresKnown,
+        authStatus,
         minitHqUi,
         initializing,
         tenantBusinessAddress,

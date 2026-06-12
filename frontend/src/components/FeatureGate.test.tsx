@@ -20,12 +20,15 @@ type AuthShape = {
 
 function setAuth(partial: AuthShape) {
   const enabled = partial.enabledFeatures ?? []
+  const featuresKnown = partial.featuresKnown ?? false
   mockAuth.mockReturnValue({
     role: partial.role ?? 'owner',
     product: partial.product ?? 'mainspring',
     planCode: partial.planCode ?? 'pro',
     tenantSlug: partial.tenantSlug ?? 'timekeepers',
-    featuresKnown: partial.featuresKnown ?? false,
+    featuresKnown,
+    // These tests model a logged-in user, so authStatus tracks featuresKnown.
+    authStatus: featuresKnown ? 'authenticated' : 'authenticating',
     hasFeature: (f: string) => enabled.includes(f),
   })
 }
