@@ -23,6 +23,10 @@ labanda_scraper/browser_profile/
 *.db
 *.db.bak
 
+# Build artifacts / stray captures (don't commit to the product repo)
+*.zip
+/Screenshot*.png
+
 # Node
 node_modules/
 frontend/dist/
