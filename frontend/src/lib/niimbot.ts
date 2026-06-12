@@ -18,7 +18,12 @@ const CMD = {
   END_PAGE_PRINT: 0xe3,
   SET_DIMENSION: 0x13,
   SET_QUANTITY: 0x15,
-  WRITE_IMAGE_LINE: 0x83,
+  GET_PRINT_STATUS: 0xa3,
+  // 0x85 = full bitmap row (row, 3 black-pixel counts, repeat, packed bits).
+  // 0x83 is the *indexed* row format with a different payload — sending packed
+  // bitmap bytes as 0x83 makes the printer feed and retract a blank label.
+  WRITE_IMAGE_ROW: 0x85,
+  WRITE_EMPTY_ROWS: 0x84,
 }
 
 export interface LabelDots { width: number; height: number }
@@ -37,7 +42,7 @@ export class NiimbotPrinter {
   private device: BluetoothDevice | null = null
   private writeChar: BluetoothRemoteGATTCharacteristic | null = null
   private notifyChar: BluetoothRemoteGATTCharacteristic | null = null
-  private responseResolvers: Array<(v: DataView) => void> = []
+  private pendingResponses: Array<{ respCmd: number | null; resolve: (v: DataView) => void }> = []
   private _labelDots: LabelDots | null = null
 
   get connected() { return this.device?.gatt?.connected ?? false }
@@ -63,9 +68,14 @@ export class NiimbotPrinter {
 
   private onNotification = (e: Event) => {
     const char = e.target as BluetoothRemoteGATTCharacteristic
-    if (char.value && this.responseResolvers.length > 0) {
-      this.responseResolvers.shift()!(char.value)
-    }
+    const value = char.value
+    if (!value || value.byteLength < 4) return
+    // Packet layout: 0x55 0x55 <cmd> <len> <data…> <xor> 0xaa 0xaa — route the
+    // response to the waiter expecting this command (printers also push
+    // unsolicited status packets, so first-in-line matching mixes up replies).
+    const cmd = value.getUint8(2)
+    const i = this.pendingResponses.findIndex(p => p.respCmd === null || p.respCmd === cmd)
+    if (i >= 0) this.pendingResponses.splice(i, 1)[0].resolve(value)
   }
 
   private async setupGatt(device: BluetoothDevice): Promise<void> {
@@ -102,16 +112,27 @@ export class NiimbotPrinter {
     this._labelDots = null
   }
 
-  private waitForResponse(timeoutMs = 1500): Promise<DataView | null> {
+  private waitForResponse(respCmd: number | null, timeoutMs = 1500): Promise<DataView | null> {
     if (!this.notifyChar) return Promise.resolve(null)
     return new Promise(resolve => {
+      const entry = {
+        respCmd,
+        resolve: (v: DataView) => { clearTimeout(timer); resolve(v) },
+      }
       const timer = setTimeout(() => {
-        const i = this.responseResolvers.indexOf(resolve)
-        if (i >= 0) this.responseResolvers.splice(i, 1)
+        const i = this.pendingResponses.indexOf(entry)
+        if (i >= 0) this.pendingResponses.splice(i, 1)
         resolve(null)
       }, timeoutMs)
-      this.responseResolvers.push(v => { clearTimeout(timer); resolve(v) })
+      this.pendingResponses.push(entry)
     })
+  }
+
+  /** Send a command and wait for its reply (response cmd = request cmd + respOffset). */
+  private async transceive(cmd: number, data: number[], respOffset = 1, timeoutMs = 1500): Promise<DataView | null> {
+    const waiter = this.waitForResponse(cmd + respOffset, timeoutMs)
+    await this.send(cmd, data)
+    return waiter
   }
 
   private async send(cmd: number, data: number[]): Promise<void> {
@@ -137,12 +158,13 @@ export class NiimbotPrinter {
    *  skip 33 bytes (uuid+barcode+serial+lengths+type), then width_mm, height_mm. */
   private async readLabelDots(): Promise<LabelDots | null> {
     try {
-      await this.send(CMD.GET_RFID, [0x01])
-      const resp = await this.waitForResponse(2000)
+      const resp = await this.transceive(CMD.GET_RFID, [0x01], 1, 2000)
       if (!resp || resp.byteLength < 39) return null
       const widthMm = resp.getUint8(4 + 33)
       const heightMm = resp.getUint8(4 + 34)
-      if (!widthMm || !heightMm) return null
+      // Reject implausible sizes — a misparsed RFID reply otherwise produces a
+      // wrong canvas/dimension and the printer rejects the page.
+      if (widthMm < 10 || widthMm > 120 || heightMm < 10 || heightMm > 120) return null
       return {
         width: Math.round(widthMm * DOTS_PER_MM),
         height: Math.round(heightMm * DOTS_PER_MM),
@@ -172,16 +194,26 @@ export class NiimbotPrinter {
     const { width, height } = src
     const imageData = ctx.getImageData(0, 0, width, height)
 
-    const rows: number[][] = []
+    // Pack each row to 1bpp. The 0x85 header carries black-pixel counts for
+    // thirds of the print head (firmware uses them for heat management);
+    // fully-white rows are sent as 0x84 "empty rows" instead.
+    const bytesPerRow = Math.ceil(width / 8)
+    type Row = { bytes: number[]; counts: [number, number, number] }
+    const rows: (Row | null)[] = []
     for (let y = 0; y < height; y++) {
-      const bytesPerRow = Math.ceil(width / 8)
       const row = new Array<number>(bytesPerRow).fill(0)
+      const counts: [number, number, number] = [0, 0, 0]
+      let hasBlack = false
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4
         const lum = 0.299 * imageData.data[idx] + 0.587 * imageData.data[idx + 1] + 0.114 * imageData.data[idx + 2]
-        if (lum < 128) row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
+        if (lum < 128) {
+          row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
+          counts[Math.min(2, Math.floor((x * 3) / width))]++
+          hasBlack = true
+        }
       }
-      rows.push(row)
+      rows.push(hasBlack ? { bytes: row, counts } : null)
     }
 
     await this.send(CMD.SET_LABEL_TYPE, [0x01])
@@ -197,19 +229,69 @@ export class NiimbotPrinter {
       (width >> 8) & 0xff, width & 0xff,
     ])
     await sleep(50)
-    await this.send(CMD.SET_QUANTITY, [0x00, quantity & 0xff])
+    await this.send(CMD.SET_QUANTITY, [(quantity >> 8) & 0xff, quantity & 0xff])
     await sleep(50)
 
-    for (let y = 0; y < rows.length; y++) {
-      await this.send(CMD.WRITE_IMAGE_LINE, [(y >> 8) & 0xff, y & 0xff, ...rows[y]])
-      // Throttle every 4 rows — mobile GATT queues fill up faster than desktop
-      if (y % 4 === 3) await sleep(20)
+    let y = 0
+    let sent = 0
+    while (y < rows.length) {
+      const row = rows[y]
+      if (row === null) {
+        let count = 1
+        while (count < 255 && y + count < rows.length && rows[y + count] === null) count++
+        await this.send(CMD.WRITE_EMPTY_ROWS, [(y >> 8) & 0xff, y & 0xff, count])
+        y += count
+      } else {
+        await this.send(CMD.WRITE_IMAGE_ROW, [
+          (y >> 8) & 0xff, y & 0xff,
+          Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
+          0x01, // repeat count: print this row once
+          ...row.bytes,
+        ])
+        y += 1
+      }
+      // Throttle every 4 packets — mobile GATT queues fill up faster than desktop
+      if (++sent % 4 === 0) await sleep(20)
     }
 
     await sleep(300)   // let all row packets drain before closing the page
     await this.send(CMD.END_PAGE_PRINT, [0x01])
-    await sleep(200)
-    await this.send(CMD.END_PRINT, [0x01])
+
+    // Wait for the printer to physically finish. Sending END_PRINT while it is
+    // still feeding makes it abort the job and retract the label unprinted.
+    await this.waitForPrintComplete(quantity)
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const resp = await this.transceive(CMD.END_PRINT, [0x01], 1, 800)
+      if (!resp) break                                   // no notify channel — assume done
+      if (resp.byteLength > 4 && resp.getUint8(4) !== 0) break  // printer acked job end
+      await sleep(200)                                   // not ready yet — retry
+    }
+  }
+
+  /** Poll print status until the requested pages are out (or timeout). */
+  private async waitForPrintComplete(quantity: number, timeoutMs = 30000): Promise<void> {
+    if (!this.notifyChar) {
+      await sleep(1500 + 1200 * quantity)
+      return
+    }
+    const start = Date.now()
+    let misses = 0
+    while (Date.now() - start < timeoutMs) {
+      const resp = await this.transceive(CMD.GET_PRINT_STATUS, [0x01], 16, 1000)
+      if (resp && resp.byteLength >= 8) {
+        misses = 0
+        const page = (resp.getUint8(4) << 8) | resp.getUint8(5)
+        const progress1 = resp.getUint8(6)
+        const progress2 = resp.getUint8(7)
+        if (page >= quantity && progress1 >= 100 && progress2 >= 100) return
+      } else if (++misses >= 3) {
+        // Firmware doesn't answer status queries — fall back to a generous wait
+        await sleep(1500 + 1200 * quantity)
+        return
+      }
+      await sleep(300)
+    }
   }
 }
 
