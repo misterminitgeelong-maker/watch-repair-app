@@ -188,34 +188,17 @@ export class NiimbotPrinter {
   }
 
   async printCanvas(canvas: HTMLCanvasElement, quantity = 1): Promise<void> {
-    // The M2 loads 50x30 labels with the 50mm side across the print head, so a
-    // landscape canvas maps directly: width = printhead dots, height = feed
-    // rows. Rotating here prints sideways and overruns the 30mm feed length,
-    // which burns through several labels per page.
-    const ctx = canvas.getContext('2d')!
-    const { width, height } = canvas
-    const imageData = ctx.getImageData(0, 0, width, height)
+    await this.printCanvases([canvas], quantity)
+  }
 
-    // Pack each row to 1bpp. The 0x85 header carries black-pixel counts for
-    // thirds of the print head (firmware uses them for heat management).
-    // Every row is sent as a full bitmap row — the sparse 0x84 empty-row
-    // packet is not handled consistently across firmware.
-    const bytesPerRow = Math.ceil(width / 8)
-    type Row = { bytes: number[]; counts: [number, number, number] }
-    const rows: Row[] = []
-    for (let y = 0; y < height; y++) {
-      const row = new Array<number>(bytesPerRow).fill(0)
-      const counts: [number, number, number] = [0, 0, 0]
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4
-        const lum = 0.299 * imageData.data[idx] + 0.587 * imageData.data[idx + 1] + 0.114 * imageData.data[idx + 2]
-        if (lum < 128) {
-          row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
-          counts[Math.min(2, Math.floor((x * 3) / width))]++
-        }
-      }
-      rows.push({ bytes: row, counts })
-    }
+  /** Print several labels as ONE print job (one page per canvas). Running a
+   *  separate job per label makes the printer stall on the end-of-job
+   *  handshake between labels and drop the second one — a single job streams
+   *  page after page with one handshake at the very end. */
+  async printCanvases(canvases: HTMLCanvasElement[], quantityPerPage = 1): Promise<void> {
+    if (canvases.length === 0) return
+    const pages = canvases.map(rasterizeCanvas)
+    const totalPages = canvases.length * quantityPerPage
 
     await this.send(CMD.SET_LABEL_TYPE, [0x01])
     await sleep(50)
@@ -225,26 +208,39 @@ export class NiimbotPrinter {
     // count and SET_DIMENSION as rows/cols/copies (3×u16). Sending the older
     // short forms leaves the copies field undefined and the printer spits out
     // a random number of duplicate labels.
-    await this.send(CMD.START_PRINT, [(quantity >> 8) & 0xff, quantity & 0xff])
+    await this.send(CMD.START_PRINT, [(totalPages >> 8) & 0xff, totalPages & 0xff])
     await sleep(400)   // mobile BLE needs more time to initialise the print job
-    await this.send(CMD.START_PAGE_PRINT, [0x01])
-    await sleep(50)
-    await this.send(CMD.SET_DIMENSION, [
-      (height >> 8) & 0xff, height & 0xff,
-      (width >> 8) & 0xff, width & 0xff,
-      (quantity >> 8) & 0xff, quantity & 0xff,
-    ])
-    await sleep(50)
 
-    // Build all row packets up front, then stream them in large batched GATT
-    // writes — one write per row costs a BLE round-trip each (~30ms × 240 rows
-    // ≈ 7s/label); batching cuts the job to a fraction of that.
-    const rowPackets = rows.map((row, y) => buildPacket(CMD.WRITE_IMAGE_ROW, [
-      (y >> 8) & 0xff, y & 0xff,
-      Math.min(row.counts[0], 255), Math.min(row.counts[1], 255), Math.min(row.counts[2], 255),
-      0x01, // repeat count: print this row once
-      ...row.bytes,
-    ]))
+    for (const page of pages) {
+      await this.send(CMD.START_PAGE_PRINT, [0x01])
+      await sleep(50)
+      await this.send(CMD.SET_DIMENSION, [
+        (page.height >> 8) & 0xff, page.height & 0xff,
+        (page.width >> 8) & 0xff, page.width & 0xff,
+        (quantityPerPage >> 8) & 0xff, quantityPerPage & 0xff,
+      ])
+      await sleep(50)
+      await this.streamRowPackets(page.rowPackets)
+      await sleep(150)   // let the final row packets drain before closing the page
+      await this.send(CMD.END_PAGE_PRINT, [0x01])
+      await sleep(100)   // give the printer a beat before the next page header
+    }
+
+    // Wait for the printer to physically finish. Sending END_PRINT while it is
+    // still feeding makes it abort the job and retract the label unprinted.
+    await this.waitForPrintComplete(totalPages)
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const resp = await this.transceive(CMD.END_PRINT, [0x01], 1, 800)
+      if (!resp) break                                   // no notify channel — assume done
+      if (resp.byteLength > 4 && resp.getUint8(4) !== 0) break  // printer acked job end
+      await sleep(200)                                   // not ready yet — retry
+    }
+  }
+
+  /** Stream pre-built row packets in large batched GATT writes — one write per
+   *  row costs a BLE round-trip each (~30ms × 240 rows ≈ 7s/label). */
+  private async streamRowPackets(rowPackets: Uint8Array<ArrayBuffer>[]): Promise<void> {
     if (this.writeChar?.properties.write) {
       const MAX_WRITE = 500 // Web Bluetooth caps a single write at 512 bytes
       let chunk: number[] = []
@@ -263,20 +259,6 @@ export class NiimbotPrinter {
         await this.writeRaw(rowPackets[i])
         if (i % 4 === 3) await sleep(20)
       }
-    }
-
-    await sleep(150)   // let the final row packets drain before closing the page
-    await this.send(CMD.END_PAGE_PRINT, [0x01])
-
-    // Wait for the printer to physically finish. Sending END_PRINT while it is
-    // still feeding makes it abort the job and retract the label unprinted.
-    await this.waitForPrintComplete(quantity)
-
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const resp = await this.transceive(CMD.END_PRINT, [0x01], 1, 800)
-      if (!resp) break                                   // no notify channel — assume done
-      if (resp.byteLength > 4 && resp.getUint8(4) !== 0) break  // printer acked job end
-      await sleep(200)                                   // not ready yet — retry
     }
   }
 
@@ -315,6 +297,40 @@ function toBuffer(nums: number[]): Uint8Array<ArrayBuffer> {
   const view = new Uint8Array(buf)
   view.set(nums)
   return view
+}
+
+/** 1bpp-rasterize a canvas into 0x85 bitmap-row packets.
+ *  The M2 loads 50x30 labels with the 50mm side across the print head, so a
+ *  landscape canvas maps directly: width = printhead dots, height = feed rows
+ *  (rotating prints sideways and overruns the 30mm feed). The 0x85 header
+ *  carries black-pixel counts for thirds of the head (heat management); every
+ *  row is sent as a full bitmap row — the sparse 0x84 empty-row packet is not
+ *  handled consistently across firmware. */
+function rasterizeCanvas(canvas: HTMLCanvasElement): { width: number; height: number; rowPackets: Uint8Array<ArrayBuffer>[] } {
+  const ctx = canvas.getContext('2d')!
+  const { width, height } = canvas
+  const imageData = ctx.getImageData(0, 0, width, height)
+  const bytesPerRow = Math.ceil(width / 8)
+  const rowPackets: Uint8Array<ArrayBuffer>[] = []
+  for (let y = 0; y < height; y++) {
+    const row = new Array<number>(bytesPerRow).fill(0)
+    const counts: [number, number, number] = [0, 0, 0]
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4
+      const lum = 0.299 * imageData.data[idx] + 0.587 * imageData.data[idx + 1] + 0.114 * imageData.data[idx + 2]
+      if (lum < 128) {
+        row[Math.floor(x / 8)] |= 0x80 >> (x % 8)
+        counts[Math.min(2, Math.floor((x * 3) / width))]++
+      }
+    }
+    rowPackets.push(buildPacket(CMD.WRITE_IMAGE_ROW, [
+      (y >> 8) & 0xff, y & 0xff,
+      Math.min(counts[0], 255), Math.min(counts[1], 255), Math.min(counts[2], 255),
+      0x01, // repeat count: print this row once
+      ...row,
+    ]))
+  }
+  return { width, height, rowPackets }
 }
 
 // ---------------------------------------------------------------------------

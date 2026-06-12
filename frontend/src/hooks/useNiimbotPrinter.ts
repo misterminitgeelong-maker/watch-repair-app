@@ -52,9 +52,9 @@ export function useNiimbotPrinter() {
     setStatus('printing')
     setErrorMessage(null)
     try {
-      for (const canvas of canvases) {
-        await printerRef.current.printCanvas(canvas)
-      }
+      // One print job with one page per label — separate jobs per label make
+      // the printer stall on the between-job handshake and drop the second.
+      await printerRef.current.printCanvases(canvases)
       setStatus('connected')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Print failed'
