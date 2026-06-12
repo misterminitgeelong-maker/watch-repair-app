@@ -898,7 +898,10 @@ export default function AppShell() {
   }
 
   if (!token) {
-    return <Navigate to="/" replace />
+    // Preserve the destination (e.g. a job link scanned from a ticket QR) so
+    // login can return to it instead of dumping the user on the landing page.
+    const next = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?next=${next}`} replace />
   }
 
   if (sessionReady && signupPaymentPending && role !== 'platform_admin' && location.pathname !== '/subscription-required') {

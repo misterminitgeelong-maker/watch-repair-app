@@ -51,8 +51,12 @@ export default function LoginPage() {
     applyMinitBrandingIfNeeded(slug)
   }, [slug])
 
+  // Optional post-login destination (?next=/jobs/…) — internal paths only
+  const rawNext = searchParams.get('next') || ''
+  const nextPath = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null
+
   if (token && sessionReady) {
-    return <Navigate to={defaultHomePathForMinit(planCode, tenantSlug)} replace />
+    return <Navigate to={nextPath ?? defaultHomePathForMinit(planCode, tenantSlug)} replace />
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -71,7 +75,7 @@ export default function LoginPage() {
       if (mode === 'single' && isMinitHqTenantSlug(slug)) {
         void import('@/pages/minit/MinitOperationsPage')
       }
-      navigate(mode === 'single' ? homePathAfterLogin(slug) : '/dashboard')
+      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'))
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
         setError('Server is temporarily unavailable. Please try again in a moment.')
@@ -108,7 +112,7 @@ export default function LoginPage() {
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)
-      navigate(homePathAfterLogin(demoCreds.slug))
+      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug))
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {

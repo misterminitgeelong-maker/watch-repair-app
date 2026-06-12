@@ -52,7 +52,8 @@ export default function PrintShoeIntakeTicketsPage() {
   useEffect(() => {
     if (!job) return
     const internalUrl = `${window.location.origin}/shoe-repairs/${job.id}`
-    const customerUrl = `${window.location.origin}/shoe-status/${job.status_token}`
+    // Customer copy points at the public portal job view (no login required)
+    const customerUrl = `${window.location.origin}/customer-portal/job/shoe/${job.status_token}`
     QRCode.toDataURL(internalUrl, { width: 300, margin: 1 }).then(setRepairQr)
     QRCode.toDataURL(customerUrl, { width: 300, margin: 1 }).then(setCustomerQr)
   }, [job])
