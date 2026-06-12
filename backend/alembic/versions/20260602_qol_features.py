@@ -13,6 +13,10 @@ branch_labels = None
 depends_on = None
 
 
+def _has_table(name: str) -> bool:
+    return sa.inspect(op.get_bind()).has_table(name)
+
+
 def upgrade() -> None:
     op.create_table(
         "usernotificationpreference",
@@ -47,10 +51,17 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
-    with op.batch_alter_table("portalsession") as batch:
-        batch.add_column(sa.Column("status_notify_email", sa.Boolean(), server_default=sa.false()))
-        batch.add_column(sa.Column("status_notify_sms", sa.Boolean(), server_default=sa.false()))
+    # Existence guards: several tables here were historically created by
+    # SQLModel create_all rather than migrations, so fresh databases reach
+    # this revision without them. The tail "reconcile" migration creates the
+    # missing tables (with these columns) from current models.
+    if _has_table("portalsession"):
+        with op.batch_alter_table("portalsession") as batch:
+            batch.add_column(sa.Column("status_notify_email", sa.Boolean(), server_default=sa.false()))
+            batch.add_column(sa.Column("status_notify_sms", sa.Boolean(), server_default=sa.false()))
     for table in ("repairjob", "shoerepairjob", "autokeyjob"):
+        if not _has_table(table):
+            continue
         with op.batch_alter_table(table) as batch:
             batch.add_column(sa.Column("custom_fields_json", sa.Text(), nullable=True))
 

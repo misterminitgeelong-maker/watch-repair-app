@@ -41,6 +41,14 @@ jobs:
           cd backend
           python -m alembic upgrade head
 
+      - name: Check migrations match models (schema drift)
+        env:
+          JWT_SECRET: "ci-secret-not-for-production"
+          APP_ENV: test
+        run: |
+          cd backend
+          python scripts/check_migrations.py
+
       - name: Run backend smoke checks
         env:
           DATABASE_URL: "sqlite:///./smoke_ci.db"
