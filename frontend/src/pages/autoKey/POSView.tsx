@@ -14,6 +14,7 @@ import {
   type CustomerAccount,
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
+import { dollarsToCents } from '@/lib/money'
 import { CustomerSearchSelect } from './CustomerSearchSelect'
 
 const POS_QUICK_ITEMS = [
@@ -277,7 +278,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
             <Button
               variant="secondary"
               onClick={() => {
-                const cents = Math.round(parseFloat(customPrice || '0') * 100)
+                const cents = dollarsToCents(customPrice)
                 if (customDesc.trim() && cents > 0) {
                   addToCart(customDesc.trim(), cents)
                   setCustomDesc('')

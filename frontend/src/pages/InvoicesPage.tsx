@@ -5,6 +5,7 @@ import { ChevronLeft, CheckCircle, Printer, Send } from 'lucide-react'
 import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, getApiErrorMessage, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
+import { dollarsToCents } from '@/lib/money'
 
 function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const qc = useQueryClient()
@@ -27,7 +28,7 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
           min="0.01"
           step="0.01"
           value={(amount / 100).toFixed(2)}
-          onChange={e => setAmount(Math.round(parseFloat(e.target.value || '0') * 100))}
+          onChange={e => setAmount(dollarsToCents(e.target.value))}
         />
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

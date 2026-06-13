@@ -23,6 +23,7 @@ import PricingSelector from '@/components/PricingSelector'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { Button, Input, Modal, Select, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { dollarsToCents } from '@/lib/money'
 import { STATUS_LABELS } from '@/lib/utils'
 import { STATUSES, formatCents } from './dispatchHelpers'
 import { CustomerSearchSelect } from './CustomerSearchSelect'
@@ -240,8 +241,8 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         priority: form.priority,
         status: form.status,
         salesperson: form.salesperson.trim() || undefined,
-        deposit_cents: form.deposit ? Math.round(parseFloat(form.deposit) * 100) : 0,
-        cost_cents: form.cost ? Math.round(parseFloat(form.cost) * 100) : 0,
+        deposit_cents: dollarsToCents(form.deposit),
+        cost_cents: dollarsToCents(form.cost),
         apply_suggested_quote: applySuggestedQuote,
         send_booking_sms: sendBookingSms,
         additional_services: additional_services.length ? additional_services : undefined,

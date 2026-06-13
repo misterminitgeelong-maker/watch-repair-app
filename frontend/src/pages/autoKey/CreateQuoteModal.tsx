@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createAutoKeyQuote, getApiErrorMessage } from '@/lib/api'
 import { QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
+import { dollarsToCents } from '@/lib/money'
 import { Modal, Input, Button } from '@/components/ui'
 
 interface QuoteLineItemDraft { description: string; quantity: string; unitPrice: string }
@@ -43,9 +44,9 @@ export function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: (
           .map(i => ({
             description: i.description.trim(),
             quantity: Math.max(1, parseFloat(i.quantity || '1')),
-            unit_price_cents: Math.max(0, Math.round(parseFloat(i.unitPrice || '0') * 100)),
+            unit_price_cents: dollarsToCents(i.unitPrice),
           })),
-        tax_cents: Math.max(0, Math.round(taxAmt * 100)),
+        tax_cents: dollarsToCents(tax),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] })

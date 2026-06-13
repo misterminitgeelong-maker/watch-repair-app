@@ -16,6 +16,7 @@ import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import BrandAutocomplete from '@/components/BrandAutocomplete'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
+import { dollarsToCents } from '@/lib/money'
 import { preparePhotoFile, getPhotoPrepareErrorMessage, getIntakeSubmitErrorMessage, yieldToMainThread } from '@/lib/photoUpload'
 import { pushModalCloseHandler } from '@/lib/modalBackStack'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
@@ -364,8 +365,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           status: job.status,
           salesperson: job.salesperson || undefined,
           collection_date: job.collection_date || undefined,
-          deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
-          pre_quote_cents: job.pre_quote_cents ? Math.round(parseFloat(job.pre_quote_cents) * 100) : 0,
+          deposit_cents: dollarsToCents(job.deposit_cents),
+          pre_quote_cents: dollarsToCents(job.pre_quote_cents),
           cost_cents: 0,
           job_number_override: (watchCount === 1 && job.job_number_override.trim()) ? job.job_number_override.trim() : undefined,
         })

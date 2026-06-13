@@ -25,6 +25,7 @@ import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffset
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
+import { dollarsToCents } from '@/lib/money'
 import { preparePhotoFile } from '@/lib/photoUpload'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import LogWorkModal from '@/components/LogWorkModal'
@@ -185,7 +186,7 @@ function CreateSendQuoteModal({ jobId, onClose, onSent }: { jobId: string; onClo
   const [approvalToken, setApprovalToken] = useState('')
 
   async function handleSubmit() {
-    const amountCents = Math.round(parseFloat(amount) * 100)
+    const amountCents = dollarsToCents(amount)
     if (!description.trim() || !amountCents) { setError('Enter a description and amount.'); return }
     setStep('sending')
     setError('')
