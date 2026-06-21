@@ -1022,6 +1022,15 @@ class AutoKeyJobRead(SQLModel):
         """Naive DB datetimes are UTC; expose as timezone-aware so JSON is unambiguous for browsers."""
         return as_utc_for_json(v) if v is not None else None
 
+class AutoKeyJobStatusUpdateResult(AutoKeyJobRead):
+    """Job after a status change, plus the auto-invoice outcome so the UI can
+    report it directly instead of inferring it by diffing invoice counts."""
+    #: True when this status change auto-created an invoice.
+    invoice_created: bool = False
+    #: When no invoice was created on completion, a stable machine code for why
+    #: (``already_invoiced``); ``None`` otherwise (e.g. non-completion changes).
+    invoice_skip_reason: Optional[str] = None
+
 class OemKeyPricingRow(SQLModel):
     id: UUID
     make: str

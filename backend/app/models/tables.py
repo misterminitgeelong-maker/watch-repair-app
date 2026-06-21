@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 from pydantic import field_serializer
-from sqlalchemy import CheckConstraint, UniqueConstraint
+from sqlalchemy import CheckConstraint, Index, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 from ..datetime_utils import as_utc_for_json
 
@@ -715,9 +715,21 @@ class AutoKeyQuoteLineItem(SQLModel, table=True):
 class AutoKeyInvoice(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("tenant_id", "invoice_number", name="uq_autokeyinvoice_tenant_invoice_number"),
+        # At most one invoice per quote (NULLs stay distinct, so cost-based invoices are unaffected).
+        # Makes the manual "from quote", portal-approval, and completion auto-create paths race-safe.
+        UniqueConstraint("auto_key_quote_id", name="uq_autokeyinvoice_quote"),
         CheckConstraint("subtotal_cents >= 0", name="ck_autokeyinvoice_subtotal_cents_non_negative"),
         CheckConstraint("tax_cents >= 0", name="ck_autokeyinvoice_tax_cents_non_negative"),
         CheckConstraint("total_cents >= 0", name="ck_autokeyinvoice_total_cents_non_negative"),
+        # At most one cost-based (quoteless) invoice per job — closes the no-quote completion race
+        # while still allowing a multi-quote job to carry one invoice per quote.
+        Index(
+            "uq_autokeyinvoice_costbased_per_job",
+            "auto_key_job_id",
+            unique=True,
+            sqlite_where=text("auto_key_quote_id IS NULL"),
+            postgresql_where=text("auto_key_quote_id IS NULL"),
+        ),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)

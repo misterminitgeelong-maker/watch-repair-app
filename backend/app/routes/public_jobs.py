@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, Response
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -1323,17 +1324,23 @@ def decide_public_auto_key_quote(
             select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
         ).first()
         if not existing_invoice:
-            session.add(AutoKeyInvoice(
-                tenant_id=job.tenant_id,
-                auto_key_job_id=job.id,
-                auto_key_quote_id=quote.id,
-                invoice_number=_next_aki_invoice_number(session, job.tenant_id),
-                subtotal_cents=quote.subtotal_cents,
-                tax_cents=quote.tax_cents,
-                total_cents=quote.total_cents,
-                currency=quote.currency,
-                customer_view_token=uuid4().hex,
-            ))
+            # Savepoint so a concurrent approval that already invoiced this quote
+            # (uq_autokeyinvoice_quote) doesn't roll back the approval itself.
+            try:
+                with session.begin_nested():
+                    session.add(AutoKeyInvoice(
+                        tenant_id=job.tenant_id,
+                        auto_key_job_id=job.id,
+                        auto_key_quote_id=quote.id,
+                        invoice_number=_next_aki_invoice_number(session, job.tenant_id),
+                        subtotal_cents=quote.subtotal_cents,
+                        tax_cents=quote.tax_cents,
+                        total_cents=quote.total_cents,
+                        currency=quote.currency,
+                        customer_view_token=uuid4().hex,
+                    ))
+            except IntegrityError:
+                logger.info("auto_key_invoice.portal_approval_race_skipped quote=%s", quote.id)
 
     session.add(TenantEventLog(
         tenant_id=job.tenant_id,

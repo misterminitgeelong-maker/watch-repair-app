@@ -1520,8 +1520,14 @@ export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePa
 }
 export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)
+export interface AutoKeyJobStatusUpdateResult extends AutoKeyJob {
+  /** True when this status change auto-created an invoice. */
+  invoice_created: boolean
+  /** Machine code for why no invoice was created (e.g. "already_invoiced"), or null. */
+  invoice_skip_reason: string | null
+}
 export const updateAutoKeyJobStatus = (id: string, status: JobStatus, note?: string) =>
-  api.post<AutoKeyJob>(`/auto-key-jobs/${id}/status`, { status, note })
+  api.post<AutoKeyJobStatusUpdateResult>(`/auto-key-jobs/${id}/status`, { status, note })
 export const deleteAutoKeyJob = (id: string) => api.delete(`/auto-key-jobs/${id}`)
 
 export interface AutoKeyQuoteLineItem {

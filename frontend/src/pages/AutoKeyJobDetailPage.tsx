@@ -494,28 +494,16 @@ export default function AutoKeyJobDetailPage() {
 
   const handleStatusChange = async (status: JobStatus) => {
     setStatusFeedback('')
-    const invoicesBefore = invoices.length
-    await statusMut.mutateAsync(status)
+    const res = await statusMut.mutateAsync(status)
     if (status !== 'work_completed') return
 
-    const [{ data: latestQuotes }, { data: latestInvoices }] = await Promise.all([
-      listAutoKeyQuotes(id!),
-      listAutoKeyInvoices(id!),
-    ])
-    const newestQuote = latestQuotes[0]
-    if (latestInvoices.length > invoicesBefore) {
+    if (res.data.invoice_created) {
       setStatusFeedback('Work completed — invoice created and payment link sent to customer.')
-      return
+    } else if (res.data.invoice_skip_reason === 'already_invoiced') {
+      setStatusFeedback('Work completed. No new invoice was created — this job is already invoiced.')
+    } else {
+      setStatusFeedback('Work completed.')
     }
-    if (!newestQuote) {
-      setStatusFeedback('Work completed. No invoice auto-created because no quote exists yet.')
-      return
-    }
-    if (newestQuote.status === 'declined') {
-      setStatusFeedback('Work completed. No invoice auto-created because the latest quote is declined.')
-      return
-    }
-    setStatusFeedback('Work completed. No new invoice was created (an invoice may already exist).')
   }
 
   const mobileNotifyFeedback = (

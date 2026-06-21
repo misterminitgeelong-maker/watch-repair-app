@@ -96,7 +96,11 @@ def test_auto_invoice_created_once_when_job_completed():
         json={"status": "work_completed", "note": "Done"},
     )
     assert complete_res.status_code == 200
-    assert complete_res.json()["status"] == "work_completed"
+    completion = complete_res.json()
+    assert completion["status"] == "work_completed"
+    # The endpoint reports the invoice outcome directly so the UI need not guess.
+    assert completion["invoice_created"] is True
+    assert completion["invoice_skip_reason"] is None
 
     invoices_after_first = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
     assert invoices_after_first.status_code == 200
@@ -112,10 +116,83 @@ def test_auto_invoice_created_once_when_job_completed():
         json={"status": "work_completed", "note": "Still done"},
     )
     assert complete_again_res.status_code == 200
+    # Re-entering the same status is not a fresh completion → no invoice attempt.
+    assert complete_again_res.json()["invoice_created"] is False
 
     invoices_after_second = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
     assert invoices_after_second.status_code == 200
     assert len(invoices_after_second.json()) == 1
+
+
+def test_completion_reports_already_invoiced_when_invoice_preexists():
+    """A job invoiced before completion (e.g. manually from a quote) must not be
+    re-invoiced on completion, and the endpoint must say why."""
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"autokey-preinv-{suffix}",
+        email=f"owner-{suffix}@autokey.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    customer_id = _create_customer(headers)
+
+    create_job_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Pre-invoiced job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "awaiting_quote",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert create_job_res.status_code == 201
+    job_id = create_job_res.json()["id"]
+
+    create_quote_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/quotes",
+        headers=headers,
+        json={
+            "line_items": [
+                {"description": "Program key", "quantity": 1, "unit_price_cents": 18000},
+            ],
+            "tax_cents": 1800,
+        },
+    )
+    assert create_quote_res.status_code == 201
+    quote_id = create_quote_res.json()["id"]
+
+    # Invoice the quote manually before the job is completed.
+    manual_inv = client.post(
+        f"/v1/auto-key-jobs/{job_id}/invoices/from-quote/{quote_id}",
+        headers=headers,
+    )
+    assert manual_inv.status_code == 201
+
+    # A second manual invoice for the same quote is rejected (per-quote uniqueness).
+    dup_inv = client.post(
+        f"/v1/auto-key-jobs/{job_id}/invoices/from-quote/{quote_id}",
+        headers=headers,
+    )
+    assert dup_inv.status_code == 409
+
+    complete_res = client.post(
+        f"/v1/auto-key-jobs/{job_id}/status",
+        headers=headers,
+        json={"status": "work_completed"},
+    )
+    assert complete_res.status_code == 200
+    body = complete_res.json()
+    assert body["invoice_created"] is False
+    assert body["invoice_skip_reason"] == "already_invoiced"
+
+    invoices = client.get(f"/v1/auto-key-jobs/{job_id}/invoices", headers=headers)
+    assert invoices.status_code == 200
+    assert len(invoices.json()) == 1
 
 
 def test_no_duplicate_invoice_when_completion_re_entered():

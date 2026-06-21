@@ -2,10 +2,12 @@ import logging
 import re
 from datetime import date as date_type
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
@@ -23,6 +25,7 @@ from ..models import (
     AutoKeyInvoiceSendResponse,
     AutoKeyJobRead,
     AutoKeyJobStatusUpdate,
+    AutoKeyJobStatusUpdateResult,
     AutoKeyQuote,
     AutoKeyQuoteCreate,
     AutoKeyQuoteLineItem,
@@ -762,7 +765,7 @@ def get_auto_key_job(
     return job
 
 
-@router.post("/{job_id}/status", response_model=AutoKeyJobRead)
+@router.post("/{job_id}/status", response_model=AutoKeyJobStatusUpdateResult)
 def update_auto_key_job_status(
     job_id: UUID,
     payload: AutoKeyJobStatusUpdate,
@@ -779,6 +782,8 @@ def update_auto_key_job_status(
 
     # Auto-create invoice on work_completed when no invoice is present yet.
     moved_to_completed = previous_status != "work_completed" and job.status == "work_completed"
+    invoice_created = False
+    invoice_skip_reason: Optional[str] = None
     if moved_to_completed and job.work_completed_at is None:
         job.work_completed_at = datetime.now(timezone.utc)
     if moved_to_completed:
@@ -788,7 +793,9 @@ def update_auto_key_job_status(
           .where(AutoKeyInvoice.auto_key_job_id == job.id)
       ).first()
 
-      if not existing_invoice:
+      if existing_invoice:
+          invoice_skip_reason = "already_invoiced"
+      else:
           latest_quote = session.exec(
               select(AutoKeyQuote)
               .where(AutoKeyQuote.tenant_id == auth.tenant_id)
@@ -797,35 +804,45 @@ def update_auto_key_job_status(
           ).first()
 
           if latest_quote:
-              logger.info("auto_key_invoice.auto_create_from_quote tenant=%s job=%s quote=%s", auth.tenant_id, job.id, latest_quote.id)
-              session.add(
-                  AutoKeyInvoice(
-                      tenant_id=auth.tenant_id,
-                      auto_key_job_id=job.id,
-                      auto_key_quote_id=latest_quote.id,
-                      invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
-                      subtotal_cents=latest_quote.subtotal_cents,
-                      tax_cents=latest_quote.tax_cents,
-                      total_cents=latest_quote.total_cents,
-                      currency=latest_quote.currency,
-                      customer_view_token=uuid4().hex,
-                  )
+              new_invoice = AutoKeyInvoice(
+                  tenant_id=auth.tenant_id,
+                  auto_key_job_id=job.id,
+                  auto_key_quote_id=latest_quote.id,
+                  invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
+                  subtotal_cents=latest_quote.subtotal_cents,
+                  tax_cents=latest_quote.tax_cents,
+                  total_cents=latest_quote.total_cents,
+                  currency=latest_quote.currency,
+                  customer_view_token=uuid4().hex,
               )
           else:
-              logger.info("auto_key_invoice.auto_create_from_cost tenant=%s job=%s total=%s", auth.tenant_id, job.id, job.cost_cents)
               subtotal = max(0, int(round(job.cost_cents / 1.1))) if job.cost_cents > 0 else 0
               tax = max(0, int(job.cost_cents - subtotal))
-              session.add(
-                  AutoKeyInvoice(
-                      tenant_id=auth.tenant_id,
-                      auto_key_job_id=job.id,
-                      invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
-                      subtotal_cents=subtotal,
-                      tax_cents=tax,
-                      total_cents=max(0, int(job.cost_cents)),
-                      currency="AUD",
-                      customer_view_token=uuid4().hex,
-                  )
+              new_invoice = AutoKeyInvoice(
+                  tenant_id=auth.tenant_id,
+                  auto_key_job_id=job.id,
+                  invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
+                  subtotal_cents=subtotal,
+                  tax_cents=tax,
+                  total_cents=max(0, int(job.cost_cents)),
+                  currency="AUD",
+                  customer_view_token=uuid4().hex,
+              )
+
+          # Insert in a savepoint so a concurrent completion that wins the race
+          # (unique constraint) rolls back only the invoice, not the status change.
+          try:
+              with session.begin_nested():
+                  session.add(new_invoice)
+              invoice_created = True
+              logger.info(
+                  "auto_key_invoice.auto_created tenant=%s job=%s quote=%s",
+                  auth.tenant_id, job.id, new_invoice.auto_key_quote_id,
+              )
+          except IntegrityError:
+              invoice_skip_reason = "already_invoiced"
+              logger.info(
+                  "auto_key_invoice.auto_create_race_skipped tenant=%s job=%s", auth.tenant_id, job.id,
               )
 
     session.commit()
@@ -891,7 +908,10 @@ def update_auto_key_job_status(
             except Exception:
                 logger.exception("auto_key_job.work_completed_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
 
-    return job
+    result = AutoKeyJobStatusUpdateResult.model_validate(job, from_attributes=True)
+    result.invoice_created = invoice_created
+    result.invoice_skip_reason = invoice_skip_reason
+    return result
 
 
 @router.patch("/{job_id}", response_model=AutoKeyJobRead)
@@ -1225,7 +1245,12 @@ def create_auto_key_invoice_from_quote(
         customer_view_token=uuid4().hex,
     )
     session.add(invoice)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # Concurrent request already invoiced this quote (uq_autokeyinvoice_quote).
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Invoice already exists for this quote")
     session.refresh(invoice)
     from ..xero_service import sync_auto_key_invoice_after_create
 
