@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, CheckCircle, Printer, Send } from 'lucide-react'
+import { ChevronLeft, CheckCircle, Printer, Send, ExternalLink } from 'lucide-react'
 import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, retryInvoiceXeroSync, getXeroConnectionStatus, getApiErrorMessage, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
@@ -291,6 +291,11 @@ export function InvoiceDetailPage() {
               <Send size={15} />{sendMut.isPending ? 'Sending…' : 'Email Customer'}
             </Button>
             <Button variant="secondary" onClick={() => navigate(`/invoices/${id}/print`)}><Printer size={15} />Print / PDF</Button>
+            {invoice.xero_online_invoice_url && (
+              <Button variant="secondary" onClick={() => window.open(invoice.xero_online_invoice_url!, '_blank', 'noopener')}>
+                <ExternalLink size={15} />Pay online (Xero)
+              </Button>
+            )}
             {invoice.status === 'unpaid' && <Button onClick={() => setShowPay(true)}><CheckCircle size={15} />Record Payment</Button>}
           </div>
         }

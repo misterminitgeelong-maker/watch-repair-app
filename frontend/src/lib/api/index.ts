@@ -965,6 +965,7 @@ export interface Invoice {
   xero_sync_status?: string | null
   xero_sync_error?: string | null
   xero_synced_at?: string | null
+  xero_online_invoice_url?: string | null
   invoice?: Invoice
 }
 export const listInvoices = (params?: { limit?: number }) =>

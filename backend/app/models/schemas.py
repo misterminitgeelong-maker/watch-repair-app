@@ -730,6 +730,7 @@ class InvoiceRead(SQLModel):
     xero_sync_status: Optional[str] = None
     xero_sync_error: Optional[str] = None
     xero_synced_at: Optional[datetime] = None
+    xero_online_invoice_url: Optional[str] = None
 
 class PaymentCreate(SQLModel):
     amount_cents: int

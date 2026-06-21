@@ -257,6 +257,7 @@ def send_invoice(
         shop_logo_url=tenant.logo_url if tenant else None,
         shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
+        pay_url=invoice.xero_online_invoice_url,
     )
     if email_sent:
         session.add(

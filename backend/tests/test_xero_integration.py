@@ -495,6 +495,8 @@ def _mock_xero_client(xero_invoice_id: str, invoice_status: str = "AUTHORISED") 
         return resp
 
     def fake_request(method, url, **kwargs):
+        if url.endswith("/OnlineInvoice") and method == "GET":
+            return _ok_json({"OnlineInvoices": [{"OnlineInvoiceUrl": "https://in.xero.com/pay-abc"}]})
         if "/Invoices/" in url and method == "GET":
             return _ok_json({"Invoices": [{"InvoiceID": xero_invoice_id, "Status": invoice_status}]})
         if url.endswith("/Contacts") and method == "GET":
@@ -535,11 +537,13 @@ def test_sync_repair_invoice_to_xero_creates_invoice():
     invoice = inv_res.json()["invoice"]
     assert invoice["xero_sync_status"] == "synced"
     assert invoice["xero_invoice_id"] == xero_invoice_id
+    assert invoice["xero_online_invoice_url"] == "https://in.xero.com/pay-abc"
 
     with Session(engine) as session:
         row = session.get(Invoice, UUID(invoice["id"]))
         assert row and row.xero_sync_status == "synced"
         assert row.xero_invoice_id == xero_invoice_id
+        assert row.xero_online_invoice_url == "https://in.xero.com/pay-abc"
 
 
 def test_xero_webhook_marks_repair_invoice_paid():

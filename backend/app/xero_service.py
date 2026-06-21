@@ -576,6 +576,15 @@ def fetch_xero_invoice_status(session: Session, tenant: Tenant, xero_invoice_id:
     return (invoices[0].get("Status") or "").upper()
 
 
+def _fetch_xero_online_invoice_url(session: Session, tenant: Tenant, xero_invoice_id: str) -> Optional[str]:
+    """Xero-hosted 'view & pay online' URL for an AUTHORISED invoice, or None."""
+    data = _xero_request(session, tenant, "GET", f"/Invoices/{xero_invoice_id}/OnlineInvoice")
+    online = data.get("OnlineInvoices") or []
+    if not online:
+        return None
+    return online[0].get("OnlineInvoiceUrl") or None
+
+
 def mark_auto_key_invoice_paid_from_xero(session: Session, invoice: AutoKeyInvoice) -> bool:
     if invoice.status == "paid":
         return False
@@ -744,6 +753,11 @@ def sync_repair_invoice_to_xero(session: Session, invoice: Invoice, tenant: Tena
         invoice.xero_sync_status = "synced"
         invoice.xero_sync_error = None
         invoice.xero_synced_at = datetime.now(timezone.utc)
+        # Best-effort: grab the Xero-hosted pay link so the app/email can offer it.
+        try:
+            invoice.xero_online_invoice_url = _fetch_xero_online_invoice_url(session, tenant, str(xero_id))
+        except Exception:
+            logger.warning("xero_repair_invoice.online_url_fetch_failed invoice=%s", invoice.id)
         tenant.xero_connection_status = "connected"
         session.add(tenant)
         session.add(invoice)

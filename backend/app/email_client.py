@@ -129,6 +129,7 @@ def send_invoice_email(
     shop_logo_url: str | None = None,
     shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
+    pay_url: str | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a watch repair invoice is sent to the customer."""
     if not (to_email or "").strip():
@@ -138,23 +139,35 @@ def send_invoice_email(
     items_block = _format_line_items(line_items or [])
     if items_block:
         items_block = f"\n\nLine items:\n{items_block}\n"
+    pay_url = (pay_url or "").strip() or None
+    closing = (
+        f"Pay online: {pay_url}\n\n" if pay_url
+        else f"Contact {shop_name} to arrange payment or collection.\n\n"
+    )
     subject = f"Invoice {invoice_number} – Job #{job_number}"
     body_plain = (
         f"Hi {customer_name},\n\n"
         f"Please find your invoice {invoice_number} for watch repair job #{job_number}.\n"
         f"Amount due: {sym}{total:.2f}.{items_block}\n"
-        f"Contact {shop_name} to arrange payment or collection.\n\n"
+        f"{closing}"
         f"Thanks,\n{shop_name}"
+    )
+    intro_html = (
+        f"Please find your invoice for <strong>watch repair job #{_html.escape(job_number)}</strong> below. "
+        + (
+            "Use the button below to view and pay online."
+            if pay_url
+            else f"Contact {_html.escape(shop_name)} to arrange payment or collection."
+        )
     )
     body_html = render_transactional_email(
         title=f"Invoice {invoice_number}",
         preheader=f"Invoice {invoice_number} · {sym}{total:.2f}",
         greeting=f"Hi {customer_name},",
-        intro_html=(
-            f"Please find your invoice for <strong>watch repair job #{_html.escape(job_number)}</strong> below. "
-            f"Contact {_html.escape(shop_name)} to arrange payment or collection."
-        ),
+        intro_html=intro_html,
         shop=ShopInfo(name=shop_name, logo_url=shop_logo_url, brand_color=shop_brand_color),
+        cta_label="View & pay online" if pay_url else None,
+        cta_url=pay_url,
         line_items=line_items or [],
         total_cents=total_cents,
         currency=currency,
