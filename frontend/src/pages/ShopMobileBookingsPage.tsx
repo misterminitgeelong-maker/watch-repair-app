@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cancelShopMobileBooking,
@@ -12,6 +12,7 @@ import {
   type ShopMobileVisitLocationType,
 } from '@/lib/api'
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
+import { parseAuAddressFromFormatted, type ResolvedAuAddress } from '@/lib/auAddress'
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate } from '@/lib/utils'
@@ -56,8 +57,32 @@ export default function ShopMobileBookingsPage() {
   const [notes, setNotes] = useState('')
   const [routeSuburb, setRouteSuburb] = useState('')
   const [routeState, setRouteState] = useState<string>('VIC')
+  const [routingManualEdit, setRoutingManualEdit] = useState(false)
+  const [routingFromAddress, setRoutingFromAddress] = useState(false)
   const [routedOperator, setRoutedOperator] = useState<ShopMobileOperatorOption | null>(null)
   const [routingLookupError, setRoutingLookupError] = useState('')
+
+  const applyRoutingFromAddress = useCallback((resolved: ResolvedAuAddress) => {
+    if (resolved.suburb) {
+      setRouteSuburb(resolved.suburb)
+      setRoutingFromAddress(true)
+      setRoutingManualEdit(false)
+    }
+    if (resolved.stateCode) {
+      setRouteState(resolved.stateCode)
+    }
+  }, [])
+
+  const handleJobAddressChange = useCallback((next: string) => {
+    setJobAddress(next)
+  }, [])
+
+  const handlePlaceResolved = useCallback(
+    (resolved: ResolvedAuAddress) => {
+      applyRoutingFromAddress(resolved)
+    },
+    [applyRoutingFromAddress],
+  )
 
   const { data: bookings = [], isLoading: listLoading } = useQuery({
     queryKey: ['shop-mobile-bookings'],
@@ -66,9 +91,11 @@ export default function ShopMobileBookingsPage() {
 
   useEffect(() => {
     if (visitType === 'at_shop' && tenantBusinessAddress?.trim()) {
-      setJobAddress(tenantBusinessAddress.trim())
+      const addr = tenantBusinessAddress.trim()
+      setJobAddress(addr)
+      applyRoutingFromAddress({ formattedAddress: addr, ...parseAuAddressFromFormatted(addr) })
     }
-  }, [visitType, tenantBusinessAddress])
+  }, [visitType, tenantBusinessAddress, applyRoutingFromAddress])
 
   useEffect(() => {
     const suburb = routeSuburb.trim()
@@ -131,6 +158,9 @@ export default function ShopMobileBookingsPage() {
       setPreferredAt('')
       setJobType('')
       setNotes('')
+      setRouteSuburb('')
+      setRoutingManualEdit(false)
+      setRoutingFromAddress(false)
       qc.invalidateQueries({ queryKey: ['shop-mobile-bookings'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not submit booking request.')),
@@ -165,25 +195,86 @@ export default function ShopMobileBookingsPage() {
       <Card className="mb-6 p-5">
         <h2 className="font-semibold mb-4" style={{ color: 'var(--ms-text)' }}>New booking request</h2>
         <div className="grid gap-4 md:grid-cols-2">
+          <Input label="Customer name" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
+          <Input label="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
+          <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <Input label="Vehicle make" value={vehicleMake} onChange={e => setVehicleMake(e.target.value)} />
+          <Input label="Vehicle model" value={vehicleModel} onChange={e => setVehicleModel(e.target.value)} />
+          <Input label="Registration" value={registrationPlate} onChange={e => setRegistrationPlate(e.target.value)} />
+          <Select label="Visit location" value={visitType} onChange={e => setVisitType(e.target.value as ShopMobileVisitLocationType)}>
+            <option value="customer_site">Customer site (mobile)</option>
+            <option value="at_shop">At our shop</option>
+          </Select>
+          <Input label="Job type" value={jobType} onChange={e => setJobType(e.target.value)} placeholder="Lockout – Car" />
+          <div className="md:col-span-2">
+            <AddressAutocompleteInput
+              label="Address"
+              value={jobAddress}
+              onChange={handleJobAddressChange}
+              onPlaceResolved={handlePlaceResolved}
+              placeholder={visitType === 'at_shop' ? 'Shop address' : 'Customer address'}
+              required
+            />
+          </div>
           <div className="md:col-span-2">
             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
-              Job location (for routing)
+              Operator routing
             </p>
-            <div className="flex flex-wrap gap-2 items-end">
-              <Input
-                label="Suburb"
-                value={routeSuburb}
-                onChange={e => setRouteSuburb(e.target.value)}
-                placeholder="Chadstone"
-                className="min-w-[140px] flex-1"
-                required
-              />
-              <Select label="State" value={routeState} onChange={e => setRouteState(e.target.value)} className="w-28">
-                {AU_STATES.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </Select>
-            </div>
+            {!routingManualEdit && routeSuburb.trim() ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                <span>
+                  {routeSuburb}, {routeState}
+                  {routingFromAddress && (
+                    <span className="text-xs ml-1" style={{ color: 'var(--ms-text-muted)' }}>(from address)</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="text-xs font-medium underline"
+                  style={{ color: 'var(--ms-accent)' }}
+                  onClick={() => setRoutingManualEdit(true)}
+                >
+                  Edit suburb
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 items-end">
+                <Input
+                  label="Suburb"
+                  value={routeSuburb}
+                  onChange={e => {
+                    setRouteSuburb(e.target.value)
+                    setRoutingFromAddress(false)
+                  }}
+                  placeholder="Chadstone"
+                  className="min-w-[140px] flex-1"
+                  required
+                />
+                <Select
+                  label="State"
+                  value={routeState}
+                  onChange={e => {
+                    setRouteState(e.target.value)
+                    setRoutingFromAddress(false)
+                  }}
+                  className="w-28"
+                >
+                  {AU_STATES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </Select>
+                {routeSuburb.trim() && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium pb-2 underline"
+                    style={{ color: 'var(--ms-text-muted)' }}
+                    onClick={() => setRoutingManualEdit(false)}
+                  >
+                    Done
+                  </button>
+                )}
+              </div>
+            )}
             {routedOperator && (
               <p className="text-xs mt-2" style={{ color: 'var(--ms-text-mid)' }}>
                 Routed to{' '}
@@ -201,21 +292,11 @@ export default function ShopMobileBookingsPage() {
             {routingLookupError && (
               <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>{routingLookupError}</p>
             )}
-          </div>
-          <Input label="Customer name" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
-          <Input label="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
-          <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          <Input label="Vehicle make" value={vehicleMake} onChange={e => setVehicleMake(e.target.value)} />
-          <Input label="Vehicle model" value={vehicleModel} onChange={e => setVehicleModel(e.target.value)} />
-          <Input label="Registration" value={registrationPlate} onChange={e => setRegistrationPlate(e.target.value)} />
-          <Select label="Visit location" value={visitType} onChange={e => setVisitType(e.target.value as ShopMobileVisitLocationType)}>
-            <option value="customer_site">Customer site (mobile)</option>
-            <option value="at_shop">At our shop</option>
-          </Select>
-          <Input label="Job type" value={jobType} onChange={e => setJobType(e.target.value)} placeholder="Lockout – Car" />
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ms-text)' }}>Address</label>
-            <AddressAutocompleteInput value={jobAddress} onChange={setJobAddress} placeholder={visitType === 'at_shop' ? 'Shop address' : 'Customer address'} />
+            {!routeSuburb.trim() && jobAddress.trim() && (
+              <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
+                Pick an address from the suggestions, or enter suburb and state manually.
+              </p>
+            )}
           </div>
           <Input label="Preferred date & time" type="datetime-local" value={preferredAt} onChange={e => setPreferredAt(e.target.value)} />
           <div className="md:col-span-2">
