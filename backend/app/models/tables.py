@@ -162,6 +162,9 @@ class ShopMobileBookingRequest(SQLModel, table=True):
     registration_plate: Optional[str] = Field(default=None, max_length=32)
     visit_location_type: str = Field(default="customer_site", max_length=32)
     job_address: str = Field(max_length=2000)
+    job_suburb: Optional[str] = Field(default=None, max_length=200)
+    job_state_code: Optional[str] = Field(default=None, max_length=8)
+    operator_routing_rule: Optional[str] = Field(default=None, max_length=32)
     preferred_scheduled_at: Optional[datetime] = None
     job_type: Optional[str] = Field(default=None, max_length=120)
     notes: Optional[str] = Field(default=None, max_length=4000)

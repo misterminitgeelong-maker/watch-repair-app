@@ -23,6 +23,7 @@ from ..models import (
     Customer,
     CustomerAccountMembership,
     MobileSuburbRoute,
+    ParentAccount,
     ParentAccountEventLog,
     ParentAccountMembership,
     ShopMobileBookingCreate,
@@ -69,6 +70,137 @@ def _assert_parent_account_link(session: Session, shop_tid: UUID, operator_tid: 
     if not common:
         raise HTTPException(status_code=403, detail="Shop and operator are not under the same parent account")
     return next(iter(common))
+
+
+def _operator_option(session: Session, tenant_id: UUID, *, routing_rule: str | None = None) -> ShopMobileOperatorOption:
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=500, detail="Routed operator tenant not found")
+    return ShopMobileOperatorOption(
+        tenant_id=tenant.id,
+        tenant_slug=tenant.slug,
+        tenant_name=tenant.name,
+        shop_number=tenant.shop_number,
+        plan_code=normalize_plan_code(tenant.plan_code),
+        routing_rule=routing_rule,
+    )
+
+
+def _resolve_operator_for_booking(
+    session: Session,
+    shop_tid: UUID,
+    suburb: str,
+    state_code: str,
+) -> tuple[UUID, UUID, str]:
+    """Pick operator from suburb map, else parent fallback operator."""
+    parent_ids = _parent_account_ids_for_tenant(session, shop_tid)
+    if not parent_ids:
+        raise HTTPException(status_code=403, detail="Tenant is not linked to a parent account")
+
+    st = state_code.strip().upper()
+    if st not in AU_STATES:
+        raise HTTPException(status_code=400, detail=f"Invalid state_code; use one of: {', '.join(sorted(AU_STATES))}")
+
+    sub_norm = _normalize_suburb(suburb)
+    if not sub_norm:
+        raise HTTPException(status_code=400, detail="suburb is required")
+
+    route = session.exec(
+        select(MobileSuburbRoute)
+        .where(MobileSuburbRoute.parent_account_id.in_(parent_ids))  # type: ignore[attr-defined]
+        .where(MobileSuburbRoute.state_code == st)
+        .where(MobileSuburbRoute.suburb_normalized == sub_norm)
+    ).first()
+    if route and _tenant_is_bookable_operator(session, route.target_tenant_id):
+        parent_id = _assert_parent_account_link(session, shop_tid, route.target_tenant_id)
+        return route.target_tenant_id, parent_id, "suburb_route"
+
+    for parent_id in sorted(parent_ids, key=str):
+        parent = session.get(ParentAccount, parent_id)
+        fallback_tid = parent.mobile_lead_default_tenant_id if parent else None
+        if not fallback_tid or not _tenant_is_bookable_operator(session, fallback_tid):
+            continue
+        try:
+            linked_parent_id = _assert_parent_account_link(session, shop_tid, fallback_tid)
+        except HTTPException:
+            continue
+        return fallback_tid, linked_parent_id, "fallback_operator"
+
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "No mobile operator is configured for this suburb. "
+            "Ask support to map the suburb or set a fallback operator."
+        ),
+    )
+
+
+def _shop_booking_alert_phone(session: Session, shop_tid: UUID) -> str | None:
+    tenant = session.get(Tenant, shop_tid)
+    if not tenant:
+        return None
+    for raw in (tenant.shop_phone, tenant.mobile_dispatch_phone):
+        if raw and str(raw).strip():
+            return str(raw).strip()
+    return None
+
+
+def _notify_shop_booking_outcome(
+    session: Session,
+    row: ShopMobileBookingRequest,
+    *,
+    outcome: str,
+) -> None:
+    """Best-effort SMS to the requesting shop when a booking is accepted, declined, or expired."""
+    to_phone = _shop_booking_alert_phone(session, row.requesting_tenant_id)
+    if not to_phone:
+        return
+    shop = session.get(Tenant, row.requesting_tenant_id)
+    op = session.get(Tenant, row.target_operator_tenant_id)
+    shop_label = format_tenant_label(shop.name if shop else "Shop", shop.shop_number if shop else None)
+    op_label = format_tenant_label(op.name if op else "Operator", op.shop_number if op else None)
+    try:
+        if outcome == "accepted":
+            job_number = ""
+            if row.resulting_auto_key_job_id:
+                job = session.get(AutoKeyJob, row.resulting_auto_key_job_id)
+                if job:
+                    job_number = job.job_number
+            sms_service.notify_shop_mobile_booking_accepted(
+                session,
+                tenant_id=row.requesting_tenant_id,
+                to_phone=to_phone,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                operator_name=op_label,
+                job_number=job_number or None,
+            )
+        elif outcome == "declined":
+            sms_service.notify_shop_mobile_booking_declined(
+                session,
+                tenant_id=row.requesting_tenant_id,
+                to_phone=to_phone,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                operator_name=op_label,
+                decline_reason=row.decline_reason,
+            )
+        elif outcome == "expired":
+            sms_service.notify_shop_mobile_booking_expired(
+                session,
+                tenant_id=row.requesting_tenant_id,
+                to_phone=to_phone,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                operator_name=op_label,
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "shop_mobile_booking.shop_notify_failed booking=%s outcome=%s",
+            row.id,
+            outcome,
+            exc_info=True,
+        )
 
 
 BOOKABLE_OPERATOR_PLAN_CODES = frozenset(
@@ -148,6 +280,7 @@ def _maybe_expire_pending(session: Session, row: ShopMobileBookingRequest) -> bo
         return False
     row.status = "expired"
     session.add(row)
+    _notify_shop_booking_outcome(session, row, outcome="expired")
     return True
 
 
@@ -217,6 +350,9 @@ def _to_read(
         registration_plate=row.registration_plate,
         visit_location_type=row.visit_location_type,  # type: ignore[arg-type]
         job_address=row.job_address,
+        job_suburb=row.job_suburb,
+        job_state_code=row.job_state_code,
+        operator_routing_rule=row.operator_routing_rule,
         preferred_scheduled_at=row.preferred_scheduled_at,
         job_type=row.job_type,
         notes=row.notes,
@@ -287,37 +423,15 @@ def suggest_operator(
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
     session: Session = Depends(get_session),
 ):
-    parent_ids = _parent_account_ids_for_tenant(session, auth.tenant_id)
-    if not parent_ids:
-        return None
-
-    st = state_code.strip().upper()
-    if st not in AU_STATES:
-        raise HTTPException(status_code=400, detail=f"Invalid state_code; use one of: {', '.join(sorted(AU_STATES))}")
-
-    sub_norm = _normalize_suburb(suburb)
-    if not sub_norm:
-        raise HTTPException(status_code=400, detail="suburb is required")
-
-    route = session.exec(
-        select(MobileSuburbRoute)
-        .where(MobileSuburbRoute.parent_account_id.in_(parent_ids))  # type: ignore[attr-defined]
-        .where(MobileSuburbRoute.state_code == st)
-        .where(MobileSuburbRoute.suburb_normalized == sub_norm)
-    ).first()
-    if not route or not _tenant_is_bookable_operator(session, route.target_tenant_id):
-        return None
-
-    tenant = session.get(Tenant, route.target_tenant_id)
-    if not tenant:
-        return None
-    return ShopMobileOperatorOption(
-        tenant_id=tenant.id,
-        tenant_slug=tenant.slug,
-        tenant_name=tenant.name,
-        shop_number=tenant.shop_number,
-        plan_code=normalize_plan_code(tenant.plan_code),
-    )
+    try:
+        operator_tid, _parent_id, routing_rule = _resolve_operator_for_booking(
+            session, auth.tenant_id, suburb, state_code
+        )
+    except HTTPException as exc:
+        if exc.status_code == 422:
+            return None
+        raise
+    return _operator_option(session, operator_tid, routing_rule=routing_rule)
 
 
 @router.post("", response_model=ShopMobileBookingRead, status_code=201)
@@ -326,12 +440,21 @@ def create_booking(
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
     session: Session = Depends(get_session),
 ):
-    if body.target_operator_tenant_id == auth.tenant_id:
-        raise HTTPException(status_code=400, detail="Cannot book your own tenant as the operator")
+    suburb = body.suburb.strip()
+    state_code = body.state_code.strip().upper()
 
-    parent_id = _assert_parent_account_link(session, auth.tenant_id, body.target_operator_tenant_id)
-    if not _tenant_is_bookable_operator(session, body.target_operator_tenant_id):
-        raise HTTPException(status_code=400, detail="Target tenant is not a mobile services operator")
+    if body.target_operator_tenant_id and auth.role == "platform_admin":
+        operator_tid = body.target_operator_tenant_id
+        if operator_tid == auth.tenant_id:
+            raise HTTPException(status_code=400, detail="Cannot book your own tenant as the operator")
+        parent_id = _assert_parent_account_link(session, auth.tenant_id, operator_tid)
+        if not _tenant_is_bookable_operator(session, operator_tid):
+            raise HTTPException(status_code=400, detail="Target tenant is not a mobile services operator")
+        routing_rule = "manual_override"
+    else:
+        operator_tid, parent_id, routing_rule = _resolve_operator_for_booking(
+            session, auth.tenant_id, suburb, state_code
+        )
 
     shop = session.get(Tenant, auth.tenant_id)
     job_address = body.job_address.strip()
@@ -344,7 +467,7 @@ def create_booking(
     row = ShopMobileBookingRequest(
         parent_account_id=parent_id,
         requesting_tenant_id=auth.tenant_id,
-        target_operator_tenant_id=body.target_operator_tenant_id,
+        target_operator_tenant_id=operator_tid,
         created_by_user_id=auth.user_id,
         status="pending",
         customer_name=body.customer_name.strip(),
@@ -355,6 +478,9 @@ def create_booking(
         registration_plate=body.registration_plate.strip()[:32] if body.registration_plate else None,
         visit_location_type=body.visit_location_type,
         job_address=job_address[:2000],
+        job_suburb=_normalize_suburb(suburb)[:200],
+        job_state_code=state_code[:8],
+        operator_routing_rule=routing_rule,
         preferred_scheduled_at=body.preferred_scheduled_at,
         job_type=body.job_type.strip()[:120] if body.job_type else None,
         notes=body.notes.strip()[:4000] if body.notes else None,
@@ -367,7 +493,7 @@ def create_booking(
     shop_label = format_tenant_label(shop_name, shop.shop_number if shop else None)
     session.add(
         TenantEventLog(
-            tenant_id=body.target_operator_tenant_id,
+            tenant_id=operator_tid,
             actor_user_id=auth.user_id,
             actor_email=actor.email if actor else None,
             entity_type="shop_mobile_booking",
@@ -389,13 +515,13 @@ def create_booking(
     session.commit()
     session.refresh(row)
 
-    operator = session.get(Tenant, body.target_operator_tenant_id)
+    operator = session.get(Tenant, operator_tid)
     dispatch_phone = sms_service.operator_dispatch_phone(operator)
     if dispatch_phone:
         try:
             sms_service.notify_shop_mobile_booking_request(
                 session,
-                tenant_id=body.target_operator_tenant_id,
+                tenant_id=operator_tid,
                 to_phone=dispatch_phone,
                 shop_name=shop_label,
                 customer_name=row.customer_name,
@@ -414,7 +540,7 @@ def create_booking(
             logger.warning(
                 "shop_mobile_booking.dispatch_sms_failed booking=%s operator=%s",
                 row.id,
-                body.target_operator_tenant_id,
+                operator_tid,
                 exc_info=True,
             )
 
@@ -527,6 +653,8 @@ def decline_booking(
     )
     session.commit()
     session.refresh(row)
+    _notify_shop_booking_outcome(session, row, outcome="declined")
+    session.commit()
     return _to_read(session, row)
 
 
@@ -653,4 +781,6 @@ def accept_booking(
     )
     session.commit()
     session.refresh(row)
+    _notify_shop_booking_outcome(session, row, outcome="accepted")
+    session.commit()
     return _to_read(session, row, schedule_conflict_warning=conflict_warning)

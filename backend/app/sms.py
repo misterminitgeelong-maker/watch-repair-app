@@ -751,6 +751,92 @@ def notify_shop_mobile_booking_request(
     return sid is not None
 
 
+def notify_shop_mobile_booking_accepted(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    operator_name: str,
+    job_number: str | None,
+) -> bool:
+    job_part = f" Job {job_number}." if job_number else ""
+    body = (
+        f"{shop_name}: booking accepted for {customer_name.strip()} by {operator_name.strip()}."
+        f"{job_part} Track status in Mainspring."
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_accepted",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
+def notify_shop_mobile_booking_declined(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    operator_name: str,
+    decline_reason: str | None,
+) -> bool:
+    reason = (decline_reason or "").strip()
+    reason_part = f" Reason: {reason[:120]}." if reason else ""
+    body = (
+        f"{shop_name}: booking declined for {customer_name.strip()} by {operator_name.strip()}."
+        f"{reason_part}"
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_declined",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
+def notify_shop_mobile_booking_expired(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    operator_name: str,
+) -> bool:
+    body = (
+        f"{shop_name}: booking for {customer_name.strip()} to {operator_name.strip()} "
+        f"expired with no response. Submit a new request if still needed."
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_expired",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
 def notify_auto_key_booking_request(
     session: Session,
     *,

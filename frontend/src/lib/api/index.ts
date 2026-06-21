@@ -344,6 +344,7 @@ export interface ShopMobileOperatorOption {
   tenant_name: string
   shop_number?: string | null
   plan_code: string
+  routing_rule?: string | null
 }
 
 export interface ShopMobileBooking {
@@ -365,6 +366,9 @@ export interface ShopMobileBooking {
   registration_plate?: string | null
   visit_location_type: ShopMobileVisitLocationType
   job_address: string
+  job_suburb?: string | null
+  job_state_code?: string | null
+  operator_routing_rule?: string | null
   preferred_scheduled_at?: string | null
   job_type?: string | null
   notes?: string | null
@@ -380,7 +384,9 @@ export interface ShopMobileBooking {
 }
 
 export interface ShopMobileBookingCreate {
-  target_operator_tenant_id: string
+  suburb: string
+  state_code: string
+  target_operator_tenant_id?: string
   customer_name: string
   phone?: string
   email?: string

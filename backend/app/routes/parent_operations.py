@@ -160,7 +160,7 @@ def _collect_troubleshooting_items(
             items.append(
                 ParentTroubleshootingItem(
                     kind="operator_missing_dispatch_phone",
-                    severity="warning",
+                    severity="error",
                     title="Operator missing dispatch SMS number",
                     detail=format_tenant_label(op.name, op.shop_number),
                     tenant_id=op.id,

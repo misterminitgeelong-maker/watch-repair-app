@@ -82,16 +82,36 @@ def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], 
     )
     assert link.status_code == 200, link.text
 
+    route = client.post(
+        "/v1/parent-accounts/me/mobile-lead-routes",
+        headers=hq_h,
+        json={
+            "suburb": "Sydney",
+            "state_code": "NSW",
+            "target_tenant_id": op_boot["tenant_id"],
+        },
+    )
+    assert route.status_code == 200, route.text
+
     shop_h = _headers(_login(shop_slug, hq_email)["access_token"])
     op_h = _headers(_login(op_slug, op_email)["access_token"])
     return shop_h, op_h, shop_site["tenant_id"], op_boot["tenant_id"]
 
 
+def _booking_payload(**overrides) -> dict:
+    base = {
+        "suburb": "Sydney",
+        "state_code": "NSW",
+        "customer_name": "Jane Driver",
+        "visit_location_type": "customer_site",
+        "job_address": "10 George St, Sydney NSW",
+    }
+    base.update(overrides)
+    return base
+
 def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
     suffix = uuid4().hex[:8]
     shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
-
-    outsider_boot = _bootstrap(f"out-{suffix}", f"out-{suffix}@test.local", "basic_auto_key")
 
     operators = client.get("/v1/shop-mobile-bookings/operators", headers=shop_h)
     assert operators.status_code == 200
@@ -99,22 +119,29 @@ def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
     assert len(op_list) == 1
     assert op_list[0]["tenant_id"] == op_tid
 
+    suggest = client.get(
+        "/v1/shop-mobile-bookings/suggest-operator",
+        headers=shop_h,
+        params={"suburb": "Sydney", "state_code": "NSW"},
+    )
+    assert suggest.status_code == 200
+    assert suggest.json()["tenant_id"] == op_tid
+    assert suggest.json()["routing_rule"] == "suburb_route"
+
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Jane Driver",
-            "phone": "0411222333",
-            "visit_location_type": "customer_site",
-            "job_address": "10 George St, Sydney NSW",
-            "job_type": "Lockout – Car",
-            "notes": "Urgent",
-        },
+        json=_booking_payload(
+            phone="0411222333",
+            job_type="Lockout – Car",
+            notes="Urgent",
+        ),
     )
     assert create.status_code == 201, create.text
     booking_id = create.json()["id"]
     assert create.json()["status"] == "pending"
+    assert create.json()["target_operator_tenant_id"] == op_tid
+    assert create.json()["operator_routing_rule"] == "suburb_route"
 
     incoming = client.get("/v1/shop-mobile-bookings", headers=op_h)
     assert incoming.status_code == 200
@@ -148,12 +175,11 @@ def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
     create2 = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Bob",
-            "visit_location_type": "at_shop",
-            "job_address": "Shop front",
-        },
+        json=_booking_payload(
+            customer_name="Bob",
+            visit_location_type="at_shop",
+            job_address="Shop front",
+        ),
     )
     assert create2.status_code == 201
     bid2 = create2.json()["id"]
@@ -166,17 +192,17 @@ def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
     assert decline.json()["status"] == "declined"
     assert decline.json()["decline_reason"] == "Fully booked"
 
-    forbidden = client.post(
+    unmapped = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": outsider_boot["tenant_id"],
-            "customer_name": "X",
-            "job_address": "1 Test St",
-        },
+        json=_booking_payload(
+            suburb="Nowhereville",
+            state_code="NSW",
+            customer_name="X",
+            job_address="1 Test St",
+        ),
     )
-    assert forbidden.status_code == 403
-
+    assert unmapped.status_code == 422
 
 def test_cancel_pending():
     suffix = uuid4().hex[:8]
@@ -185,11 +211,7 @@ def test_cancel_pending():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Cancel Me",
-            "job_address": "1 Main St",
-        },
+        json=_booking_payload(customer_name="Cancel Me", job_address="1 Main St"),
     )
     assert create.status_code == 201
     bid = create.json()["id"]
@@ -219,11 +241,7 @@ def test_shop_booking_usage_endpoint():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Usage Test",
-            "job_address": "1 Billing St",
-        },
+        json=_booking_payload(customer_name="Usage Test", job_address="1 Billing St"),
     )
     assert create.status_code == 201
     accept = client.post(f"/v1/shop-mobile-bookings/{create.json()['id']}/accept", headers=op_h)
@@ -245,11 +263,7 @@ def test_pending_booking_expires_after_seven_days():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Stale Request",
-            "job_address": "1 Old St",
-        },
+        json=_booking_payload(customer_name="Stale Request", job_address="1 Old St"),
     )
     assert create.status_code == 201
     booking_id = create.json()["id"]
@@ -285,19 +299,17 @@ def test_create_booking_sends_dispatch_sms_when_phone_configured():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Jane Driver",
-            "phone": "0411222333",
-            "vehicle_make": "Toyota",
-            "vehicle_model": "Corolla",
-            "registration_plate": "ABC123",
-            "visit_location_type": "customer_site",
-            "job_address": "10 George St, Sydney NSW",
-            "preferred_scheduled_at": when,
-            "job_type": "Lockout – Car",
-            "notes": "Urgent",
-        },
+        json=_booking_payload(
+            customer_name="Jane Driver",
+            phone="0411222333",
+            vehicle_make="Toyota",
+            vehicle_model="Corolla",
+            registration_plate="ABC123",
+            job_address="10 George St, Sydney NSW",
+            preferred_scheduled_at=when,
+            job_type="Lockout – Car",
+            notes="Urgent",
+        ),
     )
     assert create.status_code == 201, create.text
 
@@ -325,11 +337,7 @@ def test_create_booking_skips_dispatch_sms_without_phone():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "No SMS",
-            "job_address": "1 Quiet St",
-        },
+        json=_booking_payload(customer_name="No SMS", job_address="1 Quiet St"),
     )
     assert create.status_code == 201
 
@@ -358,12 +366,11 @@ def test_at_shop_uses_tenant_business_address():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "At Shop Guest",
-            "visit_location_type": "at_shop",
-            "job_address": "ignored if business address set",
-        },
+        json=_booking_payload(
+            customer_name="At Shop Guest",
+            visit_location_type="at_shop",
+            job_address="ignored if business address set",
+        ),
     )
     assert create.status_code == 201
     assert create.json()["job_address"] == "100 Retail Parade, Chadstone VIC"
@@ -425,12 +432,7 @@ def test_booking_read_includes_requesting_shop_number():
     create = client.post(
         "/v1/shop-mobile-bookings",
         headers=shop_h,
-        json={
-            "target_operator_tenant_id": op_tid,
-            "customer_name": "Jane Doe",
-            "visit_location_type": "customer_site",
-            "job_address": "1 Test St",
-        },
+        json=_booking_payload(customer_name="Jane Doe", job_address="1 Test St"),
     )
     assert create.status_code == 201
     body = create.json()
@@ -440,3 +442,73 @@ def test_booking_read_includes_requesting_shop_number():
     assert listed.status_code == 200
     row = next(r for r in listed.json() if r["id"] == body["id"])
     assert row["requesting_shop_number"] == "3269"
+
+
+def test_fallback_operator_when_suburb_unmapped():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, shop_tid, op_tid = _setup_parent_network(suffix)
+    hq_email = f"hq-{suffix}@test.local"
+    hq_h = _headers(_login(f"hq-{suffix}", hq_email)["access_token"])
+
+    fallback = client.put(
+        "/v1/parent-accounts/me/mobile-lead-ingest/default-tenant",
+        headers=hq_h,
+        json={"tenant_id": op_tid},
+    )
+    assert fallback.status_code == 200, fallback.text
+
+    suggest = client.get(
+        "/v1/shop-mobile-bookings/suggest-operator",
+        headers=shop_h,
+        params={"suburb": "Geelong", "state_code": "VIC"},
+    )
+    assert suggest.status_code == 200
+    assert suggest.json()["tenant_id"] == op_tid
+    assert suggest.json()["routing_rule"] == "fallback_operator"
+
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(
+            suburb="Geelong",
+            state_code="VIC",
+            customer_name="Fallback Customer",
+            job_address="1 Moorabool St, Geelong VIC",
+        ),
+    )
+    assert create.status_code == 201, create.text
+    assert create.json()["operator_routing_rule"] == "fallback_operator"
+    assert create.json()["target_operator_tenant_id"] == op_tid
+
+
+def test_shop_notified_on_accept_when_shop_phone_configured():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, shop_tid, op_tid = _setup_parent_network(suffix)
+
+    with Session(engine) as session:
+        shop = session.get(Tenant, UUID(shop_tid))
+        assert shop is not None
+        shop.shop_phone = "+61400999888"
+        session.add(shop)
+        session.commit()
+
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(customer_name="Notify Shop", job_address="1 Alert St"),
+    )
+    assert create.status_code == 201
+    booking_id = create.json()["id"]
+
+    accept = client.post(f"/v1/shop-mobile-bookings/{booking_id}/accept", headers=op_h)
+    assert accept.status_code == 200
+
+    with Session(engine) as session:
+        logs = session.exec(
+            select(SmsLog)
+            .where(SmsLog.tenant_id == UUID(shop_tid))
+            .where(SmsLog.event == "shop_mobile_booking_accepted")
+        ).all()
+    assert len(logs) == 1
+    assert logs[0].to_phone == "+61400999888"
+    assert "accepted" in logs[0].body.lower()

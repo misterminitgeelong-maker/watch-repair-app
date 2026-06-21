@@ -6,9 +6,9 @@ import {
   formatTenantLabel,
   getApiErrorMessage,
   listShopMobileBookings,
-  listShopMobileOperators,
   suggestShopMobileOperator,
   type ShopMobileBooking,
+  type ShopMobileOperatorOption,
   type ShopMobileVisitLocationType,
 } from '@/lib/api'
 import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
@@ -26,6 +26,12 @@ const STATUS_LABEL: Record<string, string> = {
   expired: 'Expired',
 }
 
+const ROUTING_LABEL: Record<string, string> = {
+  suburb_route: 'Mapped suburb',
+  fallback_operator: 'Fallback operator',
+  manual_override: 'Manual override',
+}
+
 function statusVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
   if (status === 'accepted') return 'success'
   if (status === 'pending') return 'warning'
@@ -37,7 +43,6 @@ export default function ShopMobileBookingsPage() {
   const qc = useQueryClient()
   const { tenantBusinessAddress } = useAuth()
   const [error, setError] = useState('')
-  const [operatorId, setOperatorId] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -50,13 +55,9 @@ export default function ShopMobileBookingsPage() {
   const [jobType, setJobType] = useState('')
   const [notes, setNotes] = useState('')
   const [routeSuburb, setRouteSuburb] = useState('')
-  const [routeState, setRouteState] = useState<string>('NSW')
-  const [suggestedName, setSuggestedName] = useState<string | null>(null)
-
-  const { data: operators = [], isLoading: opsLoading } = useQuery({
-    queryKey: ['shop-mobile-operators'],
-    queryFn: () => listShopMobileOperators().then(r => r.data),
-  })
+  const [routeState, setRouteState] = useState<string>('VIC')
+  const [routedOperator, setRoutedOperator] = useState<ShopMobileOperatorOption | null>(null)
+  const [routingLookupError, setRoutingLookupError] = useState('')
 
   const { data: bookings = [], isLoading: listLoading } = useQuery({
     queryKey: ['shop-mobile-bookings'],
@@ -64,21 +65,48 @@ export default function ShopMobileBookingsPage() {
   })
 
   useEffect(() => {
-    if (!operatorId && operators.length === 1) {
-      setOperatorId(operators[0].tenant_id)
-    }
-  }, [operatorId, operators])
-
-  useEffect(() => {
     if (visitType === 'at_shop' && tenantBusinessAddress?.trim()) {
       setJobAddress(tenantBusinessAddress.trim())
     }
   }, [visitType, tenantBusinessAddress])
 
+  useEffect(() => {
+    const suburb = routeSuburb.trim()
+    if (!suburb) {
+      setRoutedOperator(null)
+      setRoutingLookupError('')
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setRoutingLookupError('')
+        try {
+          const res = await suggestShopMobileOperator(suburb, routeState)
+          if (cancelled) return
+          setRoutedOperator(res.data)
+          if (!res.data) {
+            setRoutingLookupError('No operator configured for this suburb. Contact support.')
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setRoutedOperator(null)
+            setRoutingLookupError(getApiErrorMessage(err, 'Could not look up operator for this suburb.'))
+          }
+        }
+      })()
+    }, 400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [routeSuburb, routeState])
+
   const createMut = useMutation({
     mutationFn: () =>
       createShopMobileBooking({
-        target_operator_tenant_id: operatorId,
+        suburb: routeSuburb.trim(),
+        state_code: routeState,
         customer_name: customerName.trim(),
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -114,31 +142,18 @@ export default function ShopMobileBookingsPage() {
     onError: err => setError(getApiErrorMessage(err, 'Could not cancel request.')),
   })
 
-  async function applySuburbSuggestion() {
-    if (!routeSuburb.trim()) return
-    setError('')
-    setSuggestedName(null)
-    try {
-      const res = await suggestShopMobileOperator(routeSuburb.trim(), routeState)
-      const suggested = res.data
-      if (suggested) {
-        setOperatorId(suggested.tenant_id)
-        setSuggestedName(formatTenantLabel(suggested.tenant_name, suggested.shop_number))
-      } else {
-        setSuggestedName('No operator mapped for this suburb')
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not look up suburb.'))
-    }
-  }
-
-  if (opsLoading) return <Spinner />
+  const canSubmit =
+    Boolean(routeSuburb.trim()) &&
+    Boolean(customerName.trim()) &&
+    Boolean(jobAddress.trim()) &&
+    Boolean(routedOperator) &&
+    !routingLookupError
 
   return (
     <div>
       <PageHeader title="Book mobile locksmith" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Send a booking request to your network mobile operator.
+        Submit a booking request — we route it to your network mobile operator automatically.
       </p>
 
       {error && (
@@ -151,30 +166,42 @@ export default function ShopMobileBookingsPage() {
         <h2 className="font-semibold mb-4" style={{ color: 'var(--ms-text)' }}>New booking request</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>Suggest operator by suburb</p>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+              Job location (for routing)
+            </p>
             <div className="flex flex-wrap gap-2 items-end">
-              <Input label="Suburb" value={routeSuburb} onChange={e => setRouteSuburb(e.target.value)} placeholder="Chadstone" className="min-w-[140px] flex-1" />
+              <Input
+                label="Suburb"
+                value={routeSuburb}
+                onChange={e => setRouteSuburb(e.target.value)}
+                placeholder="Chadstone"
+                className="min-w-[140px] flex-1"
+                required
+              />
               <Select label="State" value={routeState} onChange={e => setRouteState(e.target.value)} className="w-28">
                 {AU_STATES.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </Select>
-              <Button type="button" variant="secondary" onClick={() => void applySuburbSuggestion()} disabled={!routeSuburb.trim()}>
-                Suggest
-              </Button>
             </div>
-            {suggestedName && (
-              <p className="text-xs mt-2" style={{ color: 'var(--ms-text-mid)' }}>Suggested: {suggestedName}</p>
+            {routedOperator && (
+              <p className="text-xs mt-2" style={{ color: 'var(--ms-text-mid)' }}>
+                Routed to{' '}
+                <span className="font-medium">
+                  {formatTenantLabel(routedOperator.tenant_name, routedOperator.shop_number)}
+                </span>
+                {routedOperator.routing_rule && (
+                  <span style={{ color: 'var(--ms-text-muted)' }}>
+                    {' '}
+                    · {ROUTING_LABEL[routedOperator.routing_rule] ?? routedOperator.routing_rule}
+                  </span>
+                )}
+              </p>
+            )}
+            {routingLookupError && (
+              <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>{routingLookupError}</p>
             )}
           </div>
-          <Select label="Mobile operator" value={operatorId} onChange={e => setOperatorId(e.target.value)}>
-            <option value="">Select operator…</option>
-            {operators.map(op => (
-              <option key={op.tenant_id} value={op.tenant_id}>
-                {formatTenantLabel(op.tenant_name, op.shop_number)}
-              </option>
-            ))}
-          </Select>
           <Input label="Customer name" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
           <Input label="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
           <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
@@ -198,12 +225,7 @@ export default function ShopMobileBookingsPage() {
         <div className="mt-4 flex justify-end">
           <Button
             onClick={() => createMut.mutate()}
-            disabled={
-              createMut.isPending ||
-              !operatorId ||
-              !customerName.trim() ||
-              !jobAddress.trim()
-            }
+            disabled={createMut.isPending || !canSubmit}
           >
             {createMut.isPending ? 'Sending…' : 'Send booking request'}
           </Button>
@@ -230,6 +252,14 @@ export default function ShopMobileBookingsPage() {
                   <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                     Operator: {formatTenantLabel(b.target_operator_name, b.target_operator_shop_number)} · {formatDate(b.created_at)}
                   </p>
+                  {b.job_suburb && b.job_state_code && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+                      Routed from {b.job_suburb}, {b.job_state_code}
+                      {b.operator_routing_rule
+                        ? ` · ${ROUTING_LABEL[b.operator_routing_rule] ?? b.operator_routing_rule}`
+                        : ''}
+                    </p>
+                  )}
                   {b.status === 'accepted' && b.resulting_job_number && (
                     <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
                       Job {b.resulting_job_number}

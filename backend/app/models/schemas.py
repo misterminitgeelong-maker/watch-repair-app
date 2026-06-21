@@ -881,7 +881,9 @@ class ShoeRepairJobFieldUpdate(SQLModel):
     cost_cents: Optional[int] = None
 
 class ShopMobileBookingCreate(SQLModel):
-    target_operator_tenant_id: UUID
+    suburb: str = Field(min_length=1, max_length=200)
+    state_code: str = Field(min_length=2, max_length=8)
+    target_operator_tenant_id: Optional[UUID] = None
     customer_name: str = Field(min_length=1, max_length=300)
     phone: Optional[str] = Field(default=None, max_length=80)
     email: Optional[str] = Field(default=None, max_length=320)
@@ -900,6 +902,7 @@ class ShopMobileOperatorOption(SQLModel):
     tenant_name: str
     shop_number: Optional[str] = None
     plan_code: str
+    routing_rule: Optional[str] = None
 
 class ShopMobileBookingRead(SQLModel):
     id: UUID
@@ -920,6 +923,9 @@ class ShopMobileBookingRead(SQLModel):
     registration_plate: Optional[str] = None
     visit_location_type: ShopMobileVisitLocationType
     job_address: str
+    job_suburb: Optional[str] = None
+    job_state_code: Optional[str] = None
+    operator_routing_rule: Optional[str] = None
     preferred_scheduled_at: Optional[datetime] = None
     job_type: Optional[str] = None
     notes: Optional[str] = None
