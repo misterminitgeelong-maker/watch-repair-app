@@ -167,6 +167,10 @@ Suggested ownership (single founder + AI):
 
 ## Weekly Benchmark Script (ServiceM8 comparison)
 
+> Run sheet: [MOBILE_SERVICES_FIELD_RUN.md](MOBILE_SERVICES_FIELD_RUN.md) — a
+> printable one-pager with timing slots, resiliency spot-checks, and a
+> punch-list that feeds blockers back into the P0 queue.
+
 Run this sequence and record time/errors:
 1. Create job from inbound lead
 2. Schedule and assign
