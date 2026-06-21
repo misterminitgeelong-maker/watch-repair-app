@@ -429,6 +429,10 @@ class Invoice(SQLModel, table=True):
     total_cents: int = 0
     currency: str = "USD"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    xero_invoice_id: Optional[str] = Field(default=None, index=True)
+    xero_sync_status: Optional[str] = None  # pending, synced, failed, skipped
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
 
 class InvoiceNumberCounter(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)

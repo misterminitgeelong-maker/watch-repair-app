@@ -8,11 +8,13 @@ from sqlmodel import Session, select
 
 from ..config import settings
 from ..database import get_session
-from ..models import AutoKeyInvoice, Tenant
+from ..models import AutoKeyInvoice, Invoice, Tenant
 from ..xero_service import (
     fetch_xero_invoice_status,
     mark_auto_key_invoice_paid_from_xero,
     mark_auto_key_invoice_voided_from_xero,
+    mark_repair_invoice_paid_from_xero,
+    mark_repair_invoice_voided_from_xero,
     verify_xero_webhook_signature,
     xero_configured,
 )
@@ -58,10 +60,17 @@ async def xero_webhook(
         if (tenant.xero_connection_status or "") != "connected":
             continue
 
-        invoice = session.exec(
+        # An invoice in Xero maps to either an auto-key/mobile invoice or a core
+        # watch/shoe repair invoice; check both by Xero invoice id.
+        ak_invoice = session.exec(
             select(AutoKeyInvoice).where(AutoKeyInvoice.xero_invoice_id == str(resource_id))
         ).first()
-        if not invoice:
+        repair_invoice = None
+        if not ak_invoice:
+            repair_invoice = session.exec(
+                select(Invoice).where(Invoice.xero_invoice_id == str(resource_id))
+            ).first()
+        if not ak_invoice and not repair_invoice:
             continue
 
         try:
@@ -70,12 +79,20 @@ async def xero_webhook(
             logger.exception("xero_webhook.fetch_invoice_failed xero_id=%s", resource_id)
             continue
 
-        if status == "PAID":
-            if mark_auto_key_invoice_paid_from_xero(session, invoice):
-                logger.info("xero_webhook.invoice_paid invoice=%s", invoice.id)
-        elif status == "VOIDED":
-            if mark_auto_key_invoice_voided_from_xero(session, invoice):
-                logger.info("xero_webhook.invoice_voided invoice=%s", invoice.id)
+        if ak_invoice is not None:
+            if status == "PAID":
+                if mark_auto_key_invoice_paid_from_xero(session, ak_invoice):
+                    logger.info("xero_webhook.invoice_paid invoice=%s", ak_invoice.id)
+            elif status == "VOIDED":
+                if mark_auto_key_invoice_voided_from_xero(session, ak_invoice):
+                    logger.info("xero_webhook.invoice_voided invoice=%s", ak_invoice.id)
+        else:
+            if status == "PAID":
+                if mark_repair_invoice_paid_from_xero(session, repair_invoice):
+                    logger.info("xero_webhook.repair_invoice_paid invoice=%s", repair_invoice.id)
+            elif status == "VOIDED":
+                if mark_repair_invoice_voided_from_xero(session, repair_invoice):
+                    logger.info("xero_webhook.repair_invoice_voided invoice=%s", repair_invoice.id)
 
     session.commit()
     return {"status": "ok"}

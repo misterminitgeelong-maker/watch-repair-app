@@ -24,7 +24,11 @@ from .models import (
     CustomerAccount,
     CustomerAccountInvoice,
     CustomerAccountInvoiceLine,
+    Invoice,
+    QuoteLineItem,
+    RepairJob,
     Tenant,
+    Watch,
 )
 
 _MONTH_NAMES = [
@@ -599,6 +603,180 @@ def mark_auto_key_invoice_voided_from_xero(session: Session, invoice: AutoKeyInv
     if invoice.status == "void":
         return False
     if invoice.status == "paid":
+        return False
+    invoice.status = "void"
+    session.add(invoice)
+    return True
+
+
+# ── Watch / shoe repair invoices ──────────────────────────────────────────────
+
+
+def _customer_for_repair_job(session: Session, job: RepairJob) -> Optional[Customer]:
+    if not job.watch_id:
+        return None
+    watch = session.get(Watch, job.watch_id)
+    if not watch:
+        return None
+    return session.get(Customer, watch.customer_id)
+
+
+def _contact_payload_for_repair_job(session: Session, job: RepairJob) -> dict[str, Any]:
+    if job.customer_account_id:
+        account = session.get(CustomerAccount, job.customer_account_id)
+        if account:
+            return _contact_payload_for_account(account)
+    customer = _customer_for_repair_job(session, job)
+    if not customer:
+        return {"Name": "Customer"}
+    contact: dict[str, Any] = {"Name": customer.full_name or "Customer"}
+    if customer.email:
+        contact["EmailAddress"] = customer.email
+    if customer.phone:
+        contact["Phones"] = [{"PhoneType": "DEFAULT", "PhoneNumber": customer.phone}]
+    if customer.address:
+        contact["Addresses"] = [{"AddressType": "STREET", "AddressLine1": customer.address[:500]}]
+    return contact
+
+
+def _repair_invoice_due_date(session: Session, job: RepairJob) -> date:
+    today = date.today()
+    if job.customer_account_id:
+        account = session.get(CustomerAccount, job.customer_account_id)
+        if account and account.payment_terms_days:
+            return today + timedelta(days=int(account.payment_terms_days))
+    return today + timedelta(days=14)
+
+
+def _line_items_for_repair_invoice(session: Session, tenant: Tenant, invoice: Invoice) -> list[dict[str, Any]]:
+    account_code = _default_account_code(tenant)
+    tax_type = _default_tax_type(tenant, invoice.tax_cents)
+    if invoice.quote_id:
+        rows = session.exec(
+            select(QuoteLineItem)
+            .where(QuoteLineItem.quote_id == invoice.quote_id)
+            .order_by(QuoteLineItem.created_at)
+        ).all()
+        if rows:
+            return [
+                {
+                    "Description": li.description[:4000],
+                    "Quantity": float(li.quantity),
+                    "UnitAmount": _cents_to_amount(li.unit_price_cents),
+                    "AccountCode": account_code,
+                    "TaxType": tax_type,
+                }
+                for li in rows
+            ]
+    return [
+        {
+            "Description": f"Repair invoice {invoice.invoice_number}",
+            "Quantity": 1.0,
+            "UnitAmount": _cents_to_amount(invoice.subtotal_cents or invoice.total_cents),
+            "AccountCode": account_code,
+            "TaxType": tax_type,
+        }
+    ]
+
+
+def sync_repair_invoice_to_xero(session: Session, invoice: Invoice, tenant: Tenant) -> None:
+    """Push a watch/shoe repair invoice to Xero; never raises — sets sync fields on invoice."""
+    if not xero_configured():
+        invoice.xero_sync_status = "skipped"
+        invoice.xero_sync_error = "Xero is not configured on this server"
+        session.add(invoice)
+        return
+    if (tenant.xero_connection_status or "") != "connected" or not tenant.xero_access_token:
+        invoice.xero_sync_status = "pending"
+        invoice.xero_sync_error = "Xero is not connected for this workspace"
+        session.add(invoice)
+        return
+    if (invoice.xero_sync_status or "") == "synced" and invoice.xero_invoice_id:
+        return
+
+    invoice.xero_sync_status = "pending"
+    invoice.xero_sync_error = None
+    session.add(invoice)
+    session.flush()
+
+    try:
+        job = session.get(RepairJob, invoice.repair_job_id)
+        if not job:
+            raise ValueError("Repair job not found")
+
+        contact_id = _find_or_create_contact(
+            session, tenant, _contact_payload_for_repair_job(session, job)
+        )
+        currency = (invoice.currency or tenant.default_currency or "AUD").strip().upper()
+        line_items = _line_items_for_repair_invoice(session, tenant, invoice)
+        due = _repair_invoice_due_date(session, job)
+        today = date.today()
+
+        payload = {
+            "Invoices": [
+                {
+                    "Type": "ACCREC",
+                    "Status": "AUTHORISED",
+                    "Contact": {"ContactID": contact_id},
+                    "Date": today.isoformat(),
+                    "DueDate": due.isoformat(),
+                    "CurrencyCode": currency,
+                    "InvoiceNumber": invoice.invoice_number[:50],
+                    "Reference": f"Repair job {job.job_number}"[:255],
+                    "LineItems": line_items,
+                }
+            ]
+        }
+
+        result = _xero_request(session, tenant, "POST", "/Invoices", json=payload)
+        xero_invoices = result.get("Invoices") or []
+        if not xero_invoices:
+            raise ValueError("Xero did not return an invoice")
+        xero_id = xero_invoices[0].get("InvoiceID")
+        if not xero_id:
+            raise ValueError("Xero invoice missing InvoiceID")
+
+        invoice.xero_invoice_id = str(xero_id)
+        invoice.xero_sync_status = "synced"
+        invoice.xero_sync_error = None
+        invoice.xero_synced_at = datetime.now(timezone.utc)
+        tenant.xero_connection_status = "connected"
+        session.add(tenant)
+        session.add(invoice)
+        logger.info(
+            "xero_repair_invoice.synced tenant=%s invoice=%s xero_id=%s",
+            tenant.id, invoice.id, xero_id,
+        )
+    except Exception as exc:
+        logger.exception("xero_repair_invoice.sync_failed invoice=%s", invoice.id)
+        invoice.xero_sync_status = "failed"
+        invoice.xero_sync_error = str(exc)[:2000]
+        session.add(invoice)
+
+
+def sync_repair_invoice_after_create(session: Session, invoice: Invoice) -> None:
+    """Best-effort Xero push after local repair-invoice create; never raises."""
+    tenant = session.get(Tenant, invoice.tenant_id)
+    if not tenant:
+        return
+    try:
+        sync_repair_invoice_to_xero(session, invoice, tenant)
+        session.commit()
+        session.refresh(invoice)
+    except Exception:
+        logger.exception("xero_repair_invoice.post_create_sync_failed invoice=%s", invoice.id)
+
+
+def mark_repair_invoice_paid_from_xero(session: Session, invoice: Invoice) -> bool:
+    if invoice.status == "paid":
+        return False
+    invoice.status = "paid"
+    session.add(invoice)
+    return True
+
+
+def mark_repair_invoice_voided_from_xero(session: Session, invoice: Invoice) -> bool:
+    if invoice.status in ("void", "paid"):
         return False
     invoice.status = "void"
     session.add(invoice)

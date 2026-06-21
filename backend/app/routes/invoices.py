@@ -72,22 +72,7 @@ def list_invoices(
     invoices = session.exec(
         select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
     ).all()
-    return [
-        InvoiceRead(
-            id=inv.id,
-            tenant_id=inv.tenant_id,
-            repair_job_id=inv.repair_job_id,
-            quote_id=inv.quote_id,
-            invoice_number=inv.invoice_number,
-            status=inv.status,
-            subtotal_cents=inv.subtotal_cents,
-            tax_cents=inv.tax_cents,
-            total_cents=inv.total_cents,
-            currency=inv.currency,
-            created_at=inv.created_at,
-        )
-        for inv in invoices
-    ]
+    return [InvoiceRead.model_validate(inv, from_attributes=True) for inv in invoices]
 
 
 @router.post("/from-quote/{quote_id}", response_model=InvoiceCreateFromQuoteResponse, status_code=201)
@@ -134,19 +119,15 @@ def create_invoice_from_quote(
     )
     session.commit()
     session.refresh(invoice)
-    return InvoiceCreateFromQuoteResponse(invoice=InvoiceRead(
-        id=invoice.id,
-        tenant_id=invoice.tenant_id,
-        repair_job_id=invoice.repair_job_id,
-        quote_id=invoice.quote_id,
-        invoice_number=invoice.invoice_number,
-        status=invoice.status,
-        subtotal_cents=invoice.subtotal_cents,
-        tax_cents=invoice.tax_cents,
-        total_cents=invoice.total_cents,
-        currency=invoice.currency,
-        created_at=invoice.created_at,
-    ))
+
+    # Best-effort push to Xero (no-op when Xero isn't configured/connected).
+    from ..xero_service import sync_repair_invoice_after_create
+
+    sync_repair_invoice_after_create(session, invoice)
+
+    return InvoiceCreateFromQuoteResponse(
+        invoice=InvoiceRead.model_validate(invoice, from_attributes=True)
+    )
 
 
 @router.get("/{invoice_id}", response_model=InvoiceWithPayments)
@@ -164,19 +145,7 @@ def get_invoice(
     ).all()
 
     return InvoiceWithPayments(
-        invoice=InvoiceRead(
-            id=invoice.id,
-            tenant_id=invoice.tenant_id,
-            repair_job_id=invoice.repair_job_id,
-            quote_id=invoice.quote_id,
-            invoice_number=invoice.invoice_number,
-            status=invoice.status,
-            subtotal_cents=invoice.subtotal_cents,
-            tax_cents=invoice.tax_cents,
-            total_cents=invoice.total_cents,
-            currency=invoice.currency,
-            created_at=invoice.created_at,
-        ),
+        invoice=InvoiceRead.model_validate(invoice, from_attributes=True),
         payments=[
             PaymentRead(
                 id=p.id,
@@ -403,3 +372,23 @@ def create_payment(
         provider=payment.provider,
         provider_reference=payment.provider_reference,
     )
+
+
+@router.post("/{invoice_id}/xero/retry", response_model=InvoiceRead)
+def retry_invoice_xero_sync(
+    invoice_id: UUID,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice or invoice.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    invoice.xero_sync_status = None
+    invoice.xero_sync_error = None
+    session.add(invoice)
+    session.commit()
+    from ..xero_service import sync_repair_invoice_after_create
+
+    sync_repair_invoice_after_create(session, invoice)
+    session.refresh(invoice)
+    return InvoiceRead.model_validate(invoice, from_attributes=True)

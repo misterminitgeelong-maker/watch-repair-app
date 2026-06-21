@@ -961,6 +961,10 @@ export interface Invoice {
   id: string; tenant_id: string; repair_job_id: string; quote_id?: string
   invoice_number: string; status: string; subtotal_cents: number
   tax_cents: number; total_cents: number; currency: string; created_at: string
+  xero_invoice_id?: string | null
+  xero_sync_status?: string | null
+  xero_sync_error?: string | null
+  xero_synced_at?: string | null
   invoice?: Invoice
 }
 export const listInvoices = (params?: { limit?: number }) =>
@@ -974,6 +978,8 @@ export const sendWatchInvoice = (invoiceId: string) =>
   api.post<{ invoice_id: string; email_sent: boolean; email_skipped_reason?: string | null }>(
     `/invoices/${invoiceId}/send`,
   )
+export const retryInvoiceXeroSync = (invoiceId: string) =>
+  api.post<Invoice>(`/invoices/${invoiceId}/xero/retry`)
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 export interface CsvImportResult {

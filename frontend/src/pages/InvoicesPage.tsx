@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, Printer, Send } from 'lucide-react'
-import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, getApiErrorMessage, type Invoice } from '@/lib/api'
+import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, retryInvoiceXeroSync, getXeroConnectionStatus, getApiErrorMessage, type Invoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 import { dollarsToCents } from '@/lib/money'
@@ -252,6 +252,16 @@ export function InvoiceDetailPage() {
     queryFn: () => getInvoiceLineItems(id!).then(r => r.data),
     enabled: !!id,
   })
+  const qc = useQueryClient()
+  const { data: xero } = useQuery({
+    queryKey: ['xero-status'],
+    queryFn: () => getXeroConnectionStatus().then(r => r.data),
+  })
+  const retryXeroMut = useMutation({
+    mutationFn: () => retryInvoiceXeroSync(id!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoice', id] }),
+    onError: (err) => setSendFeedback(getApiErrorMessage(err, 'Xero sync retry failed.')),
+  })
 
   if (isLoading) return <Spinner />
   if (!invoice) return <p style={{ color: 'var(--ms-text-muted)' }}>Invoice not found.</p>
@@ -325,6 +335,37 @@ export function InvoiceDetailPage() {
               <span style={{ color: 'var(--ms-text-muted)' }}>Date</span>
               <span style={{ color: 'var(--ms-text)' }}>{formatDate(invoice.created_at)}</span>
             </div>
+            {xero?.configured && (
+              <div className="flex justify-between items-center gap-2">
+                <span style={{ color: 'var(--ms-text-muted)' }}>Xero</span>
+                <span className="flex items-center gap-2 text-right" style={{ color: 'var(--ms-text)' }}>
+                  <span>
+                    {invoice.xero_sync_status === 'synced'
+                      ? '✓ Synced'
+                      : invoice.xero_sync_status === 'failed'
+                        ? 'Failed'
+                        : invoice.xero_sync_status === 'pending'
+                          ? 'Not connected'
+                          : invoice.xero_sync_status === 'skipped'
+                            ? 'Not configured'
+                            : '—'}
+                  </span>
+                  {invoice.xero_sync_status !== 'synced' && (
+                    <Button
+                      variant="secondary"
+                      className="text-xs py-0.5 px-2"
+                      onClick={() => { setSendFeedback(''); retryXeroMut.mutate() }}
+                      disabled={retryXeroMut.isPending}
+                    >
+                      {retryXeroMut.isPending ? 'Syncing…' : 'Retry'}
+                    </Button>
+                  )}
+                </span>
+              </div>
+            )}
+            {xero?.configured && invoice.xero_sync_status === 'failed' && invoice.xero_sync_error && (
+              <p className="text-xs" style={{ color: '#C9772A' }}>{invoice.xero_sync_error.slice(0, 120)}</p>
+            )}
           </div>
           <div className="space-y-2 text-sm border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6" style={{ borderColor: 'var(--ms-border)' }}>
             <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>{formatCents(invoice.subtotal_cents)}</span></div>

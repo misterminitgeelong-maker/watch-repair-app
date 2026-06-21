@@ -726,6 +726,10 @@ class InvoiceRead(SQLModel):
     total_cents: int
     currency: str
     created_at: datetime
+    xero_invoice_id: Optional[str] = None
+    xero_sync_status: Optional[str] = None
+    xero_sync_error: Optional[str] = None
+    xero_synced_at: Optional[datetime] = None
 
 class PaymentCreate(SQLModel):
     amount_cents: int

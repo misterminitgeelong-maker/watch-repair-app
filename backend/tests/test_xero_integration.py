@@ -21,7 +21,7 @@ from sqlmodel import Session, select
 from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import AutoKeyInvoice, Tenant
+from app.models import AutoKeyInvoice, Invoice, Tenant
 
 create_db_and_tables()
 client = TestClient(app)
@@ -422,3 +422,159 @@ def test_xero_webhook_marks_invoice_paid(monkeypatch):
             assert invoice.status == "paid"
             assert invoice.payment_method == "bank"
             assert invoice.paid_at is not None
+
+
+# ── Watch / shoe repair invoice sync ──────────────────────────────────────────
+
+
+def _connect_tenant_to_xero(token: str, xero_org: str) -> None:
+    from app.security import decode_access_token
+
+    with Session(engine) as session:
+        claims = decode_access_token(token)
+        tenant = session.get(Tenant, claims.tenant_id)
+        assert tenant
+        tenant.xero_connection_status = "connected"
+        tenant.xero_tenant_id = xero_org
+        tenant.xero_access_token = "access-token"
+        tenant.xero_refresh_token = "refresh-token"
+        tenant.xero_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+        session.add(tenant)
+        session.commit()
+
+
+def _create_approved_repair_quote(headers: dict[str, str]) -> str:
+    customer = client.post(
+        "/v1/customers",
+        headers=headers,
+        json={"full_name": "Repair Customer", "email": "repair@test.com", "phone": "0400999000"},
+    )
+    assert customer.status_code == 201
+    watch = client.post(
+        "/v1/watches",
+        headers=headers,
+        json={"customer_id": customer.json()["id"], "brand": "Seiko", "model": "5"},
+    )
+    assert watch.status_code == 201
+    job = client.post(
+        "/v1/repair-jobs",
+        headers=headers,
+        json={"watch_id": watch.json()["id"], "title": "Movement service", "priority": "normal"},
+    )
+    assert job.status_code == 201
+    quote = client.post(
+        "/v1/quotes",
+        headers=headers,
+        json={
+            "repair_job_id": job.json()["id"],
+            "tax_cents": 1000,
+            "line_items": [
+                {"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}
+            ],
+        },
+    )
+    assert quote.status_code == 201
+    quote_id = quote.json()["id"]
+    sent = client.post(f"/v1/quotes/{quote_id}/send", headers=headers)
+    assert sent.status_code == 200
+    approved = client.post(
+        f"/v1/public/quotes/{sent.json()['approval_token']}/decision",
+        json={"decision": "approved"},
+    )
+    assert approved.status_code == 200
+    return quote_id
+
+
+def _mock_xero_client(xero_invoice_id: str, invoice_status: str = "AUTHORISED") -> MagicMock:
+    def _ok_json(data):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.content = b"{}"
+        resp.json = lambda: data
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    def fake_request(method, url, **kwargs):
+        if "/Invoices/" in url and method == "GET":
+            return _ok_json({"Invoices": [{"InvoiceID": xero_invoice_id, "Status": invoice_status}]})
+        if url.endswith("/Contacts") and method == "GET":
+            return _ok_json({"Contacts": []})
+        if url.endswith("/Contacts") and method == "POST":
+            return _ok_json({"Contacts": [{"ContactID": "contact-rep", "Name": "Repair Customer"}]})
+        if url.endswith("/Invoices") and method == "POST":
+            return _ok_json({"Invoices": [{"InvoiceID": xero_invoice_id, "Status": "AUTHORISED"}]})
+        return _ok_json({})
+
+    def fake_post(url, **kwargs):
+        if "connect/token" in url:
+            return _ok_json({"access_token": "access-token", "refresh_token": "refresh-token", "expires_in": 3600})
+        return _ok_json({})
+
+    mock_client = MagicMock()
+    mock_client.__enter__ = lambda s: mock_client
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.request = fake_request
+    mock_client.post = fake_post
+    mock_client.get = lambda url, **kwargs: _ok_json([])
+    return mock_client
+
+
+def test_sync_repair_invoice_to_xero_creates_invoice():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"xero-rep-{suffix}", f"rep-{suffix}@xero.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    _connect_tenant_to_xero(token, f"org-rep-{suffix}")
+
+    quote_id = _create_approved_repair_quote(headers)
+    xero_invoice_id = "99999999-8888-7777-6666-555555555555"
+
+    with patch("app.xero_service.httpx.Client", return_value=_mock_xero_client(xero_invoice_id)):
+        inv_res = client.post(f"/v1/invoices/from-quote/{quote_id}", headers=headers)
+
+    assert inv_res.status_code == 201
+    invoice = inv_res.json()["invoice"]
+    assert invoice["xero_sync_status"] == "synced"
+    assert invoice["xero_invoice_id"] == xero_invoice_id
+
+    with Session(engine) as session:
+        row = session.get(Invoice, UUID(invoice["id"]))
+        assert row and row.xero_sync_status == "synced"
+        assert row.xero_invoice_id == xero_invoice_id
+
+
+def test_xero_webhook_marks_repair_invoice_paid():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"xero-rwh-{suffix}", f"rwh-{suffix}@xero.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    xero_org = f"org-rwh-{suffix}"
+    xero_inv_id = "12121212-3434-5656-7878-909090909090"
+    _connect_tenant_to_xero(token, xero_org)
+
+    quote_id = _create_approved_repair_quote(headers)
+
+    with patch("app.xero_service.httpx.Client", return_value=_mock_xero_client(xero_inv_id, "PAID")):
+        inv_res = client.post(f"/v1/invoices/from-quote/{quote_id}", headers=headers)
+        assert inv_res.status_code == 201
+        invoice_id = inv_res.json()["invoice"]["id"]
+
+        webhook_body = {
+            "events": [
+                {
+                    "eventCategory": "INVOICE",
+                    "eventType": "UPDATE",
+                    "resourceId": xero_inv_id,
+                    "tenantId": xero_org,
+                }
+            ]
+        }
+        raw = json.dumps(webhook_body).encode()
+        wh_res = client.post(
+            "/v1/webhooks/xero",
+            content=raw,
+            headers={"x-xero-signature": _xero_signature(raw), "Content-Type": "application/json"},
+        )
+        assert wh_res.status_code == 200
+
+    with Session(engine) as session:
+        row = session.get(Invoice, UUID(invoice_id))
+        assert row.status == "paid"
