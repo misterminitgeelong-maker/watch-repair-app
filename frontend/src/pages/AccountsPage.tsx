@@ -1026,12 +1026,13 @@ function XeroConnectCard() {
   const { data: xeroStatus, refetch: refetchXero } = useQuery({
     queryKey: ['xero-status'],
     queryFn: () => getXeroConnectionStatus().then((r) => r.data),
-    enabled: Boolean(billing?.xero_configured && (billing?.limits.max_auto_key_jobs ?? 0) > 0),
+    enabled: Boolean(billing?.xero_configured),
   })
 
   const isOwner = role === 'owner' || role === 'platform_admin'
-  const showXero =
-    Boolean(billing?.xero_configured) && (billing?.limits.max_auto_key_jobs ?? 0) > 0
+  // Xero is a workspace-wide accounting integration: every invoice type (repair,
+  // mobile/auto-key, B2B) syncs, so show it whenever the server has Xero configured.
+  const showXero = Boolean(billing?.xero_configured)
 
   const connectMut = useMutation({
     mutationFn: () => getXeroConnectUrl(),
@@ -1074,15 +1075,15 @@ function XeroConnectCard() {
 
   const connected = Boolean(xeroStatus?.connected)
   const statusLine = !connected
-    ? 'Connect Xero to sync Mobile Services invoices to your accounting.'
-    : 'Mobile Services invoices are pushed to Xero when created locally.'
+    ? 'Connect Xero to sync your invoices to your accounting.'
+    : 'Invoices are pushed to Xero when created locally.'
 
   const xeroError = searchParams.get('xero_error')
 
   return (
     <Card className="mb-5 p-4 sm:p-5">
       <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
-        Mobile Services accounting (Xero)
+        Accounting (Xero)
       </p>
       <p className="text-sm mt-2" style={{ color: 'var(--ms-text-mid)' }}>
         {statusLine}
