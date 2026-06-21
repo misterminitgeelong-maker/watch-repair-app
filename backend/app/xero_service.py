@@ -43,7 +43,11 @@ XERO_TOKEN_URL = "https://identity.xero.com/connect/token"
 XERO_CONNECTIONS_URL = "https://api.xero.com/connections"
 XERO_API_BASE = "https://api.xero.com/api.xro/2.0"
 
-XERO_OAUTH_SCOPES = "offline_access accounting.transactions accounting.contacts"
+# Granular Xero scopes: accounting.invoices (create/read invoices) +
+# accounting.contacts (find/create contacts). offline_access yields the refresh
+# token. The older broad `accounting.transactions` scope isn't offered on apps
+# using Xero's granular-scope model, so request the specific scopes we use.
+XERO_OAUTH_SCOPES = "offline_access accounting.invoices accounting.contacts"
 
 
 def xero_configured() -> bool:
