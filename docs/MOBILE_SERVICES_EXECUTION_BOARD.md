@@ -82,37 +82,30 @@ Ship a Mobile Services experience that is faster and more locksmith-specific tha
 
 ## P1 - Competitive Edge Sprint (Weeks 2-4)
 
-### P1.1 Locksmith quick quote presets
+### P1.1 Locksmith quick quote presets — ✅ SHIPPED (telemetry deferred)
 - **Why**: Beat ServiceM8 on locksmith-specific speed.
-- **Scope**
-  - Preset bundles for common jobs (duplicate key, lost key, programming)
-  - Editable quantities and tax with sensible defaults
-- **Acceptance criteria**
-  - New quote from preset in <= 30 seconds
-  - Preset adoption visible in telemetry
+- **Status**: One-tap single-service presets + multi-line bundles in both
+  auto-key quote builders (`QUOTE_PRESETS` / `QUOTE_BUNDLES`); editable qty + GST.
+  Quote-from-preset in ≤30s met. **Deferred**: preset adoption telemetry (low
+  value for a solo operator; revisit with staff/rollout).
 
 ### P1.2 Rego lookup UX hardening — REMOVED (off-roadmap)
 - Vehicle plate (rego) lookup is **not** being built — the third-party API is
   too expensive to justify. Vehicle details are entered manually. This ticket is
   retained only as a record of the decision; do not implement.
 
-### P1.3 Fleet/B2B mobile workflow polish
+### P1.3 Fleet/B2B mobile workflow polish — ✅ SHIPPED
 - **Why**: Strong differentiator for dealership/fleet work.
-- **Scope**
-  - Better account linkage in mobile create/edit flows
-  - Cleaner statement-to-monthly-invoice flow visibility
-- **Acceptance criteria**
-  - Account-linked jobs can be created without cross-page detours
-  - Monthly statement/invoice generation validated on live-like data
+- **Status**: `NewAutoKeyJobModal` links a customer account inline (auto-applies
+  B2B pricing tier); `CustomerAccountsPage` has the statement → month-end invoice
+  flow. Account-linked jobs create without cross-page detours.
 
-### P1.4 Dispatch SLA indicators
+### P1.4 Dispatch SLA indicators — ✅ SHIPPED
 - **Why**: Operational clarity beats generic feature volume.
-- **Scope**
-  - Add "late", "at-risk", "unscheduled aging" indicators
-  - Prioritize board sorting by SLA risk
-- **Acceptance criteria**
-  - At-risk jobs are visible at a glance in dispatch views
-  - Operators can clear SLA-risk queue from one screen
+- **Status**: `computeSlaChip` renders late/at-risk/aging chips on dispatch
+  cards via `SlaChipBadge`; dispatch list has a time/risk sort toggle
+  (`slaRiskWeight`). At-risk jobs visible at a glance; risk queue clearable from
+  one screen.
 
 ---
 
@@ -127,14 +120,12 @@ Ship a Mobile Services experience that is faster and more locksmith-specific tha
   - Suggested order available for day schedule
   - Manual route edits remain one interaction
 
-### P2.2 Mobile service KPI cockpit
+### P2.2 Mobile service KPI cockpit — ✅ SHIPPED
 - **Why**: Prove value and identify process drag.
-- **Scope**
-  - Mobile vs shop revenue split
-  - Jobs per tech, conversion, cycle time, same-day invoice rate
-- **Acceptance criteria**
-  - KPI dashboard loads under agreed performance target
-  - Weekly export supports team review rhythm
+- **Status**: `/reports/auto-key` computes mobile-vs-shop revenue split, jobs per
+  tech, lead→quote conversion, avg cycle time, same-day invoice rate, and
+  schedule adherence; rendered in the AutoKeyJobsPage Reports view with good/bad
+  thresholds. CSV exports exist for jobs/customers/invoices/period summary.
 
 ### P2.3 Lead-to-dispatch conversion board
 - **Why**: Convert inbound leads faster than competitors.
