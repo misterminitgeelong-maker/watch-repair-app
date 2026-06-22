@@ -344,6 +344,13 @@ function rasterizeCanvas(canvas: HTMLCanvasElement): { width: number; height: nu
 const DEFAULT_DOTS: LabelDots = { width: 400, height: 560 }
 const PAD = 12
 
+/**
+ * The shop's physical intake roll. Pass this to the renderers so the printed
+ * feed length (driven by canvas height) always fills the 70mm label, even when
+ * the roll's RFID tag mis-reports its size. Change this if the roll changes.
+ */
+export const LABEL_50x70: LabelDots = { width: 400, height: 560 }
+
 /** Generic intake-label fields shared by watch and shoe labels. */
 interface JobLabelCore {
   jobNumber: string

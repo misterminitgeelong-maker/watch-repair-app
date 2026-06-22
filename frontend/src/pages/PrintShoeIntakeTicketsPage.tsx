@@ -6,7 +6,7 @@ import QRCode from 'qrcode'
 import { getCustomer, getShoeRepairJob, type ShoeRepairJobItem, type Shoe } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
-import { renderShoeLabel } from '@/lib/niimbot'
+import { renderShoeLabel, LABEL_50x70 } from '@/lib/niimbot'
 import { useNiimbotPrinter } from '@/hooks/useNiimbotPrinter'
 
 function formatCents(value: number) {
@@ -71,8 +71,8 @@ export default function PrintShoeIntakeTicketsPage() {
       dateIn: formatDate(job.created_at),
     }
     Promise.all([
-      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance), labelDots: labelDots ?? undefined }),
-      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: labelDots ?? undefined }),
+      renderShoeLabel({ ...shared, qrDataUrl: repairQr, isCustomerCopy: false, depositLabel: formatCents(job.deposit_cents || 0), balanceLabel: formatCents(balance), labelDots: LABEL_50x70 }),
+      renderShoeLabel({ ...shared, qrDataUrl: customerQr, isCustomerCopy: true, labelDots: LABEL_50x70 }),
     ]).then(([workshopCanvas, customerCanvas]) => {
       setLabelCanvases([workshopCanvas, customerCanvas])
       setLabelPreviews([workshopCanvas.toDataURL(), customerCanvas.toDataURL()])
@@ -120,7 +120,7 @@ export default function PrintShoeIntakeTicketsPage() {
 
   return (
     <>
-      <div className="print:hidden fixed top-0 left-0 right-0 px-6 py-3 flex items-center justify-between z-10 shadow-sm" style={{ backgroundColor: 'var(--ms-surface)', borderBottom: '1px solid var(--ms-border)' }}>
+      <div className="print:hidden fixed top-0 left-0 right-0 px-6 py-3 flex items-center justify-between z-[60] shadow-sm" style={{ backgroundColor: 'var(--ms-surface)', borderBottom: '1px solid var(--ms-border)' }}>
         <Link
           to={`/shoe-repairs/${id}`}
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
@@ -172,13 +172,13 @@ export default function PrintShoeIntakeTicketsPage() {
         </div>
       </div>
       {btError && (
-        <div className="print:hidden fixed top-14 left-0 right-0 px-6 py-2 text-sm text-center" style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
+        <div className="print:hidden fixed top-14 left-0 right-0 px-6 py-2 text-sm text-center z-[60]" style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
           Printer error: {btError}
         </div>
       )}
 
       {autoPrint && btSupported && btStatus !== 'printing' && (
-        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-20 sm:hidden" style={{ backgroundColor: 'var(--ms-surface)', borderTop: '1px solid var(--ms-border)' }}>
+        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-[60] sm:hidden" style={{ backgroundColor: 'var(--ms-surface)', borderTop: '1px solid var(--ms-border)' }}>
           {btStatus === 'connected' ? (
             <button
               onClick={printToNiimbot}
