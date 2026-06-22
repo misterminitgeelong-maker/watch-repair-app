@@ -41,7 +41,7 @@ import {
   type VehicleKeySpecMatch,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
+import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS, QUOTE_BUNDLES, quoteBundleTotal, bundleToDraftItems, type QuoteBundle } from '@/lib/autoKeyJobTypes'
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
@@ -68,6 +68,13 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
       }
       return [...prev, { description: p.description, quantity: '1', unitPrice: String(p.price) }]
     })
+  }
+
+  const addBundle = (b: QuoteBundle) => {
+    const drafts = bundleToDraftItems(b)
+    setItems(prev =>
+      prev.length === 1 && !prev[0].description && !prev[0].unitPrice ? drafts : [...prev, ...drafts],
+    )
   }
 
   const updateItem = (i: number, field: keyof LineItemDraft, val: string) => {
@@ -102,6 +109,27 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
 
   return (
     <div className="space-y-4">
+      {/* Bundle grid — one tap drops a full common job */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+          Quick bundles — tap a full job
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {QUOTE_BUNDLES.map(b => (
+            <button
+              key={b.label}
+              type="button"
+              onClick={() => addBundle(b)}
+              title={b.note}
+              className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:bg-opacity-80 font-medium"
+              style={{ borderColor: 'var(--ms-accent)', color: '#2C1810', backgroundColor: 'var(--ms-accent)' }}
+            >
+              {b.label} · ${quoteBundleTotal(b)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Preset grid */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>

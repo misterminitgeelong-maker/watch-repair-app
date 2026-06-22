@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createAutoKeyQuote, getApiErrorMessage } from '@/lib/api'
-import { QUOTE_PRESETS } from '@/lib/autoKeyJobTypes'
+import { QUOTE_PRESETS, QUOTE_BUNDLES, quoteBundleTotal, bundleToDraftItems, type QuoteBundle } from '@/lib/autoKeyJobTypes'
 import { dollarsToCents } from '@/lib/money'
 import { Modal, Input, Button } from '@/components/ui'
 
@@ -25,6 +25,13 @@ export function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: (
       }
       return [...prev, { description: p.description, quantity: '1', unitPrice: String(p.price) }]
     })
+  }
+
+  const addBundle = (b: QuoteBundle) => {
+    const drafts = bundleToDraftItems(b)
+    setItems(prev =>
+      prev.length === 1 && !prev[0].description && !prev[0].unitPrice ? drafts : [...prev, ...drafts],
+    )
   }
 
   const updateItem = (i: number, field: keyof QuoteLineItemDraft, val: string) =>
@@ -58,7 +65,28 @@ export function CreateQuoteModal({ jobId, onClose }: { jobId: string; onClose: (
   return (
     <Modal title="Create Mobile Services Quote" onClose={onClose}>
       <div className="space-y-4">
-        {/* One-tap preset bundles */}
+        {/* One-tap multi-line bundles for common full jobs */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
+            Quick bundles — tap a full job
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {QUOTE_BUNDLES.map(b => (
+              <button
+                key={b.label}
+                type="button"
+                onClick={() => addBundle(b)}
+                title={b.note}
+                className="text-xs px-2.5 py-1 rounded-full border transition-colors touch-manipulation font-medium"
+                style={{ borderColor: 'var(--ms-accent)', color: '#2C1810', backgroundColor: 'var(--ms-accent)' }}
+              >
+                {b.label} · ${quoteBundleTotal(b)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* One-tap single-service presets */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
             Quick add — tap a service
