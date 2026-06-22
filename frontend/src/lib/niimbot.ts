@@ -5,7 +5,9 @@
  */
 
 const NIIMBOT_SERVICE_UUID = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
-const DOTS_PER_MM = 203 / 25.4  // 203 DPI
+// The Niimbot M2 prints at 300 DPI (~11.81 dots/mm). Rendering at 203 DPI made
+// labels print at ~68% of the media in both directions.
+const DOTS_PER_MM = 300 / 25.4  // 300 DPI
 
 const CMD = {
   GET_RFID: 0x1a,
@@ -340,16 +342,20 @@ function rasterizeCanvas(canvas: HTMLCanvasElement): { width: number; height: nu
 // Pass labelDots from the connected printer to auto-fit any label size.
 // ---------------------------------------------------------------------------
 
-// 50x70mm at 203 DPI = 400x560 dots (50mm across the print head, 70mm feed).
-const DEFAULT_DOTS: LabelDots = { width: 400, height: 560 }
-const PAD = 12
+/** Label dot dimensions for a physical mm size at the printer's native DPI. */
+function labelDotsForMm(widthMm: number, heightMm: number): LabelDots {
+  return { width: Math.round(widthMm * DOTS_PER_MM), height: Math.round(heightMm * DOTS_PER_MM) }
+}
 
 /**
- * The shop's physical intake roll. Pass this to the renderers so the printed
- * feed length (driven by canvas height) always fills the 70mm label, even when
- * the roll's RFID tag mis-reports its size. Change this if the roll changes.
+ * The shop's physical intake roll (50x70mm → ~591x827 dots at 300 DPI). Pass
+ * this to the renderers so the print fills the label in both directions even
+ * when the roll's RFID tag mis-reports its size. Change the mm here if the roll
+ * changes.
  */
-export const LABEL_50x70: LabelDots = { width: 400, height: 560 }
+export const LABEL_50x70: LabelDots = labelDotsForMm(50, 70)
+const DEFAULT_DOTS: LabelDots = LABEL_50x70
+const PAD = 18  // ~1.5mm margin at 300 DPI (was 12 at the old 400px/50mm width)
 
 /** Generic intake-label fields shared by watch and shoe labels. */
 interface JobLabelCore {
