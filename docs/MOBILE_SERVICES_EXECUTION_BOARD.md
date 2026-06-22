@@ -11,7 +11,6 @@ Ship a Mobile Services experience that is faster and more locksmith-specific tha
 - Lead to first quote sent: under 5 minutes (median)
 - Job complete to invoice sent: under 3 minutes (median)
 - Same-day invoice rate for completed jobs: above 90%
-- Rego lookup autofill success (eligible jobs): above 70%
 - Schedule adherence (within promised window): above 85%
 - Critical field-test blockers: 0 open
 
@@ -92,14 +91,10 @@ Ship a Mobile Services experience that is faster and more locksmith-specific tha
   - New quote from preset in <= 30 seconds
   - Preset adoption visible in telemetry
 
-### P1.2 Rego lookup UX hardening
-- **Why**: High-value differentiator.
-- **Scope**
-  - Improve fallback/manual correction path
-  - Surface lookup confidence and partial matches clearly
-- **Acceptance criteria**
-  - Failed lookup recovery to manual entry in <= 15 seconds
-  - No blocked create flow when lookup is unavailable
+### P1.2 Rego lookup UX hardening — REMOVED (off-roadmap)
+- Vehicle plate (rego) lookup is **not** being built — the third-party API is
+  too expensive to justify. Vehicle details are entered manually. This ticket is
+  retained only as a record of the decision; do not implement.
 
 ### P1.3 Fleet/B2B mobile workflow polish
 - **Why**: Strong differentiator for dealership/fleet work.

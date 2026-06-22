@@ -42,13 +42,13 @@ pressure-tests, so a failure maps directly back to scope.
 |---|------|------------|--------|-------------|------|---------------|
 | 1 | **Create job from inbound lead** | Job exists with customer + address | part of <5 min to quote (P2.3 / intake) | | | |
 | 2 | **Schedule & assign** | Job on the planner, assigned to a tech, survives a refresh | no vanish/dupe after refresh (P0.1) | | | |
-| 3 | **Rego lookup autofill** | Vehicle fields populated from plate, or manual fallback used | autofill ≥70%; manual recovery ≤15 s (P1.2) | | | |
+| 3 | **Enter vehicle details (manual)** | Make/model/key info captured on the job | no blocked create flow (rego lookup is off-roadmap; manual entry only) | | | |
 | 4 | **Move to en-route** | Status `en_route`; arrival SMS offered/sent | ≤2 taps from active job (P0.3) | | | |
 | 5 | **Move to on-site** | Status `on_site` | ≤2 taps (P0.3) | | | |
-| 6 | **Send quote** | Customer receives quote link (SMS/email) | part of <5 min lead→quote (P1.1) | | | |
-| 7 | **Mark completed** | Status `work_completed`; invoice auto-created with correct total | single invoice, no dupe (P0.4) | | | |
-| 8 | **Invoice sent** | Customer has the invoice + payment link | <3 min complete→invoice (metric) | | | |
-| 9 | **Record payment** | Invoice marked paid | same-day invoice rate ≥90% (metric) | | | |
+| 6 | **Build & send quote (use a bundle)** | Quote built via a one-tap bundle/preset; customer receives quote link | new quote in ≤30 s; part of <5 min lead→quote (P1.1) | | | |
+| 7 | **Mark completed** | Status `work_completed`; single invoice auto-created with correct total | no duplicate invoice (P0.4) | | | |
+| 8 | **Invoice → Xero + pay link** | Invoice shows **✓ Synced** in app; customer email has "View & pay online" | invoice in Xero, pay link present | | | |
+| 9 | **Customer pays (Xero) → app paid** | Pay via the Xero link; app flips invoice to **paid** (webhook) | <3 min complete→invoice; same-day rate ≥90% | | | |
 
 **Totals**
 
