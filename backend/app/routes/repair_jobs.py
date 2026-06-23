@@ -534,6 +534,8 @@ def update_repair_job_fields(
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
+    if payload.title is not None:
+        job.title = payload.title
     if payload.cost_cents is not None:
         job.cost_cents = max(0, payload.cost_cents)
     if payload.pre_quote_cents is not None:

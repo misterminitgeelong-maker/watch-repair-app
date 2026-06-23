@@ -6,16 +6,18 @@ import {
   getShoeRepairJob, updateShoeRepairJob, updateShoeRepairJobStatus,
   listShoeAttachments, uploadShoeAttachment, getUploadErrorMessage,
   listCustomerAccounts,
-  listShoes, createShoe,
+  listShoes, createShoe, updateShoe,
+  getCustomer, updateCustomer,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
   getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage,
   getShoeJobHistory,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry, type ShoeJobHistoryEntry,
 } from '@/lib/api'
+import { dollarsToCents } from '@/lib/money'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
-import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input } from '@/components/ui'
+import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
@@ -91,6 +93,137 @@ function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
             {mut.isPending ? 'Updating…' : 'Update'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [err, setErr] = useState('')
+  const shoe = job.shoe
+  const customerId = shoe?.customer_id
+  const { data: customer } = useQuery({
+    queryKey: ['customer', customerId],
+    queryFn: () => getCustomer(customerId!).then(r => r.data),
+    enabled: !!customerId,
+  })
+
+  const [form, setForm] = useState({
+    title: job.title ?? '',
+    description: job.description ?? '',
+    priority: job.priority ?? 'normal',
+    collection_date: job.collection_date ?? '',
+    deposit: (job.deposit_cents / 100).toFixed(2),
+    cost: (job.cost_cents / 100).toFixed(2),
+    shoe_type: shoe?.shoe_type ?? '',
+    brand: shoe?.brand ?? '',
+    color: shoe?.color ?? '',
+    description_notes: shoe?.description_notes ?? '',
+    full_name: '',
+    phone: '',
+    email: '',
+    address: '',
+  })
+  const [custLoaded, setCustLoaded] = useState(false)
+  useEffect(() => {
+    if (customer && !custLoaded) {
+      setForm(f => ({
+        ...f,
+        full_name: customer.full_name ?? '',
+        phone: customer.phone ?? '',
+        email: customer.email ?? '',
+        address: customer.address ?? '',
+      }))
+      setCustLoaded(true)
+    }
+  }, [customer, custLoaded])
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const jobPayload: Parameters<typeof updateShoeRepairJob>[1] = {
+        title: form.title.trim(),
+        description: form.description,
+        priority: form.priority,
+        deposit_cents: dollarsToCents(form.deposit),
+        cost_cents: dollarsToCents(form.cost),
+      }
+      if (form.collection_date) jobPayload.collection_date = form.collection_date
+      await updateShoeRepairJob(job.id, jobPayload)
+      if (shoe) {
+        await updateShoe(shoe.id, {
+          shoe_type: form.shoe_type, brand: form.brand, color: form.color, description_notes: form.description_notes,
+        })
+      }
+      if (customer) {
+        await updateCustomer(customer.id, {
+          full_name: form.full_name.trim(), phone: form.phone, email: form.email, address: form.address,
+        })
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-job', job.id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      if (customerId) qc.invalidateQueries({ queryKey: ['customer', customerId] })
+      onClose()
+    },
+    onError: (e) => setErr(getApiErrorMessage(e, 'Failed to save changes.')),
+  })
+
+  const canSave = form.title.trim().length > 0 && (!customer || form.full_name.trim().length > 0)
+
+  return (
+    <Modal title={`Edit ticket #${job.job_number}`} onClose={onClose}>
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <section className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Job</p>
+          <Input label="Services / title" value={form.title} onChange={e => set('title', e.target.value)} />
+          <Textarea label="Fault / intake notes" value={form.description} onChange={e => set('description', e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Select label="Priority" value={form.priority} onChange={e => set('priority', e.target.value)}>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </Select>
+            <Input label="Collection date" type="date" value={form.collection_date} onChange={e => set('collection_date', e.target.value)} />
+            <Input label="Deposit ($)" type="number" min="0" step="0.01" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+            <Input label="Estimate ($)" type="number" min="0" step="0.01" value={form.cost} onChange={e => set('cost', e.target.value)} />
+          </div>
+        </section>
+
+        {shoe && (
+          <section className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Shoe (primary pair)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Type" value={form.shoe_type} onChange={e => set('shoe_type', e.target.value)} />
+              <Input label="Brand" value={form.brand} onChange={e => set('brand', e.target.value)} />
+              <Input label="Colour" value={form.color} onChange={e => set('color', e.target.value)} />
+            </div>
+            <Textarea label="Notes" value={form.description_notes} onChange={e => set('description_notes', e.target.value)} />
+          </section>
+        )}
+
+        {customer && (
+          <section className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Customer</p>
+            <Input label="Name" value={form.full_name} onChange={e => set('full_name', e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} />
+              <Input label="Email" value={form.email} onChange={e => set('email', e.target.value)} />
+            </div>
+            <Input label="Address" value={form.address} onChange={e => set('address', e.target.value)} />
+          </section>
+        )}
+
+        {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={() => { setErr(''); mut.mutate() }} disabled={mut.isPending || !canSave}>
+            {mut.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
       </div>
@@ -505,6 +638,7 @@ export default function ShoeJobDetailPage() {
     }
   }, [searchParams, id])
   const [showStatus, setShowStatus] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [showAddPair, setShowAddPair] = useState(false)
   const sendQuoteMut = useMutation({
     mutationFn: () => sendShoeQuote(id!),
@@ -614,6 +748,9 @@ export default function ShoeJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowEdit(true)}>
+              <Pencil size={15} /><span className="hidden sm:inline">Edit</span>
+            </Button>
             <Button variant="secondary" onClick={() => window.open(`/shoe-repairs/${job.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer')}>
               <Printer size={15} /><span className="hidden sm:inline">Print Intake Tickets</span>
             </Button>
@@ -635,6 +772,7 @@ export default function ShoeJobDetailPage() {
       />
 
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
+      {showEdit && <EditTicketModal job={job} onClose={() => setShowEdit(false)} />}
       {showAddPair && <AddPairModal job={job} onClose={() => setShowAddPair(false)} />}
       {showAddServices && <AddServicesModal job={job} onClose={() => setShowAddServices(false)} />}
 

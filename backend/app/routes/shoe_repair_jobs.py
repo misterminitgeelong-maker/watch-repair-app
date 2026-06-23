@@ -14,6 +14,7 @@ from ..models import (
     Shoe,
     ShoeCreate,
     ShoeRead,
+    ShoeUpdate,
     ShoeRepairJob,
     ShoeRepairJobCreate,
     ShoeRepairJobFieldUpdate,
@@ -137,6 +138,24 @@ def list_shoes(
     if customer_id:
         query = query.where(Shoe.customer_id == customer_id)
     return session.exec(query).all()
+
+
+@router.patch("/shoes/{shoe_id}", response_model=ShoeRead)
+def update_shoe(
+    shoe_id: UUID,
+    payload: ShoeUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    shoe = session.get(Shoe, shoe_id)
+    if not shoe or shoe.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Shoe not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(shoe, field, value)
+    session.add(shoe)
+    session.commit()
+    session.refresh(shoe)
+    return shoe
 
 
 # ── Shoe Repair Jobs ──────────────────────────────────────────────────────────

@@ -494,6 +494,8 @@ export const listWatches = (customerId?: string) =>
 export const getWatch = (id: string) => api.get<Watch>(`/watches/${id}`)
 export const createWatch = (data: Omit<Watch, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Watch>('/watches', data)
+export const updateWatch = (id: string, data: Partial<Pick<Watch, 'brand' | 'model' | 'serial_number' | 'movement_type' | 'condition_notes'>>) =>
+  api.patch<Watch>(`/watches/${id}`, data)
 
 // ── Repair Jobs ───────────────────────────────────────────────────────────────
 export type JobStatus = 'awaiting_quote' | 'awaiting_go_ahead' | 'go_ahead' | 'no_go' | 'working_on' | 'awaiting_parts' | 'parts_to_order' | 'sent_to_labanda' | 'quoted_by_labanda' | 'at_third_party_for_quoting' | 'third_party_quote_approved' | 'at_third_party_repairer' | 'service' | 'completed' | 'awaiting_collection' | 'collected' | 'awaiting_customer_details' | 'en_route' | 'on_site' | 'booked' | 'pending_booking' | 'quote_sent' | 'awaiting_booking_confirmation' | 'booking_confirmed' | 'booking_on_hold' | 'booking_completed' | 'job_delayed' | 'work_completed' | 'invoice_paid' | 'failed_job'
@@ -544,6 +546,7 @@ export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJob = (id: string, data: {
   customer_account_id?: string | null
+  title?: string
   cost_cents?: number
   pre_quote_cents?: number
   priority?: string
@@ -1625,6 +1628,8 @@ export const sendAutoKeyInvoice = (invoiceId: string) =>
 
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
   api.post<Shoe>('/shoe-repair-jobs/shoes', data)
+export const updateShoe = (id: string, data: Partial<Pick<Shoe, 'shoe_type' | 'brand' | 'color' | 'description_notes'>>) =>
+  api.patch<Shoe>(`/shoe-repair-jobs/shoes/${id}`, data)
 
 // ── Shoe Repair Jobs ──────────────────────────────────────────────────────────
 export interface ShoeRepairJobItem {

@@ -6,7 +6,16 @@ from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import Customer, CustomerCreate, CustomerRead, Watch, WatchCreate, WatchRead
+from ..models import (
+    Customer,
+    CustomerCreate,
+    CustomerRead,
+    CustomerUpdate,
+    Watch,
+    WatchCreate,
+    WatchRead,
+    WatchUpdate,
+)
 
 router = APIRouter(prefix="/v1", tags=["customers", "watches"])
 
@@ -61,6 +70,27 @@ def get_customer(
     customer = session.get(Customer, customer_id)
     if not customer or customer.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+@router.patch("/customers/{customer_id}", response_model=CustomerRead)
+def update_customer(
+    customer_id: UUID,
+    payload: CustomerUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    customer = session.get(Customer, customer_id)
+    if not customer or customer.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if "full_name" in updates and not (updates["full_name"] or "").strip():
+        raise HTTPException(status_code=400, detail="Customer name cannot be empty")
+    for field, value in updates.items():
+        setattr(customer, field, value)
+    session.add(customer)
+    session.commit()
+    session.refresh(customer)
     return customer
 
 
@@ -121,6 +151,24 @@ def get_watch(
     watch = session.get(Watch, watch_id)
     if not watch or watch.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Watch not found")
+    return watch
+
+
+@router.patch("/watches/{watch_id}", response_model=WatchRead)
+def update_watch(
+    watch_id: UUID,
+    payload: WatchUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    watch = session.get(Watch, watch_id)
+    if not watch or watch.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Watch not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(watch, field, value)
+    session.add(watch)
+    session.commit()
+    session.refresh(watch)
     return watch
 
 

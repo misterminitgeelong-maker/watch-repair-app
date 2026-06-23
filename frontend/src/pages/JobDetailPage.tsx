@@ -10,12 +10,13 @@ import {
   getStatusHistory,
   resendJobNotification,
   listCustomerAccounts, getWatch, getCustomer,
+  updateWatch, updateCustomer,
   getWatchMovementQuote,
   getApiErrorMessage,
   getUploadErrorMessage,
   listUsers,
   createQuote, sendQuote, cloneRepairJob,
-  type JobStatus, type RepairJob, type CustomerAccount, type TenantUser,
+  type JobStatus, type RepairJob, type CustomerAccount, type TenantUser, type Watch, type Customer,
 } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import JobCustomFields from '@/components/JobCustomFields'
@@ -317,6 +318,120 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
   )
 }
 
+function EditTicketModal({ job, watch, customer, onClose }: { job: RepairJob; watch?: Watch; customer?: Customer; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [err, setErr] = useState('')
+  const [form, setForm] = useState({
+    title: job.title ?? '',
+    description: job.description ?? '',
+    priority: job.priority ?? 'normal',
+    collection_date: job.collection_date ?? '',
+    deposit: (job.deposit_cents / 100).toFixed(2),
+    cost: (job.cost_cents / 100).toFixed(2),
+    brand: watch?.brand ?? '',
+    model: watch?.model ?? '',
+    serial_number: watch?.serial_number ?? '',
+    movement_type: watch?.movement_type ?? '',
+    condition_notes: watch?.condition_notes ?? '',
+    full_name: customer?.full_name ?? '',
+    phone: customer?.phone ?? '',
+    email: customer?.email ?? '',
+    address: customer?.address ?? '',
+  })
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const jobPayload: Parameters<typeof updateJob>[1] = {
+        title: form.title.trim(),
+        description: form.description,
+        priority: form.priority,
+        deposit_cents: dollarsToCents(form.deposit),
+        cost_cents: dollarsToCents(form.cost),
+      }
+      if (form.collection_date) jobPayload.collection_date = form.collection_date
+      await updateJob(job.id, jobPayload)
+      if (watch) {
+        await updateWatch(watch.id, {
+          brand: form.brand, model: form.model, serial_number: form.serial_number,
+          movement_type: form.movement_type, condition_notes: form.condition_notes,
+        })
+      }
+      if (customer) {
+        await updateCustomer(customer.id, {
+          full_name: form.full_name.trim(), phone: form.phone, email: form.email, address: form.address,
+        })
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job', job.id] })
+      if (watch) qc.invalidateQueries({ queryKey: ['watch', watch.id] })
+      if (customer) qc.invalidateQueries({ queryKey: ['customer', customer.id] })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      onClose()
+    },
+    onError: (e) => setErr(getApiErrorMessage(e, 'Failed to save changes.')),
+  })
+
+  const canSave = form.title.trim().length > 0 && (!customer || form.full_name.trim().length > 0)
+
+  return (
+    <Modal title={`Edit ticket #${job.job_number}`} onClose={onClose}>
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <section className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Job</p>
+          <Input label="Services / title" value={form.title} onChange={e => set('title', e.target.value)} />
+          <Textarea label="Fault / intake notes" value={form.description} onChange={e => set('description', e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Select label="Priority" value={form.priority} onChange={e => set('priority', e.target.value)}>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </Select>
+            <Input label="Collection date" type="date" value={form.collection_date} onChange={e => set('collection_date', e.target.value)} />
+            <Input label="Deposit ($)" type="number" min="0" step="0.01" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+            <Input label="Estimate ($)" type="number" min="0" step="0.01" value={form.cost} onChange={e => set('cost', e.target.value)} />
+          </div>
+        </section>
+
+        {watch && (
+          <section className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Watch</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Brand" value={form.brand} onChange={e => set('brand', e.target.value)} />
+              <Input label="Model" value={form.model} onChange={e => set('model', e.target.value)} />
+              <Input label="Serial number" value={form.serial_number} onChange={e => set('serial_number', e.target.value)} />
+              <Input label="Movement" value={form.movement_type} onChange={e => set('movement_type', e.target.value)} />
+            </div>
+            <Textarea label="Condition notes" value={form.condition_notes} onChange={e => set('condition_notes', e.target.value)} />
+          </section>
+        )}
+
+        {customer && (
+          <section className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Customer</p>
+            <Input label="Name" value={form.full_name} onChange={e => set('full_name', e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} />
+              <Input label="Email" value={form.email} onChange={e => set('email', e.target.value)} />
+            </div>
+            <Input label="Address" value={form.address} onChange={e => set('address', e.target.value)} />
+          </section>
+        )}
+
+        {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={() => { setErr(''); mut.mutate() }} disabled={mut.isPending || !canSave}>
+            {mut.isPending ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Work log modal ────────────────────────────────────────────────────────────
 // ── Tab types ─────────────────────────────────────────────────────────────────
 type Tab = 'details' | 'worklogs' | 'attachments' | 'history' | 'messages'
@@ -408,6 +523,7 @@ export default function JobDetailPage() {
     initialTab === 'messages' ? 'messages' : 'details',
   )
   const [showStatus, setShowStatus] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [showLogWork, setShowLogWork] = useState(false)
   const [showCreateQuote, setShowCreateQuote] = useState(false)
   const [pendingStepStatus, setPendingStepStatus] = useState<JobStatus | null>(null)
@@ -602,6 +718,9 @@ export default function JobDetailPage() {
             >
               Copy status link
             </Button>
+            <Button variant="secondary" onClick={() => setShowEdit(true)}>
+              <Pencil size={15} /><span className="hidden sm:inline">Edit</span>
+            </Button>
             <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/intake-print?autoprint=1`)}>
               <Printer size={15} /><span className="hidden sm:inline">Print Intake Tickets</span>
             </Button>
@@ -626,6 +745,7 @@ export default function JobDetailPage() {
         }
       />
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
+      {showEdit && <EditTicketModal job={job} watch={watch} customer={customer} onClose={() => setShowEdit(false)} />}
       {showLogWork && <LogWorkModal jobId={id!} onClose={() => setShowLogWork(false)} />}
       {showCreateQuote && (
         <CreateSendQuoteModal

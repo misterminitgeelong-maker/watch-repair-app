@@ -524,6 +524,13 @@ class CustomerRead(SQLModel):
     notes: Optional[str] = None
     created_at: datetime
 
+class CustomerUpdate(SQLModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+
 class WatchCreate(SQLModel):
     customer_id: UUID
     brand: Optional[str] = None
@@ -536,6 +543,13 @@ class WatchRead(SQLModel):
     id: UUID
     tenant_id: UUID
     customer_id: UUID
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    movement_type: Optional[str] = None
+    condition_notes: Optional[str] = None
+
+class WatchUpdate(SQLModel):
     brand: Optional[str] = None
     model: Optional[str] = None
     serial_number: Optional[str] = None
@@ -609,6 +623,7 @@ class RepairJobIntakeUpdate(SQLModel):
 
 class RepairJobFieldUpdate(SQLModel):
     customer_account_id: Optional[UUID] = None
+    title: Optional[str] = None
     cost_cents: Optional[int] = None
     pre_quote_cents: Optional[int] = None
     priority: Optional[str] = None
@@ -775,6 +790,12 @@ class ShoeRead(SQLModel):
     color: Optional[str] = None
     description_notes: Optional[str] = None
     created_at: datetime
+
+class ShoeUpdate(SQLModel):
+    shoe_type: Optional[str] = None
+    brand: Optional[str] = None
+    color: Optional[str] = None
+    description_notes: Optional[str] = None
 
 class ShoeRepairJobItemCreate(SQLModel):
     catalogue_key: str
