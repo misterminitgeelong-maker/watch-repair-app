@@ -6,45 +6,84 @@ export interface KanbanColumnDef<S extends string = string> {
   bg: string
 }
 
+// One bar per real status point — no bundling. Legacy renamed statuses (kept only so
+// pre-migration jobs stay visible) fold into the bar for their current equivalent.
 export const WATCH_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   {
-    key: 'quote',
-    label: 'Quote Needed',
-    statuses: ['awaiting_quote', 'awaiting_customer_details'],
+    key: 'awaiting_quote',
+    label: 'Awaiting Quote',
+    statuses: ['awaiting_quote'],
     color: '#9A6E26',
     bg: '#F6EDD8',
   },
   {
-    key: 'approval',
-    label: 'Awaiting Approval',
-    statuses: ['awaiting_go_ahead', 'quote_sent'],
+    key: 'awaiting_customer_details',
+    label: 'Awaiting Customer Details',
+    statuses: ['awaiting_customer_details'],
+    color: '#8A5A3B',
+    bg: '#F5E9DE',
+  },
+  {
+    key: 'quote_sent',
+    label: 'Quote Sent',
+    statuses: ['quote_sent'],
     color: '#2A5FA0',
     bg: '#EDF3FA',
   },
   {
-    key: 'approved',
-    label: 'Approved',
-    // parts_to_order kept for legacy pre-migration jobs
-    statuses: ['go_ahead', 'awaiting_parts', 'parts_to_order'],
+    key: 'awaiting_go_ahead',
+    label: 'Awaiting Go Ahead',
+    statuses: ['awaiting_go_ahead'],
+    color: '#3E6FB0',
+    bg: '#E7F0FA',
+  },
+  {
+    key: 'go_ahead',
+    label: 'Go Ahead Given',
+    statuses: ['go_ahead'],
     color: '#B06010',
     bg: '#FFF0E0',
   },
   {
-    key: 'third_party',
-    label: 'At 3rd Party Repairer',
-    // sent_to_labanda / quoted_by_labanda kept for legacy pre-migration jobs
-    statuses: [
-      'at_third_party_for_quoting',
-      'third_party_quote_approved',
-      'at_third_party_repairer',
-      'sent_to_labanda',
-      'quoted_by_labanda',
-    ],
+    key: 'no_go',
+    label: 'No Go',
+    statuses: ['no_go'],
+    color: '#B03A2A',
+    bg: '#FBE7E3',
+  },
+  {
+    key: 'at_third_party_for_quoting',
+    label: 'At 3rd Party (Quoting)',
+    // sent_to_labanda kept for legacy pre-migration jobs
+    statuses: ['at_third_party_for_quoting', 'sent_to_labanda'],
     color: '#0F6B6B',
     bg: '#E3F2F2',
   },
   {
-    key: 'in_work',
+    key: 'third_party_quote_approved',
+    label: '3rd Party Quote Approved',
+    // quoted_by_labanda kept for legacy pre-migration jobs
+    statuses: ['third_party_quote_approved', 'quoted_by_labanda'],
+    color: '#127070',
+    bg: '#E0F1F1',
+  },
+  {
+    key: 'at_third_party_repairer',
+    label: 'At 3rd Party Repairer',
+    statuses: ['at_third_party_repairer'],
+    color: '#186A6A',
+    bg: '#DDEFEF',
+  },
+  {
+    key: 'awaiting_parts',
+    label: 'Awaiting Parts',
+    // parts_to_order kept for legacy pre-migration jobs
+    statuses: ['awaiting_parts', 'parts_to_order'],
+    color: '#A0680F',
+    bg: '#FBEBD3',
+  },
+  {
+    key: 'working_on',
     label: 'In Work',
     // service kept for legacy pre-migration jobs
     statuses: ['working_on', 'service'],
@@ -59,7 +98,7 @@ export const WATCH_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
     bg: '#EBF8EF',
   },
   {
-    key: 'collect',
+    key: 'awaiting_collection',
     label: 'Ready to Collect',
     statuses: ['awaiting_collection'],
     color: '#5A4A3B',

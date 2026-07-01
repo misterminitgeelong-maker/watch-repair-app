@@ -35,7 +35,7 @@ import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Link, useNavigate } from 'react-router-dom'
 
-const CLOSED_JOB_STATUSES = ['no_go', 'completed', 'awaiting_collection', 'collected']
+const CLOSED_JOB_STATUSES = ['completed', 'awaiting_collection', 'collected']
 
 const DASHBOARD_CSS = `
 @keyframes dashboardRise {

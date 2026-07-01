@@ -27,7 +27,7 @@ function daysInShop(createdAt: string): number {
 }
 
 function daysInCurrentStatus(job: { status: string; status_changed_at?: string | null; created_at: string }): number {
-  const TERMINAL = new Set(['collected', 'no_go', 'awaiting_collection'])
+  const TERMINAL = new Set(['collected', 'awaiting_collection'])
   if (TERMINAL.has(job.status)) return 0
   const from = job.status_changed_at ?? job.created_at
   return Math.floor((Date.now() - new Date(from).getTime()) / 86_400_000)

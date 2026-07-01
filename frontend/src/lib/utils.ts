@@ -47,13 +47,15 @@ export const JOB_STATUS_ORDER = [
 
 export const ACTIVE_DIRECTORY_STATUSES = [
   'awaiting_quote', 'awaiting_customer_details', 'awaiting_go_ahead', 'quote_sent',
-  'go_ahead', 'at_third_party_for_quoting', 'third_party_quote_approved', 'at_third_party_repairer',
+  'go_ahead', 'no_go', 'at_third_party_for_quoting', 'third_party_quote_approved', 'at_third_party_repairer',
   // legacy statuses kept so pre-migration jobs stay visible
   'parts_to_order', 'sent_to_labanda', 'quoted_by_labanda', 'service',
   'awaiting_parts', 'working_on', 'completed', 'awaiting_collection',
 ] as const
 
-export const CLOSED_DIRECTORY_STATUSES = ['no_go', 'collected'] as const
+// "No Go" still needs action (return watch to shop, contact customer for collection),
+// so it stays out of the closed/completed bucket alongside 'collected'.
+export const CLOSED_DIRECTORY_STATUSES = ['collected'] as const
 
 /** Same order as backend `_WATCH_QUEUE_SEQUENCE` — watch Tinder queue only. */
 export const WATCH_QUEUE_SWIPE_SEQUENCE = [
