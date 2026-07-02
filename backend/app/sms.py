@@ -670,6 +670,59 @@ def operator_dispatch_phone(tenant: Tenant | None) -> str | None:
     return str(raw).strip()
 
 
+def notify_mobile_lead_offer(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    auto_key_job_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    customer_phone: str | None,
+    suburb: str,
+    state_code: str,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    registration_plate: str | None,
+    job_number: str,
+    timeout_minutes: int = 30,
+) -> bool:
+    """SMS operator when a website lead is assigned for quoting."""
+    lines = [f"New website lead — quote within {timeout_minutes} min."]
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    lines.append(f"Customer: {cust_line}")
+    lines.append(f"Location: {suburb.strip()} {state_code.strip().upper()}")
+
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
+    if registration_plate and registration_plate.strip():
+        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
+    if veh:
+        lines.append(f"Vehicle: {veh}")
+
+    lines.append(f"Job #{job_number}")
+    inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key"
+    lines.append(f"Quote in app: {inbox_url}")
+
+    body = "\n".join(lines)
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="mobile_lead_offer",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
 def notify_shop_mobile_booking_request(
     session: Session,
     *,

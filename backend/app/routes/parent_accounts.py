@@ -19,6 +19,7 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..minit_mobile_routing import resolve_mobile_operator_route
 from ..minit_mobile_operators import (
     index_tss_shops_by_number,
     load_mobile_operators_seed,
@@ -34,6 +35,7 @@ from ..models import (
     ParentAccountCreateTenantRequest,
     ParentImportShopsResponse,
     ParentProvisionShopRequest,
+    ParentRoutingTestResponse,
     ParentAccountEventLog,
     ParentAccountEventLogRead,
     ParentAccountLinkTenantRequest,
@@ -43,6 +45,8 @@ from ..models import (
     ParentAccountSummaryResponse,
     ParentLeadIngestConfigResponse,
     ParentMobileLeadDefaultTenantBody,
+    ParentMobileLeadDispatchSettingsBody,
+    ParentMobileLeadEscalationTenantBody,
     ParentMobileLeadWebhookSecretBody,
     ShopBookingUsageResponse,
     ShopBookingUsageShopBreakdown,
@@ -163,6 +167,9 @@ def _lead_ingest_config(parent: ParentAccount) -> ParentLeadIngestConfigResponse
         mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
         mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
         mobile_lead_default_tenant_id=parent.mobile_lead_default_tenant_id,
+        mobile_lead_escalation_tenant_id=parent.mobile_lead_escalation_tenant_id,
+        mobile_lead_offer_timeout_minutes=int(parent.mobile_lead_offer_timeout_minutes or 30),
+        mobile_lead_max_operator_offers=int(parent.mobile_lead_max_operator_offers or 3),
     )
 
 
@@ -408,6 +415,73 @@ def set_mobile_lead_default_tenant(
     return _to_summary(session, parent)
 
 
+@router.put("/me/mobile-lead-ingest/escalation-tenant", response_model=ParentLeadIngestConfigResponse)
+def set_mobile_lead_escalation_tenant(
+    body: ParentMobileLeadEscalationTenantBody,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    if body.tenant_id is None:
+        parent.mobile_lead_escalation_tenant_id = None
+        summary = "Cleared HQ escalation site for website leads"
+    else:
+        if not _tenant_linked_to_parent(session, parent.id, body.tenant_id):
+            raise HTTPException(status_code=400, detail="That site is not linked to this parent account")
+        parent.mobile_lead_escalation_tenant_id = body.tenant_id
+        summary = "Set HQ escalation site when operators do not quote in time"
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=body.tenant_id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_escalation_tenant",
+        event_summary=summary,
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _lead_ingest_config(parent)
+
+
+@router.put("/me/mobile-lead-ingest/dispatch-settings", response_model=ParentLeadIngestConfigResponse)
+def set_mobile_lead_dispatch_settings(
+    body: ParentMobileLeadDispatchSettingsBody,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    changes: list[str] = []
+    if body.offer_timeout_minutes is not None:
+        parent.mobile_lead_offer_timeout_minutes = body.offer_timeout_minutes
+        changes.append(f"offer timeout {body.offer_timeout_minutes} min")
+    if body.max_operator_offers is not None:
+        parent.mobile_lead_max_operator_offers = body.max_operator_offers
+        changes.append(f"max operator offers {body.max_operator_offers}")
+    if not changes:
+        raise HTTPException(status_code=400, detail="No dispatch settings to update")
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="mobile_lead_dispatch_settings",
+        event_summary="Updated website lead dispatch: " + ", ".join(changes),
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _lead_ingest_config(parent)
+
+
 @router.get("/me/mobile-lead-routes", response_model=list[MobileSuburbRouteRead])
 def list_mobile_suburb_routes(
     auth: AuthContext = Depends(require_owner),
@@ -482,6 +556,38 @@ def create_mobile_suburb_route(
         state_code=row.state_code,
         suburb_normalized=row.suburb_normalized,
         target_tenant_id=row.target_tenant_id,
+    )
+
+
+@router.get("/me/routing/test", response_model=ParentRoutingTestResponse)
+def test_mobile_operator_routing(
+    suburb: str = Query(..., min_length=1),
+    state_code: str = Query(..., min_length=2, max_length=8),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Preview which mobile operator would receive a lead for suburb + state."""
+    _require_minit_hq(auth, session)
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    resolution = resolve_mobile_operator_route(
+        session,
+        parent_id=parent.id,
+        suburb=suburb,
+        state_code=state_code,
+    )
+    return ParentRoutingTestResponse(
+        suburb=resolution.suburb,
+        state_code=resolution.state_code,
+        suburb_normalized=resolution.suburb_normalized,
+        routing_rule=resolution.routing_rule,
+        operator_tenant_id=resolution.operator_tenant_id,
+        operator_slug=resolution.operator_slug,
+        operator_name=resolution.operator_name,
+        operator_shop_number=resolution.operator_shop_number,
+        message=resolution.message,
     )
 
 
@@ -1139,6 +1245,9 @@ def unlink_tenant_from_parent_account(
         session.delete(r)
     if parent.mobile_lead_default_tenant_id == tenant_id:
         parent.mobile_lead_default_tenant_id = None
+        session.add(parent)
+    if parent.mobile_lead_escalation_tenant_id == tenant_id:
+        parent.mobile_lead_escalation_tenant_id = None
         session.add(parent)
 
     session.delete(membership)

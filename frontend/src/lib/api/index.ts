@@ -155,6 +155,9 @@ export interface ParentLeadIngestConfig {
   mobile_lead_ingest_public_id?: string | null
   mobile_lead_webhook_secret_configured?: boolean
   mobile_lead_default_tenant_id?: string | null
+  mobile_lead_escalation_tenant_id?: string | null
+  mobile_lead_offer_timeout_minutes?: number
+  mobile_lead_max_operator_offers?: number
 }
 
 export interface ParentAccountSitesPage {
@@ -2531,6 +2534,12 @@ export const listMobileSuburbRoutes = () =>
   api.get<MobileSuburbRoute[]>('/parent-accounts/me/mobile-lead-routes')
 export const setParentMobileLeadDefaultTenant = (tenant_id: string | null) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/default-tenant', { tenant_id })
+export const setParentMobileLeadEscalationTenant = (tenant_id: string | null) =>
+  api.put<ParentLeadIngestConfig>('/parent-accounts/me/mobile-lead-ingest/escalation-tenant', { tenant_id })
+export const setParentMobileLeadDispatchSettings = (data: {
+  offer_timeout_minutes?: number
+  max_operator_offers?: number
+}) => api.put<ParentLeadIngestConfig>('/parent-accounts/me/mobile-lead-ingest/dispatch-settings', data)
 export const setParentMobileLeadWebhookSecret = (secret: string) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret: secret })
 export const clearParentMobileLeadWebhookSecret = () =>

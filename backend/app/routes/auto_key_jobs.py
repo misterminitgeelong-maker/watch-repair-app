@@ -14,6 +14,7 @@ from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
+from ..services.mobile_lead_dispatch import complete_dispatch_if_quoted
 from ..models import (
     Attachment,
     AutoKeyJob,
@@ -1090,6 +1091,7 @@ def send_auto_key_quote(
     if job and job.tenant_id == auth.tenant_id and job.status in _QUOTE_ADVANCE_FROM:
         job.status = "quote_sent"
         session.add(job)
+        complete_dispatch_if_quoted(session, job.id)
 
     session.commit()
     session.refresh(quote)

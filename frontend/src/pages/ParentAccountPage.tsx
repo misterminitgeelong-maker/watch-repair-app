@@ -15,6 +15,8 @@ import {
   listMobileSuburbRoutes,
   listParentAccountActivity,
   setParentMobileLeadDefaultTenant,
+  setParentMobileLeadDispatchSettings,
+  setParentMobileLeadEscalationTenant,
   setParentMobileLeadWebhookSecret,
   unlinkTenantFromParentAccount,
   type PlanCode,
@@ -22,7 +24,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
-import { PARENT_LEAD_INGEST_QUERY_KEY } from '@/hooks/useParentLeadIngest'
+import { PARENT_LEAD_INGEST_QUERY_KEY, useParentLeadIngest } from '@/hooks/useParentLeadIngest'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 export default function ParentAccountPage() {
@@ -56,6 +58,9 @@ export default function ParentAccountPage() {
   const [routeTargetTenantId, setRouteTargetTenantId] = useState('')
   const [deletingRouteId, setDeletingRouteId] = useState('')
   const [defaultTenantDraft, setDefaultTenantDraft] = useState('')
+  const [escalationTenantDraft, setEscalationTenantDraft] = useState('')
+  const [offerTimeoutDraft, setOfferTimeoutDraft] = useState('30')
+  const [maxOffersDraft, setMaxOffersDraft] = useState('3')
   const [usageMonth, setUsageMonth] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -73,6 +78,7 @@ export default function ParentAccountPage() {
   }, [siteSearch])
 
   const { data, isLoading } = useParentAccount()
+  const { data: leadIngest } = useParentLeadIngest()
   const { data: retailPage } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
@@ -114,6 +120,24 @@ export default function ParentAccountPage() {
     }
   }, [data?.mobile_lead_default_tenant_id])
 
+  useEffect(() => {
+    if (leadIngest?.mobile_lead_escalation_tenant_id != null) {
+      setEscalationTenantDraft(leadIngest.mobile_lead_escalation_tenant_id)
+    } else {
+      setEscalationTenantDraft('')
+    }
+    if (leadIngest?.mobile_lead_offer_timeout_minutes != null) {
+      setOfferTimeoutDraft(String(leadIngest.mobile_lead_offer_timeout_minutes))
+    }
+    if (leadIngest?.mobile_lead_max_operator_offers != null) {
+      setMaxOffersDraft(String(leadIngest.mobile_lead_max_operator_offers))
+    }
+  }, [
+    leadIngest?.mobile_lead_escalation_tenant_id,
+    leadIngest?.mobile_lead_offer_timeout_minutes,
+    leadIngest?.mobile_lead_max_operator_offers,
+  ])
+
   const enableIngestMut = useMutation({
     mutationFn: () => enableParentMobileLeadIngest().then(r => r.data),
     onSuccess: () => {
@@ -153,6 +177,30 @@ export default function ParentAccountPage() {
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not update default shop.')),
+  })
+
+  const setEscalationTenantMut = useMutation({
+    mutationFn: (tenant_id: string | null) => setParentMobileLeadEscalationTenant(tenant_id).then(r => r.data),
+    onSuccess: () => {
+      setError('')
+      invalidateParentQueries()
+      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not update HQ escalation site.')),
+  })
+
+  const setDispatchSettingsMut = useMutation({
+    mutationFn: () =>
+      setParentMobileLeadDispatchSettings({
+        offer_timeout_minutes: Number(offerTimeoutDraft),
+        max_operator_offers: Number(maxOffersDraft),
+      }).then(r => r.data),
+    onSuccess: () => {
+      setError('')
+      invalidateParentQueries()
+      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not update dispatch settings.')),
   })
 
   const createRouteMut = useMutation({
@@ -318,6 +366,11 @@ export default function ParentAccountPage() {
   const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
   const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
   const defaultTenantDirty = defaultTenantDraft !== savedDefaultTenantId
+  const savedEscalationTenantId = leadIngest?.mobile_lead_escalation_tenant_id ?? ''
+  const escalationTenantDirty = escalationTenantDraft !== savedEscalationTenantId
+  const dispatchSettingsDirty =
+    offerTimeoutDraft !== String(leadIngest?.mobile_lead_offer_timeout_minutes ?? 30)
+    || maxOffersDraft !== String(leadIngest?.mobile_lead_max_operator_offers ?? 3)
   const retailSites = retailPage?.sites ?? []
   const retailTotal = retailPage?.total ?? data?.site_count ?? 0
   const operatorSites = operatorsPage?.sites ?? []
@@ -698,6 +751,61 @@ export default function ParentAccountPage() {
               {setDefaultTenantMut.isPending ? 'Saving…' : 'Save'}
             </Button>
           </div>
+
+          <div className='ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg'>
+            <div className='flex-1 min-w-0'>
+              <Select
+                label='HQ escalation (manual quoting)'
+                value={escalationTenantDraft}
+                onChange={e => setEscalationTenantDraft(e.target.value)}
+              >
+                <option value=''>No HQ escalation</option>
+                {[...(retailSites.length ? retailSites : data?.sites ?? []), ...operatorSites].map(s => (
+                  <option key={s.tenant_id} value={s.tenant_id}>
+                    {s.tenant_name} (#{s.tenant_slug})
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              variant='secondary'
+              onClick={() => setEscalationTenantMut.mutate(escalationTenantDraft === '' ? null : escalationTenantDraft)}
+              disabled={!escalationTenantDirty || setEscalationTenantMut.isPending}
+            >
+              {setEscalationTenantMut.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+
+          <div className='ml-8 mb-4 grid gap-3 md:grid-cols-3 max-w-2xl'>
+            <Input
+              label='Minutes per operator to quote'
+              type='number'
+              min={5}
+              max={240}
+              value={offerTimeoutDraft}
+              onChange={e => setOfferTimeoutDraft(e.target.value)}
+            />
+            <Input
+              label='Max operators before HQ'
+              type='number'
+              min={1}
+              max={10}
+              value={maxOffersDraft}
+              onChange={e => setMaxOffersDraft(e.target.value)}
+            />
+            <div className='flex items-end'>
+              <Button
+                variant='secondary'
+                onClick={() => setDispatchSettingsMut.mutate()}
+                disabled={!dispatchSettingsDirty || setDispatchSettingsMut.isPending}
+              >
+                {setDispatchSettingsMut.isPending ? 'Saving…' : 'Save dispatch timing'}
+              </Button>
+            </div>
+          </div>
+          <p className='text-xs mb-4 ml-8' style={{ color: 'var(--ms-text-muted)' }}>
+            Operators receive an SMS when a lead is assigned. If they do not quote in time, the next nearest operator is notified, then HQ.
+          </p>
 
           {/* Add route */}
           <div className='ml-8 grid gap-3 md:grid-cols-4 max-w-2xl'>

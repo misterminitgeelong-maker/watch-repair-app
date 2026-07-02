@@ -214,6 +214,9 @@ class ParentLeadIngestConfigResponse(SQLModel):
     mobile_lead_ingest_public_id: Optional[UUID] = None
     mobile_lead_webhook_secret_configured: bool = False
     mobile_lead_default_tenant_id: Optional[UUID] = None
+    mobile_lead_escalation_tenant_id: Optional[UUID] = None
+    mobile_lead_offer_timeout_minutes: int = 30
+    mobile_lead_max_operator_offers: int = 3
 
 
 class ParentAccountSitesPageResponse(SQLModel):
@@ -422,6 +425,13 @@ class ParentMobileLeadWebhookSecretBody(SQLModel):
 class ParentMobileLeadDefaultTenantBody(SQLModel):
     tenant_id: Optional[UUID] = None
 
+class ParentMobileLeadEscalationTenantBody(SQLModel):
+    tenant_id: Optional[UUID] = None
+
+class ParentMobileLeadDispatchSettingsBody(SQLModel):
+    offer_timeout_minutes: Optional[int] = Field(default=None, ge=5, le=240)
+    max_operator_offers: Optional[int] = Field(default=None, ge=1, le=10)
+
 class MobileSuburbRouteRead(SQLModel):
     id: UUID
     state_code: str
@@ -432,6 +442,17 @@ class MobileSuburbRouteCreateRequest(SQLModel):
     state_code: str = Field(..., min_length=2, max_length=8)
     suburb: str = Field(..., min_length=1, max_length=200)
     target_tenant_id: UUID
+
+class ParentRoutingTestResponse(SQLModel):
+    suburb: str
+    state_code: str
+    suburb_normalized: str
+    routing_rule: str
+    operator_tenant_id: Optional[UUID] = None
+    operator_slug: Optional[str] = None
+    operator_name: Optional[str] = None
+    operator_shop_number: Optional[str] = None
+    message: Optional[str] = None
 
 class InboundEmailListItem(SQLModel):
     id: UUID

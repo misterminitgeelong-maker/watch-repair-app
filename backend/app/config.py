@@ -156,7 +156,9 @@ class Settings(BaseSettings):
     # How often the in-app scheduler checks for due reminders.
     quote_reminder_check_interval_minutes: int = 60
 
-    # Attachments: local storage + upload validation defaults
+    # Website lead dispatch cascade (operator offer → timeout → HQ).
+    mobile_lead_dispatch_enabled: bool = True
+    mobile_lead_dispatch_check_interval_minutes: int = 5
     attachment_allowed_content_types: str = (
         "image/jpeg,image/png,image/webp,application/pdf,text/plain"
     )

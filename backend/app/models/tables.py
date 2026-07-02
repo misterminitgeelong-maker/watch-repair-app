@@ -97,6 +97,35 @@ class ParentAccount(SQLModel, table=True):
     mobile_lead_ingest_public_id: Optional[UUID] = Field(default=None, index=True, unique=True)
     mobile_lead_webhook_secret_hash: Optional[str] = None
     mobile_lead_default_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    #: Final fallback when operators do not quote in time (typically HQ for manual quoting).
+    mobile_lead_escalation_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    #: Minutes each operator has to send a quote before the lead is offered to the next.
+    mobile_lead_offer_timeout_minutes: int = Field(default=30)
+    #: Max nearby operators to try before escalating to HQ.
+    mobile_lead_max_operator_offers: int = Field(default=3)
+
+class MobileLeadDispatch(SQLModel, table=True):
+    """Website lead offered sequentially to operators; escalates to HQ when exhausted."""
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    #: offering | quoted | escalated_hq | failed
+    status: str = Field(default="offering", index=True, max_length=32)
+    suburb: str = Field(max_length=200)
+    state_code: str = Field(max_length=8, index=True)
+    suburb_normalized: str = Field(max_length=200, index=True)
+    #: Original webhook payload (customer, vehicle, notes, …).
+    payload_json: str
+    #: Ordered JSON array of operator tenant UUID strings.
+    candidate_operator_ids_json: str
+    current_offer_index: int = Field(default=0)
+    current_operator_tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")
+    offer_expires_at: Optional[datetime] = Field(default=None, index=True)
+    auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
+    offer_timeout_minutes: int = Field(default=30)
+    max_operator_offers: int = Field(default=3)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class MobileSuburbRoute(SQLModel, table=True):
     """Maps customer suburb + state to a linked site (tenant) for automated mobile key web leads."""
