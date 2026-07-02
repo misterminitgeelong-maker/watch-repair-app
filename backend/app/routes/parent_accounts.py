@@ -1,5 +1,6 @@
 from calendar import monthrange
 from datetime import datetime, timezone
+import json
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -75,7 +76,6 @@ _OPERATOR_PLAN_CODES = frozenset(
         "basic_watch_auto_key",
         "basic_all_tabs",
         "auto_key",
-        "minit_hq",
     }
 )
 
@@ -953,7 +953,11 @@ async def import_mobile_operators_from_xlsx(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    seeds = load_mobile_operators_seed()
+    try:
+        seeds = load_mobile_operators_seed()
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        raise HTTPException(status_code=500, detail=f"Operator seed file error: {exc}") from exc
+
     operators, resolve_errors = resolve_mobile_operators(
         seeds, index_tss_shops_by_number(parsed.shops)
     )
@@ -970,13 +974,21 @@ async def import_mobile_operators_from_xlsx(
             errors=parsed.errors or ["No operators resolved from seed + TSS workbook"],
         )
 
-    summary = import_minit_mobile_operators(
-        session,
-        parent_name=parent.name,
-        hq_owner_email=current_user.email,
-        operators=operators,
-        apply=True,
-    )
+    try:
+        summary = import_minit_mobile_operators(
+            session,
+            parent_id=parent.id,
+            hq_owner=current_user,
+            operators=operators,
+            apply=True,
+            commit=False,
+        )
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=f"Operator import conflict: {exc}") from exc
+    except Exception as exc:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Operator import failed: {exc}") from exc
 
     errors: list[str] = list(parsed.errors)
     for row in resolve_errors:

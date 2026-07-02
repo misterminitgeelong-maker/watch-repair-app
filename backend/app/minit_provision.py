@@ -632,16 +632,23 @@ def _operator_entry(operator: ResolvedMobileOperator) -> dict[str, str]:
 def import_minit_mobile_operators(
     session: Session,
     *,
-    parent_name: str,
-    hq_owner_email: str,
+    parent_name: str | None = None,
+    parent_id: UUID | None = None,
+    hq_owner_email: str | None = None,
+    hq_owner: User | None = None,
     operators: list[ResolvedMobileOperator],
     plan_code: str = "basic_auto_key",
     apply: bool = False,
+    commit: bool = True,
     on_progress: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, object]:
     """Dry-run or apply mobile operator tenants under the Minit parent account."""
-    email = hq_owner_email.strip().lower()
-    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    parent: ParentAccount | None = None
+    if parent_id is not None:
+        parent = session.get(ParentAccount, parent_id)
+    if parent is None and hq_owner_email:
+        email = hq_owner_email.strip().lower()
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
     if not parent:
         preview = [_operator_entry(op) for op in operators]
         return {
@@ -703,7 +710,14 @@ def import_minit_mobile_operators(
     if not apply:
         return result
 
-    hq_owner = session.exec(select(User).where(User.email == email).where(User.role == "owner")).first()
+    if hq_owner is None:
+        if not hq_owner_email:
+            result["error"] = "HQ owner not provided"
+            return result
+        email = hq_owner_email.strip().lower()
+        hq_owner = session.exec(
+            select(User).where(User.email == email).where(User.role == "owner")
+        ).first()
     if not hq_owner:
         result["error"] = "HQ owner user not found; run pilot seed first"
         return result
@@ -714,11 +728,18 @@ def import_minit_mobile_operators(
         for tenant in session.exec(select(Tenant).where(col(Tenant.slug).in_(list(slugs_needed)))).all():
             existing_by_slug[tenant.slug] = tenant
 
-    hq_users_by_tenant_id = {
-        user.tenant_id: user
-        for user in session.exec(select(User).where(User.email == hq_owner.email)).all()
-    }
     linked_tenant_ids = set(linked_tenant_ids_for_parent(session, parent.id))
+    linked_ids_list = list(linked_tenant_ids)
+    hq_users_by_tenant_id: dict[UUID, User] = {}
+    if linked_ids_list:
+        hq_users_by_tenant_id = {
+            user.tenant_id: user
+            for user in session.exec(
+                select(User)
+                .where(col(User.tenant_id).in_(linked_ids_list))
+                .where(User.email == hq_owner.email)
+            ).all()
+        }
 
     created_slugs: list[str] = []
     updated_count = 0
@@ -773,7 +794,8 @@ def import_minit_mobile_operators(
 
     if pending_flush:
         session.flush()
-    session.commit()
+    if commit:
+        session.commit()
     result["created_count"] = len(created_slugs)
     result["updated_count"] = updated_count
     result["skipped_count"] = skipped_apply
