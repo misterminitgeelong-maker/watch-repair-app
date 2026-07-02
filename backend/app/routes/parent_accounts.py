@@ -172,6 +172,7 @@ def _lead_ingest_config(parent: ParentAccount) -> ParentLeadIngestConfigResponse
         mobile_lead_escalation_tenant_id=parent.mobile_lead_escalation_tenant_id,
         mobile_lead_offer_timeout_minutes=int(parent.mobile_lead_offer_timeout_minutes or 30),
         mobile_lead_max_operator_offers=int(parent.mobile_lead_max_operator_offers or 3),
+        mobile_lead_force_hq_dispatch=bool(parent.mobile_lead_force_hq_dispatch),
     )
 
 
@@ -467,6 +468,9 @@ def set_mobile_lead_dispatch_settings(
     if body.max_operator_offers is not None:
         parent.mobile_lead_max_operator_offers = body.max_operator_offers
         changes.append(f"max operator offers {body.max_operator_offers}")
+    if body.force_hq_dispatch is not None:
+        parent.mobile_lead_force_hq_dispatch = body.force_hq_dispatch
+        changes.append("force HQ dispatch ON" if body.force_hq_dispatch else "force HQ dispatch OFF")
     if not changes:
         raise HTTPException(status_code=400, detail="No dispatch settings to update")
     _record_event(

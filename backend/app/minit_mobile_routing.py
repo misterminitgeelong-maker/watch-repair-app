@@ -77,13 +77,15 @@ def suburb_in_operator_territory(
     ) is not None
 
 
-def _resolution_for_outside_territory(
+def _resolution_for_hq_manual(
     session: Session,
     *,
     parent_id: UUID,
     suburb: str,
     state_code: str,
     suburb_normalized: str,
+    routing_rule: str,
+    message: str,
 ) -> MobileRoutingResolution:
     parent = session.get(ParentAccount, parent_id)
     hq_tid = parent.mobile_lead_escalation_tenant_id if parent else None
@@ -94,22 +96,41 @@ def _resolution_for_outside_territory(
                 suburb=suburb.strip(),
                 state_code=state_code,
                 suburb_normalized=suburb_normalized,
-                routing_rule="outside_operator_territory",
+                routing_rule=routing_rule,
                 operator_tenant_id=tenant.id,
                 operator_slug=tenant.slug,
                 operator_name=tenant.name,
                 operator_shop_number=tenant.shop_number,
-                message=(
-                    "Outside the mobile operator map (~100km from nearest hub). "
-                    "Lead goes to HQ for manual dispatch."
-                ),
+                message=message,
             )
     return MobileRoutingResolution(
         suburb=suburb.strip(),
         state_code=state_code,
         suburb_normalized=suburb_normalized,
         routing_rule="unmapped",
-        message="Outside operator territory and no HQ escalation site configured",
+        message="HQ dispatch requested but no HQ escalation site configured",
+    )
+
+
+def _resolution_for_outside_territory(
+    session: Session,
+    *,
+    parent_id: UUID,
+    suburb: str,
+    state_code: str,
+    suburb_normalized: str,
+) -> MobileRoutingResolution:
+    return _resolution_for_hq_manual(
+        session,
+        parent_id=parent_id,
+        suburb=suburb,
+        state_code=state_code,
+        suburb_normalized=suburb_normalized,
+        routing_rule="outside_operator_territory",
+        message=(
+            "Outside the mobile operator map (~100km from nearest hub). "
+            "Lead goes to HQ for manual dispatch."
+        ),
     )
 
 
@@ -138,6 +159,18 @@ def resolve_mobile_operator_route(
             suburb_normalized=sub_norm,
             routing_rule="invalid_suburb",
             message="suburb is required",
+        )
+
+    parent = session.get(ParentAccount, parent_id)
+    if parent and parent.mobile_lead_force_hq_dispatch:
+        return _resolution_for_hq_manual(
+            session,
+            parent_id=parent_id,
+            suburb=suburb,
+            state_code=st,
+            suburb_normalized=sub_norm,
+            routing_rule="force_hq_testing",
+            message="Testing mode: all website leads go to HQ for manual dispatch.",
         )
 
     route = lookup_mobile_suburb_route(

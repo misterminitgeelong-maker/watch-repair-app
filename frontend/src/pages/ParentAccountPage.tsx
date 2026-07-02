@@ -61,6 +61,7 @@ export default function ParentAccountPage() {
   const [escalationTenantDraft, setEscalationTenantDraft] = useState('')
   const [offerTimeoutDraft, setOfferTimeoutDraft] = useState('30')
   const [maxOffersDraft, setMaxOffersDraft] = useState('3')
+  const [forceHqDraft, setForceHqDraft] = useState(false)
   const [usageMonth, setUsageMonth] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -132,10 +133,12 @@ export default function ParentAccountPage() {
     if (leadIngest?.mobile_lead_max_operator_offers != null) {
       setMaxOffersDraft(String(leadIngest.mobile_lead_max_operator_offers))
     }
+    setForceHqDraft(leadIngest?.mobile_lead_force_hq_dispatch === true)
   }, [
     leadIngest?.mobile_lead_escalation_tenant_id,
     leadIngest?.mobile_lead_offer_timeout_minutes,
     leadIngest?.mobile_lead_max_operator_offers,
+    leadIngest?.mobile_lead_force_hq_dispatch,
   ])
 
   const enableIngestMut = useMutation({
@@ -194,6 +197,7 @@ export default function ParentAccountPage() {
       setParentMobileLeadDispatchSettings({
         offer_timeout_minutes: Number(offerTimeoutDraft),
         max_operator_offers: Number(maxOffersDraft),
+        force_hq_dispatch: forceHqDraft,
       }).then(r => r.data),
     onSuccess: () => {
       setError('')
@@ -371,6 +375,7 @@ export default function ParentAccountPage() {
   const dispatchSettingsDirty =
     offerTimeoutDraft !== String(leadIngest?.mobile_lead_offer_timeout_minutes ?? 30)
     || maxOffersDraft !== String(leadIngest?.mobile_lead_max_operator_offers ?? 3)
+    || forceHqDraft !== (leadIngest?.mobile_lead_force_hq_dispatch === true)
   const retailSites = retailPage?.sites ?? []
   const retailTotal = retailPage?.total ?? data?.site_count ?? 0
   const operatorSites = operatorsPage?.sites ?? []
@@ -776,6 +781,18 @@ export default function ParentAccountPage() {
             </Button>
           </div>
 
+          <label className='ml-8 mb-4 flex items-center gap-2 text-sm cursor-pointer' style={{ color: 'var(--ms-text-mid)' }}>
+            <input
+              type='checkbox'
+              checked={forceHqDraft}
+              onChange={e => setForceHqDraft(e.target.checked)}
+            />
+            <span>
+              <strong style={{ color: 'var(--ms-text)' }}>HQ testing mode</strong>
+              {' — send all website leads to HQ (skip operator SMS and cascade)}
+            </span>
+          </label>
+
           <div className='ml-8 mb-4 grid gap-3 md:grid-cols-3 max-w-2xl'>
             <Input
               label='Minutes per operator to quote'
@@ -799,7 +816,7 @@ export default function ParentAccountPage() {
                 onClick={() => setDispatchSettingsMut.mutate()}
                 disabled={!dispatchSettingsDirty || setDispatchSettingsMut.isPending}
               >
-                {setDispatchSettingsMut.isPending ? 'Saving…' : 'Save dispatch timing'}
+                {setDispatchSettingsMut.isPending ? 'Saving…' : 'Save dispatch settings'}
               </Button>
             </div>
           </div>

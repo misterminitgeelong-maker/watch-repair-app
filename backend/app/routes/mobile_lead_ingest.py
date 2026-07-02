@@ -87,8 +87,12 @@ def ingest_mobile_key_lead(
     message = "Lead dispatched to mobile operator; quote within the configured time window."
     if dispatch.status == "escalated_hq":
         message = (
-            "Outside mobile operator coverage (~100km from nearest hub); "
-            "lead sent to HQ for manual dispatch."
+            "Lead sent to HQ for manual dispatch (testing mode)."
+            if parent.mobile_lead_force_hq_dispatch
+            else (
+                "Outside mobile operator coverage (~100km from nearest hub); "
+                "lead sent to HQ for manual dispatch."
+            )
         )
 
     return {

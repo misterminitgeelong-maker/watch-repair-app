@@ -103,6 +103,8 @@ class ParentAccount(SQLModel, table=True):
     mobile_lead_offer_timeout_minutes: int = Field(default=30)
     #: Max nearby operators to try before escalating to HQ.
     mobile_lead_max_operator_offers: int = Field(default=3)
+    #: When true, all website leads skip operators and go straight to HQ (testing).
+    mobile_lead_force_hq_dispatch: bool = Field(default=False)
 
 class MobileLeadDispatch(SQLModel, table=True):
     """Website lead offered sequentially to operators; escalates to HQ when exhausted."""

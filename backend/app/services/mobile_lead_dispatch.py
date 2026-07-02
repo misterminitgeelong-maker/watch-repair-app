@@ -414,6 +414,12 @@ def escalate_dispatch_to_hq(
             f"({customer_name}, {dispatch.suburb} {dispatch.state_code})"
         )
         inbox_suffix = "— outside operator map, HQ manual dispatch"
+    elif reason == "testing_hq_mode":
+        summary = (
+            f"Website lead (HQ testing mode) — manual dispatch "
+            f"({customer_name}, {dispatch.suburb} {dispatch.state_code})"
+        )
+        inbox_suffix = "— HQ testing mode, manual dispatch"
     else:
         summary = (
             f"Website lead escalated to HQ for manual quoting "
@@ -490,7 +496,8 @@ def start_mobile_lead_dispatch(
     timeout = max(int(parent.mobile_lead_offer_timeout_minutes or 30), 5)
     max_offers = max(int(parent.mobile_lead_max_operator_offers or 3), 1)
 
-    in_territory = suburb_in_operator_territory(
+    force_hq = bool(parent.mobile_lead_force_hq_dispatch)
+    in_territory = False if force_hq else suburb_in_operator_territory(
         session,
         parent_id=parent.id,
         suburb=suburb,
@@ -524,11 +531,10 @@ def start_mobile_lead_dispatch(
     if candidates:
         offer_dispatch_to_current_operator(session, dispatch)
     else:
-        escalate_dispatch_to_hq(
-            session,
-            dispatch,
-            reason="outside_operator_territory" if not in_territory else "operator_timeout",
+        reason = "testing_hq_mode" if force_hq else (
+            "outside_operator_territory" if not in_territory else "operator_timeout"
         )
+        escalate_dispatch_to_hq(session, dispatch, reason=reason)
 
     return dispatch
 

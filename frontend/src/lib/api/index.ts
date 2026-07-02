@@ -158,6 +158,7 @@ export interface ParentLeadIngestConfig {
   mobile_lead_escalation_tenant_id?: string | null
   mobile_lead_offer_timeout_minutes?: number
   mobile_lead_max_operator_offers?: number
+  mobile_lead_force_hq_dispatch?: boolean
 }
 
 export interface ParentAccountSitesPage {
@@ -2539,6 +2540,7 @@ export const setParentMobileLeadEscalationTenant = (tenant_id: string | null) =>
 export const setParentMobileLeadDispatchSettings = (data: {
   offer_timeout_minutes?: number
   max_operator_offers?: number
+  force_hq_dispatch?: boolean
 }) => api.put<ParentLeadIngestConfig>('/parent-accounts/me/mobile-lead-ingest/dispatch-settings', data)
 export const setParentMobileLeadWebhookSecret = (secret: string) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret: secret })

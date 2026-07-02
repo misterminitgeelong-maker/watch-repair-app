@@ -135,7 +135,7 @@ def _setup_network() -> tuple[str, str, str]:
     )
     assert route2.status_code == 200, route2.text
 
-    return ingest_id, op1_id, op2_id
+    return ingest_id, op1_id, op2_id, hq_h
 
 
 def _ingest_lead(ingest_id: str, *, suburb: str = "Sydney") -> dict:
@@ -224,6 +224,30 @@ def test_outside_territory_goes_straight_to_hq():
         assert dispatch is not None
         assert dispatch.status == DISPATCH_STATUS_ESCALATED_HQ
 
+        sms_rows = session.exec(
+            select(SmsLog)
+            .where(SmsLog.event == "mobile_lead_offer")
+            .where(SmsLog.auto_key_job_id == UUID(body["job_id"]))
+        ).all()
+        assert len(sms_rows) == 0
+
+
+def test_force_hq_testing_mode_skips_operators():
+    ingest_id, _op1_id, _op2_id, hq_h = _setup_network()
+    settings = client.put(
+        "/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings",
+        headers=hq_h,
+        json={"force_hq_dispatch": True},
+    )
+    assert settings.status_code == 200, settings.text
+
+    body = _ingest_lead(ingest_id, suburb="Sydney")
+    assert body["dispatch_status"] == DISPATCH_STATUS_ESCALATED_HQ
+    assert body["offer_expires_at"] is None
+
+    with Session(engine) as session:
+        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
+        assert dispatch is not None
         sms_rows = session.exec(
             select(SmsLog)
             .where(SmsLog.event == "mobile_lead_offer")
