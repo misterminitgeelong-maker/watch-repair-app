@@ -20,6 +20,7 @@ from ..dependencies import (
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
 from ..minit_mobile_routing import resolve_mobile_operator_route
+from ..minit_mobile_territory_import import import_mobile_suburb_routes, load_territory_routes_seed
 from ..minit_mobile_operators import (
     index_tss_shops_by_number,
     load_mobile_operators_seed,
@@ -34,6 +35,7 @@ from ..models import (
     ParentAccount,
     ParentAccountCreateTenantRequest,
     ParentImportShopsResponse,
+    ParentImportTerritoryRoutesResponse,
     ParentProvisionShopRequest,
     ParentRoutingTestResponse,
     ParentAccountEventLog,
@@ -1127,6 +1129,69 @@ async def import_mobile_operators_from_xlsx(
         parsed_count=len(operators),
         sheet_name=parsed.sheet_name,
         errors=errors[:100],
+    )
+
+
+@router.post("/me/import-mobile-territory-routes", response_model=ParentImportTerritoryRoutesResponse)
+def import_mobile_territory_routes(
+    apply: bool = Query(default=False, description="When true, write routes to the database."),
+    replace_existing: bool = Query(default=False, description="Delete existing routes before import."),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Import bundled AU territory suburb routes (HQ only). Dry-run by default."""
+    _require_minit_hq(auth, session)
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+    try:
+        routes, operators = load_territory_routes_seed()
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=f"Territory seed file error: {exc}") from exc
+
+    try:
+        summary = import_mobile_suburb_routes(
+            session,
+            parent_id=parent.id,
+            routes=routes,
+            operators=operators,
+            apply=apply,
+            replace_existing=replace_existing,
+        )
+    except Exception as exc:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Territory route import failed: {exc}") from exc
+
+    if apply:
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=None,
+            actor_user_id=current_user.id,
+            actor_email=current_user.email,
+            event_type="import_mobile_territory_routes",
+            event_summary=(
+                f"Imported mobile territory routes: "
+                f"{summary.get('created_count', 0)} created, "
+                f"{summary.get('updated_count', 0)} updated"
+            ),
+        )
+
+    missing = summary.get("missing_operator_shop_numbers") or []
+    return ParentImportTerritoryRoutesResponse(
+        route_rows_in_file=int(summary.get("route_rows_in_file", 0)),
+        would_create_count=int(summary.get("would_create_count", 0)),
+        would_update_count=int(summary.get("would_update_count", 0)),
+        would_skip_count=int(summary.get("would_skip_count", 0)),
+        created_count=int(summary.get("created_count", 0)),
+        updated_count=int(summary.get("updated_count", 0)),
+        skipped_count=int(summary.get("skipped_count", 0)),
+        pending_apply_count=int(summary.get("pending_apply_count", 0)),
+        operator_coords_updated=int(summary.get("operator_coords_updated", 0)),
+        missing_operator_shop_numbers=[str(x) for x in missing],
+        applied=apply,
     )
 
 

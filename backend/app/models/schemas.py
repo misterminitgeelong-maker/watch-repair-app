@@ -327,6 +327,19 @@ class ParentImportShopsResponse(SQLModel):
     sheet_name: Optional[str] = None
     errors: list[str] = Field(default_factory=list)
 
+class ParentImportTerritoryRoutesResponse(SQLModel):
+    route_rows_in_file: int = 0
+    would_create_count: int = 0
+    would_update_count: int = 0
+    would_skip_count: int = 0
+    created_count: int = 0
+    updated_count: int = 0
+    skipped_count: int = 0
+    pending_apply_count: int = 0
+    operator_coords_updated: int = 0
+    missing_operator_shop_numbers: list[str] = Field(default_factory=list)
+    applied: bool = False
+
 class ParentDashboardBookingSnippet(SQLModel):
     id: UUID
     customer_name: str
