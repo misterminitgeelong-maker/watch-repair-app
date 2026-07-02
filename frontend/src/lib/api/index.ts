@@ -2505,15 +2505,15 @@ export const listMobileSuburbRoutes = () =>
 export const setParentMobileLeadDefaultTenant = (tenant_id: string | null) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/default-tenant', { tenant_id })
 export const setParentMobileLeadWebhookSecret = (secret: string) =>
-  api.put('/parent-accounts/me/mobile-lead-ingest/secret', { secret })
+  api.put('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret: secret })
 export const clearParentMobileLeadWebhookSecret = () =>
   api.delete('/parent-accounts/me/mobile-lead-ingest/secret')
 export const createMobileSuburbRoute = (data: { suburb: string; state_code: string; target_tenant_id: string }) =>
   api.post<MobileSuburbRoute>('/parent-accounts/me/mobile-lead-routes', data)
 export const deleteMobileSuburbRoute = (id: string) =>
   api.delete(`/parent-accounts/me/mobile-lead-routes/${id}`)
-export const enableParentMobileLeadIngest = (enabled = true) =>
-  api.put('/parent-accounts/me/mobile-lead-ingest/enabled', { enabled })
+export const enableParentMobileLeadIngest = () =>
+  api.post('/parent-accounts/me/mobile-lead-ingest/enable')
 
 // ── Toolkit ───────────────────────────────────────────────────────────────────
 export interface ToolkitTool {
