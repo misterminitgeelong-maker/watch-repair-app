@@ -761,8 +761,6 @@ export default function AppShell() {
         navigate('/minit/dashboard', { replace: true })
       } else if (location.pathname === '/accounts') {
         navigate('/minit/accounts', { replace: true })
-      } else if (location.pathname === '/parent-account') {
-        navigate('/minit/dashboard', { replace: true })
       } else if (location.pathname === '/shop-mobile-bookings') {
         navigate('/minit/mobile-services', { replace: true })
       } else if (location.pathname === '/inbox') {

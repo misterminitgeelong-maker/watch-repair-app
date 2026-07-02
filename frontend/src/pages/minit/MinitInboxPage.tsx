@@ -178,6 +178,13 @@ export default function MinitInboxPage() {
                   {ingestUrl}
                 </p>
               )}
+              <Link
+                to="/parent-account"
+                className="text-sm font-medium inline-block mt-2"
+                style={{ color: 'var(--ms-accent)' }}
+              >
+                Set up website lead feed →
+              </Link>
             </div>
           </div>
         </Card>
@@ -199,6 +206,13 @@ export default function MinitInboxPage() {
                   Inbound Parse webhook: {emailParseUrl}
                 </p>
               )}
+              <Link
+                to="/parent-account"
+                className="text-sm font-medium inline-block mt-2"
+                style={{ color: 'var(--ms-accent)' }}
+              >
+                Website lead feed settings →
+              </Link>
             </Card>
           ) : (
             <div className="space-y-3">
