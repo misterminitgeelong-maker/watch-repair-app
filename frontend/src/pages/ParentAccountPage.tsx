@@ -789,7 +789,7 @@ export default function ParentAccountPage() {
             />
             <span>
               <strong style={{ color: 'var(--ms-text)' }}>HQ testing mode</strong>
-              {' — send all website leads to HQ (skip operator SMS and cascade)}
+              {' — send all website leads to HQ (skip operator SMS and cascade)'}
             </span>
           </label>
 
