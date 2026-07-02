@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   formatTenantLabel,
@@ -9,20 +9,8 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
+import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
-
-const OPERATOR_PLANS = new Set([
-  'basic_auto_key',
-  'basic_shoe_auto_key',
-  'basic_watch_auto_key',
-  'basic_all_tabs',
-  'auto_key',
-  'minit_hq',
-])
-
-function isRetailShop(planCode: string) {
-  return !OPERATOR_PLANS.has(planCode)
-}
 
 function formatAreaRegion(area?: string | null, region?: string | null) {
   const parts = [area?.trim(), region?.trim()].filter(Boolean)
@@ -42,8 +30,32 @@ export default function MinitAccountsPage() {
   const [addMode, setAddMode] = useState<'provision' | 'link'>('provision')
   const [removingId, setRemovingId] = useState('')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [retailLimit, setRetailLimit] = useState(50)
 
-  const { data, isLoading } = useParentAccount()
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearch(search)
+      setRetailLimit(50)
+    }, 300)
+    return () => window.clearTimeout(handle)
+  }, [search])
+
+  const { data: summary, isLoading: summaryLoading } = useParentAccount()
+  const { data: retailPage, isLoading: retailLoading } = useParentAccountSites({
+    plan_kind: 'retail',
+    limit: retailLimit,
+    search: debouncedSearch || undefined,
+  })
+  const { data: operatorsPage } = useParentAccountSites({
+    plan_kind: 'operator',
+    limit: 50,
+  })
+
+  const retailSites = retailPage?.sites ?? []
+  const retailTotal = retailPage?.total ?? summary?.site_count ?? 0
+  const operators = operatorsPage?.sites ?? []
+  const isLoading = summaryLoading && !summary
 
   const provisionMut = useMutation({
     mutationFn: () =>
@@ -60,6 +72,8 @@ export default function MinitAccountsPage() {
       setBusinessAddress('')
       void refreshSession()
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
       qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not add shop.')),
@@ -77,6 +91,7 @@ export default function MinitAccountsPage() {
       setShowAdd(false)
       void refreshSession()
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not link shop.')),
   })
@@ -86,27 +101,10 @@ export default function MinitAccountsPage() {
     onSuccess: () => {
       void refreshSession()
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not remove shop.')),
   })
-
-  const retailSites = (data?.sites ?? []).filter(s => isRetailShop(s.plan_code))
-  const operators = (data?.sites ?? []).filter(s => !isRetailShop(s.plan_code))
-
-  const searchLower = search.trim().toLowerCase()
-  const filteredRetail = useMemo(() => {
-    if (!searchLower) return retailSites
-    return retailSites.filter(site => {
-      const label = formatTenantLabel(site.tenant_name, site.shop_number).toLowerCase()
-      return (
-        label.includes(searchLower)
-        || site.tenant_slug.toLowerCase().includes(searchLower)
-        || (site.shop_number ?? '').includes(searchLower)
-        || (site.area ?? '').toLowerCase().includes(searchLower)
-        || (site.region ?? '').toLowerCase().includes(searchLower)
-      )
-    })
-  }, [retailSites, searchLower])
 
   if (isLoading) return <Spinner />
 
@@ -144,9 +142,9 @@ export default function MinitAccountsPage() {
           style={{ borderBottom: '1px solid var(--ms-border)' }}
         >
           <span className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
-            Retail shops ({retailSites.length})
+            Retail shops ({retailTotal})
           </span>
-          {retailSites.length > 0 && (
+          {retailTotal > 0 && (
             <div className="w-full sm:w-64">
               <Input
                 type="search"
@@ -158,14 +156,15 @@ export default function MinitAccountsPage() {
             </div>
           )}
         </div>
-        {retailSites.length === 0 ? (
+        {retailTotal === 0 ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops linked yet.</p>
-        ) : filteredRetail.length === 0 ? (
+        ) : retailSites.length === 0 && !retailLoading ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             No shops match your search.
           </p>
         ) : (
-          filteredRetail.map(site => {
+          <>
+          {retailSites.map(site => {
             const areaRegion = formatAreaRegion(site.area, site.region)
             return (
             <div
@@ -191,7 +190,19 @@ export default function MinitAccountsPage() {
               </Button>
             </div>
             )
-          })
+          })}
+          {retailSites.length < retailTotal && (
+            <div className="px-5 py-4">
+              <Button
+                variant="secondary"
+                onClick={() => setRetailLimit(limit => limit + 50)}
+                disabled={retailLoading}
+              >
+                {retailLoading ? 'Loading…' : `Load more (${retailSites.length} of ${retailTotal})`}
+              </Button>
+            </div>
+          )}
+          </>
         )}
       </Card>
 

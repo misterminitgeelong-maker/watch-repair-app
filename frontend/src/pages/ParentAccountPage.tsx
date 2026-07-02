@@ -10,7 +10,6 @@ import {
   enableParentMobileLeadIngest,
   formatTenantLabel,
   getApiErrorMessage,
-  getMyParentAccount,
   getParentShopBookingUsage,
   linkTenantToParentAccount,
   listMobileSuburbRoutes,
@@ -21,23 +20,10 @@ import {
   type PlanCode,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
+import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
+import { PARENT_LEAD_INGEST_QUERY_KEY } from '@/hooks/useParentLeadIngest'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
-
-const OPERATOR_PLAN_CODES = new Set([
-  'basic_auto_key',
-  'basic_shoe_auto_key',
-  'basic_watch_auto_key',
-  'basic_all_tabs',
-  'auto_key',
-])
-
-function isOperatorSite(planCode: string) {
-  return OPERATOR_PLAN_CODES.has(planCode)
-}
-
-function isRetailShopSite(planCode: string) {
-  return !isOperatorSite(planCode)
-}
 
 export default function ParentAccountPage() {
   const navigate = useNavigate()
@@ -74,11 +60,34 @@ export default function ParentAccountPage() {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
+  const [siteSearch, setSiteSearch] = useState('')
+  const [debouncedSiteSearch, setDebouncedSiteSearch] = useState('')
+  const [retailLimit, setRetailLimit] = useState(50)
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['parent-account-me'],
-    queryFn: () => getMyParentAccount().then(r => r.data),
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSiteSearch(siteSearch)
+      setRetailLimit(50)
+    }, 300)
+    return () => window.clearTimeout(handle)
+  }, [siteSearch])
+
+  const { data, isLoading } = useParentAccount()
+  const { data: retailPage } = useParentAccountSites({
+    plan_kind: 'retail',
+    limit: retailLimit,
+    search: debouncedSiteSearch || undefined,
   })
+  const { data: operatorsPage } = useParentAccountSites({
+    plan_kind: 'operator',
+    limit: 50,
+  })
+
+  function invalidateParentQueries() {
+    qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
+    qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+    qc.invalidateQueries({ queryKey: PARENT_LEAD_INGEST_QUERY_KEY })
+  }
 
   const { data: activity = [] } = useQuery({
     queryKey: ['parent-account-activity'],
@@ -109,7 +118,7 @@ export default function ParentAccountPage() {
     mutationFn: () => enableParentMobileLeadIngest().then(r => r.data),
     onSuccess: () => {
       setError('')
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not enable ingest URL.')),
@@ -120,7 +129,7 @@ export default function ParentAccountPage() {
     onSuccess: () => {
       setError('')
       setWebhookSecret('')
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not save security password.')),
@@ -130,7 +139,7 @@ export default function ParentAccountPage() {
     mutationFn: () => clearParentMobileLeadWebhookSecret().then(r => r.data),
     onSuccess: () => {
       setError('')
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not clear security password.')),
@@ -140,7 +149,7 @@ export default function ParentAccountPage() {
     mutationFn: (tenant_id: string | null) => setParentMobileLeadDefaultTenant(tenant_id).then(r => r.data),
     onSuccess: () => {
       setError('')
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not update default shop.')),
@@ -186,7 +195,7 @@ export default function ParentAccountPage() {
       setLinkShopNumber('')
       setShowAddModal(false)
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not link shop. Check the shop number and owner email match.')),
@@ -208,7 +217,7 @@ export default function ParentAccountPage() {
       setNewTenantPlanCode('basic_watch')
       setShowAddModal(false)
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not create new shop.')),
@@ -219,7 +228,7 @@ export default function ParentAccountPage() {
     onSuccess: () => {
       setError('')
       void refreshSession()
-      qc.invalidateQueries({ queryKey: ['parent-account-me'] })
+      invalidateParentQueries()
       qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not remove shop from this account.')),
@@ -309,11 +318,14 @@ export default function ParentAccountPage() {
   const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
   const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
   const defaultTenantDirty = defaultTenantDraft !== savedDefaultTenantId
-  const retailSites = (data?.sites ?? []).filter(s => isRetailShopSite(s.plan_code ?? ''))
-  const operatorSites = (data?.sites ?? []).filter(s => isOperatorSite(s.plan_code ?? ''))
+  const retailSites = retailPage?.sites ?? []
+  const retailTotal = retailPage?.total ?? data?.site_count ?? 0
+  const operatorSites = operatorsPage?.sites ?? []
 
   function siteLabel(tenantId: string) {
-    const s = data?.sites.find(x => x.tenant_id === tenantId)
+    const s =
+      retailSites.find(x => x.tenant_id === tenantId)
+      ?? operatorSites.find(x => x.tenant_id === tenantId)
     return s ? formatTenantLabel(s.tenant_name, s.shop_number ?? undefined) : tenantId
   }
 
@@ -520,7 +532,7 @@ export default function ParentAccountPage() {
       <Card className='mb-6'>
         <div className='px-5 py-3.5' style={{ borderBottom: '1px solid var(--ms-border)' }}>
           <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>
-            Linked sites {data ? `(${data.sites.length})` : ''}
+            Linked sites {data ? `(${data.site_count})` : ''}
           </h2>
           {data && (
             <p className='text-xs mt-0.5' style={{ color: 'var(--ms-text-muted)' }}>
@@ -528,18 +540,36 @@ export default function ParentAccountPage() {
             </p>
           )}
         </div>
-        {!data || data.sites.length === 0 ? (
+        {!data || data.site_count === 0 ? (
           <div className='px-5 py-8 text-center'>
             <p className='text-sm' style={{ color: 'var(--ms-text-muted)' }}>No shops yet. Hit <strong>Add Shop</strong> to get started.</p>
           </div>
         ) : (
           <div>
-            {retailSites.length > 0 && (
+            {retailTotal > 0 && (
               <>
-                <p className='px-5 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide' style={{ color: 'var(--ms-text-muted)' }}>
-                  Retail shops ({retailSites.length})
-                </p>
+                <div className='px-5 pt-4 pb-2 flex flex-wrap items-center justify-between gap-3'>
+                  <p className='text-xs font-semibold uppercase tracking-wide' style={{ color: 'var(--ms-text-muted)' }}>
+                    Retail shops ({retailTotal})
+                  </p>
+                  <div className='w-full sm:w-64'>
+                    <Input
+                      type='search'
+                      placeholder='Search name, shop #, area…'
+                      value={siteSearch}
+                      onChange={e => setSiteSearch(e.target.value)}
+                      aria-label='Search retail shops'
+                    />
+                  </div>
+                </div>
                 {retailSites.map(site => renderSiteRow(site))}
+                {retailSites.length < retailTotal && (
+                  <div className='px-5 py-4'>
+                    <Button variant='secondary' onClick={() => setRetailLimit(limit => limit + 50)}>
+                      Load more ({retailSites.length} of {retailTotal})
+                    </Button>
+                  </div>
+                )}
               </>
             )}
             {operatorSites.length > 0 && (

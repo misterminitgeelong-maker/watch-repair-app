@@ -251,3 +251,8 @@ def parse_minit_shops_xlsx_detailed(
 def tenant_slug_for_shop(shop: MinitShopRow, *, prefix: str = "minit") -> str:
     """Stable slug: minit-{shop_number} (unique, DNS-safe)."""
     return f"{prefix}-{shop.shop_number}"
+
+
+def tenant_slug_for_mobile_operator(shop_number: str) -> str:
+    """Stable slug for mobile operators: minit-mobile-{shop_number}."""
+    return f"minit-mobile-{shop_number.strip()}"

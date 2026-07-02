@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select
 
@@ -17,7 +18,12 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
-from ..minit_provision import import_minit_shops
+from ..minit_mobile_operators import (
+    index_tss_shops_by_number,
+    load_mobile_operators_seed,
+    resolve_mobile_operators,
+)
+from ..minit_provision import import_minit_mobile_operators, import_minit_shops
 from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
     MobileSuburbRoute,
@@ -32,7 +38,9 @@ from ..models import (
     ParentAccountLinkTenantRequest,
     ParentAccountMembership,
     ParentAccountSiteRead,
+    ParentAccountSitesPageResponse,
     ParentAccountSummaryResponse,
+    ParentLeadIngestConfigResponse,
     ParentMobileLeadDefaultTenantBody,
     ParentMobileLeadWebhookSecretBody,
     ShopBookingUsageResponse,
@@ -46,6 +54,7 @@ from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
     assert_shop_number_unique_in_parent,
     format_tenant_label,
+    linked_tenant_ids_for_parent,
     normalize_shop_number,
     validate_shop_number_format,
 )
@@ -59,39 +68,34 @@ router = APIRouter(
 AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
 MAX_IMPORT_SHOPS_XLSX_BYTES = 5 * 1024 * 1024
 _ALLOWED_XLSX_SUFFIXES = frozenset({".xlsx", ".xlsm"})
+_OPERATOR_PLAN_CODES = frozenset(
+    {
+        "basic_auto_key",
+        "basic_shoe_auto_key",
+        "basic_watch_auto_key",
+        "basic_all_tabs",
+        "auto_key",
+        "minit_hq",
+    }
+)
 
 
-def _normalize_suburb(name: str) -> str:
-    return " ".join(name.strip().lower().split())
+def _is_operator_plan(plan_code: str) -> bool:
+    return normalize_plan_code(plan_code) in _OPERATOR_PLAN_CODES
 
 
-def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
-    tenant = session.get(Tenant, auth.tenant_id)
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
-        raise HTTPException(status_code=403, detail="Minit HQ plan required")
-    if tenant_product(tenant.slug) != "minit":
-        raise HTTPException(status_code=403, detail="Minit product required")
-    return tenant
-
-
-def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
-    parent = session.exec(
-        select(ParentAccount).where(ParentAccount.owner_email == user.email)
-    ).first()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Parent account not found")
-    return parent
-
-
-def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummaryResponse:
-    memberships = session.exec(
+def _memberships_for_parent(session: Session, parent_id: UUID) -> list[ParentAccountMembership]:
+    return session.exec(
         select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
+        .where(ParentAccountMembership.parent_account_id == parent_id)
         .order_by(ParentAccountMembership.created_at)
     ).all()
 
+
+def _site_reads_for_memberships(
+    session: Session,
+    memberships: list[ParentAccountMembership],
+) -> list[ParentAccountSiteRead]:
     tenant_ids = list(dict.fromkeys(m.tenant_id for m in memberships))
     user_ids = list(dict.fromkeys(m.user_id for m in memberships))
     tenants_by_id = {
@@ -127,16 +131,126 @@ def _to_summary(session: Session, parent: ParentAccount) -> ParentAccountSummary
                 owner_full_name=user.full_name,
             )
         )
+    return sorted(sites, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
+
+
+def _to_summary(
+    session: Session,
+    parent: ParentAccount,
+    *,
+    include_sites: bool = False,
+) -> ParentAccountSummaryResponse:
+    site_count = len(linked_tenant_ids_for_parent(session, parent.id))
+    sites: list[ParentAccountSiteRead] = []
+    if include_sites:
+        sites = _site_reads_for_memberships(session, _memberships_for_parent(session, parent.id))
 
     return ParentAccountSummaryResponse(
         parent_account_id=parent.id,
         parent_account_name=parent.name,
         owner_email=parent.owner_email,
-        sites=sorted(sites, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower())),
+        site_count=site_count,
+        sites=sites,
         mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
         mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
         mobile_lead_default_tenant_id=parent.mobile_lead_default_tenant_id,
     )
+
+
+def _lead_ingest_config(parent: ParentAccount) -> ParentLeadIngestConfigResponse:
+    return ParentLeadIngestConfigResponse(
+        parent_account_id=parent.id,
+        mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
+        mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
+        mobile_lead_default_tenant_id=parent.mobile_lead_default_tenant_id,
+    )
+
+
+def _filtered_parent_sites(
+    session: Session,
+    parent_id: UUID,
+    *,
+    limit: int,
+    offset: int,
+    search: str | None,
+    region: str | None,
+    plan_kind: str | None,
+) -> ParentAccountSitesPageResponse:
+    tenant_ids = linked_tenant_ids_for_parent(session, parent_id)
+    if not tenant_ids:
+        return ParentAccountSitesPageResponse(sites=[], total=0, limit=limit, offset=offset)
+
+    stmt = select(Tenant).where(col(Tenant.id).in_(tenant_ids))
+    kind = (plan_kind or "all").strip().lower()
+    if kind == "operator":
+        stmt = stmt.where(col(Tenant.plan_code).in_(list(_OPERATOR_PLAN_CODES)))
+    elif kind == "retail":
+        stmt = stmt.where(col(Tenant.plan_code).not_in(list(_OPERATOR_PLAN_CODES)))
+
+    region_filter = (region or "").strip()
+    if region_filter:
+        if region_filter.lower() == "unassigned":
+            stmt = stmt.where(or_(Tenant.minit_region.is_(None), col(Tenant.minit_region) == ""))
+        else:
+            stmt = stmt.where(Tenant.minit_region == region_filter)
+
+    search_term = (search or "").strip()
+    if search_term:
+        pattern = f"%{search_term}%"
+        stmt = stmt.where(
+            or_(
+                Tenant.name.ilike(pattern),
+                Tenant.slug.ilike(pattern),
+                Tenant.shop_number.ilike(pattern),
+                Tenant.minit_area.ilike(pattern),
+                Tenant.minit_region.ilike(pattern),
+            )
+        )
+
+    total = int(session.exec(select(func.count()).select_from(stmt.subquery())).one())
+    tenants = session.exec(
+        stmt.order_by(Tenant.name.asc(), Tenant.slug.asc()).offset(offset).limit(limit)
+    ).all()
+    if not tenants:
+        return ParentAccountSitesPageResponse(sites=[], total=total, limit=limit, offset=offset)
+
+    page_tenant_ids = [t.id for t in tenants]
+    memberships = session.exec(
+        select(ParentAccountMembership)
+        .where(ParentAccountMembership.parent_account_id == parent_id)
+        .where(col(ParentAccountMembership.tenant_id).in_(page_tenant_ids))
+        .order_by(ParentAccountMembership.created_at)
+    ).all()
+    membership_by_tenant = {m.tenant_id: m for m in memberships}
+    ordered_memberships = [
+        membership_by_tenant[tid] for tid in page_tenant_ids if tid in membership_by_tenant
+    ]
+    sites = _site_reads_for_memberships(session, ordered_memberships)
+    return ParentAccountSitesPageResponse(sites=sites, total=total, limit=limit, offset=offset)
+
+
+def _normalize_suburb(name: str) -> str:
+    return " ".join(name.strip().lower().split())
+
+
+def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
+        raise HTTPException(status_code=403, detail="Minit HQ plan required")
+    if tenant_product(tenant.slug) != "minit":
+        raise HTTPException(status_code=403, detail="Minit product required")
+    return tenant
+
+
+def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
+    parent = session.exec(
+        select(ParentAccount).where(ParentAccount.owner_email == user.email)
+    ).first()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent account not found")
+    return parent
 
 
 def _normalize_plan_code(value: str | None) -> str:
@@ -430,58 +544,52 @@ def get_shop_booking_usage(
         select(ParentAccountMembership).where(ParentAccountMembership.parent_account_id == parent.id)
     ).all()
 
-    shop_tenant_ids: list[UUID] = []
+    member_tenant_ids = list({m.tenant_id for m in memberships})
+    tenants = (
+        session.exec(select(Tenant).where(col(Tenant.id).in_(member_tenant_ids))).all()
+        if member_tenant_ids
+        else []
+    )
+
     booking_tenant_count = 0
-    seen_shops: set[UUID] = set()
-    for m in memberships:
-        if m.tenant_id in seen_shops:
-            continue
-        tenant = session.get(Tenant, m.tenant_id)
-        if not tenant:
-            continue
-        seen_shops.add(m.tenant_id)
+    shop_tenants: dict[UUID, Tenant] = {}
+    for tenant in tenants:
         plan = normalize_plan_code(tenant.plan_code)
         if plan == "booking_only" or _tenant_has_shop_mobile_booking(plan):
             booking_tenant_count += 1
             if _tenant_has_shop_mobile_booking(plan):
-                shop_tenant_ids.append(m.tenant_id)
+                shop_tenants[tenant.id] = tenant
 
-    shops: list[ShopBookingUsageShopBreakdown] = []
-    for tid in shop_tenant_ids:
-        tenant = session.get(Tenant, tid)
-        if not tenant:
-            continue
-        accepted = int(
-            session.exec(
-                select(func.count())
-                .select_from(ShopMobileBookingRequest)
-                .where(ShopMobileBookingRequest.parent_account_id == parent.id)
-                .where(ShopMobileBookingRequest.requesting_tenant_id == tid)
-                .where(ShopMobileBookingRequest.status == "accepted")
-                .where(col(ShopMobileBookingRequest.created_at) >= month_start)
-                .where(col(ShopMobileBookingRequest.created_at) <= month_end)
-            ).one()
-        )
-        pending = int(
-            session.exec(
-                select(func.count())
-                .select_from(ShopMobileBookingRequest)
-                .where(ShopMobileBookingRequest.parent_account_id == parent.id)
-                .where(ShopMobileBookingRequest.requesting_tenant_id == tid)
-                .where(ShopMobileBookingRequest.status == "pending")
-                .where(col(ShopMobileBookingRequest.created_at) >= month_start)
-                .where(col(ShopMobileBookingRequest.created_at) <= month_end)
-            ).one()
-        )
-        shops.append(
-            ShopBookingUsageShopBreakdown(
-                tenant_id=tid,
-                tenant_name=tenant.name,
-                shop_number=tenant.shop_number,
-                accepted_bookings_count=accepted,
-                pending_count=pending,
+    counts: dict[tuple[UUID, str], int] = {}
+    if shop_tenants:
+        rows = session.exec(
+            select(
+                ShopMobileBookingRequest.requesting_tenant_id,
+                ShopMobileBookingRequest.status,
+                func.count(),
             )
+            .where(ShopMobileBookingRequest.parent_account_id == parent.id)
+            .where(col(ShopMobileBookingRequest.requesting_tenant_id).in_(list(shop_tenants)))
+            .where(col(ShopMobileBookingRequest.status).in_(["accepted", "pending"]))
+            .where(col(ShopMobileBookingRequest.created_at) >= month_start)
+            .where(col(ShopMobileBookingRequest.created_at) <= month_end)
+            .group_by(
+                col(ShopMobileBookingRequest.requesting_tenant_id),
+                col(ShopMobileBookingRequest.status),
+            )
+        ).all()
+        counts = {(tid, status): int(n) for tid, status, n in rows}
+
+    shops: list[ShopBookingUsageShopBreakdown] = [
+        ShopBookingUsageShopBreakdown(
+            tenant_id=tid,
+            tenant_name=tenant.name,
+            shop_number=tenant.shop_number,
+            accepted_bookings_count=counts.get((tid, "accepted"), 0),
+            pending_count=counts.get((tid, "pending"), 0),
         )
+        for tid, tenant in shop_tenants.items()
+    ]
 
     return ShopBookingUsageResponse(
         month=month,
@@ -492,6 +600,10 @@ def get_shop_booking_usage(
 
 @router.get("/me", response_model=ParentAccountSummaryResponse)
 def get_parent_account_summary(
+    include_sites: bool = Query(
+        default=False,
+        description="When false (default), omit the sites array for faster HQ loads.",
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -500,7 +612,50 @@ def get_parent_account_summary(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     parent = _get_parent_account_for_user(session, user)
-    return _to_summary(session, parent)
+    return _to_summary(session, parent, include_sites=include_sites)
+
+
+@router.get("/me/lead-ingest", response_model=ParentLeadIngestConfigResponse)
+def get_parent_lead_ingest_config(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, user)
+    return _lead_ingest_config(parent)
+
+
+@router.get("/me/sites", response_model=ParentAccountSitesPageResponse)
+def list_parent_account_sites(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    search: str | None = Query(default=None),
+    region: str | None = Query(default=None),
+    plan_kind: str | None = Query(
+        default=None,
+        description="Filter by retail, operator, or all (default).",
+    ),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if plan_kind and plan_kind.strip().lower() not in {"retail", "operator", "all"}:
+        raise HTTPException(status_code=400, detail="plan_kind must be retail, operator, or all")
+
+    parent = _get_parent_account_for_user(session, user)
+    return _filtered_parent_sites(
+        session,
+        parent.id,
+        limit=limit,
+        offset=offset,
+        search=search,
+        region=region,
+        plan_kind=plan_kind,
+    )
 
 
 @router.get("/me/activity", response_model=list[ParentAccountEventLogRead])
@@ -759,6 +914,99 @@ async def import_shops_from_xlsx(
         updated_count=updated,
         skipped_count=skipped,
         parsed_count=len(parsed.shops),
+        sheet_name=parsed.sheet_name,
+        errors=errors[:100],
+    )
+
+
+@router.post("/me/import-operators", response_model=ParentImportShopsResponse)
+async def import_mobile_operators_from_xlsx(
+    file: UploadFile = File(...),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Bulk create/update mobile operators from bundled seed + TSS workbook (HQ only)."""
+    _require_minit_hq(auth, session)
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+    suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if f".{suffix}" not in _ALLOWED_XLSX_SUFFIXES:
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xlsm workbooks are supported")
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(raw_bytes) > MAX_IMPORT_SHOPS_XLSX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum size of {MAX_IMPORT_SHOPS_XLSX_BYTES // (1024 * 1024)} MB",
+        )
+
+    try:
+        parsed = parse_minit_shops_xlsx_detailed(file_obj=raw_bytes, collect_row_errors=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    seeds = load_mobile_operators_seed()
+    operators, resolve_errors = resolve_mobile_operators(
+        seeds, index_tss_shops_by_number(parsed.shops)
+    )
+    if resolve_errors:
+        return ParentImportShopsResponse(
+            parsed_count=len(seeds),
+            sheet_name=parsed.sheet_name,
+            errors=[f"{e['operator_label']} (#{e['shop_number']}): {e['error']}" for e in resolve_errors],
+        )
+    if not operators:
+        return ParentImportShopsResponse(
+            parsed_count=0,
+            sheet_name=parsed.sheet_name,
+            errors=parsed.errors or ["No operators resolved from seed + TSS workbook"],
+        )
+
+    summary = import_minit_mobile_operators(
+        session,
+        parent_name=parent.name,
+        hq_owner_email=current_user.email,
+        operators=operators,
+        apply=True,
+    )
+
+    errors: list[str] = list(parsed.errors)
+    for row in resolve_errors:
+        errors.append(f"{row['operator_label']} (#{row['shop_number']}): {row['error']}")
+    if summary.get("error"):
+        errors.append(str(summary["error"]))
+
+    created = int(summary.get("created_count", 0))
+    updated = int(summary.get("updated_count", 0))
+    skipped = int(summary.get("skipped_count", summary.get("would_skip_count", 0)))
+
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="import_operators",
+        event_summary=(
+            f"Imported mobile operators from {filename}: "
+            f"{created} created, {updated} updated, {skipped} skipped"
+        ),
+    )
+    session.commit()
+
+    return ParentImportShopsResponse(
+        created_count=created,
+        updated_count=updated,
+        skipped_count=skipped,
+        parsed_count=len(operators),
         sheet_name=parsed.sheet_name,
         errors=errors[:100],
     )

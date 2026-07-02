@@ -209,10 +209,25 @@ class ParentAccountSiteRead(SQLModel):
     owner_email: str
     owner_full_name: str
 
+class ParentLeadIngestConfigResponse(SQLModel):
+    parent_account_id: UUID
+    mobile_lead_ingest_public_id: Optional[UUID] = None
+    mobile_lead_webhook_secret_configured: bool = False
+    mobile_lead_default_tenant_id: Optional[UUID] = None
+
+
+class ParentAccountSitesPageResponse(SQLModel):
+    sites: list[ParentAccountSiteRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 100
+    offset: int = 0
+
+
 class ParentAccountSummaryResponse(SQLModel):
     parent_account_id: UUID
     parent_account_name: str
     owner_email: str
+    site_count: int = 0
     sites: list[ParentAccountSiteRead] = Field(default_factory=list)
     mobile_lead_ingest_public_id: Optional[UUID] = None
     mobile_lead_webhook_secret_configured: bool = False

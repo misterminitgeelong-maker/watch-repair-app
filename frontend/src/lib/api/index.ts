@@ -143,10 +143,25 @@ export interface ParentAccountSummary {
   parent_account_id: string
   parent_account_name: string
   owner_email: string
+  site_count: number
   sites: ParentAccountSite[]
   mobile_lead_ingest_public_id?: string | null
   mobile_lead_webhook_secret_configured?: boolean
   mobile_lead_default_tenant_id?: string | null
+}
+
+export interface ParentLeadIngestConfig {
+  parent_account_id: string
+  mobile_lead_ingest_public_id?: string | null
+  mobile_lead_webhook_secret_configured?: boolean
+  mobile_lead_default_tenant_id?: string | null
+}
+
+export interface ParentAccountSitesPage {
+  sites: ParentAccountSite[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface ParentAccountActivityEvent {
@@ -160,7 +175,19 @@ export interface ParentAccountActivityEvent {
   created_at: string
 }
 
-export const getMyParentAccount = () => api.get<ParentAccountSummary>('/parent-accounts/me')
+export const getMyParentAccount = (params?: { include_sites?: boolean }) =>
+  api.get<ParentAccountSummary>('/parent-accounts/me', {
+    params: { include_sites: params?.include_sites ?? false },
+  })
+export const getParentLeadIngestConfig = () =>
+  api.get<ParentLeadIngestConfig>('/parent-accounts/me/lead-ingest')
+export const listParentAccountSites = (params?: {
+  limit?: number
+  offset?: number
+  search?: string
+  region?: string
+  plan_kind?: 'retail' | 'operator' | 'all'
+}) => api.get<ParentAccountSitesPage>('/parent-accounts/me/sites', { params })
 export const listParentAccountActivity = (limit = 50, offset = 0) =>
   api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit, offset } })
 export const linkTenantToParentAccount = (payload: { tenant_slug: string; owner_email: string; shop_number?: string }) =>

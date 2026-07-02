@@ -9,7 +9,7 @@ import {
   listInboundEmails,
   updateInboundEmailStatus,
 } from '@/lib/api'
-import { useParentAccount } from '@/hooks/useParentAccount'
+import { useParentLeadIngest } from '@/hooks/useParentLeadIngest'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
 function formatDate(s: string) {
@@ -137,21 +137,21 @@ export default function MinitInboxPage() {
     queryFn: () => listInboundEmails().then(r => r.data),
   })
 
-  const { data: parent, isLoading: parentLoading } = useParentAccount()
+  const { data: leadIngest, isLoading: ingestLoading } = useParentLeadIngest()
 
-  if (inboxLoading || parentLoading || emailsLoading) return <Spinner />
+  if (inboxLoading || emailsLoading) return <Spinner />
 
   // Email leads get their own triage cards; hide their duplicate generic alerts.
   const items = (alerts ?? []).filter(ev => ev.event_type !== 'inbound_email_received')
   const emails = emailLeads ?? []
-  const ingestPublicId = parent?.mobile_lead_ingest_public_id ?? null
+  const ingestPublicId = leadIngest?.mobile_lead_ingest_public_id ?? null
   const ingestUrl = ingestPublicId
     ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
     : null
   const emailParseUrl = ingestPublicId
     ? `${API_ORIGIN || window.location.origin}/v1/public/inbound-email/${ingestPublicId}?key=<webhook secret>`
     : null
-  const ingestReady = Boolean(ingestPublicId && parent?.mobile_lead_webhook_secret_configured)
+  const ingestReady = Boolean(ingestPublicId && leadIngest?.mobile_lead_webhook_secret_configured)
 
   return (
     <div>
@@ -160,7 +160,7 @@ export default function MinitInboxPage() {
         Customer enquiries from the Mister Minit website and network alerts.
       </p>
 
-      {!ingestReady && (
+      {!ingestReady && !ingestLoading && (
         <Card className="mb-6 p-5">
           <div className="flex items-start gap-3">
             <MessageSquare size={20} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />

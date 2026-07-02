@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 
 from ..config import settings
 from ..database import get_session
@@ -145,13 +145,24 @@ def _build_available_sites_for_email(session: Session, email: str) -> list[AuthS
         .order_by(ParentAccountMembership.created_at)
     ).all()
 
+    user_ids = list(dict.fromkeys(m.user_id for m in memberships))
+    tenant_ids = list(dict.fromkeys(m.tenant_id for m in memberships))
+    users_by_id = {
+        u.id: u
+        for u in session.exec(select(User).where(col(User.id).in_(user_ids))).all()
+    } if user_ids else {}
+    tenants_by_id = {
+        t.id: t
+        for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
+    } if tenant_ids else {}
+
     sites: list[AuthSessionSiteOption] = []
     seen: set[UUID] = set()
     for membership in memberships:
-        user = session.get(User, membership.user_id)
+        user = users_by_id.get(membership.user_id)
         if not user or not user.is_active or user.email != email:
             continue
-        tenant = session.get(Tenant, membership.tenant_id)
+        tenant = tenants_by_id.get(membership.tenant_id)
         if not tenant:
             continue
         if tenant.id in seen:
@@ -168,6 +179,51 @@ def _build_available_sites_for_email(session: Session, email: str) -> list[AuthS
         )
 
     return sorted(sites, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
+
+
+def _site_option_for_tenant_user(tenant: Tenant, user: User) -> AuthSessionSiteOption:
+    return AuthSessionSiteOption(
+        tenant_id=tenant.id,
+        tenant_slug=tenant.slug,
+        tenant_name=tenant.name,
+        user_id=user.id,
+        role=user.role,
+    )
+
+
+def _session_available_sites(session: Session, tenant: Tenant, user: User) -> list[AuthSessionSiteOption]:
+    """HQ logins only need the active site in session — full network is on parent-account APIs."""
+    from ..minit_branding import is_minit_hq_ui
+
+    if is_minit_hq_ui(tenant):
+        return [_site_option_for_tenant_user(tenant, user)]
+    sites = _build_available_sites_for_email(session, user.email)
+    if not sites:
+        return [_site_option_for_tenant_user(tenant, user)]
+    return sites
+
+
+def _get_site_option_for_email_tenant(
+    session: Session,
+    email: str,
+    tenant_id: UUID,
+) -> AuthSessionSiteOption | None:
+    parents = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).all()
+    if not parents:
+        return None
+    parent_ids = [p.id for p in parents]
+    membership = session.exec(
+        select(ParentAccountMembership)
+        .where(ParentAccountMembership.parent_account_id.in_(parent_ids))
+        .where(ParentAccountMembership.tenant_id == tenant_id)
+    ).first()
+    if not membership:
+        return None
+    user = session.get(User, membership.user_id)
+    tenant = session.get(Tenant, membership.tenant_id)
+    if not user or not tenant or not user.is_active or user.email != email:
+        return None
+    return _site_option_for_tenant_user(tenant, user)
 
 
 def _create_default_owner(session: Session, tenant: Tenant) -> User:
@@ -197,17 +253,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
     normalized_plan = effective_plan_code(tenant)
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["pro"]))
     product = tenant_product(tenant.slug)
-    available_sites = _build_available_sites_for_email(session, user.email)
-    if not available_sites:
-        available_sites = [
-            AuthSessionSiteOption(
-                tenant_id=tenant.id,
-                tenant_slug=tenant.slug,
-                tenant_name=tenant.name,
-                user_id=user.id,
-                role=user.role,
-            )
-        ]
+    available_sites = _session_available_sites(session, tenant, user)
     cal_tz = settings.schedule_calendar_timezone
     now_shop = datetime.now(ZoneInfo(cal_tz))
     shop_today = now_shop.strftime("%Y-%m-%d")
@@ -944,16 +990,21 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
     if not sites:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    valid_sites: list[AuthSessionSiteOption] = []
-    for site in sites:
-        user = session.get(User, site.user_id)
-        if user and verify_password(payload.password, user.password_hash):
-            valid_sites.append(site)
-
-    if not valid_sites:
+    candidate = session.exec(
+        select(User).where(User.email == email).where(User.is_active == True)  # noqa: E712
+    ).first()
+    if not candidate or not verify_password(payload.password, candidate.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    valid_sites = sites
+    from ..minit_branding import is_minit_hq_ui
+
     selected = valid_sites[0]
+    for site in valid_sites:
+        tenant = session.get(Tenant, site.tenant_id)
+        if tenant and is_minit_hq_ui(tenant):
+            selected = site
+            break
     parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
     if parent:
         session.add(
@@ -986,13 +1037,20 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         role=selected.role,
         request=request,
     )
+    selected_tenant = session.get(Tenant, selected.tenant_id)
+    selected_user = session.get(User, selected.user_id)
+    response_sites = (
+        _session_available_sites(session, selected_tenant, selected_user)
+        if selected_tenant and selected_user
+        else valid_sites
+    )
     return MultiSiteLoginResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=selected.tenant_id,
-        available_sites=valid_sites,
+        available_sites=response_sites,
     )
 
 
@@ -1322,8 +1380,7 @@ def switch_active_site(
     if not current_user or not current_user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    sites = _build_available_sites_for_email(session, current_user.email)
-    target = next((s for s in sites if s.tenant_id == payload.tenant_id), None)
+    target = _get_site_option_for_email_tenant(session, current_user.email, payload.tenant_id)
     if not target:
         raise HTTPException(status_code=403, detail="Target site is not available for this login")
 
@@ -1363,13 +1420,20 @@ def switch_active_site(
 
     token, expires = create_access_token(target.tenant_id, target.user_id, target.role)
     refresh_token, refresh_expires = create_refresh_token(target.tenant_id, target.user_id, target.role)
+    target_tenant = session.get(Tenant, target.tenant_id)
+    target_user = session.get(User, target.user_id)
+    response_sites = (
+        _session_available_sites(session, target_tenant, target_user)
+        if target_tenant and target_user
+        else [target]
+    )
     return ActiveSiteSwitchResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=target.tenant_id,
-        available_sites=sites,
+        available_sites=response_sites,
     )
 
 

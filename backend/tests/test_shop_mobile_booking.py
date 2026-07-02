@@ -49,6 +49,16 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _headers(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _site_by_slug(headers: dict[str, str], tenant_slug: str) -> dict:
+    res = client.get("/v1/parent-accounts/me/sites?limit=200", headers=headers)
+    assert res.status_code == 200, res.text
+    return next(site for site in res.json()["sites"] if site["tenant_slug"] == tenant_slug)
+
+
 def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], str, str]:
     """HQ (enterprise) links operator + booking_only shop under one parent account."""
     hq_email = f"hq-{suffix}@test.local"
@@ -73,7 +83,7 @@ def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], 
         },
     )
     assert create_shop.status_code == 200, create_shop.text
-    shop_site = next(s for s in create_shop.json()["sites"] if s["tenant_slug"] == shop_slug)
+    shop_site = _site_by_slug(hq_h, shop_slug)
 
     link = client.post(
         "/v1/parent-accounts/me/link-tenant",
@@ -397,7 +407,7 @@ def test_shop_number_on_create_and_duplicate_rejected_within_parent():
         },
     )
     assert first.status_code == 200, first.text
-    site_a = next(s for s in first.json()["sites"] if s["tenant_slug"] == shop_a)
+    site_a = _site_by_slug(hq_h, shop_a)
     assert site_a["shop_number"] == "3269"
 
     dup = client.post(

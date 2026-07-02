@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
 from sqlmodel import Session, col, select
 
+from .dependencies import normalize_plan_code
+from .minit_mobile_operators import ResolvedMobileOperator, to_minit_shop_row
 from .minit_shops import MinitShopRow, tenant_slug_for_shop
 from .models import ParentAccount, ParentAccountMembership, Tenant, User
 from .security import hash_password
@@ -15,6 +18,31 @@ from .shop_number import linked_tenant_ids_for_parent, linked_tenants_for_parent
 
 # Flush every N shops during bulk import (fewer round-trips to Postgres).
 _BULK_IMPORT_FLUSH_EVERY = 50
+
+_OPERATOR_PLAN_CODES = frozenset(
+    {
+        "basic_auto_key",
+        "basic_watch_auto_key",
+        "basic_shoe_auto_key",
+        "basic_all_tabs",
+    }
+)
+
+SiteKind = Literal["all", "retail", "operator"]
+
+
+def _is_operator_plan(plan_code: str) -> bool:
+    return normalize_plan_code(plan_code) in _OPERATOR_PLAN_CODES
+
+
+def _tenant_matches_site_kind(tenant: Tenant, site_kind: SiteKind) -> bool:
+    if site_kind == "all":
+        return True
+    is_operator = _is_operator_plan(tenant.plan_code)
+    if site_kind == "operator":
+        return is_operator
+    # retail: exclude HQ and operator tenants
+    return not is_operator and normalize_plan_code(tenant.plan_code) != "minit_hq"
 
 
 @dataclass
@@ -27,10 +55,16 @@ class MinitProvisionResult:
     skipped_shop_numbers: list[str]
 
 
-def existing_shop_numbers_in_parent(session: Session, parent_id: UUID) -> set[str]:
+def existing_shop_numbers_in_parent(
+    session: Session,
+    parent_id: UUID,
+    *,
+    site_kind: SiteKind = "all",
+) -> set[str]:
     return {
         num
         for tenant in linked_tenants_for_parent(session, parent_id)
+        if _tenant_matches_site_kind(tenant, site_kind)
         if (num := tenant.shop_number)
     }
 
@@ -43,11 +77,27 @@ def tenant_for_shop_number_in_parent(
     session: Session,
     parent_id: UUID,
     shop_number: str,
+    *,
+    site_kind: SiteKind = "all",
 ) -> Tenant | None:
     for tenant in linked_tenants_for_parent(session, parent_id):
-        if tenant.shop_number == shop_number:
+        if tenant.shop_number == shop_number and _tenant_matches_site_kind(tenant, site_kind):
             return tenant
     return None
+
+
+def tenants_by_shop_number_in_parent(
+    session: Session,
+    parent_id: UUID,
+    *,
+    site_kind: SiteKind = "all",
+) -> dict[str, Tenant]:
+    result: dict[str, Tenant] = {}
+    for tenant in linked_tenants_for_parent(session, parent_id):
+        if not tenant.shop_number or not _tenant_matches_site_kind(tenant, site_kind):
+            continue
+        result[tenant.shop_number] = tenant
+    return result
 
 
 def _shop_metadata_changed(tenant: Tenant, shop: MinitShopRow, shop_number: str) -> bool:
@@ -71,6 +121,38 @@ def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
     tenant.minit_area = shop.area
     tenant.minit_region = shop.region
     tenant.business_address = shop.business_address[:2000] if shop.business_address else None
+    return True
+
+
+def _operator_metadata_changed(
+    tenant: Tenant,
+    operator: ResolvedMobileOperator,
+    shop: MinitShopRow,
+    shop_number: str,
+) -> bool:
+    addr = shop.business_address[:2000] if shop.business_address else None
+    return (
+        tenant.name != operator.tenant_name
+        or tenant.shop_number != shop_number
+        or tenant.minit_area != shop.area
+        or tenant.minit_region != shop.region
+        or tenant.business_address != addr
+        or tenant.mobile_dispatch_phone != operator.dispatch_phone
+    )
+
+
+def sync_tenant_from_mobile_operator(tenant: Tenant, operator: ResolvedMobileOperator) -> bool:
+    """Apply operator seed + TSS metadata to an existing tenant."""
+    shop = to_minit_shop_row(operator)
+    shop_number = normalize_shop_number(operator.shop_number)
+    if not shop_number or not _operator_metadata_changed(tenant, operator, shop, shop_number):
+        return False
+    tenant.name = operator.tenant_name
+    tenant.shop_number = shop_number
+    tenant.minit_area = shop.area
+    tenant.minit_region = shop.region
+    tenant.business_address = shop.business_address[:2000] if shop.business_address else None
+    tenant.mobile_dispatch_phone = operator.dispatch_phone
     return True
 
 
@@ -179,6 +261,7 @@ def _create_child_tenant(
     shop: MinitShopRow,
     plan_code: str,
     tenant_slug: str | None = None,
+    mobile_dispatch_phone: str | None = None,
     existing_by_slug: dict[str, Tenant] | None = None,
     hq_users_by_tenant_id: dict[UUID, User] | None = None,
     linked_tenant_ids: set[UUID] | None = None,
@@ -197,6 +280,9 @@ def _create_child_tenant(
     if existing:
         if sync_tenant_from_minit_shop(existing, shop):
             session.add(existing)
+        if mobile_dispatch_phone and existing.mobile_dispatch_phone != mobile_dispatch_phone:
+            existing.mobile_dispatch_phone = mobile_dispatch_phone
+            session.add(existing)
         tenant = existing
     else:
         tenant = Tenant(
@@ -207,6 +293,7 @@ def _create_child_tenant(
             shop_number=shop_number,
             minit_area=shop.area,
             minit_region=shop.region,
+            mobile_dispatch_phone=mobile_dispatch_phone,
         )
         session.add(tenant)
         if existing_by_slug is not None:
@@ -333,7 +420,7 @@ def ensure_minit_pilot_account(
         area=MINIT_PILOT_OPERATOR.get("area"),
         region=MINIT_PILOT_OPERATOR.get("region"),
     )
-    if op.shop_number not in existing_numbers:
+    if op.shop_number not in existing_shop_numbers_in_parent(session, parent.id, site_kind="operator"):
         op_tenant = _create_child_tenant(
             session,
             parent=parent,
@@ -345,7 +432,9 @@ def ensure_minit_pilot_account(
         if op_tenant:
             created.append(op_tenant.slug)
     else:
-        tenant = tenant_for_shop_number_in_parent(session, parent.id, op.shop_number)
+        tenant = tenant_for_shop_number_in_parent(
+            session, parent.id, op.shop_number, site_kind="operator"
+        )
         if tenant and sync_tenant_from_minit_shop(tenant, op):
             session.add(tenant)
         else:
@@ -401,13 +490,9 @@ def import_minit_shops(
             "would_create_truncated": len(preview) > 20,
         }
 
-    existing_numbers = existing_shop_numbers_in_parent(session, parent.id)
+    existing_numbers = existing_shop_numbers_in_parent(session, parent.id, site_kind="retail")
     existing_slugs = existing_slugs_in_parent(session, parent.id)
-    tenants_by_number = {
-        t.shop_number: t
-        for t in linked_tenants_for_parent(session, parent.id)
-        if t.shop_number
-    }
+    tenants_by_number = tenants_by_shop_number_in_parent(session, parent.id, site_kind="retail")
 
     would_create: list[dict[str, str]] = []
     would_update: list[dict[str, str]] = []
@@ -511,6 +596,176 @@ def import_minit_shops(
             tenants_by_number[shop.shop_number] = tenant
             pending_flush += 1
         if on_progress and (index % 25 == 0 or index == total):
+            on_progress(index, total, "create")
+        if pending_flush >= _BULK_IMPORT_FLUSH_EVERY:
+            session.flush()
+            pending_flush = 0
+
+    if pending_flush:
+        session.flush()
+    session.commit()
+    result["created_count"] = len(created_slugs)
+    result["updated_count"] = updated_count
+    result["skipped_count"] = skipped_apply
+    result["created_slugs"] = created_slugs[:50]
+    if len(created_slugs) > 50:
+        result["created_slugs_truncated"] = True
+    return result
+
+
+def _operator_entry(operator: ResolvedMobileOperator) -> dict[str, str]:
+    return {
+        "shop_number": operator.shop_number,
+        "operator_label": operator.seed.operator_label,
+        "name": operator.tenant_name,
+        "slug": operator.tenant_slug,
+        "dispatch_phone": operator.dispatch_phone,
+        "dispatch_email": operator.seed.dispatch_email or "",
+        "area": operator.tss.area or "",
+        "region": operator.tss.region or "",
+        "tss_name": operator.tss.name,
+        "match_confidence": operator.seed.match_confidence or "",
+        "match_notes": operator.seed.match_notes or "",
+    }
+
+
+def import_minit_mobile_operators(
+    session: Session,
+    *,
+    parent_name: str,
+    hq_owner_email: str,
+    operators: list[ResolvedMobileOperator],
+    plan_code: str = "basic_auto_key",
+    apply: bool = False,
+    on_progress: Callable[[int, int, str], None] | None = None,
+) -> dict[str, object]:
+    """Dry-run or apply mobile operator tenants under the Minit parent account."""
+    email = hq_owner_email.strip().lower()
+    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    if not parent:
+        preview = [_operator_entry(op) for op in operators]
+        return {
+            "parent_found": False,
+            "would_create_count": len(operators),
+            "would_update_count": 0,
+            "would_skip_count": 0,
+            "note": "Parent account not found — run seed_minit_pilot.py first",
+            "would_create": preview[:20],
+            "would_create_truncated": len(preview) > 20,
+        }
+
+    existing_numbers = existing_shop_numbers_in_parent(session, parent.id, site_kind="operator")
+    existing_slugs = existing_slugs_in_parent(session, parent.id)
+    tenants_by_number = tenants_by_shop_number_in_parent(session, parent.id, site_kind="operator")
+
+    would_create: list[dict[str, str]] = []
+    would_update: list[dict[str, str]] = []
+    would_skip: list[dict[str, str]] = []
+
+    for operator in operators:
+        entry = _operator_entry(operator)
+        slug = operator.tenant_slug
+        shop = to_minit_shop_row(operator)
+        if operator.shop_number in existing_numbers:
+            tenant = tenants_by_number.get(operator.shop_number)
+            if tenant and _operator_metadata_changed(
+                tenant, operator, shop, operator.shop_number
+            ):
+                entry["update_reason"] = "metadata_changed"
+                would_update.append(entry)
+            else:
+                entry["skip_reason"] = "unchanged"
+                would_skip.append(entry)
+        elif slug in existing_slugs:
+            entry["skip_reason"] = "duplicate_slug"
+            would_skip.append(entry)
+        else:
+            would_create.append(entry)
+
+    result: dict[str, object] = {
+        "parent_found": True,
+        "parent_account_id": str(parent.id),
+        "parent_account_name": parent.name,
+        "would_create_count": len(would_create),
+        "would_update_count": len(would_update),
+        "would_skip_count": len(would_skip),
+        "would_create": would_create[:20],
+        "would_update": would_update[:20],
+        "would_skip": would_skip[:20],
+    }
+    if len(would_create) > 20:
+        result["would_create_truncated"] = True
+    if len(would_update) > 20:
+        result["would_update_truncated"] = True
+    if len(would_skip) > 20:
+        result["would_skip_truncated"] = True
+
+    if not apply:
+        return result
+
+    hq_owner = session.exec(select(User).where(User.email == email).where(User.role == "owner")).first()
+    if not hq_owner:
+        result["error"] = "HQ owner user not found; run pilot seed first"
+        return result
+
+    slugs_needed = {op.tenant_slug for op in operators}
+    existing_by_slug: dict[str, Tenant] = {}
+    if slugs_needed:
+        for tenant in session.exec(select(Tenant).where(col(Tenant.slug).in_(list(slugs_needed)))).all():
+            existing_by_slug[tenant.slug] = tenant
+
+    hq_users_by_tenant_id = {
+        user.tenant_id: user
+        for user in session.exec(select(User).where(User.email == hq_owner.email)).all()
+    }
+    linked_tenant_ids = set(linked_tenant_ids_for_parent(session, parent.id))
+
+    created_slugs: list[str] = []
+    updated_count = 0
+    skipped_apply = 0
+    total = len(operators)
+    pending_flush = 0
+    for index, operator in enumerate(operators, start=1):
+        shop = to_minit_shop_row(operator)
+        slug = operator.tenant_slug
+        if operator.shop_number in existing_numbers:
+            tenant = tenants_by_number.get(operator.shop_number)
+            if tenant and sync_tenant_from_mobile_operator(tenant, operator):
+                session.add(tenant)
+                updated_count += 1
+                pending_flush += 1
+                if on_progress and (index % 10 == 0 or index == total):
+                    on_progress(index, total, "update")
+            else:
+                skipped_apply += 1
+                if on_progress and index % 10 == 0:
+                    on_progress(index, total, "skip")
+            continue
+        if slug in existing_slugs or slug in existing_by_slug:
+            skipped_apply += 1
+            if on_progress and index % 10 == 0:
+                on_progress(index, total, "skip")
+            continue
+        tenant = _create_child_tenant(
+            session,
+            parent=parent,
+            hq_owner=hq_owner,
+            shop=shop,
+            plan_code=plan_code,
+            tenant_slug=slug,
+            mobile_dispatch_phone=operator.dispatch_phone,
+            existing_by_slug=existing_by_slug,
+            hq_users_by_tenant_id=hq_users_by_tenant_id,
+            linked_tenant_ids=linked_tenant_ids,
+            flush=False,
+        )
+        if tenant:
+            created_slugs.append(tenant.slug)
+            existing_numbers.add(operator.shop_number)
+            existing_slugs.add(tenant.slug)
+            tenants_by_number[operator.shop_number] = tenant
+            pending_flush += 1
+        if on_progress and (index % 10 == 0 or index == total):
             on_progress(index, total, "create")
         if pending_flush >= _BULK_IMPORT_FLUSH_EVERY:
             session.flush()

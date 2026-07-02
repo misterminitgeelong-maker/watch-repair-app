@@ -564,8 +564,9 @@ def test_parent_account_summary_and_link_tenant():
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    summary_before = client.get("/v1/parent-accounts/me", headers=headers)
+    summary_before = client.get("/v1/parent-accounts/me?include_sites=true", headers=headers)
     assert summary_before.status_code == 200
+    assert summary_before.json()["site_count"] == 1
     assert len(summary_before.json()["sites"]) == 1
 
     link_res = client.post(
@@ -577,7 +578,7 @@ def test_parent_account_summary_and_link_tenant():
         },
     )
     assert link_res.status_code == 200
-    assert len(link_res.json()["sites"]) == 2
+    assert link_res.json()["site_count"] == 2
 
     # Prevent unlinking currently active site.
     remove_active_res = client.delete(
@@ -592,7 +593,7 @@ def test_parent_account_summary_and_link_tenant():
         headers=headers,
     )
     assert remove_linked_res.status_code == 200
-    assert len(remove_linked_res.json()["sites"]) == 1
+    assert remove_linked_res.json()["site_count"] == 1
 
     activity_res = client.get("/v1/parent-accounts/me/activity", headers=headers)
     assert activity_res.status_code == 200
@@ -642,8 +643,13 @@ def test_parent_account_create_tenant_and_link():
     )
     assert create_site_res.status_code == 200
     body = create_site_res.json()
-    assert len(body["sites"]) == 2
-    created_site = next(site for site in body["sites"] if site["tenant_slug"] == f"parent-create-b-{suffix}")
+    assert body["site_count"] == 2
+    sites_res = client.get("/v1/parent-accounts/me/sites?limit=50", headers=headers)
+    assert sites_res.status_code == 200
+    created_site = next(
+        site for site in sites_res.json()["sites"]
+        if site["tenant_slug"] == f"parent-create-b-{suffix}"
+    )
 
     login_new_site_res = client.post(
         "/v1/auth/login",

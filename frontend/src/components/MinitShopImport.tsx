@@ -29,6 +29,7 @@ export function MinitShopImport() {
       setResult(data)
       setError('')
       void qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
+      void qc.invalidateQueries({ queryKey: ['parent-account-sites'] })
       void qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
     },
     onError: err => {

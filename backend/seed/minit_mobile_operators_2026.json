@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "source": "Mobile Services Franchisees 2026.docx (matched to TSS Dec25)",
+  "operators": [
+    {
+      "shop_number": "6441",
+      "operator_label": "Baldivis",
+      "dispatch_phone": "0481000411",
+      "dispatch_email": "baldivis@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4320",
+      "operator_label": "Bribie Island",
+      "dispatch_phone": "0401001308",
+      "dispatch_email": "bribie@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4386",
+      "operator_label": "Broadbeach",
+      "dispatch_phone": "0451533456",
+      "dispatch_email": "broadbeach@mmms.au",
+      "match_confidence": "inferred",
+      "match_notes": "TSS shop name: Pacific Fair"
+    },
+    {
+      "shop_number": "2243",
+      "operator_label": "Burwood",
+      "dispatch_phone": "0477738814",
+      "dispatch_email": "burwood@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2298",
+      "operator_label": "Dapto",
+      "dispatch_phone": "0421829661",
+      "dispatch_email": "dapto@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4367",
+      "operator_label": "Hervey Bay",
+      "dispatch_phone": "0481219535",
+      "dispatch_email": "hervey.bay@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2258",
+      "operator_label": "Kotara",
+      "dispatch_phone": "0405951490",
+      "dispatch_email": "kotara@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2146",
+      "operator_label": "Lismore",
+      "dispatch_phone": "0418227422",
+      "dispatch_email": "lismore@mmms.au",
+      "match_confidence": "high",
+      "match_notes": "TSS tags QLD SOUTH — verify region"
+    },
+    {
+      "shop_number": "4265",
+      "operator_label": "Maroochydore",
+      "dispatch_phone": "0401709953",
+      "dispatch_email": "maroochydore@mmms.au",
+      "match_confidence": "inferred",
+      "match_notes": "TSS shop name: Kawana"
+    },
+    {
+      "shop_number": "4277",
+      "operator_label": "Nambour",
+      "dispatch_phone": "0490447704",
+      "dispatch_email": "nambour@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4365",
+      "operator_label": "Noosa",
+      "dispatch_phone": "0407965962",
+      "dispatch_email": "noosa@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2311",
+      "operator_label": "Queanbeyan",
+      "dispatch_phone": "0431616319",
+      "dispatch_email": "queanbeyan@mmms.au",
+      "match_confidence": "inferred",
+      "match_notes": "TSS shop name: Riverside"
+    },
+    {
+      "shop_number": "5281",
+      "operator_label": "Salisbury Downs",
+      "dispatch_phone": "0404744648",
+      "dispatch_email": "salisbury@mmms.au",
+      "match_confidence": "low",
+      "match_notes": "TSS shop name: Northpark"
+    },
+    {
+      "shop_number": "4064",
+      "operator_label": "Sunnybank Hills",
+      "dispatch_phone": "0407584643",
+      "dispatch_email": "sunnybank@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4037",
+      "operator_label": "Townsville",
+      "dispatch_phone": "0407539539",
+      "dispatch_email": "townsville@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "3050",
+      "operator_label": "Werribee",
+      "dispatch_phone": "0450171280",
+      "dispatch_email": "werribee@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "4447",
+      "operator_label": "Cairns",
+      "dispatch_phone": "0401822807",
+      "dispatch_email": "smithfield@mmms.au",
+      "match_confidence": "high",
+      "match_notes": "TSS shop name: Cairns Central"
+    },
+    {
+      "shop_number": "8142",
+      "operator_label": "Casuarina",
+      "dispatch_phone": "0889272977",
+      "dispatch_email": "casuarina@mmms.au",
+      "match_confidence": "high",
+      "match_notes": "TSS area QLD WEST — likely NT territory"
+    },
+    {
+      "shop_number": "5351",
+      "operator_label": "Ingle Farm",
+      "dispatch_phone": "0423707295",
+      "dispatch_email": "mount.barker@mmms.au",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2213",
+      "operator_label": "Warringah",
+      "dispatch_phone": "0438338540",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "2434",
+      "operator_label": "Narellan",
+      "dispatch_phone": "0403727103",
+      "dispatch_email": "narellan@mmms.au",
+      "match_confidence": "high",
+      "match_notes": "TSS shop name: Narellan Town Centre 1"
+    },
+    {
+      "shop_number": "8858",
+      "operator_label": "Sylvia Park",
+      "dispatch_phone": "0276611611",
+      "dispatch_email": "auckland@mmms.nz",
+      "match_confidence": "high"
+    },
+    {
+      "shop_number": "8833",
+      "operator_label": "North City",
+      "dispatch_phone": "0800782575",
+      "dispatch_email": "porirua@mmms.nz",
+      "match_confidence": "high",
+      "match_notes": "Porirua territory"
+    },
+    {
+      "shop_number": "8861",
+      "operator_label": "The Base",
+      "dispatch_phone": "02102399777",
+      "dispatch_email": "hamilton@mmms.nz",
+      "match_confidence": "high",
+      "match_notes": "Hamilton territory"
+    },
+    {
+      "shop_number": "8829",
+      "operator_label": "Johnsonville",
+      "dispatch_phone": "0211782575",
+      "dispatch_email": "mount.wellington@mmms.nz",
+      "match_confidence": "high"
+    }
+  ]
+}

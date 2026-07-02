@@ -390,10 +390,22 @@ def _recent_booking_snippets(
         .order_by(ShopMobileBookingRequest.created_at.desc())
         .limit(limit)
     ).all()
+    if not rows:
+        return []
+    tenant_ids = list(
+        dict.fromkeys(
+            [row.requesting_tenant_id for row in rows]
+            + [row.target_operator_tenant_id for row in rows]
+        )
+    )
+    tenants_by_id = {
+        t.id: t
+        for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
+    }
     snippets: list[ParentDashboardBookingSnippet] = []
     for row in rows:
-        shop = session.get(Tenant, row.requesting_tenant_id)
-        op = session.get(Tenant, row.target_operator_tenant_id)
+        shop = tenants_by_id.get(row.requesting_tenant_id)
+        op = tenants_by_id.get(row.target_operator_tenant_id)
         snippets.append(
             ParentDashboardBookingSnippet(
                 id=row.id,
