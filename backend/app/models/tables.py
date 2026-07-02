@@ -112,6 +112,35 @@ class MobileSuburbRoute(SQLModel, table=True):
     target_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class InboundEmail(SQLModel, table=True):
+    """Email captured from the inbound-parse webhook (e.g. Mister Minit enquiry-form BCC).
+
+    Capture-and-triage v1: rows are stored raw and surfaced in the HQ inbox for
+    manual job creation; a parser may later attach an auto_key_job_id.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "message_id", name="uq_inbound_email_parent_message_id"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    #: RFC 5322 Message-ID header incl. angle brackets; used to drop provider retries/duplicates.
+    message_id: Optional[str] = Field(default=None, index=True, max_length=500)
+    from_email: Optional[str] = Field(default=None, max_length=500)
+    to_email: Optional[str] = Field(default=None, max_length=500)
+    subject: Optional[str] = Field(default=None, max_length=1000)
+    text_body: Optional[str] = None
+    html_body: Optional[str] = None
+    raw_headers: Optional[str] = None
+    spf_result: Optional[str] = Field(default=None, max_length=200)
+    dkim_result: Optional[str] = Field(default=None, max_length=500)
+    sender_ip: Optional[str] = Field(default=None, max_length=60)
+    #: new | processed | dismissed
+    status: str = Field(default="new", index=True, max_length=20)
+    auto_key_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class IntakeJob(SQLModel, table=True):
     """Public website job submission waiting to be claimed by an operator via ring-map dispatch."""
 

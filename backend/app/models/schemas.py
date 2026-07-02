@@ -418,6 +418,25 @@ class MobileSuburbRouteCreateRequest(SQLModel):
     suburb: str = Field(..., min_length=1, max_length=200)
     target_tenant_id: UUID
 
+class InboundEmailListItem(SQLModel):
+    id: UUID
+    from_email: Optional[str] = None
+    subject: Optional[str] = None
+    status: str
+    auto_key_job_id: Optional[UUID] = None
+    created_at: datetime
+
+class InboundEmailDetail(InboundEmailListItem):
+    to_email: Optional[str] = None
+    message_id: Optional[str] = None
+    text_body: Optional[str] = None
+    html_body: Optional[str] = None
+    spf_result: Optional[str] = None
+    sender_ip: Optional[str] = None
+
+class InboundEmailStatusUpdateRequest(SQLModel):
+    status: str = Field(..., min_length=1, max_length=20)
+
 class TenantPlanUpdateRequest(SQLModel):
     plan_code: PlanCode
 

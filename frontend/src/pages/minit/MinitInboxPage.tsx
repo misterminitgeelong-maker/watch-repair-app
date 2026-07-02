@@ -1,7 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { KeyRound, MessageSquare } from 'lucide-react'
-import { API_ORIGIN, getInbox } from '@/lib/api'
+import { KeyRound, Mail, MessageSquare } from 'lucide-react'
+import {
+  API_ORIGIN,
+  getInbox,
+  getInboundEmail,
+  listInboundEmails,
+  updateInboundEmailStatus,
+} from '@/lib/api'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 
@@ -15,20 +22,134 @@ function formatDate(s: string) {
   return d.toLocaleDateString()
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  new: '#B47828',
+  processed: '#2F855A',
+  dismissed: '#718096',
+}
+
+function InboundEmailCard({ id, subject, fromEmail, status, createdAt }: {
+  id: string
+  subject?: string | null
+  fromEmail?: string | null
+  status: 'new' | 'processed' | 'dismissed'
+  createdAt: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const queryClient = useQueryClient()
+
+  const { data: detail, isLoading: detailLoading } = useQuery({
+    queryKey: ['inbound-email', id],
+    queryFn: () => getInboundEmail(id).then(r => r.data),
+    enabled: expanded,
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (next: 'processed' | 'dismissed') => updateInboundEmailStatus(id, next),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-emails'] })
+      queryClient.invalidateQueries({ queryKey: ['inbound-email', id] })
+    },
+  })
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start gap-4">
+        <div
+          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(180,120,40,0.15)', color: '#B47828' }}
+        >
+          <Mail size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            className="text-left w-full"
+            onClick={() => setExpanded(v => !v)}
+          >
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+              {subject?.trim() || '(no subject)'}
+            </p>
+            <p className="text-xs mt-1 truncate" style={{ color: 'var(--ms-text-muted)' }}>
+              {fromEmail || 'Unknown sender'} · {formatDate(createdAt)}
+            </p>
+          </button>
+          {expanded && (
+            <div className="mt-3">
+              {detailLoading ? (
+                <Spinner />
+              ) : detail?.text_body ? (
+                <pre
+                  className="text-xs whitespace-pre-wrap rounded p-3 max-h-80 overflow-y-auto"
+                  style={{ backgroundColor: 'var(--ms-bg, rgba(0,0,0,0.04))', color: 'var(--ms-text)' }}
+                >
+                  {detail.text_body}
+                </pre>
+              ) : (
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                  No plain-text body captured{detail?.html_body ? ' (HTML only — open the job email in your mail client if needed)' : ''}.
+                </p>
+              )}
+              {status === 'new' && (
+                <div className="flex gap-3 mt-3">
+                  <button
+                    type="button"
+                    className="text-sm font-medium"
+                    style={{ color: 'var(--ms-accent)' }}
+                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate('processed')}
+                  >
+                    Mark processed
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm font-medium"
+                    style={{ color: 'var(--ms-text-muted)' }}
+                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate('dismissed')}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <span
+          className="text-xs font-medium shrink-0 capitalize"
+          style={{ color: STATUS_COLORS[status] ?? 'var(--ms-text-muted)' }}
+        >
+          {status}
+        </span>
+      </div>
+    </Card>
+  )
+}
+
 export default function MinitInboxPage() {
   const { data: alerts, isLoading: inboxLoading } = useQuery({
     queryKey: ['inbox', 0],
     queryFn: () => getInbox(50, 0).then(r => r.data),
   })
 
+  const { data: emailLeads, isLoading: emailsLoading } = useQuery({
+    queryKey: ['inbound-emails'],
+    queryFn: () => listInboundEmails().then(r => r.data),
+  })
+
   const { data: parent, isLoading: parentLoading } = useParentAccount()
 
-  if (inboxLoading || parentLoading) return <Spinner />
+  if (inboxLoading || parentLoading || emailsLoading) return <Spinner />
 
-  const items = alerts ?? []
+  // Email leads get their own triage cards; hide their duplicate generic alerts.
+  const items = (alerts ?? []).filter(ev => ev.event_type !== 'inbound_email_received')
+  const emails = emailLeads ?? []
   const ingestPublicId = parent?.mobile_lead_ingest_public_id ?? null
   const ingestUrl = ingestPublicId
     ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
+    : null
+  const emailParseUrl = ingestPublicId
+    ? `${API_ORIGIN || window.location.origin}/v1/public/inbound-email/${ingestPublicId}?key=<webhook secret>`
     : null
   const ingestReady = Boolean(ingestPublicId && parent?.mobile_lead_webhook_secret_configured)
 
@@ -62,7 +183,41 @@ export default function MinitInboxPage() {
         </Card>
       )}
 
-      {items.length === 0 ? (
+      {(emails.length > 0 || ingestReady) && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--ms-text)' }}>
+            Email leads
+          </h2>
+          {emails.length === 0 ? (
+            <Card className="p-4">
+              <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+                No emails captured yet. BCC&apos;d enquiry-form emails will appear here once the inbound
+                address is live.
+              </p>
+              {emailParseUrl && (
+                <p className="text-xs mt-2 font-mono break-all" style={{ color: 'var(--ms-text-muted)' }}>
+                  Inbound Parse webhook: {emailParseUrl}
+                </p>
+              )}
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {emails.map(em => (
+                <InboundEmailCard
+                  key={em.id}
+                  id={em.id}
+                  subject={em.subject}
+                  fromEmail={em.from_email}
+                  status={em.status}
+                  createdAt={em.created_at}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {items.length === 0 && emails.length === 0 ? (
         <EmptyState message="No enquiries yet. Website mobile key leads, quote activity, and customer replies will appear here once lead ingest is active and customers submit requests." />
       ) : (
         <div className="space-y-3">

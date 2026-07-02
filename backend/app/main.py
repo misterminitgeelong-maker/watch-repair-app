@@ -47,6 +47,7 @@ from .routes.xero_webhook import router as xero_webhook_router
 from .routes.stocktakes import router as stocktake_router
 from .routes.prospects import router as prospects_router
 from .routes.mobile_lead_ingest import router as mobile_lead_ingest_router
+from .routes.inbound_email import public_router as inbound_email_public_router, hq_router as inbound_email_hq_router
 from .routes.shop_mobile_bookings import router as shop_mobile_bookings_router
 from .routes.vehicle_lookup import router as vehicle_lookup_router
 from .routes.vehicle_key_specs import router as vehicle_key_specs_router
@@ -432,6 +433,8 @@ app.include_router(tenant_qol_router)
 app.include_router(public_jobs_router)
 app.include_router(customer_portal_public_router)
 app.include_router(mobile_lead_ingest_router)
+app.include_router(inbound_email_public_router)
+app.include_router(inbound_email_hq_router)
 app.include_router(shop_mobile_bookings_router)
 app.include_router(intake_dispatch_router)
 app.include_router(users_router)

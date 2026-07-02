@@ -13,6 +13,7 @@ INBOX_EVENT_TYPES = [
     "quote_approved",
     "quote_declined",
     "mobile_lead_quote_needed",
+    "inbound_email_received",
     "shop_booking_pending",
     "invoice_paid",
     "customer_sms_reply",

@@ -2152,6 +2152,32 @@ export const portalMessageToShop = (
 export const getInbox = (limit = 50, offset = 0) => api.get<InboxEvent[]>('/inbox', { params: { limit, offset } })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
+// ── Inbound email leads (BCC'd enquiry-form capture) ─────────────────────────
+export interface InboundEmailListItem {
+  id: string
+  from_email?: string | null
+  subject?: string | null
+  status: 'new' | 'processed' | 'dismissed'
+  auto_key_job_id?: string | null
+  created_at: string
+}
+export interface InboundEmailDetail extends InboundEmailListItem {
+  to_email?: string | null
+  message_id?: string | null
+  text_body?: string | null
+  html_body?: string | null
+  spf_result?: string | null
+  sender_ip?: string | null
+}
+export const listInboundEmails = (status?: string, limit = 50, offset = 0) =>
+  api.get<InboundEmailListItem[]>('/parent-accounts/me/inbound-emails', {
+    params: { ...(status ? { status } : {}), limit, offset },
+  })
+export const getInboundEmail = (id: string) =>
+  api.get<InboundEmailDetail>(`/parent-accounts/me/inbound-emails/${id}`)
+export const updateInboundEmailStatus = (id: string, status: 'new' | 'processed' | 'dismissed') =>
+  api.patch<InboundEmailDetail>(`/parent-accounts/me/inbound-emails/${id}`, { status })
+
 // ── Auto-key attachments & SMS ────────────────────────────────────────────────
 export const listAutoKeyAttachments = (jobId: string) =>
   api.get<Attachment[]>('/attachments', { params: { auto_key_job_id: jobId } })
