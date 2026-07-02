@@ -298,11 +298,8 @@ def _create_child_tenant(
         session.add(tenant)
         if existing_by_slug is not None:
             existing_by_slug[slug] = tenant
-        if flush:
-            session.flush()
-        elif tenant.id is None:
-            # Bulk import: need tenant PK before user + membership rows.
-            session.flush()
+        # Client-assigned UUIDs still need INSERT before user/membership FK rows.
+        session.flush()
 
     if hq_users_by_tenant_id is not None:
         site_owner = hq_users_by_tenant_id.get(tenant.id)
@@ -322,8 +319,7 @@ def _create_child_tenant(
         session.add(site_owner)
         if hq_users_by_tenant_id is not None and tenant.id:
             hq_users_by_tenant_id[tenant.id] = site_owner
-        if flush:
-            session.flush()
+        session.flush()
 
     _link_tenant_to_parent(
         session,
