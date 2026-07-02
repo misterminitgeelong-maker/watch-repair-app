@@ -57,7 +57,7 @@ export default function MinitHqBottomTabBar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/minit/dashboard'}
+            end={item.to === '/minit/dashboard' || item.to === '/minit/lead-routing'}
             className="relative flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60"
             style={({ isActive }) => tabStyle(isActive)}
           >

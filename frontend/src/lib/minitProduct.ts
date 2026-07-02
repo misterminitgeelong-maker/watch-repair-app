@@ -205,9 +205,7 @@ export function isMinitRestrictedUi(
 }
 
 export function minitHqAllowedPath(pathname: string): boolean {
-  // /parent-account hosts the Website Lead Routing setup (ingest link, webhook
-  // secret, suburb map) which HQ owns; it has no /minit/* equivalent.
-  return /^\/minit(\/|$)/.test(pathname) || pathname === '/subscription-required' || pathname === '/parent-account'
+  return /^\/minit(\/|$)/.test(pathname) || pathname === '/subscription-required'
 }
 
 export function minitBookingOnlyAllowedPath(pathname: string): boolean {

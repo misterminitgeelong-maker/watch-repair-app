@@ -4,12 +4,12 @@ import {
   LayoutDashboard,
   LogOut,
   BarChart3,
-  UserCog,
   Building2,
   KeyRound,
   Inbox,
   Sparkles,
   Download,
+  Route,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
@@ -18,14 +18,14 @@ import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import { APP_BUILD_ID } from '@/lib/buildInfo'
 
-/** Single source of truth — six Minit HQ sidebar links (no feature gates). */
+/** Single source of truth — Minit HQ sidebar links (no feature gates). */
 export const MINIT_HQ_NAV = [
   { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Customer enquiries from the Mister Minit website' },
-  { to: '/minit/shops', label: 'Shops', icon: Building2 },
-  { to: '/minit/mobile-services', label: 'Mobile Services', icon: KeyRound },
-  { to: '/minit/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/minit/accounts', label: 'Accounts', icon: UserCog },
+  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Website leads, email enquiries, and HQ alerts' },
+  { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
+  { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, title: 'Website ingest, dispatch, and territory map' },
+  { to: '/minit/mobile-services', label: 'Mobile jobs', icon: KeyRound, title: 'Network mobile job report' },
+  { to: '/minit/reports', label: 'Reports', icon: BarChart3, title: 'Shop analytics and troubleshooting' },
 ] as const
 
 export interface MinitHqSidebarProps {
@@ -121,7 +121,7 @@ export default function MinitHqSidebar({
             key={item.to}
             to={item.to}
             title={'title' in item ? item.title : undefined}
-            end={item.to === '/minit/dashboard'}
+            end={item.to === '/minit/dashboard' || item.to === '/minit/lead-routing'}
             onClick={onNavigate}
             className={({ isActive }) => linkClasses(isActive)}
             style={({ isActive }) => linkStyle(isActive)}

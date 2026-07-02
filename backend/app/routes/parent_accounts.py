@@ -31,7 +31,9 @@ from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
     MobileSuburbRoute,
     MobileSuburbRouteCreateRequest,
+    MobileSuburbRouteOperatorSummary,
     MobileSuburbRouteRead,
+    MobileSuburbRoutesSummary,
     ParentAccount,
     ParentAccountCreateTenantRequest,
     ParentImportShopsResponse,
@@ -488,8 +490,54 @@ def set_mobile_lead_dispatch_settings(
     return _lead_ingest_config(parent)
 
 
+@router.get("/me/mobile-lead-routes/summary", response_model=MobileSuburbRoutesSummary)
+def mobile_suburb_routes_summary(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Route counts by operator — avoids loading thousands of suburb rows in HQ UI."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    total = session.exec(
+        select(func.count())
+        .select_from(MobileSuburbRoute)
+        .where(MobileSuburbRoute.parent_account_id == parent.id)
+    ).one()
+    grouped = session.exec(
+        select(
+            MobileSuburbRoute.target_tenant_id,
+            func.count().label("route_count"),
+        )
+        .where(MobileSuburbRoute.parent_account_id == parent.id)
+        .group_by(MobileSuburbRoute.target_tenant_id)
+        .order_by(func.count().desc())
+    ).all()
+    tenant_ids = [row[0] for row in grouped]
+    tenants_by_id: dict[UUID, Tenant] = {}
+    if tenant_ids:
+        tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
+        tenants_by_id = {t.id: t for t in tenants}
+    operators: list[MobileSuburbRouteOperatorSummary] = []
+    for tenant_id, route_count in grouped:
+        tenant = tenants_by_id.get(tenant_id)
+        operators.append(
+            MobileSuburbRouteOperatorSummary(
+                target_tenant_id=tenant_id,
+                operator_name=tenant.name if tenant else "Unknown operator",
+                operator_slug=tenant.slug if tenant else "",
+                operator_shop_number=tenant.shop_number if tenant else None,
+                route_count=int(route_count),
+            )
+        )
+    return MobileSuburbRoutesSummary(total_routes=int(total), operators=operators)
+
+
 @router.get("/me/mobile-lead-routes", response_model=list[MobileSuburbRouteRead])
 def list_mobile_suburb_routes(
+    search: str | None = Query(default=None, description="Filter by suburb name (case-insensitive)"),
+    limit: int = Query(default=200, ge=1, le=500),
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(get_session),
 ):
@@ -497,11 +545,16 @@ def list_mobile_suburb_routes(
     if not current_user or not current_user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
     parent = _get_parent_account_for_user(session, current_user)
-    rows = session.exec(
+    stmt = (
         select(MobileSuburbRoute)
         .where(MobileSuburbRoute.parent_account_id == parent.id)
         .order_by(MobileSuburbRoute.state_code, MobileSuburbRoute.suburb_normalized)
-    ).all()
+        .limit(limit)
+    )
+    if search and search.strip():
+        needle = f"%{search.strip().lower()}%"
+        stmt = stmt.where(col(MobileSuburbRoute.suburb_normalized).ilike(needle))
+    rows = session.exec(stmt).all()
     return [
         MobileSuburbRouteRead(
             id=r.id,

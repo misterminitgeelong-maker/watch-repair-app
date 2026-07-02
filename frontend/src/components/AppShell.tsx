@@ -765,6 +765,8 @@ export default function AppShell() {
         navigate('/minit/mobile-services', { replace: true })
       } else if (location.pathname === '/inbox') {
         navigate('/minit/inbox', { replace: true })
+      } else if (location.pathname === '/parent-account') {
+        navigate('/minit/lead-routing', { replace: true })
       }
     }
   }, [minitUi, minitHq, planCode, tenantSlug, location.pathname, navigate])

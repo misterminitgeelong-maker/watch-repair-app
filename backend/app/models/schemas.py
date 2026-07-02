@@ -453,6 +453,17 @@ class MobileSuburbRouteRead(SQLModel):
     suburb_normalized: str
     target_tenant_id: UUID
 
+class MobileSuburbRouteOperatorSummary(SQLModel):
+    target_tenant_id: UUID
+    operator_name: str
+    operator_slug: str
+    operator_shop_number: Optional[str] = None
+    route_count: int
+
+class MobileSuburbRoutesSummary(SQLModel):
+    total_routes: int
+    operators: list[MobileSuburbRouteOperatorSummary]
+
 class MobileSuburbRouteCreateRequest(SQLModel):
     state_code: str = Field(..., min_length=2, max_length=8)
     suburb: str = Field(..., min_length=1, max_length=200)

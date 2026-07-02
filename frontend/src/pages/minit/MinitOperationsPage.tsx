@@ -3,11 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowRight,
-  Building2,
   CheckCircle2,
   Clock,
-  Inbox,
-  KeyRound,
   TrendingUp,
 } from 'lucide-react'
 import {
@@ -236,11 +233,11 @@ export default function MinitOperationsPage() {
             </div>
           </div>
           <Link
-            to="/minit/mobile-services"
+            to="/minit/troubleshooting"
             className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg"
             style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
           >
-            Mobile Services
+            Troubleshooting
             <ArrowRight size={16} />
           </Link>
         </Card>
@@ -365,8 +362,8 @@ export default function MinitOperationsPage() {
             <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
               Needs attention
             </h2>
-            <Link to="/minit/reports" className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
-              All reports
+            <Link to="/minit/troubleshooting" className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
+              Troubleshooting
             </Link>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
@@ -414,32 +411,6 @@ export default function MinitOperationsPage() {
           data.recent_bookings.map(b => <BookingRow key={b.id} booking={b} />)
         )}
       </Card>
-
-      <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--ms-text)' }}>
-        Go to
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { to: '/minit/shops', icon: Building2, label: 'Shops' },
-          { to: '/minit/mobile-services', icon: KeyRound, label: 'Mobile Services' },
-          { to: '/minit/inbox', icon: Inbox, label: 'Inbox' },
-          { to: '/minit/accounts', icon: Building2, label: 'Accounts' },
-        ].map(({ to, icon: Icon, label }) => (
-          <Link
-            key={to}
-            to={to}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--ms-surface)',
-              border: '1px solid var(--ms-border)',
-              color: 'var(--ms-text)',
-            }}
-          >
-            <Icon size={18} style={{ color: 'var(--ms-accent)' }} />
-            {label}
-          </Link>
-        ))}
-      </div>
     </div>
   )
 }

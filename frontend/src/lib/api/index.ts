@@ -2531,8 +2531,34 @@ export interface MobileSuburbRoute {
   tenant_id?: string
   target_tenant_id: string
 }
-export const listMobileSuburbRoutes = () =>
-  api.get<MobileSuburbRoute[]>('/parent-accounts/me/mobile-lead-routes')
+export interface MobileSuburbRouteOperatorSummary {
+  target_tenant_id: string
+  operator_name: string
+  operator_slug: string
+  operator_shop_number?: string | null
+  route_count: number
+}
+export interface MobileSuburbRoutesSummary {
+  total_routes: number
+  operators: MobileSuburbRouteOperatorSummary[]
+}
+export interface ParentRoutingTestResult {
+  suburb: string
+  state_code: string
+  suburb_normalized: string
+  routing_rule: string
+  operator_tenant_id?: string | null
+  operator_slug?: string | null
+  operator_name?: string | null
+  operator_shop_number?: string | null
+  message?: string | null
+}
+export const listMobileSuburbRoutes = (params?: { search?: string; limit?: number }) =>
+  api.get<MobileSuburbRoute[]>('/parent-accounts/me/mobile-lead-routes', { params })
+export const getMobileSuburbRoutesSummary = () =>
+  api.get<MobileSuburbRoutesSummary>('/parent-accounts/me/mobile-lead-routes/summary')
+export const testMobileLeadRouting = (params: { suburb: string; state_code: string }) =>
+  api.get<ParentRoutingTestResult>('/parent-accounts/me/routing/test', { params })
 export const setParentMobileLeadDefaultTenant = (tenant_id: string | null) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/default-tenant', { tenant_id })
 export const setParentMobileLeadEscalationTenant = (tenant_id: string | null) =>

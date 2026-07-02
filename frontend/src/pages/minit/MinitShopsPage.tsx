@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatTenantLabel, type ParentAccountSite } from '@/lib/api'
-import { useAuth } from '@/context/AuthContext'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { MinitShopImport } from '@/components/MinitShopImport'
@@ -57,49 +57,23 @@ function groupByArea(shops: ParentAccountSite[]): { area: string; shops: ParentA
     })
 }
 
-function ShopRow({
-  site,
-  activeSiteTenantId,
-  switchingId,
-  onSwitch,
-}: {
-  site: ParentAccountSite
-  activeSiteTenantId: string | null
-  switchingId: string
-  onSwitch: (tenantId: string) => void
-}) {
-  const isActive = site.tenant_id === activeSiteTenantId
+function ShopRow({ site }: { site: ParentAccountSite }) {
   return (
     <div
       className="px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md"
       style={{
-        backgroundColor: isActive ? 'var(--ms-accent-light)' : 'var(--ms-surface)',
-        border: isActive ? '1px solid var(--ms-accent)' : '1px solid var(--ms-border)',
+        backgroundColor: 'var(--ms-surface)',
+        border: '1px solid var(--ms-border)',
       }}
     >
       <div className="min-w-0">
         <p className="font-medium text-sm truncate" style={{ color: 'var(--ms-text)' }}>
           {formatTenantLabel(site.tenant_name, site.shop_number)}
-          {isActive && (
-            <span className="ml-2 text-xs font-normal" style={{ color: 'var(--ms-accent)' }}>
-              Active
-            </span>
-          )}
         </p>
         <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--ms-text-muted)' }}>
-          {site.tenant_slug}
+          {site.area?.trim() ? `${site.area} · ` : ''}{site.region?.trim() ? `${site.region} · ` : ''}{site.tenant_slug}
         </p>
       </div>
-      {!isActive && (
-        <Button
-          variant="secondary"
-          className="text-xs px-2.5 py-1 shrink-0"
-          onClick={() => onSwitch(site.tenant_id)}
-          disabled={switchingId === site.tenant_id}
-        >
-          {switchingId === site.tenant_id ? '…' : 'Switch'}
-        </Button>
-      )}
     </div>
   )
 }
@@ -120,15 +94,9 @@ function RegionSkeleton() {
 function RegionShopsCard({
   region,
   shops,
-  activeSiteTenantId,
-  switchingId,
-  onSwitch,
 }: {
   region: string
   shops: ParentAccountSite[]
-  activeSiteTenantId: string | null
-  switchingId: string
-  onSwitch: (tenantId: string) => void
 }) {
   const areaGroups = useMemo(() => groupByArea(shops), [shops])
   const [activeArea, setActiveArea] = useState(() => areaGroups[0]?.area ?? UNASSIGNED_AREA)
@@ -199,13 +167,7 @@ function RegionShopsCard({
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2" role="tabpanel" aria-label={safeActiveArea}>
         {visibleShops.map(site => (
-          <ShopRow
-            key={site.tenant_id}
-            site={site}
-            activeSiteTenantId={activeSiteTenantId}
-            switchingId={switchingId}
-            onSwitch={onSwitch}
-          />
+          <ShopRow key={site.tenant_id} site={site} />
         ))}
       </div>
     </Card>
@@ -213,10 +175,8 @@ function RegionShopsCard({
 }
 
 export default function MinitShopsPage() {
-  const { activeSiteTenantId, switchSite } = useAuth()
   const { data: summary, isFetching: summaryFetching } = useParentAccount()
 
-  const [switchingId, setSwitchingId] = useState('')
   const [search, setSearch] = useState('')
   const [regionFilter, setRegionFilter] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -259,20 +219,21 @@ export default function MinitShopsPage() {
   const isLoading = retailLoading && retailSites.length === 0
   const isFetching = summaryFetching || retailFetching
 
-  async function handleSwitch(tenantId: string) {
-    setSwitchingId(tenantId)
-    try {
-      await switchSite(tenantId)
-    } finally {
-      setSwitchingId('')
-    }
-  }
-
   return (
     <div>
-      <PageHeader title="Shops" action={<MinitShopImport />} />
+      <PageHeader
+        title="Shops"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Link to="/minit/accounts">
+              <Button variant="secondary">Manage shops</Button>
+            </Link>
+            <MinitShopImport />
+          </div>
+        }
+      />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Retail shops grouped by region and area. Import from Excel or manage accounts under Accounts.
+        Browse the retail network by region and area. To add, remove, or import shops, use Manage shops.
         {isFetching && !isLoading && (
           <span className="ml-2 opacity-70">Refreshing…</span>
         )}
@@ -336,14 +297,7 @@ export default function MinitShopsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {regionGroups.map(({ region, shops }) => (
-            <RegionShopsCard
-              key={region}
-              region={region}
-              shops={shops}
-              activeSiteTenantId={activeSiteTenantId}
-              switchingId={switchingId}
-              onSwitch={handleSwitch}
-            />
+            <RegionShopsCard key={region} region={region} shops={shops} />
           ))}
         </div>
       )}
@@ -358,13 +312,7 @@ export default function MinitShopsPage() {
           </div>
           <div className="p-3 space-y-2">
             {operators.map(site => (
-              <ShopRow
-                key={site.tenant_id}
-                site={site}
-                activeSiteTenantId={activeSiteTenantId}
-                switchingId={switchingId}
-                onSwitch={handleSwitch}
-              />
+              <ShopRow key={site.tenant_id} site={site} />
             ))}
           </div>
         </Card>

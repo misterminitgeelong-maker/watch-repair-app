@@ -141,23 +141,22 @@ export default function MinitInboxPage() {
 
   if (inboxLoading || emailsLoading) return <Spinner />
 
-  // Email leads get their own triage cards; hide their duplicate generic alerts.
-  const items = (alerts ?? []).filter(ev => ev.event_type !== 'inbound_email_received')
+  const networkAlerts = (alerts ?? []).filter(ev => ev.event_type !== 'inbound_email_received')
   const emails = emailLeads ?? []
+  const newEmailCount = emails.filter(e => e.status === 'new').length
   const ingestPublicId = leadIngest?.mobile_lead_ingest_public_id ?? null
   const ingestUrl = ingestPublicId
     ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
     : null
-  const emailParseUrl = ingestPublicId
-    ? `${API_ORIGIN || window.location.origin}/v1/public/inbound-email/${ingestPublicId}?key=<webhook secret>`
-    : null
   const ingestReady = Boolean(ingestPublicId && leadIngest?.mobile_lead_webhook_secret_configured)
+  const forceHq = leadIngest?.mobile_lead_force_hq_dispatch === true
+  const isEmpty = networkAlerts.length === 0 && emails.length === 0
 
   return (
     <div>
       <PageHeader title="Inbox" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Customer enquiries from the Mister Minit website and network alerts.
+        HQ triage for website mobile key leads, BCC email enquiries, and escalated dispatch alerts.
       </p>
 
       {!ingestReady && !ingestLoading && (
@@ -169,9 +168,8 @@ export default function MinitInboxPage() {
                 Website lead ingest {ingestPublicId ? 'needs webhook secret' : 'not enabled yet'}
               </p>
               <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-                When configured, customer job requests from minit.com.au are routed to the right shop or mobile
-                operator. Enquiries appear in the routed site&apos;s inbox; network-level activity will show here
-                as HQ inbox grows.
+                Configure the ingest URL and security password so minit.com.au can send job requests.
+                {forceHq && ' HQ testing mode is on — all leads will appear here.'}
               </p>
               {ingestUrl && (
                 <p className="text-xs mt-2 font-mono break-all" style={{ color: 'var(--ms-text-muted)' }}>
@@ -179,92 +177,115 @@ export default function MinitInboxPage() {
                 </p>
               )}
               <Link
-                to="/parent-account"
+                to="/minit/lead-routing"
                 className="text-sm font-medium inline-block mt-2"
                 style={{ color: 'var(--ms-accent)' }}
               >
-                Set up website lead feed →
+                Open lead routing settings →
               </Link>
             </div>
           </div>
         </Card>
       )}
 
-      {(emails.length > 0 || ingestReady) && (
-        <div className="mb-6">
-          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--ms-text)' }}>
-            Email leads
-          </h2>
-          {emails.length === 0 ? (
-            <Card className="p-4">
-              <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-                No emails captured yet. BCC&apos;d enquiry-form emails will appear here once the inbound
-                address is live.
-              </p>
-              {emailParseUrl && (
-                <p className="text-xs mt-2 font-mono break-all" style={{ color: 'var(--ms-text-muted)' }}>
-                  Inbound Parse webhook: {emailParseUrl}
-                </p>
-              )}
-              <Link
-                to="/parent-account"
-                className="text-sm font-medium inline-block mt-2"
-                style={{ color: 'var(--ms-accent)' }}
-              >
-                Website lead feed settings →
-              </Link>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {emails.map(em => (
-                <InboundEmailCard
-                  key={em.id}
-                  id={em.id}
-                  subject={em.subject}
-                  fromEmail={em.from_email}
-                  status={em.status}
-                  createdAt={em.created_at}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      {ingestReady && forceHq && (
+        <Card className="mb-6 p-4" style={{ borderColor: 'var(--ms-accent)', backgroundColor: 'rgba(79,130,201,0.06)' }}>
+          <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+            HQ testing mode is active — all website leads skip operators and land here.
+          </p>
+          <Link to="/minit/lead-routing" className="text-xs font-medium mt-1 inline-block" style={{ color: 'var(--ms-accent)' }}>
+            Change in lead routing →
+          </Link>
+        </Card>
       )}
 
-      {items.length === 0 && emails.length === 0 ? (
-        <EmptyState message="No enquiries yet. Website mobile key leads, quote activity, and customer replies will appear here once lead ingest is active and customers submit requests." />
-      ) : (
-        <div className="space-y-3">
-          {items.map(ev => (
-            <Card key={ev.id} className="p-4">
-              <div className="flex items-start gap-4">
-                <div
-                  className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: 'rgba(180,120,40,0.15)', color: '#B47828' }}
-                >
-                  <KeyRound size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
-                    {ev.event_summary}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-                    {formatDate(ev.created_at)}
-                  </p>
-                </div>
-                {ev.entity_type === 'auto_key_job' && ev.entity_id && (
-                  <Link
-                    to={`/minit/mobile-services`}
-                    className="text-sm font-medium shrink-0"
-                    style={{ color: 'var(--ms-accent)' }}
+      {networkAlerts.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--ms-text)' }}>
+            <KeyRound size={16} style={{ color: 'var(--ms-accent)' }} />
+            Mobile key leads & alerts
+            <span className="text-xs font-normal tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
+              ({networkAlerts.length})
+            </span>
+          </h2>
+          <div className="space-y-3">
+            {networkAlerts.map(ev => (
+              <Card key={ev.id} className="p-4">
+                <div className="flex items-start gap-4">
+                  <div
+                    className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(180,120,40,0.15)', color: '#B47828' }}
                   >
-                    View network
-                  </Link>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+                    <KeyRound size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+                      {ev.event_summary}
+                    </p>
+                    <p className="text-xs mt-1 capitalize" style={{ color: 'var(--ms-text-muted)' }}>
+                      {ev.event_type.replace(/_/g, ' ')} · {formatDate(ev.created_at)}
+                    </p>
+                  </div>
+                  {ev.entity_type === 'auto_key_job' && ev.entity_id && (
+                    <Link
+                      to="/minit/mobile-services"
+                      className="text-sm font-medium shrink-0"
+                      style={{ color: 'var(--ms-accent)' }}
+                    >
+                      View jobs
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--ms-text)' }}>
+          <Mail size={16} style={{ color: 'var(--ms-accent)' }} />
+          Email leads
+          {newEmailCount > 0 && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ backgroundColor: '#C96A5A', color: '#fff' }}
+            >
+              {newEmailCount} new
+            </span>
+          )}
+        </h2>
+        {emails.length === 0 ? (
+          <Card className="p-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              No BCC enquiry emails yet. They appear here once inbound email parse is configured.
+            </p>
+            <Link
+              to="/minit/lead-routing"
+              className="text-sm font-medium inline-block mt-2"
+              style={{ color: 'var(--ms-accent)' }}
+            >
+              Lead routing settings →
+            </Link>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {emails.map(em => (
+              <InboundEmailCard
+                key={em.id}
+                id={em.id}
+                subject={em.subject}
+                fromEmail={em.from_email}
+                status={em.status}
+                createdAt={em.created_at}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {isEmpty && (
+        <EmptyState message="Nothing in the inbox yet. Website mobile key leads and email enquiries will appear here once ingest is configured." />
       )}
     </div>
   )

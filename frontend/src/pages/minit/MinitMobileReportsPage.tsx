@@ -21,9 +21,9 @@ export default function MinitMobileReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Mobile Services" />
+      <PageHeader title="Mobile jobs" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Network mobile jobs and operator activity — shop-referred and shop bookings.
+        Network mobile jobs by operator — shop-referred bookings and in-progress work.
       </p>
 
       <Card className="p-5 mb-6">

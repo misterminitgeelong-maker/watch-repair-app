@@ -121,13 +121,13 @@ export default function MinitAccountsPage() {
   return (
     <div>
       <PageHeader
-        title="Accounts"
+        title="Manage shops"
         action={
           <Button onClick={() => { setError(''); setShowAdd(true) }}>+ Add shop</Button>
         }
       />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Add or remove shops on the Mister Minit network. Use Shops for day-to-day operational control.
+        Add, link, or remove shops on the network. Use Shops to browse by region.
       </p>
 
       {error && (

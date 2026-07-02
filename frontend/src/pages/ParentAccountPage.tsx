@@ -1,35 +1,26 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  API_ORIGIN,
-  clearParentMobileLeadWebhookSecret,
-  createMobileSuburbRoute,
   createTenantFromParentAccount,
-  deleteMobileSuburbRoute,
-  enableParentMobileLeadIngest,
   formatTenantLabel,
   getApiErrorMessage,
   getParentShopBookingUsage,
   linkTenantToParentAccount,
-  listMobileSuburbRoutes,
   listParentAccountActivity,
-  setParentMobileLeadDefaultTenant,
-  setParentMobileLeadDispatchSettings,
-  setParentMobileLeadEscalationTenant,
-  setParentMobileLeadWebhookSecret,
   unlinkTenantFromParentAccount,
   type PlanCode,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { isMinitHqUi } from '@/lib/minitProduct'
+import WebsiteLeadRoutingPanel from '@/components/minit/WebsiteLeadRoutingPanel'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
-import { PARENT_LEAD_INGEST_QUERY_KEY, useParentLeadIngest } from '@/hooks/useParentLeadIngest'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 export default function ParentAccountPage() {
   const navigate = useNavigate()
-  const { activeSiteTenantId, switchSite, refreshSession } = useAuth()
+  const { activeSiteTenantId, switchSite, refreshSession, minitHqUi, product, planCode, tenantSlug: sessionTenantSlug } = useAuth()
   const qc = useQueryClient()
 
   // Add shop modal
@@ -50,18 +41,6 @@ export default function ParentAccountPage() {
   const [error, setError] = useState('')
   const [switchingTenantId, setSwitchingTenantId] = useState('')
   const [removingTenantId, setRemovingTenantId] = useState('')
-
-  // Lead routing
-  const [webhookSecret, setWebhookSecret] = useState('')
-  const [routeState, setRouteState] = useState('NSW')
-  const [routeSuburb, setRouteSuburb] = useState('')
-  const [routeTargetTenantId, setRouteTargetTenantId] = useState('')
-  const [deletingRouteId, setDeletingRouteId] = useState('')
-  const [defaultTenantDraft, setDefaultTenantDraft] = useState('')
-  const [escalationTenantDraft, setEscalationTenantDraft] = useState('')
-  const [offerTimeoutDraft, setOfferTimeoutDraft] = useState('30')
-  const [maxOffersDraft, setMaxOffersDraft] = useState('3')
-  const [forceHqDraft, setForceHqDraft] = useState(false)
   const [usageMonth, setUsageMonth] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -79,7 +58,6 @@ export default function ParentAccountPage() {
   }, [siteSearch])
 
   const { data, isLoading } = useParentAccount()
-  const { data: leadIngest } = useParentLeadIngest()
   const { data: retailPage } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
@@ -93,7 +71,6 @@ export default function ParentAccountPage() {
   function invalidateParentQueries() {
     qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
     qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
-    qc.invalidateQueries({ queryKey: PARENT_LEAD_INGEST_QUERY_KEY })
   }
 
   const { data: activity = [] } = useQuery({
@@ -101,136 +78,10 @@ export default function ParentAccountPage() {
     queryFn: () => listParentAccountActivity(30).then(r => r.data),
   })
 
-  const { data: suburbRoutes = [] } = useQuery({
-    queryKey: ['parent-account-mobile-routes'],
-    queryFn: () => listMobileSuburbRoutes().then(r => r.data),
-    enabled: !!data,
-  })
-
   const { data: bookingUsage } = useQuery({
     queryKey: ['parent-shop-booking-usage', usageMonth],
     queryFn: () => getParentShopBookingUsage(usageMonth).then(r => r.data),
     enabled: !!data,
-  })
-
-  useEffect(() => {
-    if (data?.mobile_lead_default_tenant_id != null) {
-      setDefaultTenantDraft(data.mobile_lead_default_tenant_id)
-    } else {
-      setDefaultTenantDraft('')
-    }
-  }, [data?.mobile_lead_default_tenant_id])
-
-  useEffect(() => {
-    if (leadIngest?.mobile_lead_escalation_tenant_id != null) {
-      setEscalationTenantDraft(leadIngest.mobile_lead_escalation_tenant_id)
-    } else {
-      setEscalationTenantDraft('')
-    }
-    if (leadIngest?.mobile_lead_offer_timeout_minutes != null) {
-      setOfferTimeoutDraft(String(leadIngest.mobile_lead_offer_timeout_minutes))
-    }
-    if (leadIngest?.mobile_lead_max_operator_offers != null) {
-      setMaxOffersDraft(String(leadIngest.mobile_lead_max_operator_offers))
-    }
-    setForceHqDraft(leadIngest?.mobile_lead_force_hq_dispatch === true)
-  }, [
-    leadIngest?.mobile_lead_escalation_tenant_id,
-    leadIngest?.mobile_lead_offer_timeout_minutes,
-    leadIngest?.mobile_lead_max_operator_offers,
-    leadIngest?.mobile_lead_force_hq_dispatch,
-  ])
-
-  const enableIngestMut = useMutation({
-    mutationFn: () => enableParentMobileLeadIngest().then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not enable ingest URL.')),
-  })
-
-  const setSecretMut = useMutation({
-    mutationFn: (secret: string) => setParentMobileLeadWebhookSecret(secret).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      setWebhookSecret('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not save security password.')),
-  })
-
-  const clearSecretMut = useMutation({
-    mutationFn: () => clearParentMobileLeadWebhookSecret().then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not clear security password.')),
-  })
-
-  const setDefaultTenantMut = useMutation({
-    mutationFn: (tenant_id: string | null) => setParentMobileLeadDefaultTenant(tenant_id).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not update default shop.')),
-  })
-
-  const setEscalationTenantMut = useMutation({
-    mutationFn: (tenant_id: string | null) => setParentMobileLeadEscalationTenant(tenant_id).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not update HQ escalation site.')),
-  })
-
-  const setDispatchSettingsMut = useMutation({
-    mutationFn: () =>
-      setParentMobileLeadDispatchSettings({
-        offer_timeout_minutes: Number(offerTimeoutDraft),
-        max_operator_offers: Number(maxOffersDraft),
-        force_hq_dispatch: forceHqDraft,
-      }).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      invalidateParentQueries()
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not update dispatch settings.')),
-  })
-
-  const createRouteMut = useMutation({
-    mutationFn: () =>
-      createMobileSuburbRoute({
-        state_code: routeState,
-        suburb: routeSuburb.trim(),
-        target_tenant_id: routeTargetTenantId,
-      }).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      setRouteSuburb('')
-      qc.invalidateQueries({ queryKey: ['parent-account-mobile-routes'] })
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not add suburb route.')),
-  })
-
-  const deleteRouteMut = useMutation({
-    mutationFn: (id: string) => deleteMobileSuburbRoute(id).then(r => r.data),
-    onSuccess: () => {
-      setError('')
-      qc.invalidateQueries({ queryKey: ['parent-account-mobile-routes'] })
-      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
-    },
-    onError: err => setError(getApiErrorMessage(err, 'Could not remove route.')),
   })
 
   const linkMut = useMutation({
@@ -362,39 +213,13 @@ export default function ParentAccountPage() {
 
   if (isLoading) return <Spinner />
 
-  const ingestPublicId = data?.mobile_lead_ingest_public_id ?? null
-  const ingestUrl =
-    ingestPublicId != null && ingestPublicId !== ''
-      ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
-      : ''
-  const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
-  const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
-  const defaultTenantDirty = defaultTenantDraft !== savedDefaultTenantId
-  const savedEscalationTenantId = leadIngest?.mobile_lead_escalation_tenant_id ?? ''
-  const escalationTenantDirty = escalationTenantDraft !== savedEscalationTenantId
-  const dispatchSettingsDirty =
-    offerTimeoutDraft !== String(leadIngest?.mobile_lead_offer_timeout_minutes ?? 30)
-    || maxOffersDraft !== String(leadIngest?.mobile_lead_max_operator_offers ?? 3)
-    || forceHqDraft !== (leadIngest?.mobile_lead_force_hq_dispatch === true)
+  if (minitHqUi || isMinitHqUi(product, planCode, sessionTenantSlug)) {
+    return <Navigate to="/minit/lead-routing" replace />
+  }
+
   const retailSites = retailPage?.sites ?? []
   const retailTotal = retailPage?.total ?? data?.site_count ?? 0
   const operatorSites = operatorsPage?.sites ?? []
-
-  function siteLabel(tenantId: string) {
-    const s =
-      retailSites.find(x => x.tenant_id === tenantId)
-      ?? operatorSites.find(x => x.tenant_id === tenantId)
-    return s ? formatTenantLabel(s.tenant_name, s.shop_number ?? undefined) : tenantId
-  }
-
-  async function copyIngestUrl() {
-    if (!ingestUrl) return
-    try {
-      await navigator.clipboard.writeText(ingestUrl)
-    } catch {
-      setError('Could not copy to clipboard.')
-    }
-  }
 
   function closeModal() {
     setShowAddModal(false)
@@ -642,248 +467,9 @@ export default function ParentAccountPage() {
         )}
       </Card>
 
-      {/* Website lead routing */}
-      <Card className='mb-6 p-5'>
-        <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Website Lead Routing</h2>
-        <p className='text-sm mt-1 mb-5' style={{ color: 'var(--ms-text-mid)' }}>
-          Customers submit a job request on your website, pick their suburb, and it automatically lands in the right shop's inbox — ready to quote.
-        </p>
-
-        {/* Step 1 */}
-        <div className='mb-5'>
-          <div className='flex items-center gap-2 mb-2'>
-            <StepBadge n={1} done={!!ingestUrl} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Generate your link</p>
-          </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
-            This is the URL your website posts to when a customer fills in their details.
-          </p>
-          <div className='ml-8 flex flex-wrap gap-2'>
-            <Button
-              variant='secondary'
-              onClick={() => enableIngestMut.mutate()}
-              disabled={enableIngestMut.isPending || !!ingestPublicId}
-            >
-              {ingestPublicId ? 'Link ready' : enableIngestMut.isPending ? 'Generating…' : 'Generate link'}
-            </Button>
-            {ingestUrl && (
-              <Button variant='secondary' onClick={() => void copyIngestUrl()}>
-                Copy link
-              </Button>
-            )}
-          </div>
-          {ingestUrl && (
-            <p className='text-xs mt-2 ml-8 break-all font-mono' style={{ color: 'var(--ms-text-muted)' }}>
-              {ingestUrl}
-            </p>
-          )}
-        </div>
-
-        {/* Step 2 */}
-        <div className='mb-5'>
-          <div className='flex items-center gap-2 mb-2'>
-            <StepBadge n={2} done={secretConfigured} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Set a security password</p>
-          </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
-            Your website sends this password with every request so only your site can submit leads. Must be at least 16 characters.
-          </p>
-          <div className='ml-8 grid gap-3 md:grid-cols-2 max-w-lg'>
-            <Input
-              label='Security password'
-              type='password'
-              autoComplete='new-password'
-              value={webhookSecret}
-              onChange={e => setWebhookSecret(e.target.value)}
-              placeholder='Make it long and random'
-            />
-            <div className='flex items-end gap-2'>
-              <Button
-                onClick={() => setSecretMut.mutate(webhookSecret.trim())}
-                disabled={webhookSecret.trim().length < 16 || setSecretMut.isPending}
-              >
-                {setSecretMut.isPending ? 'Saving…' : 'Save'}
-              </Button>
-              {secretConfigured && (
-                <Button
-                  variant='ghost'
-                  onClick={() => clearSecretMut.mutate()}
-                  disabled={clearSecretMut.isPending}
-                >
-                  {clearSecretMut.isPending ? 'Clearing…' : 'Clear'}
-                </Button>
-              )}
-            </div>
-          </div>
-          {secretConfigured && (
-            <p className='text-xs mt-2 ml-8 font-medium' style={{ color: '#1F6D4C' }}>
-              Password saved — your website is ready to connect.
-            </p>
-          )}
-        </div>
-
-        {/* Step 3 */}
-        <div>
-          <div className='flex items-center gap-2 mb-2'>
-            <StepBadge n={3} done={suburbRoutes.length > 0 || !!savedDefaultTenantId} />
-            <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Operator work areas (suburb map)</p>
-          </div>
-          <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
-            Suburbs within ~100km of a mobile operator hub are mapped automatically. Outside that range, leads go to HQ for manual dispatch.
-          </p>
-
-          {/* Default shop */}
-          <div className='ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg'>
-            <div className='flex-1 min-w-0'>
-              <Select
-                label='Legacy fallback operator (optional — unmapped suburbs now go to HQ)'
-                value={defaultTenantDraft}
-                onChange={e => setDefaultTenantDraft(e.target.value)}
-              >
-                <option value=''>No fallback — only mapped suburbs accepted</option>
-                {operatorSites.map(s => (
-                  <option key={s.tenant_id} value={s.tenant_id}>
-                    {s.tenant_name} (#{s.tenant_slug})
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <Button
-              variant='secondary'
-              onClick={() => setDefaultTenantMut.mutate(defaultTenantDraft === '' ? null : defaultTenantDraft)}
-              disabled={!defaultTenantDirty || setDefaultTenantMut.isPending}
-            >
-              {setDefaultTenantMut.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-
-          <div className='ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg'>
-            <div className='flex-1 min-w-0'>
-              <Select
-                label='HQ escalation (manual quoting)'
-                value={escalationTenantDraft}
-                onChange={e => setEscalationTenantDraft(e.target.value)}
-              >
-                <option value=''>No HQ escalation</option>
-                {[...(retailSites.length ? retailSites : data?.sites ?? []), ...operatorSites].map(s => (
-                  <option key={s.tenant_id} value={s.tenant_id}>
-                    {s.tenant_name} (#{s.tenant_slug})
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <Button
-              variant='secondary'
-              onClick={() => setEscalationTenantMut.mutate(escalationTenantDraft === '' ? null : escalationTenantDraft)}
-              disabled={!escalationTenantDirty || setEscalationTenantMut.isPending}
-            >
-              {setEscalationTenantMut.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-
-          <label className='ml-8 mb-4 flex items-center gap-2 text-sm cursor-pointer' style={{ color: 'var(--ms-text-mid)' }}>
-            <input
-              type='checkbox'
-              checked={forceHqDraft}
-              onChange={e => setForceHqDraft(e.target.checked)}
-            />
-            <span>
-              <strong style={{ color: 'var(--ms-text)' }}>HQ testing mode</strong>
-              {' — send all website leads to HQ (skip operator SMS and cascade)'}
-            </span>
-          </label>
-
-          <div className='ml-8 mb-4 grid gap-3 md:grid-cols-3 max-w-2xl'>
-            <Input
-              label='Minutes per operator to quote'
-              type='number'
-              min={5}
-              max={240}
-              value={offerTimeoutDraft}
-              onChange={e => setOfferTimeoutDraft(e.target.value)}
-            />
-            <Input
-              label='Max operators before HQ'
-              type='number'
-              min={1}
-              max={10}
-              value={maxOffersDraft}
-              onChange={e => setMaxOffersDraft(e.target.value)}
-            />
-            <div className='flex items-end'>
-              <Button
-                variant='secondary'
-                onClick={() => setDispatchSettingsMut.mutate()}
-                disabled={!dispatchSettingsDirty || setDispatchSettingsMut.isPending}
-              >
-                {setDispatchSettingsMut.isPending ? 'Saving…' : 'Save dispatch settings'}
-              </Button>
-            </div>
-          </div>
-          <p className='text-xs mb-4 ml-8' style={{ color: 'var(--ms-text-muted)' }}>
-            Operators receive an SMS when a lead is assigned. If they do not quote in time, the next nearest operator is notified, then HQ.
-          </p>
-
-          {/* Add route */}
-          <div className='ml-8 grid gap-3 md:grid-cols-4 max-w-2xl'>
-            <Select label='State' value={routeState} onChange={e => setRouteState(e.target.value)}>
-              {['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'].map(st => (
-                <option key={st} value={st}>{st}</option>
-              ))}
-            </Select>
-            <Input
-              label='Suburb'
-              value={routeSuburb}
-              onChange={e => setRouteSuburb(e.target.value)}
-              placeholder='e.g. Parramatta'
-            />
-            <Select label='Mobile operator' value={routeTargetTenantId} onChange={e => setRouteTargetTenantId(e.target.value)}>
-              <option value=''>Select operator</option>
-              {operatorSites.map(s => (
-                <option key={s.tenant_id} value={s.tenant_id}>{s.tenant_name}</option>
-              ))}
-            </Select>
-            <div className='flex items-end'>
-              <Button
-                onClick={() => createRouteMut.mutate()}
-                disabled={!routeSuburb.trim() || !routeTargetTenantId || createRouteMut.isPending}
-              >
-                {createRouteMut.isPending ? 'Adding…' : 'Add'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Route list */}
-          {suburbRoutes.length === 0 ? (
-            <p className='text-sm mt-3 ml-8' style={{ color: 'var(--ms-text-muted)' }}>
-              No suburb routes yet.
-            </p>
-          ) : (
-            <ul className='mt-3 ml-8 divide-y rounded-lg border' style={{ borderColor: 'var(--ms-border)' }}>
-              {suburbRoutes.map(r => (
-                <li key={r.id} className='px-3 py-2.5 flex justify-between gap-3 text-sm'>
-                  <span style={{ color: 'var(--ms-text)' }}>
-                    <span className='font-medium'>{r.suburb_normalized}</span>
-                    <span style={{ color: 'var(--ms-text-muted)' }}>, {r.state_code}</span>
-                    <span style={{ color: 'var(--ms-text-muted)' }}> → {siteLabel(r.target_tenant_id)}</span>
-                  </span>
-                  <Button
-                    variant='ghost'
-                    className='px-2 py-1 text-xs shrink-0'
-                    onClick={() => {
-                      setDeletingRouteId(r.id)
-                      void deleteRouteMut.mutateAsync(r.id).finally(() => setDeletingRouteId(''))
-                    }}
-                    disabled={deleteRouteMut.isPending && deletingRouteId === r.id}
-                  >
-                    Remove
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Card>
+      <div className='mb-6'>
+        <WebsiteLeadRoutingPanel onError={setError} />
+      </div>
 
       {/* Activity log */}
       <Card>
@@ -917,20 +503,6 @@ export default function ParentAccountPage() {
           </div>
         )}
       </Card>
-    </div>
-  )
-}
-
-function StepBadge({ n, done }: { n: number; done: boolean }) {
-  return (
-    <div
-      className='w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0'
-      style={{
-        backgroundColor: done ? '#1F6D4C' : 'var(--ms-border-strong)',
-        color: done ? '#fff' : 'var(--ms-text-muted)',
-      }}
-    >
-      {done ? '✓' : n}
     </div>
   )
 }
