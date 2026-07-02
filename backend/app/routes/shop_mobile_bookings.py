@@ -115,22 +115,11 @@ def _resolve_operator_for_booking(
         parent_id = _assert_parent_account_link(session, shop_tid, route.target_tenant_id)
         return route.target_tenant_id, parent_id, "suburb_route"
 
-    for parent_id in sorted(parent_ids, key=str):
-        parent = session.get(ParentAccount, parent_id)
-        fallback_tid = parent.mobile_lead_default_tenant_id if parent else None
-        if not fallback_tid or not _tenant_is_bookable_operator(session, fallback_tid):
-            continue
-        try:
-            linked_parent_id = _assert_parent_account_link(session, shop_tid, fallback_tid)
-        except HTTPException:
-            continue
-        return fallback_tid, linked_parent_id, "fallback_operator"
-
     raise HTTPException(
         status_code=422,
         detail=(
-            "No mobile operator is configured for this suburb. "
-            "Ask support to map the suburb or set a fallback operator."
+            "This suburb is outside the mobile operator coverage map (~100km from nearest hub). "
+            "Contact HQ to arrange service manually."
         ),
     )
 

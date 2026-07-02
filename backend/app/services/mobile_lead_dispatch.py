@@ -16,7 +16,7 @@ from ..minit_mobile_routing import (
     normalize_suburb_name,
     parse_candidate_operator_ids,
     rank_mobile_operator_candidates,
-    resolve_mobile_operator_route,
+    suburb_in_operator_territory,
 )
 from ..minit_provision import _is_operator_plan
 from ..models import (
@@ -374,7 +374,12 @@ def offer_dispatch_to_current_operator(session: Session, dispatch: MobileLeadDis
     return job
 
 
-def escalate_dispatch_to_hq(session: Session, dispatch: MobileLeadDispatch) -> AutoKeyJob | None:
+def escalate_dispatch_to_hq(
+    session: Session,
+    dispatch: MobileLeadDispatch,
+    *,
+    reason: str = "operator_timeout",
+) -> AutoKeyJob | None:
     parent = session.get(ParentAccount, dispatch.parent_account_id)
     if not parent:
         dispatch.status = DISPATCH_STATUS_FAILED
@@ -403,16 +408,25 @@ def escalate_dispatch_to_hq(session: Session, dispatch: MobileLeadDispatch) -> A
 
     payload = json.loads(dispatch.payload_json)
     customer_name = str(payload.get("customer_name") or "Customer").strip()
+    if reason == "outside_operator_territory":
+        summary = (
+            f"Website lead outside operator map — HQ manual dispatch "
+            f"({customer_name}, {dispatch.suburb} {dispatch.state_code})"
+        )
+        inbox_suffix = "— outside operator map, HQ manual dispatch"
+    else:
+        summary = (
+            f"Website lead escalated to HQ for manual quoting "
+            f"({customer_name}, {dispatch.suburb} {dispatch.state_code})"
+        )
+        inbox_suffix = "— HQ manual quote"
     session.add(
         ParentAccountEventLog(
             parent_account_id=dispatch.parent_account_id,
             tenant_id=hq_tid,
             actor_email="website-lead@dispatch",
             event_type="mobile_lead_dispatch_escalated_hq",
-            event_summary=(
-                f"Website lead escalated to HQ for manual quoting "
-                f"({customer_name}, {dispatch.suburb} {dispatch.state_code})"
-            ),
+            event_summary=summary,
         )
     )
     _log_inbox_quote_needed(
@@ -422,7 +436,7 @@ def escalate_dispatch_to_hq(session: Session, dispatch: MobileLeadDispatch) -> A
         customer_name=customer_name,
         suburb=dispatch.suburb,
         state_code=dispatch.state_code,
-        summary_suffix="— HQ manual quote",
+        summary_suffix=inbox_suffix,
     )
     return job
 
@@ -476,18 +490,21 @@ def start_mobile_lead_dispatch(
     timeout = max(int(parent.mobile_lead_offer_timeout_minutes or 30), 5)
     max_offers = max(int(parent.mobile_lead_max_operator_offers or 3), 1)
 
-    candidates = rank_mobile_operator_candidates(
+    in_territory = suburb_in_operator_territory(
         session,
         parent_id=parent.id,
         suburb=suburb,
         state_code=st,
-        max_candidates=max_offers,
     )
-
-    if not candidates:
-        resolution = resolve_mobile_operator_route(session, parent_id=parent.id, suburb=suburb, state_code=st)
-        if resolution.operator_tenant_id:
-            candidates = [resolution.operator_tenant_id]
+    candidates: list[UUID] = []
+    if in_territory:
+        candidates = rank_mobile_operator_candidates(
+            session,
+            parent_id=parent.id,
+            suburb=suburb,
+            state_code=st,
+            max_candidates=max_offers,
+        )
 
     dispatch = MobileLeadDispatch(
         parent_account_id=parent.id,
@@ -507,7 +524,11 @@ def start_mobile_lead_dispatch(
     if candidates:
         offer_dispatch_to_current_operator(session, dispatch)
     else:
-        escalate_dispatch_to_hq(session, dispatch)
+        escalate_dispatch_to_hq(
+            session,
+            dispatch,
+            reason="outside_operator_territory" if not in_territory else "operator_timeout",
+        )
 
     return dispatch
 

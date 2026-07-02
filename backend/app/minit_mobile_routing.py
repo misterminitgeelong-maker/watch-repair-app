@@ -41,6 +41,78 @@ def _tenant_is_bookable_operator(tenant: Tenant) -> bool:
     return _is_operator_plan(tenant.plan_code)
 
 
+def lookup_mobile_suburb_route(
+    session: Session,
+    *,
+    parent_id: UUID,
+    suburb: str,
+    state_code: str,
+) -> MobileSuburbRoute | None:
+    """Return the territory route row when suburb is inside the operator map."""
+    st = state_code.strip().upper()
+    sub_norm = normalize_suburb_name(suburb)
+    if st not in AU_STATES or not sub_norm:
+        return None
+    return session.exec(
+        select(MobileSuburbRoute)
+        .where(MobileSuburbRoute.parent_account_id == parent_id)
+        .where(MobileSuburbRoute.state_code == st)
+        .where(MobileSuburbRoute.suburb_normalized == sub_norm)
+    ).first()
+
+
+def suburb_in_operator_territory(
+    session: Session,
+    *,
+    parent_id: UUID,
+    suburb: str,
+    state_code: str,
+) -> bool:
+    """True when suburb is on the imported operator territory map (within ~100km of a hub)."""
+    return lookup_mobile_suburb_route(
+        session,
+        parent_id=parent_id,
+        suburb=suburb,
+        state_code=state_code,
+    ) is not None
+
+
+def _resolution_for_outside_territory(
+    session: Session,
+    *,
+    parent_id: UUID,
+    suburb: str,
+    state_code: str,
+    suburb_normalized: str,
+) -> MobileRoutingResolution:
+    parent = session.get(ParentAccount, parent_id)
+    hq_tid = parent.mobile_lead_escalation_tenant_id if parent else None
+    if hq_tid:
+        tenant = session.get(Tenant, hq_tid)
+        if tenant:
+            return MobileRoutingResolution(
+                suburb=suburb.strip(),
+                state_code=state_code,
+                suburb_normalized=suburb_normalized,
+                routing_rule="outside_operator_territory",
+                operator_tenant_id=tenant.id,
+                operator_slug=tenant.slug,
+                operator_name=tenant.name,
+                operator_shop_number=tenant.shop_number,
+                message=(
+                    "Outside the mobile operator map (~100km from nearest hub). "
+                    "Lead goes to HQ for manual dispatch."
+                ),
+            )
+    return MobileRoutingResolution(
+        suburb=suburb.strip(),
+        state_code=state_code,
+        suburb_normalized=suburb_normalized,
+        routing_rule="unmapped",
+        message="Outside operator territory and no HQ escalation site configured",
+    )
+
+
 def resolve_mobile_operator_route(
     session: Session,
     *,
@@ -48,18 +120,12 @@ def resolve_mobile_operator_route(
     suburb: str,
     state_code: str,
 ) -> MobileRoutingResolution:
-    """Resolve suburb + state to an operator using routes then parent fallback."""
+    """Resolve suburb + state to an operator using the territory map, else HQ."""
     st = state_code.strip().upper()
     sub_norm = normalize_suburb_name(suburb)
-    base = MobileRoutingResolution(
-        suburb=suburb.strip(),
-        state_code=st,
-        suburb_normalized=sub_norm,
-        routing_rule="unmapped",
-    )
     if st not in AU_STATES:
         return MobileRoutingResolution(
-            suburb=base.suburb,
+            suburb=suburb.strip(),
             state_code=st,
             suburb_normalized=sub_norm,
             routing_rule="invalid_state",
@@ -67,24 +133,24 @@ def resolve_mobile_operator_route(
         )
     if not sub_norm:
         return MobileRoutingResolution(
-            suburb=base.suburb,
+            suburb=suburb.strip(),
             state_code=st,
             suburb_normalized=sub_norm,
             routing_rule="invalid_suburb",
             message="suburb is required",
         )
 
-    route = session.exec(
-        select(MobileSuburbRoute)
-        .where(MobileSuburbRoute.parent_account_id == parent_id)
-        .where(MobileSuburbRoute.state_code == st)
-        .where(MobileSuburbRoute.suburb_normalized == sub_norm)
-    ).first()
+    route = lookup_mobile_suburb_route(
+        session,
+        parent_id=parent_id,
+        suburb=suburb,
+        state_code=st,
+    )
     if route:
         tenant = session.get(Tenant, route.target_tenant_id)
         if tenant and _tenant_is_bookable_operator(tenant):
             return MobileRoutingResolution(
-                suburb=base.suburb,
+                suburb=suburb.strip(),
                 state_code=st,
                 suburb_normalized=sub_norm,
                 routing_rule="suburb_route",
@@ -94,29 +160,12 @@ def resolve_mobile_operator_route(
                 operator_shop_number=tenant.shop_number,
             )
 
-    parent = session.get(ParentAccount, parent_id)
-    fallback_tid = parent.mobile_lead_default_tenant_id if parent else None
-    if fallback_tid:
-        tenant = session.get(Tenant, fallback_tid)
-        if tenant and _tenant_is_bookable_operator(tenant):
-            return MobileRoutingResolution(
-                suburb=base.suburb,
-                state_code=st,
-                suburb_normalized=sub_norm,
-                routing_rule="fallback_operator",
-                operator_tenant_id=tenant.id,
-                operator_slug=tenant.slug,
-                operator_name=tenant.name,
-                operator_shop_number=tenant.shop_number,
-                message="No suburb route; using fallback operator",
-            )
-
-    return MobileRoutingResolution(
-        suburb=base.suburb,
+    return _resolution_for_outside_territory(
+        session,
+        parent_id=parent_id,
+        suburb=suburb,
         state_code=st,
         suburb_normalized=sub_norm,
-        routing_rule="unmapped",
-        message="No suburb route and no fallback operator configured",
     )
 
 
@@ -159,25 +208,35 @@ def rank_mobile_operator_candidates(
     max_candidates: int = 3,
 ) -> list[UUID]:
     """Return operator tenant ids ordered nearest-first for cascade quoting."""
-    resolution = resolve_mobile_operator_route(
+    if not suburb_in_operator_territory(
+        session,
+        parent_id=parent_id,
+        suburb=suburb,
+        state_code=state_code,
+    ):
+        return []
+
+    route = lookup_mobile_suburb_route(
         session,
         parent_id=parent_id,
         suburb=suburb,
         state_code=state_code,
     )
-    st = resolution.state_code
-    sub_norm = resolution.suburb_normalized
+    if not route:
+        return []
+
+    st = state_code.strip().upper()
+    sub_norm = normalize_suburb_name(suburb)
     operators = _bookable_operators_for_parent(session, parent_id)
     if not operators:
         return []
 
     coords = _suburb_coord_index().get((sub_norm, st))
-    primary_id = resolution.operator_tenant_id
+    primary_id = route.target_tenant_id
 
     def _distance_km(tenant: Tenant) -> float:
         if coords and tenant.base_lat is not None and tenant.base_lng is not None:
             return haversine_km(coords[0], coords[1], tenant.base_lat, tenant.base_lng)
-        # Same-state operators sort before others when distance unknown.
         region = (tenant.minit_region or "").strip().upper()
         state_penalty = 0.0 if region == st else 5000.0
         return state_penalty
@@ -186,15 +245,16 @@ def rank_mobile_operator_candidates(
     ordered: list[UUID] = []
     seen: set[UUID] = set()
 
-    if primary_id and _tenant_linked_to_parent(session, parent_id, primary_id):
+    tenant = session.get(Tenant, primary_id)
+    if tenant and _tenant_is_bookable_operator(tenant) and _tenant_linked_to_parent(session, parent_id, primary_id):
         ordered.append(primary_id)
         seen.add(primary_id)
 
-    for tenant in ranked:
-        if tenant.id in seen:
+    for op in ranked:
+        if op.id in seen:
             continue
-        seen.add(tenant.id)
-        ordered.append(tenant.id)
+        seen.add(op.id)
+        ordered.append(op.id)
 
     return ordered[: max(1, max_candidates)]
 

@@ -454,18 +454,9 @@ def test_booking_read_includes_requesting_shop_number():
     assert row["requesting_shop_number"] == "3269"
 
 
-def test_fallback_operator_when_suburb_unmapped():
+def test_unmapped_suburb_outside_operator_map_rejected():
     suffix = uuid4().hex[:8]
     shop_h, op_h, shop_tid, op_tid = _setup_parent_network(suffix)
-    hq_email = f"hq-{suffix}@test.local"
-    hq_h = _headers(_login(f"hq-{suffix}", hq_email)["access_token"])
-
-    fallback = client.put(
-        "/v1/parent-accounts/me/mobile-lead-ingest/default-tenant",
-        headers=hq_h,
-        json={"tenant_id": op_tid},
-    )
-    assert fallback.status_code == 200, fallback.text
 
     suggest = client.get(
         "/v1/shop-mobile-bookings/suggest-operator",
@@ -473,8 +464,7 @@ def test_fallback_operator_when_suburb_unmapped():
         params={"suburb": "Geelong", "state_code": "VIC"},
     )
     assert suggest.status_code == 200
-    assert suggest.json()["tenant_id"] == op_tid
-    assert suggest.json()["routing_rule"] == "fallback_operator"
+    assert suggest.json() is None
 
     create = client.post(
         "/v1/shop-mobile-bookings",
@@ -482,13 +472,12 @@ def test_fallback_operator_when_suburb_unmapped():
         json=_booking_payload(
             suburb="Geelong",
             state_code="VIC",
-            customer_name="Fallback Customer",
+            customer_name="Remote Customer",
             job_address="1 Moorabool St, Geelong VIC",
         ),
     )
-    assert create.status_code == 201, create.text
-    assert create.json()["operator_routing_rule"] == "fallback_operator"
-    assert create.json()["target_operator_tenant_id"] == op_tid
+    assert create.status_code == 422
+    assert "outside the mobile operator coverage map" in create.json()["detail"].lower()
 
 
 def test_shop_notified_on_accept_when_shop_phone_configured():

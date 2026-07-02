@@ -724,14 +724,14 @@ export default function ParentAccountPage() {
             <p className='text-sm font-semibold' style={{ color: 'var(--ms-text)' }}>Operator work areas (suburb map)</p>
           </div>
           <p className='text-sm mb-3 ml-8' style={{ color: 'var(--ms-text-mid)' }}>
-            Map suburbs to mobile operators for website leads and shop booking suggestions. Set a fallback operator for unmapped suburbs.
+            Suburbs within ~100km of a mobile operator hub are mapped automatically. Outside that range, leads go to HQ for manual dispatch.
           </p>
 
           {/* Default shop */}
           <div className='ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg'>
             <div className='flex-1 min-w-0'>
               <Select
-                label='Fallback operator (unrecognised suburbs)'
+                label='Legacy fallback operator (optional — unmapped suburbs now go to HQ)'
                 value={defaultTenantDraft}
                 onChange={e => setDefaultTenantDraft(e.target.value)}
               >

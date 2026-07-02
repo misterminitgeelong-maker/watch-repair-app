@@ -86,7 +86,10 @@ def ingest_mobile_key_lead(
     tenant_id = dispatch.current_operator_tenant_id
     message = "Lead dispatched to mobile operator; quote within the configured time window."
     if dispatch.status == "escalated_hq":
-        message = "No operator available; lead escalated to HQ for manual quoting."
+        message = (
+            "Outside mobile operator coverage (~100km from nearest hub); "
+            "lead sent to HQ for manual dispatch."
+        )
 
     return {
         "dispatch_id": str(dispatch.id),

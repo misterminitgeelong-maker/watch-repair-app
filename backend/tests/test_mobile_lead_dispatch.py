@@ -212,6 +212,26 @@ def test_dispatch_escalates_to_next_operator_then_hq():
         assert dispatch.status == DISPATCH_STATUS_ESCALATED_HQ
 
 
+def test_outside_territory_goes_straight_to_hq():
+    ingest_id, _op1_id, _op2_id = _setup_network()
+    body = _ingest_lead(ingest_id, suburb="Birdsville")
+
+    assert body["dispatch_status"] == DISPATCH_STATUS_ESCALATED_HQ
+    assert body["offer_expires_at"] is None
+
+    with Session(engine) as session:
+        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
+        assert dispatch is not None
+        assert dispatch.status == DISPATCH_STATUS_ESCALATED_HQ
+
+        sms_rows = session.exec(
+            select(SmsLog)
+            .where(SmsLog.event == "mobile_lead_offer")
+            .where(SmsLog.auto_key_job_id == UUID(body["job_id"]))
+        ).all()
+        assert len(sms_rows) == 0
+
+
 def test_quote_completes_dispatch():
     ingest_id, _op1_id, _op2_id = _setup_network()
     body = _ingest_lead(ingest_id)
