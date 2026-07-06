@@ -7,9 +7,12 @@ existing website-lead shared secret is passed as a ``key`` query parameter.
 Capture-and-triage v1: no field parsing — the email is stored whole and
 surfaced in the Minit HQ inbox so a person can create the job. Auto-parsing
 into AutoKey jobs comes once real form templates have been collected.
-"""
 
-from __future__ import annotations
+Note: no ``from __future__ import annotations`` here — stringified annotations
+on the public route's signature crash request handling and /openapi.json under
+the deployed fastapi 0.115 + pydantic >= 2.12 combination (unresolvable
+``ForwardRef('UUID')`` TypeAdapter).
+"""
 
 import re
 from email import policy
