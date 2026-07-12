@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock } from 'lucide-react'
+import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download } from 'lucide-react'
 import { useRef, useState } from 'react'
 import {
   getExportCustomersCsv,
@@ -7,14 +7,18 @@ import {
   getExportJobsCsv,
   getExportMyData,
   getExportPeriodSummaryCsv,
+  getExportSalesCsv,
   getReportsSummary,
   getReportsTrends,
   getReportsTechBreakdown,
   getTenantActivity,
   type ReportPeriod,
+  type SalesCategory,
+  type SalesCategorySummary,
 } from '@/lib/api'
 import { Button, Card, PageHeader, Spinner } from '@/components/ui'
 import { formatCents } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 type PeriodKey = '3m' | '6m' | '12m'
 const PERIODS: { key: PeriodKey; label: string; months: number }[] = [
@@ -138,6 +142,56 @@ function SalesFunnel({
   )
 }
 
+function SalesCategoryCard({
+  label,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  summary,
+  onExport,
+  exporting,
+}: {
+  label: string
+  icon: React.ElementType
+  iconBg: string
+  iconColor: string
+  summary: SalesCategorySummary
+  onExport: () => void
+  exporting: boolean
+}) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
+          <Icon size={16} style={{ color: iconColor }} />
+        </div>
+        <h2 className="text-sm font-semibold flex-1" style={{ color: 'var(--ms-text)' }}>{label}</h2>
+        <Button variant="secondary" size="sm" onClick={onExport} disabled={exporting}>
+          <Download size={13} className="mr-1" /> Export
+        </Button>
+      </div>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span style={{ color: 'var(--ms-text-muted)' }}>Jobs</span>
+          <strong style={{ color: 'var(--ms-text)' }}>{summary.jobs}</strong>
+        </div>
+        <div className="flex justify-between">
+          <span style={{ color: 'var(--ms-text-muted)' }}>Revenue</span>
+          <strong style={{ color: 'var(--ms-text)' }}>{formatCents(summary.revenue_cents)}</strong>
+        </div>
+        <div className="flex justify-between">
+          <span style={{ color: 'var(--ms-text-muted)' }}>Cost</span>
+          <strong style={{ color: 'var(--ms-text)' }}>{formatCents(summary.cost_cents)}</strong>
+        </div>
+        <div className="flex justify-between pt-2 mt-1" style={{ borderTop: '1px dashed var(--ms-border)' }}>
+          <span style={{ color: 'var(--ms-text-muted)' }}>Outstanding</span>
+          <strong style={{ color: 'var(--ms-text)' }}>{formatCents(summary.outstanding_cents)}</strong>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -148,6 +202,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function ReportsPage() {
+  const { hasFeature } = useAuth()
   const [period, setPeriod] = useState<PeriodKey>('6m')
   const periodConfig = PERIODS.find(p => p.key === period)!
 
@@ -168,6 +223,13 @@ export default function ReportsPage() {
       downloadBlob(blob, 'my-data.json')
     },
   })
+  const [salesExportingCategory, setSalesExportingCategory] = useState<SalesCategory | null>(null)
+  const exportSalesMut = useMutation({
+    mutationFn: (category: SalesCategory) =>
+      getExportSalesCsv(category).then(r => { downloadBlob(r.data, `sales-${category}.csv`); return r }),
+    onMutate: category => setSalesExportingCategory(category),
+    onSettled: () => setSalesExportingCategory(null),
+  })
 
   const [exportPeriod, setExportPeriod] = useState<ReportPeriod>('week')
   const [exportReferenceDate, setExportReferenceDate] = useState(todayYmd())
@@ -187,7 +249,8 @@ export default function ReportsPage() {
     exportCustomersMut.isPending ||
     exportInvoicesMut.isPending ||
     exportMyDataMut.isPending ||
-    exportPeriodMut.isPending
+    exportPeriodMut.isPending ||
+    exportSalesMut.isPending
 
   if (isLoading) return <div><PageHeader title="Reports" /><Spinner /></div>
   if (!data) return <div><PageHeader title="Reports" /><p className="mt-4" style={{ color: 'var(--ms-text-muted)' }}>No report data available.</p></div>
@@ -291,6 +354,27 @@ export default function ReportsPage() {
                     className="text-[10px] uppercase tracking-wide font-medium px-1 mb-1 pt-2 border-t"
                     style={{ color: 'var(--ms-text-muted)', borderColor: 'var(--ms-border)' }}
                   >
+                    Sales exports
+                  </p>
+                  {[
+                    { label: 'All Sales CSV', action: () => exportSalesMut.mutate('all') },
+                    ...(hasFeature('watch') ? [{ label: 'Watch Repair Sales CSV', action: () => exportSalesMut.mutate('watch') }] : []),
+                    ...(hasFeature('auto_key') ? [{ label: 'Mobile Services Sales CSV', action: () => exportSalesMut.mutate('mobile') }] : []),
+                    ...(hasFeature('shoe') ? [{ label: 'Shoe Repair Sales CSV', action: () => exportSalesMut.mutate('shoe') }] : []),
+                  ].map(item => (
+                    <button
+                      key={item.label}
+                      className="w-full text-left px-4 py-2 text-sm hover:opacity-70 transition-opacity"
+                      style={{ color: 'var(--ms-text)' }}
+                      onClick={() => { item.action(); setExportOpen(false) }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                  <p
+                    className="text-[10px] uppercase tracking-wide font-medium px-1 mb-1 pt-2 border-t"
+                    style={{ color: 'var(--ms-text-muted)', borderColor: 'var(--ms-border)' }}
+                  >
                     Data exports
                   </p>
                   {[
@@ -321,6 +405,59 @@ export default function ReportsPage() {
         <MetricCard label="Gross Profit" value={formatCents(data.financials.gross_profit_cents)} icon={Scale} iconBg="#F1E8FB" iconColor="#6040A8" />
         <MetricCard label="Outstanding" value={formatCents(data.financials.outstanding_cents)} icon={BarChart3} iconBg="#FBEAEA" iconColor="#A33838" />
       </div>
+
+      {/* Sales by category — separate sections so each service line can be exported on its own */}
+      {data.by_category && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Sales by Category</h2>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
+              disabled={exportSalesMut.isPending}
+              onClick={() => exportSalesMut.mutate('all')}
+            >
+              <Download size={13} className="mr-1" /> Export all sales
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {hasFeature('watch') && (
+              <SalesCategoryCard
+                label="Watch Repair"
+                icon={Wrench}
+                iconBg="#E8F0FB"
+                iconColor="#2A5FA0"
+                summary={data.by_category.watch}
+                onExport={() => exportSalesMut.mutate('watch')}
+                exporting={salesExportingCategory === 'watch'}
+              />
+            )}
+            {hasFeature('auto_key') && (
+              <SalesCategoryCard
+                label="Mobile Services"
+                icon={KeyRound}
+                iconBg="#F1E8FB"
+                iconColor="#6840B4"
+                summary={data.by_category.mobile}
+                onExport={() => exportSalesMut.mutate('mobile')}
+                exporting={salesExportingCategory === 'mobile'}
+              />
+            )}
+            {hasFeature('shoe') && (
+              <SalesCategoryCard
+                label="Shoe Repair"
+                icon={Scissors}
+                iconBg="#E8F5EC"
+                iconColor="#1A6A3A"
+                summary={data.by_category.shoe}
+                onExport={() => exportSalesMut.mutate('shoe')}
+                exporting={salesExportingCategory === 'shoe'}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
         {/* Sales funnel */}

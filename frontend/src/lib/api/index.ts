@@ -1091,6 +1091,18 @@ export interface ReportsSummary {
     quote_to_invoice_pct: number
     avg_quote_response_hours: number | null
   }
+  by_category?: {
+    watch: SalesCategorySummary
+    shoe: SalesCategorySummary
+    mobile: SalesCategorySummary
+  }
+}
+export interface SalesCategorySummary {
+  jobs: number
+  billed_cents: number
+  revenue_cents: number
+  cost_cents: number
+  outstanding_cents: number
 }
 export const getReportsSummary = () => api.get<ReportsSummary>('/reports/summary')
 
@@ -1137,6 +1149,10 @@ export const getReportsWidgets = () => api.get<ReportsWidgets>('/reports/widgets
 export const getExportJobsCsv = () => api.get<Blob>('/reports/export/jobs', { responseType: 'blob' })
 export const getExportCustomersCsv = () => api.get<Blob>('/reports/export/customers', { responseType: 'blob' })
 export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoices', { responseType: 'blob' })
+
+export type SalesCategory = 'watch' | 'shoe' | 'mobile' | 'all'
+export const getExportSalesCsv = (category: SalesCategory) =>
+  api.get<Blob>('/reports/export/sales', { params: { category }, responseType: 'blob' })
 
 export type ReportPeriod = 'day' | 'week' | 'month' | 'quarter'
 

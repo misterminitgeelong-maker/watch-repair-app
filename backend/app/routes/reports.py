@@ -13,7 +13,7 @@ from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
 from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
-from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -565,6 +565,13 @@ def get_reports_summary(
         (shoe_approved / max(shoe_approved + shoe_sent + shoe_declined, 1)) * 100, 1
     )
 
+    ak_jobs_total = int(
+        session.exec(
+            select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+        ).one()
+    )
+    watch_revenue_cents = payment_revenue + orphan_paid_cents
+
     return {
         "counts": {
             "jobs": jobs_total,
@@ -604,6 +611,31 @@ def get_reports_summary(
             "avg_turnaround_days": avg_turnaround_days,
             "quote_to_invoice_pct": quote_to_invoice_pct,
             "avg_quote_response_hours": avg_quote_response_hours,
+        },
+        # Per-service-line breakdown so the UI can present (and export) Watch Repair,
+        # Mobile Services, and Shoe Repair as separate sections.
+        "by_category": {
+            "watch": {
+                "jobs": jobs_total,
+                "billed_cents": watch_billed,
+                "revenue_cents": watch_revenue_cents,
+                "cost_cents": watch_cost,
+                "outstanding_cents": max(watch_billed - watch_revenue_cents, 0),
+            },
+            "shoe": {
+                "jobs": shoe_jobs_total,
+                "billed_cents": shoe_billed,
+                "revenue_cents": shoe_revenue,
+                "cost_cents": shoe_cost,
+                "outstanding_cents": max(shoe_billed - shoe_revenue, 0),
+            },
+            "mobile": {
+                "jobs": ak_jobs_total,
+                "billed_cents": ak_billed,
+                "revenue_cents": ak_revenue,
+                "cost_cents": 0,
+                "outstanding_cents": max(ak_billed - ak_revenue, 0),
+            },
         },
     }
 
@@ -891,6 +923,118 @@ def export_invoices_csv(
         iter([buf.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=invoices.csv"},
+    )
+
+
+_SALES_CATEGORIES = {"watch", "shoe", "mobile", "all"}
+_SALES_CSV_HEADERS = ["category", "date", "reference", "job_number", "customer_name", "description", "status", "amount_cents"]
+_SALES_CATEGORY_LABELS = {"watch": "Watch Repair", "shoe": "Shoe Repair", "mobile": "Mobile Services"}
+
+
+def _watch_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
+    rows = session.exec(
+        select(Invoice, RepairJob.job_number, RepairJob.title, Customer.full_name)
+        .join(RepairJob, Invoice.repair_job_id == RepairJob.id)
+        .join(Watch, RepairJob.watch_id == Watch.id)
+        .join(Customer, Watch.customer_id == Customer.id)
+        .where(Invoice.tenant_id == tenant_id)
+        .order_by(Invoice.created_at.desc())
+    ).all()
+    label = _SALES_CATEGORY_LABELS["watch"]
+    return [
+        [
+            label,
+            invoice.created_at.isoformat() if invoice.created_at else "",
+            invoice.invoice_number or "",
+            job_number or "",
+            customer_name or "",
+            title or "",
+            invoice.status,
+            invoice.total_cents,
+        ]
+        for invoice, job_number, title, customer_name in rows
+    ]
+
+
+def _shoe_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
+    rows = session.exec(
+        select(ShoeRepairJobItem, ShoeRepairJob.job_number, ShoeRepairJob.status, Customer.full_name)
+        .join(ShoeRepairJob, ShoeRepairJobItem.shoe_repair_job_id == ShoeRepairJob.id)
+        .join(Shoe, ShoeRepairJob.shoe_id == Shoe.id)
+        .join(Customer, Shoe.customer_id == Customer.id)
+        .where(ShoeRepairJobItem.tenant_id == tenant_id)
+        .order_by(ShoeRepairJobItem.created_at.desc())
+    ).all()
+    label = _SALES_CATEGORY_LABELS["shoe"]
+    return [
+        [
+            label,
+            item.created_at.isoformat() if item.created_at else "",
+            "",
+            job_number or "",
+            customer_name or "",
+            item.item_name,
+            status,
+            int(round((item.unit_price_cents or 0) * item.quantity)),
+        ]
+        for item, job_number, status, customer_name in rows
+    ]
+
+
+def _mobile_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
+    rows = session.exec(
+        select(AutoKeyInvoice, AutoKeyJob.job_number, AutoKeyJob.title, Customer.full_name)
+        .join(AutoKeyJob, AutoKeyInvoice.auto_key_job_id == AutoKeyJob.id)
+        .join(Customer, AutoKeyJob.customer_id == Customer.id)
+        .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .order_by(AutoKeyInvoice.created_at.desc())
+    ).all()
+    label = _SALES_CATEGORY_LABELS["mobile"]
+    return [
+        [
+            label,
+            invoice.created_at.isoformat() if invoice.created_at else "",
+            invoice.invoice_number or "",
+            job_number or "",
+            customer_name or "",
+            title or "",
+            invoice.status,
+            invoice.total_cents,
+        ]
+        for invoice, job_number, title, customer_name in rows
+    ]
+
+
+@router.get("/export/sales", summary="Export sales data as CSV, optionally scoped to one service line")
+def export_sales_csv(
+    category: str = Query(default="all", description="watch | shoe | mobile | all"),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    category = category.lower()
+    if category not in _SALES_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"category must be one of: {', '.join(sorted(_SALES_CATEGORIES))}")
+
+    rows: list[list[Any]] = []
+    if category in ("watch", "all"):
+        rows.extend(_watch_sales_rows(session, auth.tenant_id))
+    if category in ("shoe", "all"):
+        rows.extend(_shoe_sales_rows(session, auth.tenant_id))
+    if category in ("mobile", "all"):
+        rows.extend(_mobile_sales_rows(session, auth.tenant_id))
+    if category == "all":
+        rows.sort(key=lambda r: r[1], reverse=True)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(_SALES_CSV_HEADERS)
+    w.writerows(rows)
+    buf.seek(0)
+    filename = f"sales-{category}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
