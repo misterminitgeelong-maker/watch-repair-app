@@ -931,15 +931,21 @@ _SALES_CSV_HEADERS = ["category", "date", "reference", "job_number", "customer_n
 _SALES_CATEGORY_LABELS = {"watch": "Watch Repair", "shoe": "Shoe Repair", "mobile": "Mobile Services"}
 
 
-def _watch_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
-    rows = session.exec(
+def _watch_sales_rows(
+    session: Session, tenant_id: UUID, start_dt: datetime | None = None, end_dt: datetime | None = None
+) -> list[list[Any]]:
+    stmt = (
         select(Invoice, RepairJob.job_number, RepairJob.title, Customer.full_name)
         .join(RepairJob, Invoice.repair_job_id == RepairJob.id)
         .join(Watch, RepairJob.watch_id == Watch.id)
         .join(Customer, Watch.customer_id == Customer.id)
         .where(Invoice.tenant_id == tenant_id)
-        .order_by(Invoice.created_at.desc())
-    ).all()
+    )
+    if start_dt is not None:
+        stmt = stmt.where(Invoice.created_at >= start_dt)
+    if end_dt is not None:
+        stmt = stmt.where(Invoice.created_at <= end_dt)
+    rows = session.exec(stmt.order_by(Invoice.created_at.desc())).all()
     label = _SALES_CATEGORY_LABELS["watch"]
     return [
         [
@@ -956,15 +962,21 @@ def _watch_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
     ]
 
 
-def _shoe_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
-    rows = session.exec(
+def _shoe_sales_rows(
+    session: Session, tenant_id: UUID, start_dt: datetime | None = None, end_dt: datetime | None = None
+) -> list[list[Any]]:
+    stmt = (
         select(ShoeRepairJobItem, ShoeRepairJob.job_number, ShoeRepairJob.status, Customer.full_name)
         .join(ShoeRepairJob, ShoeRepairJobItem.shoe_repair_job_id == ShoeRepairJob.id)
         .join(Shoe, ShoeRepairJob.shoe_id == Shoe.id)
         .join(Customer, Shoe.customer_id == Customer.id)
         .where(ShoeRepairJobItem.tenant_id == tenant_id)
-        .order_by(ShoeRepairJobItem.created_at.desc())
-    ).all()
+    )
+    if start_dt is not None:
+        stmt = stmt.where(ShoeRepairJobItem.created_at >= start_dt)
+    if end_dt is not None:
+        stmt = stmt.where(ShoeRepairJobItem.created_at <= end_dt)
+    rows = session.exec(stmt.order_by(ShoeRepairJobItem.created_at.desc())).all()
     label = _SALES_CATEGORY_LABELS["shoe"]
     return [
         [
@@ -981,14 +993,20 @@ def _shoe_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
     ]
 
 
-def _mobile_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
-    rows = session.exec(
+def _mobile_sales_rows(
+    session: Session, tenant_id: UUID, start_dt: datetime | None = None, end_dt: datetime | None = None
+) -> list[list[Any]]:
+    stmt = (
         select(AutoKeyInvoice, AutoKeyJob.job_number, AutoKeyJob.title, Customer.full_name)
         .join(AutoKeyJob, AutoKeyInvoice.auto_key_job_id == AutoKeyJob.id)
         .join(Customer, AutoKeyJob.customer_id == Customer.id)
         .where(AutoKeyInvoice.tenant_id == tenant_id)
-        .order_by(AutoKeyInvoice.created_at.desc())
-    ).all()
+    )
+    if start_dt is not None:
+        stmt = stmt.where(AutoKeyInvoice.created_at >= start_dt)
+    if end_dt is not None:
+        stmt = stmt.where(AutoKeyInvoice.created_at <= end_dt)
+    rows = session.exec(stmt.order_by(AutoKeyInvoice.created_at.desc())).all()
     label = _SALES_CATEGORY_LABELS["mobile"]
     return [
         [
@@ -1005,9 +1023,27 @@ def _mobile_sales_rows(session: Session, tenant_id: UUID) -> list[list[Any]]:
     ]
 
 
-@router.get("/export/sales", summary="Export sales data as CSV, optionally scoped to one service line")
+def _parse_ymd_bound(value: str, *, field: str, end_of_day: bool) -> datetime:
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{field} must be in YYYY-MM-DD format") from None
+    if end_of_day:
+        parsed = parsed.replace(hour=23, minute=59, second=59)
+    return parsed.replace(tzinfo=timezone.utc)
+
+
+@router.get("/export/sales", summary="Export sales data as CSV, optionally scoped to one service line and date range")
 def export_sales_csv(
     category: str = Query(default="all", description="watch | shoe | mobile | all"),
+    period: str | None = Query(
+        default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
+    ),
+    reference_date: str | None = Query(
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+    ),
+    date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
+    date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
@@ -1015,13 +1051,30 @@ def export_sales_csv(
     if category not in _SALES_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"category must be one of: {', '.join(sorted(_SALES_CATEGORIES))}")
 
+    start_dt: datetime | None = None
+    end_dt: datetime | None = None
+    filename_suffix = ""
+    if period is not None:
+        if period not in VALID_PERIODS:
+            raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
+        ref = parse_reference_date(reference_date)
+        start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
+        filename_suffix = f"-{start_ymd}_{end_ymd}"
+    else:
+        if date_from:
+            start_dt = _parse_ymd_bound(date_from, field="date_from", end_of_day=False)
+        if date_to:
+            end_dt = _parse_ymd_bound(date_to, field="date_to", end_of_day=True)
+        if start_dt is not None or end_dt is not None:
+            filename_suffix = f"-{date_from or 'start'}_{date_to or 'end'}"
+
     rows: list[list[Any]] = []
     if category in ("watch", "all"):
-        rows.extend(_watch_sales_rows(session, auth.tenant_id))
+        rows.extend(_watch_sales_rows(session, auth.tenant_id, start_dt, end_dt))
     if category in ("shoe", "all"):
-        rows.extend(_shoe_sales_rows(session, auth.tenant_id))
+        rows.extend(_shoe_sales_rows(session, auth.tenant_id, start_dt, end_dt))
     if category in ("mobile", "all"):
-        rows.extend(_mobile_sales_rows(session, auth.tenant_id))
+        rows.extend(_mobile_sales_rows(session, auth.tenant_id, start_dt, end_dt))
     if category == "all":
         rows.sort(key=lambda r: r[1], reverse=True)
 
@@ -1030,7 +1083,7 @@ def export_sales_csv(
     w.writerow(_SALES_CSV_HEADERS)
     w.writerows(rows)
     buf.seek(0)
-    filename = f"sales-{category}.csv"
+    filename = f"sales-{category}{filename_suffix}.csv"
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",

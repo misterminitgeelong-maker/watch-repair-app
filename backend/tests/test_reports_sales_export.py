@@ -1,5 +1,6 @@
 """Category-scoped sales export and by_category summary breakdown (watch / shoe / mobile)."""
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -186,4 +187,100 @@ def test_export_sales_rejects_invalid_category():
     token, _tenant_id = _bootstrap()
     headers = {"Authorization": f"Bearer {token}"}
     res = client.get("/v1/reports/export/sales", headers=headers, params={"category": "bogus"})
+    assert res.status_code == 400
+
+
+def _seed_watch_invoice(tenant_id: str, *, invoice_number: str, created_at: datetime, amount_cents: int) -> None:
+    tid = UUID(tenant_id)
+    with Session(engine) as session:
+        customer = Customer(tenant_id=tid, full_name="Dated Customer")
+        session.add(customer)
+        session.commit()
+        session.refresh(customer)
+
+        watch = Watch(tenant_id=tid, customer_id=customer.id, brand="Citizen")
+        session.add(watch)
+        session.commit()
+        session.refresh(watch)
+
+        job = RepairJob(tenant_id=tid, watch_id=watch.id, job_number=f"W-{invoice_number}", title="Battery")
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+
+        session.add(Invoice(
+            tenant_id=tid,
+            repair_job_id=job.id,
+            invoice_number=invoice_number,
+            status="paid",
+            total_cents=amount_cents,
+            created_at=created_at,
+        ))
+        session.commit()
+
+
+def test_export_sales_filters_by_explicit_date_range():
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    _seed_watch_invoice(
+        tenant_id, invoice_number="OLD-0001",
+        created_at=datetime(2026, 1, 5, tzinfo=timezone.utc), amount_cents=5000,
+    )
+    _seed_watch_invoice(
+        tenant_id, invoice_number="MID-0001",
+        created_at=datetime(2026, 6, 15, tzinfo=timezone.utc), amount_cents=7000,
+    )
+    _seed_watch_invoice(
+        tenant_id, invoice_number="NEW-0001",
+        created_at=datetime(2026, 12, 20, tzinfo=timezone.utc), amount_cents=9000,
+    )
+
+    res = client.get(
+        "/v1/reports/export/sales",
+        headers=headers,
+        params={"category": "watch", "date_from": "2026-06-01", "date_to": "2026-06-30"},
+    )
+    assert res.status_code == 200
+    rows = _csv_rows(res.text)
+    assert len(rows) == 1
+    assert rows[0]["reference"] == "MID-0001"
+    assert "2026-06-01_2026-06-30" in res.headers["content-disposition"]
+
+
+def test_export_sales_filters_by_period_shortcut():
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    _seed_watch_invoice(
+        tenant_id, invoice_number="APR-0001",
+        created_at=datetime(2026, 4, 10, tzinfo=timezone.utc), amount_cents=5000,
+    )
+    _seed_watch_invoice(
+        tenant_id, invoice_number="MAY-0001",
+        created_at=datetime(2026, 5, 16, tzinfo=timezone.utc), amount_cents=7000,
+    )
+
+    res = client.get(
+        "/v1/reports/export/sales",
+        headers=headers,
+        params={"category": "watch", "period": "month", "reference_date": "2026-05-16"},
+    )
+    assert res.status_code == 200
+    rows = _csv_rows(res.text)
+    assert len(rows) == 1
+    assert rows[0]["reference"] == "MAY-0001"
+
+
+def test_export_sales_rejects_invalid_period():
+    token, _tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get("/v1/reports/export/sales", headers=headers, params={"category": "watch", "period": "year"})
+    assert res.status_code == 400
+
+
+def test_export_sales_rejects_invalid_date():
+    token, _tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get(
+        "/v1/reports/export/sales", headers=headers, params={"category": "watch", "date_from": "not-a-date"}
+    )
     assert res.status_code == 400

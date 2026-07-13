@@ -27,6 +27,15 @@ const PERIODS: { key: PeriodKey; label: string; months: number }[] = [
   { key: '12m', label: '12 months', months: 12 },
 ]
 
+type SalesRangeKey = 'all' | ReportPeriod
+const SALES_RANGE_OPTIONS: { key: SalesRangeKey; label: string }[] = [
+  { key: 'all', label: 'All time' },
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'quarter', label: 'Quarter' },
+]
+
 const EXPORT_PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'day', label: 'Day' },
   { key: 'week', label: 'Week' },
@@ -224,9 +233,14 @@ export default function ReportsPage() {
     },
   })
   const [salesExportingCategory, setSalesExportingCategory] = useState<SalesCategory | null>(null)
+  const [salesRange, setSalesRange] = useState<SalesRangeKey>('all')
+  const [salesReferenceDate, setSalesReferenceDate] = useState(todayYmd())
   const exportSalesMut = useMutation({
-    mutationFn: (category: SalesCategory) =>
-      getExportSalesCsv(category).then(r => { downloadBlob(r.data, `sales-${category}.csv`); return r }),
+    mutationFn: (category: SalesCategory) => {
+      const filter = salesRange === 'all' ? undefined : { period: salesRange, reference_date: salesReferenceDate }
+      const suffix = salesRange === 'all' ? '' : `-${salesRange}-${salesReferenceDate}`
+      return getExportSalesCsv(category, filter).then(r => { downloadBlob(r.data, `sales-${category}${suffix}.csv`); return r })
+    },
     onMutate: category => setSalesExportingCategory(category),
     onSettled: () => setSalesExportingCategory(null),
   })
@@ -409,17 +423,48 @@ export default function ReportsPage() {
       {/* Sales by category — separate sections so each service line can be exported on its own */}
       {data.by_category && (
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Sales by Category</h2>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="ml-auto"
-              disabled={exportSalesMut.isPending}
-              onClick={() => exportSalesMut.mutate('all')}
-            >
-              <Download size={13} className="mr-1" /> Export all sales
-            </Button>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Export range:</span>
+              <div
+                className="inline-flex rounded-lg p-0.5"
+                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
+              >
+                {SALES_RANGE_OPTIONS.map(o => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setSalesRange(o.key)}
+                    className="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+                    style={{
+                      backgroundColor: salesRange === o.key ? 'var(--ms-surface)' : 'transparent',
+                      color: salesRange === o.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                      boxShadow: salesRange === o.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              {salesRange !== 'all' && (
+                <input
+                  type="date"
+                  value={salesReferenceDate}
+                  onChange={e => setSalesReferenceDate(e.target.value)}
+                  className="rounded-md px-2 py-1 text-xs"
+                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+                />
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={exportSalesMut.isPending}
+                onClick={() => exportSalesMut.mutate('all')}
+              >
+                <Download size={13} className="mr-1" /> Export all sales
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {hasFeature('watch') && (

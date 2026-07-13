@@ -1150,11 +1150,21 @@ export const getExportJobsCsv = () => api.get<Blob>('/reports/export/jobs', { re
 export const getExportCustomersCsv = () => api.get<Blob>('/reports/export/customers', { responseType: 'blob' })
 export const getExportInvoicesCsv = () => api.get<Blob>('/reports/export/invoices', { responseType: 'blob' })
 
-export type SalesCategory = 'watch' | 'shoe' | 'mobile' | 'all'
-export const getExportSalesCsv = (category: SalesCategory) =>
-  api.get<Blob>('/reports/export/sales', { params: { category }, responseType: 'blob' })
-
 export type ReportPeriod = 'day' | 'week' | 'month' | 'quarter'
+
+export type SalesCategory = 'watch' | 'shoe' | 'mobile' | 'all'
+export interface SalesExportDateFilter {
+  /** Calendar-period shortcut; overrides date_from/date_to when set. */
+  period?: ReportPeriod
+  /** Civil date YYYY-MM-DD within the period (default: today); used with `period`. */
+  reference_date?: string
+  /** Civil date YYYY-MM-DD, inclusive. Ignored if `period` is set. */
+  date_from?: string
+  /** Civil date YYYY-MM-DD, inclusive. Ignored if `period` is set. */
+  date_to?: string
+}
+export const getExportSalesCsv = (category: SalesCategory, filter?: SalesExportDateFilter) =>
+  api.get<Blob>('/reports/export/sales', { params: { category, ...filter }, responseType: 'blob' })
 
 export interface PeriodReportSummary {
   period: ReportPeriod
