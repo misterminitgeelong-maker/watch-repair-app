@@ -93,6 +93,33 @@ export default function TenantQolSettings() {
         ))}
       </Card>
 
+      <Card className="p-5 space-y-3">
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Scheduled sales reports</h3>
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+          Get a sales-by-category CSV emailed to you automatically once a week/month completes.
+        </p>
+        {(
+          [
+            { key: 'email_weekly_sales_report', lastSentKey: 'last_weekly_sales_report_sent_at', label: 'Weekly sales report' },
+            { key: 'email_monthly_sales_report', lastSentKey: 'last_monthly_sales_report_sent_at', label: 'Monthly sales report' },
+          ] as const
+        ).map(({ key, lastSentKey, label }) => (
+          <label key={key} className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+            <input
+              type="checkbox"
+              checked={prefs?.[key] ?? false}
+              onChange={e => patchPrefsMut.mutate({ [key]: e.target.checked })}
+            />
+            {label}
+            {prefs?.[lastSentKey] && (
+              <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                — last sent {new Date(prefs[lastSentKey] as string).toLocaleDateString()}
+              </span>
+            )}
+          </label>
+        ))}
+      </Card>
+
       {health && <IntegrationHealthCard health={health} />}
 
       <Card className="p-5 space-y-3">

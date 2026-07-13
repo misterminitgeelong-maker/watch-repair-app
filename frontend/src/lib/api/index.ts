@@ -2145,6 +2145,10 @@ export type NotificationPrefs = {
   email_invoice_paid: boolean
   email_sms_reply: boolean
   email_daily_digest: boolean
+  email_weekly_sales_report: boolean
+  email_monthly_sales_report: boolean
+  last_weekly_sales_report_sent_at: string | null
+  last_monthly_sales_report_sent_at: string | null
 }
 
 export const getNotificationPreferences = () =>

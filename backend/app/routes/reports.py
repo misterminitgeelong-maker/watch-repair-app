@@ -1122,6 +1122,31 @@ def get_category_summary(
     return _compute_category_summary(session, auth.tenant_id, start_dt, end_dt)
 
 
+def _build_sales_csv_bytes(
+    session: Session, tenant_id: UUID, category: str, start_dt: datetime | None, end_dt: datetime | None
+) -> bytes:
+    """Build the sales CSV body for a category ('watch'|'shoe'|'mobile'|'all') and date range.
+
+    Shared by the /export/sales endpoint and the scheduled sales report email
+    (services/sales_report_email.py) so both always produce identical rows.
+    """
+    rows: list[list[Any]] = []
+    if category in ("watch", "all"):
+        rows.extend(_watch_sales_rows(session, tenant_id, start_dt, end_dt))
+    if category in ("shoe", "all"):
+        rows.extend(_shoe_sales_rows(session, tenant_id, start_dt, end_dt))
+    if category in ("mobile", "all"):
+        rows.extend(_mobile_sales_rows(session, tenant_id, start_dt, end_dt))
+    if category == "all":
+        rows.sort(key=lambda r: r[1], reverse=True)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(_SALES_CSV_HEADERS)
+    w.writerows(rows)
+    return buf.getvalue().encode("utf-8")
+
+
 @router.get("/export/sales", summary="Export sales data as CSV, optionally scoped to one service line and date range")
 def export_sales_csv(
     category: str = Query(default="all", description="watch | shoe | mobile | all"),
@@ -1141,25 +1166,10 @@ def export_sales_csv(
         raise HTTPException(status_code=400, detail=f"category must be one of: {', '.join(sorted(_SALES_CATEGORIES))}")
 
     start_dt, end_dt, filename_suffix = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
-
-    rows: list[list[Any]] = []
-    if category in ("watch", "all"):
-        rows.extend(_watch_sales_rows(session, auth.tenant_id, start_dt, end_dt))
-    if category in ("shoe", "all"):
-        rows.extend(_shoe_sales_rows(session, auth.tenant_id, start_dt, end_dt))
-    if category in ("mobile", "all"):
-        rows.extend(_mobile_sales_rows(session, auth.tenant_id, start_dt, end_dt))
-    if category == "all":
-        rows.sort(key=lambda r: r[1], reverse=True)
-
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(_SALES_CSV_HEADERS)
-    w.writerows(rows)
-    buf.seek(0)
+    csv_bytes = _build_sales_csv_bytes(session, auth.tenant_id, category, start_dt, end_dt)
     filename = f"sales-{category}{filename_suffix}.csv"
     return StreamingResponse(
-        iter([buf.getvalue()]),
+        iter([csv_bytes.decode("utf-8")]),
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

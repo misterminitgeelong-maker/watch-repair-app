@@ -973,6 +973,12 @@ class UserNotificationPreference(SQLModel, table=True):
     email_invoice_paid: bool = True
     email_sms_reply: bool = True
     email_daily_digest: bool = False
+    #: Scheduled sales-by-category report emails (see services/sales_report_email.py).
+    #: last_*_sent_at tracks the period already sent so the scheduler stays idempotent.
+    email_weekly_sales_report: bool = False
+    email_monthly_sales_report: bool = False
+    last_weekly_sales_report_sent_at: Optional[datetime] = None
+    last_monthly_sales_report_sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

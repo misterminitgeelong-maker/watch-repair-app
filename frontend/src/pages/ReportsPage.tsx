@@ -16,6 +16,7 @@ import {
   type ReportPeriod,
   type SalesCategory,
   type SalesCategorySummary,
+  type SalesExportDateFilter,
 } from '@/lib/api'
 import { Button, Card, PageHeader, Spinner } from '@/components/ui'
 import { formatCents } from '@/lib/utils'
@@ -28,13 +29,14 @@ const PERIODS: { key: PeriodKey; label: string; months: number }[] = [
   { key: '12m', label: '12 months', months: 12 },
 ]
 
-type SalesRangeKey = 'all' | ReportPeriod
+type SalesRangeKey = 'all' | ReportPeriod | 'custom'
 const SALES_RANGE_OPTIONS: { key: SalesRangeKey; label: string }[] = [
   { key: 'all', label: 'All time' },
   { key: 'day', label: 'Day' },
   { key: 'week', label: 'Week' },
   { key: 'month', label: 'Month' },
   { key: 'quarter', label: 'Quarter' },
+  { key: 'custom', label: 'Custom' },
 ]
 
 const EXPORT_PERIODS: { key: ReportPeriod; label: string }[] = [
@@ -236,19 +238,32 @@ export default function ReportsPage() {
   const [salesExportingCategory, setSalesExportingCategory] = useState<SalesCategory | null>(null)
   const [salesRange, setSalesRange] = useState<SalesRangeKey>('all')
   const [salesReferenceDate, setSalesReferenceDate] = useState(todayYmd())
-  // "All time" reuses the summary already loaded above; only fetch a scoped summary for a chosen period,
+  const [salesDateFrom, setSalesDateFrom] = useState(todayYmd())
+  const [salesDateTo, setSalesDateTo] = useState(todayYmd())
+
+  const salesFilter: SalesExportDateFilter | undefined =
+    salesRange === 'all'
+      ? undefined
+      : salesRange === 'custom'
+        ? { date_from: salesDateFrom, date_to: salesDateTo }
+        : { period: salesRange, reference_date: salesReferenceDate }
+  const salesFilenameSuffix =
+    salesRange === 'all'
+      ? ''
+      : salesRange === 'custom'
+        ? `-${salesDateFrom}_${salesDateTo}`
+        : `-${salesRange}-${salesReferenceDate}`
+
+  // "All time" reuses the summary already loaded above; only fetch a scoped summary for a chosen range,
   // so the Sales by Category cards always match what the adjacent Export buttons would download.
   const { data: categorySummary, isFetching: categorySummaryLoading } = useQuery({
-    queryKey: ['reports-category-summary', salesRange, salesReferenceDate],
-    queryFn: () => getCategorySummary({ period: salesRange as ReportPeriod, reference_date: salesReferenceDate }).then(r => r.data),
+    queryKey: ['reports-category-summary', salesRange, salesReferenceDate, salesDateFrom, salesDateTo],
+    queryFn: () => getCategorySummary(salesFilter).then(r => r.data),
     enabled: salesRange !== 'all',
   })
   const exportSalesMut = useMutation({
-    mutationFn: (category: SalesCategory) => {
-      const filter = salesRange === 'all' ? undefined : { period: salesRange, reference_date: salesReferenceDate }
-      const suffix = salesRange === 'all' ? '' : `-${salesRange}-${salesReferenceDate}`
-      return getExportSalesCsv(category, filter).then(r => { downloadBlob(r.data, `sales-${category}${suffix}.csv`); return r })
-    },
+    mutationFn: (category: SalesCategory) =>
+      getExportSalesCsv(category, salesFilter).then(r => { downloadBlob(r.data, `sales-${category}${salesFilenameSuffix}.csv`); return r }),
     onMutate: category => setSalesExportingCategory(category),
     onSettled: () => setSalesExportingCategory(null),
   })
@@ -463,7 +478,7 @@ export default function ReportsPage() {
                     </button>
                   ))}
                 </div>
-                {salesRange !== 'all' && (
+                {salesRange !== 'all' && salesRange !== 'custom' && (
                   <input
                     type="date"
                     value={salesReferenceDate}
@@ -471,6 +486,27 @@ export default function ReportsPage() {
                     className="rounded-md px-2 py-1 text-xs"
                     style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
                   />
+                )}
+                {salesRange === 'custom' && (
+                  <>
+                    <input
+                      type="date"
+                      value={salesDateFrom}
+                      max={salesDateTo}
+                      onChange={e => setSalesDateFrom(e.target.value)}
+                      className="rounded-md px-2 py-1 text-xs"
+                      style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+                    />
+                    <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>to</span>
+                    <input
+                      type="date"
+                      value={salesDateTo}
+                      min={salesDateFrom}
+                      onChange={e => setSalesDateTo(e.target.value)}
+                      className="rounded-md px-2 py-1 text-xs"
+                      style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+                    />
+                  </>
                 )}
                 <Button
                   variant="secondary"

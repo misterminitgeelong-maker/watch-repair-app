@@ -36,11 +36,25 @@ router = APIRouter(prefix="/v1", tags=["tenant-qol"])
 
 # ── Notification preferences ───────────────────────────────────────────────────
 
+_NOTIFICATION_PREF_FIELDS = (
+    "email_quote_approved",
+    "email_invoice_paid",
+    "email_sms_reply",
+    "email_daily_digest",
+    "email_weekly_sales_report",
+    "email_monthly_sales_report",
+)
+
+
 class NotificationPrefsRead(BaseModel):
     email_quote_approved: bool
     email_invoice_paid: bool
     email_sms_reply: bool
     email_daily_digest: bool
+    email_weekly_sales_report: bool
+    email_monthly_sales_report: bool
+    last_weekly_sales_report_sent_at: datetime | None
+    last_monthly_sales_report_sent_at: datetime | None
 
 
 class NotificationPrefsUpdate(BaseModel):
@@ -48,6 +62,8 @@ class NotificationPrefsUpdate(BaseModel):
     email_invoice_paid: bool | None = None
     email_sms_reply: bool | None = None
     email_daily_digest: bool | None = None
+    email_weekly_sales_report: bool | None = None
+    email_monthly_sales_report: bool | None = None
 
 
 def _get_or_create_prefs(session: Session, auth: AuthContext) -> UserNotificationPreference:
@@ -64,6 +80,14 @@ def _get_or_create_prefs(session: Session, auth: AuthContext) -> UserNotificatio
     return row
 
 
+def _prefs_read(p: UserNotificationPreference) -> NotificationPrefsRead:
+    return NotificationPrefsRead(
+        **{field: getattr(p, field) for field in _NOTIFICATION_PREF_FIELDS},
+        last_weekly_sales_report_sent_at=p.last_weekly_sales_report_sent_at,
+        last_monthly_sales_report_sent_at=p.last_monthly_sales_report_sent_at,
+    )
+
+
 @router.get("/me/notification-preferences", response_model=NotificationPrefsRead)
 def get_notification_preferences(
     auth: AuthContext = Depends(get_auth_context),
@@ -71,12 +95,7 @@ def get_notification_preferences(
 ):
     p = _get_or_create_prefs(session, auth)
     session.commit()
-    return NotificationPrefsRead(
-        email_quote_approved=p.email_quote_approved,
-        email_invoice_paid=p.email_invoice_paid,
-        email_sms_reply=p.email_sms_reply,
-        email_daily_digest=p.email_daily_digest,
-    )
+    return _prefs_read(p)
 
 
 @router.patch("/me/notification-preferences", response_model=NotificationPrefsRead)
@@ -86,7 +105,7 @@ def patch_notification_preferences(
     session: Session = Depends(get_session),
 ):
     p = _get_or_create_prefs(session, auth)
-    for field in ("email_quote_approved", "email_invoice_paid", "email_sms_reply", "email_daily_digest"):
+    for field in _NOTIFICATION_PREF_FIELDS:
         val = getattr(payload, field)
         if val is not None:
             setattr(p, field, val)
@@ -94,12 +113,7 @@ def patch_notification_preferences(
     session.add(p)
     session.commit()
     session.refresh(p)
-    return NotificationPrefsRead(
-        email_quote_approved=p.email_quote_approved,
-        email_invoice_paid=p.email_invoice_paid,
-        email_sms_reply=p.email_sms_reply,
-        email_daily_digest=p.email_daily_digest,
-    )
+    return _prefs_read(p)
 
 
 # ── Integration health ─────────────────────────────────────────────────────────

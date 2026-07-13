@@ -159,6 +159,10 @@ class Settings(BaseSettings):
     # Website lead dispatch cascade (operator offer → timeout → HQ).
     mobile_lead_dispatch_enabled: bool = True
     mobile_lead_dispatch_check_interval_minutes: int = 5
+
+    # Scheduled weekly/monthly sales-by-category report emails (opt-in per user).
+    sales_report_email_enabled: bool = True
+    sales_report_check_interval_minutes: int = 60
     attachment_allowed_content_types: str = (
         "image/jpeg,image/png,image/webp,application/pdf,text/plain"
     )

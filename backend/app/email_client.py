@@ -460,6 +460,76 @@ def send_job_ready_email(
     )
 
 
+_SALES_REPORT_CATEGORY_LABELS = {"watch": "Watch Repair", "shoe": "Shoe Repair", "mobile": "Mobile Services"}
+
+
+def send_sales_report_email(
+    *,
+    to_email: str,
+    shop_name: str,
+    period_label: str,
+    period_start: str,
+    period_end: str,
+    category_summary: dict[str, dict],
+    csv_bytes: bytes,
+    csv_filename: str,
+) -> tuple[bool, str | None]:
+    """Send a scheduled weekly/monthly sales-by-category report with the sales CSV attached."""
+    if not (to_email or "").strip():
+        return False, None
+    total_revenue_cents = sum(int(cat.get("revenue_cents", 0)) for cat in category_summary.values())
+    active_categories = {
+        key: cat for key, cat in category_summary.items() if cat.get("jobs") or cat.get("revenue_cents")
+    }
+    line_items = [
+        {
+            "description": _SALES_REPORT_CATEGORY_LABELS.get(key, key),
+            "quantity": cat.get("jobs", 0),
+            "total_price_cents": cat.get("revenue_cents", 0),
+        }
+        for key, cat in active_categories.items()
+    ]
+    lines_plain = "\n".join(
+        f"  • {_SALES_REPORT_CATEGORY_LABELS.get(key, key)}: {cat.get('jobs', 0)} jobs, "
+        f"${cat.get('revenue_cents', 0) / 100:.2f} revenue"
+        for key, cat in active_categories.items()
+    ) or "  No sales recorded for this period."
+    subject = f"{period_label} sales report – {period_start} to {period_end}"
+    body_plain = (
+        f"Hi,\n\n"
+        f"Your {period_label.lower()} sales report for {period_start} to {period_end}:\n\n"
+        f"{lines_plain}\n\n"
+        f"Total revenue: ${total_revenue_cents / 100:.2f}\n\n"
+        f"Full transaction-level detail is attached as a CSV.\n\n"
+        f"— {shop_name}"
+    )
+    body_html = render_transactional_email(
+        title=f"{period_label} sales report",
+        preheader=f"{period_start} to {period_end} · ${total_revenue_cents / 100:.2f} revenue",
+        greeting="Hi,",
+        intro_html=(
+            f"Here's your <strong>{_html.escape(period_label.lower())} sales report</strong> for "
+            f"{_html.escape(period_start)} to {_html.escape(period_end)}."
+        ),
+        shop=ShopInfo(name=shop_name),
+        line_items=line_items,
+        total_cents=total_revenue_cents,
+        currency="AUD",
+        note_html="Full transaction-level detail is attached as a CSV.",
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="sales_report",
+        attachment_bytes=csv_bytes,
+        attachment_filename=csv_filename,
+        attachment_mime_type="text/csv",
+    )
+
+
 def _send_email(
     *,
     to_email: str,
@@ -471,6 +541,9 @@ def _send_email(
     reply_to: str | None = None,
     pdf_bytes: bytes | None = None,
     pdf_filename: str = "invoice.pdf",
+    attachment_bytes: bytes | None = None,
+    attachment_filename: str = "attachment",
+    attachment_mime_type: str = "text/csv",
 ) -> tuple[bool, str | None]:
     from_addr = _from_email()
     if not _enabled():
@@ -502,15 +575,27 @@ def _send_email(
         "List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>",
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     }
+    attachments: list[dict] = []
     if pdf_bytes:
-        payload["attachments"] = [
+        attachments.append(
             {
                 "content": base64.b64encode(pdf_bytes).decode(),
                 "type": "application/pdf",
                 "filename": pdf_filename,
                 "disposition": "attachment",
             }
-        ]
+        )
+    if attachment_bytes:
+        attachments.append(
+            {
+                "content": base64.b64encode(attachment_bytes).decode(),
+                "type": attachment_mime_type,
+                "filename": attachment_filename,
+                "disposition": "attachment",
+            }
+        )
+    if attachments:
+        payload["attachments"] = attachments
     try:
         with httpx.Client(timeout=15.0) as client:
             resp = client.post(

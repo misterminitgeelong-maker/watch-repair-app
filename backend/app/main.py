@@ -147,6 +147,23 @@ def _mobile_lead_dispatch_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _sales_report_email_loop() -> None:
+    """Send opted-in weekly/monthly sales-by-category report emails once each period ends."""
+    report_logger = logging.getLogger("mainspring.sales_report_email")
+    interval_seconds = max(settings.sales_report_check_interval_minutes, 1) * 60
+    from .services.sales_report_email import send_due_sales_report_emails
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = send_due_sales_report_emails(session)
+            if summary.get("weekly_sent") or summary.get("monthly_sent"):
+                report_logger.info("Sales report emails sent: %s", summary)
+        except Exception:
+            report_logger.exception("Sales report email run failed.")
+        time.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -182,6 +199,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_mobile_lead_dispatch_loop,
             name="mainspring-mobile-lead-dispatch",
+            daemon=True,
+        ).start()
+    if settings.sales_report_email_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_sales_report_email_loop,
+            name="mainspring-sales-report-email",
             daemon=True,
         ).start()
     yield
