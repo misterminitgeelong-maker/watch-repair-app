@@ -284,3 +284,71 @@ def test_export_sales_rejects_invalid_date():
         "/v1/reports/export/sales", headers=headers, params={"category": "watch", "date_from": "not-a-date"}
     )
     assert res.status_code == 400
+
+
+def test_category_summary_matches_export_rows_all_time():
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    _seed_all_categories(tenant_id)
+
+    res = client.get("/v1/reports/category-summary", headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+
+    assert body["watch"] == {"jobs": 1, "billed_cents": 15000, "revenue_cents": 15000, "cost_cents": 0, "outstanding_cents": 0}
+    assert body["shoe"] == {"jobs": 1, "billed_cents": 8000, "revenue_cents": 8000, "cost_cents": 0, "outstanding_cents": 0}
+    assert body["mobile"] == {"jobs": 1, "billed_cents": 22000, "revenue_cents": 22000, "cost_cents": 0, "outstanding_cents": 0}
+
+
+def test_category_summary_filters_by_period_like_export():
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    _seed_watch_invoice(
+        tenant_id, invoice_number="APR-0002",
+        created_at=datetime(2026, 4, 10, tzinfo=timezone.utc), amount_cents=5000,
+    )
+    _seed_watch_invoice(
+        tenant_id, invoice_number="MAY-0002",
+        created_at=datetime(2026, 5, 16, tzinfo=timezone.utc), amount_cents=7000,
+    )
+
+    res = client.get(
+        "/v1/reports/category-summary",
+        headers=headers,
+        params={"period": "month", "reference_date": "2026-05-16"},
+    )
+    assert res.status_code == 200, res.text
+    watch = res.json()["watch"]
+    assert watch["jobs"] == 1
+    assert watch["revenue_cents"] == 7000
+
+
+def test_category_summary_unpaid_invoice_counts_as_billed_not_revenue():
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    tid = UUID(tenant_id)
+    with Session(engine) as session:
+        customer = Customer(tenant_id=tid, full_name="Unpaid Customer")
+        session.add(customer)
+        session.commit()
+        session.refresh(customer)
+        watch = Watch(tenant_id=tid, customer_id=customer.id, brand="Timex")
+        session.add(watch)
+        session.commit()
+        session.refresh(watch)
+        job = RepairJob(tenant_id=tid, watch_id=watch.id, job_number="W-UNPAID", title="Glass replace")
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        session.add(Invoice(
+            tenant_id=tid, repair_job_id=job.id, invoice_number="INV-UNPAID", status="unpaid", total_cents=12000,
+        ))
+        session.commit()
+
+    res = client.get("/v1/reports/category-summary", headers=headers)
+    assert res.status_code == 200, res.text
+    watch = res.json()["watch"]
+    assert watch["jobs"] == 1
+    assert watch["billed_cents"] == 12000
+    assert watch["revenue_cents"] == 0
+    assert watch["outstanding_cents"] == 12000

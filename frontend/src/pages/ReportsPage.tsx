@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download } from 'lucide-react'
 import { useRef, useState } from 'react'
 import {
+  getCategorySummary,
   getExportCustomersCsv,
   getExportInvoicesCsv,
   getExportJobsCsv,
@@ -235,6 +236,13 @@ export default function ReportsPage() {
   const [salesExportingCategory, setSalesExportingCategory] = useState<SalesCategory | null>(null)
   const [salesRange, setSalesRange] = useState<SalesRangeKey>('all')
   const [salesReferenceDate, setSalesReferenceDate] = useState(todayYmd())
+  // "All time" reuses the summary already loaded above; only fetch a scoped summary for a chosen period,
+  // so the Sales by Category cards always match what the adjacent Export buttons would download.
+  const { data: categorySummary, isFetching: categorySummaryLoading } = useQuery({
+    queryKey: ['reports-category-summary', salesRange, salesReferenceDate],
+    queryFn: () => getCategorySummary({ period: salesRange as ReportPeriod, reference_date: salesReferenceDate }).then(r => r.data),
+    enabled: salesRange !== 'all',
+  })
   const exportSalesMut = useMutation({
     mutationFn: (category: SalesCategory) => {
       const filter = salesRange === 'all' ? undefined : { period: salesRange, reference_date: salesReferenceDate }
@@ -421,88 +429,100 @@ export default function ReportsPage() {
       </div>
 
       {/* Sales by category — separate sections so each service line can be exported on its own */}
-      {data.by_category && (
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Sales by Category</h2>
-            <div className="flex items-center gap-2 ml-auto flex-wrap">
-              <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Export range:</span>
-              <div
-                className="inline-flex rounded-lg p-0.5"
-                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
-              >
-                {SALES_RANGE_OPTIONS.map(o => (
-                  <button
-                    key={o.key}
-                    type="button"
-                    onClick={() => setSalesRange(o.key)}
-                    className="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
-                    style={{
-                      backgroundColor: salesRange === o.key ? 'var(--ms-surface)' : 'transparent',
-                      color: salesRange === o.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
-                      boxShadow: salesRange === o.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                    }}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-              {salesRange !== 'all' && (
-                <input
-                  type="date"
-                  value={salesReferenceDate}
-                  onChange={e => setSalesReferenceDate(e.target.value)}
-                  className="rounded-md px-2 py-1 text-xs"
-                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+      {data.by_category && (() => {
+        const displayCategorySummary = salesRange === 'all' ? data.by_category : (categorySummary ?? data.by_category)
+        return (
+          <div className="mb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Sales by Category</h2>
+              {salesRange !== 'all' && categorySummaryLoading && (
+                <span
+                  className="h-3 w-3 animate-spin rounded-full border-2 shrink-0"
+                  style={{ borderColor: 'var(--ms-border)', borderTopColor: 'var(--ms-accent)' }}
                 />
               )}
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={exportSalesMut.isPending}
-                onClick={() => exportSalesMut.mutate('all')}
-              >
-                <Download size={13} className="mr-1" /> Export all sales
-              </Button>
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Range:</span>
+                <div
+                  className="inline-flex rounded-lg p-0.5"
+                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
+                >
+                  {SALES_RANGE_OPTIONS.map(o => (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => setSalesRange(o.key)}
+                      className="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+                      style={{
+                        backgroundColor: salesRange === o.key ? 'var(--ms-surface)' : 'transparent',
+                        color: salesRange === o.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                        boxShadow: salesRange === o.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                {salesRange !== 'all' && (
+                  <input
+                    type="date"
+                    value={salesReferenceDate}
+                    onChange={e => setSalesReferenceDate(e.target.value)}
+                    className="rounded-md px-2 py-1 text-xs"
+                    style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+                  />
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={exportSalesMut.isPending}
+                  onClick={() => exportSalesMut.mutate('all')}
+                >
+                  <Download size={13} className="mr-1" /> Export all sales
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+              {salesRange === 'all' ? 'Showing all-time totals.' : 'Cards and exports below both reflect the selected range.'}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {hasFeature('watch') && (
+                <SalesCategoryCard
+                  label="Watch Repair"
+                  icon={Wrench}
+                  iconBg="#E8F0FB"
+                  iconColor="#2A5FA0"
+                  summary={displayCategorySummary.watch}
+                  onExport={() => exportSalesMut.mutate('watch')}
+                  exporting={salesExportingCategory === 'watch'}
+                />
+              )}
+              {hasFeature('auto_key') && (
+                <SalesCategoryCard
+                  label="Mobile Services"
+                  icon={KeyRound}
+                  iconBg="#F1E8FB"
+                  iconColor="#6840B4"
+                  summary={displayCategorySummary.mobile}
+                  onExport={() => exportSalesMut.mutate('mobile')}
+                  exporting={salesExportingCategory === 'mobile'}
+                />
+              )}
+              {hasFeature('shoe') && (
+                <SalesCategoryCard
+                  label="Shoe Repair"
+                  icon={Scissors}
+                  iconBg="#E8F5EC"
+                  iconColor="#1A6A3A"
+                  summary={displayCategorySummary.shoe}
+                  onExport={() => exportSalesMut.mutate('shoe')}
+                  exporting={salesExportingCategory === 'shoe'}
+                />
+              )}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {hasFeature('watch') && (
-              <SalesCategoryCard
-                label="Watch Repair"
-                icon={Wrench}
-                iconBg="#E8F0FB"
-                iconColor="#2A5FA0"
-                summary={data.by_category.watch}
-                onExport={() => exportSalesMut.mutate('watch')}
-                exporting={salesExportingCategory === 'watch'}
-              />
-            )}
-            {hasFeature('auto_key') && (
-              <SalesCategoryCard
-                label="Mobile Services"
-                icon={KeyRound}
-                iconBg="#F1E8FB"
-                iconColor="#6840B4"
-                summary={data.by_category.mobile}
-                onExport={() => exportSalesMut.mutate('mobile')}
-                exporting={salesExportingCategory === 'mobile'}
-              />
-            )}
-            {hasFeature('shoe') && (
-              <SalesCategoryCard
-                label="Shoe Repair"
-                icon={Scissors}
-                iconBg="#E8F5EC"
-                iconColor="#1A6A3A"
-                summary={data.by_category.shoe}
-                onExport={() => exportSalesMut.mutate('shoe')}
-                exporting={salesExportingCategory === 'shoe'}
-              />
-            )}
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
         {/* Sales funnel */}

@@ -1166,6 +1166,13 @@ export interface SalesExportDateFilter {
 export const getExportSalesCsv = (category: SalesCategory, filter?: SalesExportDateFilter) =>
   api.get<Blob>('/reports/export/sales', { params: { category, ...filter }, responseType: 'blob' })
 
+/** Sales-by-category summary for a date range — mirrors the rows /export/sales would return. */
+export const getCategorySummary = (filter?: SalesExportDateFilter) =>
+  api.get<{ watch: SalesCategorySummary; shoe: SalesCategorySummary; mobile: SalesCategorySummary }>(
+    '/reports/category-summary',
+    { params: filter },
+  )
+
 export interface PeriodReportSummary {
   period: ReportPeriod
   reference_date: string

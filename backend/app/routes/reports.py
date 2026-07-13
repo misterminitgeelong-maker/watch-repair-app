@@ -1033,6 +1033,95 @@ def _parse_ymd_bound(value: str, *, field: str, end_of_day: bool) -> datetime:
     return parsed.replace(tzinfo=timezone.utc)
 
 
+def _resolve_sales_date_bounds(
+    period: str | None,
+    reference_date: str | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> tuple[datetime | None, datetime | None, str]:
+    """Shared date-bounds resolution for the sales export and category-summary endpoints.
+
+    Returns (start_dt, end_dt, label_suffix) where bounds are None when unfiltered (all-time).
+    """
+    if period is not None:
+        if period not in VALID_PERIODS:
+            raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
+        ref = parse_reference_date(reference_date)
+        start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
+        return start_dt, end_dt, f"-{start_ymd}_{end_ymd}"
+
+    start_dt = _parse_ymd_bound(date_from, field="date_from", end_of_day=False) if date_from else None
+    end_dt = _parse_ymd_bound(date_to, field="date_to", end_of_day=True) if date_to else None
+    suffix = f"-{date_from or 'start'}_{date_to or 'end'}" if (start_dt is not None or end_dt is not None) else ""
+    return start_dt, end_dt, suffix
+
+
+def _summarize_sales_rows(rows: list[list[Any]], paid_statuses: set[str]) -> dict[str, int]:
+    job_numbers: set[str] = set()
+    billed_cents = 0
+    revenue_cents = 0
+    for row in rows:
+        job_number, status, amount_cents = row[3], row[6], row[7]
+        if job_number:
+            job_numbers.add(job_number)
+        billed_cents += amount_cents
+        if status in paid_statuses:
+            revenue_cents += amount_cents
+    return {"jobs": len(job_numbers), "billed_cents": billed_cents, "revenue_cents": revenue_cents}
+
+
+def _bounded_cost_cents(session: Session, model: Any, tenant_id: UUID, start_dt: datetime | None, end_dt: datetime | None) -> int:
+    stmt = select(
+        func.coalesce(
+            func.sum(case((model.cost_cents <= _MAX_REASONABLE_JOB_COST_CENTS, model.cost_cents), else_=0)), 0
+        )
+    ).where(model.tenant_id == tenant_id)
+    if start_dt is not None:
+        stmt = stmt.where(model.created_at >= start_dt)
+    if end_dt is not None:
+        stmt = stmt.where(model.created_at <= end_dt)
+    return int(session.exec(stmt).one())
+
+
+def _compute_category_summary(
+    session: Session, tenant_id: UUID, start_dt: datetime | None, end_dt: datetime | None
+) -> dict[str, dict[str, int]]:
+    """Sales-by-category summary for the given (optionally unbounded) date range.
+
+    Mirrors the sales export rows exactly: "jobs" is the count of distinct jobs with
+    sales activity in range, and "revenue" is the paid-status subset of "billed".
+    """
+    watch = _summarize_sales_rows(_watch_sales_rows(session, tenant_id, start_dt, end_dt), {"paid"})
+    shoe = _summarize_sales_rows(_shoe_sales_rows(session, tenant_id, start_dt, end_dt), set(_SHOE_PAID_STATUSES))
+    mobile = _summarize_sales_rows(_mobile_sales_rows(session, tenant_id, start_dt, end_dt), {"paid"})
+
+    watch["cost_cents"] = _bounded_cost_cents(session, RepairJob, tenant_id, start_dt, end_dt)
+    shoe["cost_cents"] = _bounded_cost_cents(session, ShoeRepairJob, tenant_id, start_dt, end_dt)
+    mobile["cost_cents"] = 0
+
+    for cat in (watch, shoe, mobile):
+        cat["outstanding_cents"] = max(cat["billed_cents"] - cat["revenue_cents"], 0)
+
+    return {"watch": watch, "shoe": shoe, "mobile": mobile}
+
+
+@router.get("/category-summary", summary="Sales-by-category summary for a date range (matches /export/sales rows)")
+def get_category_summary(
+    period: str | None = Query(
+        default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
+    ),
+    reference_date: str | None = Query(
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+    ),
+    date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
+    date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    start_dt, end_dt, _ = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
+    return _compute_category_summary(session, auth.tenant_id, start_dt, end_dt)
+
+
 @router.get("/export/sales", summary="Export sales data as CSV, optionally scoped to one service line and date range")
 def export_sales_csv(
     category: str = Query(default="all", description="watch | shoe | mobile | all"),
@@ -1051,22 +1140,7 @@ def export_sales_csv(
     if category not in _SALES_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"category must be one of: {', '.join(sorted(_SALES_CATEGORIES))}")
 
-    start_dt: datetime | None = None
-    end_dt: datetime | None = None
-    filename_suffix = ""
-    if period is not None:
-        if period not in VALID_PERIODS:
-            raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
-        ref = parse_reference_date(reference_date)
-        start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
-        filename_suffix = f"-{start_ymd}_{end_ymd}"
-    else:
-        if date_from:
-            start_dt = _parse_ymd_bound(date_from, field="date_from", end_of_day=False)
-        if date_to:
-            end_dt = _parse_ymd_bound(date_to, field="date_to", end_of_day=True)
-        if start_dt is not None or end_dt is not None:
-            filename_suffix = f"-{date_from or 'start'}_{date_to or 'end'}"
+    start_dt, end_dt, filename_suffix = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
 
     rows: list[list[Any]] = []
     if category in ("watch", "all"):
