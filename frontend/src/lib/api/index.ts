@@ -2890,6 +2890,8 @@ export interface ShopIdentity {
   business_address: string | null
   logo_url: string | null
   brand_color: string | null
+  sam4s_printer_host: string | null
+  sam4s_printer_port: number | null
 }
 
 export const getShopIdentity = () =>
@@ -2897,6 +2899,23 @@ export const getShopIdentity = () =>
 
 export const updateShopIdentity = (data: Partial<Omit<ShopIdentity, 'name' | 'business_address'>>) =>
   api.patch<ShopIdentity>('/settings/shop-identity', data)
+
+// ── SAM4S network receipt printer (ESC/POS over TCP) ──────────────────────────
+export interface Sam4sTicket {
+  job_number: string
+  customer_name: string
+  item_title: string
+  is_customer_copy: boolean
+  customer_phone?: string
+  services?: string
+  date_in?: string
+  deposit_label?: string
+  balance_label?: string
+  qr_url?: string
+}
+
+export const printSam4sTickets = (tickets: Sam4sTicket[]) =>
+  api.post<{ printed: number }>('/printers/sam4s/print', { tickets })
 
 // ── Customer Portal (public, no auth header) ──────────────────────────────────
 export interface PortalLoyalty {

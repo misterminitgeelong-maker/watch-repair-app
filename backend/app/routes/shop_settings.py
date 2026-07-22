@@ -36,6 +36,8 @@ class ShopIdentityRead(BaseModel):
     business_address: Optional[str] = None
     logo_url: Optional[str] = None
     brand_color: Optional[str] = None
+    sam4s_printer_host: Optional[str] = None
+    sam4s_printer_port: Optional[int] = None
 
 
 class ShopIdentityUpdate(BaseModel):
@@ -45,6 +47,8 @@ class ShopIdentityUpdate(BaseModel):
     payment_instructions: Optional[str] = Field(default=None, max_length=500)
     logo_url: Optional[str] = Field(default=None, max_length=1000)
     brand_color: Optional[str] = Field(default=None, max_length=9)
+    sam4s_printer_host: Optional[str] = Field(default=None, max_length=255)
+    sam4s_printer_port: Optional[int] = Field(default=None, ge=1, le=65535)
 
 
 def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
@@ -57,6 +61,8 @@ def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
         business_address=tenant.business_address if tenant else None,
         logo_url=tenant.logo_url if tenant else None,
         brand_color=tenant.brand_color if tenant else None,
+        sam4s_printer_host=tenant.sam4s_printer_host if tenant else None,
+        sam4s_printer_port=tenant.sam4s_printer_port if tenant else None,
     )
 
 
@@ -93,6 +99,10 @@ def update_shop_identity(
     if payload.brand_color is not None:
         # Lenient: blank or invalid hex clears the brand colour rather than erroring.
         tenant.brand_color = normalize_brand_color(payload.brand_color)
+    if payload.sam4s_printer_host is not None:
+        tenant.sam4s_printer_host = payload.sam4s_printer_host.strip() or None
+    if payload.sam4s_printer_port is not None:
+        tenant.sam4s_printer_port = payload.sam4s_printer_port
 
     session.add(tenant)
     session.commit()

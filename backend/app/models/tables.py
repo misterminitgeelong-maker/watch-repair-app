@@ -71,6 +71,10 @@ class Tenant(SQLModel, table=True):
     logo_url: Optional[str] = Field(default=None, max_length=1000)
     #: Hex brand colour used to tint email/PDF accents (e.g. "#1F6FEB").
     brand_color: Optional[str] = Field(default=None, max_length=9)
+    #: SAM4S network receipt printer (ESC/POS over TCP) for intake tickets, e.g. "192.168.1.50".
+    sam4s_printer_host: Optional[str] = Field(default=None, max_length=255)
+    #: SAM4S printer TCP port. ESC/POS network printers default to 9100 (raw JetDirect-style socket).
+    sam4s_printer_port: Optional[int] = Field(default=None)
 
 class User(SQLModel, table=True):
     __table_args__ = (

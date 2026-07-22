@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Bluetooth, BluetoothOff, ChevronLeft, Printer } from 'lucide-react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { Bluetooth, BluetoothOff, ChevronLeft, Printer, Receipt } from 'lucide-react'
 import QRCode from 'qrcode'
-import { getCustomer, getJob, getWatch } from '@/lib/api'
+import { getApiErrorMessage, getCustomer, getJob, getShopIdentity, getWatch, printSam4sTickets, type Sam4sTicket } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { renderWatchLabel, LABEL_50x70 } from '@/lib/niimbot'
@@ -40,6 +40,16 @@ export default function PrintWatchIntakeTicketsPage() {
     queryKey: ['customer', watch?.customer_id],
     queryFn: () => getCustomer(watch!.customer_id).then(r => r.data),
     enabled: !!watch?.customer_id,
+  })
+
+  const { data: shopIdentity } = useQuery({
+    queryKey: ['shop-identity'],
+    queryFn: () => getShopIdentity().then(r => r.data),
+  })
+  const sam4sConfigured = !!shopIdentity?.sam4s_printer_host
+
+  const sam4sPrint = useMutation({
+    mutationFn: (tickets: Sam4sTicket[]) => printSam4sTickets(tickets),
   })
 
   const quoteCents = useMemo(() => {
@@ -105,6 +115,33 @@ export default function PrintWatchIntakeTicketsPage() {
     await btPrint(labelCanvases)
   }, [labelCanvases, btPrint])
 
+  const printToSam4s = useCallback(() => {
+    if (!job || !customer) return
+    const watchTitle = [watch?.brand, watch?.model].filter(Boolean).join(' ') || 'Watch'
+    const shared: Omit<Sam4sTicket, 'is_customer_copy' | 'qr_url'> = {
+      job_number: job.job_number,
+      customer_name: customer.full_name || '—',
+      customer_phone: customer.phone || undefined,
+      item_title: watchTitle,
+      services: job.title || undefined,
+      date_in: formatDate(job.created_at),
+    }
+    sam4sPrint.mutate([
+      {
+        ...shared,
+        is_customer_copy: false,
+        deposit_label: formatCents(job.deposit_cents),
+        balance_label: formatCents(Math.max(quoteCents - job.deposit_cents, 0)),
+        qr_url: `${window.location.origin}/jobs/${job.id}`,
+      },
+      {
+        ...shared,
+        is_customer_copy: true,
+        qr_url: `${window.location.origin}/customer-portal/job/watch/${job.status_token}`,
+      },
+    ])
+  }, [job, customer, watch, quoteCents, sam4sPrint])
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -161,6 +198,17 @@ export default function PrintWatchIntakeTicketsPage() {
               </button>
             )
           )}
+          {sam4sConfigured && (
+            <button
+              onClick={printToSam4s}
+              disabled={sam4sPrint.isPending || !job || !customer}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+            >
+              <Receipt size={15} />
+              {sam4sPrint.isPending ? 'Printing…' : 'Print to SAM4S'}
+            </button>
+          )}
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -173,6 +221,11 @@ export default function PrintWatchIntakeTicketsPage() {
       {btError && (
         <div className="print:hidden fixed top-14 left-0 right-0 px-6 py-2 text-sm text-center z-[60]" style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
           Printer error: {btError}
+        </div>
+      )}
+      {sam4sPrint.isError && (
+        <div className="print:hidden fixed top-14 left-0 right-0 px-6 py-2 text-sm text-center z-[60]" style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
+          SAM4S printer error: {getApiErrorMessage(sam4sPrint.error) || 'Print failed'}
         </div>
       )}
 

@@ -585,6 +585,7 @@ export default function AccountsPage() {
       {(planCode.includes('auto_key') || planCode === 'pro') && <DispatchBaseLocationCard />}
 
       <ShopIdentityCard />
+      <Sam4sPrinterCard />
       <TenantQolSettings />
 
       <AppearanceCard />
@@ -771,6 +772,77 @@ function ShopIdentityCard() {
         {saved && <p className="text-sm" style={{ color: 'var(--ms-badge-done-text)' }}>Saved.</p>}
         <Button onClick={() => { setSaved(false); mut.mutate() }} disabled={mut.isPending || colorError}>
           {mut.isPending ? 'Saving…' : 'Save invoice details'}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+function Sam4sPrinterCard() {
+  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['shop-identity'],
+    queryFn: () => getShopIdentity().then(r => r.data),
+  })
+
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState('9100')
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (data) {
+      setHost(data.sam4s_printer_host ?? '')
+      setPort(data.sam4s_printer_port ? String(data.sam4s_printer_port) : '9100')
+    }
+  }, [data])
+
+  const trimmedHost = host.trim()
+  const portNum = Number(port)
+  const portError = port.trim() !== '' && (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535)
+
+  const mut = useMutation({
+    mutationFn: () => updateShopIdentity({
+      sam4s_printer_host: trimmedHost || null,
+      sam4s_printer_port: trimmedHost && !portError ? portNum : undefined,
+    }).then(r => r.data),
+    onSuccess: () => {
+      setSaved(true)
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['shop-identity'] })
+    },
+    onError: (err) => setError(getApiErrorMessage(err) || 'Could not save printer settings.'),
+  })
+
+  if (isLoading) return null
+
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        SAM4S Ticket Printer
+      </p>
+      <p className="text-sm mt-1 mb-4" style={{ color: 'var(--ms-text-mid)' }}>
+        Network SAM4S (ESC/POS) receipt printer for intake tickets, in addition to the Niimbot M2 label printer.
+        Enter the printer's IP address on your shop network.
+      </p>
+      <div className="space-y-3">
+        <Input
+          label="Printer IP address"
+          value={host}
+          onChange={e => { setHost(e.target.value); setSaved(false) }}
+          placeholder="192.168.1.50"
+        />
+        <Input
+          label="Port"
+          value={port}
+          onChange={e => { setPort(e.target.value); setSaved(false) }}
+          placeholder="9100"
+        />
+        {portError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>Port must be between 1 and 65535.</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {saved && <p className="text-sm" style={{ color: 'var(--ms-badge-done-text)' }}>Saved.</p>}
+        <Button onClick={() => { setSaved(false); mut.mutate() }} disabled={mut.isPending || portError}>
+          {mut.isPending ? 'Saving…' : 'Save printer settings'}
         </Button>
       </div>
     </Card>
