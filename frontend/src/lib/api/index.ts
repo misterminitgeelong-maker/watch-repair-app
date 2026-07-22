@@ -57,6 +57,7 @@ export interface AuthSession {
   }
   tenant_id: string
   tenant_slug: string
+  tenant_name: string
   /** ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops. */
   product?: 'minit' | 'mainspring'
   /** When true, render the six-item Minit HQ sidebar (authoritative server signal). */

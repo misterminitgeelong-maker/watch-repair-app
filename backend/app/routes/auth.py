@@ -261,6 +261,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         user=_build_public_user(user),
         tenant_id=tenant.id,
         tenant_slug=tenant.slug,
+        tenant_name=tenant.name,
         product=product,
         is_minit_hq_ui=is_minit_hq_ui(tenant),
         plan_code=normalized_plan,

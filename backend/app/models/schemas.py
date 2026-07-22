@@ -155,6 +155,7 @@ class AuthSessionResponse(SQLModel):
     user: PublicUser
     tenant_id: UUID
     tenant_slug: str
+    tenant_name: str
     #: ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops.
     product: str = "mainspring"
     #: When true, the SPA renders the six-item Minit HQ navigation (authoritative server signal).

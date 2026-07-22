@@ -39,6 +39,8 @@ interface AuthCtx {
   role: string | null
   tenantId: string | null
   tenantSlug: string | null
+  /** Shop display name (`tenant.name`); null before first session load. */
+  tenantName: string | null
   /** Set after a successful `/auth/session` load; null when logged out or session not ready. */
   sessionUserId: string | null
   activeSiteTenantId: string | null
@@ -173,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [tenantSlug, setTenantSlug] = useState<string | null>(initialAuth.tenantSlug)
+  const [tenantName, setTenantName] = useState<string | null>(null)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [activeSiteTenantId, setActiveSiteTenantId] = useState<string | null>(null)
   const [availableSites, setAvailableSites] = useState<SiteOption[]>([])
@@ -247,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTenantId(null)
       setTenantSlug(null)
       setSessionUserId(null)
+      setTenantName(null)
       setActiveSiteTenantId(null)
       setAvailableSites([])
       setPlanCode('pro')
@@ -272,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(data.user.role)
     setTenantId(data.tenant_id)
     setTenantSlug(data.tenant_slug)
+    setTenantName(data.tenant_name)
     setSessionUserId(data.user.id)
     setActiveSiteTenantId(data.active_site_tenant_id)
     setAvailableSites(data.available_sites ?? [])
@@ -541,6 +546,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         tenantId,
         tenantSlug,
+        tenantName,
         sessionUserId,
         activeSiteTenantId,
         availableSites,

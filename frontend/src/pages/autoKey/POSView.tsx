@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShoppingCart, Minus, X, CreditCard } from 'lucide-react'
+import { ShoppingCart, Minus, X, CreditCard, Printer } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -15,7 +15,9 @@ import {
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
 import { dollarsToCents } from '@/lib/money'
+import { useAuth } from '@/context/AuthContext'
 import { CustomerSearchSelect } from './CustomerSearchSelect'
+import { PosReceipt, type PosReceiptSale } from './PosReceipt'
 
 const POS_QUICK_ITEMS = [
   // Key cutting & blanks
@@ -62,6 +64,7 @@ interface CartLine {
 export function POSView({ customers, customerAccounts, onComplete }: { customers: Customer[]; customerAccounts: CustomerAccount[]; onComplete: () => void }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { tenantName, tenantBusinessAddress } = useAuth()
   const [customerId, setCustomerId] = useState('')
   const [customerAccountId, setCustomerAccountId] = useState('')
   const [linkToJobId, setLinkToJobId] = useState('')
@@ -78,6 +81,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   const [customPrice, setCustomPrice] = useState('')
   const [error, setError] = useState('')
   const [successJobId, setSuccessJobId] = useState<string | null>(null)
+  const [lastSale, setLastSale] = useState<PosReceiptSale | null>(null)
 
   const subtotal = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
   const tax = 0
@@ -116,13 +120,14 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
         : undefined
 
       let job: { id: string }
+      let invoice: { invoice_number: string }
       if (linkToJobId) {
         job = { id: linkToJobId }
         const quote = await createAutoKeyQuote(linkToJobId, {
           line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
           tax_cents: tax,
         }).then(r => r.data)
-        await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id)
+        invoice = await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id).then(r => r.data)
         await updateAutoKeyJobStatus(linkToJobId, 'completed')
       } else {
         job = await createAutoKeyJob({
@@ -140,11 +145,25 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
           tax_cents: tax,
         }).then(r => r.data)
-        await createAutoKeyInvoiceFromQuote(job.id, quote.id)
+        invoice = await createAutoKeyInvoiceFromQuote(job.id, quote.id).then(r => r.data)
         await updateAutoKeyJobStatus(job.id, 'collected')
       }
 
-      return { job }
+      const customerName =
+        customerMode === 'new' ? newCustomer.full_name.trim() : customers.find(c => c.id === cid)?.full_name || 'Walk-in'
+
+      return {
+        job,
+        receipt: {
+          invoiceNumber: invoice.invoice_number,
+          customerName,
+          lines: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+          subtotalCents: subtotal,
+          taxCents: tax,
+          totalCents: total,
+          completedAt: new Date(),
+        } satisfies PosReceiptSale,
+      }
     },
     onError: (err: unknown) => {
       setError(
@@ -154,7 +173,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
         ),
       )
     },
-    onSuccess: ({ job }) => {
+    onSuccess: ({ job, receipt }) => {
       qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
       qc.invalidateQueries({ queryKey: ['auto-key-job', job.id] })
       setCart([])
@@ -163,22 +182,31 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
       setLinkToJobId('')
       setNewCustomer({ full_name: '', email: '', phone: '' })
       setSuccessJobId(job.id)
+      setLastSale(receipt)
       onComplete()
     },
   })
 
   if (successJobId) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-lg font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Sale complete</p>
-        <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
-          Invoice created (unpaid). Send to customer via email or SMS, or record payment on the job.
-        </p>
-        <div className="flex gap-2 justify-center flex-wrap">
-          <Button variant="secondary" onClick={() => setSuccessJobId(null)}>New sale</Button>
-          <Button onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>View job & record payment</Button>
-        </div>
-      </Card>
+      <>
+        <Card className="p-8 text-center print-hide">
+          <p className="text-lg font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Sale complete</p>
+          <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
+            Invoice created (unpaid). Send to customer via email or SMS, or record payment on the job.
+          </p>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Button variant="secondary" onClick={() => { setSuccessJobId(null); setLastSale(null) }}>New sale</Button>
+            {lastSale && (
+              <Button variant="secondary" onClick={() => window.print()}>
+                <Printer size={16} /> Print receipt
+              </Button>
+            )}
+            <Button onClick={() => { setSuccessJobId(null); setLastSale(null); navigate(`/auto-key/${successJobId}`) }}>View job & record payment</Button>
+          </div>
+        </Card>
+        {lastSale && <PosReceipt sale={lastSale} shopName={tenantName} shopAddress={tenantBusinessAddress} />}
+      </>
     )
   }
 
