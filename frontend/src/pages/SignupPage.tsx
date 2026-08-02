@@ -3,7 +3,8 @@ import { Link, Navigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { signup } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { Button, Input } from '@/components/ui'
+import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
+import { MarketingField } from '@/components/MarketingField'
 
 type PlanId =
   | 'basic_watch'
@@ -127,137 +128,132 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
-      <div className="w-full max-w-3xl">
+    <div className="mkt-landing min-h-screen flex items-center justify-center px-4 py-10" style={{ background: MKT.oatmeal }}>
+      <style>{MARKETING_CSS}</style>
+
+      <div className="w-full" style={{ maxWidth: 620 }}>
         {redirectingToPayment ? (
-          <div
-            className="rounded-2xl shadow-sm p-8 space-y-5"
-            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-          >
-            <h1
-              className="text-2xl font-semibold text-center"
-              style={{ color: 'var(--ms-text)' }}
-            >
+          <div className="mkt-slide-up" style={{ background: MKT.paper, border: `1px solid ${MKT.ink}`, padding: '40px 32px', textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: MKT.ink }}>
               Redirecting to payment…
             </h1>
-            <p className="text-sm text-center" style={{ color: 'var(--ms-text-mid)' }}>
+            <p style={{ marginTop: 10, fontSize: 14, color: MKT.textBody }}>
               Setting up your plan with Stripe. This window will redirect automatically.
             </p>
           </div>
         ) : (
           <>
-            <div className="flex flex-col items-center mb-8 gap-4">
-              <img
-                src="/mainspring-logo.svg"
-                alt="Mainspring"
-                style={{
-                  width: 'min(100%, 338px)',
-                  height: 'auto',
-                  display: 'block',
-                  maxWidth: '100%',
-                  objectFit: 'contain',
-                }}
-              />
-              <div className="text-center">
-                <h1
-                  className="text-3xl font-semibold"
-                  style={{ color: 'var(--ms-text)' }}
-                >
-                  Create Your Shop
-                </h1>
-                <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
-                  Answer a few questions so we can recommend the right plan.
-                </p>
+            <div className="mkt-slide-up flex flex-col items-center mb-8">
+              <div style={{ border: `1px solid ${MKT.ink}`, background: MKT.paper, padding: '16px 22px', display: 'inline-block' }}>
+                <img
+                  src="/marketing/mainspring-logo-vermilion.svg"
+                  alt="Mainspring"
+                  style={{ width: 'min(76vw, 320px)', height: 'auto', display: 'block', maxWidth: '100%', objectFit: 'contain' }}
+                />
               </div>
+              <p style={{ marginTop: 14, fontSize: 11, fontWeight: 700, letterSpacing: '0.24em', textTransform: 'uppercase', color: MKT.vermilionDeep }}>
+                Create your shop
+              </p>
             </div>
 
-            <div
-              className="rounded-2xl shadow-sm p-8 space-y-5"
-              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-            >
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="rounded-xl p-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: '#FBF8F3' }}>
-                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+            <div className="mkt-slide-up-delay" style={{ background: MKT.paper, border: `1px solid ${MKT.ink}`, padding: '32px 28px' }}>
+              <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted, marginBottom: 6 }}>
+                Set up your account
+              </p>
+              <p style={{ textAlign: 'center', fontSize: 13, color: MKT.textBody, marginBottom: 20 }}>
+                Answer a few questions so we can recommend the right plan.
+              </p>
+
+              <div style={{ height: 1, background: MKT.ruleMid, marginBottom: 22 }} />
+
+              <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: 18 }}>
+                <div style={{ border: `1px solid ${MKT.ruleMid}`, padding: 16 }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: MKT.ink }}>
                     What are you most likely to use the app for?
                   </p>
-                  <div className="space-y-2">
+                  <div className="flex flex-col" style={{ gap: 2 }}>
                     {USE_CASE_OPTIONS.map((item) => {
                       const checked = selectedUses.includes(item.id)
                       return (
-                        <label key={item.id} className="flex cursor-pointer items-start gap-2 rounded-lg p-2" style={{ backgroundColor: checked ? '#F6EFE3' : 'transparent' }}>
+                        <label
+                          key={item.id}
+                          className="flex items-start"
+                          style={{ gap: 10, padding: '8px 8px', cursor: 'pointer', background: checked ? MKT.oatmealPanel : 'transparent' }}
+                        >
                           <input
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleUseCase(item.id)}
-                            className="mt-0.5"
+                            style={{ marginTop: 3 }}
                           />
                           <span>
-                            <span className="block text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{item.label}</span>
-                            <span className="block text-xs" style={{ color: 'var(--ms-text-mid)' }}>{item.hint}</span>
+                            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MKT.ink }}>{item.label}</span>
+                            <span style={{ display: 'block', fontSize: 11, color: MKT.textMuted }}>{item.hint}</span>
                           </span>
                         </label>
                       )
                     })}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
-                      Recommended plan: <strong style={{ color: 'var(--ms-text)' }}>{PLAN_OPTIONS.find((p) => p.id === recommendedPlan)?.name}</strong>
+                  <div className="flex items-center justify-between flex-wrap" style={{ gap: 8, marginTop: 12 }}>
+                    <p style={{ margin: 0, fontSize: 11, color: MKT.textBody }}>
+                      Recommended plan: <strong style={{ color: MKT.ink }}>{PLAN_OPTIONS.find((p) => p.id === recommendedPlan)?.name}</strong>
                     </p>
                     <button
                       type="button"
                       onClick={() => setSelectedPlan(recommendedPlan)}
-                      className="rounded-md px-2.5 py-1 text-xs font-semibold"
-                      style={{ backgroundColor: '#EFE5D7', color: '#5A4632', border: '1px solid #D7C7B2' }}
+                      className="mkt-btn-outline-ink whitespace-nowrap"
+                      style={{ padding: '6px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}
                     >
                       Apply recommendation
                     </button>
                   </div>
                 </div>
 
-                <Input
+                <MarketingField
                   label="Shop Name"
                   placeholder="Example: Heritage Watch Co"
                   value={tenantName}
-                  onChange={(e) => setTenantName(e.target.value)}
-                  required
+                  onChange={setTenantName}
                   autoFocus
+                  required
                 />
-                <Input
+                <MarketingField
                   label="Shop ID"
                   placeholder="heritagewatch"
                   value={tenantSlug}
-                  onChange={(e) => setTenantSlug(e.target.value)}
+                  onChange={setTenantSlug}
                   required
                 />
-                <Input
+                <MarketingField
                   label="Your Full Name"
                   placeholder="Jane Smith"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={setFullName}
                   required
                 />
-                <Input
+                <MarketingField
                   label="Email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={setEmail}
                   required
                 />
-                <Input
+                <MarketingField
                   label="Password"
                   type="password"
                   placeholder="At least 8 characters"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={setPassword}
+                  showPasswordToggle
                   required
                 />
 
-                <div className="pt-2">
-                  <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+                <div>
+                  <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: MKT.ink }}>
                     Choose your plan
                   </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10 }}>
                     {PLAN_OPTIONS.map((plan) => {
                       const active = selectedPlan === plan.id
                       return (
@@ -265,19 +261,20 @@ export default function SignupPage() {
                           key={plan.id}
                           type="button"
                           onClick={() => setSelectedPlan(plan.id)}
-                          className="rounded-xl p-3 text-left"
+                          className="text-left"
                           style={{
-                            border: active ? '2px solid #B0812A' : '1px solid var(--ms-border)',
-                            backgroundColor: active ? '#F6EFE3' : 'var(--ms-surface)',
+                            padding: 12,
+                            border: active ? `2px solid ${MKT.vermilion}` : `1px solid ${MKT.ruleMid}`,
+                            background: active ? MKT.oatmealPanel : MKT.paper,
                           }}
                         >
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between" style={{ gap: 8 }}>
                             <div>
-                              <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{plan.name}</p>
-                              <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>{plan.description}</p>
-                              <p className="mt-2 text-xs font-semibold" style={{ color: '#8D6420' }}>{plan.price}</p>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: MKT.ink }}>{plan.name}</p>
+                              <p style={{ margin: '4px 0 0', fontSize: 11, color: MKT.textMuted }}>{plan.description}</p>
+                              <p style={{ margin: '8px 0 0', fontSize: 12, fontWeight: 700, color: MKT.vermilionDeep }}>{plan.price}</p>
                             </div>
-                            {active ? <Check size={16} style={{ color: '#8D6420' }} /> : null}
+                            {active && <Check size={16} style={{ color: MKT.vermilionDeep, flexShrink: 0 }} aria-hidden />}
                           </div>
                         </button>
                       )
@@ -285,16 +282,21 @@ export default function SignupPage() {
                   </div>
                 </div>
 
-                {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+                {error && <p style={{ fontSize: 13, color: MKT.vermilionDeep, margin: 0 }}>{error}</p>}
 
-                <Button type="submit" className="w-full justify-center py-2.5" disabled={loading || redirectingToPayment}>
+                <button
+                  type="submit"
+                  disabled={loading || redirectingToPayment}
+                  className="mkt-btn-primary"
+                  style={{ width: '100%', padding: '13px', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+                >
                   {redirectingToPayment ? 'Setting up payment…' : loading ? 'Creating account…' : 'Create account & continue to payment'}
-                </Button>
+                </button>
               </form>
 
-              <p className="text-sm text-center" style={{ color: 'var(--ms-text-mid)' }}>
+              <p style={{ fontSize: 13, textAlign: 'center', marginTop: 20, color: MKT.textBody }}>
                 Already have an account?{' '}
-                <Link to="/login" className="underline" style={{ color: 'var(--ms-sidebar)' }}>
+                <Link to="/login" style={{ color: MKT.vermilionDeep, fontWeight: 600 }}>
                   Sign in
                 </Link>
               </p>

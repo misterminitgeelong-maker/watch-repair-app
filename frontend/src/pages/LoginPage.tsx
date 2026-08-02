@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff } from 'lucide-react'
 import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -10,6 +9,7 @@ import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedL
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { safeNextPath } from '@/lib/safeNext'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
+import { MarketingField } from '@/components/MarketingField'
 
 export default function LoginPage() {
   const { token, sessionReady, login: setToken, planCode, tenantSlug } = useAuth()
@@ -202,24 +202,26 @@ export default function LoginPage() {
             </button>
 
             {mode === 'single' && (
-              <LoginField
+              <MarketingField
                 label="Shop ID"
                 value={slug}
                 onChange={setSlug}
                 placeholder="myshop"
                 autoComplete="organization"
                 autoFocus
+                required
               />
             )}
-            <LoginField
+            <MarketingField
               label="Email"
               value={email}
               onChange={setEmail}
               placeholder="you@example.com"
               autoComplete="email"
               type="email"
+              required
             />
-            <LoginField
+            <MarketingField
               label="Password"
               value={password}
               onChange={setPassword}
@@ -227,6 +229,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               type="password"
               showPasswordToggle
+              required
             />
             <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: MKT.textBody }}>
               <input
@@ -260,70 +263,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-// ── Styled input used only on the login page ──────────────────────────────────
-function LoginField({
-  label, value, onChange, type = 'text', placeholder = '', autoComplete, autoFocus = false, showPasswordToggle = false,
-}: {
-  label: string; value: string; onChange: (v: string) => void
-  type?: string; placeholder?: string; autoComplete?: string; autoFocus?: boolean; showPasswordToggle?: boolean
-}) {
-  const [revealed, setRevealed] = useState(false)
-  const isPassword = type === 'password'
-  const inputType = isPassword && showPasswordToggle ? (revealed ? 'text' : 'password') : type
-  const hasToggle = isPassword && showPasswordToggle
-
-  return (
-    <label style={{ display: 'block' }}>
-      <span style={{ display: 'block', marginBottom: 6, fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: MKT.textMuted }}>
-        {label}
-      </span>
-      <div style={{ position: 'relative' }}>
-        <input
-          type={inputType}
-          value={value}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          required
-          onChange={e => onChange(e.target.value)}
-          className="mkt-input"
-          style={{
-            width: '100%',
-            padding: '11px 14px',
-            paddingRight: hasToggle ? 42 : 14,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: 14,
-            boxSizing: 'border-box',
-          }}
-        />
-        {hasToggle && (
-          <button
-            type="button"
-            onClick={() => setRevealed(v => !v)}
-            title={revealed ? 'Hide password' : 'Show password'}
-            aria-label={revealed ? 'Hide password' : 'Show password'}
-            style={{
-              position: 'absolute',
-              right: 8,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              padding: 4,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: MKT.textMuted,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        )}
-      </div>
-    </label>
   )
 }
