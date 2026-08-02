@@ -22,6 +22,9 @@ router = APIRouter(prefix="/v1/reports", tags=["reports"])
 # so dashboard gross profit remains actionable.
 _MAX_REASONABLE_JOB_COST_CENTS = 5_000_000  # $50,000 per job
 _SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
+# Void/refunded invoices were never (or no longer are) real sales and must not
+# inflate "billed"/outstanding totals or show up in sales exports.
+_EXCLUDED_INVOICE_STATUSES = ("void", "refunded")
 
 
 def _compute_period_summary(
@@ -146,6 +149,7 @@ def _compute_period_summary(
         session.exec(
             select(func.coalesce(func.sum(Invoice.total_cents), 0))
             .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
             .where(Invoice.created_at >= start_dt)
             .where(Invoice.created_at <= end_dt)
         ).one()
@@ -154,11 +158,21 @@ def _compute_period_summary(
         session.exec(
             select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
             .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
             .where(AutoKeyInvoice.created_at >= start_dt)
             .where(AutoKeyInvoice.created_at <= end_dt)
         ).one()
     )
-    billed_cents = watch_billed + ak_billed
+    shoe_billed = int(
+        session.exec(
+            select(func.coalesce(func.sum(ShoeRepairJobItem.unit_price_cents * ShoeRepairJobItem.quantity), 0))
+            .where(ShoeRepairJobItem.tenant_id == tenant_id)
+            .where(ShoeRepairJobItem.unit_price_cents.isnot(None))
+            .where(ShoeRepairJobItem.created_at >= start_dt)
+            .where(ShoeRepairJobItem.created_at <= end_dt)
+        ).one() or 0
+    )
+    billed_cents = watch_billed + ak_billed + shoe_billed
 
     quotes_sent = int(
         session.exec(
@@ -361,14 +375,32 @@ def get_reports_summary(
     quotes_by_status = {status: int(count) for status, count in quote_status_rows}
 
     # Billed: watch invoices + auto-key invoices + shoe service items
+    # (void/refunded invoices are excluded — they were never real sales)
     watch_billed = int(
         session.exec(
-            select(func.coalesce(func.sum(Invoice.total_cents), 0)).where(Invoice.tenant_id == tenant_id)
+            select(func.coalesce(func.sum(Invoice.total_cents), 0))
+            .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
         ).one()
     )
     ak_billed = int(
         session.exec(
-            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0)).where(AutoKeyInvoice.tenant_id == tenant_id)
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
+        ).one()
+    )
+    voided_cents = int(
+        session.exec(
+            select(func.coalesce(func.sum(Invoice.total_cents), 0))
+            .where(Invoice.tenant_id == tenant_id)
+            .where(Invoice.status.in_(_EXCLUDED_INVOICE_STATUSES))
+        ).one()
+    ) + int(
+        session.exec(
+            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(AutoKeyInvoice.status.in_(_EXCLUDED_INVOICE_STATUSES))
         ).one()
     )
     shoe_billed = int(
@@ -604,6 +636,7 @@ def get_reports_summary(
             "outstanding_cents": outstanding_cents,
             "gross_profit_cents": gross_profit_cents,
             "gross_margin_percent": gross_margin_percent,
+            "voided_cents": voided_cents,
         },
         "operations": {
             "work_minutes": work_minutes,
@@ -940,6 +973,7 @@ def _watch_sales_rows(
         .join(Watch, RepairJob.watch_id == Watch.id)
         .join(Customer, Watch.customer_id == Customer.id)
         .where(Invoice.tenant_id == tenant_id)
+        .where(Invoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
     )
     if start_dt is not None:
         stmt = stmt.where(Invoice.created_at >= start_dt)
@@ -1001,6 +1035,7 @@ def _mobile_sales_rows(
         .join(AutoKeyJob, AutoKeyInvoice.auto_key_job_id == AutoKeyJob.id)
         .join(Customer, AutoKeyJob.customer_id == Customer.id)
         .where(AutoKeyInvoice.tenant_id == tenant_id)
+        .where(AutoKeyInvoice.status.not_in(_EXCLUDED_INVOICE_STATUSES))
     )
     if start_dt is not None:
         stmt = stmt.where(AutoKeyInvoice.created_at >= start_dt)
@@ -1443,6 +1478,67 @@ def get_auto_key_commission_report(
         })
 
     return {"technicians": technicians}
+
+
+def _gst_bucket(
+    session: Session, model: Any, tenant_id: UUID, start_dt: datetime | None, end_dt: datetime | None
+) -> dict[str, int]:
+    """Sum GST fields for paid, non-void/refunded invoices of a given model (Invoice or AutoKeyInvoice)."""
+    stmt = (
+        select(
+            func.coalesce(func.sum(model.subtotal_cents), 0),
+            func.coalesce(func.sum(model.tax_cents), 0),
+            func.coalesce(func.sum(model.total_cents), 0),
+            func.count(),
+        )
+        .where(model.tenant_id == tenant_id)
+        .where(model.status == "paid")
+        .where(model.gst_enabled.is_(True))
+    )
+    if start_dt is not None:
+        stmt = stmt.where(model.created_at >= start_dt)
+    if end_dt is not None:
+        stmt = stmt.where(model.created_at <= end_dt)
+    subtotal, tax, total, count = session.exec(stmt).one()
+    return {
+        "invoice_count": int(count),
+        "subtotal_cents": int(subtotal),
+        "gst_cents": int(tax),
+        "total_cents": int(total),
+    }
+
+
+def _compute_gst_summary(
+    session: Session, tenant_id: UUID, start_dt: datetime | None, end_dt: datetime | None
+) -> dict[str, Any]:
+    """GST collected on paid invoices, by category. Shoe repairs have no GST tracking fields
+    (ShoeRepairJobItem predates the GST feature) and are intentionally excluded."""
+    watch = _gst_bucket(session, Invoice, tenant_id, start_dt, end_dt)
+    mobile = _gst_bucket(session, AutoKeyInvoice, tenant_id, start_dt, end_dt)
+    combined = {
+        "invoice_count": watch["invoice_count"] + mobile["invoice_count"],
+        "subtotal_cents": watch["subtotal_cents"] + mobile["subtotal_cents"],
+        "gst_cents": watch["gst_cents"] + mobile["gst_cents"],
+        "total_cents": watch["total_cents"] + mobile["total_cents"],
+    }
+    return {"watch": watch, "mobile": mobile, "combined": combined}
+
+
+@router.get("/gst-summary", summary="GST collected on paid invoices for a date range (watch + mobile)")
+def get_gst_summary(
+    period: str | None = Query(
+        default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
+    ),
+    reference_date: str | None = Query(
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+    ),
+    date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
+    date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    start_dt, end_dt, _ = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
+    return _compute_gst_summary(session, auth.tenant_id, start_dt, end_dt)
 
 
 @router.get("/period-summary", summary="Reports metrics for a calendar period")

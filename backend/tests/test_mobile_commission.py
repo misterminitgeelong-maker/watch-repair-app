@@ -78,6 +78,23 @@ def test_commission_rate_minit_sourced_in_defaults():
     assert rate_for_lead_source(rules, "shop_referred") == 3000
 
 
+def test_commission_for_period_lines_rounds_instead_of_truncating():
+    # Regression: commission was computed with int(revenue_cents * bp / 10_000), which
+    # truncates towards zero. 10001 * 6000 / 10_000 = 6000.6, which should round up to
+    # 6001 cents, not truncate down to 6000.
+    from app.mobile_commission import commission_for_period_lines
+    from uuid import uuid4
+
+    job_id, inv_id = uuid4(), uuid4()
+    rules = {"rates_bp": {"shop_referred": 6000}}
+    total, lines = commission_for_period_lines(
+        rules=rules,
+        lines_data=[(job_id, "AK-0001", inv_id, 10001, "shop_referred", "work_completed")],
+    )
+    assert total == 6001
+    assert lines[0].commission_cents == 6001
+
+
 def test_commission_report_retainer_and_rates():
     token, _ = _bootstrap()
     h = {"Authorization": f"Bearer {token}"}
@@ -128,7 +145,7 @@ def test_commission_report_retainer_and_rates():
     assert row["user_id"] == tid
     total_rev = row["lines"][0]["revenue_cents"]
     # 30% of total_rev
-    expected_raw = int(total_rev * 3000 / 10_000)
+    expected_raw = round(total_rev * 3000 / 10_000)
     assert row["raw_commission_cents"] == expected_raw
     assert row["retainer_cents"] == 36000
     assert row["bonus_payable_cents"] == max(0, expected_raw - 36000)

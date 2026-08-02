@@ -147,7 +147,7 @@ def commission_for_period_lines(
         if revenue_cents <= 0:
             continue
         bp = rate_for_lead_source(rules, lead_source)
-        comm = int(revenue_cents * bp / 10_000)
+        comm = round(revenue_cents * bp / 10_000)
         total_raw += comm
         commission_lines.append(
             CommissionLine(

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download } from 'lucide-react'
+import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download, Receipt } from 'lucide-react'
 import { useRef, useState } from 'react'
 import {
   getCategorySummary,
@@ -9,6 +9,7 @@ import {
   getExportMyData,
   getExportPeriodSummaryCsv,
   getExportSalesCsv,
+  getGstSummary,
   getReportsSummary,
   getReportsTrends,
   getReportsTechBreakdown,
@@ -268,6 +269,12 @@ export default function ReportsPage() {
     onSettled: () => setSalesExportingCategory(null),
   })
 
+  // Reuses the same Range picker/state as Sales by Category, so both sections always agree on the window.
+  const { data: gstSummary, isFetching: gstSummaryLoading } = useQuery({
+    queryKey: ['reports-gst-summary', salesRange, salesReferenceDate, salesDateFrom, salesDateTo],
+    queryFn: () => getGstSummary(salesFilter).then(r => r.data),
+  })
+
   const [exportPeriod, setExportPeriod] = useState<ReportPeriod>('week')
   const [exportReferenceDate, setExportReferenceDate] = useState(todayYmd())
   const exportPeriodMut = useMutation({
@@ -436,11 +443,18 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <MetricCard label="Revenue" value={formatCents(data.financials.revenue_cents)} icon={DollarSign} iconBg="#E8F5EC" iconColor="#1A6838" />
-        <MetricCard label="Cost" value={formatCents(data.financials.cost_cents)} icon={Wallet} iconBg="#F8EDDD" iconColor="#B06010" />
-        <MetricCard label="Gross Profit" value={formatCents(data.financials.gross_profit_cents)} icon={Scale} iconBg="#F1E8FB" iconColor="#6040A8" />
-        <MetricCard label="Outstanding" value={formatCents(data.financials.outstanding_cents)} icon={BarChart3} iconBg="#FBEAEA" iconColor="#A33838" />
+      <div className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <MetricCard label="Revenue" value={formatCents(data.financials.revenue_cents)} icon={DollarSign} iconBg="#E8F5EC" iconColor="#1A6838" />
+          <MetricCard label="Cost" value={formatCents(data.financials.cost_cents)} icon={Wallet} iconBg="#F8EDDD" iconColor="#B06010" />
+          <MetricCard label="Gross Profit" value={formatCents(data.financials.gross_profit_cents)} icon={Scale} iconBg="#F1E8FB" iconColor="#6040A8" />
+          <MetricCard label="Outstanding" value={formatCents(data.financials.outstanding_cents)} icon={BarChart3} iconBg="#FBEAEA" iconColor="#A33838" />
+        </div>
+        {data.financials.voided_cents > 0 && (
+          <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
+            Excludes {formatCents(data.financials.voided_cents)} in void/refunded invoices (not counted as billed, revenue, or outstanding).
+          </p>
+        )}
       </div>
 
       {/* Sales by category — separate sections so each service line can be exported on its own */}
@@ -559,6 +573,51 @@ export default function ReportsPage() {
           </div>
         )
       })()}
+
+      {/* GST collected — reuses the Range picker above; shoe repairs have no GST tracking fields. */}
+      {(hasFeature('watch') || hasFeature('auto_key')) && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>GST Collected</h2>
+            {gstSummaryLoading && (
+              <span
+                className="h-3 w-3 animate-spin rounded-full border-2 shrink-0"
+                style={{ borderColor: 'var(--ms-border)', borderTopColor: 'var(--ms-accent)' }}
+              />
+            )}
+          </div>
+          <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+            GST on paid invoices {salesRange === 'all' ? '(all time)' : 'for the range selected above'}. Shoe repairs aren't GST-tracked.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {hasFeature('watch') && (
+              <MetricCard
+                label="Watch Repair GST"
+                value={formatCents(gstSummary?.watch.gst_cents ?? 0)}
+                icon={Receipt}
+                iconBg="#E8F0FB"
+                iconColor="#2A5FA0"
+              />
+            )}
+            {hasFeature('auto_key') && (
+              <MetricCard
+                label="Mobile Services GST"
+                value={formatCents(gstSummary?.mobile.gst_cents ?? 0)}
+                icon={Receipt}
+                iconBg="#F1E8FB"
+                iconColor="#6840B4"
+              />
+            )}
+            <MetricCard
+              label="Total GST Collected"
+              value={formatCents(gstSummary?.combined.gst_cents ?? 0)}
+              icon={Receipt}
+              iconBg="#FBEAEA"
+              iconColor="#A33838"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
         {/* Sales funnel */}

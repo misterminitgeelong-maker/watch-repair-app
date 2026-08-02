@@ -1085,6 +1085,8 @@ export interface ReportsSummary {
     outstanding_cents: number
     gross_profit_cents: number
     gross_margin_percent: number
+    /** Total value of void/refunded invoices — excluded from billed/revenue, shown for transparency. */
+    voided_cents: number
   }
   operations: {
     work_minutes: number
@@ -1174,6 +1176,21 @@ export const getCategorySummary = (filter?: SalesExportDateFilter) =>
     '/reports/category-summary',
     { params: filter },
   )
+
+export interface GstCategorySummary {
+  invoice_count: number
+  subtotal_cents: number
+  gst_cents: number
+  total_cents: number
+}
+export interface GstSummary {
+  watch: GstCategorySummary
+  mobile: GstCategorySummary
+  combined: GstCategorySummary
+}
+/** GST collected on paid watch + mobile invoices for a date range (shoe repairs have no GST tracking). */
+export const getGstSummary = (filter?: SalesExportDateFilter) =>
+  api.get<GstSummary>('/reports/gst-summary', { params: filter })
 
 export interface PeriodReportSummary {
   period: ReportPeriod

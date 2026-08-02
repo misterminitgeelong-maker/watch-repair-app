@@ -323,6 +323,55 @@ def test_category_summary_filters_by_period_like_export():
     assert watch["revenue_cents"] == 7000
 
 
+def test_category_summary_void_invoice_excluded_entirely():
+    # Regression: void/refunded invoices were being counted as "billed" (and thus
+    # inflating "outstanding") even though they represent no real sale at all.
+    token, tenant_id = _bootstrap()
+    headers = {"Authorization": f"Bearer {token}"}
+    tid = UUID(tenant_id)
+    with Session(engine) as session:
+        customer = Customer(tenant_id=tid, full_name="Void Customer")
+        session.add(customer)
+        session.commit()
+        session.refresh(customer)
+        watch = Watch(tenant_id=tid, customer_id=customer.id, brand="Casio")
+        session.add(watch)
+        session.commit()
+        session.refresh(watch)
+        job = RepairJob(tenant_id=tid, watch_id=watch.id, job_number="W-VOID", title="Strap replace")
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        session.add(Invoice(
+            tenant_id=tid, repair_job_id=job.id, invoice_number="INV-VOID", status="void", total_cents=99999,
+        ))
+
+        ak_job = AutoKeyJob(tenant_id=tid, customer_id=customer.id, job_number="AK-REFUND", title="Fob program")
+        session.add(ak_job)
+        session.commit()
+        session.refresh(ak_job)
+        session.add(AutoKeyInvoice(
+            tenant_id=tid, auto_key_job_id=ak_job.id, invoice_number="AKI-REFUND", status="refunded", total_cents=88888,
+        ))
+        session.commit()
+
+    res = client.get("/v1/reports/category-summary", headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["watch"] == {"jobs": 0, "billed_cents": 0, "revenue_cents": 0, "cost_cents": 0, "outstanding_cents": 0}
+    assert body["mobile"] == {"jobs": 0, "billed_cents": 0, "revenue_cents": 0, "cost_cents": 0, "outstanding_cents": 0}
+
+    summary_res = client.get("/v1/reports/summary", headers=headers)
+    assert summary_res.status_code == 200, summary_res.text
+    fin = summary_res.json()["financials"]
+    assert fin["billed_cents"] == 0
+    assert fin["voided_cents"] == 99999 + 88888
+
+    export_res = client.get("/v1/reports/export/sales", headers=headers, params={"category": "all"})
+    assert export_res.status_code == 200
+    assert _csv_rows(export_res.text) == []
+
+
 def test_category_summary_unpaid_invoice_counts_as_billed_not_revenue():
     token, tenant_id = _bootstrap()
     headers = {"Authorization": f"Bearer {token}"}
