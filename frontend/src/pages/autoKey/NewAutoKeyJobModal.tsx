@@ -34,7 +34,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('')
   const [step, setStep] = useState<1 | 2>(1)
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
-  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', address: '', notes: '' })
+  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', notes: '' })
   const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
   const [sendBookingSms, setSendBookingSms] = useState(false)
   const [showPricingSelector, setShowPricingSelector] = useState(false)
@@ -194,7 +194,10 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
       let customerId = form.customer_id
       if (customerMode === 'new') {
         if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
-        const { data } = await createCustomer(newCustomer)
+        // One address field in this form (job address) - it doubles as the new
+        // customer's saved address, since for mobile jobs they're almost always
+        // the same place.
+        const { data } = await createCustomer({ ...newCustomer, address: form.job_address.trim() || undefined })
         customerId = data.id
         qc.invalidateQueries({ queryKey: ['customers'] })
       } else if (!customerId) {
@@ -315,7 +318,6 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                   <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
                   <Input label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" />
                 </div>
-                <Input label="Address" value={newCustomer.address} onChange={e => setNewCustomer(f => ({ ...f, address: e.target.value }))} placeholder="Optional" />
                 <Textarea label="Notes" value={newCustomer.notes} onChange={e => setNewCustomer(f => ({ ...f, notes: e.target.value }))} rows={1} placeholder="Optional" />
               </>
             )}
@@ -395,7 +397,13 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               label={MOBILE_JOB_TYPES.has(form.job_type) ? 'Job address *' : 'Job address'}
               value={form.job_address}
               onChange={val => setForm(f => ({ ...f, job_address: val }))}
-              placeholder={MOBILE_JOB_TYPES.has(form.job_type) ? 'Where to meet customer (required for mobile jobs)' : 'Where to meet customer (optional)'}
+              placeholder={
+                MOBILE_JOB_TYPES.has(form.job_type)
+                  ? 'Where to meet customer (required for mobile jobs)'
+                  : customerMode === 'new'
+                    ? 'Where to meet customer — also saved to their profile'
+                    : 'Where to meet customer (optional)'
+              }
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Vehicle make" value={form.vehicle_make} onChange={e => setForm(f => ({ ...f, vehicle_make: e.target.value }))} placeholder="e.g. Toyota" />
