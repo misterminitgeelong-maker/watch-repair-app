@@ -14,6 +14,7 @@ from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
+from ..gst import compute_gst_amounts
 from ..services.mobile_lead_dispatch import complete_dispatch_if_quoted
 from ..models import (
     Attachment,
@@ -132,6 +133,8 @@ def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
         status=quote.status,
         subtotal_cents=quote.subtotal_cents,
         tax_cents=quote.tax_cents,
+        gst_enabled=quote.gst_enabled,
+        gst_inclusive=quote.gst_inclusive,
         total_cents=quote.total_cents,
         currency=quote.currency,
         sent_at=quote.sent_at,
@@ -163,6 +166,8 @@ def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
         status=invoice.status,
         subtotal_cents=invoice.subtotal_cents,
         tax_cents=invoice.tax_cents,
+        gst_enabled=invoice.gst_enabled,
+        gst_inclusive=invoice.gst_inclusive,
         total_cents=invoice.total_cents,
         currency=invoice.currency,
         payment_method=invoice.payment_method,
@@ -191,6 +196,8 @@ def _create_suggested_quote_for_job(
         tenant_id=tenant_id,
         auto_key_job_id=job.id,
         tax_cents=tax,
+        gst_enabled=True,
+        gst_inclusive=False,
         subtotal_cents=subtotal,
         total_cents=subtotal + tax,
     )
@@ -812,6 +819,8 @@ def update_auto_key_job_status(
                   invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
                   subtotal_cents=latest_quote.subtotal_cents,
                   tax_cents=latest_quote.tax_cents,
+                  gst_enabled=latest_quote.gst_enabled,
+                  gst_inclusive=latest_quote.gst_inclusive,
                   total_cents=latest_quote.total_cents,
                   currency=latest_quote.currency,
                   customer_view_token=uuid4().hex,
@@ -825,6 +834,8 @@ def update_auto_key_job_status(
                   invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
                   subtotal_cents=subtotal,
                   tax_cents=tax,
+                  gst_enabled=True,
+                  gst_inclusive=True,
                   total_cents=max(0, int(job.cost_cents)),
                   currency="AUD",
                   customer_view_token=uuid4().hex,
@@ -1039,18 +1050,19 @@ def create_auto_key_quote(
     if not payload.line_items:
         raise HTTPException(status_code=400, detail="At least one line item is required")
 
-    subtotal = 0
+    entered = 0
     quote = AutoKeyQuote(
         tenant_id=auth.tenant_id,
         auto_key_job_id=job_id,
-        tax_cents=max(0, payload.tax_cents),
+        gst_enabled=payload.gst_enabled,
+        gst_inclusive=payload.gst_inclusive,
     )
     session.add(quote)
     session.flush()
 
     for item in payload.line_items:
         total_price = int(round(item.quantity * item.unit_price_cents))
-        subtotal += total_price
+        entered += total_price
         session.add(
             AutoKeyQuoteLineItem(
                 tenant_id=auth.tenant_id,
@@ -1062,8 +1074,9 @@ def create_auto_key_quote(
             )
         )
 
-    quote.subtotal_cents = subtotal
-    quote.total_cents = subtotal + quote.tax_cents
+    quote.subtotal_cents, quote.tax_cents, quote.total_cents = compute_gst_amounts(
+        entered, payload.gst_enabled, payload.gst_inclusive
+    )
     session.add(quote)
     session.commit()
     session.refresh(quote)
@@ -1242,6 +1255,8 @@ def create_auto_key_invoice_from_quote(
         invoice_number=_next_auto_key_invoice_number(session, auth.tenant_id),
         subtotal_cents=quote.subtotal_cents,
         tax_cents=quote.tax_cents,
+        gst_enabled=quote.gst_enabled,
+        gst_inclusive=quote.gst_inclusive,
         total_cents=quote.total_cents,
         currency=quote.currency,
         customer_view_token=uuid4().hex,

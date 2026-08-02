@@ -1335,6 +1335,8 @@ def decide_public_auto_key_quote(
                         invoice_number=_next_aki_invoice_number(session, job.tenant_id),
                         subtotal_cents=quote.subtotal_cents,
                         tax_cents=quote.tax_cents,
+                        gst_enabled=quote.gst_enabled,
+                        gst_inclusive=quote.gst_inclusive,
                         total_cents=quote.total_cents,
                         currency=quote.currency,
                         customer_view_token=uuid4().hex,

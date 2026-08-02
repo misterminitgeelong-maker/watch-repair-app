@@ -1230,7 +1230,8 @@ class AutoKeyQuoteLineItemCreate(SQLModel):
 
 class AutoKeyQuoteCreate(SQLModel):
     line_items: list[AutoKeyQuoteLineItemCreate]
-    tax_cents: int = 0
+    gst_enabled: bool = True
+    gst_inclusive: bool = False
 
 class AutoKeyQuoteLineItemRead(SQLModel):
     id: UUID
@@ -1247,6 +1248,8 @@ class AutoKeyQuoteRead(SQLModel):
     status: str
     subtotal_cents: int
     tax_cents: int
+    gst_enabled: bool
+    gst_inclusive: bool
     total_cents: int
     currency: str
     sent_at: Optional[datetime] = None
@@ -1265,6 +1268,8 @@ class AutoKeyInvoiceRead(SQLModel):
     status: str
     subtotal_cents: int
     tax_cents: int
+    gst_enabled: bool
+    gst_inclusive: bool
     total_cents: int
     currency: str
     payment_method: Optional[str] = None

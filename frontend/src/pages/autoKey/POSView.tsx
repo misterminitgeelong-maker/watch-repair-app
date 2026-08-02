@@ -14,7 +14,7 @@ import {
   type CustomerAccount,
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
-import { dollarsToCents } from '@/lib/money'
+import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { CustomerSearchSelect } from './CustomerSearchSelect'
 
 const POS_QUICK_ITEMS = [
@@ -78,10 +78,11 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   const [customPrice, setCustomPrice] = useState('')
   const [error, setError] = useState('')
   const [successJobId, setSuccessJobId] = useState<string | null>(null)
+  const [gstEnabled, setGstEnabled] = useState(true)
+  const [gstInclusive, setGstInclusive] = useState(true)
 
-  const subtotal = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
-  const tax = 0
-  const total = subtotal + tax
+  const enteredCents = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
+  const { subtotalCents: subtotal, taxCents: tax, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
   const addToCart = (description: string, unit_price_cents: number, quantity = 1) => {
     const existing = cart.find(l => l.description === description && l.unit_price_cents === unit_price_cents)
@@ -120,7 +121,8 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
         job = { id: linkToJobId }
         const quote = await createAutoKeyQuote(linkToJobId, {
           line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
-          tax_cents: tax,
+          gst_enabled: gstEnabled,
+          gst_inclusive: gstInclusive,
         }).then(r => r.data)
         await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id)
         await updateAutoKeyJobStatus(linkToJobId, 'completed')
@@ -138,7 +140,8 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
         }).then(r => r.data)
         const quote = await createAutoKeyQuote(job.id, {
           line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
-          tax_cents: tax,
+          gst_enabled: gstEnabled,
+          gst_inclusive: gstInclusive,
         }).then(r => r.data)
         await createAutoKeyInvoiceFromQuote(job.id, quote.id)
         await updateAutoKeyJobStatus(job.id, 'collected')
@@ -207,7 +210,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
                   <Select
                     label="B2B Account (optional)"
                     value={customerAccountId}
-                    onChange={e => setCustomerAccountId(e.target.value)}
+                    onChange={e => { setCustomerAccountId(e.target.value); setGstInclusive(!e.target.value) }}
                   >
                     <option value="">Personal / no B2B</option>
                     {customerAccounts
@@ -317,8 +320,24 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           </div>
         )}
         <div className="border-t pt-4" style={{ borderColor: 'var(--ms-border)' }}>
+          <label className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ms-text)' }}>
+            <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+            Apply GST (10%)
+          </label>
+          {gstEnabled && (
+            <div className="flex gap-4 pl-6 text-sm mb-2" style={{ color: 'var(--ms-text-mid)' }}>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode-pos" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+                Included
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode-pos" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+                Add on top
+              </label>
+            </div>
+          )}
           <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
-          {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Tax</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
+          {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>GST</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
         </div>
         {error && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{error}</p>}

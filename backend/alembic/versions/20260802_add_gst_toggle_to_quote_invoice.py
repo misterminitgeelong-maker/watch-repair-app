@@ -14,18 +14,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("quote") as batch:
-        batch.add_column(sa.Column("gst_enabled", sa.Boolean(), nullable=False, server_default=sa.true()))
-        batch.add_column(sa.Column("gst_inclusive", sa.Boolean(), nullable=False, server_default=sa.false()))
-    with op.batch_alter_table("invoice") as batch:
-        batch.add_column(sa.Column("gst_enabled", sa.Boolean(), nullable=False, server_default=sa.true()))
-        batch.add_column(sa.Column("gst_inclusive", sa.Boolean(), nullable=False, server_default=sa.false()))
+    for table in ("quote", "invoice", "autokeyquote", "autokeyinvoice"):
+        with op.batch_alter_table(table) as batch:
+            batch.add_column(sa.Column("gst_enabled", sa.Boolean(), nullable=False, server_default=sa.true()))
+            batch.add_column(sa.Column("gst_inclusive", sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("invoice") as batch:
-        batch.drop_column("gst_inclusive")
-        batch.drop_column("gst_enabled")
-    with op.batch_alter_table("quote") as batch:
-        batch.drop_column("gst_inclusive")
-        batch.drop_column("gst_enabled")
+    for table in ("autokeyinvoice", "autokeyquote", "invoice", "quote"):
+        with op.batch_alter_table(table) as batch:
+            batch.drop_column("gst_inclusive")
+            batch.drop_column("gst_enabled")

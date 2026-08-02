@@ -1628,6 +1628,8 @@ export interface AutoKeyQuote {
   status: string
   subtotal_cents: number
   tax_cents: number
+  gst_enabled: boolean
+  gst_inclusive: boolean
   total_cents: number
   currency: string
   sent_at?: string
@@ -1652,6 +1654,8 @@ export interface AutoKeyInvoice {
   status: string
   subtotal_cents: number
   tax_cents: number
+  gst_enabled: boolean
+  gst_inclusive: boolean
   total_cents: number
   currency: string
   created_at: string
@@ -1668,7 +1672,8 @@ export interface AutoKeyQuoteCreatePayload {
     quantity: number
     unit_price_cents: number
   }>
-  tax_cents: number
+  gst_enabled: boolean
+  gst_inclusive: boolean
 }
 
 export const listAutoKeyQuotes = (jobId: string) => api.get<AutoKeyQuote[]>(`/auto-key-jobs/${jobId}/quotes`)

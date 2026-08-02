@@ -148,7 +148,7 @@ export function AutoKeyJobCard({
   return (
     <>
     <Card className="p-4">
-      {showQuoteModal && <CreateQuoteModal jobId={job.id} onClose={() => setShowQuoteModal(false)} />}
+      {showQuoteModal && <CreateQuoteModal jobId={job.id} isBusinessAccount={!!job.customer_account_id} onClose={() => setShowQuoteModal(false)} />}
       <div className="flex items-start justify-between gap-3">
         <div
           className="min-w-0 flex-1 cursor-pointer"

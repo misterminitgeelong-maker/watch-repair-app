@@ -51,14 +51,16 @@ import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/Secure
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { preparePhotoFile } from '@/lib/photoUpload'
+import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 
 interface LineItemDraft { description: string; quantity: string; unitPrice: string }
 
-function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+function CreateQuoteInlineForm({ jobId, isBusinessAccount, onClose }: { jobId: string; isBusinessAccount: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [err, setErr] = useState('')
   const [items, setItems] = useState<LineItemDraft[]>([{ description: '', quantity: '1', unitPrice: '' }])
-  const [tax, setTax] = useState('0.00')
+  const [gstEnabled, setGstEnabled] = useState(true)
+  const [gstInclusive, setGstInclusive] = useState(!isBusinessAccount)
 
   const addPreset = (p: typeof QUOTE_PRESETS[number]) => {
     setItems(prev => {
@@ -85,11 +87,10 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
 
   const addBlankItem = () => setItems(prev => [...prev, { description: '', quantity: '1', unitPrice: '' }])
 
-  const subtotal = items.reduce((sum, item) => {
-    return sum + parseFloat(item.unitPrice || '0') * parseFloat(item.quantity || '1')
+  const enteredCents = items.reduce((sum, item) => {
+    return sum + dollarsToCents(item.unitPrice) * Math.max(1, parseFloat(item.quantity || '1'))
   }, 0)
-  const taxAmt = parseFloat(tax || '0')
-  const total = subtotal + taxAmt
+  const { subtotalCents, taxCents, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
   const mut = useMutation({
     mutationFn: () =>
@@ -99,9 +100,10 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
           .map(i => ({
             description: i.description.trim(),
             quantity: Math.max(1, parseFloat(i.quantity || '1')),
-            unit_price_cents: Math.max(0, Math.round(parseFloat(i.unitPrice || '0') * 100)),
+            unit_price_cents: dollarsToCents(i.unitPrice),
           })),
-        tax_cents: Math.max(0, Math.round(taxAmt * 100)),
+        gst_enabled: gstEnabled,
+        gst_inclusive: gstInclusive,
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] }); onClose() },
     onError: (e) => setErr(getApiErrorMessage(e, 'Failed to create quote.')),
@@ -191,11 +193,27 @@ function CreateQuoteInlineForm({ jobId, onClose }: { jobId: string; onClose: () 
       </div>
 
       {/* GST + total */}
-      <div className="flex items-center gap-4">
-        <div style={{ width: 100 }}>
-          <Input label="GST ($)" type="number" step="0.01" min="0" value={tax} onChange={e => setTax(e.target.value)} />
-        </div>
-        <p className="text-sm font-bold pt-5" style={{ color: 'var(--ms-text)' }}>Total: ${total.toFixed(2)}</p>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+          <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+          Apply GST (10%)
+        </label>
+        {gstEnabled && (
+          <div className="flex gap-4 pl-6 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+            <label className="flex items-center gap-1.5">
+              <input type="radio" name="gst-mode-inline" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+              Include in total (non-business)
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input type="radio" name="gst-mode-inline" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+              Add on top (business)
+            </label>
+          </div>
+        )}
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+          Subtotal: ${(subtotalCents / 100).toFixed(2)} · GST: ${(taxCents / 100).toFixed(2)}
+        </p>
+        <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Total: ${(total / 100).toFixed(2)}</p>
       </div>
 
       {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
@@ -1309,7 +1327,7 @@ export default function AutoKeyJobDetailPage() {
         <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden' : ''}`}>
           {showQuoteModal && (
             <Modal title="Create Quote" onClose={() => setShowQuoteModal(false)}>
-              <CreateQuoteInlineForm jobId={id!} onClose={() => setShowQuoteModal(false)} />
+              <CreateQuoteInlineForm jobId={id!} isBusinessAccount={!!job.customer_account_id} onClose={() => setShowQuoteModal(false)} />
             </Modal>
           )}
 
