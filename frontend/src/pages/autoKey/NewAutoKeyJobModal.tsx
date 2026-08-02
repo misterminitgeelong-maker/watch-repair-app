@@ -26,7 +26,7 @@ import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { dollarsToCents } from '@/lib/money'
 import { STATUS_LABELS } from '@/lib/utils'
 import { STATUSES, formatCents } from './dispatchHelpers'
-import { CustomerSearchSelect } from './CustomerSearchSelect'
+import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 
 export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()

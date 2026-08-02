@@ -10,11 +10,11 @@ import {
   getApiErrorMessage,
   getUploadErrorMessage,
   trackingSmsWarning,
-  type Customer,
   type CustomerAccount,
 } from '@/lib/api'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService, SHOE_TYPE_GROUPS } from '@/components/ShoeServicePicker'
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
+import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import { STATUS_LABELS } from '@/lib/utils'
 import { preparePhotoFile, getPhotoPrepareErrorMessage, uploadFilesSequential } from '@/lib/photoUpload'
 import { pushModalCloseHandler } from '@/lib/modalBackStack'
@@ -376,16 +376,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             ))}
           </div>
           {customerMode === 'existing' ? (
-            <Select
-              label="Select Customer"
-              value={selectedCustomerId}
-              onChange={e => setSelectedCustomerId(e.target.value)}
-            >
-              <option value="">Choose…</option>
-              {(customers ?? []).map((c: Customer) => (
-                <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>
-              ))}
-            </Select>
+            <CustomerSearchSelect customers={customers ?? []} value={selectedCustomerId} onChange={setSelectedCustomerId} />
           ) : (
             <>
               <Input label="Full Name *" value={newCustomer.full_name} onChange={setC('full_name')} placeholder="Jane Smith" />

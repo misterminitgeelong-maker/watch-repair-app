@@ -15,7 +15,7 @@ import {
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
 import { dollarsToCents, computeGstAmounts } from '@/lib/money'
-import { CustomerSearchSelect } from './CustomerSearchSelect'
+import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 
 const POS_QUICK_ITEMS = [
   // Key cutting & blanks

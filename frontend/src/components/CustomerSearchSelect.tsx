@@ -3,8 +3,9 @@ import type { Customer } from '@/lib/api'
 import { Input } from '@/components/ui'
 
 /**
- * Typeahead customer picker (name / phone / email) used by the auto-key
- * new-job and POS flows. Controlled via value + onChange; no API calls.
+ * Typeahead customer picker (name / phone / email). Controlled via
+ * value + onChange, filters an already-loaded customer list client-side;
+ * no API calls.
  */
 export function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
   const [search, setSearch] = useState('')
