@@ -126,4 +126,17 @@ describe('AuthContext', () => {
     await userEvent.click(screen.getByText('do-logout'))
     expect(screen.getByTestId('auth-status').textContent).toBe('anonymous')
   })
+
+  it('still unblocks to authenticated when /auth/session fails for a non-401 reason (e.g. backend cold start)', async () => {
+    // Regression: a network error / 5xx here used to leave featuresKnown false
+    // forever, so authStatus stuck at 'authenticating' and every
+    // FeatureGate-wrapped route (e.g. the post-login /parent-account landing
+    // page) spun on its loading spinner indefinitely.
+    testServer.use(http.get('*/v1/auth/session', () => HttpResponse.json({ detail: 'boom' }, { status: 500 })))
+    renderAuth()
+    await userEvent.click(screen.getByText('do-login'))
+    await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+    // Token must not be wiped on a non-401 failure - only a genuine 401 logs out.
+    expect(getStoredAccessToken()).toBe(TEST_JWT)
+  })
 })

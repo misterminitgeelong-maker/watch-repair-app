@@ -362,10 +362,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Backend took too long (e.g. cold start after deploy) - don't wipe the
         // token. The user's role is already parsed from the JWT. Just unblock the
         // UI; actual API calls will 401 and trigger refresh/logout if needed.
-        if (!canceled) setSessionReady(true)
+        // featuresKnown must unblock too, or every FeatureGate-wrapped route
+        // (e.g. the post-login /parent-account landing page) spins forever.
+        if (!canceled) {
+          setSessionReady(true)
+          setFeaturesKnown(true)
+        }
       }, SESSION_INIT_TIMEOUT_MS)
 
       async function loadSession() {
+        let loggedOut = false
         try {
           await refreshSession()
           if (canceled || timedOut) return
@@ -377,6 +383,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // continue. The existing 401 interceptor in api.ts will handle
             // token expiry on the next real request.
             if (axios.isAxiosError(err) && err.response?.status === 401) {
+              loggedOut = true
               clearStoredTokens()
               setToken(null)
               setRole(null)
@@ -397,7 +404,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } finally {
           clearTimeout(timeoutId)
-          if (!canceled && !timedOut) setSessionReady(true)
+          if (!canceled && !timedOut) {
+            setSessionReady(true)
+            // A failed (non-401) session fetch still needs to unblock feature
+            // gates - otherwise authStatus is stuck at 'authenticating' and any
+            // FeatureGate-wrapped route (e.g. /parent-account right after
+            // login) shows a spinner forever instead of falling back.
+            if (!loggedOut) setFeaturesKnown(true)
+          }
         }
       }
 
