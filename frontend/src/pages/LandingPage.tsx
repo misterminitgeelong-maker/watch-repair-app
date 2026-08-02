@@ -125,8 +125,7 @@ const JOB_LIST = [
 
 const STAT_CARDS = [
   { label: 'All active jobs', value: '24', helper: 'Watch 12 · Shoe 8 · Keys 4' },
-  // TODO: confirm before shipping — approval-rate figure needs sign-off.
-  { label: 'Quotes awaiting action', value: '7', helper: '68% approval rate' },
+  { label: 'Quotes awaiting action', value: '7', helper: '' },
   { label: 'Open invoices', value: '11', helper: 'A$4,820 awaiting payment' },
   { label: 'Outstanding work value', value: 'A$12,400', helper: '5 jobs waiting on approval' },
 ]
@@ -521,9 +520,8 @@ function Hero() {
               <p style={{ margin: '8px 0 0', fontSize: 34, fontWeight: 800, letterSpacing: '-0.045em', color: MKT.ink, lineHeight: 1 }}>
                 A$25<span style={{ fontSize: 15, fontWeight: 600, color: '#5E574D' }}>/mo</span>
               </p>
-              {/* TODO: confirm before shipping — live-shop-count claim needs sign-off. */}
               <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: MKT.textBody }}>
-                14-day trial · no card · 8 shops live across VIC, WA, NSW &amp; NT
+                14-day trial · no card required
               </p>
             </div>
           </div>
@@ -544,7 +542,7 @@ function Hero() {
                 <div key={card.label} style={{ padding: 18, borderLeft: `1px solid ${MKT.ruleMid}` }}>
                   <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>{card.label}</p>
                   <p style={{ margin: '10px 0 0', fontSize: 28, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink, lineHeight: 1 }}>{card.value}</p>
-                  <p style={{ margin: '6px 0 0', fontSize: 11, color: MKT.textBody }}>{card.helper}</p>
+                  {card.helper && <p style={{ margin: '6px 0 0', fontSize: 11, color: MKT.textBody }}>{card.helper}</p>}
                 </div>
               ))}
             </div>
