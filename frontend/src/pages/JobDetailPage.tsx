@@ -26,7 +26,7 @@ import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffset
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
 import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
-import { dollarsToCents } from '@/lib/money'
+import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { preparePhotoFile } from '@/lib/photoUpload'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import LogWorkModal from '@/components/LogWorkModal'
@@ -178,10 +178,11 @@ function StepNoteModal({
 }
 
 // ── Create-and-send quote modal (awaiting_quote fast flow) ────────────────────
-function CreateSendQuoteModal({ jobId, onClose, onSent }: { jobId: string; onClose: () => void; onSent: () => void }) {
+function CreateSendQuoteModal({ jobId, isBusinessAccount, onClose, onSent }: { jobId: string; isBusinessAccount: boolean; onClose: () => void; onSent: () => void }) {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [taxPct, setTaxPct] = useState('0')
+  const [gstEnabled, setGstEnabled] = useState(true)
+  const [gstInclusive, setGstInclusive] = useState(!isBusinessAccount)
   const [step, setStep] = useState<'form' | 'sending' | 'done'>('form')
   const [error, setError] = useState('')
   const [approvalToken, setApprovalToken] = useState('')
@@ -192,10 +193,10 @@ function CreateSendQuoteModal({ jobId, onClose, onSent }: { jobId: string; onClo
     setStep('sending')
     setError('')
     try {
-      const taxCents = Math.round(amountCents * (parseFloat(taxPct || '0') / 100))
       const quote = await createQuote({
         repair_job_id: jobId,
-        tax_cents: taxCents,
+        gst_enabled: gstEnabled,
+        gst_inclusive: gstInclusive,
         line_items: [{ item_type: 'labor', description: description.trim(), quantity: 1, unit_price_cents: amountCents }],
       })
       const sent = await sendQuote(quote.data.id)
@@ -244,36 +245,41 @@ function CreateSendQuoteModal({ jobId, onClose, onSent }: { jobId: string; onClo
           placeholder="Full service — movement clean, lubricate, and regulate…"
           autoFocus
         />
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Input
-              label="Amount ($) *"
-              type="number"
-              min="0"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="195.00"
-            />
-          </div>
-          <div style={{ width: 90 }}>
-            <Input
-              label="Tax (%)"
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={taxPct}
-              onChange={(e) => setTaxPct(e.target.value)}
-              placeholder="10"
-            />
-          </div>
+        <Input
+          label="Amount ($) *"
+          type="number"
+          min="0"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="195.00"
+        />
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+            <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+            Apply GST (10%)
+          </label>
+          {gstEnabled && (
+            <div className="flex gap-4 pl-6 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+                Include in total (non-business)
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+                Add on top (business)
+              </label>
+            </div>
+          )}
         </div>
-        {amount && !isNaN(parseFloat(amount)) && (
-          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-            Total: ${(parseFloat(amount) * (1 + parseFloat(taxPct || '0') / 100)).toFixed(2)}
-          </p>
-        )}
+        {amount && !isNaN(parseFloat(amount)) && (() => {
+          const { subtotalCents, taxCents, totalCents } = computeGstAmounts(dollarsToCents(amount), gstEnabled, gstInclusive)
+          return (
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              Subtotal: ${(subtotalCents / 100).toFixed(2)} · GST: ${(taxCents / 100).toFixed(2)} · Total: ${(totalCents / 100).toFixed(2)}
+            </p>
+          )
+        })()}
         {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -750,6 +756,7 @@ export default function JobDetailPage() {
       {showCreateQuote && (
         <CreateSendQuoteModal
           jobId={id!}
+          isBusinessAccount={!!job.customer_account_id}
           onClose={() => setShowCreateQuote(false)}
           onSent={() => {
             qc.invalidateQueries({ queryKey: ['job', id] })

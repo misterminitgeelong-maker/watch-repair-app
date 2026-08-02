@@ -101,6 +101,8 @@ def create_invoice_from_quote(
         invoice_number=_next_invoice_number(session, auth.tenant_id),
         subtotal_cents=quote.subtotal_cents,
         tax_cents=quote.tax_cents,
+        gst_enabled=quote.gst_enabled,
+        gst_inclusive=quote.gst_inclusive,
         total_cents=quote.total_cents,
         currency=quote.currency,
     )

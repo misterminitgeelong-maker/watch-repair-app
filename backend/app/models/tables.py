@@ -442,6 +442,11 @@ class Quote(SQLModel, table=True):
     status: str = "draft"
     subtotal_cents: int = 0
     tax_cents: int = 0
+    #: Whether GST applies to this quote at all.
+    gst_enabled: bool = True
+    #: True = GST is already included within subtotal_cents (non-business default).
+    #: False = GST is added on top of subtotal_cents (business default).
+    gst_inclusive: bool = False
     total_cents: int = 0
     currency: str = "USD"
     approval_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
@@ -489,6 +494,8 @@ class Invoice(SQLModel, table=True):
     status: str = "unpaid"
     subtotal_cents: int = 0
     tax_cents: int = 0
+    gst_enabled: bool = True
+    gst_inclusive: bool = False
     total_cents: int = 0
     currency: str = "USD"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

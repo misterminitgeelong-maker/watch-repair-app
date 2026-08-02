@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dollarsToCents, lineItemsSubtotalCents, totalWithTaxCents } from './money'
+import { dollarsToCents, lineItemsSubtotalCents, totalWithTaxCents, computeGstAmounts } from './money'
 
 describe('dollarsToCents', () => {
   it('converts whole and decimal dollars to cents', () => {
@@ -70,5 +70,28 @@ describe('totalWithTaxCents', () => {
 
   it('treats negative tax as 0', () => {
     expect(totalWithTaxCents(10000, -500)).toBe(10000)
+  })
+})
+
+describe('computeGstAmounts', () => {
+  it('leaves amounts untouched when GST is disabled', () => {
+    expect(computeGstAmounts(10000, false, false)).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
+    expect(computeGstAmounts(10000, false, true)).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
+  })
+
+  it('adds 10% GST on top for the exclusive (business) mode', () => {
+    expect(computeGstAmounts(10000, true, false)).toEqual({ subtotalCents: 10000, taxCents: 1000, totalCents: 11000 })
+  })
+
+  it('backs GST out of the entered price for the inclusive (non-business) mode', () => {
+    // $110.00 entered, already includes 10% GST -> $100.00 ex-GST + $10.00 GST
+    expect(computeGstAmounts(11000, true, true)).toEqual({ subtotalCents: 10000, taxCents: 1000, totalCents: 11000 })
+  })
+
+  it('always satisfies subtotal + tax === total', () => {
+    for (const [entered, inclusive] of [[9999, false], [9999, true], [100, true], [1, true]] as const) {
+      const { subtotalCents, taxCents, totalCents } = computeGstAmounts(entered, true, inclusive)
+      expect(subtotalCents + taxCents).toBe(totalCents)
+    }
   })
 })

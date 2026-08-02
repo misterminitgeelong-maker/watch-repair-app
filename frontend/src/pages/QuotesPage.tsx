@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { computeGstAmounts } from '@/lib/money'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, MessageSquare, Copy, CheckCheck, FileText } from 'lucide-react'
@@ -14,7 +15,7 @@ import {
   type QuoteLineItemInput,
   type SortDir,
 } from '@/lib/api'
-import { Card, PageHeader, Button, Input, Modal, Spinner, EmptyState, Badge, Select } from '@/components/ui'
+import { Card, PageHeader, Button, Modal, Spinner, EmptyState, Badge, Select } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
@@ -116,7 +117,8 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   })
   const jobs = useMemo(() => flattenInfinitePages(jobsQuery.data), [jobsQuery.data])
   const [jobId, setJobId] = useState('')
-  const [taxCents, setTaxCents] = useState(0)
+  const [gstEnabled, setGstEnabled] = useState(true)
+  const [gstInclusive, setGstInclusive] = useState(true)
   const [items, setItems] = useState<QuoteLineItemInput[]>([
     { item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 },
     { item_type: 'part', description: '', quantity: 1, unit_price_cents: 0 },
@@ -130,16 +132,23 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
   const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const addItem = () => setItems(prev => [...prev, { item_type: 'labor', description: '', quantity: 1, unit_price_cents: 0 }])
 
-  const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price_cents, 0)
-  const total = subtotal + taxCents
+  const activeJobs = jobs.filter(j => !['collected', 'no_go'].includes(j.status))
+  const selectedJob = activeJobs.find(j => j.id === jobId)
+
+  // Default the GST mode from whether this job belongs to a business account —
+  // businesses get GST added on top, individual customers get it included in the total.
+  useEffect(() => {
+    setGstInclusive(!selectedJob?.customer_account_id)
+  }, [selectedJob?.customer_account_id])
+
+  const enteredCents = items.reduce((s, it) => s + it.quantity * it.unit_price_cents, 0)
+  const { subtotalCents, taxCents, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
   const mut = useMutation({
-    mutationFn: () => createQuote({ repair_job_id: jobId, tax_cents: taxCents, line_items: items }),
+    mutationFn: () => createQuote({ repair_job_id: jobId, gst_enabled: gstEnabled, gst_inclusive: gstInclusive, line_items: items }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['quotes'] }); onClose() },
     onError: () => setError('Failed to create quote.'),
   })
-
-  const activeJobs = jobs.filter(j => !['collected', 'no_go'].includes(j.status))
 
   return (
     <Modal title="Create Quote" onClose={onClose}>
@@ -168,17 +177,34 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
           <button onClick={addItem} className="text-sm flex items-center gap-1 font-medium transition-colors" style={{ color: 'var(--ms-accent)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-accent)')}><Plus size={14} />Add line</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Tax (cents)"
-            type="number"
-            min="0"
-            value={taxCents}
-            onChange={e => {
-              const next = Number.parseInt(e.target.value, 10)
-              setTaxCents(Number.isFinite(next) ? next : 0)
-            }}
-          />
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+            <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+            Apply GST (10%)
+          </label>
+          {gstEnabled && (
+            <div className="flex gap-4 pl-6 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+                Include in total (non-business)
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" name="gst-mode" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+                Add on top (business)
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Subtotal</label>
+            <div className="rounded-lg px-3 py-2 text-sm" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(subtotalCents)}</div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>GST</label>
+            <div className="rounded-lg px-3 py-2 text-sm" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(taxCents)}</div>
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Total</label>
             <div className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(total)}</div>

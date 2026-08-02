@@ -63,7 +63,7 @@ def _create_and_send_quote(headers: dict[str, str]) -> str:
         headers=headers,
         json={
             "repair_job_id": job.json()["id"],
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [
                 {
                     "item_type": "labor",

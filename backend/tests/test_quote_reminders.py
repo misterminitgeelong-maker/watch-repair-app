@@ -64,7 +64,7 @@ def _sent_watch_quote(client: TestClient, headers: dict[str, str], customer_id: 
         headers=headers,
         json={
             "repair_job_id": job.json()["id"],
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [
                 {"item_type": "labor", "description": "Full service", "quantity": 1, "unit_price_cents": 30000}
             ],
@@ -193,7 +193,7 @@ def test_mobile_services_quote_reminder(client: TestClient):
         f"/v1/auto-key-jobs/{job_id}/quotes",
         headers=headers,
         json={
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [{"description": "Add key incl programming", "quantity": 1, "unit_price_cents": 38000}],
         },
     )

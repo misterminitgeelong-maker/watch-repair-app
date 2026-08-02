@@ -217,7 +217,7 @@ def test_quotes_tenant_isolation():
         headers=headers_a,
         json={
             "repair_job_id": job_id,
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [{"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}],
         },
     )
@@ -255,7 +255,8 @@ def test_quote_totals_and_public_decision_flow():
         headers=headers,
         json={
             "repair_job_id": job_id,
-            "tax_cents": 500,
+            "gst_enabled": True,
+            "gst_inclusive": False,
             "line_items": [
                 {"item_type": "labor", "description": "Full service", "quantity": 1, "unit_price_cents": 25000},
                 {"item_type": "part", "description": "Gasket", "quantity": 2, "unit_price_cents": 1200},
@@ -265,7 +266,8 @@ def test_quote_totals_and_public_decision_flow():
     assert quote_res.status_code == 201
     body = quote_res.json()
     assert body["subtotal_cents"] == 27400
-    assert body["total_cents"] == 27900
+    assert body["tax_cents"] == 2740
+    assert body["total_cents"] == 30140
 
     send_res = client.post(f"/v1/quotes/{body['id']}/send", headers=headers)
     assert send_res.status_code == 200
@@ -314,7 +316,7 @@ def test_invoices_tenant_isolation():
         headers=headers_a,
         json={
             "repair_job_id": job_id,
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [{"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}],
         },
     )
@@ -362,7 +364,8 @@ def test_invoice_from_approved_quote_and_payment_flow():
         headers=headers,
         json={
             "repair_job_id": job_res.json()["id"],
-            "tax_cents": 300,
+            "gst_enabled": True,
+            "gst_inclusive": False,
             "line_items": [
                 {"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000},
             ],
@@ -389,7 +392,7 @@ def test_invoice_from_approved_quote_and_payment_flow():
     payment_res = client.post(
         f"/v1/invoices/{invoice['id']}/payments",
         headers=headers,
-        json={"amount_cents": 10300, "provider_reference": "cash-1"},
+        json={"amount_cents": 11000, "provider_reference": "cash-1"},
     )
     assert payment_res.status_code == 201
 

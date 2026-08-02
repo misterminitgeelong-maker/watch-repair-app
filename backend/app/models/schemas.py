@@ -780,7 +780,13 @@ class QuoteLineItemCreate(SQLModel):
 class QuoteCreate(SQLModel):
     repair_job_id: UUID
     line_items: list[QuoteLineItemCreate]
-    tax_cents: int = 0
+    #: Whether GST applies at all. When False, tax_cents is always 0.
+    gst_enabled: bool = True
+    #: True = the entered line-item prices already include GST (non-business
+    #: default); the GST component is broken out of them for reporting.
+    #: False = GST is calculated on top of the entered line-item prices
+    #: (business default).
+    gst_inclusive: bool = False
 
 class QuoteRead(SQLModel):
     id: UUID
@@ -789,6 +795,8 @@ class QuoteRead(SQLModel):
     status: QuoteStatus
     subtotal_cents: int
     tax_cents: int
+    gst_enabled: bool
+    gst_inclusive: bool
     total_cents: int
     currency: str
     approval_token: str
@@ -819,6 +827,8 @@ class InvoiceRead(SQLModel):
     status: Literal["unpaid", "paid", "refunded", "void"]
     subtotal_cents: int
     tax_cents: int
+    gst_enabled: bool
+    gst_inclusive: bool
     total_cents: int
     currency: str
     created_at: datetime

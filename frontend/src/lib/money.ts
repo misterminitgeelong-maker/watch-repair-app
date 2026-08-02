@@ -42,3 +42,31 @@ export function lineItemsSubtotalCents(items: MoneyLineItem[]): number {
 export function totalWithTaxCents(subtotalCents: number, taxCents: number): number {
   return subtotalCents + Math.max(0, Math.round(taxCents))
 }
+
+/** Australian GST rate. Mirrors backend/app/routes/quotes.py GST_RATE. */
+export const GST_RATE = 0.10
+
+export interface GstAmounts {
+  subtotalCents: number
+  taxCents: number
+  totalCents: number
+}
+
+/**
+ * Given the sum of the entered line-item prices, split it into
+ * (subtotal, GST, total) for preview purposes. Mirrors the backend's
+ * compute_gst_amounts so the modal preview matches what the server returns.
+ *
+ * subtotalCents is always GST-exclusive and totalCents is always what the
+ * customer pays, so totalCents === subtotalCents + taxCents in every case.
+ */
+export function computeGstAmounts(enteredCents: number, gstEnabled: boolean, gstInclusive: boolean): GstAmounts {
+  if (!gstEnabled) return { subtotalCents: enteredCents, taxCents: 0, totalCents: enteredCents }
+  if (gstInclusive) {
+    const totalCents = enteredCents
+    const subtotalCents = Math.round(enteredCents / (1 + GST_RATE))
+    return { subtotalCents, taxCents: totalCents - subtotalCents, totalCents }
+  }
+  const taxCents = Math.round(enteredCents * GST_RATE)
+  return { subtotalCents: enteredCents, taxCents, totalCents: enteredCents + taxCents }
+}

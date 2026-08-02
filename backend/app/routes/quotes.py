@@ -29,6 +29,28 @@ from .. import sms
 
 router = APIRouter(prefix="/v1", tags=["quotes"])
 
+#: Australian GST rate, applied whenever a quote/invoice has gst_enabled=True.
+GST_RATE = 0.10
+
+
+def compute_gst_amounts(entered_cents: int, gst_enabled: bool, gst_inclusive: bool) -> tuple[int, int, int]:
+    """Given the total of the entered line-item prices, return (subtotal_cents, tax_cents, total_cents).
+
+    subtotal_cents is always GST-exclusive and total_cents is always what the customer pays,
+    so total_cents == subtotal_cents + tax_cents in every case.
+    """
+    if not gst_enabled:
+        return entered_cents, 0, entered_cents
+    if gst_inclusive:
+        # entered_cents already includes GST; back it out.
+        total_cents = entered_cents
+        subtotal_cents = int(round(entered_cents / (1 + GST_RATE)))
+        tax_cents = total_cents - subtotal_cents
+        return subtotal_cents, tax_cents, total_cents
+    # entered_cents is GST-exclusive; add GST on top.
+    tax_cents = int(round(entered_cents * GST_RATE))
+    return entered_cents, tax_cents, entered_cents + tax_cents
+
 
 def get_public_quote_rate_limit() -> str:
     return settings.rate_limit_public_quote_get
@@ -122,12 +144,16 @@ def create_quote(
             )
         )
 
+    subtotal_cents, tax_cents, total_cents = compute_gst_amounts(subtotal, payload.gst_enabled, payload.gst_inclusive)
+
     quote = Quote(
         tenant_id=auth.tenant_id,
         repair_job_id=payload.repair_job_id,
-        subtotal_cents=subtotal,
-        tax_cents=payload.tax_cents,
-        total_cents=subtotal + payload.tax_cents,
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        gst_enabled=payload.gst_enabled,
+        gst_inclusive=payload.gst_inclusive,
+        total_cents=total_cents,
         currency=tenant_currency,
     )
     session.add(quote)
@@ -420,6 +446,8 @@ def get_public_quote(request: Request, token: str, session: Session = Depends(ge
         "status": quote.status,
         "subtotal_cents": quote.subtotal_cents,
         "tax_cents": quote.tax_cents,
+        "gst_enabled": quote.gst_enabled,
+        "gst_inclusive": quote.gst_inclusive,
         "total_cents": quote.total_cents,
         "currency": quote.currency,
         "sent_at": quote.sent_at,

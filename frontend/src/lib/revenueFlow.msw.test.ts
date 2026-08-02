@@ -10,6 +10,7 @@ import api, {
   recordPayment,
 } from './api'
 import { testServer } from '@/test/msw/server'
+import { computeGstAmounts } from './money'
 
 /**
  * Integration test for the revenue-critical path:
@@ -47,22 +48,22 @@ describe('revenue flow: quote -> approval -> invoice -> payment', () => {
 
     return [
       http.post('*/v1/quotes', async ({ request }) => {
-        const body = (await request.json()) as { tax_cents: number; line_items: Array<{ quantity: number; unit_price_cents: number }> }
-        const subtotal = body.line_items.reduce((sum, li) => sum + li.quantity * li.unit_price_cents, 0)
-        const total = subtotal + (body.tax_cents ?? 0)
+        const body = (await request.json()) as { gst_enabled: boolean; gst_inclusive: boolean; line_items: Array<{ quantity: number; unit_price_cents: number }> }
+        const entered = body.line_items.reduce((sum, li) => sum + li.quantity * li.unit_price_cents, 0)
+        const { subtotalCents, taxCents, totalCents } = computeGstAmounts(entered, body.gst_enabled, body.gst_inclusive)
         store.quote = {
           id: 'quote-1',
-          total_cents: total,
-          tax_cents: body.tax_cents ?? 0,
+          total_cents: totalCents,
+          tax_cents: taxCents,
           status: 'draft',
           approval_token: '',
         }
         return HttpResponse.json({
           id: store.quote.id,
           status: store.quote.status,
-          subtotal_cents: subtotal,
-          tax_cents: store.quote.tax_cents,
-          total_cents: total,
+          subtotal_cents: subtotalCents,
+          tax_cents: taxCents,
+          total_cents: totalCents,
         })
       }),
 
@@ -135,7 +136,8 @@ describe('revenue flow: quote -> approval -> invoice -> payment', () => {
 
     const { data: quote } = await createQuote({
       repair_job_id: 'job-1',
-      tax_cents: 1000,
+      gst_enabled: true,
+      gst_inclusive: false,
       line_items: [
         { item_type: 'labor', description: 'Service', quantity: 1, unit_price_cents: 5000 },
         { item_type: 'part', description: 'Crystal', quantity: 2, unit_price_cents: 2500 },
@@ -168,7 +170,8 @@ describe('revenue flow: quote -> approval -> invoice -> payment', () => {
 
     const { data: quote } = await createQuote({
       repair_job_id: 'job-2',
-      tax_cents: 0,
+      gst_enabled: false,
+      gst_inclusive: false,
       line_items: [{ item_type: 'labor', description: 'Service', quantity: 1, unit_price_cents: 5000 }],
     })
     const { data: sent } = await sendQuote(quote.id)

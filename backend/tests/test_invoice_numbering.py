@@ -69,7 +69,7 @@ def _create_approved_quote(headers: dict[str, str], watch_id: str) -> str:
         headers=headers,
         json={
             "repair_job_id": job_id,
-            "tax_cents": 0,
+            "gst_enabled": False,
             "line_items": [
                 {"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}
             ],
