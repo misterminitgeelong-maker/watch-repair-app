@@ -1,899 +1,1099 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, Link } from 'react-router-dom'
-import {
-  Wrench,
-  Scissors,
-  KeyRound,
-  CheckCircle2,
-  ClipboardCheck,
-  Receipt,
-  Users,
-  BarChart3,
-  ArrowRight,
-  Sparkles,
-  MapPin,
-  ShoppingCart,
-  Plus,
-} from 'lucide-react'
-import { useEffect } from 'react'
+import { Wrench, Scissors, KeyRound } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
-const LANDING_CSS = `
-@keyframes lpFadeUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
+/**
+ * Marketing landing page for mainspring.au.
+ *
+ * Deliberately editorial — stark rules, oatmeal + vermilion, zero border-radius,
+ * zero shadows — to read as the opposite of the AI-heavy, blue/white repair-SaaS
+ * category. This palette is marketing-only: it must never leak into the in-app
+ * "Refined Warmth" (--ms-*) token set, and the app's tokens must never leak here.
+ * All colours below are scoped under .mkt-landing.
+ */
+
+const MKT = {
+  paper: '#F7F7F4',
+  oatmeal: '#EBE6DC',
+  oatmealDeep: '#E2DACA',
+  oatmealPanel: '#F1EEE7',
+  ink: '#0A0A0A',
+  vermilion: '#E8452A',
+  vermilionDeep: '#B32D16',
+  textBody: '#4A4A46',
+  textMuted: '#6E6E68',
+  ruleMid: '#D8D6CE',
+  ruleLight: '#E4E2DA',
+  greyChip: '#C4C2BA',
+  statusGrey: '#6B7280',
+  white: '#FFFFFF',
+} as const
+
+const DOTS: Record<string, string> = {
+  wait: MKT.vermilion,
+  progress: MKT.ink,
+  done: MKT.statusGrey,
+  neutral: MKT.greyChip,
 }
-@keyframes lpPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+
+const MARKETING_CSS = `
+.mkt-landing {
+  --mkt-paper: ${MKT.paper};
+  --mkt-oatmeal: ${MKT.oatmeal};
+  --mkt-oatmeal-deep: ${MKT.oatmealDeep};
+  --mkt-oatmeal-panel: ${MKT.oatmealPanel};
+  --mkt-oatmeal-hover: #E1DACB;
+  --mkt-ink: ${MKT.ink};
+  --mkt-ink-hover: #2E2E2B;
+  --mkt-ink-row-hover: #EFEEE7;
+  --mkt-vermilion: ${MKT.vermilion};
+  --mkt-vermilion-hover: #FF5636;
+  --mkt-vermilion-deep: ${MKT.vermilionDeep};
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--mkt-paper);
+  color: var(--mkt-ink);
 }
-@keyframes lpFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+.mkt-landing * { box-sizing: border-box; }
+.mkt-serif { font-family: Georgia, 'Palatino Linotype', Palatino, serif; }
+
+@keyframes mktPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.mkt-pulse-dot { animation: mktPulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mkt-pulse-dot { animation: none; }
 }
-.lp-reveal {
+
+.mkt-reveal {
   opacity: 0;
-  animation: lpFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(.22,.68,0,1), transform 0.7s cubic-bezier(.22,.68,0,1);
 }
-.lp-reveal-delay-1 { animation-delay: 0.08s; }
-.lp-reveal-delay-2 { animation-delay: 0.16s; }
-.lp-reveal-delay-3 { animation-delay: 0.24s; }
-.lp-reveal-delay-4 { animation-delay: 0.32s; }
-.lp-reveal-delay-5 { animation-delay: 0.40s; }
-.lp-reveal-delay-6 { animation-delay: 0.48s; }
-.lp-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.mkt-reveal.mkt-shown { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .mkt-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
 }
-.lp-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 14px rgba(90, 55, 16, 0.08), 0 18px 34px rgba(90, 55, 16, 0.10);
-}
-.lp-btn {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-}
-.lp-btn:hover {
-  transform: translateY(-2px);
-}
-.lp-kanban-card {
-  background: #FFFDF9;
-  border: 1px solid #EDE4D7;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-.lp-kanban-card:last-child {
-  margin-bottom: 0;
+
+.mkt-landing a { text-decoration: none; }
+
+.mkt-nav-cta { background: var(--mkt-ink); color: var(--mkt-paper); transition: background 160ms ease; }
+.mkt-nav-cta:hover { background: var(--mkt-vermilion); }
+
+.mkt-btn-primary { background: var(--mkt-vermilion); color: var(--mkt-ink); transition: background 160ms ease; }
+.mkt-btn-primary:hover { background: var(--mkt-vermilion-hover); }
+
+.mkt-btn-outline-ink { background: transparent; color: var(--mkt-ink); border: 1px solid var(--mkt-ink); transition: background 160ms ease; }
+.mkt-btn-outline-ink:hover { background: var(--mkt-oatmeal-hover); }
+
+.mkt-btn-close-primary { background: var(--mkt-ink); color: var(--mkt-white); transition: background 160ms ease; }
+.mkt-btn-close-primary:hover { background: var(--mkt-ink-hover); }
+
+.mkt-btn-close-outline { background: transparent; color: var(--mkt-ink); border: 1px solid var(--mkt-ink); transition: background 160ms ease; }
+.mkt-btn-close-outline:hover { background: rgba(10,10,10,0.08); }
+
+.mkt-row-hover { transition: background 120ms ease; }
+.mkt-row-hover:hover { background: var(--mkt-ink-row-hover); }
+
+.mkt-pricing-cta { background: var(--mkt-vermilion); color: var(--mkt-ink); transition: background 160ms ease; }
+.mkt-pricing-cta:hover { background: var(--mkt-vermilion-hover); }
+
+.mkt-tab:focus-visible,
+.mkt-btn-primary:focus-visible,
+.mkt-btn-outline-ink:focus-visible,
+.mkt-nav-cta:focus-visible,
+.mkt-pricing-cta:focus-visible,
+.mkt-btn-close-primary:focus-visible,
+.mkt-btn-close-outline:focus-visible {
+  outline: 2px solid var(--mkt-vermilion);
+  outline-offset: 2px;
 }
 `
 
-/* ─── Kanban preview ─── */
+/* ─── Demo data — all illustrative, hard-coded; the landing page makes no API calls ─── */
 
-const KANBAN_COLUMNS: { label: string; color: string; dot: string; cards: string[] }[] = [
+const JOBS_COLS = ['Job', 'Item / service', 'Customer', 'Status', 'Value']
+
+const JOB_LIST = [
+  { number: '00142', title: 'Rolex Datejust — full service', customer: 'J. Smith', status: 'In progress', tone: 'progress', value: 'A$465' },
+  { number: '00141', title: 'Seiko SNK809 — battery + test', customer: 'M. Patel', status: 'Awaiting go-ahead', tone: 'wait', value: 'A$45' },
+  { number: '00140', title: 'Nike Air Max — resole', customer: 'T. Nguyen', status: 'In progress', tone: 'progress', value: 'A$120' },
+  { number: '00139', title: 'Omega Speedmaster — gaskets', customer: 'A. Williams', status: 'Ready', tone: 'done', value: 'A$280' },
+  { number: '00138', title: 'BMW 3 Series — key duplication', customer: 'S. Lee', status: 'Awaiting go-ahead', tone: 'wait', value: 'A$310' },
+  { number: '00137', title: 'Tissot PRX — bracelet resize', customer: 'K. Doan', status: 'Booked in', tone: 'neutral', value: 'A$35' },
+  { number: '00135', title: 'Cartier Tank — crystal replace', customer: 'H. Osei', status: 'Invoiced', tone: 'done', value: 'A$390' },
+] as const
+
+const STAT_CARDS = [
+  { label: 'All active jobs', value: '24', helper: 'Watch 12 · Shoe 8 · Keys 4' },
+  // TODO: confirm before shipping — approval-rate figure needs sign-off.
+  { label: 'Quotes awaiting action', value: '7', helper: '68% approval rate' },
+  { label: 'Open invoices', value: '11', helper: 'A$4,820 awaiting payment' },
+  { label: 'Outstanding work value', value: 'A$12,400', helper: '5 jobs waiting on approval' },
+]
+
+const LEDGER = [
+  { n: '01', label: 'Intake', body: 'Photograph, match the customer, pick the service from your own catalogue. Ninety seconds at the counter.' },
+  { n: '02', label: 'Quote', body: 'Text a link. The customer taps approve and the job moves itself onto the bench.' },
+  { n: '03', label: 'Bench', body: 'Parts, pressure tests and turnaround clocks stay on the ticket, not in your head.' },
+  { n: '04', label: 'Money', body: 'Invoice from the ticket. See what is billed, recovered, and still to chase.' },
+]
+
+const LIFECYCLE = [
+  { label: 'Booked in', note: 'Counter intake, photos, customer matched' },
+  { label: 'Awaiting go-ahead', note: 'Quote texted, waiting on approval' },
+  { label: 'In progress', note: 'On the bench, parts logged' },
+  { label: 'Ready for pickup', note: 'Pickup SMS sent automatically' },
+  { label: 'Invoiced', note: 'Paid, closed, in this month’s report' },
+]
+
+type TradeKey = 'watch' | 'shoe' | 'key'
+
+const TRADE_TABS: { key: TradeKey; label: string; Icon: typeof Wrench }[] = [
+  { key: 'watch', label: 'Watch', Icon: Wrench },
+  { key: 'shoe', label: 'Shoe', Icon: Scissors },
+  { key: 'key', label: 'Keys', Icon: KeyRound },
+]
+
+const TRADES: Record<TradeKey, {
+  kicker: string; title: string; body: string; bullets: string[]
+  panelLabel: string; rows: { title: string; meta: string; value: string }[]
+}> = {
+  watch: {
+    kicker: 'Watch repairs',
+    title: 'Movements, batteries, pressure tests.',
+    body: 'Track a service from intake photos through to water-resistance certification, with the movement, case and bracelet all on one ticket.',
+    bullets: [
+      'Battery, movement service and full overhaul templates',
+      'Pressure test results stored against the job',
+      'Parts on order flagged so nothing stalls silently',
+      'Turnaround clock per job, visible on the queue',
+    ],
+    panelLabel: 'Watch bench · today',
+    rows: [
+      { title: 'Rolex Datejust — full service', meta: 'J. Smith · 5d in shop', value: 'A$465' },
+      { title: 'Seiko SNK809 — battery + test', meta: 'M. Patel · awaiting go-ahead', value: 'A$45' },
+      { title: 'Omega Speedmaster — gaskets', meta: 'A. Williams · ready', value: 'A$280' },
+      { title: 'Tissot PRX — bracelet resize', meta: 'K. Doan · booked in', value: 'A$35' },
+    ],
+  },
+  shoe: {
+    kicker: 'Shoe repairs',
+    title: 'Soles, heels, stitching, cleaning.',
+    body: 'Multi-pair intake with combo pricing, so a customer dropping three pairs becomes one ticket and one clear price — not three guesses.',
+    bullets: [
+      'Multi-pair intake on a single ticket',
+      'Combo pricing and guarantee terms built in',
+      'Catalogue keeps naming and pricing consistent',
+      'Before photos attached at the counter',
+    ],
+    panelLabel: 'Shoe bench · today',
+    rows: [
+      { title: 'Nike Air Max — resole', meta: 'T. Nguyen · 3d in shop', value: 'A$120' },
+      { title: '2 pairs — heel tips + clean', meta: 'R. Kaur · combo price', value: 'A$85' },
+      { title: 'RM Williams — full resole', meta: 'D. Boyd · in progress', value: 'A$195' },
+      { title: 'Blundstones — stitch repair', meta: 'L. Ferrari · ready', value: 'A$60' },
+    ],
+  },
+  key: {
+    kicker: 'Mobile services',
+    title: 'Auto keys, cutting, callouts.',
+    body: 'Quote from the pricing catalogue on the spot, mark whether the callout is included, and invoice before you leave the driveway.',
+    bullets: [
+      'Pricing catalogue with retail and B2B tiers',
+      'Callout-inclusive or added, per job',
+      'Suggested quote from job type and quantity',
+      'Invoice and take payment on the phone',
+    ],
+    panelLabel: 'Mobile jobs · today',
+    rows: [
+      { title: 'BMW 3 Series — key duplication', meta: 'S. Lee · callout incl.', value: 'A$310' },
+      { title: 'Hilux — remote programming', meta: 'Fleet: Corio Plumbing', value: 'A$240' },
+      { title: 'House rekey — 4 barrels', meta: 'B. Marsh · on site', value: 'A$180' },
+      { title: 'Transponder cut — Mazda 3', meta: 'C. Ellis · invoiced', value: 'A$165' },
+    ],
+  },
+}
+
+type TourKey = 'jobs' | 'quote' | 'reports'
+
+const TOURS: Record<TourKey, { label: string; path: string; title: string; body: string }> = {
+  jobs: { label: 'Job workflow', path: '/watch-repairs', title: 'The queue is the shop.', body: 'One table per service line, filtered by status and sorted by how long the job has been sitting. Everything one click from the ticket.' },
+  quote: { label: 'Quote approval', path: '/quote/8f21c4', title: 'Customers approve in one tap.', body: 'Send a token-linked quote by SMS. They see the line items, approve, and the job moves itself to in progress.' },
+  reports: { label: 'Reports', path: '/reports', title: 'Billed, recovered, still to chase.', body: 'Revenue, gross profit and outstanding work value by service line — so you know which bench is actually paying.' },
+}
+
+const QUOTE_LINES = [
+  { label: 'Full movement service', note: 'Strip, clean, lubricate, regulate', price: 'A$320.00' },
+  { label: 'Gasket set replacement', note: 'Case back, crown, crystal', price: 'A$65.00' },
+  { label: 'Water-resistance test', note: 'Certified to 100m', price: 'A$45.00' },
+  { label: 'Case and bracelet refinish', note: 'Light polish, brushed finish kept', price: 'A$35.00' },
+]
+
+const REPORT_CARDS = [
+  { label: 'Billed total', value: 'A$64,200', helper: 'last 6 months' },
+  { label: 'Revenue received', value: 'A$48,200', helper: '75% recovered' },
+  { label: 'Outstanding', value: 'A$16,000', helper: '11 open invoices' },
+  { label: 'Gross margin', value: '65%', helper: 'after parts' },
+]
+
+const CHART_BARS = [
+  { label: 'Feb', h1: 54, h2: 34, h3: 20 },
+  { label: 'Mar', h1: 68, h2: 38, h3: 22 },
+  { label: 'Apr', h1: 62, h2: 50, h3: 24 },
+  { label: 'May', h1: 84, h2: 46, h3: 28 },
+  { label: 'Jun', h1: 100, h2: 52, h3: 26 },
+  { label: 'Jul', h1: 116, h2: 58, h3: 32 },
+]
+
+const TRADE_BLOCKS = [
   {
-    label: 'Awaiting Quote',
-    color: '#FDF3E0',
-    dot: '#D4A017',
-    cards: ['Sarah - Omega Seamaster', '3x Keys - Fleet'],
+    title: 'Watch repairs',
+    body: 'Movement services, batteries, pressure testing, and full servicing.',
+    items: [
+      { label: 'Intake', value: 'Case, movement, bracelet' },
+      { label: 'Testing', value: 'Pressure result on ticket' },
+      { label: 'Parts', value: 'On-order flags' },
+      { label: 'Turnaround', value: 'Clock per job' },
+    ],
   },
   {
-    label: 'Go Ahead',
-    color: '#EAF4EC',
-    dot: '#3A9E5F',
-    cards: ['John - Toyota Hilux', 'Mike - Chelsea Boots'],
+    title: 'Shoe repairs',
+    body: 'Soles, heels, stitching, cleaning, and more. Multi-pair intake with combo pricing.',
+    items: [
+      { label: 'Intake', value: 'Multi-pair, one ticket' },
+      { label: 'Pricing', value: 'Combos + guarantee' },
+      { label: 'Catalogue', value: 'Consistent naming' },
+      { label: 'Evidence', value: 'Before photos' },
+    ],
   },
   {
-    label: 'Working On',
-    color: '#EEF2FD',
-    dot: '#4B72E0',
-    cards: ['Anna - Rolex Datejust'],
-  },
-  {
-    label: 'Completed',
-    color: '#F3F0FF',
-    dot: '#7C5CBF',
-    cards: ['Dan - Heel Repair', 'Sue - Key Cut x2'],
+    title: 'Mobile services',
+    body: 'Auto keys, cutting and programming, with callouts priced on the spot.',
+    items: [
+      { label: 'Pricing', value: 'Retail + B2B tiers' },
+      { label: 'Callout', value: 'Included or added' },
+      { label: 'Quoting', value: 'Suggested totals' },
+      { label: 'Payment', value: 'Invoice on site' },
+    ],
   },
 ]
 
-function KanbanPreview() {
+const MOBILE_CHIPS = ['Install as an app', 'Works on tablet', 'Photos from the camera', 'SMS built in']
+
+const PHONE_JOBS = [
+  { type: 'Watch repair', title: 'Rolex Datejust — service', status: 'In progress', dot: DOTS.progress },
+  { type: 'Shoe repair', title: 'Air Max — resole', status: 'Ready', dot: DOTS.done },
+  { type: 'Mobile services', title: 'BMW 3 Series — key', status: 'Awaiting', dot: DOTS.wait },
+  { type: 'Watch repair', title: 'Seiko SNK809 — battery', status: 'Booked in', dot: DOTS.neutral },
+]
+
+const PRICE_TABLE = [
+  { plan: 'Basic · one service tab', detail: 'Watch, shoe or mobile services', price: 'A$25/mo' },
+  { plan: 'Basic · two tabs', detail: 'Any two service lines', price: 'A$35/mo' },
+  { plan: 'Basic · three tabs', detail: 'All service lines, Basic features', price: 'A$45/mo' },
+  { plan: 'Pro · full access', detail: 'All tabs, customer accounts, multi-site', price: 'A$50/mo' },
+  { plan: 'Extra shop location', detail: 'Per additional site', price: '+A$25/mo' },
+]
+
+const PRICING_NOTES = [
+  'Customers, invoicing and reports on every plan',
+  '14-day trial, no credit card, cancel any time',
+  'Same app on desktop, tablet and phone',
+]
+
+const FAQS = [
+  { q: 'Do I have to pay for trades I don’t do?', a: 'No. Basic starts at A$25/month with one service tab. Add a second or third tab for A$10/month each, or move to Pro at A$50/month once you want the lot.' },
+  { q: 'Can I use it on the shop tablet and my phone?', a: 'Yes. Mainspring installs as an app on iOS and Android as well as running in the browser — same account, same data everywhere.' },
+  { q: 'What happens to my open jobs when I switch?', a: 'Most shops enter open jobs as they come back in, which takes a week or two. Keep your diary alongside until you are comfortable.' },
+  { q: 'Do customers get texted automatically?', a: 'Quote and pickup messages are sent from the ticket, so the customer hears from you at each status change without anyone remembering to call.' },
+]
+
+/* ─── Scroll-reveal wrapper ───────────────────────────────────────────────
+ * IntersectionObserver-driven, honours prefers-reduced-motion, and fails
+ * open (never leaves content stuck at opacity 0) via both a safety timeout
+ * and a graceful degrade when IntersectionObserver is unavailable. */
+
+function Reveal({ children, className = '', id }: { children: React.ReactNode; className?: string; id?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setShown(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setShown(true)
+            observer.disconnect()
+          }
+        }
+      },
+      { threshold: 0.06, rootMargin: '0px 0px -6% 0px' },
+    )
+    observer.observe(el)
+    // Fail open: never leave the section invisible if the observer never fires.
+    const safety = setTimeout(() => setShown(true), 1200)
+    return () => {
+      observer.disconnect()
+      clearTimeout(safety)
+    }
+  }, [])
+
   return (
-    <div
-      className="lp-reveal lp-reveal-delay-1"
-      style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
-    >
-      <div
-        style={{
-          backgroundColor: 'var(--ms-surface)',
-          border: '1px solid #E0D5C6',
-          borderRadius: 20,
-          boxShadow: '0 2px 8px rgba(90,55,16,0.07), 0 20px 48px rgba(90,55,16,0.12)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Mock window chrome */}
-        <div
-          style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid #EBE2D6',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: '#F7F2EB',
-          }}
-        >
-          <span style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: '#E8796A', display: 'inline-block' }} />
-          <span style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: '#F0B34A', display: 'inline-block' }} />
-          <span style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: '#5DBD72', display: 'inline-block' }} />
-          <span
-            style={{
-              marginLeft: 12,
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              color: 'var(--ms-text-muted)',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Workshop Board
+    <div id={id} ref={ref} className={`mkt-reveal ${shown ? 'mkt-shown' : ''} ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+/* ─── Small shared bits ─────────────────────────────────────────────────── */
+
+function Container({ children, className = '', style, id }: { children: React.ReactNode; className?: string; style?: React.CSSProperties; id?: string }) {
+  return (
+    <div id={id} className={`mx-auto w-full ${className}`} style={{ maxWidth: 1320, padding: '0 20px', ...style }}>
+      {children}
+    </div>
+  )
+}
+
+function EyebrowVermilion({ children, tracking = '0.28em' }: { children: React.ReactNode; tracking?: string }) {
+  return (
+    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: tracking, textTransform: 'uppercase', color: MKT.vermilionDeep }}>
+      {children}
+    </p>
+  )
+}
+
+function StatusDot({ color, pulse = false, size = 8 }: { color: string; pulse?: boolean; size?: number }) {
+  return (
+    <span
+      aria-hidden
+      className={pulse ? 'mkt-pulse-dot' : undefined}
+      style={{ width: size, height: size, background: color, display: 'inline-block', flexShrink: 0 }}
+    />
+  )
+}
+
+const JOB_TABLE_GRID = '52px 1fr 130px 150px 80px'
+
+function JobRow({ job }: { job: (typeof JOB_LIST)[number] }) {
+  return (
+    <div className="mkt-row-hover" style={{ padding: '13px 18px', borderBottom: `1px solid ${MKT.ruleLight}` }}>
+      {/* Mobile — card per row, five columns don't fit narrow screens. */}
+      <div className="flex flex-col gap-1.5 sm:hidden">
+        <div className="flex items-baseline justify-between gap-3">
+          <span style={{ fontSize: 13, color: MKT.ink }}>{job.title}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: MKT.ink, whiteSpace: 'nowrap' }}>{job.value}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span style={{ fontSize: 11, color: MKT.textBody }}>#{job.number} · {job.customer}</span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MKT.ink }}>
+            <StatusDot color={DOTS[job.tone]} size={7} />
+            {job.status}
           </span>
         </div>
-
-        {/* Kanban columns */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 0,
-            padding: '16px 14px',
-            overflowX: 'auto',
-          }}
-        >
-          {KANBAN_COLUMNS.map((col, ci) => (
-            <div
-              key={col.label}
-              style={{
-                padding: '0 6px',
-                borderRight: ci < KANBAN_COLUMNS.length - 1 ? '1px solid #EBE2D6' : 'none',
-              }}
-            >
-              {/* Column header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 99,
-                    backgroundColor: col.dot,
-                    display: 'inline-block',
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: '0.62rem',
-                    fontWeight: 700,
-                    color: 'var(--ms-text)',
-                    letterSpacing: '0.03em',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {col.label}
-                </span>
-              </div>
-              {/* Cards */}
-              {col.cards.map((card) => (
-                <div key={card} className="lp-kanban-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 99,
-                        backgroundColor: col.dot,
-                        display: 'inline-block',
-                        flexShrink: 0,
-                        opacity: 0.8,
-                      }}
-                    />
-                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--ms-text)', lineHeight: 1.3 }}>
-                      {card}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      height: 4,
-                      borderRadius: 99,
-                      backgroundColor: col.color,
-                      border: `1px solid ${col.dot}33`,
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+      </div>
+      {/* Desktop — full five-column row. */}
+      <div className="hidden sm:grid items-center" style={{ gridTemplateColumns: JOB_TABLE_GRID, columnGap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: MKT.textMuted }}>{job.number}</span>
+        <span style={{ fontSize: 13, color: MKT.ink }}>{job.title}</span>
+        <span style={{ fontSize: 12, color: MKT.textBody }}>{job.customer}</span>
+        <span className="inline-flex items-center gap-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MKT.ink }}>
+          <StatusDot color={DOTS[job.tone]} />
+          {job.status}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: MKT.ink, textAlign: 'right' }}>{job.value}</span>
       </div>
     </div>
   )
 }
 
-/* ─── Hero ─── */
-
-function HeroSection() {
+function JobTableHeader() {
   return (
-    <section className="grid grid-cols-1 gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:items-center">
-      {/* Left column */}
-      <div>
-        {/* Eyebrow */}
-        <div
-          className="lp-reveal inline-flex items-center gap-2 rounded-full px-3.5 py-1.5"
-          style={{
-            backgroundColor: '#F3ECE2',
-            border: '1px solid #E2D7C8',
-            color: 'var(--ms-sidebar)',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '0.65rem',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-            }}
-          >
-            Built by a repair shop owner, for repair shop owners
-          </span>
-        </div>
-
-        {/* H1 */}
-        <h1
-          className="lp-reveal lp-reveal-delay-1 mt-5 text-4xl leading-tight sm:text-5xl lg:text-[3.2rem]"
-          style={{
-            color: 'var(--ms-text)',
-            fontWeight: 700,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Run your repair shop like a pro
-        </h1>
-
-        {/* Subheading */}
-        <p
-          className="lp-reveal lp-reveal-delay-2 mt-5 max-w-xl text-base sm:text-lg"
-          style={{ color: 'var(--ms-text-mid)', lineHeight: 1.75 }}
-        >
-          Mainspring tracks every job from intake to collection across watches, shoes, and mobile key
-          services. One workshop, one dashboard, zero jobs slipping through the cracks.
-        </p>
-
-        {/* CTAs */}
-        <div className="lp-reveal lp-reveal-delay-3 mt-7 flex flex-wrap items-center gap-3">
-          <Link
-            to="/signup"
-            className="lp-btn inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold"
-            style={{
-              backgroundColor: 'var(--ms-accent)',
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(120,76,20,0.28)',
-            }}
-          >
-            Start free trial
-            <ArrowRight size={16} />
-          </Link>
-          <Link
-            to="/login"
-            className="lp-btn inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-            style={{
-              backgroundColor: 'transparent',
-              color: 'var(--ms-text)',
-              border: '1.5px solid var(--ms-border)',
-            }}
-          >
-            Log in
-          </Link>
-        </div>
-        <p className="mt-3 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-          Want to explore first?{' '}
-          <Link to="/login?demo=1" style={{ color: 'var(--ms-accent)', fontWeight: 600 }}>
-            Try the demo &rarr;
-          </Link>
-        </p>
-
-        {/* Social proof pills */}
-        <div className="lp-reveal lp-reveal-delay-4 mt-6 flex flex-wrap gap-2">
-          {['Watch repairs', 'Shoe repairs', 'Mobile locksmith'].map((pill) => (
-            <span
-              key={pill}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-              style={{
-                backgroundColor: '#F0E9DF',
-                color: 'var(--ms-sidebar)',
-                border: '1px solid #DFD4C5',
-              }}
-            >
-              <CheckCircle2 size={11} style={{ color: 'var(--ms-accent-hover)' }} />
-              {pill}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Right column — Kanban mockup */}
-      <KanbanPreview />
-    </section>
+    <div
+      className="hidden sm:grid"
+      style={{ gridTemplateColumns: JOB_TABLE_GRID, padding: '11px 18px', borderBottom: `1px solid ${MKT.ink}`, columnGap: 8 }}
+    >
+      {JOBS_COLS.map((c) => (
+        <span key={c} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>
+          {c}
+        </span>
+      ))}
+    </div>
   )
 }
 
-/* ─── How it works ─── */
+/* ─── Accessible tab group with arrow-key navigation ───────────────────── */
 
-const HOW_IT_WORKS = [
-  {
-    step: '01',
-    title: 'Take the job',
-    desc: 'Intake in seconds — add the customer, item details, and any notes right at the counter.',
-  },
-  {
-    step: '02',
-    title: 'Quote & confirm',
-    desc: 'Send a quote, get approval, and schedule the work without touching a spreadsheet.',
-  },
-  {
-    step: '03',
-    title: 'Complete & collect',
-    desc: 'Mark the job done, auto-generate an invoice, and record payment on the spot.',
-  },
-]
+function useTabKeyNav<T extends string>(keys: readonly T[], onSelect: (k: T) => void) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([])
+  const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let next = -1
+    if (e.key === 'ArrowRight') next = (index + 1) % keys.length
+    else if (e.key === 'ArrowLeft') next = (index - 1 + keys.length) % keys.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = keys.length - 1
+    if (next >= 0) {
+      e.preventDefault()
+      onSelect(keys[next])
+      refs.current[next]?.focus()
+    }
+  }
+  return { refs, onKeyDown }
+}
 
-function HowItWorks() {
+/* ═══════════════════════════════════════════════════════════════════════
+ * Sections
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function Nav() {
   return (
-    <section className="lp-reveal lp-reveal-delay-2 mt-20 sm:mt-24">
-      <div className="text-center mb-10">
-        <h2
-          className="text-3xl sm:text-4xl"
-          style={{
-            color: 'var(--ms-text)',
-            fontWeight: 700,
-          }}
-        >
-          From drop-off to done in three steps
-        </h2>
-      </div>
+    <div style={{ borderBottom: `2px solid ${MKT.ink}`, background: MKT.paper }}>
+      <Container className="flex items-center justify-between" style={{ padding: '18px 20px' }}>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <img src="/marketing/mainspring-badge-vermilion.svg" alt="" style={{ width: 34, height: 34, display: 'block' }} />
+          <span className="mkt-serif hidden min-[420px]:inline" style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-0.01em', color: MKT.ink }}>Mainspring</span>
+        </div>
+        <nav className="flex items-center gap-3 lg:gap-[30px] shrink-0">
+          <a href="#product" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Product</a>
+          <a href="#trades" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Trades</a>
+          <a href="#pricing" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Pricing</a>
+          <a href="#faq" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>FAQ</a>
+          <Link to="/login" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Log in</Link>
+          <Link
+            to="/signup"
+            className="mkt-nav-cta inline-flex items-center whitespace-nowrap px-3 sm:px-4"
+            style={{ height: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+          >
+            Start your shop
+          </Link>
+        </nav>
+      </Container>
+    </div>
+  )
+}
 
-      <div style={{ position: 'relative' }}>
-        {/* Connector line — desktop only */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 36,
-            left: 'calc(16.66% + 24px)',
-            right: 'calc(16.66% + 24px)',
-            height: 2,
-            background: 'linear-gradient(90deg, var(--ms-accent) 0%, var(--ms-accent) 50%, var(--ms-accent) 100%)',
-            opacity: 0.35,
-            borderRadius: 99,
-          }}
-          className="hidden lg:block"
-        />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {HOW_IT_WORKS.map(({ step, title, desc }) => (
-            <div
-              key={step}
-              className="lp-card rounded-3xl p-7"
-              style={{
-                backgroundColor: 'var(--ms-surface)',
-                border: '1px solid var(--ms-border)',
-                boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 52,
-                  height: 52,
-                  borderRadius: 99,
-                  backgroundColor: 'var(--ms-accent)',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '1.15rem',
-                  marginBottom: 16,
-                  boxShadow: '0 4px 12px rgba(120,76,20,0.22)',
-                }}
+function Hero() {
+  return (
+    <div style={{ background: MKT.oatmeal }}>
+      <Reveal>
+        <Container style={{ padding: '48px 20px 0' }}>
+          <EyebrowVermilion tracking="0.3em">Watches · Shoes · Keys</EyebrowVermilion>
+          <h1
+            style={{
+              margin: '18px 0 0',
+              fontSize: 'clamp(44px, 8.5vw, 116px)',
+              lineHeight: 0.88,
+              fontWeight: 800,
+              letterSpacing: '-0.06em',
+              color: MKT.ink,
+            }}
+          >
+            All your repairs.<br />One place.
+          </h1>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr_0.9fr] gap-8" style={{ marginTop: 36, paddingBottom: 40 }}>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: MKT.textBody }}>
+              Intake, quotes, approvals, invoices and reports for every trade you run — one ticket book instead of a diary, a notebook and three spreadsheets.
+            </p>
+            <div className="flex items-start flex-wrap">
+              <Link
+                to="/signup"
+                className="mkt-btn-primary inline-flex items-center whitespace-nowrap"
+                style={{ height: 54, padding: '0 26px', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}
               >
-                {step}
-              </div>
-              <h3
-                className="text-xl"
-                style={{
-                  color: 'var(--ms-text)',
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
+                Start your shop
+              </Link>
+              <a
+                href="#product"
+                className="mkt-btn-outline-ink inline-flex items-center whitespace-nowrap"
+                style={{ height: 54, padding: '0 26px', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}
               >
-                {title}
-              </h3>
-              <p style={{ color: 'var(--ms-text-mid)', fontSize: '0.9rem', lineHeight: 1.7 }}>
-                {desc}
+                Demo shop
+              </a>
+            </div>
+            <div style={{ borderLeft: `1px solid #CFC6B4`, paddingLeft: 22 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5E574D' }}>From</p>
+              <p style={{ margin: '8px 0 0', fontSize: 34, fontWeight: 800, letterSpacing: '-0.045em', color: MKT.ink, lineHeight: 1 }}>
+                A$25<span style={{ fontSize: 15, fontWeight: 600, color: '#5E574D' }}>/mo</span>
+              </p>
+              {/* TODO: confirm before shipping — live-shop-count claim needs sign-off. */}
+              <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: MKT.textBody }}>
+                14-day trial · no card · 8 shops live across VIC, WA, NSW &amp; NT
               </p>
             </div>
-          ))}
+          </div>
+        </Container>
+      </Reveal>
+
+      <Reveal>
+        <Container id="product" style={{ padding: '0 20px 40px' }}>
+          <div style={{ background: MKT.paper, border: `1px solid ${MKT.ink}` }}>
+            <div className="flex items-center justify-between" style={{ padding: '15px 18px', borderBottom: `1px solid ${MKT.ink}` }}>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.025em', color: MKT.ink }}>Live service queue</span>
+              <span className="hidden sm:inline" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>
+                app.mainspring.au / dashboard
+              </span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4" style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+              {STAT_CARDS.map((card) => (
+                <div key={card.label} style={{ padding: 18, borderLeft: `1px solid ${MKT.ruleMid}` }}>
+                  <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>{card.label}</p>
+                  <p style={{ margin: '10px 0 0', fontSize: 28, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink, lineHeight: 1 }}>{card.value}</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: MKT.textBody }}>{card.helper}</p>
+                </div>
+              ))}
+            </div>
+            <JobTableHeader />
+            {JOB_LIST.map((job) => <JobRow key={job.number} job={job} />)}
+          </div>
+        </Container>
+      </Reveal>
+    </div>
+  )
+}
+
+function FlowStrip() {
+  return (
+    <Reveal className="block" id="flow">
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {LEDGER.map((l) => (
+              <div key={l.n} style={{ padding: '30px 22px 34px', borderLeft: `1px solid ${MKT.ruleMid}`, borderTop: `1px solid ${MKT.ruleMid}` }}>
+                <p style={{ margin: 0, fontSize: 'clamp(36px, 5vw, 56px)', fontWeight: 800, letterSpacing: '-0.055em', color: MKT.vermilion, lineHeight: 0.88 }}>{l.n}</p>
+                <p style={{ margin: '14px 0 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.ink }}>{l.label}</p>
+                <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.6, color: MKT.textBody }}>{l.body}</p>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function Lifecycle({ step }: { step: number }) {
+  return (
+    <Reveal>
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container style={{ padding: '48px 20px 52px' }}>
+          <div className="flex items-end justify-between gap-8 flex-wrap">
+            <h2 style={{ margin: 0, maxWidth: 620, fontSize: 'clamp(30px, 4.4vw, 46px)', lineHeight: 1.0, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink }}>
+              The job moves. You don&rsquo;t chase it.
+            </h2>
+            <p style={{ margin: 0, maxWidth: 380, fontSize: 15, lineHeight: 1.6, color: MKT.textBody }}>
+              Every status change texts the customer, updates the queue and lands in reports. No double entry, no phone tag.
+            </p>
+          </div>
+          <div style={{ marginTop: 26, border: `1px solid ${MKT.ink}` }}>
+            <div className="flex items-center justify-between" style={{ padding: '16px 20px', borderBottom: `1px solid ${MKT.ink}` }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>Job ticket #00142</p>
+                <p style={{ margin: '6px 0 0', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: MKT.ink }}>Rolex Datejust — full service</p>
+              </div>
+              <span
+                aria-live="polite"
+                className="inline-flex items-center whitespace-nowrap"
+                style={{ gap: 9, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MKT.ink }}
+              >
+                <StatusDot color={MKT.vermilion} size={9} pulse />
+                {LIFECYCLE[step].label}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+              {LIFECYCLE.map((s, i) => {
+                const active = i === step
+                const past = i < step
+                return (
+                  <div
+                    key={s.label}
+                    style={{
+                      padding: '20px 18px 24px',
+                      borderLeft: `1px solid ${MKT.ruleMid}`,
+                      borderTop: `1px solid ${MKT.ruleMid}`,
+                      background: active ? 'rgba(10,10,10,0.05)' : 'transparent',
+                      transition: 'background 240ms ease',
+                    }}
+                  >
+                    <div className="flex items-center" style={{ gap: 9 }}>
+                      <StatusDot color={active ? MKT.vermilion : past ? MKT.ink : MKT.greyChip} />
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>Step {i + 1}</span>
+                    </div>
+                    <p style={{ margin: '12px 0 0', fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: active ? MKT.ink : MKT.textBody }}>{s.label}</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.5, color: active ? MKT.textBody : MKT.textMuted }}>{s.note}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function TradeSwitcher({ trade, setTrade }: { trade: TradeKey; setTrade: (t: TradeKey) => void }) {
+  const keys = TRADE_TABS.map((t) => t.key)
+  const { refs, onKeyDown } = useTabKeyNav(keys, setTrade)
+  const active = TRADES[trade]
+
+  return (
+    <Reveal id="trades">
+      <div style={{ background: MKT.oatmeal }}>
+        <Container style={{ padding: '48px 20px 52px' }}>
+          <div className="flex items-end justify-between gap-6 flex-wrap">
+            <div style={{ maxWidth: 620 }}>
+              <EyebrowVermilion>Three benches, one system</EyebrowVermilion>
+              <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(30px, 4.4vw, 48px)', lineHeight: 1.0, fontWeight: 800, letterSpacing: '-0.055em', color: MKT.ink }}>
+                Built for what you actually repair.
+              </h2>
+            </div>
+            <div role="tablist" aria-label="Trades" className="flex shrink-0" style={{ border: `1px solid ${MKT.ink}` }}>
+              {TRADE_TABS.map(({ key, label, Icon }, i) => {
+                const isActive = trade === key
+                return (
+                  <button
+                    key={key}
+                    ref={(el) => { refs.current[i] = el }}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setTrade(key)}
+                    onKeyDown={(e) => onKeyDown(e, i)}
+                    className="mkt-tab inline-flex items-center whitespace-nowrap px-2.5 sm:px-[18px]"
+                    style={{
+                      gap: 9,
+                      height: 46,
+                      border: 'none',
+                      borderRight: i < TRADE_TABS.length - 1 ? `1px solid ${MKT.ink}` : 'none',
+                      cursor: 'pointer',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      background: isActive ? MKT.vermilion : 'transparent',
+                      color: isActive ? MKT.ink : MKT.textBody,
+                      transition: 'background 160ms ease',
+                    }}
+                  >
+                    <Icon size={15} strokeWidth={1.9} aria-hidden />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ marginTop: 28, border: `1px solid ${MKT.ink}`, background: MKT.paper }} role="tabpanel">
+            <div style={{ padding: '28px 24px 30px' }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: MKT.textMuted }}>{active.kicker}</p>
+              <h3 style={{ margin: '12px 0 0', fontSize: 26, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-0.04em', color: MKT.ink }}>{active.title}</h3>
+              <p style={{ margin: '14px 0 0', fontSize: 15, lineHeight: 1.65, color: MKT.textBody }}>{active.body}</p>
+              <div style={{ marginTop: 20 }}>
+                {active.bullets.map((b) => (
+                  <div key={b} className="flex items-baseline" style={{ gap: 12, padding: '11px 0', borderTop: `1px solid ${MKT.ruleMid}` }}>
+                    <span style={{ width: 7, height: 7, background: MKT.vermilion, flexShrink: 0 }} aria-hidden />
+                    <span style={{ fontSize: 13, lineHeight: 1.5, color: MKT.ink }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div
+              className="lg:border-l lg:border-[#0A0A0A]"
+              style={{ background: MKT.oatmealPanel, borderTop: `1px solid ${MKT.ink}` }}
+            >
+              <p style={{ margin: 0, padding: '14px 24px', borderBottom: `1px solid ${MKT.ruleMid}`, fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: MKT.textMuted }}>
+                {active.panelLabel}
+              </p>
+              {active.rows.map((row) => (
+                <div key={row.title} className="flex items-center justify-between gap-4" style={{ padding: '14px 24px', borderBottom: `1px solid ${MKT.ruleLight}` }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, color: MKT.ink }}>{row.title}</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: MKT.textMuted }}>{row.meta}</p>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: MKT.vermilionDeep, whiteSpace: 'nowrap' }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function ProductTour({ tour, setTour }: { tour: TourKey; setTour: (t: TourKey) => void }) {
+  const keys = Object.keys(TOURS) as TourKey[]
+  const { refs, onKeyDown } = useTabKeyNav(keys, setTour)
+  const def = TOURS[tour]
+
+  return (
+    <Reveal>
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container style={{ padding: '48px 20px 52px' }}>
+          <div className="flex items-end justify-between gap-6 flex-wrap">
+            <div style={{ maxWidth: 620 }}>
+              <EyebrowVermilion>Product tour</EyebrowVermilion>
+              <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.0, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink }}>{def.title}</h2>
+              <p style={{ margin: '12px 0 0', maxWidth: 520, fontSize: 15, lineHeight: 1.6, color: MKT.textBody }}>{def.body}</p>
+            </div>
+            <div role="tablist" aria-label="Product tour" className="flex shrink-0" style={{ border: `1px solid ${MKT.ink}` }}>
+              {keys.map((k, i) => {
+                const isActive = tour === k
+                return (
+                  <button
+                    key={k}
+                    ref={(el) => { refs.current[i] = el }}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setTour(k)}
+                    onKeyDown={(e) => onKeyDown(e, i)}
+                    className="mkt-tab whitespace-nowrap px-1.5 sm:px-[18px] text-[9px] sm:text-[11px]"
+                    style={{
+                      height: 44,
+                      border: 'none',
+                      borderRight: i < keys.length - 1 ? `1px solid ${MKT.ink}` : 'none',
+                      cursor: 'pointer',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      fontWeight: 700,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      background: isActive ? MKT.ink : 'transparent',
+                      color: isActive ? MKT.paper : MKT.ink,
+                      transition: 'background 160ms ease',
+                    }}
+                  >
+                    {TOURS[k].label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 26, border: `1px solid ${MKT.ink}` }}>
+            <div className="flex items-center justify-between" style={{ padding: '12px 18px', borderBottom: `1px solid ${MKT.ink}` }}>
+              <span className="truncate" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>
+                app.mainspring.au{def.path}
+              </span>
+              <span className="flex shrink-0" style={{ gap: 6 }} aria-hidden>
+                <span style={{ width: 9, height: 9, background: MKT.vermilion }} />
+                <span style={{ width: 9, height: 9, background: MKT.ruleMid }} />
+                <span style={{ width: 9, height: 9, background: MKT.ruleMid }} />
+              </span>
+            </div>
+            <div role="tabpanel" style={{ minHeight: 380, background: MKT.paper }}>
+              {tour === 'jobs' && (
+                <div>
+                  <div className="flex items-start justify-between gap-4 flex-wrap" style={{ padding: '20px 20px', borderBottom: `1px solid ${MKT.ink}` }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.035em', color: MKT.ink }}>Watch Repairs</h3>
+                      <p style={{ margin: '5px 0 0', fontSize: 12, color: MKT.textMuted }}>Movement services, batteries, pressure testing, and full servicing.</p>
+                    </div>
+                    <span className="inline-flex items-center whitespace-nowrap" style={{ height: 36, padding: '0 16px', background: MKT.ink, color: MKT.paper, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                      New job ticket
+                    </span>
+                  </div>
+                  <JobTableHeader />
+                  {JOB_LIST.map((job) => <JobRow key={job.number} job={job} />)}
+                </div>
+              )}
+              {tour === 'quote' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  <div style={{ padding: '26px 24px', borderBottom: `1px solid ${MKT.ink}` }} className="lg:border-b-0 lg:border-r lg:border-[#0A0A0A]">
+                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: MKT.textMuted }}>Quote for approval · #00142</p>
+                    <h3 style={{ margin: '12px 0 0', fontSize: 24, lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.04em', color: MKT.ink }}>Rolex Datejust — full service</h3>
+                    <p style={{ margin: '8px 0 0', fontSize: 13, color: MKT.textBody }}>Prepared by Geelong bench · valid 14 days</p>
+                    <div style={{ marginTop: 18 }}>
+                      {QUOTE_LINES.map((l) => (
+                        <div key={l.label} className="flex items-baseline justify-between gap-4" style={{ padding: '12px 0', borderTop: `1px solid ${MKT.ruleMid}` }}>
+                          <div>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: MKT.ink }}>{l.label}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 11, color: MKT.textMuted }}>{l.note}</p>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: MKT.ink, whiteSpace: 'nowrap' }}>{l.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-center" style={{ padding: '26px 24px', background: MKT.oatmeal }}>
+                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: MKT.textMuted }}>Total incl. GST</p>
+                    <p style={{ margin: '10px 0 0', fontSize: 'clamp(44px, 6vw, 76px)', fontWeight: 800, letterSpacing: '-0.06em', color: MKT.ink, lineHeight: 0.9 }}>A$465</p>
+                    <p style={{ margin: '16px 0 0', maxWidth: 340, fontSize: 14, lineHeight: 1.6, color: MKT.textBody }}>
+                      Sent by SMS as a token link. The customer taps approve and the job moves itself onto the bench.
+                    </p>
+                    <div className="flex flex-wrap" style={{ marginTop: 22 }}>
+                      <span className="inline-flex items-center whitespace-nowrap" style={{ height: 44, padding: '0 20px', background: MKT.vermilion, color: MKT.ink, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                        Approve &amp; start work
+                      </span>
+                      <span className="inline-flex items-center whitespace-nowrap" style={{ height: 44, padding: '0 20px', border: `1px solid ${MKT.ink}`, color: MKT.ink, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                        Ask a question
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {tour === 'reports' && (
+                <div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4" style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+                    {REPORT_CARDS.map((rc) => (
+                      <div key={rc.label} style={{ padding: 18, borderLeft: `1px solid ${MKT.ruleMid}` }}>
+                        <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>{rc.label}</p>
+                        <p style={{ margin: '10px 0 0', fontSize: 26, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink, lineHeight: 1 }}>{rc.value}</p>
+                        <p style={{ margin: '6px 0 0', fontSize: 11, color: MKT.textBody }}>{rc.helper}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: '22px 20px 26px' }}>
+                    <p style={{ margin: '0 0 18px', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>
+                      Revenue by service line · last 6 months
+                    </p>
+                    <div className="flex items-end" style={{ gap: 12, height: 200 }}>
+                      {CHART_BARS.map((bar) => (
+                        <div key={bar.label} className="flex flex-col items-stretch justify-end" style={{ flex: 1, gap: 8, height: '100%' }}>
+                          <div className="flex flex-col">
+                            <div style={{ height: bar.h1, background: MKT.vermilion }} />
+                            <div style={{ height: bar.h2, background: MKT.ink }} />
+                            <div style={{ height: bar.h3, background: MKT.greyChip }} />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textMuted, textAlign: 'center' }}>{bar.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function TradeColumns() {
+  return (
+    <Reveal>
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container>
+          <div className="grid grid-cols-1 sm:grid-cols-3">
+            {TRADE_BLOCKS.map((t) => (
+              <div key={t.title} style={{ padding: '30px 22px 32px', borderLeft: `1px solid ${MKT.ruleMid}`, borderTop: `1px solid ${MKT.ruleMid}` }}>
+                <h3 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.045em', color: MKT.ink }}>{t.title}</h3>
+                <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: MKT.textBody }}>{t.body}</p>
+                <div style={{ marginTop: 16 }}>
+                  {t.items.map((it) => (
+                    <div key={it.label} className="flex items-baseline justify-between gap-3" style={{ padding: '10px 0', borderTop: `1px solid ${MKT.ruleLight}` }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: MKT.textMuted }}>{it.label}</span>
+                      <span style={{ fontSize: 12, color: MKT.ink, textAlign: 'right' }}>{it.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function MobileBlock() {
+  return (
+    <Reveal>
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
+          <div style={{ padding: '44px 20px 46px' }}>
+            <EyebrowVermilion>On the counter, on the road</EyebrowVermilion>
+            <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(30px, 4.4vw, 46px)', lineHeight: 1.0, fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink }}>
+              Take intake anywhere.
+            </h2>
+            <p style={{ margin: '16px 0 0', maxWidth: 520, fontSize: 15, lineHeight: 1.65, color: MKT.textBody }}>
+              Install Mainspring on the shop tablet or your phone. Book a job at the counter, cut a key at the customer&rsquo;s car, photograph a sole before you start — same ticket, same second.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ columnGap: 24, marginTop: 22, maxWidth: 460 }}>
+              {MOBILE_CHIPS.map((chip) => (
+                <div key={chip} className="flex items-baseline" style={{ gap: 10, padding: '11px 0', borderTop: `1px solid ${MKT.ruleMid}` }}>
+                  <span style={{ width: 6, height: 6, background: MKT.vermilion, flexShrink: 0 }} aria-hidden />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: MKT.ink }}>{chip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ borderTop: `1px solid ${MKT.ruleMid}`, padding: '32px 20px' }} className="lg:border-t-0 lg:border-l lg:border-[#D8D6CE]">
+            <div style={{ width: 258, maxWidth: '100%', background: MKT.ink, padding: 9, margin: '0 auto' }}>
+              <div style={{ background: MKT.paper }}>
+                <div className="flex items-center justify-between" style={{ padding: '9px 14px', borderBottom: `1px solid ${MKT.ruleMid}`, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: MKT.ink }}>
+                  <span>9:41</span>
+                  <span>Geelong bench</span>
+                </div>
+                <div style={{ padding: 14 }}>
+                  <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted }}>Today</p>
+                  <h3 style={{ margin: '6px 0 0', fontSize: 20, lineHeight: 1.05, fontWeight: 800, letterSpacing: '-0.04em', color: MKT.ink }}>6 jobs on<br />the bench</h3>
+                  <div style={{ marginTop: 12 }}>
+                    {PHONE_JOBS.map((pj) => (
+                      <div key={pj.title} style={{ padding: '10px 0', borderTop: `1px solid ${MKT.ruleMid}` }}>
+                        <div className="flex items-center justify-between" style={{ gap: 8 }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: MKT.textMuted }}>{pj.type}</span>
+                          <span className="inline-flex items-center" style={{ gap: 6, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MKT.ink }}>
+                            <StatusDot color={pj.dot} size={6} />
+                            {pj.status}
+                          </span>
+                        </div>
+                        <p style={{ margin: '5px 0 0', fontSize: 12, color: MKT.ink }}>{pj.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-center" style={{ height: 44, background: MKT.vermilion, color: MKT.ink, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 12 }}>
+                    New job ticket
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function Pricing() {
+  return (
+    <Reveal id="pricing">
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
+          <div style={{ padding: '44px 20px 46px' }}>
+            <EyebrowVermilion>Rate card</EyebrowVermilion>
+            <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(32px, 5vw, 52px)', lineHeight: 0.98, fontWeight: 800, letterSpacing: '-0.055em', color: MKT.ink }}>
+              Pay for the tabs you use.
+            </h2>
+            <p style={{ margin: '16px 0 0', maxWidth: 380, fontSize: 15, lineHeight: 1.65, color: MKT.textBody }}>
+              One price per service line. No seat maths, no annual lock-in, no sales call to find out what it costs.
+            </p>
+            <div style={{ marginTop: 20 }}>
+              {PRICING_NOTES.map((n) => (
+                <div key={n} className="flex items-baseline" style={{ gap: 10, padding: '10px 0', borderTop: `1px solid ${MKT.ruleMid}` }}>
+                  <span style={{ width: 6, height: 6, background: MKT.ink, flexShrink: 0 }} aria-hidden />
+                  <span style={{ fontSize: 13, color: MKT.ink }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ borderTop: `1px solid ${MKT.ink}` }} className="lg:border-t-0 lg:border-l lg:border-[#0A0A0A]">
+            {PRICE_TABLE.map((p) => (
+              <div key={p.plan} className="mkt-row-hover flex items-baseline justify-between gap-4 flex-wrap" style={{ padding: '18px 24px', borderBottom: `1px solid ${MKT.ruleLight}` }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: MKT.ink }}>{p.plan}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: MKT.textMuted }}>{p.detail}</p>
+                </div>
+                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.045em', color: MKT.ink, whiteSpace: 'nowrap' }}>{p.price}</span>
+              </div>
+            ))}
+            <Link
+              to="/signup"
+              className="mkt-pricing-cta flex items-center justify-between"
+              style={{ padding: '24px 24px', fontSize: 13, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}
+            >
+              <span>Start your shop — 14-day trial</span><span aria-hidden>&rarr;</span>
+            </Link>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function Faq() {
+  return (
+    <Reveal id="faq">
+      <div style={{ borderBottom: `1px solid ${MKT.ink}` }}>
+        <Container style={{ padding: '44px 20px 46px' }}>
+          <h2 style={{ margin: '0 0 24px', fontSize: 'clamp(28px, 3.4vw, 40px)', fontWeight: 800, letterSpacing: '-0.05em', color: MKT.ink }}>Common questions</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ columnGap: 48 }}>
+            {FAQS.map((f) => (
+              <div key={f.q} style={{ padding: '20px 0', borderTop: `1px solid ${MKT.ink}` }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: MKT.ink }}>{f.q}</h3>
+                <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.65, color: MKT.textBody }}>{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function ClosingCTA() {
+  return (
+    <Reveal>
+      <div style={{ background: MKT.vermilion }}>
+        <Container className="flex items-end justify-between gap-8 flex-wrap" style={{ padding: '54px 20px 58px' }}>
+          <div style={{ maxWidth: 700 }}>
+            <h2 style={{ margin: 0, fontSize: 'clamp(36px, 6vw, 62px)', lineHeight: 0.96, fontWeight: 800, letterSpacing: '-0.06em', color: MKT.white }}>
+              Bring your repairs into one spot.
+            </h2>
+            <p style={{ margin: '16px 0 0', maxWidth: 460, fontSize: 15, lineHeight: 1.65, color: MKT.ink }}>
+              Ten minutes to set up your shop. Keep the paper diary for a week if you like — you won&rsquo;t need it.
+            </p>
+          </div>
+          <div className="flex flex-wrap shrink-0">
+            <Link to="/signup" className="mkt-btn-close-primary inline-flex items-center whitespace-nowrap px-4 sm:px-[26px]" style={{ height: 56, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+              Start your shop
+            </Link>
+            <a href="#pricing" className="mkt-btn-close-outline inline-flex items-center whitespace-nowrap px-4 sm:px-[26px]" style={{ height: 56, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+              Talk to us
+            </a>
+          </div>
+        </Container>
+      </div>
+    </Reveal>
+  )
+}
+
+function Footer() {
+  return (
+    <div style={{ background: MKT.oatmealDeep }}>
+      <Container className="flex items-center justify-between gap-5 flex-wrap" style={{ padding: '22px 20px' }}>
+        <div className="flex items-center flex-wrap" style={{ gap: 16 }}>
+          <img src="/marketing/mainspring-badge-vermilion.svg" alt="" style={{ width: 38, height: 38, display: 'block' }} />
+          <span className="mkt-serif" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', color: MKT.ink }}>Mainspring</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>© 2026 · mainspring.au</span>
         </div>
-      </div>
-    </section>
-  )
-}
-
-/* ─── Service lines ─── */
-
-function ServiceLines() {
-  return (
-    <section className="lp-reveal lp-reveal-delay-3 mt-20 sm:mt-24">
-      <div className="text-center mb-10">
-        <h2
-          className="text-3xl sm:text-4xl"
-          style={{
-            color: 'var(--ms-text)',
-            fontWeight: 700,
-          }}
-        >
-          Built for every kind of repair shop
-        </h2>
-        <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
-          Whether you specialise in one trade or run all three, Mainspring has a workflow that fits.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {/* Watch Repairs — amber/gold */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: '#FDF8EF',
-            border: '2px solid #E8C97A',
-            boxShadow: '0 2px 10px rgba(196,152,40,0.10)',
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: '#F5E4B0',
-              color: '#8D6A0A',
-              marginBottom: 16,
-            }}
-          >
-            <Wrench size={22} />
-          </span>
-          <h3
-            className="text-xl mb-2"
-            style={{
-              color: 'var(--ms-sidebar)',
-              fontWeight: 700,
-            }}
-          >
-            Watch Repairs
-          </h3>
-          <p className="text-sm mb-5" style={{ color: '#7A5E2E', lineHeight: 1.7 }}>
-            Track every timepiece from intake to collection. Manage parts, quotes, and customer
-            approvals in a dedicated horological workflow.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              'Brand, model & movement tracking',
-              'Part sourcing and ETA notes',
-              'Customer approval before work begins',
-            ].map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.82rem', color: '#6B4F22' }}>
-                <CheckCircle2 size={14} style={{ color: '#C49A1A', flexShrink: 0, marginTop: 2 }} />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        {/* Shoe Repairs — warm green */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: '#F2F8F3',
-            border: '2px solid #8DC49A',
-            boxShadow: '0 2px 10px rgba(80,160,100,0.08)',
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: '#C8E8CC',
-              color: '#2D7A46',
-              marginBottom: 16,
-            }}
-          >
-            <Scissors size={22} />
-          </span>
-          <h3
-            className="text-xl mb-2"
-            style={{
-              color: '#1C3D26',
-              fontWeight: 700,
-            }}
-          >
-            Shoe Repairs
-          </h3>
-          <p className="text-sm mb-5" style={{ color: '#365C44', lineHeight: 1.7 }}>
-            Catalogue-based services and quick quotes built for cobblers. Batch multiple pairs
-            under one job and keep the bench moving.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              'Pre-built service catalogue with prices',
-              'Multi-item jobs under one customer',
-              'SMS or call when ready for collection',
-            ].map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.82rem', color: '#2E5038' }}>
-                <CheckCircle2 size={14} style={{ color: '#3A9E5F', flexShrink: 0, marginTop: 2 }} />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        {/* Mobile Locksmith — espresso/dark */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: '#2A1F19',
-            border: '2px solid #4E3A2C',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: '#3E2C20',
-              color: '#D4A45C',
-              marginBottom: 16,
-            }}
-          >
-            <KeyRound size={22} />
-          </span>
-          <h3
-            className="text-xl mb-2"
-            style={{
-              color: '#F4E4CC',
-              fontWeight: 700,
-            }}
-          >
-            Mobile Locksmith
-          </h3>
-          <p className="text-sm mb-5" style={{ color: '#C8AB88', lineHeight: 1.7 }}>
-            Key cutting, transponder programming, and lockout dispatch — built for automotive
-            locksmiths who work on-the-road and in-store.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              'Vehicle make, model & key type lookup',
-              'Day planner & map view for field techs',
-              'Fleet billing and bulk key jobs',
-            ].map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.82rem', color: '#C8A87A' }}>
-                <CheckCircle2 size={14} style={{ color: '#D4A45C', flexShrink: 0, marginTop: 2 }} />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
-    </section>
-  )
-}
-
-/* ─── Feature highlight ─── */
-
-const FEATURES = [
-  {
-    icon: ClipboardCheck,
-    title: 'Smart job tracking',
-    desc: 'Status pipeline with stage-by-stage visibility across every service line.',
-  },
-  {
-    icon: Users,
-    title: 'Customer profiles',
-    desc: 'Full history across all service lines — watches, shoes, and keys — in one place.',
-  },
-  {
-    icon: Receipt,
-    title: 'Quotes & invoicing',
-    desc: 'Send quotes, get approvals, and auto-create invoices when a job is completed.',
-  },
-  {
-    icon: ShoppingCart,
-    title: 'POS built in',
-    desc: 'Walk-in sales, key cutting, and quick checkout without a separate system.',
-  },
-  {
-    icon: MapPin,
-    title: 'Mobile dispatch',
-    desc: 'Day planner, week scheduler, and map view for techs working in the field.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Reports & commission',
-    desc: 'Revenue, job volume, and technician commissions — all calculated automatically.',
-  },
-]
-
-function FeatureHighlight() {
-  return (
-    <section
-      className="lp-reveal lp-reveal-delay-4 mt-20 sm:mt-24 rounded-[28px] px-8 py-12 sm:px-12 sm:py-14"
-      style={{
-        background: 'linear-gradient(160deg, #2A1F19 0%, #1E1610 100%)',
-        border: '1px solid #4A3728',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.16), 0 20px 40px rgba(0,0,0,0.20)',
-      }}
-    >
-      <div className="text-center mb-10">
-        <h2
-          className="text-3xl sm:text-4xl"
-          style={{
-            color: '#F4E4CC',
-            fontWeight: 700,
-          }}
-        >
-          Everything your workshop needs
-        </h2>
-        <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base" style={{ color: '#B89A78', lineHeight: 1.7 }}>
-          No bolt-ons, no third-party integrations. It all ships with Mainspring.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map(({ icon: Icon, title, desc }) => (
-          <div
-            key={title}
-            className="lp-card rounded-2xl p-5"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: 'rgba(212,164,92,0.15)',
-                color: '#D4A45C',
-                marginBottom: 12,
-              }}
-            >
-              <Icon size={18} />
-            </span>
-            <h3
-              className="text-base font-semibold mb-1.5"
-              style={{ color: '#F4E4CC' }}
-            >
-              {title}
-            </h3>
-            <p style={{ color: '#A8876A', fontSize: '0.83rem', lineHeight: 1.65 }}>{desc}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-/* ─── Pricing ─── */
-
-function PricingSection() {
-  return (
-    <section id="pricing" className="lp-reveal lp-reveal-delay-5 mt-20 sm:mt-24">
-      <div className="text-center mb-10">
-        <h2
-          className="text-3xl sm:text-4xl"
-          style={{
-            color: 'var(--ms-text)',
-            fontWeight: 700,
-          }}
-        >
-          Simple, honest pricing
-        </h2>
-        <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
-          Start with one service line. Add more as you grow. No lock-in.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 max-w-4xl mx-auto">
-        {/* Basic — 1 tab */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1.5px solid var(--ms-border)',
-            boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
-          }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-            Basic
-          </p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-text)', lineHeight: 1 }}>A$40</span>
-            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.82rem' }}>/mo per login</span>
-          </div>
-          <p className="text-sm mb-5" style={{ color: 'var(--ms-text-mid)' }}>One service line</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {[
-              'Watch, Shoe, or Mobile Services',
-              'Full job tracking & invoicing',
-              'Unlimited customers and jobs',
-            ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: 'var(--ms-text-mid)' }}>
-                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
-                {b}
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        {/* Basic + 1 tab */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1.5px solid var(--ms-border)',
-            boxShadow: '0 2px 8px rgba(90,55,16,0.05)',
-          }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-            Basic + 1 Service
-          </p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-text)', lineHeight: 1 }}>A$55</span>
-            <span style={{ color: 'var(--ms-text-muted)', fontSize: '0.82rem' }}>/mo per login</span>
-          </div>
-          <p className="text-sm mb-5" style={{ color: 'var(--ms-text-mid)' }}>Two service lines</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {[
-              'Any two service lines',
-              'Full job tracking & invoicing',
-              'Unlimited customers and jobs',
-            ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: 'var(--ms-text-mid)' }}>
-                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent-hover)', flexShrink: 0, marginTop: 2 }} />
-                {b}
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        {/* Pro — highlighted */}
-        <article
-          className="lp-card rounded-3xl p-7"
-          style={{
-            backgroundColor: '#FDF8EE',
-            border: '2px solid var(--ms-accent)',
-            boxShadow: '0 4px 16px rgba(186,120,32,0.15)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#8D6420' }}>Pro</p>
-            <span
-              style={{
-                fontSize: '0.62rem',
-                fontWeight: 700,
-                backgroundColor: 'var(--ms-accent)',
-                color: '#fff',
-                borderRadius: 99,
-                padding: '3px 10px',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Best value
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--ms-sidebar)', lineHeight: 1 }}>A$80</span>
-            <span style={{ color: '#8D6420', fontSize: '0.82rem' }}>/mo per login</span>
-          </div>
-          <p className="text-sm mb-5" style={{ color: '#7A5E2E' }}>All three service lines</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {[
-              'All service lines unlocked',
-              'Multi-site & customer accounts',
-              'Priority support from the founders',
-            ].map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.83rem', color: '#6B4F22' }}>
-                <CheckCircle2 size={14} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />
-                {b}
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
-
-      {/* Add-on note */}
-      <p className="mt-6 text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-        <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-        Each additional shop location A$25/month · 14-day free trial, no credit card required.
-      </p>
-    </section>
-  )
-}
-
-/* ─── Final CTA ─── */
-
-function FinalCTA() {
-  return (
-    <section className="lp-reveal lp-reveal-delay-6 mt-20 sm:mt-24 mb-12">
-      <div
-        className="rounded-[28px] px-8 py-14 text-center"
-        style={{
-          background: 'linear-gradient(160deg, #332821 0%, #1E1610 100%)',
-          border: '1px solid #4E3D32',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.16), 0 20px 40px rgba(0,0,0,0.20)',
-        }}
-      >
-        <Sparkles size={28} style={{ color: 'var(--ms-accent)', margin: '0 auto 16px' }} />
-        <h2
-          className="text-3xl sm:text-4xl"
-          style={{
-            color: '#F4E8D7',
-            fontWeight: 700,
-            maxWidth: 560,
-            margin: '0 auto',
-            lineHeight: 1.25,
-          }}
-        >
-          Start running a tighter shop today
-        </h2>
-        <div className="mt-8">
-          <Link
-            to="/signup"
-            className="lp-btn inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold"
-            style={{
-              backgroundColor: 'var(--ms-accent)',
-              color: 'var(--ms-sidebar)',
-              boxShadow: '0 5px 16px rgba(201,162,72,0.30)',
-            }}
-          >
-            Start free trial
-            <ArrowRight size={16} />
-          </Link>
+        <div className="flex flex-wrap" style={{ gap: 20 }}>
+          <a href="#pricing" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Pricing</a>
+          <Link to="/login" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Log in</Link>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.greyChip }}>Privacy</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.greyChip }}>Contact</span>
         </div>
-        <p className="mt-4 text-sm" style={{ color: '#A8876A' }}>
-          No credit card required. Set up in minutes.
-        </p>
-      </div>
-    </section>
+      </Container>
+    </div>
   )
 }
 
 /* ─── Root export ─── */
 
+const LIFECYCLE_SPEED_MS = 1600
+
 export default function LandingPage() {
   const { token, sessionReady } = useAuth()
+  const [trade, setTrade] = useState<TradeKey>('watch')
+  const [tour, setTour] = useState<TourKey>('jobs')
+  const [step, setStep] = useState(0)
 
-  // Always render the landing page in the default warm theme regardless of user preference.
+  const reduceMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+
+  // Always render the landing page in the default (light) theme, ignoring any saved app theme.
   useEffect(() => {
     const saved = document.documentElement.getAttribute('data-theme')
     document.documentElement.removeAttribute('data-theme')
@@ -903,121 +1103,30 @@ export default function LandingPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (reduceMotion) return
+    const id = setInterval(() => setStep((s) => (s + 1) % LIFECYCLE.length), LIFECYCLE_SPEED_MS)
+    return () => clearInterval(id)
+  }, [reduceMotion])
+
   // After /auth/session succeeds, send signed-in users straight to the app.
   if (token && sessionReady) return <Navigate to="/dashboard" replace />
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: 'linear-gradient(180deg, #FAF6F0 0%, #F2EAE0 54%, #EAE0D4 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <style>{LANDING_CSS}</style>
-
-      {/* Subtle radial glow */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(ellipse 980px 520px at 50% 8%, rgba(184,149,86,0.09) 0%, rgba(122,93,46,0.03) 38%, transparent 70%)',
-        }}
-      />
-
-      <div
-        className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8"
-        style={{ position: 'relative', zIndex: 1 }}
-      >
-        {/* ── Header ── */}
-        <header className="flex items-center justify-between py-6 sm:py-7 lg:py-9">
-          <div className="flex items-center lg:py-1">
-            <img
-              src="/mainspring-logo.svg"
-              alt="Mainspring"
-              style={{ width: 'clamp(120px, 33vw, 282px)', maxWidth: '100%', height: 'auto', objectFit: 'contain' }}
-            />
-          </div>
-          <nav className="flex items-center gap-2 sm:gap-3">
-            <a
-              href="#pricing"
-              className="hidden sm:inline-flex rounded-lg px-3 py-2 text-sm font-medium"
-              style={{ color: 'var(--ms-text)' }}
-            >
-              Pricing
-            </a>
-            <Link
-              to="/login"
-              className="lp-btn rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap"
-              style={{ color: 'var(--ms-text)' }}
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="lp-btn rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap"
-              style={{
-                backgroundColor: 'var(--ms-accent)',
-                color: '#fff',
-                boxShadow: '0 3px 10px rgba(120,76,20,0.22)',
-              }}
-            >
-              Start free trial
-            </Link>
-          </nav>
-        </header>
-
-        {/* ── Page sections ── */}
-        <HeroSection />
-        <HowItWorks />
-        <ServiceLines />
-        <FeatureHighlight />
-        <PricingSection />
-        <FinalCTA />
-      </div>
-
-      {/* ── Footer ── */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--ms-border)',
-          backgroundColor: 'var(--ms-surface)',
-          marginTop: 0,
-          padding: '24px 0',
-        }}
-      >
-        <div
-          className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8"
-          style={{ flexWrap: 'wrap', gap: 12 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img
-              src="/mainspring-logo.svg"
-              alt="Mainspring"
-              style={{ height: 36, width: 'auto', objectFit: 'contain' }}
-            />
-            <span style={{ fontSize: '0.8rem', color: 'var(--ms-text-muted)' }}>
-              &copy; 2026 Mainspring
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <a
-              href="#pricing"
-              style={{ fontSize: '0.82rem', color: 'var(--ms-text-mid)', textDecoration: 'none' }}
-            >
-              Pricing
-            </a>
-            <Link
-              to="/login"
-              style={{ fontSize: '0.82rem', color: 'var(--ms-text-mid)', textDecoration: 'none' }}
-            >
-              Log in
-            </Link>
-          </div>
-        </div>
-      </footer>
+    <div className="mkt-landing min-h-screen">
+      <style>{MARKETING_CSS}</style>
+      <Nav />
+      <Hero />
+      <FlowStrip />
+      <Lifecycle step={step} />
+      <TradeSwitcher trade={trade} setTrade={setTrade} />
+      <ProductTour tour={tour} setTour={setTour} />
+      <TradeColumns />
+      <MobileBlock />
+      <Pricing />
+      <Faq />
+      <ClosingCTA />
+      <Footer />
     </div>
   )
 }

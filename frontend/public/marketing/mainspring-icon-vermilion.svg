@@ -1,0 +1,5 @@
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mainspring">
+  <rect width="96" height="96" fill="#0A0A0A"></rect>
+  <path d="M 12 48 A 36 36 0 0 1 84 48 A 28 28 0 0 1 28 48 A 20 20 0 0 1 68 48 A 12 12 0 0 1 44 48 A 4 4 0 0 1 52 48" fill="none" stroke="#F7F7F4" stroke-width="7" stroke-linecap="butt"></path>
+  <path d="M 68 48 A 12 12 0 0 1 44 48 A 4 4 0 0 1 52 48" fill="none" stroke="#E8452A" stroke-width="7" stroke-linecap="butt"></path>
+</svg>
