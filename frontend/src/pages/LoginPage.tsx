@@ -9,15 +9,7 @@ import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBrandi
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { safeNextPath } from '@/lib/safeNext'
-
-const ANIM_CSS = `
-  @keyframes msSlideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .ms-logo { animation: msSlideUp 0.68s cubic-bezier(.22,.68,0,1.0) both; }
-  .ms-card { animation: msSlideUp 0.82s cubic-bezier(.22,.68,0,1.0) 0.18s both; }
-`
+import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
 
 export default function LoginPage() {
   const { token, sessionReady, login: setToken, planCode, tenantSlug } = useAuth()
@@ -38,7 +30,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMeChecked] = useState(getRememberMe)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [btnHover, setBtnHover] = useState(false)
   const showMinitBranding = isMinitTenantSlug(slug)
 
   useEffect(() => {
@@ -121,230 +112,154 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <style>{ANIM_CSS}</style>
-      <div
-        className="min-h-screen flex items-center justify-center px-4"
-        style={{ background: 'linear-gradient(180deg, #F9F6F0 0%, #F1EAE0 52%, #E8DED1 100%)', position: 'relative', overflow: 'hidden' }}
-      >
-        {/* Subtle warm radial glow */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 880px 600px at 50% 46%, rgba(184,149,86,0.09) 0%, rgba(122,93,46,0.03) 42%, transparent 70%)',
-        }} />
+    <div className="mkt-landing min-h-screen flex items-center justify-center px-4 py-10" style={{ background: MKT.oatmeal }}>
+      <style>{MARKETING_CSS}</style>
 
-        <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 1 }}>
-
-          {/* Logo + tagline */}
-          <div className="ms-logo flex flex-col items-center mb-10">
-            <div style={{
-              background: 'linear-gradient(150deg, #FCF8F1 0%, #F0E7DA 100%)',
-              borderRadius: '23px',
-              padding: '14px 18px',
-              boxShadow: '0 2px 6px rgba(120,80,20,0.08), 0 8px 24px rgba(120,80,20,0.13), 0 1px 0 rgba(255,255,255,0.7) inset',
-              display: 'inline-block',
-            }}>
-              <img
-                src={showMinitBranding ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
-                alt={showMinitBranding ? 'Mister Minit' : 'Mainspring'}
-                style={{
-                  width: showMinitBranding ? 'min(72vw, 280px)' : 'min(88vw, 458px)',
-                  height: 'auto',
-                  display: 'block',
-                  maxWidth: '100%',
-                  objectFit: 'contain',
-                }}
-              />
-            </div>
-            <p style={{
-              marginTop: '0.85rem',
-              fontSize: '0.7rem',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'var(--ms-text-muted)',
-            }}>
-              {showMinitBranding ? 'Mobile services booking' : 'Repair OS for the modern bench.'}
-            </p>
+      <div className="w-full max-w-md">
+        {/* Logo + tagline */}
+        <div className="mkt-slide-up flex flex-col items-center mb-8">
+          <div style={{ border: `1px solid ${MKT.ink}`, background: MKT.paper, padding: '16px 22px', display: 'inline-block' }}>
+            <img
+              src={showMinitBranding ? '/minit-logo.jpg' : '/marketing/mainspring-logo-vermilion.svg'}
+              alt={showMinitBranding ? 'Mister Minit' : 'Mainspring'}
+              style={{
+                width: showMinitBranding ? 'min(64vw, 240px)' : 'min(76vw, 320px)',
+                height: 'auto',
+                display: 'block',
+                maxWidth: '100%',
+                objectFit: 'contain',
+              }}
+            />
           </div>
+          <p style={{ marginTop: 14, fontSize: 11, fontWeight: 700, letterSpacing: '0.24em', textTransform: 'uppercase', color: MKT.vermilionDeep }}>
+            {showMinitBranding ? 'Mobile services booking' : 'Repair OS for the modern bench'}
+          </p>
+        </div>
 
-          {/* Card */}
-          <div className="ms-card" style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid #EAE0D4',
-            borderRadius: '22px',
-            padding: '2.6rem 2.4rem',
-            boxShadow: [
-              '0 1px 2px rgba(100,65,30,0.04)',
-              '0 4px 10px rgba(100,65,30,0.07)',
-              '0 14px 36px rgba(100,65,30,0.10)',
-              '0 32px 56px rgba(100,65,30,0.06)',
-              'inset 0 1px 0 rgba(255,255,255,0.65)',
-            ].join(', '),
-          }}>
-            <p style={{
-              textAlign: 'center',
-              fontSize: '0.7rem',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: 'var(--ms-text-muted)',
-              marginBottom: '1.4rem',
-            }}>
-              Sign in to your account
-            </p>
+        {/* Card */}
+        <div className="mkt-slide-up-delay" style={{ background: MKT.paper, border: `1px solid ${MKT.ink}`, padding: '32px 28px' }}>
+          <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted, marginBottom: 20 }}>
+            Sign in to your account
+          </p>
 
-            <div style={{
-              height: '1px',
-              background: 'linear-gradient(to right, transparent, #D8CCBE 25%, #D8CCBE 75%, transparent)',
-              marginBottom: '1.6rem',
-            }} />
+          <div style={{ height: 1, background: MKT.ruleMid, marginBottom: 22 }} />
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-              <div className="flex gap-2" style={{ marginBottom: '0.2rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setMode('single')}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    borderRadius: '10px',
-                    border: mode === 'single' ? '1px solid #C9A248' : '1px solid #D8CBBA',
-                    backgroundColor: mode === 'single' ? '#F6EFE5' : 'var(--ms-bg)',
-                    color: mode === 'single' ? '#6B513A' : 'var(--ms-text-muted)',
-                    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Shop Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('multi')}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    borderRadius: '10px',
-                    border: mode === 'multi' ? '1px solid #C9A248' : '1px solid #D8CBBA',
-                    backgroundColor: mode === 'multi' ? '#F6EFE5' : 'var(--ms-bg)',
-                    color: mode === 'multi' ? '#6B513A' : 'var(--ms-text-muted)',
-                    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Multi-Site
-                </button>
-              </div>
-
+          <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: 16 }}>
+            <div role="tablist" aria-label="Login type" className="flex" style={{ border: `1px solid ${MKT.ink}`, marginBottom: 2 }}>
               <button
                 type="button"
-                disabled={loading}
-                onClick={handleDemoLogin}
+                role="tab"
+                aria-selected={mode === 'single'}
+                onClick={() => setMode('single')}
+                className="mkt-tab flex-1 whitespace-nowrap"
                 style={{
-                  width: '100%',
-                  padding: '0.62rem',
-                  borderRadius: '10px',
-                  border: '1px solid #D8CBBA',
-                  backgroundColor: '#F6EFE5',
-                  color: '#6B513A',
-                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.07em',
-                  textTransform: 'uppercase',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.75 : 1,
-                }}
-              >
-                {loading ? 'Preparing Demo…' : 'Launch Interactive Demo'}
-              </button>
-
-              {mode === 'single' && (
-                <LoginField
-                  label="Shop ID"
-                  value={slug}
-                  onChange={setSlug}
-                  placeholder="myshop"
-                  autoComplete="organization"
-                  autoFocus
-                />
-              )}
-              <LoginField
-                label="Email"
-                value={email}
-                onChange={setEmail}
-                placeholder="you@example.com"
-                autoComplete="email"
-                type="email"
-              />
-              <LoginField
-                label="Password"
-                value={password}
-                onChange={setPassword}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                type="password"
-                showPasswordToggle
-              />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ms-text-mid)' }}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMeChecked(e.target.checked)}
-                />
-                Remember this device
-              </label>
-
-              {error && (
-                <p style={{ fontSize: '0.85rem', color: '#C96A5A', margin: 0 }}>{error}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                onMouseEnter={() => setBtnHover(true)}
-                onMouseLeave={() => setBtnHover(false)}
-                style={{
-                  width: '100%',
-                  padding: '0.78rem',
-                  marginTop: '0.35rem',
-                  borderRadius: '11px',
+                  padding: '10px 8px',
                   border: 'none',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  backgroundColor: btnHover && !loading ? '#AE8522' : '#C9A248',
-                  color: '#FFF8EC',
-                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  letterSpacing: '0.05em',
-                  transform: btnHover && !loading ? 'translateY(-2px)' : 'translateY(0)',
-                  boxShadow: btnHover && !loading
-                    ? '0 4px 8px rgba(140,95,15,0.18), 0 8px 24px rgba(140,95,15,0.30)'
-                    : '0 1px 3px rgba(140,95,15,0.12), 0 3px 9px rgba(140,95,15,0.20)',
-                  transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease',
-                  opacity: loading ? 0.70 : 1,
+                  borderRight: `1px solid ${MKT.ink}`,
+                  background: mode === 'single' ? MKT.vermilion : 'transparent',
+                  color: mode === 'single' ? MKT.ink : MKT.textBody,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
                 }}
               >
-                {loading ? 'Signing in…' : 'Sign in'}
+                Shop Login
               </button>
-            </form>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'multi'}
+                onClick={() => setMode('multi')}
+                className="mkt-tab flex-1 whitespace-nowrap"
+                style={{
+                  padding: '10px 8px',
+                  border: 'none',
+                  background: mode === 'multi' ? MKT.vermilion : 'transparent',
+                  color: mode === 'multi' ? MKT.ink : MKT.textBody,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Multi-Site
+              </button>
+            </div>
 
-            <p style={{ fontSize: '0.85rem', textAlign: 'center', marginTop: '1.25rem', color: 'var(--ms-text-mid)' }}>
-              New here?{' '}
-              <Link to="/signup" style={{ color: 'var(--ms-sidebar)', textDecoration: 'underline' }}>
-                Create your shop account
-              </Link>
-            </p>
-          </div>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleDemoLogin}
+              className="mkt-btn-outline-ink"
+              style={{ width: '100%', padding: '10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+            >
+              {loading ? 'Preparing demo…' : 'Launch interactive demo'}
+            </button>
+
+            {mode === 'single' && (
+              <LoginField
+                label="Shop ID"
+                value={slug}
+                onChange={setSlug}
+                placeholder="myshop"
+                autoComplete="organization"
+                autoFocus
+              />
+            )}
+            <LoginField
+              label="Email"
+              value={email}
+              onChange={setEmail}
+              placeholder="you@example.com"
+              autoComplete="email"
+              type="email"
+            />
+            <LoginField
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              type="password"
+              showPasswordToggle
+            />
+            <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: MKT.textBody }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMeChecked(e.target.checked)}
+              />
+              Remember this device
+            </label>
+
+            {error && (
+              <p style={{ fontSize: 13, color: MKT.vermilionDeep, margin: 0 }}>{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mkt-btn-primary"
+              style={{ width: '100%', padding: '13px', marginTop: 4, fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+            >
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+
+          <p style={{ fontSize: 13, textAlign: 'center', marginTop: 20, color: MKT.textBody }}>
+            New here?{' '}
+            <Link to="/signup" style={{ color: MKT.vermilionDeep, fontWeight: 600 }}>
+              Create your shop account
+            </Link>
+          </p>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -355,7 +270,6 @@ function LoginField({
   label: string; value: string; onChange: (v: string) => void
   type?: string; placeholder?: string; autoComplete?: string; autoFocus?: boolean; showPasswordToggle?: boolean
 }) {
-  const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const isPassword = type === 'password'
   const inputType = isPassword && showPasswordToggle ? (revealed ? 'text' : 'password') : type
@@ -363,15 +277,7 @@ function LoginField({
 
   return (
     <label style={{ display: 'block' }}>
-      <span style={{
-        display: 'block',
-        marginBottom: '0.35rem',
-        fontSize: '0.68rem',
-        fontWeight: 600,
-        letterSpacing: '0.16em',
-        textTransform: 'uppercase',
-        color: 'var(--ms-text-muted)',
-      }}>
+      <span style={{ display: 'block', marginBottom: 6, fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: MKT.textMuted }}>
         {label}
       </span>
       <div style={{ position: 'relative' }}>
@@ -383,24 +289,14 @@ function LoginField({
           autoFocus={autoFocus}
           required
           onChange={e => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          className="mkt-input"
           style={{
             width: '100%',
-            padding: '0.66rem 0.95rem',
-            paddingRight: hasToggle ? '2.75rem' : '0.95rem',
-            borderRadius: '11px',
-            border: focused ? '1.5px solid #C9A248' : '1.5px solid #D8CBBA',
-            backgroundColor: focused ? '#FFFDF8' : 'var(--ms-bg)',
-            color: 'var(--ms-text)',
-            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-            fontSize: '0.9rem',
-            outline: 'none',
+            padding: '11px 14px',
+            paddingRight: hasToggle ? 42 : 14,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 14,
             boxSizing: 'border-box',
-            boxShadow: focused
-              ? '0 0 0 3.5px rgba(201,162,72,0.18), 0 1px 4px rgba(140,95,15,0.10)'
-              : '0 1px 2px rgba(100,65,30,0.05)',
-            transition: 'border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease',
           }}
         />
         {hasToggle && (
@@ -411,14 +307,14 @@ function LoginField({
             aria-label={revealed ? 'Hide password' : 'Show password'}
             style={{
               position: 'absolute',
-              right: '0.5rem',
+              right: 8,
               top: '50%',
               transform: 'translateY(-50%)',
-              padding: '0.25rem',
+              padding: 4,
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              color: 'var(--ms-text-muted)',
+              color: MKT.textMuted,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
