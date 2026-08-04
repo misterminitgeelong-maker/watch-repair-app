@@ -399,7 +399,7 @@ export default function PricingSelector({
 
   return (
     <div
-      className="absolute inset-0 z-20 flex justify-end"
+      className="fixed inset-0 z-50 flex justify-end"
       style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
       onClick={onClose}
     >
