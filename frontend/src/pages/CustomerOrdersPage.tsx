@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Upload, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
+import { Plus, Trash2, Upload, CheckCircle, AlertCircle, FileSpreadsheet, User, Truck, DollarSign } from 'lucide-react'
 import axios from 'axios'
 import {
   listCustomerOrders,
@@ -22,21 +22,34 @@ import { formatCents } from '@/lib/utils'
 function PriorityPill({ priority }: { priority: string }) {
   const p = priority.toLowerCase()
   if (p !== 'urgent' && p !== 'high') return null
+  const bg = p === 'urgent' ? 'var(--ms-badge-alert-bg)' : 'var(--ms-badge-orange-bg)'
+  const text = p === 'urgent' ? 'var(--ms-badge-alert-text)' : 'var(--ms-badge-orange-text)'
   return (
     <span
+      className="inline-flex items-center gap-1 shrink-0"
       style={{
-        backgroundColor: p === 'urgent' ? '#FEEEED' : '#FFF0E0',
-        color: p === 'urgent' ? 'var(--ms-error)' : '#8A5010',
-        fontSize: 9,
+        backgroundColor: bg,
+        color: text,
+        fontSize: 10,
         fontWeight: 700,
-        padding: '2px 6px',
-        borderRadius: 4,
-        letterSpacing: '0.06em',
+        padding: '3px 8px',
+        borderRadius: 99,
+        letterSpacing: '0.04em',
         textTransform: 'uppercase' as const,
       }}
     >
+      <span aria-hidden style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', opacity: 0.8 }} />
       {p === 'urgent' ? 'Urgent' : 'High'}
     </span>
+  )
+}
+
+function OrderMetaRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--ms-text-mid)' }}>
+      <span style={{ color: 'var(--ms-text-muted)', display: 'flex' }}>{icon}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
+    </div>
   )
 }
 
@@ -50,49 +63,57 @@ function OrderCard({
   onClick: () => void
 }) {
   const [dragging, setDragging] = useState(false)
+  const [hovered, setHovered] = useState(false)
   return (
     <div
       draggable
       onDragStart={e => {
-        e.dataTransfer.setData('jobId', order.id)
+        e.dataTransfer.setData('text/job-id', order.id)
+        e.dataTransfer.effectAllowed = 'move'
         setDragging(true)
       }}
       onDragEnd={() => setDragging(false)}
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         backgroundColor: 'var(--ms-surface)',
         border: '1px solid var(--ms-border)',
-        borderRadius: 10,
-        padding: '10px 12px',
+        borderRadius: 'var(--ms-radius-sm)',
+        padding: '14px',
         cursor: 'pointer',
         opacity: dragging ? 0.4 : 1,
         userSelect: 'none',
+        boxShadow: hovered ? 'var(--ms-shadow-hover)' : 'var(--ms-shadow)',
+        transform: hovered ? 'translateY(-2px)' : undefined,
+        transition: 'box-shadow 0.18s ease, transform 0.18s ease',
       }}
     >
-      <div style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: 8 }}>
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ms-text)', lineHeight: 1.3 }}>
-            {order.title}
-          </span>
-          <PriorityPill priority={order.priority} />
-        </div>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ms-text)', lineHeight: 1.35 }}>
+          {order.title}
+        </span>
+        <PriorityPill priority={order.priority} />
+      </div>
 
+      <div className="space-y-1.5">
         {order.customer_name && (
-          <p style={{ fontSize: 11, color: 'var(--ms-text-muted)', marginBottom: 2 }}>
-            {order.customer_name}
-          </p>
+          <OrderMetaRow icon={<User size={13} />}>{order.customer_name}</OrderMetaRow>
         )}
         {order.supplier && (
-          <p style={{ fontSize: 11, color: 'var(--ms-text-muted)' }}>
-            via {order.supplier}
-          </p>
-        )}
-        {order.estimated_cost_cents > 0 && (
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ms-text)', marginTop: 4 }}>
-            {formatCents(order.estimated_cost_cents)}
-          </p>
+          <OrderMetaRow icon={<Truck size={13} />}>{order.supplier}</OrderMetaRow>
         )}
       </div>
+
+      {order.estimated_cost_cents > 0 && (
+        <div
+          className="flex items-center gap-1.5 mt-3 pt-2"
+          style={{ borderTop: '1px solid var(--ms-border)', fontSize: 13, fontWeight: 700, color: accentColor }}
+        >
+          <DollarSign size={13} />
+          {formatCents(order.estimated_cost_cents)}
+        </div>
+      )}
     </div>
   )
 }
