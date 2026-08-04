@@ -233,3 +233,35 @@ export function findColumnForStatus<T extends KanbanColumnDef>(
 ): T | undefined {
   return columns.find(c => c.statuses.includes(status))
 }
+
+/** Jobs whose status is not mapped to any kanban column (would otherwise be invisible on the board). */
+export function findKanbanOrphanJobs<J extends { id: string; status: string }>(
+  jobs: readonly J[],
+  columns: readonly KanbanColumnDef[],
+): J[] {
+  return jobs.filter(j => !findColumnForStatus(columns, j.status))
+}
+
+/** Group jobs by column key for O(n) board renders instead of filtering per column. */
+export function groupJobsByKanbanColumn<J extends { id: string; status: string }>(
+  jobs: readonly J[],
+  columns: readonly KanbanColumnDef[],
+): Map<string, J[]> {
+  const byKey = new Map<string, J[]>()
+  const orphans: J[] = []
+  for (const column of columns) {
+    byKey.set(column.key, [])
+  }
+  for (const job of jobs) {
+    const column = findColumnForStatus(columns, job.status)
+    if (!column) {
+      orphans.push(job)
+      continue
+    }
+    byKey.get(column.key)!.push(job)
+  }
+  if (orphans.length > 0) {
+    byKey.set('__orphan__', orphans)
+  }
+  return byKey
+}

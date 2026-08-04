@@ -7,6 +7,8 @@ export {
   AUTO_KEY_KANBAN_COLUMNS,
   CUSTOMER_ORDER_KANBAN_COLUMNS,
   findColumnForStatus,
+  findKanbanOrphanJobs,
+  groupJobsByKanbanColumn,
   type KanbanColumnDef,
 } from './columns'
 export { initialsOf, techColor } from './techAvatar'
