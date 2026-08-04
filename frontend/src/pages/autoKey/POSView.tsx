@@ -12,44 +12,39 @@ import {
   updateAutoKeyJobStatus,
   type Customer,
   type CustomerAccount,
+  type MobileServicesPricingSelection,
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
 import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
+import PricingSelector from '@/components/PricingSelector'
 
 const POS_QUICK_ITEMS = [
-  // Key cutting & blanks
-  { label: 'Key cut – basic', desc: 'Basic key cutting', price: 3500 },
-  { label: 'Key cut – laser', desc: 'Laser-cut key', price: 12000 },
-  { label: 'Key cut – Tibbe', desc: 'Tibbe key cutting', price: 15000 },
-  { label: 'Blank – transponder', desc: 'Transponder blank', price: 4500 },
-  { label: 'Blank – flip key', desc: 'Flip/smart key blank', price: 8500 },
-  { label: 'Blank – proximity', desc: 'Proximity key blank', price: 12000 },
-  // Programming
-  { label: 'Program – transponder', desc: 'Transponder key programming', price: 9500 },
-  { label: 'Program – proximity', desc: 'Proximity key programming', price: 15000 },
-  { label: 'Program – all keys lost', desc: 'All keys lost – full programming', price: 25000 },
-  { label: 'Program – add key', desc: 'Add key to existing', price: 7500 },
-  { label: 'Sync remote', desc: 'Remote/fob sync', price: 5500 },
-  // Duplication & replacement
-  { label: 'Duplicate – transponder', desc: 'Duplicate transponder key', price: 12000 },
-  { label: 'Duplicate – flip key', desc: 'Duplicate flip key', price: 18000 },
-  { label: 'Replace – lost key', desc: 'Replace lost key (cut + program)', price: 15000 },
-  { label: 'Replace – all keys lost', desc: 'Replace all lost keys', price: 35000 },
-  // Lockout & entry
-  { label: 'Lockout – car', desc: 'Car lockout / emergency entry', price: 12000 },
-  { label: 'Lockout – boot/trunk', desc: 'Boot/trunk lockout', price: 8500 },
-  { label: 'Lockout – roadside', desc: 'Roadside lockout callout', price: 18000 },
-  // Ignition & lock work
-  { label: 'Ignition repair', desc: 'Ignition barrel repair', price: 15000 },
-  { label: 'Ignition replace', desc: 'Ignition barrel replacement', price: 25000 },
-  { label: 'Broken key extraction', desc: 'Extract broken key from lock', price: 8500 },
-  { label: 'Door lock change', desc: 'Door lock cylinder change', price: 12000 },
-  { label: 'Boot lock change', desc: 'Boot/trunk lock change', price: 9500 },
-  // Service & misc
-  { label: 'Service call', desc: 'Service call / travel fee', price: 5500 },
-  { label: 'After hours', desc: 'After-hours surcharge', price: 3500 },
-  { label: 'Diagnostic', desc: 'Key/ECU diagnostic', price: 6500 },
+  // General service (Mobile Services Suggested Pricing 2026)
+  { label: 'Callout – min charge', desc: '30km radius', price: 5000 },
+  { label: 'Callout – next 30km', desc: 'Additional distance band', price: 5000 },
+  { label: 'Gain entry', desc: 'Callout charged separately', price: 10000 },
+  { label: 'Lishi pick & decode', desc: 'Incl. callout', price: 25000 },
+  { label: 'Diagnostic fee', desc: 'Callout charged separately', price: 10000 },
+  { label: 'Transponder copy', desc: 'Callout charged separately', price: 9000 },
+  { label: 'Transponder gen/prog', desc: 'Incl. callout', price: 25000 },
+  { label: 'Cut and prog', desc: 'Customer supplied key', price: 25000 },
+  { label: 'All keys lost – TE', desc: 'TE key, no remote', price: 30000 },
+  { label: 'All keys lost – Basic', desc: 'Manual remote code chip from car', price: 38000 },
+  { label: 'All keys lost – Prox', desc: 'Proximity key', price: 48000 },
+  { label: 'Lock rekey', desc: 'Per lock', price: 15000 },
+  { label: 'Smart cable prog', desc: 'Nissan/Renault/Toyota/Chrysler, incl. callout', price: 65000 },
+  // Garage servicing
+  { label: 'Door service', desc: 'Lubricate and tighten fasteners', price: 22000 },
+  { label: 'Weather seal', desc: 'Replace bottom rubber weather seal', price: 40000 },
+  { label: 'Door lock', desc: 'Replace roller/tilt lock', price: 35000 },
+  { label: 'Cables', desc: 'Replace cables both sides', price: 33000 },
+  { label: 'Hinge replacement', desc: 'Replace broken hinges', price: 17500 },
+  { label: 'Spring re-tension', desc: 'Tension and balance door', price: 15000 },
+  { label: 'Wheel replacement', desc: 'Replace broken wheels', price: 17500 },
+  { label: 'Motor calibration', desc: 'Reset limits and sensitivity', price: 15000 },
+  { label: 'Spring replacement', desc: 'Replace spring assembly', price: 45000 },
+  { label: 'Motor replacement', desc: 'Swap out motor', price: 80000 },
 ] as const
 
 interface CartLine {
@@ -68,6 +63,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
+  const [showPricingSelector, setShowPricingSelector] = useState(false)
 
   const { data: activeJobsForCustomer = [] } = useQuery({
     queryKey: ['auto-key-jobs', 'active', customerId],
@@ -186,7 +182,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
         <Card className="p-5">
           <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Customer</h3>
@@ -248,7 +244,12 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Add items</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Add items</h3>
+            <Button type="button" variant="secondary" onClick={() => setShowPricingSelector(true)}>
+              Price by manufacturer
+            </Button>
+          </div>
           <div className="flex flex-wrap gap-2 mb-4">
             {POS_QUICK_ITEMS.map(({ label, desc, price }) => (
               <button
@@ -350,6 +351,15 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           {completeMut.isPending ? 'Processing…' : 'Complete sale'}
         </Button>
       </Card>
+
+      <PricingSelector
+        open={showPricingSelector}
+        onClose={() => setShowPricingSelector(false)}
+        onConfirm={(selection: MobileServicesPricingSelection) => {
+          addToCart(selection.label || 'Vehicle key pricing', Math.round(selection.quoted_price * 100))
+          setShowPricingSelector(false)
+        }}
+      />
     </div>
   )
 }
