@@ -1,7 +1,10 @@
 import React from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import KanbanColumn from './KanbanColumn'
-import { findColumnForStatus, type KanbanColumnDef } from './columns'
+import { findColumnForStatus, groupJobsByKanbanColumn, type KanbanColumnDef } from './columns'
+
+const SCROLL_STEP = 242
 
 interface KanbanBoardProps<J extends { id: string; status: string }> {
   jobs: J[]
@@ -22,6 +25,15 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
   const floatRef = React.useRef<HTMLDivElement>(null)
   const [scrollWidth, setScrollWidth] = React.useState(0)
   const [overflowing, setOverflowing] = React.useState(false)
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false)
+  const [canScrollRight, setCanScrollRight] = React.useState(false)
+
+  const measureScrollEdges = () => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 1)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
+  }
 
   // Keep the floating scrollbar's spacer width in sync with the board's
   // scrollable width, and only show it while the board actually overflows.
@@ -32,6 +44,7 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
     const measure = () => {
       setScrollWidth(el.scrollWidth)
       setOverflowing(el.scrollWidth > el.clientWidth + 1)
+      measureScrollEdges()
     }
 
     measure()
@@ -45,15 +58,71 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
     if (scrollRef.current && floatRef.current) {
       floatRef.current.scrollLeft = scrollRef.current.scrollLeft
     }
+    measureScrollEdges()
   }
   const syncFromFloat = () => {
     if (scrollRef.current && floatRef.current) {
       scrollRef.current.scrollLeft = floatRef.current.scrollLeft
     }
+    measureScrollEdges()
+  }
+  const scrollByStep = (direction: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: 'smooth' })
   }
 
+  const jobsByColumn = React.useMemo(
+    () => groupJobsByKanbanColumn(jobs, columns),
+    [jobs, columns],
+  )
+
   return (
-    <>
+    <div style={{ position: 'relative' }}>
+      {overflowing && canScrollLeft && (
+        <button
+          type="button"
+          aria-label="Scroll columns left"
+          onClick={() => scrollByStep(-1)}
+          className="flex items-center justify-center"
+          style={{
+            position: 'absolute',
+            left: -4,
+            top: 17,
+            zIndex: 10,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            boxShadow: 'var(--ms-shadow)',
+            color: 'var(--ms-text-mid)',
+          }}
+        >
+          <ChevronLeft size={16} />
+        </button>
+      )}
+      {overflowing && canScrollRight && (
+        <button
+          type="button"
+          aria-label="Scroll columns right"
+          onClick={() => scrollByStep(1)}
+          className="flex items-center justify-center"
+          style={{
+            position: 'absolute',
+            right: -4,
+            top: 17,
+            zIndex: 10,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: 'var(--ms-surface)',
+            border: '1px solid var(--ms-border-strong)',
+            boxShadow: 'var(--ms-shadow)',
+            color: 'var(--ms-text-mid)',
+          }}
+        >
+          <ChevronRight size={16} />
+        </button>
+      )}
       <div
         ref={scrollRef}
         onScroll={syncFromBoard}
@@ -61,7 +130,7 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
         style={{ scrollbarColor: 'var(--ms-border-strong) transparent' }}
       >
         {columns.map(column => {
-          const jobsInColumn = jobs.filter(j => column.statuses.includes(j.status))
+          const jobsInColumn = jobsByColumn.get(column.key) ?? []
           return (
             <KanbanColumn
               key={column.key}
@@ -107,6 +176,6 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
           <div style={{ width: scrollWidth, height: 1 }} />
         </div>
       )}
-    </>
+    </div>
   )
 }
