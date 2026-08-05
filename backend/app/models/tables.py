@@ -30,6 +30,11 @@ class Tenant(SQLModel, table=True):
     subscription_status: Optional[str] = Field(default=None)
     # UTC timestamp when the Stripe trial ends (populated for trialing subscriptions).
     trial_end: Optional[datetime] = Field(default=None)
+    # Platform-admin comp flag: when true, this tenant is permanently exempt from the
+    # Stripe payment-required gate in get_auth_context, regardless of signup_payment_pending
+    # or future subscription webhooks (e.g. a subscription.deleted event would otherwise
+    # re-flag signup_payment_pending and lock the shop out again). Set via "Stop billing".
+    billing_exempt: bool = False
     is_active: bool = True
     auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

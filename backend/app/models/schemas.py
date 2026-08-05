@@ -519,6 +519,8 @@ class PlatformTenantRead(SQLModel):
     plan_code: str
     is_active: bool
     signup_payment_pending: bool
+    billing_exempt: bool = False
+    subscription_status: Optional[str] = None
     user_count: int
     created_at: datetime
 
@@ -540,6 +542,14 @@ class PlatformTenantForceLogoutRequest(SQLModel):
 class PlatformTenantPlanUpdateRequest(SQLModel):
     plan_code: str
     reason: Optional[str] = None
+
+class PlatformTenantBillingExemptRequest(SQLModel):
+    billing_exempt: bool
+    reason: Optional[str] = None
+    #: When turning exemption on and the shop has a live Stripe subscription, also
+    #: cancel it immediately so the shop stops being charged (not just app-side).
+    #: Ignored when turning exemption off.
+    cancel_stripe_subscription: bool = True
 
 class PlatformTenantUpdateRequest(SQLModel):
     name: Optional[str] = None

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
-import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantBillingExempt, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 import { useAdminEnterShop } from '@/lib/adminImpersonation'
 
@@ -133,6 +133,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: () => setAdminActionError('Could not mark as paid. Try again.'),
   })
+  const setBillingExempt = useMutation({
+    mutationFn: ({ tenantId, exempt, reason }: { tenantId: string; exempt: boolean; reason?: string }) =>
+      setPlatformTenantBillingExempt(tenantId, exempt, reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+      setAdminActionError('')
+    },
+    onError: (err) => setAdminActionError(`Could not update billing status: ${getApiErrorMessage(err)}`),
+  })
   const editTenant = useMutation({
     mutationFn: ({ tenantId, payload }: { tenantId: string; payload: { name?: string; slug?: string; owner_email?: string; new_password?: string } }) =>
       updatePlatformTenant(tenantId, payload),
@@ -177,6 +187,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     }
     deleteAccount.mutate(tenantId)
   }
+  function handleToggleBillingExempt(tenantId: string, name: string, exempt: boolean) {
+    const reason = window.prompt(
+      exempt
+        ? `Turn OFF billing for ${name} (they keep full access, any live Stripe subscription is canceled). Reason:`
+        : `Turn billing back ON for ${name}? Reason (optional):`,
+      '',
+    )
+    if (reason === null) return // cancelled
+    setBillingExempt.mutate({ tenantId, exempt, reason: reason.trim() || undefined })
+  }
 
   const filtered = (tenants ?? []).filter(t =>
     [t.name, t.slug, t.plan_code].join(' ').toLowerCase().includes(search.toLowerCase())
@@ -214,6 +234,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                     <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{t.name}</p>
                     <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                       #{t.slug} · {t.plan_code} · {t.user_count} user{t.user_count !== 1 ? 's' : ''} · {t.is_active ? 'Active' : 'Suspended'}
+                      {t.billing_exempt && <span className="ml-2 text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: '#E8F6EE', color: '#1F6D4C' }}>Billing off</span>}
                     </p>
                     <div className="pt-2">
                       <button
@@ -241,6 +262,14 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                       >
                         Force Logout
+                      </button>
+                      <button
+                        onClick={() => handleToggleBillingExempt(t.id, t.name, !t.billing_exempt)}
+                        disabled={setBillingExempt.isPending}
+                        className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                      >
+                        {t.billing_exempt ? 'Turn Billing On' : 'Turn Billing Off'}
                       </button>
                       <button
                         onClick={() => { setEditModal({ tenantId: t.id, name: t.name, slug: t.slug }); setEditName(t.name); setEditSlug(t.slug); setEditOwnerEmail(''); setEditPassword(''); setEditError('') }}
@@ -282,6 +311,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                       <td className="px-5 py-3.5 font-medium" style={{ color: t.is_active ? '#497A59' : '#A06757' }}>
                         {t.is_active ? 'Active' : 'Suspended'}
                         {t.signup_payment_pending && <span className="ml-2 text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>Payment pending</span>}
+                        {t.billing_exempt && <span className="ml-2 text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: '#E8F6EE', color: '#1F6D4C' }}>Billing off</span>}
                       </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-muted)' }}>
                         {new Date(t.created_at).toLocaleDateString()}
@@ -319,6 +349,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                         >
                           Change Plan
+                        </button>
+                        <button
+                          onClick={() => handleToggleBillingExempt(t.id, t.name, !t.billing_exempt)}
+                          disabled={setBillingExempt.isPending}
+                          className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={t.billing_exempt
+                            ? { backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }
+                            : { backgroundColor: '#E8F6EE', border: '1px solid #A8D5B5', color: '#1F6D4C' }}
+                        >
+                          {t.billing_exempt ? 'Turn Billing On' : 'Turn Billing Off'}
                         </button>
                         <button
                           onClick={() => { setEditModal({ tenantId: t.id, name: t.name, slug: t.slug }); setEditName(t.name); setEditSlug(t.slug); setEditOwnerEmail(''); setEditPassword(''); setEditError('') }}

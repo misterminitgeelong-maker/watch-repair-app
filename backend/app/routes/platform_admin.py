@@ -11,6 +11,7 @@ from ..models import (
     AutoKeyJob,
     Invoice,
     PlatformEnterShopResponse,
+    PlatformTenantBillingExemptRequest,
     PlatformTenantForceLogoutRequest,
     PlatformTenantPlanUpdateRequest,
     PlatformTenantStatusUpdateRequest,
@@ -27,6 +28,22 @@ from ..models import (
 from ..security import create_access_token, create_refresh_token, hash_password
 
 router = APIRouter(prefix="/v1/platform-admin", tags=["platform-admin"])
+
+
+def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
+    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
+    return PlatformTenantRead(
+        id=tenant.id,
+        slug=tenant.slug,
+        name=tenant.name,
+        plan_code=tenant.plan_code,
+        is_active=tenant.is_active,
+        signup_payment_pending=tenant.signup_payment_pending,
+        billing_exempt=tenant.billing_exempt,
+        subscription_status=tenant.subscription_status,
+        user_count=user_count,
+        created_at=tenant.created_at,
+    )
 
 
 @router.get("/users", response_model=list[PlatformUserRead])
@@ -80,6 +97,8 @@ def list_all_tenants(
             plan_code=t.plan_code,
             is_active=t.is_active,
             signup_payment_pending=t.signup_payment_pending,
+            billing_exempt=t.billing_exempt,
+            subscription_status=t.subscription_status,
             user_count=user_counts.get(t.id, 0),
             created_at=t.created_at,
         )
@@ -171,17 +190,7 @@ def set_tenant_status(
     session.commit()
     invalidate_auth_cache()
 
-    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
-    return PlatformTenantRead(
-        id=tenant.id,
-        slug=tenant.slug,
-        name=tenant.name,
-        plan_code=tenant.plan_code,
-        is_active=tenant.is_active,
-        signup_payment_pending=tenant.signup_payment_pending,
-        user_count=user_count,
-        created_at=tenant.created_at,
-    )
+    return _tenant_read(session, tenant)
 
 
 @router.patch("/tenants/{tenant_id}/plan", response_model=PlatformTenantRead)
@@ -211,17 +220,7 @@ def set_tenant_plan(
         )
     )
     session.commit()
-    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
-    return PlatformTenantRead(
-        id=tenant.id,
-        slug=tenant.slug,
-        name=tenant.name,
-        plan_code=tenant.plan_code,
-        is_active=tenant.is_active,
-        signup_payment_pending=tenant.signup_payment_pending,
-        user_count=user_count,
-        created_at=tenant.created_at,
-    )
+    return _tenant_read(session, tenant)
 
 
 @router.post("/tenants/{tenant_id}/mark-paid", response_model=PlatformTenantRead)
@@ -252,17 +251,75 @@ def mark_tenant_paid(
         )
     )
     session.commit()
-    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
-    return PlatformTenantRead(
-        id=tenant.id,
-        slug=tenant.slug,
-        name=tenant.name,
-        plan_code=tenant.plan_code,
-        is_active=tenant.is_active,
-        signup_payment_pending=tenant.signup_payment_pending,
-        user_count=user_count,
-        created_at=tenant.created_at,
+    return _tenant_read(session, tenant)
+
+
+@router.post("/tenants/{tenant_id}/billing-exempt", response_model=PlatformTenantRead)
+def set_tenant_billing_exempt(
+    tenant_id: UUID,
+    payload: PlatformTenantBillingExemptRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    """Comp a shop: stop billing it while keeping full access.
+
+    Unlike mark-paid (a one-time nudge past the signup gate), this is a durable
+    flag — it keeps working even after a Stripe webhook later re-flags
+    signup_payment_pending (e.g. once the subscription this clears is canceled).
+    Turning exemption on cancels any live Stripe subscription by default so the
+    shop actually stops being charged, not just stops being gated in-app.
+    """
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    reason = (payload.reason or "").strip()
+
+    stripe_note = ""
+    if payload.billing_exempt:
+        tenant.billing_exempt = True
+        tenant.signup_payment_pending = False
+        tenant.subscription_status = None
+        tenant.trial_end = None
+
+        if payload.cancel_stripe_subscription and tenant.stripe_subscription_id:
+            from .billing import _get_stripe, _stripe_configured
+
+            if _stripe_configured():
+                try:
+                    stripe = _get_stripe()
+                    stripe.Subscription.cancel(tenant.stripe_subscription_id)
+                    stripe_note = f" Canceled Stripe subscription {tenant.stripe_subscription_id}."
+                except Exception as exc:  # noqa: BLE001 — surface but don't block the local exemption
+                    stripe_note = f" Could not cancel Stripe subscription: {exc}"
+                tenant.stripe_subscription_id = None
+    else:
+        tenant.billing_exempt = False
+        # No active subscription remains after an exemption (we cancel it above),
+        # so re-requiring payment means flagging it pending again — only if
+        # billing is actually configured, otherwise this is a no-op gate anyway.
+        if not tenant.stripe_subscription_id:
+            tenant.signup_payment_pending = True
+
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="tenant",
+            entity_id=tenant_id,
+            event_type="platform_admin_billing_exempt_changed",
+            event_summary=(
+                f"Platform admin set billing_exempt={tenant.billing_exempt}. "
+                f"Reason: {reason or 'n/a'}.{stripe_note}"
+            ),
+        )
     )
+    session.commit()
+    invalidate_auth_cache()
+    return _tenant_read(session, tenant)
 
 
 @router.patch("/tenants/{tenant_id}", response_model=PlatformTenantRead)
@@ -341,17 +398,7 @@ def update_tenant(
         )
         session.commit()
 
-    user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
-    return PlatformTenantRead(
-        id=tenant.id,
-        slug=tenant.slug,
-        name=tenant.name,
-        plan_code=tenant.plan_code,
-        is_active=tenant.is_active,
-        signup_payment_pending=tenant.signup_payment_pending,
-        user_count=user_count,
-        created_at=tenant.created_at,
-    )
+    return _tenant_read(session, tenant)
 
 
 @router.post("/tenants/{tenant_id}/force-logout")

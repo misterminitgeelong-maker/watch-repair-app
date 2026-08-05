@@ -1310,6 +1310,8 @@ export interface PlatformTenant {
   plan_code: string
   is_active: boolean
   signup_payment_pending: boolean
+  billing_exempt: boolean
+  subscription_status?: string | null
   user_count: number
   created_at: string
 }
@@ -1398,6 +1400,17 @@ export const setPlatformTenantPlan = (tenantId: string, plan_code: string, reaso
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}/plan`, { plan_code, reason })
 export const markPlatformTenantPaid = (tenantId: string) =>
   api.post<PlatformTenant>(`/platform-admin/tenants/${tenantId}/mark-paid`)
+export const setPlatformTenantBillingExempt = (
+  tenantId: string,
+  billing_exempt: boolean,
+  reason?: string,
+  cancel_stripe_subscription = true,
+) =>
+  api.post<PlatformTenant>(`/platform-admin/tenants/${tenantId}/billing-exempt`, {
+    billing_exempt,
+    reason,
+    cancel_stripe_subscription,
+  })
 export const updatePlatformTenant = (tenantId: string, payload: { name?: string; slug?: string; owner_email?: string; new_password?: string }) =>
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}`, payload)
 

@@ -10,9 +10,10 @@ _TEST_DB = Path(__file__).with_name(f"test_platform_admin_{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
 os.environ.setdefault("APP_ENV", "test")
 
+from app.config import settings  # noqa: E402
 from app.database import create_db_and_tables, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import TenantEventLog, User  # noqa: E402
+from app.models import Tenant, TenantEventLog, User  # noqa: E402
 
 create_db_and_tables()
 client = TestClient(app)
@@ -172,3 +173,63 @@ def test_list_tenants_does_not_scale_query_count_with_shop_count():
     # A couple of queries for auth-context lookup plus one for tenants and one
     # grouped count query — a small constant, not one-per-tenant.
     assert len(queries) <= 6, f"expected a constant, small number of queries, got {len(queries)}"
+
+
+def test_billing_exempt_keeps_access_through_a_later_payment_pending_flag():
+    """A shop marked billing_exempt must stay accessible even if something later
+    re-flags signup_payment_pending (e.g. a Stripe subscription.deleted webhook),
+    which is exactly the case mark-paid does not survive."""
+    suffix = uuid4().hex[:8]
+    target_slug = f"exempt-{suffix}"
+    target_email = f"exempt-{suffix}@test.com"
+    target_token, target_tenant_id = _bootstrap_and_login(target_slug, target_email)
+    _bootstrap_and_login(f"admin4-{suffix}", f"admin4-{suffix}@test.com")
+    _promote_to_platform_admin(f"admin4-{suffix}@test.com")
+    admin_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"admin4-{suffix}", "email": f"admin4-{suffix}@test.com", "password": "pass123456"},
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+    target_headers = {"Authorization": f"Bearer {target_token}"}
+
+    original_stripe_key = settings.stripe_secret_key
+    settings.stripe_secret_key = "sk_test_dummy"  # pretend Stripe is configured
+    try:
+        exempt = client.post(
+            f"/v1/platform-admin/tenants/{target_tenant_id}/billing-exempt",
+            headers=admin_headers,
+            json={"billing_exempt": True, "reason": "Franchise HQ covers this shop", "cancel_stripe_subscription": True},
+        )
+        assert exempt.status_code == 200
+        body = exempt.json()
+        assert body["billing_exempt"] is True
+        assert body["signup_payment_pending"] is False
+
+        # Simulate what a later Stripe subscription.deleted webhook does: re-flag
+        # signup_payment_pending. Exemption must still keep the shop accessible.
+        with Session(engine) as db:
+            tenant = db.get(Tenant, UUID(target_tenant_id))
+            tenant.signup_payment_pending = True
+            db.add(tenant)
+            db.commit()
+
+        # /v1/auth/session is always allowed even when payment-pending (so the SPA
+        # can render the "subscription required" page), so exercise the gate
+        # against an ordinary tenant-data route instead.
+        still_ok = client.get("/v1/customers", headers=target_headers)
+        assert still_ok.status_code == 200
+
+        # Turning exemption back off re-requires payment (no subscription remains).
+        unexempt = client.post(
+            f"/v1/platform-admin/tenants/{target_tenant_id}/billing-exempt",
+            headers=admin_headers,
+            json={"billing_exempt": False},
+        )
+        assert unexempt.status_code == 200
+        assert unexempt.json()["billing_exempt"] is False
+        assert unexempt.json()["signup_payment_pending"] is True
+
+        blocked = client.get("/v1/customers", headers=target_headers)
+        assert blocked.status_code == 403
+    finally:
+        settings.stripe_secret_key = original_stripe_key

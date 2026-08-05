@@ -28,6 +28,7 @@ class _CachedAuth:
     signup_payment_pending: bool
     tenant_is_active: bool = True
     auth_revoked_at: datetime | None = None
+    billing_exempt: bool = False
 
 _auth_cache: dict[str, tuple[_CachedAuth, float]] = {}
 
@@ -197,6 +198,7 @@ def get_auth_context(
                 if (
                     cached_auth.ctx.role != "platform_admin"
                     and cached_auth.signup_payment_pending
+                    and not cached_auth.billing_exempt
                     and stripe_billing_configured()
                     and not _path_allowed_during_signup_payment_pending(request.url.path)
                 ):
@@ -245,10 +247,12 @@ def get_auth_context(
 
         plan_code = effective_plan_code(tenant)
         signup_pending = bool(getattr(tenant, "signup_payment_pending", False))
+        billing_exempt = bool(getattr(tenant, "billing_exempt", False))
 
         if (
             user.role != "platform_admin"
             and signup_pending
+            and not billing_exempt
             and stripe_billing_configured()
             and not _path_allowed_during_signup_payment_pending(request.url.path)
         ):
@@ -270,6 +274,7 @@ def get_auth_context(
                 signup_payment_pending=signup_pending,
                 tenant_is_active=tenant.is_active,
                 auth_revoked_at=tenant.auth_revoked_at,
+                billing_exempt=billing_exempt,
             ),
             now + _AUTH_CACHE_TTL,
         )
