@@ -116,23 +116,33 @@ export default function JobMessageThread({
         )}
 
         {messages?.map((msg: JobThreadMessage) => {
-          /* ── System / automated SMS ── */
+          /* ── System / automated SMS (quote, onboarding, reminders, etc.) ──
+             These are real texts sent to the customer, so show them as full
+             outbound bubbles just like a manually-typed message — a small
+             label above marks which automated event sent it. */
           if (msg.direction === 'system') {
             return (
-              <div key={msg.id} className="flex justify-center py-2">
-                <div className="text-center max-w-xs">
-                  <span
-                    className="inline-block text-xs px-3 py-1 rounded-full"
-                    style={{ backgroundColor: '#d0d0d0', color: '#555' }}
-                  >
-                    {msg.event?.replace(/_/g, ' ')}
+              <div key={msg.id} className="flex flex-col items-end">
+                {msg.event && (
+                  <span className="text-xs mb-0.5 mr-1" style={{ color: '#999' }}>
+                    {msg.event.replace(/_/g, ' ')}
                     {msg.status === 'dry_run' && ' · dry run'}
                   </span>
-                  <p className="text-xs mt-0.5" style={{ color: '#aaa' }}>
-                    {msg.body.length > 60 ? msg.body.slice(0, 60) + '…' : msg.body}
-                  </p>
-                  <p className="text-xs" style={{ color: '#bbb' }}>{formatTime(msg.created_at)}</p>
+                )}
+                <div
+                  className="max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: '#1E88E5',
+                    color: '#fff',
+                    borderRadius: '18px 18px 4px 18px',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {msg.body}
                 </div>
+                <p className="text-xs mt-0.5 mr-1" style={{ color: '#999' }}>
+                  {formatTime(msg.created_at)}
+                </p>
               </div>
             )
           }
