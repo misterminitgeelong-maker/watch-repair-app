@@ -134,3 +134,41 @@ def test_suspend_reactivate_and_force_logout():
 
     after_force = client.get("/v1/auth/session", headers={"Authorization": f"Bearer {active_token}"})
     assert after_force.status_code == 401
+
+
+def test_list_tenants_does_not_scale_query_count_with_shop_count():
+    """The Shops tab lists every tenant on the platform (~379 shops in production
+    for the Minit network). If listing tenants issues a separate user-count query
+    per tenant, that many DB round trips can blow past the frontend request
+    timeout on a slow connection and leave the tab stuck with nothing loaded.
+    Assert the query count stays flat as the number of shops grows."""
+    from sqlalchemy import event
+
+    suffix = uuid4().hex[:8]
+    _bootstrap_and_login(f"admin3-{suffix}", f"admin3-{suffix}@test.com")
+    _promote_to_platform_admin(f"admin3-{suffix}@test.com")
+    admin_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"admin3-{suffix}", "email": f"admin3-{suffix}@test.com", "password": "pass123456"},
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    for i in range(20):
+        _bootstrap_and_login(f"scale{i}-{suffix}", f"scale{i}-{suffix}@test.com")
+
+    queries: list[str] = []
+
+    def _count(conn, cursor, statement, parameters, context, executemany):
+        queries.append(statement)
+
+    event.listen(engine, "before_cursor_execute", _count)
+    try:
+        resp = client.get("/v1/platform-admin/tenants", headers=admin_headers)
+    finally:
+        event.remove(engine, "before_cursor_execute", _count)
+
+    assert resp.status_code == 200
+    assert len(resp.json()) >= 21
+    # A couple of queries for auth-context lookup plus one for tenants and one
+    # grouped count query — a small constant, not one-per-tenant.
+    assert len(queries) <= 6, f"expected a constant, small number of queries, got {len(queries)}"

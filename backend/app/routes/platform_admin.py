@@ -62,12 +62,15 @@ def list_all_tenants(
 ):
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
 
-    # Count users per tenant with a simple per-tenant query to avoid SQLModel aggregation issues
-    user_counts: dict[UUID, int] = {}
-    for t in tenants:
-        user_counts[t.id] = session.exec(
-            select(func.count(User.id)).where(User.tenant_id == t.id)
-        ).one()
+    # Count users per tenant in a single grouped query. This list can have hundreds
+    # of shops (the Minit network alone is ~379), so a per-tenant COUNT query here
+    # meant one DB round trip per shop — on a cold Postgres connection that was slow
+    # enough to blow past the frontend's request timeout and leave the Shops tab
+    # stuck with nothing loaded.
+    count_rows = session.exec(
+        select(User.tenant_id, func.count(User.id)).group_by(User.tenant_id)
+    ).all()
+    user_counts: dict[UUID, int] = dict(count_rows)
 
     return [
         PlatformTenantRead(
