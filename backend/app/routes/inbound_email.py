@@ -17,24 +17,39 @@ the deployed fastapi 0.115 + pydantic >= 2.12 combination (unresolvable
 import re
 from email import policy
 from email.parser import BytesParser
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, require_feature, require_owner
+from ..dependencies import (
+    PLAN_FEATURES,
+    AuthContext,
+    enforce_plan_limit,
+    normalize_plan_code,
+    require_feature,
+    require_owner,
+)
 from ..limiter import limiter
+from ..minit_email_lead_parser import match_operator_for_lead, parse_powerfulform_body
 from ..models import (
+    AutoKeyJob,
+    Customer,
     InboundEmail,
     InboundEmailDetail,
+    InboundEmailJobCreateRequest,
+    InboundEmailJobCreateResult,
     InboundEmailListItem,
+    InboundEmailParsedRead,
     InboundEmailStatusUpdateRequest,
     ParentAccount,
+    Tenant,
     TenantEventLog,
     User,
 )
 from ..security import verify_password
+from ..services.mobile_lead_dispatch import _escalation_tenant_id, _next_auto_key_job_number
 from .parent_accounts import _get_parent_account_for_user
 
 public_router = APIRouter(prefix="/v1/public", tags=["inbound-email"])
@@ -248,3 +263,200 @@ def update_inbound_email_status(
     session.commit()
     session.refresh(row)
     return row
+
+
+@hq_router.get("/me/inbound-emails/{inbound_email_id}/parsed", response_model=InboundEmailParsedRead)
+def get_inbound_email_parsed_preview(
+    inbound_email_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Read-only preview of what the parser would extract from this email — creates nothing.
+
+    Used to pre-fill the staff review form; some emails (observed for NZ regions)
+    carry no field data at all, in which case ``fields_found`` is False and the
+    rest of the fields are empty — the form should fall back to blank inputs.
+    """
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    row = _get_owned_inbound_email(session, auth, inbound_email_id)
+
+    parsed = parse_powerfulform_body(row.text_body)
+    suggested_tenant_id: UUID | None = None
+    suggested_name: str | None = None
+    match_confidence = "no_fields_found"
+    if parsed.fields_found:
+        match = match_operator_for_lead(session, parent_id=parent.id, parsed=parsed)
+        match_confidence = match.confidence
+        if match.tenant:
+            suggested_tenant_id = match.tenant.id
+            suggested_name = match.tenant.name
+
+    return InboundEmailParsedRead(
+        fields_found=parsed.fields_found,
+        location_state_raw=parsed.location_state_raw,
+        nearest_provider_raw=parsed.nearest_provider_raw,
+        customer_name=parsed.customer_name,
+        email=parsed.email,
+        phone=parsed.phone,
+        service_required=parsed.service_required,
+        vehicle_make=parsed.vehicle_make,
+        vehicle_model=parsed.vehicle_model,
+        vehicle_year=parsed.vehicle_year,
+        details=parsed.details,
+        contact_preference=parsed.contact_preference,
+        suggested_operator_tenant_id=suggested_tenant_id,
+        suggested_operator_name=suggested_name,
+        match_confidence=match_confidence,
+    )
+
+
+def _digits_only(value: str | None) -> str | None:
+    if not value:
+        return None
+    digits = "".join(ch for ch in value if ch.isdigit())
+    return digits or None
+
+
+def _find_or_create_customer_for_email_lead(
+    session: Session, tenant_id: UUID, body: InboundEmailJobCreateRequest
+) -> Customer:
+    phone_digits = _digits_only(body.phone)
+    if phone_digits:
+        customers = session.exec(select(Customer).where(Customer.tenant_id == tenant_id)).all()
+        for c in customers:
+            if c.phone and _digits_only(c.phone) == phone_digits:
+                return c
+    if body.email:
+        email_norm = body.email.strip().lower()
+        existing = session.exec(
+            select(Customer).where(Customer.tenant_id == tenant_id).where(Customer.email == email_norm)
+        ).first()
+        if existing:
+            return existing
+
+    address = " ".join(p.strip() for p in (body.suburb, body.state_code) if p and p.strip()) or None
+    customer = Customer(
+        tenant_id=tenant_id,
+        full_name=body.customer_name.strip()[:300],
+        phone=body.phone.strip()[:80] if body.phone else None,
+        email=body.email.strip().lower()[:320] if body.email else None,
+        address=address,
+        notes="Created from Mister Minit BCC email lead",
+    )
+    session.add(customer)
+    session.flush()
+    return customer
+
+
+@hq_router.post(
+    "/me/inbound-emails/{inbound_email_id}/create-job",
+    response_model=InboundEmailJobCreateResult,
+    status_code=201,
+)
+def create_job_from_inbound_email(
+    inbound_email_id: UUID,
+    body: InboundEmailJobCreateRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Create a job from staff-reviewed (and possibly hand-edited) email fields.
+
+    Always lands on the parent's HQ/escalation tenant unless ``target_tenant_id``
+    is explicitly given — this never auto-assigns the job to the matched
+    operator. No SMS or notification is sent to anyone; this only creates a job
+    record so HQ isn't retyping raw email text by hand.
+    """
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _get_parent_account_for_user(session, current_user)
+    row = _get_owned_inbound_email(session, auth, inbound_email_id)
+    if row.auto_key_job_id:
+        raise HTTPException(status_code=409, detail="A job has already been created from this email")
+
+    tenant_id = body.target_tenant_id or _escalation_tenant_id(session, parent)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No target tenant — pass target_tenant_id or configure an HQ escalation tenant first",
+        )
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Target tenant not found")
+
+    plan_code = normalize_plan_code(tenant.plan_code)
+    if "auto_key" in PLAN_FEATURES.get(plan_code, set()):
+        ak_count = int(
+            session.exec(
+                select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
+            ).one()
+        )
+        limit_ctx = AuthContext(tenant_id=tenant_id, user_id=uuid4(), role="owner", plan_code=plan_code)
+        enforce_plan_limit(limit_ctx, "auto_key_job", ak_count)
+
+    customer = _find_or_create_customer_for_email_lead(session, tenant_id, body)
+
+    desc_parts = ["Created from a Mister Minit BCC email lead (reviewed by staff before creation)."]
+    if body.service_required:
+        desc_parts.append(f"Service required: {body.service_required.strip()}")
+    if body.details:
+        desc_parts.append(body.details.strip())
+    if body.contact_preference:
+        desc_parts.append(f"Preferred contact method: {body.contact_preference.strip()}")
+    description = "\n\n".join(desc_parts)[:8000]
+
+    job_address = " ".join(p.strip() for p in (body.suburb, body.state_code) if p and p.strip()) or None
+    vehicle_year: int | None = None
+    if body.vehicle_year and body.vehicle_year.strip().isdigit():
+        vehicle_year = int(body.vehicle_year.strip())
+
+    job = AutoKeyJob(
+        tenant_id=tenant_id,
+        customer_id=customer.id,
+        job_number=_next_auto_key_job_number(session, tenant_id),
+        title=f"Email lead — {body.customer_name.strip()}"[:500],
+        description=description or None,
+        vehicle_make=body.vehicle_make.strip()[:120] if body.vehicle_make else None,
+        vehicle_model=body.vehicle_model.strip()[:120] if body.vehicle_model else None,
+        vehicle_year=vehicle_year,
+        job_address=job_address,
+        job_type="Diagnostic",
+        status="awaiting_quote",
+        priority="normal",
+        key_quantity=1,
+        programming_status="pending",
+        deposit_cents=0,
+        cost_cents=0,
+    )
+    session.add(job)
+    session.flush()
+
+    row.auto_key_job_id = job.id
+    row.status = "processed"
+    session.add(row)
+
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=current_user.email,
+            entity_type="auto_key_job",
+            entity_id=job.id,
+            event_type="email_lead_job_created",
+            event_summary=f"Job #{job.job_number} created from email lead ({body.customer_name.strip()})",
+        )
+    )
+
+    session.commit()
+    session.refresh(job)
+
+    return InboundEmailJobCreateResult(
+        inbound_email_id=row.id,
+        auto_key_job_id=job.id,
+        job_number=job.job_number,
+        tenant_id=tenant_id,
+        tenant_name=tenant.name,
+    )

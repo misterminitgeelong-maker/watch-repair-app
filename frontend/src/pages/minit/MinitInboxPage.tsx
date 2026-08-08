@@ -1,16 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { KeyRound, Mail, MessageSquare } from 'lucide-react'
+import { CheckCircle2, KeyRound, Mail, MessageSquare } from 'lucide-react'
 import {
   API_ORIGIN,
+  createJobFromInboundEmail,
   getInbox,
   getInboundEmail,
+  getInboundEmailParsed,
   listInboundEmails,
   updateInboundEmailStatus,
+  type InboundEmailJobCreateRequest,
+  type InboundEmailJobCreateResult,
 } from '@/lib/api'
 import { useParentLeadIngest } from '@/hooks/useParentLeadIngest'
-import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
+import { Button, Card, EmptyState, Input, PageHeader, Spinner, Textarea } from '@/components/ui'
 
 function formatDate(s: string) {
   const d = new Date(s)
@@ -28,20 +32,159 @@ const STATUS_COLORS: Record<string, string> = {
   dismissed: '#718096',
 }
 
-function InboundEmailCard({ id, subject, fromEmail, status, createdAt }: {
+type EmailLeadForm = Omit<InboundEmailJobCreateRequest, 'target_tenant_id'>
+
+const EMPTY_FORM: EmailLeadForm = {
+  customer_name: '',
+  phone: '',
+  email: '',
+  suburb: '',
+  state_code: '',
+  service_required: '',
+  vehicle_make: '',
+  vehicle_model: '',
+  vehicle_year: '',
+  details: '',
+  contact_preference: '',
+}
+
+function EmailLeadReviewForm({ id, onCreated }: { id: string; onCreated: (result: InboundEmailJobCreateResult) => void }) {
+  const [form, setForm] = useState<EmailLeadForm>(EMPTY_FORM)
+  const [seeded, setSeeded] = useState(false)
+  const [showRaw, setShowRaw] = useState(false)
+
+  const { data: parsed, isLoading: parsedLoading } = useQuery({
+    queryKey: ['inbound-email-parsed', id],
+    queryFn: () => getInboundEmailParsed(id).then(r => r.data),
+  })
+  const { data: detail } = useQuery({
+    queryKey: ['inbound-email', id],
+    queryFn: () => getInboundEmail(id).then(r => r.data),
+  })
+
+  // Pre-fill the form once from the parsed preview — after that it's the
+  // staff's own edits, so we don't want the query re-seeding it on refetch.
+  useEffect(() => {
+    if (!parsed || seeded) return
+    setForm({
+      customer_name: parsed.customer_name ?? '',
+      phone: parsed.phone ?? '',
+      email: parsed.email ?? '',
+      // The form only tells us the customer's state, not their suburb — staff fill that in from the details field.
+      suburb: '',
+      state_code: parsed.location_state_raw ?? '',
+      service_required: parsed.service_required ?? '',
+      vehicle_make: parsed.vehicle_make ?? '',
+      vehicle_model: parsed.vehicle_model ?? '',
+      vehicle_year: parsed.vehicle_year ?? '',
+      details: parsed.details ?? '',
+      contact_preference: parsed.contact_preference ?? '',
+    })
+    setSeeded(true)
+  }, [parsed, seeded])
+
+  const createMutation = useMutation({
+    mutationFn: () => createJobFromInboundEmail(id, form).then(r => r.data),
+    onSuccess: onCreated,
+  })
+
+  const field = (key: keyof EmailLeadForm) => ({
+    value: form[key] ?? '',
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm(f => ({ ...f, [key]: e.target.value })),
+  })
+
+  if (parsedLoading) return <Spinner />
+
+  return (
+    <div className="mt-3 space-y-3">
+      {parsed && !parsed.fields_found && (
+        <p className="text-xs rounded p-2" style={{ backgroundColor: 'rgba(180,120,40,0.1)', color: '#B47828' }}>
+          No fields could be extracted from this email — fill in the form manually, or use Mark processed / Dismiss
+          if you're handling it another way.
+        </p>
+      )}
+      {parsed?.suggested_operator_name && (
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+          Nearest provider per the email: <strong>{parsed.suggested_operator_name}</strong> ({parsed.match_confidence}).
+          The job below still lands in HQ — this is informational only.
+        </p>
+      )}
+      {parsed?.nearest_provider_raw && !parsed?.suggested_operator_name && (
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+          Email says nearest provider is "{parsed.nearest_provider_raw}" but no matching operator was found ({parsed.match_confidence}).
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Customer name" {...field('customer_name')} required />
+        <Input label="Phone" {...field('phone')} />
+        <Input label="Email" {...field('email')} />
+        <Input label="Contact preference" {...field('contact_preference')} placeholder="Phone / Email" />
+        <Input label="Suburb" {...field('suburb')} />
+        <Input label="State" {...field('state_code')} placeholder="NSW" />
+        <Input label="Service required" {...field('service_required')} />
+        <Input label="Vehicle make" {...field('vehicle_make')} />
+        <Input label="Vehicle model" {...field('vehicle_model')} />
+        <Input label="Vehicle year" {...field('vehicle_year')} />
+      </div>
+      <Textarea label="Details" rows={3} {...field('details')} />
+
+      <div className="flex items-center gap-3">
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!form.customer_name.trim() || createMutation.isPending}
+          onClick={() => createMutation.mutate()}
+        >
+          Create job
+        </Button>
+        <button
+          type="button"
+          className="text-xs font-medium"
+          style={{ color: 'var(--ms-text-muted)' }}
+          onClick={() => setShowRaw(v => !v)}
+        >
+          {showRaw ? 'Hide' : 'View'} raw email
+        </button>
+      </div>
+      {createMutation.isError && (
+        <p className="text-xs" style={{ color: 'var(--ms-danger, #C0392B)' }}>
+          Couldn't create the job — please try again.
+        </p>
+      )}
+      {showRaw && (
+        detail?.text_body ? (
+          <pre
+            className="text-xs whitespace-pre-wrap rounded p-3 max-h-80 overflow-y-auto"
+            style={{ backgroundColor: 'var(--ms-bg, rgba(0,0,0,0.04))', color: 'var(--ms-text)' }}
+          >
+            {detail.text_body}
+          </pre>
+        ) : (
+          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No plain-text body captured.</p>
+        )
+      )}
+    </div>
+  )
+}
+
+function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJobId }: {
   id: string
   subject?: string | null
   fromEmail?: string | null
   status: 'new' | 'processed' | 'dismissed'
   createdAt: string
+  autoKeyJobId?: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [justCreated, setJustCreated] = useState<InboundEmailJobCreateResult | null>(null)
   const queryClient = useQueryClient()
 
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['inbound-email', id],
     queryFn: () => getInboundEmail(id).then(r => r.data),
-    enabled: expanded,
+    enabled: expanded && status !== 'new',
   })
 
   const statusMutation = useMutation({
@@ -51,6 +194,8 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt }: {
       queryClient.invalidateQueries({ queryKey: ['inbound-email', id] })
     },
   })
+
+  const showReviewForm = expanded && status === 'new' && !justCreated
 
   return (
     <Card className="p-4">
@@ -74,7 +219,22 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt }: {
               {fromEmail || 'Unknown sender'} · {formatDate(createdAt)}
             </p>
           </button>
-          {expanded && (
+
+          {justCreated && (
+            <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: '#2F855A' }}>
+              <CheckCircle2 size={16} />
+              Job #{justCreated.job_number} created on {justCreated.tenant_name}.
+            </div>
+          )}
+
+          {expanded && !justCreated && status === 'new' && (
+            <EmailLeadReviewForm id={id} onCreated={result => {
+              setJustCreated(result)
+              queryClient.invalidateQueries({ queryKey: ['inbound-emails'] })
+            }} />
+          )}
+
+          {expanded && status !== 'new' && (
             <div className="mt-3">
               {detailLoading ? (
                 <Spinner />
@@ -90,28 +250,34 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt }: {
                   No plain-text body captured{detail?.html_body ? ' (HTML only — open the job email in your mail client if needed)' : ''}.
                 </p>
               )}
-              {status === 'new' && (
-                <div className="flex gap-3 mt-3">
-                  <button
-                    type="button"
-                    className="text-sm font-medium"
-                    style={{ color: 'var(--ms-accent)' }}
-                    disabled={statusMutation.isPending}
-                    onClick={() => statusMutation.mutate('processed')}
-                  >
-                    Mark processed
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm font-medium"
-                    style={{ color: 'var(--ms-text-muted)' }}
-                    disabled={statusMutation.isPending}
-                    onClick={() => statusMutation.mutate('dismissed')}
-                  >
-                    Dismiss
-                  </button>
-                </div>
+              {autoKeyJobId && (
+                <Link to="/minit/mobile-services" className="text-xs font-medium inline-block mt-2" style={{ color: 'var(--ms-accent)' }}>
+                  View jobs →
+                </Link>
               )}
+            </div>
+          )}
+
+          {showReviewForm && (
+            <div className="flex gap-3 mt-3">
+              <button
+                type="button"
+                className="text-sm font-medium"
+                style={{ color: 'var(--ms-accent)' }}
+                disabled={statusMutation.isPending}
+                onClick={() => statusMutation.mutate('processed')}
+              >
+                Mark processed
+              </button>
+              <button
+                type="button"
+                className="text-sm font-medium"
+                style={{ color: 'var(--ms-text-muted)' }}
+                disabled={statusMutation.isPending}
+                onClick={() => statusMutation.mutate('dismissed')}
+              >
+                Dismiss
+              </button>
             </div>
           )}
         </div>
@@ -278,6 +444,7 @@ export default function MinitInboxPage() {
                 fromEmail={em.from_email}
                 status={em.status}
                 createdAt={em.created_at}
+                autoKeyJobId={em.auto_key_job_id}
               />
             ))}
           </div>

@@ -609,6 +609,7 @@ export interface RepairQueueDayStateResponse {
   shop_date: string
   mode: string
   done_ids: string[]
+  queue_order_ids?: string[]
   stats: { advanced?: number; checkedIn?: number; skipped?: number }
 }
 
@@ -617,7 +618,11 @@ export const getRepairQueueDayState = (mode: 'watch' | 'shoe') =>
 
 export const putRepairQueueDayState = (
   mode: 'watch' | 'shoe',
-  body: { done_ids: string[]; stats: { advanced: number; checkedIn: number; skipped: number } },
+  body: {
+    done_ids: string[]
+    queue_order_ids?: string[]
+    stats: { advanced: number; checkedIn: number; skipped: number }
+  },
 ) => api.put<RepairQueueDayStateResponse>('/me/repair-queue-day', { mode, ...body })
 
 export const deleteRepairQueueDayState = (mode: 'watch' | 'shoe') =>
@@ -1713,7 +1718,11 @@ export interface AutoKeySendNotificationResult {
   email_sent: boolean
   email_skipped_reason?: string | null
   email_error_detail?: string | null
+  sms_sent?: boolean
+  sms_skipped_reason?: string | null
 }
+
+export type InvoiceSendChannel = 'sms' | 'email' | 'both'
 
 export const sendAutoKeyQuote = (quoteId: string) =>
   api.post<AutoKeySendNotificationResult & { quote: AutoKeyQuote }>(
@@ -1722,9 +1731,11 @@ export const sendAutoKeyQuote = (quoteId: string) =>
 export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
 export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
   api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
-export const sendAutoKeyInvoice = (invoiceId: string) =>
+export const sendAutoKeyInvoice = (invoiceId: string, channel: InvoiceSendChannel = 'both') =>
   api.post<AutoKeySendNotificationResult & { invoice: AutoKeyInvoice }>(
     `/auto-key-jobs/invoices/${invoiceId}/send`,
+    null,
+    { params: { channel } },
   )
 
 export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
@@ -2255,6 +2266,10 @@ export const portalMessageToShop = (
 ) => api.post(`/public/portal/session/${sessionToken}/message-to-shop`, body)
 
 export const getInbox = (limit = 50, offset = 0) => api.get<InboxEvent[]>('/inbox', { params: { limit, offset } })
+export const getInboxCount = (exclude?: string[]) =>
+  api.get<{ count: number }>('/inbox/count', {
+    params: exclude?.length ? { exclude: exclude.join(',') } : undefined,
+  })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
 // ── Inbound email leads (BCC'd enquiry-form capture) ─────────────────────────
@@ -2282,6 +2297,49 @@ export const getInboundEmail = (id: string) =>
   api.get<InboundEmailDetail>(`/parent-accounts/me/inbound-emails/${id}`)
 export const updateInboundEmailStatus = (id: string, status: 'new' | 'processed' | 'dismissed') =>
   api.patch<InboundEmailDetail>(`/parent-accounts/me/inbound-emails/${id}`, { status })
+
+export interface InboundEmailParsed {
+  fields_found: boolean
+  location_state_raw?: string | null
+  nearest_provider_raw?: string | null
+  customer_name?: string | null
+  email?: string | null
+  phone?: string | null
+  service_required?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: string | null
+  details?: string | null
+  contact_preference?: string | null
+  suggested_operator_tenant_id?: string | null
+  suggested_operator_name?: string | null
+  match_confidence: string
+}
+export interface InboundEmailJobCreateRequest {
+  customer_name: string
+  phone?: string | null
+  email?: string | null
+  suburb?: string | null
+  state_code?: string | null
+  service_required?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: string | null
+  details?: string | null
+  contact_preference?: string | null
+  target_tenant_id?: string | null
+}
+export interface InboundEmailJobCreateResult {
+  inbound_email_id: string
+  auto_key_job_id: string
+  job_number: string
+  tenant_id: string
+  tenant_name: string
+}
+export const getInboundEmailParsed = (id: string) =>
+  api.get<InboundEmailParsed>(`/parent-accounts/me/inbound-emails/${id}/parsed`)
+export const createJobFromInboundEmail = (id: string, body: InboundEmailJobCreateRequest) =>
+  api.post<InboundEmailJobCreateResult>(`/parent-accounts/me/inbound-emails/${id}/create-job`, body)
 
 // ── Auto-key attachments & SMS ────────────────────────────────────────────────
 export const listAutoKeyAttachments = (jobId: string) =>

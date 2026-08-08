@@ -499,6 +499,49 @@ class InboundEmailDetail(InboundEmailListItem):
 class InboundEmailStatusUpdateRequest(SQLModel):
     status: str = Field(..., min_length=1, max_length=20)
 
+class InboundEmailParsedRead(SQLModel):
+    """Preview of what parsing this email would extract — read-only, nothing is created."""
+    fields_found: bool
+    location_state_raw: Optional[str] = None
+    nearest_provider_raw: Optional[str] = None
+    customer_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    service_required: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[str] = None
+    details: Optional[str] = None
+    contact_preference: Optional[str] = None
+    #: Informational only — the created job still lands on the HQ tenant, not this operator.
+    suggested_operator_tenant_id: Optional[UUID] = None
+    suggested_operator_name: Optional[str] = None
+    match_confidence: str
+
+class InboundEmailJobCreateRequest(SQLModel):
+    """Staff-reviewed (and possibly hand-edited) fields used to create the job."""
+    customer_name: str = Field(..., min_length=1, max_length=300)
+    phone: Optional[str] = Field(default=None, max_length=80)
+    email: Optional[str] = Field(default=None, max_length=320)
+    suburb: Optional[str] = Field(default=None, max_length=200)
+    state_code: Optional[str] = Field(default=None, max_length=10)
+    service_required: Optional[str] = Field(default=None, max_length=200)
+    vehicle_make: Optional[str] = Field(default=None, max_length=120)
+    vehicle_model: Optional[str] = Field(default=None, max_length=120)
+    vehicle_year: Optional[str] = Field(default=None, max_length=20)
+    details: Optional[str] = Field(default=None, max_length=8000)
+    contact_preference: Optional[str] = Field(default=None, max_length=50)
+    #: Defaults to the parent's HQ/escalation tenant when omitted — job creation never
+    #: auto-targets the matched operator, staff must choose that deliberately.
+    target_tenant_id: Optional[UUID] = None
+
+class InboundEmailJobCreateResult(SQLModel):
+    inbound_email_id: UUID
+    auto_key_job_id: UUID
+    job_number: str
+    tenant_id: UUID
+    tenant_name: str
+
 class TenantPlanUpdateRequest(SQLModel):
     plan_code: PlanCode
 
@@ -1301,6 +1344,8 @@ class AutoKeyInvoiceSendResponse(SQLModel):
     email_sent: bool
     email_skipped_reason: Optional[str] = None
     email_error_detail: Optional[str] = None
+    sms_sent: bool = False
+    sms_skipped_reason: Optional[str] = None
 
 class XeroConnectionStatusResponse(SQLModel):
     configured: bool
