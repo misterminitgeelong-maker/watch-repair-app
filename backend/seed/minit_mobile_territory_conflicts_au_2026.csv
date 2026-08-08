@@ -1,0 +1,1898 @@
+suburb,state_code,suburb_normalized,winner_shop_number,winner_label,winner_distance_km,runner_up_shop_number,runner_up_label,runner_up_distance_km
+Sydney,NSW,sydney,2243,Burwood,9.8,2213,Warringah,12.82
+Haymarket,NSW,haymarket,2243,Burwood,9.17,2213,Warringah,14.29
+Australia Square,NSW,australia square,2243,Burwood,9.71,2213,Warringah,12.47
+Grosvenor Place,NSW,grosvenor place,2243,Burwood,16.37,2213,Warringah,22.04
+Royal Exchange,NSW,royal exchange,2243,Burwood,9.86,2213,Warringah,12.33
+Queen Victoria Building,NSW,queen victoria building,2243,Burwood,9.53,2213,Warringah,13.22
+Sydney South,NSW,sydney south,2243,Burwood,9.8,2213,Warringah,12.82
+Darlinghurst,NSW,darlinghurst,2243,Burwood,10.78,2213,Warringah,13.36
+Eastern Suburbs Mc,NSW,eastern suburbs mc,2243,Burwood,12.76,2213,Warringah,21.37
+Potts Point,NSW,potts point,2243,Burwood,11.17,2213,Warringah,12.19
+Kings Cross,NSW,kings cross,2243,Burwood,11.14,2213,Warringah,12.75
+Woollahra,NSW,woollahra,2243,Burwood,12.81,2213,Warringah,13.73
+Bondi Junction,NSW,bondi junction,2243,Burwood,13.57,2213,Warringah,14.16
+Double Bay,NSW,double bay,2243,Burwood,12.7,2213,Warringah,12.76
+Strawberry Hills,NSW,strawberry hills,2243,Burwood,9.69,2213,Warringah,14.84
+Eveleigh,NSW,eveleigh,2243,Burwood,8.3,2213,Warringah,16.18
+Alexandria,NSW,alexandria,2243,Burwood,8.69,2213,Warringah,17.51
+Waterloo,NSW,waterloo,2243,Burwood,9.8,2213,Warringah,16.14
+Rosebery,NSW,rosebery,2243,Burwood,10.33,2213,Warringah,18.56
+Camperdown,NSW,camperdown,2243,Burwood,7.03,2213,Warringah,15.87
+Botany,NSW,botany,2243,Burwood,11.6,2213,Warringah,21.29
+Mascot,NSW,mascot,2243,Burwood,10.21,2213,Warringah,19.57
+Kensington,NSW,kensington,2243,Burwood,11.62,2213,Warringah,16.67
+Unsw Sydney,NSW,unsw sydney,2243,Burwood,12.59,2213,Warringah,17.29
+Drummoyne,NSW,drummoyne,2243,Burwood,5.53,2213,Warringah,14.34
+West Chatswood,NSW,west chatswood,2243,Burwood,10.48,2213,Warringah,10.59
+Northbridge,NSW,northbridge,2213,Warringah,7.26,2243,Burwood,12.67
+Milsons Point,NSW,milsons point,2243,Burwood,10.54,2213,Warringah,10.63
+Artarmon,NSW,artarmon,2213,Warringah,9.24,2243,Burwood,10.71
+Crows Nest,NSW,crows nest,2213,Warringah,9.07,2243,Burwood,10.96
+St Leonards,NSW,st leonards,2213,Warringah,9.51,2243,Burwood,10.34
+Lane Cove,NSW,lane cove,2243,Burwood,9.05,2213,Warringah,11.08
+Lane Cove Dc,NSW,lane cove dc,2243,Burwood,9.03,2213,Warringah,11.11
+Hornsby,NSW,hornsby,2213,Warringah,17.25,2243,Burwood,19.22
+Hornsby Westfield,NSW,hornsby westfield,2213,Warringah,17.06,2243,Burwood,19.22
+North Ryde,NSW,north ryde,2243,Burwood,9.48,2213,Warringah,14.24
+North Ryde Bc,NSW,north ryde bc,2243,Burwood,9.48,2213,Warringah,14.24
+Gladesville,NSW,gladesville,2243,Burwood,5.67,2213,Warringah,15.11
+RYDE,NSW,ryde,2243,Burwood,6.86,2213,Warringah,16.45
+West Ryde,NSW,west ryde,2243,Burwood,8.09,2213,Warringah,17.97
+Epping,NSW,epping,2243,Burwood,11.66,2213,Warringah,17.74
+Pennant Hills,NSW,pennant hills,2243,Burwood,15.67,2213,Warringah,18.54
+Seven Hills,NSW,seven hills,2243,Burwood,19.34,2213,Warringah,31.32
+Baulkham Hills,NSW,baulkham hills,2243,Burwood,16.42,2213,Warringah,25.65
+Castle Hill,NSW,castle hill,2243,Burwood,18.68,2213,Warringah,24.9
+Seven Hills Mc,NSW,seven hills mc,2243,Burwood,19.33,2213,Warringah,31.31
+St Marys,NSW,st marys,2434,Narellan,30.78,2243,Burwood,32.76
+Wetherill Park,NSW,wetherill park,2243,Burwood,18.05,2434,Narellan,27.0
+Wetherill Park Dc,NSW,wetherill park dc,2243,Burwood,18.05,2434,Narellan,27.0
+Liverpool,NSW,liverpool,2243,Burwood,18.06,2434,Narellan,21.12
+Moorebank,NSW,moorebank,2243,Burwood,16.32,2434,Narellan,22.42
+Barangaroo,NSW,barangaroo,2243,Burwood,9.2,2213,Warringah,12.65
+Darling Harbour,NSW,darling harbour,2243,Burwood,8.99,2213,Warringah,13.77
+Dawes Point,NSW,dawes point,2243,Burwood,9.83,2213,Warringah,11.66
+Millers Point,NSW,millers point,2243,Burwood,9.34,2213,Warringah,12.32
+Parliament House,NSW,parliament house,2243,Burwood,10.56,2213,Warringah,12.22
+The Rocks,NSW,the rocks,2243,Burwood,9.92,2213,Warringah,11.95
+World Square,NSW,world square,2243,Burwood,9.53,2213,Warringah,13.75
+Alexandria Mc,NSW,alexandria mc,2243,Burwood,8.67,2213,Warringah,17.52
+The University Of Sydney,NSW,the university of sydney,2243,Burwood,7.82,2213,Warringah,15.71
+Ultimo,NSW,ultimo,2243,Burwood,8.65,2213,Warringah,14.67
+Chippendale,NSW,chippendale,2243,Burwood,8.94,2213,Warringah,14.95
+Darlington,NSW,darlington,2243,Burwood,8.7,2213,Warringah,15.48
+Golden Grove,NSW,golden grove,2243,Burwood,8.07,2213,Warringah,16.1
+Darling Island,NSW,darling island,2243,Burwood,8.64,2213,Warringah,13.04
+Pyrmont,NSW,pyrmont,2243,Burwood,8.41,2213,Warringah,13.49
+Surry Hills,NSW,surry hills,2243,Burwood,9.97,2213,Warringah,14.51
+Taylor Square,NSW,taylor square,2243,Burwood,10.47,2213,Warringah,13.78
+Elizabeth Bay,NSW,elizabeth bay,2243,Burwood,11.54,2213,Warringah,12.42
+Hmas Kuttabul,NSW,hmas kuttabul,2243,Burwood,11.3,2213,Warringah,11.81
+Rushcutters Bay,NSW,rushcutters bay,2243,Burwood,11.53,2213,Warringah,12.72
+Woolloomooloo,NSW,woolloomooloo,2243,Burwood,10.98,2213,Warringah,12.5
+Beaconsfield,NSW,beaconsfield,2243,Burwood,9.64,2213,Warringah,17.46
+Redfern,NSW,redfern,2243,Burwood,9.58,2213,Warringah,15.32
+Waterloo Dc,NSW,waterloo dc,2243,Burwood,9.78,2213,Warringah,16.15
+Zetland,NSW,zetland,2243,Burwood,10.43,2213,Warringah,16.8
+Eastlakes,NSW,eastlakes,2243,Burwood,10.78,2213,Warringah,18.37
+Banksmeadow,NSW,banksmeadow,2243,Burwood,13.03,2213,Warringah,22.14
+Sydney Domestic Airport,NSW,sydney domestic airport,2243,Burwood,9.35,2213,Warringah,20.43
+Sydney International Airport,NSW,sydney international airport,2243,Burwood,9.59,2213,Warringah,21.31
+Centennial Park,NSW,centennial park,2243,Burwood,12.09,2213,Warringah,14.75
+Moore Park,NSW,moore park,2243,Burwood,11.06,2213,Warringah,15.14
+Paddington,NSW,paddington,2243,Burwood,11.35,2213,Warringah,13.92
+Bondi Junction Plaza,NSW,bondi junction plaza,2243,Burwood,13.65,2213,Warringah,14.16
+Queens Park,NSW,queens park,2243,Burwood,13.58,2213,Warringah,15.23
+Bellevue Hill,NSW,bellevue hill,2213,Warringah,13.14,2243,Burwood,13.89
+Bronte,NSW,bronte,2243,Burwood,14.82,2213,Warringah,15.6
+Charing Cross,NSW,charing cross,2243,Burwood,14.02,2213,Warringah,15.1
+Waverley,NSW,waverley,2243,Burwood,14.23,2213,Warringah,15.01
+Ben Buckler,NSW,ben buckler,2213,Warringah,13.89,2243,Burwood,16.61
+Bondi,NSW,bondi,2213,Warringah,14.11,2243,Burwood,14.61
+Bondi Beach,NSW,bondi beach,2213,Warringah,14.0,2243,Burwood,16.14
+North Bondi,NSW,north bondi,2213,Warringah,13.67,2243,Burwood,16.39
+Tamarama,NSW,tamarama,2213,Warringah,14.76,2243,Burwood,15.34
+Darling Point,NSW,darling point,2213,Warringah,12.06,2243,Burwood,12.38
+Edgecliff,NSW,edgecliff,2243,Burwood,12.2,2213,Warringah,13.15
+Hmas Rushcutters,NSW,hmas rushcutters,2243,Burwood,11.53,2213,Warringah,12.72
+Point Piper,NSW,point piper,2213,Warringah,11.83,2243,Burwood,13.62
+Rose Bay,NSW,rose bay,2213,Warringah,12.25,2243,Burwood,14.95
+Diamond Bay,NSW,diamond bay,2213,Warringah,10.69,2243,Burwood,16.38
+Dover Heights,NSW,dover heights,2213,Warringah,11.87,2243,Burwood,16.14
+Hmas Watson,NSW,hmas watson,2213,Warringah,8.08,2243,Burwood,17.04
+Rose Bay North,NSW,rose bay north,2213,Warringah,11.03,2243,Burwood,16.2
+Vaucluse,NSW,vaucluse,2213,Warringah,10.07,2243,Burwood,15.65
+Watsons Bay,NSW,watsons bay,2213,Warringah,8.35,2243,Burwood,16.96
+Clovelly,NSW,clovelly,2243,Burwood,15.2,2213,Warringah,16.34
+Clovelly West,NSW,clovelly west,2243,Burwood,14.46,2213,Warringah,16.32
+Randwick,NSW,randwick,2243,Burwood,13.38,2213,Warringah,16.65
+Randwick Dc,NSW,randwick dc,2243,Burwood,13.37,2213,Warringah,16.65
+St Pauls,NSW,st pauls,2243,Burwood,13.8,2213,Warringah,17.42
+Daceyville,NSW,daceyville,2243,Burwood,12.4,2213,Warringah,18.6
+Kingsford,NSW,kingsford,2243,Burwood,12.59,2213,Warringah,18.14
+Coogee,NSW,coogee,2243,Burwood,14.76,2213,Warringah,17.15
+South Coogee,NSW,south coogee,2243,Burwood,15.61,2213,Warringah,18.68
+Maroubra,NSW,maroubra,2243,Burwood,15.21,2213,Warringah,20.63
+Maroubra South,NSW,maroubra south,2243,Burwood,15.21,2213,Warringah,20.63
+Pagewood,NSW,pagewood,2243,Burwood,12.49,2213,Warringah,20.15
+Chifley,NSW,chifley,2243,Burwood,16.19,2213,Warringah,22.82
+Eastgardens,NSW,eastgardens,2243,Burwood,13.55,2213,Warringah,20.53
+Hillsdale,NSW,hillsdale,2243,Burwood,14.41,2213,Warringah,21.43
+La Perouse,NSW,la perouse,2243,Burwood,17.14,2213,Warringah,25.1
+Little Bay,NSW,little bay,2243,Burwood,17.23,2213,Warringah,24.07
+Malabar,NSW,malabar,2243,Burwood,16.59,2213,Warringah,22.36
+Matraville,NSW,matraville,2243,Burwood,15.04,2213,Warringah,22.09
+Phillip Bay,NSW,phillip bay,2243,Burwood,16.31,2213,Warringah,23.93
+Port Botany,NSW,port botany,2243,Burwood,15.22,2213,Warringah,23.92
+Forest Lodge,NSW,forest lodge,2243,Burwood,7.22,2213,Warringah,15.54
+Glebe,NSW,glebe,2243,Burwood,7.7,2213,Warringah,14.88
+Annandale,NSW,annandale,2243,Burwood,6.37,2213,Warringah,15.86
+Rozelle,NSW,rozelle,2243,Burwood,6.6,2213,Warringah,14.33
+Leichhardt,NSW,leichhardt,2243,Burwood,4.98,2213,Warringah,16.83
+Lilyfield,NSW,lilyfield,2243,Burwood,5.64,2213,Warringah,15.57
+Balmain,NSW,balmain,2243,Burwood,7.26,2213,Warringah,13.4
+Balmain East,NSW,balmain east,2243,Burwood,8.27,2213,Warringah,12.71
+Birchgrove,NSW,birchgrove,2243,Burwood,7.58,2213,Warringah,12.8
+Enmore,NSW,enmore,2243,Burwood,6.45,2213,Warringah,17.79
+Newtown,NSW,newtown,2243,Burwood,7.27,2213,Warringah,17.01
+Erskineville,NSW,erskineville,2243,Burwood,8.05,2213,Warringah,17.14
+St Peters,NSW,st peters,2243,Burwood,7.8,2213,Warringah,18.9
+St Peters Dc,NSW,st peters dc,2243,Burwood,8.23,2213,Warringah,19.19
+Sydenham,NSW,sydenham,2243,Burwood,7.31,2213,Warringah,19.22
+Chiswick,NSW,chiswick,2243,Burwood,4.12,2213,Warringah,15.71
+Russell Lea,NSW,russell lea,2243,Burwood,4.1,2213,Warringah,15.79
+Stanmore,NSW,stanmore,2243,Burwood,5.9,2213,Warringah,17.13
+Westgate,NSW,westgate,2243,Burwood,6.23,2213,Warringah,15.82
+Missenden Road,NSW,missenden road,2243,Burwood,7.37,2213,Warringah,16.05
+North Sydney,NSW,north sydney,2213,Warringah,10.22,2243,Burwood,10.29
+Chatswood,NSW,chatswood,2213,Warringah,9.2,2243,Burwood,11.36
+Hmas Platypus,NSW,hmas platypus,2213,Warringah,9.93,2243,Burwood,11.15
+Hmas Waterhen,NSW,hmas waterhen,2243,Burwood,9.32,2213,Warringah,10.99
+Lavender Bay,NSW,lavender bay,2243,Burwood,10.25,2213,Warringah,10.49
+Mcmahons Point,NSW,mcmahons point,2243,Burwood,9.96,2213,Warringah,10.78
+North Sydney Shoppingworld,NSW,north sydney shoppingworld,2213,Warringah,9.9,2243,Burwood,10.61
+Waverton,NSW,waverton,2243,Burwood,9.43,2213,Warringah,10.83
+Kirribilli,NSW,kirribilli,2213,Warringah,10.52,2243,Burwood,10.97
+Cammeray,NSW,cammeray,2213,Warringah,8.21,2243,Burwood,11.91
+Crows Nest Dc,NSW,crows nest dc,2213,Warringah,9.07,2243,Burwood,10.96
+Gore Hill,NSW,gore hill,2213,Warringah,9.71,2243,Burwood,10.21
+Greenwich,NSW,greenwich,2243,Burwood,8.88,2213,Warringah,11.0
+Naremburn,NSW,naremburn,2213,Warringah,8.66,2243,Burwood,11.18
+Royal North Shore Hospital,NSW,royal north shore hospital,2213,Warringah,9.61,2243,Burwood,10.21
+Wollstonecraft,NSW,wollstonecraft,2243,Burwood,9.45,2213,Warringah,10.54
+Lane Cove North,NSW,lane cove north,2243,Burwood,9.81,2213,Warringah,10.63
+Lane Cove West,NSW,lane cove west,2243,Burwood,8.62,2213,Warringah,12.03
+Linley Point,NSW,linley point,2243,Burwood,7.0,2213,Warringah,13.11
+Longueville,NSW,longueville,2243,Burwood,7.5,2213,Warringah,12.32
+Northwood,NSW,northwood,2243,Burwood,8.65,2213,Warringah,11.16
+Osborne Park,NSW,osborne park,2243,Burwood,9.46,2213,Warringah,10.43
+Riverview,NSW,riverview,2243,Burwood,7.98,2213,Warringah,11.98
+Chatswood West,NSW,chatswood west,2243,Burwood,10.48,2213,Warringah,10.59
+Castlecrag,NSW,castlecrag,2213,Warringah,6.14,2243,Burwood,13.68
+Middle Cove,NSW,middle cove,2213,Warringah,6.53,2243,Burwood,13.43
+North Willoughby,NSW,north willoughby,2213,Warringah,6.97,2243,Burwood,13.03
+Willoughby,NSW,willoughby,2213,Warringah,8.04,2243,Burwood,11.8
+Willoughby East,NSW,willoughby east,2213,Warringah,7.03,2243,Burwood,12.86
+Willoughby North,NSW,willoughby north,2213,Warringah,6.97,2243,Burwood,13.03
+Castle Cove,NSW,castle cove,2213,Warringah,6.29,2243,Burwood,14.02
+Roseville,NSW,roseville,2213,Warringah,7.78,2243,Burwood,13.04
+Roseville Chase,NSW,roseville chase,2213,Warringah,6.6,2243,Burwood,14.4
+East Lindfield,NSW,east lindfield,2213,Warringah,7.73,2243,Burwood,13.97
+Lindfield,NSW,lindfield,2213,Warringah,9.46,2243,Burwood,12.53
+Lindfield West,NSW,lindfield west,2213,Warringah,11.36,2243,Burwood,11.45
+East Killara,NSW,east killara,2213,Warringah,8.45,2243,Burwood,15.23
+Killara,NSW,killara,2213,Warringah,9.89,2243,Burwood,13.3
+Gordon,NSW,gordon,2213,Warringah,10.74,2243,Burwood,14.39
+Pymble,NSW,pymble,2213,Warringah,11.96,2243,Burwood,15.1
+West Pymble,NSW,west pymble,2243,Burwood,13.03,2213,Warringah,13.16
+Bobbin Head,NSW,bobbin head,2213,Warringah,13.45,2243,Burwood,20.15
+North Turramurra,NSW,north turramurra,2213,Warringah,13.08,2243,Burwood,19.63
+South Turramurra,NSW,south turramurra,2243,Burwood,13.68,2213,Warringah,14.6
+Turramurra,NSW,turramurra,2213,Warringah,13.63,2243,Burwood,16.16
+Warrawee,NSW,warrawee,2213,Warringah,14.32,2243,Burwood,16.59
+North St Ives,NSW,north st ives,2213,Warringah,10.65,2243,Burwood,18.34
+St Ives,NSW,st ives,2213,Warringah,10.62,2243,Burwood,18.35
+St Ives Chase,NSW,st ives chase,2213,Warringah,11.9,2243,Burwood,19.21
+Normanhurst,NSW,normanhurst,2213,Warringah,16.66,2243,Burwood,17.01
+North Wahroonga,NSW,north wahroonga,2213,Warringah,15.15,2243,Burwood,19.72
+Wahroonga,NSW,wahroonga,2213,Warringah,15.68,2243,Burwood,17.66
+Asquith,NSW,asquith,2213,Warringah,17.49,2243,Burwood,20.95
+Hornsby Heights,NSW,hornsby heights,2213,Warringah,18.95,2243,Burwood,22.82
+Waitara,NSW,waitara,2213,Warringah,16.4,2243,Burwood,18.8
+Mount Colah,NSW,mount colah,2213,Warringah,17.0,2243,Burwood,23.05
+Mount Kuring-Gai,NSW,mount kuring-gai,2213,Warringah,17.95,2243,Burwood,25.44
+Berowra,NSW,berowra,2213,Warringah,19.01,2243,Burwood,28.04
+Cowan,NSW,cowan,2213,Warringah,21.86,2243,Burwood,32.74
+Berowra Creek,NSW,berowra creek,2213,Warringah,28.92,2243,Burwood,38.84
+Berowra Heights,NSW,berowra heights,2213,Warringah,20.87,2243,Burwood,29.53
+Berowra Waters,NSW,berowra waters,2213,Warringah,22.81,2243,Burwood,30.62
+Bar Point,NSW,bar point,2213,Warringah,29.83,2243,Burwood,40.93
+Milsons Passage,NSW,milsons passage,2213,Warringah,28.96,2243,Burwood,40.63
+Belrose West,NSW,belrose west,2213,Warringah,6.32,2243,Burwood,18.24
+Davidson,NSW,davidson,2213,Warringah,7.78,2243,Burwood,17.56
+Forestville,NSW,forestville,2213,Warringah,5.48,2243,Burwood,16.29
+Killarney Heights,NSW,killarney heights,2213,Warringah,5.17,2243,Burwood,15.44
+Mosman,NSW,mosman,2213,Warringah,7.78,2243,Burwood,13.58
+Spit Junction,NSW,spit junction,2213,Warringah,7.12,2243,Burwood,13.98
+Kurraba Point,NSW,kurraba point,2213,Warringah,9.69,2243,Burwood,11.66
+Neutral Bay,NSW,neutral bay,2213,Warringah,9.0,2243,Burwood,11.68
+Neutral Bay Junction,NSW,neutral bay junction,2213,Warringah,8.55,2243,Burwood,12.14
+Cremorne,NSW,cremorne,2213,Warringah,7.87,2243,Burwood,12.77
+Cremorne Junction,NSW,cremorne junction,2213,Warringah,8.05,2243,Burwood,12.82
+Cremorne Point,NSW,cremorne point,2213,Warringah,9.26,2243,Burwood,12.17
+Hmas Penguin,NSW,hmas penguin,2213,Warringah,7.01,2243,Burwood,15.54
+Seaforth,NSW,seaforth,2213,Warringah,4.01,2243,Burwood,15.89
+Clontarf,NSW,clontarf,2213,Warringah,5.04,2243,Burwood,15.82
+Macquarie University,NSW,macquarie university,2243,Burwood,11.55,2213,Warringah,14.61
+Hunters Hill,NSW,hunters hill,2243,Burwood,6.1,2213,Warringah,13.96
+Hunters Hill West,NSW,hunters hill west,2243,Burwood,6.12,2213,Warringah,13.94
+Woolwich,NSW,woolwich,2243,Burwood,7.27,2213,Warringah,12.6
+Boronia Park,NSW,boronia park,2243,Burwood,6.65,2213,Warringah,13.81
+Henley,NSW,henley,2243,Burwood,4.82,2213,Warringah,15.19
+Huntleys Cove,NSW,huntleys cove,2243,Burwood,5.37,2213,Warringah,14.69
+Huntleys Point,NSW,huntleys point,2243,Burwood,5.85,2213,Warringah,14.04
+Monash Park,NSW,monash park,2243,Burwood,6.39,2213,Warringah,14.74
+Tennyson Point,NSW,tennyson point,2243,Burwood,5.15,2213,Warringah,16.03
+Denistone East,NSW,denistone east,2243,Burwood,8.74,2213,Warringah,16.23
+Putney,NSW,putney,2243,Burwood,5.61,2213,Warringah,16.67
+Blenheim Road,NSW,blenheim road,2243,Burwood,9.17,2213,Warringah,13.17
+East Ryde,NSW,east ryde,2243,Burwood,8.03,2213,Warringah,13.46
+Macquarie Centre,NSW,macquarie centre,2243,Burwood,11.33,2213,Warringah,13.95
+Macquarie Park,NSW,macquarie park,2243,Burwood,9.76,2213,Warringah,12.95
+Denistone,NSW,denistone,2243,Burwood,8.66,2213,Warringah,17.45
+Denistone West,NSW,denistone west,2243,Burwood,8.86,2213,Warringah,18.24
+Meadowbank,NSW,meadowbank,2243,Burwood,6.98,2213,Warringah,18.22
+Melrose Park,NSW,melrose park,2243,Burwood,7.58,2213,Warringah,19.15
+Dundas,NSW,dundas,2243,Burwood,10.33,2213,Warringah,22.17
+Dundas Valley,NSW,dundas valley,2243,Burwood,10.2,2213,Warringah,19.69
+Oatlands,NSW,oatlands,2243,Burwood,11.5,2213,Warringah,22.82
+Telopea,NSW,telopea,2243,Burwood,11.06,2213,Warringah,21.72
+Carlingford,NSW,carlingford,2243,Burwood,12.27,2213,Warringah,21.24
+Carlingford Court,NSW,carlingford court,2243,Burwood,12.14,2213,Warringah,20.22
+Carlingford North,NSW,carlingford north,2243,Burwood,13.2,2213,Warringah,19.6
+Kingsdene,NSW,kingsdene,2243,Burwood,12.46,2213,Warringah,22.44
+Beecroft,NSW,beecroft,2243,Burwood,14.49,2213,Warringah,19.04
+Cheltenham,NSW,cheltenham,2243,Burwood,13.77,2213,Warringah,17.81
+Thornleigh,NSW,thornleigh,2243,Burwood,16.91,2213,Warringah,17.76
+Westleigh,NSW,westleigh,2243,Burwood,17.44,2213,Warringah,19.06
+North Epping,NSW,north epping,2243,Burwood,12.8,2213,Warringah,15.66
+Eastwood,NSW,eastwood,2243,Burwood,9.89,2213,Warringah,17.66
+Marsfield,NSW,marsfield,2243,Burwood,10.82,2213,Warringah,15.57
+West Pennant Hills,NSW,west pennant hills,2243,Burwood,16.11,2213,Warringah,22.36
+Cherrybrook,NSW,cherrybrook,2243,Burwood,17.5,2213,Warringah,21.57
+Kings Langley,NSW,kings langley,2243,Burwood,21.09,2213,Warringah,31.1
+Lalor Park,NSW,lalor park,2243,Burwood,20.4,2213,Warringah,31.68
+Seven Hills West,NSW,seven hills west,2243,Burwood,20.87,2213,Warringah,32.23
+Arndell Park,NSW,arndell park,2243,Burwood,23.16,2434,Narellan,31.13
+Blacktown,NSW,blacktown,2243,Burwood,22.07,2213,Warringah,33.75
+Blacktown Westpoint,NSW,blacktown westpoint,2243,Burwood,21.81,2213,Warringah,33.7
+Huntingwood,NSW,huntingwood,2243,Burwood,22.0,2434,Narellan,30.58
+Kings Park,NSW,kings park,2243,Burwood,23.5,2213,Warringah,33.88
+Marayong,NSW,marayong,2243,Burwood,24.11,2213,Warringah,34.94
+North Rocks,NSW,north rocks,2243,Burwood,13.56,2213,Warringah,22.82
+Northmead,NSW,northmead,2243,Burwood,14.18,2213,Warringah,25.87
+Bella Vista,NSW,bella vista,2243,Burwood,20.96,2213,Warringah,29.75
+Crestwood,NSW,crestwood,2243,Burwood,19.55,2213,Warringah,28.07
+Norwest,NSW,norwest,2243,Burwood,16.42,2213,Warringah,25.65
+Winston Hills,NSW,winston hills,2243,Burwood,16.31,2213,Warringah,27.38
+Beaumont Hills,NSW,beaumont hills,2243,Burwood,24.8,2213,Warringah,31.32
+Kellyville,NSW,kellyville,2243,Burwood,23.03,2213,Warringah,29.77
+Kellyville Ridge,NSW,kellyville ridge,2243,Burwood,25.83,2213,Warringah,33.23
+North Kellyville,NSW,north kellyville,2243,Burwood,25.51,2213,Warringah,30.68
+Rouse Hill,NSW,rouse hill,2243,Burwood,27.86,2213,Warringah,34.12
+Annangrove,NSW,annangrove,2243,Burwood,29.18,2213,Warringah,32.95
+Glenhaven,NSW,glenhaven,2243,Burwood,21.25,2213,Warringah,25.58
+Kenthurst,NSW,kenthurst,2243,Burwood,24.99,2213,Warringah,27.06
+Canoelands,NSW,canoelands,2213,Warringah,34.5,2243,Burwood,41.23
+Forest Glen,NSW,forest glen,2213,Warringah,33.29,2243,Burwood,37.16
+Glenorie,NSW,glenorie,2213,Warringah,30.71,2243,Burwood,31.99
+Hillside,NSW,hillside,2213,Warringah,32.8,2243,Burwood,32.92
+Dural,NSW,dural,2243,Burwood,22.8,2213,Warringah,24.17
+Dural Dc,NSW,dural dc,2243,Burwood,22.8,2213,Warringah,24.25
+Middle Dural,NSW,middle dural,2213,Warringah,27.14,2243,Burwood,27.46
+Round Corner,NSW,round corner,2243,Burwood,22.04,2213,Warringah,24.58
+Arcadia,NSW,arcadia,2213,Warringah,26.12,2243,Burwood,28.67
+Berrilee,NSW,berrilee,2213,Warringah,23.06,2243,Burwood,29.13
+Fiddletown,NSW,fiddletown,2213,Warringah,27.27,2243,Burwood,30.96
+Galston,NSW,galston,2213,Warringah,24.63,2243,Burwood,25.9
+Smithfield West,NSW,smithfield west,2243,Burwood,17.3,2434,Narellan,26.69
+Wetherill Park Bc,NSW,wetherill park bc,2243,Burwood,18.83,2434,Narellan,26.82
+Fairfield West,NSW,fairfield west,2243,Burwood,16.67,2434,Narellan,25.87
+Cabramatta,NSW,cabramatta,2243,Burwood,15.39,2434,Narellan,24.93
+Cabramatta West,NSW,cabramatta west,2243,Burwood,17.52,2434,Narellan,23.43
+Canley Heights,NSW,canley heights,2243,Burwood,16.28,2434,Narellan,25.01
+Canley Vale,NSW,canley vale,2243,Burwood,14.59,2434,Narellan,26.13
+Glenfield,NSW,glenfield,2434,Narellan,16.67,2243,Burwood,21.96
+Ashcroft,NSW,ashcroft,2243,Burwood,19.36,2434,Narellan,20.82
+Busby,NSW,busby,2434,Narellan,19.8,2243,Burwood,20.82
+Cartwright,NSW,cartwright,2434,Narellan,19.59,2243,Burwood,20.26
+Green Valley,NSW,green valley,2434,Narellan,19.56,2243,Burwood,22.09
+Heckenberg,NSW,heckenberg,2243,Burwood,20.17,2434,Narellan,20.48
+Hinchinbrook,NSW,hinchinbrook,2434,Narellan,18.47,2243,Burwood,22.55
+Miller,NSW,miller,2434,Narellan,18.11,2243,Burwood,22.07
+Sadleir,NSW,sadleir,2243,Burwood,20.06,2434,Narellan,20.19
+Casula,NSW,casula,2434,Narellan,18.69,2243,Burwood,20.09
+Casula Mall,NSW,casula mall,2434,Narellan,18.47,2243,Burwood,20.4
+Chipping Norton,NSW,chipping norton,2243,Burwood,13.87,2434,Narellan,25.32
+Hammondville,NSW,hammondville,2243,Burwood,15.64,2434,Narellan,23.01
+Liverpool South,NSW,liverpool south,2243,Burwood,18.06,2434,Narellan,21.12
+Liverpool Westfield,NSW,liverpool westfield,2243,Burwood,17.24,2434,Narellan,22.19
+Lurnea,NSW,lurnea,2434,Narellan,19.61,2243,Burwood,19.7
+Mount Pritchard,NSW,mount pritchard,2243,Burwood,18.85,2434,Narellan,22.27
+Prestons,NSW,prestons,2434,Narellan,16.59,2243,Burwood,22.96
+Warwick Farm,NSW,warwick farm,2243,Burwood,15.73,2434,Narellan,23.77
+Carnes Hill,NSW,carnes hill,2434,Narellan,15.67,2243,Burwood,24.55
+Cecil Hills,NSW,cecil hills,2434,Narellan,20.33,2243,Burwood,23.53
+Elizabeth Hills,NSW,elizabeth hills,2434,Narellan,19.1,2243,Burwood,23.73
+Horningsea Park,NSW,horningsea park,2434,Narellan,14.95,2243,Burwood,25.08
+Hoxton Park,NSW,hoxton park,2434,Narellan,16.34,2243,Burwood,23.98
+Len Waters Estate,NSW,len waters estate,2434,Narellan,18.11,2243,Burwood,23.41
+Middleton Grange,NSW,middleton grange,2434,Narellan,17.41,2243,Burwood,24.51
+West Hoxton,NSW,west hoxton,2434,Narellan,14.92,2243,Burwood,26.0
+Pleasure Point,NSW,pleasure point,2243,Burwood,15.34,2434,Narellan,23.82
+Sandy Point,NSW,sandy point,2243,Burwood,15.01,2434,Narellan,24.78
+Voyager Point,NSW,voyager point,2243,Burwood,14.65,2434,Narellan,24.27
+Holsworthy,NSW,holsworthy,2243,Burwood,16.7,2434,Narellan,21.95
+Wattle Grove,NSW,wattle grove,2243,Burwood,16.89,2434,Narellan,21.73
+Edmondson Park,NSW,edmondson park,2434,Narellan,14.26,2243,Burwood,24.68
+Horsley Park,NSW,horsley park,2243,Burwood,23.71,2434,Narellan,24.23
+Abbotsbury,NSW,abbotsbury,2434,Narellan,22.15,2243,Burwood,22.31
+Bossley Park,NSW,bossley park,2243,Burwood,20.37,2434,Narellan,24.31
+Edensor Park,NSW,edensor park,2243,Burwood,21.1,2434,Narellan,22.26
+Greenfield Park,NSW,greenfield park,2243,Burwood,19.89,2434,Narellan,23.34
+Prairiewood,NSW,prairiewood,2243,Burwood,18.45,2434,Narellan,25.66
+St Johns Park,NSW,st johns park,2243,Burwood,18.17,2434,Narellan,23.74
+Wakeley,NSW,wakeley,2243,Burwood,17.67,2434,Narellan,24.78
+Bonnyrigg,NSW,bonnyrigg,2243,Burwood,19.85,2434,Narellan,21.59
+Bonnyrigg Heights,NSW,bonnyrigg heights,2434,Narellan,21.17,2243,Burwood,21.43
+Cecil Park,NSW,cecil park,2434,Narellan,21.29,2243,Burwood,24.51
+Kemps Creek,NSW,kemps creek,2434,Narellan,19.79,2243,Burwood,28.16
+Mount Vernon,NSW,mount vernon,2434,Narellan,21.97,2243,Burwood,27.21
+Marrickville Metro,NSW,marrickville metro,2243,Burwood,7.06,2213,Warringah,18.2
+East Hills,NSW,east hills,2243,Burwood,14.25,2434,Narellan,24.98
+Kurnell,NSW,kurnell,2243,Burwood,18.06,2213,Warringah,29.02
+Audley,NSW,audley,2243,Burwood,22.19,2434,Narellan,29.62
+Bonnie Vale,NSW,bonnie vale,2243,Burwood,22.19,2434,Narellan,29.62
+Garie,NSW,garie,2243,Burwood,32.6,2434,Narellan,33.58
+Goarra,NSW,goarra,2243,Burwood,22.19,2434,Narellan,29.62
+Grays Point,NSW,grays point,2243,Burwood,19.93,2434,Narellan,31.15
+Jibbon,NSW,jibbon,2243,Burwood,22.19,2434,Narellan,29.62
+Loftus,NSW,loftus,2243,Burwood,19.51,2434,Narellan,28.57
+Marley,NSW,marley,2243,Burwood,22.19,2434,Narellan,29.62
+Palona,NSW,palona,2243,Burwood,22.19,2434,Narellan,29.62
+Uloola,NSW,uloola,2243,Burwood,22.19,2434,Narellan,29.62
+Wattamolla,NSW,wattamolla,2243,Burwood,22.19,2434,Narellan,29.62
+Woronora,NSW,woronora,2243,Burwood,17.67,2434,Narellan,28.12
+Yenabilli,NSW,yenabilli,2243,Burwood,22.19,2434,Narellan,29.62
+Engadine,NSW,engadine,2243,Burwood,22.56,2434,Narellan,25.49
+Heathcote,NSW,heathcote,2243,Burwood,24.72,2434,Narellan,25.36
+Waterfall,NSW,waterfall,2434,Narellan,25.84,2243,Burwood,31.22
+Woronora Heights,NSW,woronora heights,2243,Burwood,18.3,2434,Narellan,27.09
+Yarrawarrah,NSW,yarrawarrah,2243,Burwood,20.84,2434,Narellan,27.21
+Bangor,NSW,bangor,2243,Burwood,17.26,2434,Narellan,26.91
+Barden Ridge,NSW,barden ridge,2243,Burwood,19.24,2434,Narellan,25.19
+Lucas Heights,NSW,lucas heights,2434,Narellan,21.93,2243,Burwood,22.47
+Menai,NSW,menai,2243,Burwood,17.31,2434,Narellan,25.32
+Menai Central,NSW,menai central,2243,Burwood,17.69,2434,Narellan,25.49
+Central Mangrove,NSW,central mangrove,2213,Warringah,51.95,2258,Kotara,58.48
+Greengrove,NSW,greengrove,2213,Warringah,44.22,2243,Burwood,55.66
+Kulnura,NSW,kulnura,2258,Kotara,55.01,2213,Warringah,59.5
+Lower Mangrove,NSW,lower mangrove,2213,Warringah,40.27,2243,Burwood,51.68
+Mangrove Creek,NSW,mangrove creek,2213,Warringah,46.8,2243,Burwood,57.93
+Mangrove Mountain,NSW,mangrove mountain,2213,Warringah,52.34,2258,Kotara,61.42
+Ten Mile Hollow,NSW,ten mile hollow,2213,Warringah,51.96,2243,Burwood,61.55
+Upper Mangrove,NSW,upper mangrove,2213,Warringah,52.2,2243,Burwood,63.03
+Wendoree Park,NSW,wendoree park,2213,Warringah,36.07,2243,Burwood,47.37
+Central Coast Mc,NSW,central coast mc,2213,Warringah,49.54,2258,Kotara,60.21
+Fountaindale,NSW,fountaindale,2213,Warringah,48.64,2258,Kotara,52.43
+Kangy Angy,NSW,kangy angy,2213,Warringah,50.21,2258,Kotara,51.37
+Ourimbah,NSW,ourimbah,2213,Warringah,46.41,2258,Kotara,55.13
+Palm Grove,NSW,palm grove,2213,Warringah,49.21,2258,Kotara,55.62
+Palmdale,NSW,palmdale,2213,Warringah,49.02,2258,Kotara,53.0
+Alison,NSW,alison,2258,Kotara,45.36,2213,Warringah,56.87
+Mardi,NSW,mardi,2258,Kotara,46.94,2213,Warringah,54.41
+Rocky Point,NSW,rocky point,2258,Kotara,44.29,2213,Warringah,55.66
+South Tacoma,NSW,south tacoma,2258,Kotara,45.35,2213,Warringah,54.86
+Tacoma,NSW,tacoma,2258,Kotara,44.95,2213,Warringah,54.99
+Tacoma South,NSW,tacoma south,2258,Kotara,45.35,2213,Warringah,54.86
+Tuggerah,NSW,tuggerah,2258,Kotara,46.49,2213,Warringah,54.05
+Wyong,NSW,wyong,2258,Kotara,45.78,2213,Warringah,55.45
+Wyong Creek,NSW,wyong creek,2258,Kotara,48.62,2213,Warringah,56.24
+Yarramalong,NSW,yarramalong,2258,Kotara,49.44,2213,Warringah,60.32
+Forresters Beach,NSW,forresters beach,2213,Warringah,44.16,2258,Kotara,55.52
+Bateau Bay,NSW,bateau bay,2213,Warringah,47.03,2258,Kotara,52.63
+Bay Village,NSW,bay village,2213,Warringah,47.21,2258,Kotara,52.42
+Berkeley Vale,NSW,berkeley vale,2213,Warringah,49.69,2258,Kotara,50.43
+Blue Bay,NSW,blue bay,2258,Kotara,49.09,2213,Warringah,50.58
+Chittaway Bay,NSW,chittaway bay,2258,Kotara,49.01,2213,Warringah,51.14
+Chittaway Point,NSW,chittaway point,2258,Kotara,48.14,2213,Warringah,51.97
+Glenning Valley,NSW,glenning valley,2213,Warringah,48.38,2258,Kotara,51.98
+Killarney Vale,NSW,killarney vale,2213,Warringah,47.85,2258,Kotara,51.84
+Long Jetty,NSW,long jetty,2213,Warringah,49.56,2258,Kotara,50.07
+Shelly Beach,NSW,shelly beach,2213,Warringah,48.28,2258,Kotara,51.37
+The Entrance,NSW,the entrance,2258,Kotara,48.67,2213,Warringah,50.98
+The Entrance North,NSW,the entrance north,2258,Kotara,46.66,2213,Warringah,52.98
+Toowoon Bay,NSW,toowoon bay,2213,Warringah,49.48,2258,Kotara,50.19
+Tumbi Umbi,NSW,tumbi umbi,2213,Warringah,47.3,2258,Kotara,52.53
+Moruben,NSW,moruben,2258,Kotara,77.0,2213,Warringah,87.2
+Milguy,NSW,milguy,2243,Burwood,18.85,2213,Warringah,26.29
+Coalcliff,NSW,coalcliff,2434,Narellan,31.12,2298,Dapto,32.01
+Darkes Forest,NSW,darkes forest,2434,Narellan,25.91,2298,Dapto,31.01
+Helensburgh,NSW,helensburgh,2434,Narellan,28.67,2243,Burwood,35.33
+Lilyvale,NSW,lilyvale,2434,Narellan,30.23,2243,Burwood,34.27
+Maddens Plains,NSW,maddens plains,2434,Narellan,29.42,2298,Dapto,30.33
+Otford,NSW,otford,2434,Narellan,30.82,2298,Dapto,36.07
+Stanwell Park,NSW,stanwell park,2434,Narellan,30.37,2298,Dapto,34.05
+Stanwell Tops,NSW,stanwell tops,2434,Narellan,30.46,2298,Dapto,35.37
+Woronora Dam,NSW,woronora dam,2434,Narellan,25.41,2243,Burwood,31.76
+Austinmer,NSW,austinmer,2298,Dapto,24.42,2434,Narellan,34.26
+Clifton,NSW,clifton,2298,Dapto,30.53,2434,Narellan,32.0
+Coledale,NSW,coledale,2298,Dapto,27.34,2434,Narellan,32.95
+Scarborough,NSW,scarborough,2298,Dapto,29.05,2434,Narellan,32.41
+Thirroul,NSW,thirroul,2298,Dapto,22.49,2434,Narellan,33.96
+Wombarra,NSW,wombarra,2298,Dapto,28.29,2434,Narellan,32.39
+Bulli Tops,NSW,bulli tops,2298,Dapto,21.81,2434,Narellan,33.42
+Porters Creek,NSW,porters creek,2298,Dapto,95.27,2311,Queanbeyan,99.86
+Cataract,NSW,cataract,2298,Dapto,22.22,2434,Narellan,28.8
+Glenquarie,NSW,glenquarie,2434,Narellan,15.72,2243,Burwood,22.96
+Macquarie Fields,NSW,macquarie fields,2434,Narellan,14.98,2243,Burwood,23.8
+Bardia,NSW,bardia,2434,Narellan,13.4,2243,Burwood,25.29
+Macquarie Links,NSW,macquarie links,2434,Narellan,14.44,2243,Burwood,24.17
+Balmoral Village,NSW,balmoral village,2298,Dapto,31.86,2434,Narellan,36.18
+Buxton,NSW,buxton,2434,Narellan,30.06,2298,Dapto,35.28
+Couridjah,NSW,couridjah,2434,Narellan,27.1,2298,Dapto,36.29
+Wilton,NSW,wilton,2434,Narellan,21.21,2298,Dapto,29.93
+Tahmoor,NSW,tahmoor,2434,Narellan,25.02,2298,Dapto,34.29
+Bargo,NSW,bargo,2298,Dapto,28.63,2434,Narellan,31.67
+Pheasants Nest,NSW,pheasants nest,2434,Narellan,25.24,2298,Dapto,29.87
+Yanderra,NSW,yanderra,2298,Dapto,28.37,2434,Narellan,34.02
+Barrallier,NSW,barrallier,2434,Narellan,67.63,2298,Dapto,71.89
+Bullio,NSW,bullio,2298,Dapto,59.4,2434,Narellan,61.98
+Goodmans Ford,NSW,goodmans ford,2434,Narellan,66.26,2298,Dapto,68.47
+High Range,NSW,high range,2298,Dapto,47.19,2434,Narellan,53.79
+Hill Top,NSW,hill top,2298,Dapto,32.37,2434,Narellan,41.16
+Joadja,NSW,joadja,2298,Dapto,53.0,2434,Narellan,63.3
+Wattle Ridge,NSW,wattle ridge,2298,Dapto,39.7,2434,Narellan,40.54
+Bannaby,NSW,bannaby,2298,Dapto,81.49,2434,Narellan,86.49
+Boxers Creek,NSW,boxers creek,2311,Queanbeyan,86.2,2298,Dapto,92.66
+Bungonia,NSW,bungonia,2311,Queanbeyan,86.07,2298,Dapto,86.67
+Carrick,NSW,carrick,2298,Dapto,87.08,2311,Queanbeyan,92.1
+Curraweela,NSW,curraweela,2434,Narellan,89.64,2298,Dapto,94.6
+Jerrong,NSW,jerrong,2434,Narellan,81.72,2298,Dapto,92.36
+Middle Arm,NSW,middle arm,2311,Queanbeyan,93.54,2298,Dapto,98.07
+Myrtleville,NSW,myrtleville,2298,Dapto,89.29,2434,Narellan,96.65
+Richlands,NSW,richlands,2298,Dapto,91.01,2434,Narellan,92.68
+Stonequarry,NSW,stonequarry,2298,Dapto,94.49,2434,Narellan,96.47
+Taralga,NSW,taralga,2298,Dapto,89.8,2434,Narellan,92.98
+Tarlo,NSW,tarlo,2298,Dapto,92.5,2311,Queanbeyan,96.43
+Towrang,NSW,towrang,2298,Dapto,88.07,2311,Queanbeyan,93.57
+Wiaborough,NSW,wiaborough,2434,Narellan,81.43,2298,Dapto,87.9
+Wiarborough,NSW,wiarborough,2434,Narellan,81.4,2298,Dapto,87.87
+Wombeyan Caves,NSW,wombeyan caves,2434,Narellan,75.09,2298,Dapto,78.15
+Yalbraith,NSW,yalbraith,2434,Narellan,94.53,2298,Dapto,99.07
+Bulee,NSW,bulee,2298,Dapto,83.42,2311,Queanbeyan,90.28
+Coolumburra,NSW,coolumburra,2311,Queanbeyan,87.08,2298,Dapto,88.27
+Endrick,NSW,endrick,2311,Queanbeyan,93.16,2298,Dapto,96.93
+Nerriga,NSW,nerriga,2311,Queanbeyan,83.58,2298,Dapto,94.89
+Glenmore Park,NSW,glenmore park,2434,Narellan,28.92,2243,Burwood,40.68
+Regentville,NSW,regentville,2434,Narellan,31.27,2243,Burwood,42.61
+Caddens,NSW,caddens,2434,Narellan,30.09,2243,Burwood,35.75
+Cambridge Gardens,NSW,cambridge gardens,2434,Narellan,34.18,2243,Burwood,38.6
+Cambridge Park,NSW,cambridge park,2434,Narellan,33.0,2243,Burwood,37.01
+Claremont Meadows,NSW,claremont meadows,2434,Narellan,29.63,2243,Burwood,34.19
+Jordan Springs,NSW,jordan springs,2434,Narellan,35.72,2243,Burwood,38.68
+Llandilo,NSW,llandilo,2434,Narellan,37.7,2243,Burwood,38.2
+Shane Park,NSW,shane park,2434,Narellan,30.09,2243,Burwood,35.75
+Shanes Park,NSW,shanes park,2243,Burwood,35.77,2434,Narellan,37.27
+Werrington,NSW,werrington,2434,Narellan,31.78,2243,Burwood,35.46
+Werrington County,NSW,werrington county,2434,Narellan,33.07,2243,Burwood,35.91
+Werrington Downs,NSW,werrington downs,2434,Narellan,34.04,2243,Burwood,38.02
+Orchard Hills,NSW,orchard hills,2434,Narellan,25.25,2243,Burwood,34.86
+Castlereagh,NSW,castlereagh,2434,Narellan,41.85,2243,Burwood,45.47
+Cranebrook,NSW,cranebrook,2434,Narellan,36.12,2243,Burwood,40.07
+Emu Heights,NSW,emu heights,2434,Narellan,35.38,2243,Burwood,44.77
+Emu Plains,NSW,emu plains,2434,Narellan,33.36,2243,Burwood,43.32
+Jamisontown,NSW,jamisontown,2434,Narellan,31.35,2243,Burwood,41.65
+Leonay,NSW,leonay,2434,Narellan,32.26,2243,Burwood,44.11
+Penrith,NSW,penrith,2434,Narellan,33.06,2243,Burwood,40.93
+Penrith Plaza,NSW,penrith plaza,2434,Narellan,32.91,2243,Burwood,40.4
+Penrith South,NSW,penrith south,2434,Narellan,30.6,2243,Burwood,39.01
+South Penrith,NSW,south penrith,2434,Narellan,30.6,2243,Burwood,39.01
+Agnes Banks,NSW,agnes banks,2243,Burwood,46.19,2434,Narellan,47.83
+Bowen Mountain,NSW,bowen mountain,2434,Narellan,53.31,2243,Burwood,55.43
+Grose Vale,NSW,grose vale,2243,Burwood,51.41,2434,Narellan,51.6
+Grose Wold,NSW,grose wold,2243,Burwood,49.61,2434,Narellan,49.88
+Hobartville,NSW,hobartville,2243,Burwood,46.19,2434,Narellan,47.83
+Londonderry,NSW,londonderry,2243,Burwood,42.5,2434,Narellan,44.1
+Richmond,NSW,richmond,2243,Burwood,44.95,2434,Narellan,49.51
+Richmond Lowlands,NSW,richmond lowlands,2243,Burwood,46.29,2434,Narellan,51.46
+Yarramundi,NSW,yarramundi,2434,Narellan,47.42,2243,Burwood,49.05
+North Richmond,NSW,north richmond,2243,Burwood,48.7,2434,Narellan,51.56
+Tennyson,NSW,tennyson,2243,Burwood,50.8,2213,Warringah,55.48
+The Slopes,NSW,the slopes,2243,Burwood,53.06,2434,Narellan,57.03
+Bligh Park,NSW,bligh park,2243,Burwood,38.75,2434,Narellan,45.63
+Cattai,NSW,cattai,2243,Burwood,39.88,2213,Warringah,40.51
+Central Colo,NSW,central colo,2243,Burwood,59.19,2213,Warringah,59.48
+Clarendon,NSW,clarendon,2243,Burwood,41.59,2213,Warringah,47.87
+COLO,NSW,colo,2213,Warringah,58.32,2243,Burwood,58.44
+Colo Heights,NSW,colo heights,2243,Burwood,66.67,2213,Warringah,67.26
+Cornwallis,NSW,cornwallis,2243,Burwood,41.65,2213,Warringah,46.59
+Cumberland Reach,NSW,cumberland reach,2213,Warringah,48.84,2243,Burwood,50.64
+Ebenezer,NSW,ebenezer,2243,Burwood,44.19,2213,Warringah,45.41
+Freemans Reach,NSW,freemans reach,2243,Burwood,45.1,2213,Warringah,49.26
+Glossodia,NSW,glossodia,2243,Burwood,48.36,2213,Warringah,51.97
+Leets Vale,NSW,leets vale,2213,Warringah,47.42,2243,Burwood,51.5
+Lower Portland,NSW,lower portland,2213,Warringah,51.05,2243,Burwood,52.69
+Maroota,NSW,maroota,2213,Warringah,43.33,2243,Burwood,48.26
+Mcgraths Hill,NSW,mcgraths hill,2243,Burwood,37.47,2213,Warringah,42.74
+Mellong,NSW,mellong,2213,Warringah,85.9,2243,Burwood,87.96
+Mulgrave,NSW,mulgrave,2243,Burwood,38.74,2213,Warringah,44.21
+Pitt Town,NSW,pitt town,2243,Burwood,39.51,2213,Warringah,42.57
+Pitt Town Bottoms,NSW,pitt town bottoms,2243,Burwood,40.37,2213,Warringah,44.11
+Sackville,NSW,sackville,2213,Warringah,48.27,2243,Burwood,48.45
+Sackville North,NSW,sackville north,2213,Warringah,47.64,2243,Burwood,48.44
+Scheyville,NSW,scheyville,2243,Burwood,35.95,2213,Warringah,39.74
+South Maroota,NSW,south maroota,2213,Warringah,40.09,2243,Burwood,41.82
+South Windsor,NSW,south windsor,2243,Burwood,39.38,2213,Warringah,45.84
+Upper Colo,NSW,upper colo,2243,Burwood,61.64,2213,Warringah,63.07
+Wilberforce,NSW,wilberforce,2243,Burwood,42.92,2213,Warringah,45.9
+Windsor,NSW,windsor,2243,Burwood,39.4,2213,Warringah,45.14
+Windsor Downs,NSW,windsor downs,2243,Burwood,36.57,2434,Narellan,43.68
+Womerah,NSW,womerah,2213,Warringah,72.27,2243,Burwood,74.5
+Kurmond,NSW,kurmond,2243,Burwood,51.94,2434,Narellan,54.96
+Berambing,NSW,berambing,2434,Narellan,63.02,2243,Burwood,72.03
+Bilpin,NSW,bilpin,2434,Narellan,63.47,2243,Burwood,67.42
+Blaxlands Ridge,NSW,blaxlands ridge,2243,Burwood,53.31,2213,Warringah,54.67
+East Kurrajong,NSW,east kurrajong,2243,Burwood,50.86,2213,Warringah,54.2
+Kurrajong,NSW,kurrajong,2243,Burwood,54.39,2434,Narellan,55.44
+Kurrajong Heights,NSW,kurrajong heights,2243,Burwood,54.39,2434,Narellan,55.44
+Kurrajong Hills,NSW,kurrajong hills,2243,Burwood,56.79,2434,Narellan,57.47
+Mount Tomah,NSW,mount tomah,2434,Narellan,62.51,2243,Burwood,73.23
+Mountain Lagoon,NSW,mountain lagoon,2243,Burwood,65.1,2434,Narellan,67.34
+The Devils Wilderness,NSW,the devils wilderness,2434,Narellan,58.3,2243,Burwood,63.36
+Wheeny Creek,NSW,wheeny creek,2243,Burwood,55.75,2213,Warringah,56.39
+Erskine Park,NSW,erskine park,2434,Narellan,26.46,2243,Burwood,28.81
+Colyton,NSW,colyton,2434,Narellan,29.63,2243,Burwood,30.34
+North St Marys,NSW,north st marys,2243,Burwood,32.97,2434,Narellan,33.19
+Oxley Park,NSW,oxley park,2434,Narellan,30.93,2243,Burwood,31.01
+Ropes Crossing,NSW,ropes crossing,2243,Burwood,33.05,2434,Narellan,35.06
+St Marys East,NSW,st marys east,2434,Narellan,30.78,2243,Burwood,32.76
+St Marys South,NSW,st marys south,2434,Narellan,30.78,2243,Burwood,32.76
+Colebee,NSW,colebee,2243,Burwood,28.82,2434,Narellan,37.65
+Dean Park,NSW,dean park,2243,Burwood,28.39,2434,Narellan,36.21
+Glendenning,NSW,glendenning,2243,Burwood,27.32,2434,Narellan,34.94
+Glendenning Dc,NSW,glendenning dc,2243,Burwood,27.27,2434,Narellan,34.57
+Hassall Grove,NSW,hassall grove,2243,Burwood,29.26,2434,Narellan,36.22
+Oakhurst,NSW,oakhurst,2243,Burwood,29.15,2434,Narellan,35.29
+Plumpton,NSW,plumpton,2243,Burwood,28.0,2434,Narellan,34.04
+Schofields,NSW,schofields,2243,Burwood,29.14,2213,Warringah,37.94
+Tallawong,NSW,tallawong,2243,Burwood,29.14,2213,Warringah,37.94
+Acacia Gardens,NSW,acacia gardens,2243,Burwood,23.62,2213,Warringah,32.88
+Nirimba Fields,NSW,nirimba fields,2243,Burwood,23.62,2213,Warringah,32.88
+Quakers Hill,NSW,quakers hill,2243,Burwood,26.15,2213,Warringah,35.56
+Angus,NSW,angus,2243,Burwood,36.42,2434,Narellan,39.86
+Berkshire Park,NSW,berkshire park,2243,Burwood,36.42,2434,Narellan,39.86
+Box Hill,NSW,box hill,2243,Burwood,32.66,2213,Warringah,38.32
+Gables,NSW,gables,2243,Burwood,36.42,2434,Narellan,39.86
+Grantham Farm,NSW,grantham farm,2243,Burwood,36.42,2434,Narellan,39.86
+Maraylya,NSW,maraylya,2243,Burwood,35.61,2213,Warringah,37.71
+Marsden Park,NSW,marsden park,2243,Burwood,34.8,2434,Narellan,40.05
+Melonba,NSW,melonba,2243,Burwood,36.42,2434,Narellan,39.86
+Oakville,NSW,oakville,2243,Burwood,35.84,2213,Warringah,40.58
+Richards,NSW,richards,2243,Burwood,36.42,2434,Narellan,39.86
+Riverstone,NSW,riverstone,2243,Burwood,31.34,2213,Warringah,39.13
+Vineyard,NSW,vineyard,2243,Burwood,34.09,2213,Warringah,40.41
+Eastern Creek,NSW,eastern creek,2243,Burwood,24.56,2434,Narellan,28.48
+Rooty Hill,NSW,rooty hill,2243,Burwood,26.73,2434,Narellan,31.98
+Bungarribee,NSW,bungarribee,2243,Burwood,24.75,2434,Narellan,31.95
+Doonside,NSW,doonside,2243,Burwood,25.03,2434,Narellan,33.57
+Woodcroft,NSW,woodcroft,2243,Burwood,24.66,2434,Narellan,34.37
+Glenwood,NSW,glenwood,2243,Burwood,21.6,2213,Warringah,30.81
+Parklea,NSW,parklea,2243,Burwood,23.73,2213,Warringah,32.74
+Stanhope Gardens,NSW,stanhope gardens,2243,Burwood,23.75,2213,Warringah,32.19
+The Ponds,NSW,the ponds,2243,Burwood,26.9,2213,Warringah,34.79
+Bidwill,NSW,bidwill,2243,Burwood,30.57,2434,Narellan,35.76
+Blackett,NSW,blackett,2243,Burwood,30.96,2434,Narellan,34.71
+Dharruk,NSW,dharruk,2243,Burwood,30.23,2434,Narellan,33.82
+Emerton,NSW,emerton,2243,Burwood,31.21,2434,Narellan,33.37
+Hebersham,NSW,hebersham,2243,Burwood,29.64,2434,Narellan,34.23
+Lethbridge Park,NSW,lethbridge park,2243,Burwood,31.98,2434,Narellan,34.72
+Minchinbury,NSW,minchinbury,2243,Burwood,26.5,2434,Narellan,29.87
+Mount Druitt,NSW,mount druitt,2243,Burwood,28.75,2434,Narellan,31.28
+Mount Druitt Village,NSW,mount druitt village,2243,Burwood,28.75,2434,Narellan,31.28
+Shalvey,NSW,shalvey,2243,Burwood,32.21,2434,Narellan,35.93
+Tregear,NSW,tregear,2243,Burwood,31.89,2434,Narellan,33.24
+Whalan,NSW,whalan,2243,Burwood,30.33,2434,Narellan,32.56
+Willmot,NSW,willmot,2243,Burwood,33.36,2434,Narellan,35.92
+Mount Riverview,NSW,mount riverview,2434,Narellan,35.97,2243,Burwood,46.31
+Warrimoo,NSW,warrimoo,2434,Narellan,38.65,2243,Burwood,49.85
+Central Macdonald,NSW,central macdonald,2213,Warringah,55.42,2243,Burwood,61.8
+Fernances,NSW,fernances,2213,Warringah,68.11,2258,Kotara,69.3
+Gunderman,NSW,gunderman,2213,Warringah,42.26,2243,Burwood,49.71
+Higher Macdonald,NSW,higher macdonald,2213,Warringah,69.01,2243,Burwood,75.59
+Laughtondale,NSW,laughtondale,2213,Warringah,43.47,2243,Burwood,50.23
+Lower Hawkesbury,NSW,lower hawkesbury,2213,Warringah,41.57,2243,Burwood,48.63
+Lower Macdonald,NSW,lower macdonald,2213,Warringah,53.42,2243,Burwood,58.67
+Marlow,NSW,marlow,2213,Warringah,34.44,2243,Burwood,45.89
+Mogo Creek,NSW,mogo creek,2258,Kotara,66.92,2213,Warringah,67.74
+Perrys Crossing,NSW,perrys crossing,2213,Warringah,68.98,2258,Kotara,73.69
+Singletons Mill,NSW,singletons mill,2213,Warringah,37.28,2243,Burwood,45.06
+Spencer,NSW,spencer,2213,Warringah,36.25,2243,Burwood,46.89
+St Albans,NSW,st albans,2213,Warringah,59.55,2243,Burwood,66.3
+Upper Macdonald,NSW,upper macdonald,2213,Warringah,64.1,2243,Burwood,70.48
+Webbs Creek,NSW,webbs creek,2213,Warringah,55.75,2243,Burwood,60.73
+Wisemans Ferry,NSW,wisemans ferry,2213,Warringah,50.16,2243,Burwood,56.18
+Wrights Creek,NSW,wrights creek,2213,Warringah,56.98,2243,Burwood,64.53
+Faulconbridge,NSW,faulconbridge,2434,Narellan,43.47,2243,Burwood,55.39
+Hawkesbury Heights,NSW,hawkesbury heights,2434,Narellan,42.84,2243,Burwood,48.04
+Sun Valley,NSW,sun valley,2434,Narellan,39.94,2243,Burwood,51.04
+Valley Heights,NSW,valley heights,2434,Narellan,40.91,2243,Burwood,51.97
+Winmalee,NSW,winmalee,2434,Narellan,42.85,2243,Burwood,50.27
+Mount Irvine,NSW,mount irvine,2434,Narellan,67.25,2243,Burwood,73.6
+Mount Wilson,NSW,mount wilson,2434,Narellan,68.44,2243,Burwood,78.72
+Bindook,NSW,bindook,2434,Narellan,60.97,2298,Dapto,71.23
+Jooriland,NSW,jooriland,2434,Narellan,53.6,2298,Dapto,61.93
+Newnes Plateau,NSW,newnes plateau,2434,Narellan,90.87,2243,Burwood,98.5
+Wollangambe,NSW,wollangambe,2434,Narellan,82.74,2243,Burwood,85.41
+International Mc,NSW,international mc,2243,Burwood,9.77,2213,Warringah,12.83
+Sydney Gateway Facility,NSW,sydney gateway facility,2243,Burwood,9.77,2213,Warringah,12.83
+Bracken Ridge,QLD,bracken ridge,4064,Sunnybank Hills,30.8,4320,Bribie Island,38.98
+Brighton,QLD,brighton,4064,Sunnybank Hills,33.48,4320,Bribie Island,35.59
+Brighton Eventide,QLD,brighton eventide,4064,Sunnybank Hills,33.61,4320,Bribie Island,35.37
+Brighton Nathan Street,QLD,brighton nathan street,4064,Sunnybank Hills,33.01,4320,Bribie Island,36.11
+Deagon,QLD,deagon,4064,Sunnybank Hills,30.26,4320,Bribie Island,38.69
+Nashville,QLD,nashville,4064,Sunnybank Hills,32.52,4320,Bribie Island,36.66
+Sandgate,QLD,sandgate,4064,Sunnybank Hills,30.78,4320,Bribie Island,38.04
+Sandgate Dc,QLD,sandgate dc,4064,Sunnybank Hills,31.3,4320,Bribie Island,37.55
+Shorncliffe,QLD,shorncliffe,4064,Sunnybank Hills,30.49,4320,Bribie Island,38.27
+Clontarf,QLD,clontarf,4320,Bribie Island,29.35,4064,Sunnybank Hills,39.46
+Clontarf Beach,QLD,clontarf beach,4320,Bribie Island,30.98,4064,Sunnybank Hills,37.83
+Clontarf Dc,QLD,clontarf dc,4320,Bribie Island,30.49,4064,Sunnybank Hills,38.28
+Humpybong,QLD,humpybong,4320,Bribie Island,29.0,4064,Sunnybank Hills,39.78
+Margate,QLD,margate,4320,Bribie Island,28.72,4064,Sunnybank Hills,40.03
+Margate Beach,QLD,margate beach,4320,Bribie Island,28.83,4064,Sunnybank Hills,39.98
+Scotts Point,QLD,scotts point,4320,Bribie Island,29.67,4064,Sunnybank Hills,39.12
+Woody Point,QLD,woody point,4320,Bribie Island,29.99,4064,Sunnybank Hills,38.76
+Kooringal,QLD,kooringal,4064,Sunnybank Hills,46.01,4320,Bribie Island,50.22
+Moreton Island,QLD,moreton island,4064,Sunnybank Hills,46.45,4320,Bribie Island,49.35
+Bald Hills,QLD,bald hills,4064,Sunnybank Hills,32.08,4320,Bribie Island,38.44
+Amity,QLD,amity,4064,Sunnybank Hills,45.76,4320,Bribie Island,55.67
+Amity Point,QLD,amity point,4064,Sunnybank Hills,45.76,4320,Bribie Island,55.67
+Russell Island,QLD,russell island,4064,Sunnybank Hills,33.74,4386,Broadbeach,40.35
+Cabbage Tree Point,QLD,cabbage tree point,4064,Sunnybank Hills,33.0,4386,Broadbeach,33.52
+Cedar Creek,QLD,cedar creek,4064,Sunnybank Hills,28.36,4386,Broadbeach,33.47
+Kairabah,QLD,kairabah,4064,Sunnybank Hills,27.94,4386,Broadbeach,36.15
+Luscombe,QLD,luscombe,4064,Sunnybank Hills,25.83,4386,Broadbeach,35.09
+Steiglitz,QLD,steiglitz,4386,Broadbeach,32.81,4064,Sunnybank Hills,33.88
+Woongoolba,QLD,woongoolba,4064,Sunnybank Hills,29.68,4386,Broadbeach,35.64
+Yatala Dc,QLD,yatala dc,4064,Sunnybank Hills,25.61,4386,Broadbeach,35.76
+Burnside,QLD,burnside,4064,Sunnybank Hills,26.19,4386,Broadbeach,36.11
+Gilberton,QLD,gilberton,4064,Sunnybank Hills,27.11,4386,Broadbeach,35.67
+Halfway Creek,QLD,halfway creek,4064,Sunnybank Hills,26.0,4386,Broadbeach,35.28
+Jacobs Well,QLD,jacobs well,4386,Broadbeach,28.11,4064,Sunnybank Hills,36.85
+Kingsholme,QLD,kingsholme,4386,Broadbeach,30.14,4064,Sunnybank Hills,30.77
+Norwell,QLD,norwell,4386,Broadbeach,30.57,4064,Sunnybank Hills,32.48
+Ormeau,QLD,ormeau,4064,Sunnybank Hills,29.3,4386,Broadbeach,32.11
+Ormeau Hills,QLD,ormeau hills,4064,Sunnybank Hills,28.74,4386,Broadbeach,32.16
+Canowindra,QLD,canowindra,4386,Broadbeach,30.29,4064,Sunnybank Hills,30.89
+Pimpama,QLD,pimpama,4386,Broadbeach,26.32,4064,Sunnybank Hills,35.25
+Willow Vale,QLD,willow vale,4386,Broadbeach,26.59,4064,Sunnybank Hills,34.29
+Tamborine,QLD,tamborine,4064,Sunnybank Hills,32.58,4386,Broadbeach,34.31
+Tamborine Village,QLD,tamborine village,4064,Sunnybank Hills,32.58,4386,Broadbeach,34.29
+North Tamborine,QLD,north tamborine,4386,Broadbeach,26.93,4064,Sunnybank Hills,38.51
+Boyland,QLD,boyland,4386,Broadbeach,31.36,4064,Sunnybank Hills,38.5
+Beaudesert,QLD,beaudesert,4386,Broadbeach,42.48,4064,Sunnybank Hills,43.42
+Birnam,QLD,birnam,4386,Broadbeach,36.97,4064,Sunnybank Hills,38.95
+Bromelton,QLD,bromelton,4064,Sunnybank Hills,42.25,4386,Broadbeach,45.74
+Cryna,QLD,cryna,4386,Broadbeach,43.84,4064,Sunnybank Hills,48.78
+Gleneagle,QLD,gleneagle,4064,Sunnybank Hills,38.58,4386,Broadbeach,47.9
+Ilbogan,QLD,ilbogan,4386,Broadbeach,45.57,4064,Sunnybank Hills,46.85
+Josephville,QLD,josephville,4064,Sunnybank Hills,47.5,4386,Broadbeach,50.08
+Knapp Creek,QLD,knapp creek,4386,Broadbeach,59.91,4064,Sunnybank Hills,62.22
+Kooralbyn,QLD,kooralbyn,4064,Sunnybank Hills,57.57,4386,Broadbeach,58.19
+Laravale,QLD,laravale,4386,Broadbeach,48.81,4064,Sunnybank Hills,55.5
+Mundoolun,QLD,mundoolun,4064,Sunnybank Hills,32.77,4386,Broadbeach,38.58
+Tabragalba,QLD,tabragalba,4386,Broadbeach,36.83,4064,Sunnybank Hills,42.68
+Tamrookum,QLD,tamrookum,4386,Broadbeach,51.45,4064,Sunnybank Hills,59.59
+Tamrookum Creek,QLD,tamrookum creek,4386,Broadbeach,56.49,4064,Sunnybank Hills,66.39
+Veresdale,QLD,veresdale,4064,Sunnybank Hills,35.07,4386,Broadbeach,46.6
+Veresdale Scrub,QLD,veresdale scrub,4064,Sunnybank Hills,35.78,4386,Broadbeach,42.93
+Barney View,QLD,barney view,4386,Broadbeach,69.37,4064,Sunnybank Hills,76.24
+Mount Barney,QLD,mount barney,4386,Broadbeach,70.58,4064,Sunnybank Hills,76.01
+Mount Lindesay,QLD,mount lindesay,4386,Broadbeach,76.92,4064,Sunnybank Hills,88.83
+Palen Creek,QLD,palen creek,4386,Broadbeach,65.97,4064,Sunnybank Hills,77.9
+Rathdowney,QLD,rathdowney,4386,Broadbeach,59.87,4064,Sunnybank Hills,70.54
+Colinton,QLD,colinton,4277,Nambour,75.2,4320,Bribie Island,82.4
+Moore,QLD,moore,4277,Nambour,72.24,4320,Bribie Island,83.31
+Bunburra,QLD,bunburra,4064,Sunnybank Hills,62.3,4386,Broadbeach,74.25
+Burnett Creek,QLD,burnett creek,4064,Sunnybank Hills,86.03,4386,Broadbeach,88.91
+Cannon Creek,QLD,cannon creek,4064,Sunnybank Hills,61.08,4386,Broadbeach,68.73
+Carneys Creek,QLD,carneys creek,4064,Sunnybank Hills,82.56,4386,Broadbeach,88.96
+Coochin,QLD,coochin,4064,Sunnybank Hills,70.06,4386,Broadbeach,77.82
+Croftby,QLD,croftby,4064,Sunnybank Hills,72.64,4386,Broadbeach,80.31
+Maroon,QLD,maroon,4064,Sunnybank Hills,72.21,4386,Broadbeach,74.13
+Maroon Dam,QLD,maroon dam,4064,Sunnybank Hills,77.81,4386,Broadbeach,79.31
+Wallaces Creek,QLD,wallaces creek,4064,Sunnybank Hills,64.35,4386,Broadbeach,76.23
+Bryden,QLD,bryden,4064,Sunnybank Hills,61.69,4320,Bribie Island,62.52
+Caboonbah,QLD,caboonbah,4320,Bribie Island,68.14,4064,Sunnybank Hills,75.62
+Coal Creek,QLD,coal creek,4320,Bribie Island,70.65,4064,Sunnybank Hills,75.7
+Crossdale,QLD,crossdale,4320,Bribie Island,64.16,4064,Sunnybank Hills,67.91
+ESK,QLD,esk,4064,Sunnybank Hills,74.63,4320,Bribie Island,76.0
+Eskdale,QLD,eskdale,4320,Bribie Island,89.87,4064,Sunnybank Hills,91.12
+Glen Esk,QLD,glen esk,4064,Sunnybank Hills,68.99,4320,Bribie Island,72.19
+Moombra,QLD,moombra,4064,Sunnybank Hills,65.85,4320,Bribie Island,70.41
+Mount Hallen,QLD,mount hallen,4064,Sunnybank Hills,72.06,4320,Bribie Island,82.13
+Murrumba,QLD,murrumba,4320,Bribie Island,70.63,4064,Sunnybank Hills,72.82
+Redbank Creek,QLD,redbank creek,4064,Sunnybank Hills,78.27,4320,Bribie Island,83.06
+Somerset Dam,QLD,somerset dam,4320,Bribie Island,59.41,4277,Nambour,68.3
+Biarra,QLD,biarra,4320,Bribie Island,78.93,4064,Sunnybank Hills,82.85
+Braemore,QLD,braemore,4277,Nambour,73.46,4320,Bribie Island,74.23
+Cooeeimbardi,QLD,cooeeimbardi,4320,Bribie Island,63.34,4277,Nambour,69.79
+Cressbrook,QLD,cressbrook,4320,Bribie Island,69.99,4277,Nambour,72.3
+Fulham,QLD,fulham,4320,Bribie Island,67.44,4277,Nambour,69.4
+Gregors Creek,QLD,gregors creek,4277,Nambour,69.76,4320,Bribie Island,73.05
+Ivory Creek,QLD,ivory creek,4277,Nambour,78.56,4320,Bribie Island,79.58
+Lower Cressbrook,QLD,lower cressbrook,4320,Bribie Island,67.27,4277,Nambour,70.54
+Mount Beppo,QLD,mount beppo,4320,Bribie Island,70.79,4277,Nambour,76.08
+Ottaba,QLD,ottaba,4320,Bribie Island,75.04,4277,Nambour,80.65
+Scrub Creek,QLD,scrub creek,4277,Nambour,71.13,4320,Bribie Island,71.2
+Toogoolawah,QLD,toogoolawah,4320,Bribie Island,74.99,4277,Nambour,76.62
+Yimbun,QLD,yimbun,4277,Nambour,74.58,4320,Bribie Island,76.73
+Bray Park,QLD,bray park,4064,Sunnybank Hills,35.24,4320,Bribie Island,38.04
+Brendale,QLD,brendale,4064,Sunnybank Hills,31.15,4320,Bribie Island,41.16
+Brendale Bc,QLD,brendale bc,4064,Sunnybank Hills,31.14,4320,Bribie Island,41.15
+Brendale Dc,QLD,brendale dc,4064,Sunnybank Hills,32.0,4320,Bribie Island,39.58
+Cashmere,QLD,cashmere,4064,Sunnybank Hills,37.59,4320,Bribie Island,39.35
+Clear Mountain,QLD,clear mountain,4064,Sunnybank Hills,36.35,4320,Bribie Island,43.83
+Joyner,QLD,joyner,4064,Sunnybank Hills,37.53,4320,Bribie Island,37.67
+Strathpine,QLD,strathpine,4064,Sunnybank Hills,33.76,4320,Bribie Island,37.85
+Strathpine Centre,QLD,strathpine centre,4064,Sunnybank Hills,33.08,4320,Bribie Island,38.34
+Strathpine City,QLD,strathpine city,4064,Sunnybank Hills,33.76,4320,Bribie Island,37.86
+Warner,QLD,warner,4064,Sunnybank Hills,33.46,4320,Bribie Island,40.53
+Lawnton,QLD,lawnton,4064,Sunnybank Hills,35.78,4320,Bribie Island,36.29
+Frenchs Forest,QLD,frenchs forest,4320,Bribie Island,34.56,4064,Sunnybank Hills,38.93
+Petrie,QLD,petrie,4320,Bribie Island,34.92,4064,Sunnybank Hills,38.05
+Dohles Rocks,QLD,dohles rocks,4320,Bribie Island,33.62,4064,Sunnybank Hills,37.07
+Griffin,QLD,griffin,4320,Bribie Island,32.48,4064,Sunnybank Hills,37.3
+Kallangur,QLD,kallangur,4320,Bribie Island,32.52,4064,Sunnybank Hills,39.25
+Kurwongbah,QLD,kurwongbah,4320,Bribie Island,31.66,4064,Sunnybank Hills,41.82
+Murrumba Downs,QLD,murrumba downs,4320,Bribie Island,33.55,4064,Sunnybank Hills,37.24
+Whiteside,QLD,whiteside,4320,Bribie Island,35.89,4064,Sunnybank Hills,40.09
+Mango Hill,QLD,mango hill,4320,Bribie Island,29.89,4064,Sunnybank Hills,40.27
+Bellthorpe,QLD,bellthorpe,4277,Nambour,34.23,4265,Maroochydore,43.63
+Cedarton,QLD,cedarton,4277,Nambour,30.32,4320,Bribie Island,34.87
+Commissioners Flat,QLD,commissioners flat,4277,Nambour,30.7,4320,Bribie Island,32.8
+D’Aguilar,QLD,d’aguilar,4277,Nambour,34.23,4265,Maroochydore,43.63
+D'Aguilar,QLD,d'aguilar,4277,Nambour,34.23,4265,Maroochydore,43.63
+Delaneys Creek,QLD,delaneys creek,4320,Bribie Island,35.65,4277,Nambour,46.96
+Mount Archer,QLD,mount archer,4320,Bribie Island,46.64,4277,Nambour,48.85
+Mount Delaney,QLD,mount delaney,4320,Bribie Island,41.35,4277,Nambour,48.65
+Neurum,QLD,neurum,4320,Bribie Island,42.92,4277,Nambour,45.98
+Stanmore,QLD,stanmore,4320,Bribie Island,34.75,4277,Nambour,35.02
+Stony Creek,QLD,stony creek,4277,Nambour,41.65,4320,Bribie Island,42.17
+Villeneuve,QLD,villeneuve,4277,Nambour,49.66,4320,Bribie Island,49.71
+Westvale,QLD,westvale,4277,Nambour,34.23,4265,Maroochydore,43.63
+Woodford,QLD,woodford,4320,Bribie Island,35.3,4277,Nambour,40.98
+Glenfern,QLD,glenfern,4277,Nambour,50.24,4320,Bribie Island,51.83
+Hazeldean,QLD,hazeldean,4320,Bribie Island,58.4,4277,Nambour,61.57
+Kilcoy,QLD,kilcoy,4277,Nambour,52.97,4320,Bribie Island,56.75
+Mount Kilcoy,QLD,mount kilcoy,4277,Nambour,47.38,4320,Bribie Island,55.02
+Royston,QLD,royston,4277,Nambour,45.06,4320,Bribie Island,47.71
+Sandy Creek,QLD,sandy creek,4277,Nambour,45.13,4320,Bribie Island,51.13
+Sheep Station Creek,QLD,sheep station creek,4277,Nambour,51.73,4265,Maroochydore,63.11
+Winya,QLD,winya,4277,Nambour,51.95,4320,Bribie Island,55.26
+Woolmar,QLD,woolmar,4277,Nambour,56.77,4320,Bribie Island,60.04
+Glass House Mountains,QLD,glass house mountains,4320,Bribie Island,21.47,4277,Nambour,32.2
+Beerwah,QLD,beerwah,4320,Bribie Island,22.68,4277,Nambour,25.98
+Crohamhurst,QLD,crohamhurst,4277,Nambour,22.53,4265,Maroochydore,28.43
+Peachester,QLD,peachester,4277,Nambour,26.26,4320,Bribie Island,28.97
+Armstrong Creek,QLD,armstrong creek,4320,Bribie Island,41.53,4064,Sunnybank Hills,47.37
+Closeburn,QLD,closeburn,4064,Sunnybank Hills,35.48,4320,Bribie Island,46.18
+Kobble Creek,QLD,kobble creek,4064,Sunnybank Hills,44.53,4320,Bribie Island,45.35
+Mount Samson,QLD,mount samson,4064,Sunnybank Hills,38.12,4320,Bribie Island,44.68
+Samsonvale,QLD,samsonvale,4320,Bribie Island,40.97,4064,Sunnybank Hills,42.09
+Dayboro,QLD,dayboro,4320,Bribie Island,38.43,4064,Sunnybank Hills,50.13
+Laceys Creek,QLD,laceys creek,4320,Bribie Island,47.5,4064,Sunnybank Hills,52.42
+Rush Creek,QLD,rush creek,4320,Bribie Island,35.75,4064,Sunnybank Hills,46.86
+Landsborough,QLD,landsborough,4277,Nambour,22.49,4265,Maroochydore,23.9
+Mount Mellum,QLD,mount mellum,4277,Nambour,21.92,4265,Maroochydore,25.47
+Aroona,QLD,aroona,4265,Maroochydore,14.66,4320,Bribie Island,22.86
+Banya,QLD,banya,4265,Maroochydore,14.66,4320,Bribie Island,22.86
+Baringa,QLD,baringa,4265,Maroochydore,17.62,4320,Bribie Island,20.65
+Battery Hill,QLD,battery hill,4265,Maroochydore,14.63,4320,Bribie Island,23.03
+Bells Creek,QLD,bells creek,4265,Maroochydore,16.28,4277,Nambour,21.52
+Caloundra,QLD,caloundra,4265,Maroochydore,16.89,4320,Bribie Island,20.8
+Caloundra Bc,QLD,caloundra bc,4265,Maroochydore,16.89,4320,Bribie Island,20.8
+Caloundra Dc,QLD,caloundra dc,4265,Maroochydore,17.39,4320,Bribie Island,20.32
+Caloundra West,QLD,caloundra west,4265,Maroochydore,17.04,4320,Bribie Island,20.73
+Corbould Park,QLD,corbould park,4265,Maroochydore,14.66,4320,Bribie Island,22.86
+Currimundi,QLD,currimundi,4265,Maroochydore,13.52,4277,Nambour,22.97
+Dicky Beach,QLD,dicky beach,4265,Maroochydore,15.15,4320,Bribie Island,22.58
+Gagalba,QLD,gagalba,4265,Maroochydore,14.66,4320,Bribie Island,22.86
+Golden Beach,QLD,golden beach,4320,Bribie Island,18.19,4265,Maroochydore,19.32
+Kings Beach,QLD,kings beach,4265,Maroochydore,17.28,4320,Bribie Island,20.6
+Little Mountain,QLD,little mountain,4265,Maroochydore,14.58,4277,Nambour,22.05
+Meridan Plains,QLD,meridan plains,4265,Maroochydore,12.54,4277,Nambour,20.82
+Moffat Beach,QLD,moffat beach,4265,Maroochydore,16.15,4320,Bribie Island,21.7
+Nirimba,QLD,nirimba,4265,Maroochydore,14.66,4320,Bribie Island,22.86
+Pelican Waters,QLD,pelican waters,4320,Bribie Island,16.43,4265,Maroochydore,21.24
+Shelly Beach,QLD,shelly beach,4265,Maroochydore,17.0,4320,Bribie Island,21.08
+Bald Knob,QLD,bald knob,4277,Nambour,17.92,4265,Maroochydore,23.57
+Balmoral Ridge,QLD,balmoral ridge,4277,Nambour,14.92,4265,Maroochydore,23.19
+Baroon Pocket,QLD,baroon pocket,4277,Nambour,12.69,4265,Maroochydore,23.61
+Booroobin,QLD,booroobin,4277,Nambour,27.41,4265,Maroochydore,36.62
+Conondale,QLD,conondale,4277,Nambour,26.22,4265,Maroochydore,38.06
+Crystal Waters,QLD,crystal waters,4277,Nambour,29.72,4265,Maroochydore,40.63
+Harper Creek,QLD,harper creek,4277,Nambour,25.58,4265,Maroochydore,36.9
+Maleny,QLD,maleny,4277,Nambour,18.73,4265,Maroochydore,27.61
+Mountain View,QLD,mountain view,4277,Nambour,19.66,4265,Maroochydore,27.48
+North Maleny,QLD,north maleny,4277,Nambour,14.93,4265,Maroochydore,24.76
+Reesville,QLD,reesville,4277,Nambour,21.98,4265,Maroochydore,32.74
+Witta,QLD,witta,4277,Nambour,17.49,4265,Maroochydore,29.23
+Wootha,QLD,wootha,4277,Nambour,25.24,4265,Maroochydore,34.9
+Diamond Valley,QLD,diamond valley,4277,Nambour,14.84,4265,Maroochydore,19.92
+Glenview,QLD,glenview,4265,Maroochydore,15.39,4277,Nambour,16.91
+Mooloolah,QLD,mooloolah,4277,Nambour,15.24,4265,Maroochydore,18.44
+Mooloolah Valley,QLD,mooloolah valley,4277,Nambour,15.24,4265,Maroochydore,18.44
+Palmview,QLD,palmview,4265,Maroochydore,13.11,4277,Nambour,17.52
+Eudlo,QLD,eudlo,4277,Nambour,12.22,4265,Maroochydore,16.17
+Ilkley,QLD,ilkley,4277,Nambour,12.98,4265,Maroochydore,13.95
+Chevallum,QLD,chevallum,4277,Nambour,8.83,4265,Maroochydore,12.86
+Hunchy,QLD,hunchy,4277,Nambour,8.03,4265,Maroochydore,19.05
+Landers Shoot,QLD,landers shoot,4277,Nambour,10.38,4265,Maroochydore,18.35
+Palmwoods,QLD,palmwoods,4277,Nambour,7.76,4265,Maroochydore,15.11
+Buderim,QLD,buderim,4265,Maroochydore,6.08,4277,Nambour,11.58
+Forest Glen,QLD,forest glen,4277,Nambour,6.9,4265,Maroochydore,10.16
+Kunda Park,QLD,kunda park,4265,Maroochydore,6.77,4277,Nambour,8.77
+MONS,QLD,mons,4265,Maroochydore,8.59,4277,Nambour,9.95
+Sippy Downs,QLD,sippy downs,4265,Maroochydore,8.27,4277,Nambour,16.64
+Tanawha,QLD,tanawha,4265,Maroochydore,9.76,4277,Nambour,12.61
+Mountain Creek,QLD,mountain creek,4265,Maroochydore,5.45,4277,Nambour,16.43
+Kuluin,QLD,kuluin,4265,Maroochydore,4.15,4277,Nambour,10.63
+Maroochydore Bc,QLD,maroochydore bc,4265,Maroochydore,2.76,4277,Nambour,14.26
+Diddillibah,QLD,diddillibah,4265,Maroochydore,6.63,4277,Nambour,7.97
+Kiels Mountain,QLD,kiels mountain,4277,Nambour,6.05,4265,Maroochydore,9.31
+West Woombye,QLD,west woombye,4277,Nambour,5.41,4265,Maroochydore,16.67
+Woombye,QLD,woombye,4277,Nambour,4.84,4265,Maroochydore,13.38
+Bli Bli,QLD,bli bli,4265,Maroochydore,7.2,4277,Nambour,7.8
+Coes Creek,QLD,coes creek,4277,Nambour,3.05,4265,Maroochydore,14.91
+Montville,QLD,montville,4277,Nambour,10.01,4265,Maroochydore,21.85
+Parklands,QLD,parklands,4277,Nambour,2.75,4265,Maroochydore,14.37
+Rosemount,QLD,rosemount,4277,Nambour,3.82,4265,Maroochydore,10.56
+Bridges,QLD,bridges,4277,Nambour,9.72,4265,Maroochydore,20.32
+Maroochy River,QLD,maroochy river,4277,Nambour,7.48,4265,Maroochydore,11.14
+Ninderry,QLD,ninderry,4277,Nambour,10.34,4265,Maroochydore,17.4
+North Arm,QLD,north arm,4277,Nambour,11.93,4365,Noosa,19.41
+Valdora,QLD,valdora,4277,Nambour,9.16,4265,Maroochydore,14.92
+Yandina,QLD,yandina,4277,Nambour,6.56,4265,Maroochydore,17.06
+Yandina Creek,QLD,yandina creek,4277,Nambour,12.49,4265,Maroochydore,14.57
+Doonan,QLD,doonan,4365,Noosa,9.73,4277,Nambour,20.98
+Eerwah Vale,QLD,eerwah vale,4277,Nambour,16.16,4365,Noosa,19.96
+Eumundi,QLD,eumundi,4277,Nambour,15.63,4365,Noosa,17.11
+Verrierdale,QLD,verrierdale,4365,Noosa,12.16,4277,Nambour,16.64
+Black Mountain,QLD,black mountain,4365,Noosa,22.49,4277,Nambour,24.9
+Carters Ridge,QLD,carters ridge,4277,Nambour,26.68,4365,Noosa,32.33
+Cooroy,QLD,cooroy,4365,Noosa,18.24,4277,Nambour,23.33
+Cooroy Mountain,QLD,cooroy mountain,4365,Noosa,14.64,4277,Nambour,21.33
+Lake Macdonald,QLD,lake macdonald,4365,Noosa,15.36,4277,Nambour,26.06
+Ridgewood,QLD,ridgewood,4277,Nambour,22.31,4365,Noosa,26.61
+Sunrise Hills,QLD,sunrise hills,4365,Noosa,20.92,4277,Nambour,23.39
+Marcoola,QLD,marcoola,4265,Maroochydore,6.23,4277,Nambour,10.91
+Mudjimba,QLD,mudjimba,4265,Maroochydore,3.54,4277,Nambour,13.25
+Pacific Paradise,QLD,pacific paradise,4265,Maroochydore,4.03,4277,Nambour,11.36
+Twin Waters,QLD,twin waters,4265,Maroochydore,2.67,4277,Nambour,12.19
+Federal,QLD,federal,4365,Noosa,28.29,4277,Nambour,29.19
+Pinbarren,QLD,pinbarren,4365,Noosa,25.3,4277,Nambour,33.91
+Pomona,QLD,pomona,4365,Noosa,23.93,4277,Nambour,30.74
+Cooran,QLD,cooran,4365,Noosa,29.1,4277,Nambour,35.14
+Amamoor,QLD,amamoor,4277,Nambour,41.59,4365,Noosa,41.93
+Amamoor Creek,QLD,amamoor creek,4277,Nambour,52.52,4365,Noosa,58.61
+Araluen,QLD,araluen,4365,Noosa,51.15,4277,Nambour,60.02
+Banks Pocket,QLD,banks pocket,4365,Noosa,50.18,4277,Nambour,59.86
+Bella Creek,QLD,bella creek,4277,Nambour,42.64,4365,Noosa,53.3
+Bells Bridge,QLD,bells bridge,4365,Noosa,61.79,4277,Nambour,68.74
+Bollier,QLD,bollier,4277,Nambour,28.19,4365,Noosa,36.91
+Brooloo,QLD,brooloo,4277,Nambour,29.18,4365,Noosa,40.74
+Calico Creek,QLD,calico creek,4365,Noosa,45.92,4277,Nambour,47.38
+Chatsworth,QLD,chatsworth,4365,Noosa,55.49,4277,Nambour,63.44
+Coles Creek,QLD,coles creek,4365,Noosa,35.65,4277,Nambour,36.99
+Corella,QLD,corella,4365,Noosa,55.56,4277,Nambour,65.46
+Curra,QLD,curra,4365,Noosa,62.78,4277,Nambour,72.36
+Dagun,QLD,dagun,4365,Noosa,41.93,4277,Nambour,43.56
+East Deep Creek,QLD,east deep creek,4365,Noosa,43.74,4277,Nambour,53.14
+Fishermans Pocket,QLD,fishermans pocket,4365,Noosa,55.15,4277,Nambour,62.13
+Gilldora,QLD,gilldora,4365,Noosa,42.39,4277,Nambour,45.46
+Glanmire,QLD,glanmire,4365,Noosa,43.95,4277,Nambour,51.38
+Glastonbury,QLD,glastonbury,4365,Noosa,59.22,4277,Nambour,62.17
+Glen Echo,QLD,glen echo,4367,Hervey Bay,78.53,4365,Noosa,88.86
+Glenwood,QLD,glenwood,4365,Noosa,69.78,4367,Hervey Bay,73.41
+Greens Creek,QLD,greens creek,4365,Noosa,42.35,4277,Nambour,54.23
+Gunalda,QLD,gunalda,4365,Noosa,64.86,4277,Nambour,76.45
+Gympie,QLD,gympie,4365,Noosa,48.83,4277,Nambour,57.0
+Gympie Dc,QLD,gympie dc,4365,Noosa,48.5,4277,Nambour,56.35
+Imbil,QLD,imbil,4277,Nambour,33.52,4365,Noosa,41.2
+Jones Hill,QLD,jones hill,4365,Noosa,46.16,4277,Nambour,52.34
+Kandanga,QLD,kandanga,4277,Nambour,37.14,4365,Noosa,39.46
+Kandanga Creek,QLD,kandanga creek,4277,Nambour,42.04,4365,Noosa,47.04
+Kanigan,QLD,kanigan,4365,Noosa,71.62,4367,Hervey Bay,75.75
+Kybong,QLD,kybong,4365,Noosa,39.98,4277,Nambour,44.74
+Lagoon Pocket,QLD,lagoon pocket,4365,Noosa,43.09,4277,Nambour,47.41
+Langshaw,QLD,langshaw,4277,Nambour,50.14,4365,Noosa,51.11
+Long Flat,QLD,long flat,4365,Noosa,46.07,4277,Nambour,50.19
+Lower Wonga,QLD,lower wonga,4365,Noosa,70.81,4277,Nambour,75.26
+Marys Creek,QLD,marys creek,4365,Noosa,53.64,4277,Nambour,56.36
+Mcintosh Creek,QLD,mcintosh creek,4365,Noosa,47.47,4277,Nambour,51.11
+Melawondi,QLD,melawondi,4277,Nambour,37.61,4365,Noosa,42.94
+MIVA,QLD,miva,4367,Hervey Bay,79.84,4365,Noosa,80.85
+Monkland,QLD,monkland,4365,Noosa,45.64,4277,Nambour,53.42
+Mooloo,QLD,mooloo,4365,Noosa,49.31,4277,Nambour,50.53
+Mothar Mountain,QLD,mothar mountain,4365,Noosa,36.48,4277,Nambour,45.95
+Munna Creek,QLD,munna creek,4367,Hervey Bay,73.29,4365,Noosa,84.48
+Nahrunda,QLD,nahrunda,4365,Noosa,51.87,4277,Nambour,57.54
+Paterson,QLD,paterson,4367,Hervey Bay,71.42,4365,Noosa,80.74
+Pie Creek,QLD,pie creek,4365,Noosa,51.68,4277,Nambour,55.82
+Scotchy Pocket,QLD,scotchy pocket,4365,Noosa,71.87,4367,Hervey Bay,80.98
+Sexton,QLD,sexton,4365,Noosa,68.77,4277,Nambour,76.05
+Southside,QLD,southside,4365,Noosa,49.17,4277,Nambour,55.46
+Tamaree,QLD,tamaree,4365,Noosa,51.76,4277,Nambour,61.67
+Tandur,QLD,tandur,4365,Noosa,35.34,4277,Nambour,42.51
+The Dawn,QLD,the dawn,4365,Noosa,43.91,4277,Nambour,49.79
+The Palms,QLD,the palms,4365,Noosa,55.45,4277,Nambour,60.54
+Theebine,QLD,theebine,4365,Noosa,72.9,4367,Hervey Bay,77.57
+Traveston,QLD,traveston,4365,Noosa,32.04,4277,Nambour,37.99
+Tuchekoi,QLD,tuchekoi,4277,Nambour,31.3,4365,Noosa,33.0
+Two Mile,QLD,two mile,4365,Noosa,52.12,4277,Nambour,59.69
+Upper Glastonbury,QLD,upper glastonbury,4277,Nambour,61.64,4365,Noosa,62.59
+Upper Kandanga,QLD,upper kandanga,4277,Nambour,43.69,4365,Noosa,50.4
+Veteran,QLD,veteran,4365,Noosa,47.65,4277,Nambour,58.57
+Victory Heights,QLD,victory heights,4365,Noosa,46.82,4277,Nambour,56.34
+Widgee,QLD,widgee,4365,Noosa,69.01,4277,Nambour,69.32
+Widgee Crossing North,QLD,widgee crossing north,4365,Noosa,52.87,4277,Nambour,59.26
+Widgee Crossing South,QLD,widgee crossing south,4365,Noosa,53.26,4277,Nambour,58.69
+Woolooga,QLD,woolooga,4365,Noosa,82.81,4367,Hervey Bay,85.63
+Woondum,QLD,woondum,4365,Noosa,39.6,4277,Nambour,47.26
+Coolum Beach,QLD,coolum beach,4265,Maroochydore,13.85,4365,Noosa,14.55
+Mount Coolum,QLD,mount coolum,4265,Maroochydore,9.41,4277,Nambour,13.91
+Peregian Beach,QLD,peregian beach,4365,Noosa,9.18,4265,Maroochydore,18.85
+Peregian Beach South,QLD,peregian beach south,4365,Noosa,9.18,4265,Maroochydore,18.85
+Peregian Springs,QLD,peregian springs,4365,Noosa,11.64,4265,Maroochydore,17.01
+Point Arkwright,QLD,point arkwright,4265,Maroochydore,11.46,4277,Nambour,16.26
+Yaroomba,QLD,yaroomba,4265,Maroochydore,11.12,4277,Nambour,16.26
+Birtinya,QLD,birtinya,4265,Maroochydore,10.51,4277,Nambour,20.72
+Bokarina,QLD,bokarina,4265,Maroochydore,10.15,4277,Nambour,21.25
+Kawana Waters,QLD,kawana waters,4265,Maroochydore,8.65,4277,Nambour,20.28
+Parrearra,QLD,parrearra,4265,Maroochydore,7.13,4277,Nambour,18.9
+Warana,QLD,warana,4265,Maroochydore,8.65,4277,Nambour,20.28
+Wurtulla,QLD,wurtulla,4265,Maroochydore,12.17,4277,Nambour,22.26
+Inskip,QLD,inskip,4365,Noosa,61.62,4367,Hervey Bay,68.35
+Inskip Point,QLD,inskip point,4365,Noosa,61.62,4367,Hervey Bay,68.36
+Black Snake,QLD,black snake,4277,Nambour,81.21,4365,Noosa,83.22
+Cinnabar,QLD,cinnabar,4277,Nambour,93.95,4365,Noosa,95.22
+Kilkivan,QLD,kilkivan,4365,Noosa,91.32,4277,Nambour,92.82
+Mudlo,QLD,mudlo,4367,Hervey Bay,92.67,4365,Noosa,99.18
+Oakview,QLD,oakview,4365,Noosa,85.61,4277,Nambour,88.7
+Barambah,QLD,barambah,4277,Nambour,91.2,4365,Noosa,98.22
+Kinbombi,QLD,kinbombi,4277,Nambour,96.39,4365,Noosa,98.44
+Manumbar,QLD,manumbar,4277,Nambour,71.49,4365,Noosa,78.8
+Wrattens Forest,QLD,wrattens forest,4277,Nambour,70.5,4365,Noosa,75.21
+Elgin Vale,QLD,elgin vale,4277,Nambour,78.81,4365,Noosa,89.8
+Johnstown,QLD,johnstown,4277,Nambour,88.27,4365,Noosa,97.47
+Bauple Forest,QLD,bauple forest,4367,Hervey Bay,64.32,4365,Noosa,70.66
+Gootchie,QLD,gootchie,4367,Hervey Bay,68.51,4365,Noosa,76.19
+Adelaide,SA,adelaide,5351,Ingle Farm,12.8,5281,Salisbury Downs,17.92
+Adelaide Bc,SA,adelaide bc,5351,Ingle Farm,13.03,5281,Salisbury Downs,17.85
+City West Campus,SA,city west campus,5351,Ingle Farm,12.19,5281,Salisbury Downs,17.0
+Halifax Street,SA,halifax street,5351,Ingle Farm,12.64,5281,Salisbury Downs,17.84
+Hutt Street,SA,hutt street,5351,Ingle Farm,12.3,5281,Salisbury Downs,17.54
+Parliament House,SA,parliament house,5351,Ingle Farm,11.73,5281,Salisbury Downs,16.69
+Rundle Mall,SA,rundle mall,5351,Ingle Farm,11.81,5281,Salisbury Downs,16.84
+Station Arcade,SA,station arcade,5351,Ingle Farm,11.87,5281,Salisbury Downs,16.8
+Sturt Street,SA,sturt street,5351,Ingle Farm,13.17,5281,Salisbury Downs,18.1
+Adelaide University,SA,adelaide university,5351,Ingle Farm,11.44,5281,Salisbury Downs,16.54
+The University Of Adelaide,SA,the university of adelaide,5351,Ingle Farm,11.44,5281,Salisbury Downs,16.54
+University Of Adelaide,SA,university of adelaide,5351,Ingle Farm,11.44,5281,Salisbury Downs,16.54
+North Adelaide,SA,north adelaide,5351,Ingle Farm,10.59,5281,Salisbury Downs,15.4
+North Adelaide Melbourne St,SA,north adelaide melbourne st,5351,Ingle Farm,10.05,5281,Salisbury Downs,15.08
+Bowden,SA,bowden,5351,Ingle Farm,10.89,5281,Salisbury Downs,15.2
+Brompton,SA,brompton,5351,Ingle Farm,10.36,5281,Salisbury Downs,14.51
+Hindmarsh,SA,hindmarsh,5351,Ingle Farm,11.54,5281,Salisbury Downs,15.66
+Welland,SA,welland,5351,Ingle Farm,12.07,5281,Salisbury Downs,15.86
+West Hindmarsh,SA,west hindmarsh,5351,Ingle Farm,11.92,5281,Salisbury Downs,15.83
+Croydon,SA,croydon,5351,Ingle Farm,11.2,5281,Salisbury Downs,15.02
+Croydon Park,SA,croydon park,5351,Ingle Farm,10.05,5281,Salisbury Downs,13.68
+Croydon Park South,SA,croydon park south,5351,Ingle Farm,10.05,5281,Salisbury Downs,13.68
+Devon Park,SA,devon park,5351,Ingle Farm,9.41,5281,Salisbury Downs,13.47
+Dudley Park,SA,dudley park,5351,Ingle Farm,9.03,5281,Salisbury Downs,12.9
+Renown Park,SA,renown park,5351,Ingle Farm,9.95,5281,Salisbury Downs,14.06
+Ridleyton,SA,ridleyton,5351,Ingle Farm,10.36,5281,Salisbury Downs,14.24
+West Croydon,SA,west croydon,5351,Ingle Farm,10.95,5281,Salisbury Downs,14.42
+Allenby Gardens,SA,allenby gardens,5351,Ingle Farm,12.25,5281,Salisbury Downs,15.95
+Beverley,SA,beverley,5351,Ingle Farm,11.92,5281,Salisbury Downs,15.17
+Kilkenny,SA,kilkenny,5351,Ingle Farm,10.52,5281,Salisbury Downs,13.5
+Angle Park,SA,angle park,5351,Ingle Farm,8.73,5281,Salisbury Downs,11.25
+Ferryden Park,SA,ferryden park,5351,Ingle Farm,9.31,5281,Salisbury Downs,11.91
+Regency Park,SA,regency park,5351,Ingle Farm,8.06,5281,Salisbury Downs,10.94
+Regency Park Bc,SA,regency park bc,5351,Ingle Farm,8.06,5281,Salisbury Downs,10.93
+St Clair,SA,st clair,5351,Ingle Farm,11.86,5281,Salisbury Downs,13.97
+St Claire,SA,st claire,5351,Ingle Farm,11.86,5281,Salisbury Downs,13.97
+Woodville,SA,woodville,5351,Ingle Farm,12.01,5281,Salisbury Downs,14.59
+Woodville Park,SA,woodville park,5351,Ingle Farm,11.32,5281,Salisbury Downs,14.21
+Woodville South,SA,woodville south,5351,Ingle Farm,12.01,5281,Salisbury Downs,14.59
+Woodville West,SA,woodville west,5351,Ingle Farm,12.83,5281,Salisbury Downs,15.24
+Athol Park,SA,athol park,5351,Ingle Farm,10.17,5281,Salisbury Downs,12.1
+Mansfield Park,SA,mansfield park,5351,Ingle Farm,9.59,5281,Salisbury Downs,11.35
+Woodville Gardens,SA,woodville gardens,5351,Ingle Farm,9.71,5281,Salisbury Downs,12.16
+Woodville North,SA,woodville north,5351,Ingle Farm,10.81,5281,Salisbury Downs,12.82
+Gillman,SA,gillman,5351,Ingle Farm,11.04,5281,Salisbury Downs,11.75
+Ottoway,SA,ottoway,5351,Ingle Farm,10.42,5281,Salisbury Downs,11.6
+Pennington,SA,pennington,5351,Ingle Farm,11.29,5281,Salisbury Downs,12.77
+Rosewater,SA,rosewater,5351,Ingle Farm,11.93,5281,Salisbury Downs,13.2
+Rosewater East,SA,rosewater east,5351,Ingle Farm,11.93,5281,Salisbury Downs,13.2
+Wingfield,SA,wingfield,5351,Ingle Farm,7.78,5281,Salisbury Downs,9.52
+Albert Park,SA,albert park,5351,Ingle Farm,12.94,5281,Salisbury Downs,15.09
+Alberton,SA,alberton,5351,Ingle Farm,12.59,5281,Salisbury Downs,13.99
+Cheltenham,SA,cheltenham,5351,Ingle Farm,12.09,5281,Salisbury Downs,14.03
+Hendon,SA,hendon,5351,Ingle Farm,13.14,5281,Salisbury Downs,14.94
+Queenstown,SA,queenstown,5351,Ingle Farm,13.1,5281,Salisbury Downs,14.37
+Royal Park,SA,royal park,5351,Ingle Farm,13.72,5281,Salisbury Downs,15.38
+Birkenhead,SA,birkenhead,5351,Ingle Farm,13.41,5281,Salisbury Downs,13.43
+Ethelton,SA,ethelton,5351,Ingle Farm,14.51,5281,Salisbury Downs,14.91
+Garden Island,SA,garden island,5351,Ingle Farm,13.41,5281,Salisbury Downs,13.43
+Glanville,SA,glanville,5351,Ingle Farm,14.27,5281,Salisbury Downs,14.58
+New Port,SA,new port,5351,Ingle Farm,14.09,5281,Salisbury Downs,14.44
+Port Adelaide,SA,port adelaide,5351,Ingle Farm,13.3,5281,Salisbury Downs,13.82
+Port Adelaide Bc,SA,port adelaide bc,5351,Ingle Farm,13.4,5281,Salisbury Downs,14.26
+Port Adelaide Dc,SA,port adelaide dc,5351,Ingle Farm,13.16,5281,Salisbury Downs,13.79
+Torrens Island,SA,torrens island,5351,Ingle Farm,13.41,5281,Salisbury Downs,13.43
+Largs Bay,SA,largs bay,5281,Salisbury Downs,13.13,5351,Ingle Farm,13.88
+Largs North,SA,largs north,5281,Salisbury Downs,13.04,5351,Ingle Farm,13.92
+Peterhead,SA,peterhead,5281,Salisbury Downs,13.43,5351,Ingle Farm,13.64
+Osborne,SA,osborne,5281,Salisbury Downs,12.58,5351,Ingle Farm,14.39
+Taperoo,SA,taperoo,5281,Salisbury Downs,12.45,5351,Ingle Farm,13.91
+North Haven,SA,north haven,5281,Salisbury Downs,12.1,5351,Ingle Farm,14.48
+Outer Harbor,SA,outer harbor,5281,Salisbury Downs,11.38,5351,Ingle Farm,14.04
+Exeter,SA,exeter,5281,Salisbury Downs,14.24,5351,Ingle Farm,14.32
+Semaphore,SA,semaphore,5281,Salisbury Downs,14.85,5351,Ingle Farm,14.9
+Semaphore Park,SA,semaphore park,5351,Ingle Farm,15.18,5281,Salisbury Downs,15.74
+Semaphore South,SA,semaphore south,5351,Ingle Farm,15.31,5281,Salisbury Downs,15.6
+West Lakes Shore,SA,west lakes shore,5351,Ingle Farm,15.26,5281,Salisbury Downs,16.21
+West Lakes,SA,west lakes,5351,Ingle Farm,14.72,5281,Salisbury Downs,16.16
+Grange,SA,grange,5351,Ingle Farm,16.69,5281,Salisbury Downs,18.84
+Henley Beach,SA,henley beach,5351,Ingle Farm,17.57,5281,Salisbury Downs,20.29
+Henley Beach South,SA,henley beach south,5351,Ingle Farm,17.57,5281,Salisbury Downs,20.57
+Kirkcaldy,SA,kirkcaldy,5351,Ingle Farm,16.33,5281,Salisbury Downs,18.79
+Tennyson,SA,tennyson,5351,Ingle Farm,16.3,5281,Salisbury Downs,17.86
+Findon,SA,findon,5351,Ingle Farm,13.56,5281,Salisbury Downs,16.6
+Seaton,SA,seaton,5351,Ingle Farm,14.71,5281,Salisbury Downs,17.33
+Seaton North,SA,seaton north,5351,Ingle Farm,13.88,5281,Salisbury Downs,16.02
+Fulham,SA,fulham,5351,Ingle Farm,16.83,5281,Salisbury Downs,20.03
+Fulham Gardens,SA,fulham gardens,5351,Ingle Farm,15.66,5281,Salisbury Downs,18.61
+West Beach,SA,west beach,5351,Ingle Farm,18.79,5281,Salisbury Downs,22.16
+Flinders Park,SA,flinders park,5351,Ingle Farm,13.14,5281,Salisbury Downs,16.7
+Kidman Park,SA,kidman park,5351,Ingle Farm,14.77,5281,Salisbury Downs,18.05
+Mile End,SA,mile end,5351,Ingle Farm,13.77,5281,Salisbury Downs,17.96
+Mile End South,SA,mile end south,5351,Ingle Farm,14.5,5281,Salisbury Downs,19.04
+Thebarton,SA,thebarton,5351,Ingle Farm,12.15,5281,Salisbury Downs,16.45
+Torrensville,SA,torrensville,5351,Ingle Farm,13.05,5281,Salisbury Downs,17.13
+Torrensville Plaza,SA,torrensville plaza,5351,Ingle Farm,13.67,5281,Salisbury Downs,17.87
+Brooklyn Park,SA,brooklyn park,5351,Ingle Farm,14.85,5281,Salisbury Downs,18.78
+Lockleys,SA,lockleys,5351,Ingle Farm,15.3,5281,Salisbury Downs,18.82
+Underdale,SA,underdale,5351,Ingle Farm,13.61,5281,Salisbury Downs,17.42
+Cowandilla,SA,cowandilla,5351,Ingle Farm,14.5,5281,Salisbury Downs,18.68
+Hilton,SA,hilton,5351,Ingle Farm,13.87,5281,Salisbury Downs,18.31
+Hilton Plaza,SA,hilton plaza,5351,Ingle Farm,14.31,5281,Salisbury Downs,18.6
+Marleston,SA,marleston,5351,Ingle Farm,15.49,5281,Salisbury Downs,19.93
+Marleston Dc,SA,marleston dc,5351,Ingle Farm,15.92,5281,Salisbury Downs,20.39
+Richmond,SA,richmond,5351,Ingle Farm,15.19,5281,Salisbury Downs,19.54
+West Richmond,SA,west richmond,5351,Ingle Farm,15.6,5281,Salisbury Downs,19.74
+Clarence Park,SA,clarence park,5351,Ingle Farm,16.5,5281,Salisbury Downs,21.47
+Goodwood,SA,goodwood,5351,Ingle Farm,15.08,5281,Salisbury Downs,20.13
+Kings Park,SA,kings park,5351,Ingle Farm,16.41,5281,Salisbury Downs,21.48
+Millswood,SA,millswood,5351,Ingle Farm,15.65,5281,Salisbury Downs,20.64
+Wayville,SA,wayville,5351,Ingle Farm,14.45,5281,Salisbury Downs,19.43
+Ashford,SA,ashford,5351,Ingle Farm,15.47,5281,Salisbury Downs,20.16
+Black Forest,SA,black forest,5351,Ingle Farm,16.93,5281,Salisbury Downs,21.75
+Everard Park,SA,everard park,5351,Ingle Farm,15.94,5281,Salisbury Downs,20.68
+Forestville,SA,forestville,5351,Ingle Farm,15.42,5281,Salisbury Downs,20.24
+Keswick,SA,keswick,5351,Ingle Farm,14.8,5281,Salisbury Downs,19.51
+Keswick Terminal,SA,keswick terminal,5351,Ingle Farm,13.89,5281,Salisbury Downs,18.58
+Glandore,SA,glandore,5351,Ingle Farm,16.89,5281,Salisbury Downs,21.52
+Kurralta Park,SA,kurralta park,5351,Ingle Farm,15.9,5281,Salisbury Downs,20.45
+Netley,SA,netley,5351,Ingle Farm,16.15,5281,Salisbury Downs,20.37
+North Plympton,SA,north plympton,5351,Ingle Farm,17.32,5281,Salisbury Downs,21.66
+Camden Park,SA,camden park,5351,Ingle Farm,18.81,5281,Salisbury Downs,23.1
+Plympton,SA,plympton,5351,Ingle Farm,17.87,5281,Salisbury Downs,22.29
+Plympton Park,SA,plympton park,5351,Ingle Farm,19.17,5281,Salisbury Downs,23.69
+South Plympton,SA,south plympton,5351,Ingle Farm,18.99,5281,Salisbury Downs,23.58
+Clarence Gardens,SA,clarence gardens,5351,Ingle Farm,17.69,5281,Salisbury Downs,22.58
+Edwardstown,SA,edwardstown,5351,Ingle Farm,18.75,5281,Salisbury Downs,23.58
+Melrose Park,SA,melrose park,5351,Ingle Farm,19.64,5281,Salisbury Downs,24.58
+Melrose Park Dc,SA,melrose park dc,5351,Ingle Farm,19.66,5281,Salisbury Downs,24.6
+Novar Gardens,SA,novar gardens,5351,Ingle Farm,18.9,5281,Salisbury Downs,22.99
+Colonel Light Gardens,SA,colonel light gardens,5351,Ingle Farm,18.29,5281,Salisbury Downs,23.47
+Cumberland Park,SA,cumberland park,5351,Ingle Farm,17.61,5281,Salisbury Downs,22.63
+Daw Park,SA,daw park,5351,Ingle Farm,18.35,5281,Salisbury Downs,23.42
+Panorama,SA,panorama,5351,Ingle Farm,19.64,5281,Salisbury Downs,24.86
+Westbourne Park,SA,westbourne park,5351,Ingle Farm,16.94,5281,Salisbury Downs,22.08
+Bedford Park,SA,bedford park,5351,Ingle Farm,23.14,5281,Salisbury Downs,28.1
+Clovelly Park,SA,clovelly park,5351,Ingle Farm,20.8,5281,Salisbury Downs,25.74
+Flinders University,SA,flinders university,5351,Ingle Farm,21.89,5281,Salisbury Downs,26.85
+Pasadena,SA,pasadena,5351,Ingle Farm,20.55,5281,Salisbury Downs,25.71
+St Marys,SA,st marys,5351,Ingle Farm,21.3,5281,Salisbury Downs,26.32
+Tonsley,SA,tonsley,5351,Ingle Farm,22.38,5281,Salisbury Downs,27.36
+Ascot Park,SA,ascot park,5351,Ingle Farm,20.02,5281,Salisbury Downs,24.73
+Marion,SA,marion,5351,Ingle Farm,21.47,5281,Salisbury Downs,26.15
+Mitchell Park,SA,mitchell park,5351,Ingle Farm,22.26,5281,Salisbury Downs,27.12
+Morphettville,SA,morphettville,5351,Ingle Farm,20.88,5281,Salisbury Downs,25.31
+Park Holme,SA,park holme,5351,Ingle Farm,20.67,5281,Salisbury Downs,25.39
+Glengowrie,SA,glengowrie,5351,Ingle Farm,20.58,5281,Salisbury Downs,24.88
+Somerton Park,SA,somerton park,5351,Ingle Farm,22.28,5281,Salisbury Downs,26.52
+Glenelg,SA,glenelg,5351,Ingle Farm,21.29,5281,Salisbury Downs,25.32
+Glenelg East,SA,glenelg east,5351,Ingle Farm,21.31,5281,Salisbury Downs,25.49
+Glenelg Jetty Road,SA,glenelg jetty road,5351,Ingle Farm,21.08,5281,Salisbury Downs,25.11
+Glenelg North,SA,glenelg north,5351,Ingle Farm,20.23,5281,Salisbury Downs,24.16
+Glenelg South,SA,glenelg south,5351,Ingle Farm,21.96,5281,Salisbury Downs,26.04
+Oaklands Park,SA,oaklands park,5351,Ingle Farm,23.15,5281,Salisbury Downs,27.82
+Warradale,SA,warradale,5351,Ingle Farm,22.71,5281,Salisbury Downs,27.25
+Warradale North,SA,warradale north,5351,Ingle Farm,22.71,5281,Salisbury Downs,27.25
+Darlington,SA,darlington,5351,Ingle Farm,24.41,5281,Salisbury Downs,29.29
+Seacombe Gardens,SA,seacombe gardens,5351,Ingle Farm,24.38,5281,Salisbury Downs,29.11
+Seacombe Heights,SA,seacombe heights,5351,Ingle Farm,25.07,5281,Salisbury Downs,29.88
+Sturt,SA,sturt,5351,Ingle Farm,23.79,5281,Salisbury Downs,28.63
+Brighton,SA,brighton,5351,Ingle Farm,24.64,5281,Salisbury Downs,29.02
+Dover Gardens,SA,dover gardens,5351,Ingle Farm,24.52,5281,Salisbury Downs,29.17
+HOVE,SA,hove,5351,Ingle Farm,23.57,5281,Salisbury Downs,27.92
+North Brighton,SA,north brighton,5351,Ingle Farm,23.13,5281,Salisbury Downs,27.44
+South Brighton,SA,south brighton,5351,Ingle Farm,25.03,5281,Salisbury Downs,29.5
+Kingston Park,SA,kingston park,5351,Ingle Farm,26.59,5281,Salisbury Downs,31.06
+Marino,SA,marino,5351,Ingle Farm,27.85,5281,Salisbury Downs,32.37
+Seacliff,SA,seacliff,5351,Ingle Farm,26.19,5281,Salisbury Downs,30.63
+Seacliff Park,SA,seacliff park,5351,Ingle Farm,25.36,5281,Salisbury Downs,29.96
+Seaview Downs,SA,seaview downs,5351,Ingle Farm,25.52,5281,Salisbury Downs,30.18
+Bellevue Heights,SA,bellevue heights,5351,Ingle Farm,23.96,5281,Salisbury Downs,29.16
+Eden Hills,SA,eden hills,5351,Ingle Farm,23.05,5281,Salisbury Downs,28.37
+Blackwood,SA,blackwood,5351,Ingle Farm,22.37,5281,Salisbury Downs,27.82
+Coromandel Valley,SA,coromandel valley,5351,Ingle Farm,25.08,5281,Salisbury Downs,30.58
+Craigburn Farm,SA,craigburn farm,5351,Ingle Farm,24.55,5281,Salisbury Downs,29.92
+Hawthorndene,SA,hawthorndene,5351,Ingle Farm,21.95,5281,Salisbury Downs,27.51
+Belair,SA,belair,5351,Ingle Farm,19.59,5281,Salisbury Downs,25.07
+Glenalta,SA,glenalta,5351,Ingle Farm,21.21,5281,Salisbury Downs,26.74
+Hyde Park,SA,hyde park,5351,Ingle Farm,15.27,5281,Salisbury Downs,20.41
+Malvern,SA,malvern,5351,Ingle Farm,15.2,5281,Salisbury Downs,20.55
+Unley,SA,unley,5351,Ingle Farm,14.73,5281,Salisbury Downs,19.86
+Unley Bc,SA,unley bc,5351,Ingle Farm,14.54,5281,Salisbury Downs,19.67
+Unley Dc,SA,unley dc,5351,Ingle Farm,14.68,5281,Salisbury Downs,19.91
+Unley Park,SA,unley park,5351,Ingle Farm,15.91,5281,Salisbury Downs,21.07
+Brown Hill Creek,SA,brown hill creek,5351,Ingle Farm,18.25,5281,Salisbury Downs,23.97
+Clapham,SA,clapham,5351,Ingle Farm,18.98,5281,Salisbury Downs,24.25
+Hawthorn,SA,hawthorn,5351,Ingle Farm,16.66,5281,Salisbury Downs,21.84
+Kingswood,SA,kingswood,5351,Ingle Farm,16.68,5281,Salisbury Downs,22.07
+Lower Mitcham,SA,lower mitcham,5351,Ingle Farm,17.96,5281,Salisbury Downs,23.25
+Lynton,SA,lynton,5351,Ingle Farm,19.75,5281,Salisbury Downs,25.1
+Mitcham,SA,mitcham,5351,Ingle Farm,18.34,5281,Salisbury Downs,23.84
+Mitcham Shopping Centre,SA,mitcham shopping centre,5351,Ingle Farm,17.25,5281,Salisbury Downs,22.58
+Netherby,SA,netherby,5351,Ingle Farm,16.66,5281,Salisbury Downs,22.17
+Springfield,SA,springfield,5351,Ingle Farm,17.29,5281,Salisbury Downs,22.84
+Torrens Park,SA,torrens park,5351,Ingle Farm,18.33,5281,Salisbury Downs,23.74
+Eastwood,SA,eastwood,5351,Ingle Farm,13.43,5281,Salisbury Downs,18.84
+Frewville,SA,frewville,5351,Ingle Farm,13.87,5281,Salisbury Downs,19.39
+Fullarton,SA,fullarton,5351,Ingle Farm,14.32,5281,Salisbury Downs,19.84
+Highgate,SA,highgate,5351,Ingle Farm,15.64,5281,Salisbury Downs,21.1
+Parkside,SA,parkside,5351,Ingle Farm,13.79,5281,Salisbury Downs,19.09
+Glen Osmond,SA,glen osmond,5351,Ingle Farm,15.24,5281,Salisbury Downs,20.96
+Glenunga,SA,glenunga,5351,Ingle Farm,14.25,5281,Salisbury Downs,19.87
+Mount Osmond,SA,mount osmond,5351,Ingle Farm,15.69,5281,Salisbury Downs,21.48
+Myrtle Bank,SA,myrtle bank,5351,Ingle Farm,15.15,5281,Salisbury Downs,20.75
+St Georges,SA,st georges,5351,Ingle Farm,14.57,5281,Salisbury Downs,20.27
+Urrbrae,SA,urrbrae,5351,Ingle Farm,16.04,5281,Salisbury Downs,21.64
+Dulwich,SA,dulwich,5351,Ingle Farm,12.65,5281,Salisbury Downs,18.17
+Glenside,SA,glenside,5351,Ingle Farm,13.38,5281,Salisbury Downs,18.97
+Linden Park,SA,linden park,5351,Ingle Farm,13.79,5281,Salisbury Downs,19.52
+Toorak Gardens,SA,toorak gardens,5351,Ingle Farm,12.25,5281,Salisbury Downs,17.87
+Tusmore,SA,tusmore,5351,Ingle Farm,12.57,5281,Salisbury Downs,18.29
+Beaumont,SA,beaumont,5351,Ingle Farm,14.3,5281,Salisbury Downs,20.1
+Burnside,SA,burnside,5351,Ingle Farm,13.03,5281,Salisbury Downs,18.87
+Erindale,SA,erindale,5351,Ingle Farm,11.77,5281,Salisbury Downs,17.6
+Hazelwood Park,SA,hazelwood park,5351,Ingle Farm,12.94,5281,Salisbury Downs,18.73
+Stonyfell,SA,stonyfell,5351,Ingle Farm,12.79,5281,Salisbury Downs,18.69
+Waterfall Gully,SA,waterfall gully,5351,Ingle Farm,15.48,5281,Salisbury Downs,21.35
+Wattle Park,SA,wattle park,5351,Ingle Farm,11.99,5281,Salisbury Downs,17.89
+Beulah Park,SA,beulah park,5351,Ingle Farm,10.68,5281,Salisbury Downs,16.36
+Kent Town,SA,kent town,5351,Ingle Farm,11.09,5281,Salisbury Downs,16.43
+Norwood,SA,norwood,5351,Ingle Farm,11.18,5281,Salisbury Downs,16.74
+Norwood South,SA,norwood south,5351,Ingle Farm,11.18,5281,Salisbury Downs,16.74
+Rose Park,SA,rose park,5351,Ingle Farm,12.09,5281,Salisbury Downs,17.58
+Heathpool,SA,heathpool,5351,Ingle Farm,12.01,5281,Salisbury Downs,17.73
+Kensington,SA,kensington,5351,Ingle Farm,11.23,5281,Salisbury Downs,16.93
+Kensington Gardens,SA,kensington gardens,5351,Ingle Farm,10.63,5281,Salisbury Downs,16.47
+Kensington Park,SA,kensington park,5351,Ingle Farm,10.91,5281,Salisbury Downs,16.71
+Leabrook,SA,leabrook,5351,Ingle Farm,11.91,5281,Salisbury Downs,17.66
+Marryatville,SA,marryatville,5351,Ingle Farm,11.65,5281,Salisbury Downs,17.37
+St Morris,SA,st morris,5351,Ingle Farm,9.8,5281,Salisbury Downs,15.6
+Trinity Gardens,SA,trinity gardens,5351,Ingle Farm,9.8,5281,Salisbury Downs,15.5
+College Park,SA,college park,5351,Ingle Farm,10.24,5281,Salisbury Downs,15.61
+Evandale,SA,evandale,5351,Ingle Farm,9.17,5281,Salisbury Downs,14.75
+Hackney,SA,hackney,5351,Ingle Farm,10.8,5281,Salisbury Downs,16.07
+Maylands,SA,maylands,5351,Ingle Farm,9.82,5281,Salisbury Downs,15.42
+St Peters,SA,st peters,5351,Ingle Farm,9.16,5281,Salisbury Downs,14.5
+Stepney,SA,stepney,5351,Ingle Farm,10.02,5281,Salisbury Downs,15.5
+Felixstow,SA,felixstow,5351,Ingle Farm,7.56,5281,Salisbury Downs,13.27
+Firle,SA,firle,5351,Ingle Farm,9.0,5281,Salisbury Downs,14.8
+Glynde,SA,glynde,5351,Ingle Farm,8.24,5281,Salisbury Downs,14.05
+Glynde Dc,SA,glynde dc,5351,Ingle Farm,8.07,5281,Salisbury Downs,13.83
+Glynde Plaza,SA,glynde plaza,5351,Ingle Farm,8.96,5281,Salisbury Downs,14.79
+Joslin,SA,joslin,5351,Ingle Farm,8.67,5281,Salisbury Downs,14.05
+Marden,SA,marden,5351,Ingle Farm,8.18,5281,Salisbury Downs,13.82
+Payneham,SA,payneham,5351,Ingle Farm,8.46,5281,Salisbury Downs,14.14
+Payneham South,SA,payneham south,5351,Ingle Farm,9.12,5281,Salisbury Downs,14.84
+Royston Park,SA,royston park,5351,Ingle Farm,8.52,5281,Salisbury Downs,14.07
+Kent Town Dc,SA,kent town dc,5351,Ingle Farm,11.1,5281,Salisbury Downs,16.43
+Auldana,SA,auldana,5351,Ingle Farm,11.15,5281,Salisbury Downs,17.06
+Magill,SA,magill,5351,Ingle Farm,9.94,5281,Salisbury Downs,15.85
+Magill North,SA,magill north,5351,Ingle Farm,9.94,5281,Salisbury Downs,15.85
+Magill South,SA,magill south,5351,Ingle Farm,9.94,5281,Salisbury Downs,15.85
+Rosslyn Park,SA,rosslyn park,5351,Ingle Farm,11.34,5281,Salisbury Downs,17.24
+SKYE,SA,skye,5351,Ingle Farm,12.16,5281,Salisbury Downs,18.07
+Teringie,SA,teringie,5351,Ingle Farm,11.1,5281,Salisbury Downs,17.0
+Woodforde,SA,woodforde,5351,Ingle Farm,11.03,5281,Salisbury Downs,16.83
+Hectorville,SA,hectorville,5351,Ingle Farm,7.97,5281,Salisbury Downs,13.87
+Rostrevor,SA,rostrevor,5351,Ingle Farm,9.29,5281,Salisbury Downs,15.14
+Tranmere,SA,tranmere,5351,Ingle Farm,9.23,5281,Salisbury Downs,15.1
+Tranmere North,SA,tranmere north,5351,Ingle Farm,8.43,5281,Salisbury Downs,14.32
+Campbelltown,SA,campbelltown,5351,Ingle Farm,6.31,5281,Salisbury Downs,12.22
+Newton,SA,newton,5351,Ingle Farm,7.13,5281,Salisbury Downs,13.02
+Dernancourt,SA,dernancourt,5351,Ingle Farm,5.41,5281,Salisbury Downs,11.16
+Paradise,SA,paradise,5351,Ingle Farm,6.1,5281,Salisbury Downs,11.99
+Athelstone,SA,athelstone,5351,Ingle Farm,7.37,5281,Salisbury Downs,12.95
+Castambul,SA,castambul,5351,Ingle Farm,12.18,5281,Salisbury Downs,16.9
+Collinswood,SA,collinswood,5351,Ingle Farm,7.76,5281,Salisbury Downs,12.79
+Gilberton,SA,gilberton,5351,Ingle Farm,9.11,5281,Salisbury Downs,14.21
+Medindie,SA,medindie,5351,Ingle Farm,8.94,5281,Salisbury Downs,13.84
+Medindie Gardens,SA,medindie gardens,5351,Ingle Farm,8.5,5281,Salisbury Downs,13.39
+Vale Park,SA,vale park,5351,Ingle Farm,7.44,5281,Salisbury Downs,12.78
+Walkerville,SA,walkerville,5351,Ingle Farm,8.05,5281,Salisbury Downs,13.24
+Fitzroy,SA,fitzroy,5351,Ingle Farm,9.69,5281,Salisbury Downs,14.2
+Ovingham,SA,ovingham,5351,Ingle Farm,9.98,5281,Salisbury Downs,14.39
+Prospect,SA,prospect,5351,Ingle Farm,8.27,5281,Salisbury Downs,12.69
+Prospect East,SA,prospect east,5351,Ingle Farm,8.27,5281,Salisbury Downs,12.69
+Prospect West,SA,prospect west,5351,Ingle Farm,8.27,5281,Salisbury Downs,12.69
+Thorngate,SA,thorngate,5351,Ingle Farm,9.36,5281,Salisbury Downs,14.07
+Broadview,SA,broadview,5351,Ingle Farm,6.28,5281,Salisbury Downs,11.21
+Nailsworth,SA,nailsworth,5351,Ingle Farm,8.03,5281,Salisbury Downs,12.77
+Sefton Park,SA,sefton park,5351,Ingle Farm,6.86,5281,Salisbury Downs,11.6
+Blair Athol,SA,blair athol,5351,Ingle Farm,6.15,5281,Salisbury Downs,10.16
+Blair Athol West,SA,blair athol west,5351,Ingle Farm,6.15,5281,Salisbury Downs,10.16
+Kilburn,SA,kilburn,5351,Ingle Farm,6.77,5281,Salisbury Downs,10.26
+Kilburn North,SA,kilburn north,5351,Ingle Farm,6.77,5281,Salisbury Downs,10.26
+Clearview,SA,clearview,5351,Ingle Farm,4.8,5281,Salisbury Downs,9.63
+Enfield,SA,enfield,5351,Ingle Farm,5.72,5281,Salisbury Downs,10.18
+Enfield Plaza,SA,enfield plaza,5351,Ingle Farm,5.25,5281,Salisbury Downs,9.17
+Lightsview,SA,lightsview,5351,Ingle Farm,4.32,5281,Salisbury Downs,9.79
+Northfield,SA,northfield,5351,Ingle Farm,3.82,5281,Salisbury Downs,8.69
+Northgate,SA,northgate,5351,Ingle Farm,3.61,5281,Salisbury Downs,8.87
+Gilles Plains,SA,gilles plains,5351,Ingle Farm,3.25,5281,Salisbury Downs,9.17
+Greenacres,SA,greenacres,5351,Ingle Farm,5.4,5281,Salisbury Downs,10.99
+Hampstead Gardens,SA,hampstead gardens,5351,Ingle Farm,5.73,5281,Salisbury Downs,11.17
+Hillcrest,SA,hillcrest,5351,Ingle Farm,4.34,5281,Salisbury Downs,10.07
+Manningham,SA,manningham,5351,Ingle Farm,6.39,5281,Salisbury Downs,11.61
+Oakden,SA,oakden,5351,Ingle Farm,3.35,5281,Salisbury Downs,9.1
+Klemzig,SA,klemzig,5351,Ingle Farm,6.62,5281,Salisbury Downs,12.2
+Windsor Gardens,SA,windsor gardens,5351,Ingle Farm,4.91,5281,Salisbury Downs,10.76
+Holden Hill,SA,holden hill,5351,Ingle Farm,4.08,5281,Salisbury Downs,9.9
+Highbury,SA,highbury,5351,Ingle Farm,8.56,5281,Salisbury Downs,13.1
+Hope Valley,SA,hope valley,5351,Ingle Farm,5.26,5281,Salisbury Downs,10.39
+Banksia Park,SA,banksia park,5351,Ingle Farm,7.97,5281,Salisbury Downs,10.54
+Tea Tree Gully,SA,tea tree gully,5351,Ingle Farm,7.31,5281,Salisbury Downs,10.96
+Vista,SA,vista,5351,Ingle Farm,7.82,5281,Salisbury Downs,11.85
+Modbury,SA,modbury,5351,Ingle Farm,3.6,5281,Salisbury Downs,8.59
+Modbury Heights,SA,modbury heights,5351,Ingle Farm,3.89,5281,Salisbury Downs,7.01
+Modbury North,SA,modbury north,5351,Ingle Farm,2.47,5281,Salisbury Downs,7.59
+Modbury North Dc,SA,modbury north dc,5351,Ingle Farm,2.47,5281,Salisbury Downs,7.59
+Para Vista,SA,para vista,5351,Ingle Farm,1.78,5281,Salisbury Downs,7.02
+Valley View,SA,valley view,5351,Ingle Farm,2.53,5281,Salisbury Downs,8.35
+Cavan,SA,cavan,5351,Ingle Farm,4.42,5281,Salisbury Downs,6.64
+Dry Creek,SA,dry creek,5351,Ingle Farm,5.26,5281,Salisbury Downs,7.48
+Gepps Cross,SA,gepps cross,5351,Ingle Farm,4.72,5281,Salisbury Downs,8.03
+Mawson Lakes,SA,mawson lakes,5351,Ingle Farm,3.13,5281,Salisbury Downs,4.38
+Pooraka,SA,pooraka,5351,Ingle Farm,1.75,5281,Salisbury Downs,5.76
+The Levels,SA,the levels,5351,Ingle Farm,3.13,5281,Salisbury Downs,4.38
+Gulfview Heights,SA,gulfview heights,5351,Ingle Farm,3.56,5281,Salisbury Downs,4.62
+Para Hills,SA,para hills,5351,Ingle Farm,1.65,5281,Salisbury Downs,4.87
+Para Hills West,SA,para hills west,5351,Ingle Farm,2.28,5281,Salisbury Downs,3.78
+Redwood Park,SA,redwood park,5351,Ingle Farm,5.65,5281,Salisbury Downs,8.66
+Ridgehaven,SA,ridgehaven,5351,Ingle Farm,5.3,5281,Salisbury Downs,9.05
+St Agnes,SA,st agnes,5351,Ingle Farm,6.0,5281,Salisbury Downs,10.13
+Ingle Farm,SA,ingle farm,5351,Ingle Farm,0.0,5281,Salisbury Downs,5.92
+Walkley Heights,SA,walkley heights,5351,Ingle Farm,1.92,5281,Salisbury Downs,7.47
+Parafield,SA,parafield,5281,Salisbury Downs,2.13,5351,Ingle Farm,3.8
+Parafield Airport,SA,parafield airport,5281,Salisbury Downs,2.04,5351,Ingle Farm,3.94
+Salisbury South,SA,salisbury south,5281,Salisbury Downs,1.99,5351,Ingle Farm,4.49
+Salisbury South Bc,SA,salisbury south bc,5281,Salisbury Downs,2.32,5351,Ingle Farm,4.05
+Salisbury South Dc,SA,salisbury south dc,5281,Salisbury Downs,2.32,5351,Ingle Farm,4.05
+Green Fields,SA,green fields,5281,Salisbury Downs,3.19,5351,Ingle Farm,4.86
+Parafield Gardens,SA,parafield gardens,5281,Salisbury Downs,2.1,5351,Ingle Farm,4.58
+Paralowie,SA,paralowie,5281,Salisbury Downs,2.15,5351,Ingle Farm,8.0
+Salisbury,SA,salisbury,5281,Salisbury Downs,1.84,5351,Ingle Farm,6.58
+Salisbury Downs,SA,salisbury downs,5281,Salisbury Downs,0.0,5351,Ingle Farm,5.92
+Salisbury North,SA,salisbury north,5281,Salisbury Downs,2.53,5351,Ingle Farm,8.4
+Salisbury North Whites Road,SA,salisbury north whites road,5281,Salisbury Downs,2.57,5351,Ingle Farm,8.46
+Brahma Lodge,SA,brahma lodge,5281,Salisbury Downs,2.74,5351,Ingle Farm,5.4
+Salisbury East,SA,salisbury east,5281,Salisbury Downs,4.18,5351,Ingle Farm,5.26
+Salisbury East Northbri Ave,SA,salisbury east northbri ave,5281,Salisbury Downs,3.29,5351,Ingle Farm,3.8
+Salisbury Heights,SA,salisbury heights,5281,Salisbury Downs,5.89,5351,Ingle Farm,7.71
+Salisbury Park,SA,salisbury park,5281,Salisbury Downs,4.18,5351,Ingle Farm,7.42
+Salisbury Plain,SA,salisbury plain,5281,Salisbury Downs,3.27,5351,Ingle Farm,6.36
+Bolivar,SA,bolivar,5281,Salisbury Downs,3.31,5351,Ingle Farm,7.45
+Burton,SA,burton,5281,Salisbury Downs,4.07,5351,Ingle Farm,9.96
+Direk,SA,direk,5281,Salisbury Downs,5.65,5351,Ingle Farm,11.56
+Globe Derby Park,SA,globe derby park,5281,Salisbury Downs,3.64,5351,Ingle Farm,6.43
+St Kilda,SA,st kilda,5281,Salisbury Downs,9.12,5351,Ingle Farm,13.88
+Waterloo Corner,SA,waterloo corner,5281,Salisbury Downs,6.56,5351,Ingle Farm,12.19
+Edinburgh,SA,edinburgh,5281,Salisbury Downs,6.02,5351,Ingle Farm,11.72
+Edinburgh Raaf,SA,edinburgh raaf,5281,Salisbury Downs,6.48,5351,Ingle Farm,11.82
+Elizabeth,SA,elizabeth,5281,Salisbury Downs,7.31,5351,Ingle Farm,11.72
+Elizabeth East,SA,elizabeth east,5281,Salisbury Downs,7.26,5351,Ingle Farm,11.22
+Elizabeth Grove,SA,elizabeth grove,5281,Salisbury Downs,6.05,5351,Ingle Farm,10.19
+Elizabeth South,SA,elizabeth south,5281,Salisbury Downs,4.51,5351,Ingle Farm,9.14
+Elizabeth Vale,SA,elizabeth vale,5281,Salisbury Downs,5.07,5351,Ingle Farm,8.7
+Hillbank,SA,hillbank,5281,Salisbury Downs,5.88,5351,Ingle Farm,9.04
+Davoren Park,SA,davoren park,5281,Salisbury Downs,9.85,5351,Ingle Farm,14.77
+Davoren Park North,SA,davoren park north,5281,Salisbury Downs,9.85,5351,Ingle Farm,14.77
+Davoren Park South,SA,davoren park south,5281,Salisbury Downs,9.85,5351,Ingle Farm,14.77
+Edinburgh North,SA,edinburgh north,5281,Salisbury Downs,8.17,5351,Ingle Farm,13.18
+Elizabeth Downs,SA,elizabeth downs,5281,Salisbury Downs,10.27,5351,Ingle Farm,14.44
+Elizabeth North,SA,elizabeth north,5281,Salisbury Downs,9.23,5351,Ingle Farm,13.86
+Elizabeth Park,SA,elizabeth park,5281,Salisbury Downs,8.67,5351,Ingle Farm,12.82
+Elizabeth West,SA,elizabeth west,5281,Salisbury Downs,9.85,5351,Ingle Farm,14.77
+Elizabeth West Dc,SA,elizabeth west dc,5281,Salisbury Downs,7.97,5351,Ingle Farm,12.84
+Andrews Farm,SA,andrews farm,5281,Salisbury Downs,11.83,5351,Ingle Farm,16.9
+Blakeview,SA,blakeview,5281,Salisbury Downs,12.28,5351,Ingle Farm,16.49
+Craigmore,SA,craigmore,5281,Salisbury Downs,10.23,5351,Ingle Farm,13.83
+Gould Creek,SA,gould creek,5351,Ingle Farm,12.68,5281,Salisbury Downs,12.73
+Humbug Scrub,SA,humbug scrub,5281,Salisbury Downs,17.6,5351,Ingle Farm,18.05
+One Tree Hill,SA,one tree hill,5281,Salisbury Downs,14.37,5351,Ingle Farm,16.23
+Sampson Flat,SA,sampson flat,5281,Salisbury Downs,14.09,5351,Ingle Farm,14.22
+Smithfield,SA,smithfield,5281,Salisbury Downs,11.18,5351,Ingle Farm,15.7
+Smithfield Plains,SA,smithfield plains,5281,Salisbury Downs,11.65,5351,Ingle Farm,16.5
+Smithfield West,SA,smithfield west,5281,Salisbury Downs,11.19,5351,Ingle Farm,15.71
+Uleybury,SA,uleybury,5281,Salisbury Downs,15.24,5351,Ingle Farm,18.54
+Yattalunga,SA,yattalunga,5281,Salisbury Downs,18.17,5351,Ingle Farm,21.26
+Kudla,SA,kudla,5281,Salisbury Downs,16.04,5351,Ingle Farm,20.62
+Munno Para,SA,munno para,5281,Salisbury Downs,13.5,5351,Ingle Farm,17.93
+Munno Para Downs,SA,munno para downs,5281,Salisbury Downs,14.77,5351,Ingle Farm,19.77
+Munno Para West,SA,munno para west,5281,Salisbury Downs,13.18,5351,Ingle Farm,18.33
+Evanston,SA,evanston,5281,Salisbury Downs,19.94,5351,Ingle Farm,24.3
+Evanston Gardens,SA,evanston gardens,5281,Salisbury Downs,18.75,5351,Ingle Farm,23.19
+Evanston Park,SA,evanston park,5281,Salisbury Downs,19.58,5351,Ingle Farm,23.54
+Evanston South,SA,evanston south,5281,Salisbury Downs,16.95,5351,Ingle Farm,21.1
+Hillier,SA,hillier,5281,Salisbury Downs,17.65,5351,Ingle Farm,22.49
+Angle Vale,SA,angle vale,5281,Salisbury Downs,14.81,5351,Ingle Farm,20.18
+Bibaringa,SA,bibaringa,5281,Salisbury Downs,19.72,5351,Ingle Farm,23.28
+Buchfelde,SA,buchfelde,5281,Salisbury Downs,19.52,5351,Ingle Farm,24.28
+Concordia,SA,concordia,5281,Salisbury Downs,24.22,5351,Ingle Farm,28.07
+Gawler,SA,gawler,5281,Salisbury Downs,22.35,5351,Ingle Farm,26.67
+Gawler Belt,SA,gawler belt,5281,Salisbury Downs,23.41,5351,Ingle Farm,28.11
+Gawler East,SA,gawler east,5281,Salisbury Downs,22.87,5351,Ingle Farm,26.87
+Gawler River,SA,gawler river,5281,Salisbury Downs,18.46,5351,Ingle Farm,23.7
+Gawler South,SA,gawler south,5281,Salisbury Downs,21.34,5351,Ingle Farm,25.45
+Gawler West,SA,gawler west,5281,Salisbury Downs,21.26,5351,Ingle Farm,25.68
+Hewett,SA,hewett,5281,Salisbury Downs,24.33,5351,Ingle Farm,28.73
+Kalbeeba,SA,kalbeeba,5281,Salisbury Downs,23.66,5351,Ingle Farm,27.28
+Kangaroo Flat,SA,kangaroo flat,5281,Salisbury Downs,26.22,5351,Ingle Farm,31.52
+Kingsford,SA,kingsford,5281,Salisbury Downs,30.07,5351,Ingle Farm,33.81
+REID,SA,reid,5281,Salisbury Downs,21.52,5351,Ingle Farm,26.03
+Ward Belt,SA,ward belt,5281,Salisbury Downs,21.4,5351,Ingle Farm,26.41
+Willaston,SA,willaston,5281,Salisbury Downs,22.93,5351,Ingle Farm,27.31
+Buckland Park,SA,buckland park,5281,Salisbury Downs,17.59,5351,Ingle Farm,23.29
+Riverlea Park,SA,riverlea park,5281,Salisbury Downs,17.59,5351,Ingle Farm,23.29
+Virginia,SA,virginia,5281,Salisbury Downs,12.62,5351,Ingle Farm,18.46
+EYRE,SA,eyre,5281,Salisbury Downs,9.1,5351,Ingle Farm,14.3
+Macdonald Park,SA,macdonald park,5281,Salisbury Downs,11.59,5351,Ingle Farm,17.04
+Penfield,SA,penfield,5281,Salisbury Downs,9.47,5351,Ingle Farm,15.09
+Penfield Gardens,SA,penfield gardens,5281,Salisbury Downs,12.74,5351,Ingle Farm,18.54
+Golden Grove,SA,golden grove,5351,Ingle Farm,7.0,5281,Salisbury Downs,7.5
+Golden Grove Village,SA,golden grove village,5351,Ingle Farm,7.0,5281,Salisbury Downs,7.5
+Greenwith,SA,greenwith,5281,Salisbury Downs,8.24,5351,Ingle Farm,8.94
+Fairview Park,SA,fairview park,5351,Ingle Farm,8.23,5281,Salisbury Downs,10.19
+Surrey Downs,SA,surrey downs,5351,Ingle Farm,6.5,5281,Salisbury Downs,8.54
+Yatala Vale,SA,yatala vale,5351,Ingle Farm,9.28,5281,Salisbury Downs,10.93
+Wynn Vale,SA,wynn vale,5351,Ingle Farm,4.52,5281,Salisbury Downs,6.36
+Houghton,SA,houghton,5351,Ingle Farm,10.52,5281,Salisbury Downs,13.9
+Lower Hermitage,SA,lower hermitage,5351,Ingle Farm,12.12,5281,Salisbury Downs,14.31
+Upper Hermitage,SA,upper hermitage,5351,Ingle Farm,10.62,5281,Salisbury Downs,12.14
+Paracombe,SA,paracombe,5351,Ingle Farm,12.02,5281,Salisbury Downs,15.96
+Inglewood,SA,inglewood,5351,Ingle Farm,13.79,5281,Salisbury Downs,15.77
+Cherryville,SA,cherryville,5351,Ingle Farm,14.7,5281,Salisbury Downs,20.09
+Montacute,SA,montacute,5351,Ingle Farm,11.28,5281,Salisbury Downs,16.76
+Norton Summit,SA,norton summit,5351,Ingle Farm,13.81,5281,Salisbury Downs,19.43
+Ashton,SA,ashton,5351,Ingle Farm,15.42,5281,Salisbury Downs,21.21
+Marble Hill,SA,marble hill,5351,Ingle Farm,14.83,5281,Salisbury Downs,20.35
+Basket Range,SA,basket range,5351,Ingle Farm,16.69,5281,Salisbury Downs,22.16
+Forest Range,SA,forest range,5351,Ingle Farm,18.31,5281,Salisbury Downs,23.47
+Greenhill,SA,greenhill,5351,Ingle Farm,15.28,5281,Salisbury Downs,21.19
+Horsnell Gully,SA,horsnell gully,5351,Ingle Farm,13.8,5281,Salisbury Downs,19.71
+Summertown,SA,summertown,5351,Ingle Farm,15.52,5281,Salisbury Downs,21.42
+Uraidla,SA,uraidla,5351,Ingle Farm,17.56,5281,Salisbury Downs,23.39
+Carey Gully,SA,carey gully,5351,Ingle Farm,19.8,5281,Salisbury Downs,25.5
+Eagle On The Hill,SA,eagle on the hill,5351,Ingle Farm,17.25,5281,Salisbury Downs,23.12
+Leawood Gardens,SA,leawood gardens,5351,Ingle Farm,16.25,5281,Salisbury Downs,22.09
+Piccadilly,SA,piccadilly,5351,Ingle Farm,19.02,5281,Salisbury Downs,24.91
+Cleland,SA,cleland,5351,Ingle Farm,16.94,5281,Salisbury Downs,22.84
+Crafers,SA,crafers,5351,Ingle Farm,19.32,5281,Salisbury Downs,25.24
+Crafers West,SA,crafers west,5351,Ingle Farm,19.27,5281,Salisbury Downs,25.14
+Mount Lofty,SA,mount lofty,5351,Ingle Farm,17.69,5281,Salisbury Downs,23.61
+Stirling,SA,stirling,5351,Ingle Farm,21.26,5281,Salisbury Downs,27.18
+Biggs Flat,SA,biggs flat,5351,Ingle Farm,30.41,5281,Salisbury Downs,36.31
+Bradbury,SA,bradbury,5351,Ingle Farm,28.15,5281,Salisbury Downs,34.02
+Chapel Hill,SA,chapel hill,5351,Ingle Farm,30.71,5281,Salisbury Downs,36.62
+Echunga,SA,echunga,5351,Ingle Farm,33.84,5281,Salisbury Downs,39.74
+Flaxley,SA,flaxley,5351,Ingle Farm,39.31,5281,Salisbury Downs,45.2
+Green Hills Range,SA,green hills range,5351,Ingle Farm,40.39,5281,Salisbury Downs,46.3
+Heathfield,SA,heathfield,5351,Ingle Farm,23.64,5281,Salisbury Downs,29.55
+Ironbank,SA,ironbank,5351,Ingle Farm,25.47,5281,Salisbury Downs,31.3
+Jupiter Creek,SA,jupiter creek,5351,Ingle Farm,32.32,5281,Salisbury Downs,38.23
+Longwood,SA,longwood,5351,Ingle Farm,25.45,5281,Salisbury Downs,31.36
+Macclesfield,SA,macclesfield,5351,Ingle Farm,42.75,5281,Salisbury Downs,48.64
+Mylor,SA,mylor,5351,Ingle Farm,26.96,5281,Salisbury Downs,32.88
+Scott Creek,SA,scott creek,5351,Ingle Farm,26.61,5281,Salisbury Downs,32.48
+Aldgate,SA,aldgate,5351,Ingle Farm,23.49,5281,Salisbury Downs,29.4
+Bridgewater,SA,bridgewater,5351,Ingle Farm,24.09,5281,Salisbury Downs,29.93
+Mount George,SA,mount george,5351,Ingle Farm,22.34,5281,Salisbury Downs,28.14
+Upper Sturt,SA,upper sturt,5351,Ingle Farm,21.66,5281,Salisbury Downs,27.52
+Ashbourne,SA,ashbourne,5351,Ingle Farm,53.71,5281,Salisbury Downs,59.57
+Bull Creek,SA,bull creek,5351,Ingle Farm,46.83,5281,Salisbury Downs,52.71
+Cherry Gardens,SA,cherry gardens,5351,Ingle Farm,27.66,5281,Salisbury Downs,33.37
+Clarendon,SA,clarendon,5351,Ingle Farm,31.44,5281,Salisbury Downs,37.01
+Coromandel East,SA,coromandel east,5351,Ingle Farm,24.71,5281,Salisbury Downs,30.41
+Dorset Vale,SA,dorset vale,5351,Ingle Farm,29.37,5281,Salisbury Downs,35.15
+Kangarilla,SA,kangarilla,5351,Ingle Farm,36.08,5281,Salisbury Downs,41.7
+Mcharg Creek,SA,mcharg creek,5351,Ingle Farm,50.81,5281,Salisbury Downs,56.63
+Hallett Cove,SA,hallett cove,5351,Ingle Farm,31.14,5281,Salisbury Downs,35.66
+O’Halloran Hill,SA,o’halloran hill,5351,Ingle Farm,31.14,5281,Salisbury Downs,35.66
+O'Halloran Hill,SA,o'halloran hill,5351,Ingle Farm,28.11,5281,Salisbury Downs,33.06
+O'Halloran Hill Dc,SA,o'halloran hill dc,5351,Ingle Farm,28.47,5281,Salisbury Downs,33.46
+Sheidow Park,SA,sheidow park,5351,Ingle Farm,30.73,5281,Salisbury Downs,35.49
+Trott Park,SA,trott park,5351,Ingle Farm,28.56,5281,Salisbury Downs,33.4
+Aberfoyle Park,SA,aberfoyle park,5351,Ingle Farm,27.45,5281,Salisbury Downs,32.81
+Chandlers Hill,SA,chandlers hill,5351,Ingle Farm,29.48,5281,Salisbury Downs,35.02
+Flagstaff Hill,SA,flagstaff hill,5351,Ingle Farm,25.88,5281,Salisbury Downs,31.08
+Happy Valley,SA,happy valley,5351,Ingle Farm,29.79,5281,Salisbury Downs,34.92
+Lonsdale,SA,lonsdale,5351,Ingle Farm,34.45,5281,Salisbury Downs,39.02
+Lonsdale Dc,SA,lonsdale dc,5351,Ingle Farm,34.06,5281,Salisbury Downs,38.66
+Port Stanvac,SA,port stanvac,5351,Ingle Farm,34.92,5281,Salisbury Downs,39.48
+Old Reynella,SA,old reynella,5351,Ingle Farm,31.89,5281,Salisbury Downs,36.83
+Reynella,SA,reynella,5351,Ingle Farm,32.45,5281,Salisbury Downs,37.27
+Reynella East,SA,reynella east,5351,Ingle Farm,30.95,5281,Salisbury Downs,35.95
+Morphett Vale,SA,morphett vale,5351,Ingle Farm,34.49,5281,Salisbury Downs,39.39
+Woodcroft,SA,woodcroft,5351,Ingle Farm,34.13,5281,Salisbury Downs,39.14
+Hackham,SA,hackham,5351,Ingle Farm,38.91,5281,Salisbury Downs,43.89
+Hackham West,SA,hackham west,5351,Ingle Farm,37.56,5281,Salisbury Downs,42.41
+Huntfield Heights,SA,huntfield heights,5351,Ingle Farm,38.71,5281,Salisbury Downs,43.62
+Onkaparinga Heights,SA,onkaparinga heights,5351,Ingle Farm,39.38,5281,Salisbury Downs,44.33
+Onkaparinga Hills,SA,onkaparinga hills,5351,Ingle Farm,36.83,5281,Salisbury Downs,41.89
+Christie Downs,SA,christie downs,5351,Ingle Farm,36.57,5281,Salisbury Downs,41.24
+Christies Beach,SA,christies beach,5351,Ingle Farm,37.84,5281,Salisbury Downs,42.36
+Christies Beach North,SA,christies beach north,5351,Ingle Farm,37.84,5281,Salisbury Downs,42.36
+O’Sullivan Beach,SA,o’sullivan beach,5351,Ingle Farm,36.45,5281,Salisbury Downs,40.92
+O'Sullivan Beach,SA,o'sullivan beach,5351,Ingle Farm,36.45,5281,Salisbury Downs,40.92
+Port Noarlunga,SA,port noarlunga,5351,Ingle Farm,39.23,5281,Salisbury Downs,43.81
+Port Noarlunga South,SA,port noarlunga south,5351,Ingle Farm,41.51,5281,Salisbury Downs,46.12
+Noarlunga Centre,SA,noarlunga centre,5351,Ingle Farm,37.9,5281,Salisbury Downs,42.59
+Noarlunga Downs,SA,noarlunga downs,5351,Ingle Farm,38.45,5281,Salisbury Downs,43.22
+Old Noarlunga,SA,old noarlunga,5351,Ingle Farm,41.88,5281,Salisbury Downs,46.74
+Moana,SA,moana,5351,Ingle Farm,44.58,5281,Salisbury Downs,49.29
+Seaford,SA,seaford,5351,Ingle Farm,43.69,5281,Salisbury Downs,48.41
+Seaford Heights,SA,seaford heights,5351,Ingle Farm,43.86,5281,Salisbury Downs,48.72
+Seaford Meadows,SA,seaford meadows,5351,Ingle Farm,41.53,5281,Salisbury Downs,46.26
+Seaford Rise,SA,seaford rise,5351,Ingle Farm,44.53,5281,Salisbury Downs,49.35
+Maslin Beach,SA,maslin beach,5351,Ingle Farm,47.62,5281,Salisbury Downs,52.48
+Blewitt Springs,SA,blewitt springs,5351,Ingle Farm,38.18,5281,Salisbury Downs,43.69
+Mclaren Flat,SA,mclaren flat,5351,Ingle Farm,42.82,5281,Salisbury Downs,48.22
+Mclaren Vale,SA,mclaren vale,5351,Ingle Farm,45.18,5281,Salisbury Downs,50.38
+Pedler Creek,SA,pedler creek,5351,Ingle Farm,43.3,5281,Salisbury Downs,48.61
+Tatachilla,SA,tatachilla,5351,Ingle Farm,47.68,5281,Salisbury Downs,52.69
+Dingabledinga,SA,dingabledinga,5351,Ingle Farm,48.63,5281,Salisbury Downs,54.25
+Hope Forest,SA,hope forest,5351,Ingle Farm,50.83,5281,Salisbury Downs,56.39
+Kuitpo,SA,kuitpo,5351,Ingle Farm,52.57,5281,Salisbury Downs,57.97
+Kuitpo Colony,SA,kuitpo colony,5351,Ingle Farm,51.01,5281,Salisbury Downs,56.77
+Kyeema,SA,kyeema,5351,Ingle Farm,50.51,5281,Salisbury Downs,56.22
+Montarra,SA,montarra,5351,Ingle Farm,49.01,5281,Salisbury Downs,54.54
+Pages Flat,SA,pages flat,5351,Ingle Farm,58.19,5281,Salisbury Downs,63.51
+The Range,SA,the range,5351,Ingle Farm,47.12,5281,Salisbury Downs,52.67
+Whites Valley,SA,whites valley,5351,Ingle Farm,52.17,5281,Salisbury Downs,57.28
+Willunga,SA,willunga,5351,Ingle Farm,50.85,5281,Salisbury Downs,56.14
+Willunga Hill,SA,willunga hill,5351,Ingle Farm,54.85,5281,Salisbury Downs,60.25
+Willunga South,SA,willunga south,5351,Ingle Farm,53.22,5281,Salisbury Downs,58.51
+Yundi,SA,yundi,5351,Ingle Farm,54.84,5281,Salisbury Downs,60.49
+Aldinga,SA,aldinga,5351,Ingle Farm,51.55,5281,Salisbury Downs,56.47
+Aldinga Beach,SA,aldinga beach,5351,Ingle Farm,53.84,5281,Salisbury Downs,58.64
+Port Willunga,SA,port willunga,5351,Ingle Farm,51.94,5281,Salisbury Downs,56.77
+Silver Sands,SA,silver sands,5351,Ingle Farm,57.5,5281,Salisbury Downs,62.32
+Sellicks Beach,SA,sellicks beach,5351,Ingle Farm,59.19,5281,Salisbury Downs,64.04
+Sellicks Hill,SA,sellicks hill,5351,Ingle Farm,60.06,5281,Salisbury Downs,65.19
+Blackfellows Creek,SA,blackfellows creek,5351,Ingle Farm,48.2,5281,Salisbury Downs,54.01
+Meadows,SA,meadows,5351,Ingle Farm,41.22,5281,Salisbury Downs,47.12
+Paris Creek,SA,paris creek,5351,Ingle Farm,48.91,5281,Salisbury Downs,54.82
+Prospect Hill,SA,prospect hill,5351,Ingle Farm,43.91,5281,Salisbury Downs,49.76
+Hindmarsh Tiers,SA,hindmarsh tiers,5351,Ingle Farm,63.95,5281,Salisbury Downs,69.44
+Myponga,SA,myponga,5351,Ingle Farm,65.29,5281,Salisbury Downs,70.31
+Myponga Beach,SA,myponga beach,5351,Ingle Farm,67.4,5281,Salisbury Downs,71.96
+Bald Hills,SA,bald hills,5351,Ingle Farm,76.98,5281,Salisbury Downs,81.81
+Parawa,SA,parawa,5351,Ingle Farm,84.32,5281,Salisbury Downs,89.2
+Torrens Vale,SA,torrens vale,5351,Ingle Farm,80.78,5281,Salisbury Downs,85.68
+Tunkalilla,SA,tunkalilla,5351,Ingle Farm,95.05,5281,Salisbury Downs,99.86
+Wattle Flat,SA,wattle flat,5351,Ingle Farm,70.4,5281,Salisbury Downs,75.08
+Yankalilla,SA,yankalilla,5351,Ingle Farm,75.72,5281,Salisbury Downs,80.38
+Carrickalinga,SA,carrickalinga,5351,Ingle Farm,73.16,5281,Salisbury Downs,77.67
+Delamere,SA,delamere,5351,Ingle Farm,91.03,5281,Salisbury Downs,95.38
+Hay Flat,SA,hay flat,5351,Ingle Farm,81.5,5281,Salisbury Downs,86.19
+Normanville,SA,normanville,5351,Ingle Farm,75.33,5281,Salisbury Downs,79.84
+Rapid Bay,SA,rapid bay,5351,Ingle Farm,90.49,5281,Salisbury Downs,94.68
+Second Valley,SA,second valley,5351,Ingle Farm,87.83,5281,Salisbury Downs,92.17
+Wirrina Cove,SA,wirrina cove,5351,Ingle Farm,83.95,5281,Salisbury Downs,88.32
+Mount Compass,SA,mount compass,5351,Ingle Farm,59.7,5281,Salisbury Downs,65.26
+Mount Magnificent,SA,mount magnificent,5351,Ingle Farm,53.77,5281,Salisbury Downs,59.53
+Nangkita,SA,nangkita,5351,Ingle Farm,57.79,5281,Salisbury Downs,63.42
+Back Valley,SA,back valley,5351,Ingle Farm,81.02,5281,Salisbury Downs,86.27
+Chiton,SA,chiton,5351,Ingle Farm,81.02,5281,Salisbury Downs,86.27
+Encounter Bay,SA,encounter bay,5351,Ingle Farm,83.77,5281,Salisbury Downs,89.29
+Hayborough,SA,hayborough,5351,Ingle Farm,79.17,5281,Salisbury Downs,84.79
+Hindmarsh Valley,SA,hindmarsh valley,5351,Ingle Farm,74.08,5281,Salisbury Downs,79.67
+Inman Valley,SA,inman valley,5351,Ingle Farm,73.92,5281,Salisbury Downs,78.99
+Lower Inman Valley,SA,lower inman valley,5351,Ingle Farm,77.39,5281,Salisbury Downs,82.76
+Mccracken,SA,mccracken,5351,Ingle Farm,79.84,5281,Salisbury Downs,85.44
+Mount Jagged,SA,mount jagged,5351,Ingle Farm,71.92,5281,Salisbury Downs,77.57
+Victor Harbor,SA,victor harbor,5351,Ingle Farm,80.88,5281,Salisbury Downs,86.44
+Victor Harbor Central,SA,victor harbor central,5351,Ingle Farm,82.42,5281,Salisbury Downs,87.96
+Waitpinga,SA,waitpinga,5351,Ingle Farm,87.43,5281,Salisbury Downs,92.71
+Willow Creek,SA,willow creek,5351,Ingle Farm,85.28,5281,Salisbury Downs,90.33
+Yilki,SA,yilki,5351,Ingle Farm,81.02,5281,Salisbury Downs,86.27
+Port Elliot,SA,port elliot,5351,Ingle Farm,78.19,5281,Salisbury Downs,83.88
+Middleton,SA,middleton,5351,Ingle Farm,73.66,5281,Salisbury Downs,79.41
+Currency Creek,SA,currency creek,5351,Ingle Farm,69.08,5281,Salisbury Downs,74.9
+Goolwa,SA,goolwa,5351,Ingle Farm,76.02,5281,Salisbury Downs,81.85
+Goolwa Beach,SA,goolwa beach,5351,Ingle Farm,77.35,5281,Salisbury Downs,83.16
+Goolwa North,SA,goolwa north,5351,Ingle Farm,74.68,5281,Salisbury Downs,80.54
+Goolwa South,SA,goolwa south,5351,Ingle Farm,78.03,5281,Salisbury Downs,83.87
+Hindmarsh Island,SA,hindmarsh island,5351,Ingle Farm,78.53,5281,Salisbury Downs,84.41
+Mosquito Hill,SA,mosquito hill,5351,Ingle Farm,67.51,5281,Salisbury Downs,73.23
+Mundoo Island,SA,mundoo island,5351,Ingle Farm,84.24,5281,Salisbury Downs,90.16
+Chain Of Ponds,SA,chain of ponds,5351,Ingle Farm,16.95,5281,Salisbury Downs,19.68
+Kersbrook,SA,kersbrook,5351,Ingle Farm,19.3,5281,Salisbury Downs,20.76
+Millbrook,SA,millbrook,5351,Ingle Farm,14.1,5281,Salisbury Downs,17.4
+Cudlee Creek,SA,cudlee creek,5351,Ingle Farm,17.17,5281,Salisbury Downs,20.86
+Forreston,SA,forreston,5351,Ingle Farm,23.33,5281,Salisbury Downs,25.28
+Gumeracha,SA,gumeracha,5351,Ingle Farm,21.67,5281,Salisbury Downs,24.3
+Kenton Valley,SA,kenton valley,5351,Ingle Farm,23.09,5281,Salisbury Downs,26.48
+Warren,SA,warren,5351,Ingle Farm,28.79,5281,Salisbury Downs,30.4
+Birdwood,SA,birdwood,5351,Ingle Farm,29.64,5281,Salisbury Downs,32.02
+Cromer,SA,cromer,5351,Ingle Farm,30.37,5281,Salisbury Downs,31.61
+Eden Valley,SA,eden valley,5281,Salisbury Downs,45.43,5351,Ingle Farm,45.59
+Flaxman Valley,SA,flaxman valley,5281,Salisbury Downs,41.98,5351,Ingle Farm,42.92
+Mount Pleasant,SA,mount pleasant,5351,Ingle Farm,37.4,5281,Salisbury Downs,38.9
+Springton,SA,springton,5351,Ingle Farm,42.53,5281,Salisbury Downs,43.08
+Taunton,SA,taunton,5351,Ingle Farm,43.26,5281,Salisbury Downs,43.5
+Tungkillo,SA,tungkillo,5351,Ingle Farm,38.25,5281,Salisbury Downs,41.23
+Apamurra,SA,apamurra,5351,Ingle Farm,51.21,5281,Salisbury Downs,53.85
+Milendella,SA,milendella,5351,Ingle Farm,51.42,5281,Salisbury Downs,53.37
+Palmer,SA,palmer,5351,Ingle Farm,46.42,5281,Salisbury Downs,49.1
+Sanderston,SA,sanderston,5351,Ingle Farm,55.62,5281,Salisbury Downs,56.52
+Angas Valley,SA,angas valley,5351,Ingle Farm,60.97,5281,Salisbury Downs,62.45
+Big Bend,SA,big bend,5351,Ingle Farm,90.87,5281,Salisbury Downs,91.64
+Bolto,SA,bolto,5351,Ingle Farm,62.19,5281,Salisbury Downs,65.19
+Bonython,SA,bonython,5351,Ingle Farm,50.64,5281,Salisbury Downs,52.59
+Caurnamont,SA,caurnamont,5351,Ingle Farm,83.32,5281,Salisbury Downs,85.86
+Claypans,SA,claypans,5351,Ingle Farm,97.42,5281,Salisbury Downs,99.53
+Coolcha,SA,coolcha,5351,Ingle Farm,86.17,5281,Salisbury Downs,88.87
+Cowirra,SA,cowirra,5351,Ingle Farm,63.98,5281,Salisbury Downs,66.84
+Five Miles,SA,five miles,5351,Ingle Farm,68.53,5281,Salisbury Downs,71.04
+Forster,SA,forster,5351,Ingle Farm,60.97,5281,Salisbury Downs,62.45
+Frahns,SA,frahns,5351,Ingle Farm,65.7,5281,Salisbury Downs,68.45
+Frayville,SA,frayville,5351,Ingle Farm,52.27,5281,Salisbury Downs,54.91
+Julanka Holdings,SA,julanka holdings,5351,Ingle Farm,82.25,5281,Salisbury Downs,84.73
+Lake Carlet,SA,lake carlet,5351,Ingle Farm,81.08,5281,Salisbury Downs,83.57
+Mannum,SA,mannum,5351,Ingle Farm,60.97,5281,Salisbury Downs,64.0
+Nildottie,SA,nildottie,5351,Ingle Farm,96.01,5281,Salisbury Downs,97.06
+Old Teal Flat,SA,old teal flat,5351,Ingle Farm,82.09,5281,Salisbury Downs,84.56
+Pellaring Flat,SA,pellaring flat,5351,Ingle Farm,68.04,5281,Salisbury Downs,70.54
+Pompoota,SA,pompoota,5351,Ingle Farm,67.49,5281,Salisbury Downs,71.07
+Ponde,SA,ponde,5351,Ingle Farm,64.35,5281,Salisbury Downs,67.7
+Port Mannum,SA,port mannum,5351,Ingle Farm,61.03,5281,Salisbury Downs,64.17
+Punthari,SA,punthari,5351,Ingle Farm,60.03,5281,Salisbury Downs,62.09
+Purnong,SA,purnong,5351,Ingle Farm,83.38,5281,Salisbury Downs,85.24
+Purnong Landing,SA,purnong landing,5351,Ingle Farm,83.38,5281,Salisbury Downs,85.24
+Rocky Point,SA,rocky point,5351,Ingle Farm,72.74,5281,Salisbury Downs,75.14
+Teal Flat,SA,teal flat,5351,Ingle Farm,83.93,5281,Salisbury Downs,86.54
+Walker Flat,SA,walker flat,5351,Ingle Farm,84.49,5281,Salisbury Downs,86.18
+WALL,SA,wall,5351,Ingle Farm,61.77,5281,Salisbury Downs,65.27
+Wongulla,SA,wongulla,5351,Ingle Farm,84.83,5281,Salisbury Downs,86.08
+Woodlane,SA,woodlane,5351,Ingle Farm,65.71,5281,Salisbury Downs,69.41
+Younghusband,SA,younghusband,5351,Ingle Farm,84.21,5281,Salisbury Downs,86.87
+Younghusband Holdings,SA,younghusband holdings,5351,Ingle Farm,82.66,5281,Salisbury Downs,85.15
+Lenswood,SA,lenswood,5351,Ingle Farm,19.17,5281,Salisbury Downs,24.04
+Lobethal,SA,lobethal,5351,Ingle Farm,22.58,5281,Salisbury Downs,27.03
+Balhannah,SA,balhannah,5351,Ingle Farm,24.82,5281,Salisbury Downs,30.35
+Oakbank,SA,oakbank,5351,Ingle Farm,25.09,5281,Salisbury Downs,30.41
+Charleston,SA,charleston,5351,Ingle Farm,25.41,5281,Salisbury Downs,29.76
+Harrogate,SA,harrogate,5351,Ingle Farm,36.15,5281,Salisbury Downs,40.31
+Inverbrackie,SA,inverbrackie,5351,Ingle Farm,27.23,5281,Salisbury Downs,32.28
+Mount Torrens,SA,mount torrens,5351,Ingle Farm,29.12,5281,Salisbury Downs,32.49
+Woodside,SA,woodside,5351,Ingle Farm,25.3,5281,Salisbury Downs,30.23
+Hahndorf,SA,hahndorf,5351,Ingle Farm,27.03,5281,Salisbury Downs,32.79
+Paechtown,SA,paechtown,5351,Ingle Farm,30.17,5281,Salisbury Downs,35.98
+Verdun,SA,verdun,5351,Ingle Farm,24.52,5281,Salisbury Downs,30.29
+Blakiston,SA,blakiston,5351,Ingle Farm,33.24,5281,Salisbury Downs,38.8
+Littlehampton,SA,littlehampton,5351,Ingle Farm,31.35,5281,Salisbury Downs,36.94
+Totness,SA,totness,5351,Ingle Farm,30.48,5281,Salisbury Downs,36.22
+Bugle Ranges,SA,bugle ranges,5351,Ingle Farm,38.4,5281,Salisbury Downs,44.23
+Mount Barker,SA,mount barker,5351,Ingle Farm,34.86,5281,Salisbury Downs,40.58
+Mount Barker Junction,SA,mount barker junction,5351,Ingle Farm,30.26,5281,Salisbury Downs,35.77
+Mount Barker Springs,SA,mount barker springs,5351,Ingle Farm,38.4,5281,Salisbury Downs,43.98
+Mount Barker Summit,SA,mount barker summit,5351,Ingle Farm,37.06,5281,Salisbury Downs,42.52
+Wistow,SA,wistow,5351,Ingle Farm,40.61,5281,Salisbury Downs,46.28
+Brukunga,SA,brukunga,5351,Ingle Farm,33.55,5281,Salisbury Downs,38.55
+Dawesley,SA,dawesley,5351,Ingle Farm,36.21,5281,Salisbury Downs,41.47
+Hay Valley,SA,hay valley,5351,Ingle Farm,30.99,5281,Salisbury Downs,36.28
+Kanmantoo,SA,kanmantoo,5351,Ingle Farm,43.07,5281,Salisbury Downs,48.21
+Nairne,SA,nairne,5351,Ingle Farm,33.13,5281,Salisbury Downs,38.49
+Petwood,SA,petwood,5351,Ingle Farm,33.55,5281,Salisbury Downs,38.55
+St Ives,SA,st ives,5351,Ingle Farm,44.33,5281,Salisbury Downs,49.74
+Avoca Dell,SA,avoca dell,5351,Ingle Farm,67.47,5281,Salisbury Downs,71.78
+Brinkley,SA,brinkley,5351,Ingle Farm,72.47,5281,Salisbury Downs,77.37
+Burdett,SA,burdett,5351,Ingle Farm,75.58,5281,Salisbury Downs,79.35
+Chapman Bore,SA,chapman bore,5351,Ingle Farm,88.44,5281,Salisbury Downs,92.4
+Ettrick,SA,ettrick,5351,Ingle Farm,82.79,5281,Salisbury Downs,86.07
+Gifford Hill,SA,gifford hill,5351,Ingle Farm,63.98,5281,Salisbury Downs,68.86
+Greenbanks,SA,greenbanks,5351,Ingle Farm,69.04,5281,Salisbury Downs,73.05
+Long Flat,SA,long flat,5351,Ingle Farm,69.42,5281,Salisbury Downs,73.94
+Mobilong,SA,mobilong,5351,Ingle Farm,65.21,5281,Salisbury Downs,69.67
+Monteith,SA,monteith,5351,Ingle Farm,73.18,5281,Salisbury Downs,77.86
+Murrawong,SA,murrawong,5351,Ingle Farm,67.63,5281,Salisbury Downs,71.67
+Murray Bridge,SA,murray bridge,5351,Ingle Farm,66.0,5281,Salisbury Downs,70.65
+Murray Bridge East,SA,murray bridge east,5351,Ingle Farm,70.98,5281,Salisbury Downs,75.45
+Murray Bridge North,SA,murray bridge north,5351,Ingle Farm,63.42,5281,Salisbury Downs,67.88
+Murray Bridge South,SA,murray bridge south,5351,Ingle Farm,68.35,5281,Salisbury Downs,73.1
+Northern Heights,SA,northern heights,5351,Ingle Farm,64.16,5281,Salisbury Downs,68.67
+Riverglades,SA,riverglades,5351,Ingle Farm,67.08,5281,Salisbury Downs,71.45
+Riverglen,SA,riverglen,5351,Ingle Farm,71.38,5281,Salisbury Downs,76.1
+Rocky Gully,SA,rocky gully,5351,Ingle Farm,63.34,5281,Salisbury Downs,67.91
+Sunnyside,SA,sunnyside,5351,Ingle Farm,70.47,5281,Salisbury Downs,74.41
+Swanport,SA,swanport,5351,Ingle Farm,70.58,5281,Salisbury Downs,75.23
+Toora,SA,toora,5351,Ingle Farm,66.21,5281,Salisbury Downs,70.38
+White Hill,SA,white hill,5351,Ingle Farm,62.86,5281,Salisbury Downs,67.68
+White Sands,SA,white sands,5351,Ingle Farm,73.18,5281,Salisbury Downs,78.0
+Willow Banks,SA,willow banks,5351,Ingle Farm,68.81,5281,Salisbury Downs,72.83
+Woods Point,SA,woods point,5351,Ingle Farm,79.38,5281,Salisbury Downs,84.17
+Buccleuch,SA,buccleuch,5351,Ingle Farm,52.82,5281,Salisbury Downs,57.21
+Callington,SA,callington,5351,Ingle Farm,49.21,5281,Salisbury Downs,54.43
+Caloote,SA,caloote,5351,Ingle Farm,57.67,5281,Salisbury Downs,61.14
+Monarto,SA,monarto,5351,Ingle Farm,49.57,5281,Salisbury Downs,54.47
+Monarto South,SA,monarto south,5351,Ingle Farm,60.4,5281,Salisbury Downs,65.78
+Mypolonga,SA,mypolonga,5351,Ingle Farm,65.41,5281,Salisbury Downs,69.33
+Pallamana,SA,pallamana,5351,Ingle Farm,56.16,5281,Salisbury Downs,60.82
+Rockleigh,SA,rockleigh,5351,Ingle Farm,37.67,5281,Salisbury Downs,41.8
+Tepko,SA,tepko,5351,Ingle Farm,53.6,5281,Salisbury Downs,57.37
+The Point,SA,the point,5351,Ingle Farm,79.38,5281,Salisbury Downs,84.17
+Wall Flat,SA,wall flat,5351,Ingle Farm,61.77,5281,Salisbury Downs,65.27
+Zadows Landing,SA,zadows landing,5351,Ingle Farm,61.37,5281,Salisbury Downs,64.89
+Angas Plains,SA,angas plains,5351,Ingle Farm,65.75,5281,Salisbury Downs,71.6
+Belvidere,SA,belvidere,5351,Ingle Farm,58.41,5281,Salisbury Downs,64.26
+Bletchley,SA,bletchley,5351,Ingle Farm,56.62,5281,Salisbury Downs,62.36
+Finniss,SA,finniss,5351,Ingle Farm,67.14,5281,Salisbury Downs,73.04
+Gemmells,SA,gemmells,5351,Ingle Farm,45.54,5281,Salisbury Downs,51.34
+Hartley,SA,hartley,5351,Ingle Farm,52.52,5281,Salisbury Downs,58.11
+Highland Valley,SA,highland valley,5351,Ingle Farm,45.72,5281,Salisbury Downs,51.48
+Lake Plains,SA,lake plains,5351,Ingle Farm,69.73,5281,Salisbury Downs,75.54
+Langhorne Creek,SA,langhorne creek,5351,Ingle Farm,63.59,5281,Salisbury Downs,69.32
+Mount Observation,SA,mount observation,5351,Ingle Farm,59.61,5281,Salisbury Downs,65.45
+Mulgundawa,SA,mulgundawa,5351,Ingle Farm,70.62,5281,Salisbury Downs,76.09
+Nalpa,SA,nalpa,5351,Ingle Farm,84.67,5281,Salisbury Downs,90.01
+Red Creek,SA,red creek,5351,Ingle Farm,47.05,5281,Salisbury Downs,52.66
+Salem,SA,salem,5351,Ingle Farm,49.98,5281,Salisbury Downs,55.41
+Sandergrove,SA,sandergrove,5351,Ingle Farm,56.66,5281,Salisbury Downs,62.57
+Strathalbyn,SA,strathalbyn,5351,Ingle Farm,52.75,5281,Salisbury Downs,58.63
+Tooperang,SA,tooperang,5351,Ingle Farm,61.69,5281,Salisbury Downs,67.46
+Willyaroo,SA,willyaroo,5351,Ingle Farm,56.52,5281,Salisbury Downs,62.39
+Woodchester,SA,woodchester,5351,Ingle Farm,50.73,5281,Salisbury Downs,56.52
+Clayton,SA,clayton,5351,Ingle Farm,78.18,5281,Salisbury Downs,84.09
+Clayton Bay,SA,clayton bay,5351,Ingle Farm,78.17,5281,Salisbury Downs,84.09
+Milang,SA,milang,5351,Ingle Farm,71.04,5281,Salisbury Downs,76.93
+Nurragi,SA,nurragi,5351,Ingle Farm,63.62,5281,Salisbury Downs,69.53
+Point Sturt,SA,point sturt,5351,Ingle Farm,78.4,5281,Salisbury Downs,84.31
+Tolderol,SA,tolderol,5351,Ingle Farm,73.22,5281,Salisbury Downs,78.98
+East Wellington,SA,east wellington,5351,Ingle Farm,90.48,5281,Salisbury Downs,95.65
+Jervois,SA,jervois,5351,Ingle Farm,83.52,5281,Salisbury Downs,88.33
+KEPA,SA,kepa,5351,Ingle Farm,82.96,5281,Salisbury Downs,87.33
+Lake Alexandrina,SA,lake alexandrina,5351,Ingle Farm,79.75,5281,Salisbury Downs,85.57
+Narrung,SA,narrung,5351,Ingle Farm,92.43,5281,Salisbury Downs,98.34
+Naturi,SA,naturi,5351,Ingle Farm,95.2,5281,Salisbury Downs,99.46
+Point Mcleay,SA,point mcleay,5351,Ingle Farm,87.91,5281,Salisbury Downs,93.72
+Poltalloch,SA,poltalloch,5351,Ingle Farm,93.2,5281,Salisbury Downs,98.83
+Raukkan,SA,raukkan,5351,Ingle Farm,87.91,5281,Salisbury Downs,93.72
+Tailem Bend,SA,tailem bend,5351,Ingle Farm,87.92,5281,Salisbury Downs,92.65
+Wellington,SA,wellington,5351,Ingle Farm,85.33,5281,Salisbury Downs,90.33
+Wellington East,SA,wellington east,5351,Ingle Farm,90.48,5281,Salisbury Downs,95.65
+Bayah,SA,bayah,5351,Ingle Farm,95.07,5281,Salisbury Downs,99.89
+Rosedale,SA,rosedale,5281,Salisbury Downs,31.87,5351,Ingle Farm,35.32
+Sandy Creek,SA,sandy creek,5281,Salisbury Downs,27.34,5351,Ingle Farm,30.5
+Altona,SA,altona,5281,Salisbury Downs,32.65,5351,Ingle Farm,34.83
+Barossa Goldfields,SA,barossa goldfields,5281,Salisbury Downs,22.35,5351,Ingle Farm,24.68
+Cockatoo Valley,SA,cockatoo valley,5281,Salisbury Downs,24.75,5351,Ingle Farm,27.38
+Lyndoch,SA,lyndoch,5281,Salisbury Downs,30.38,5351,Ingle Farm,32.81
+Mount Crawford,SA,mount crawford,5351,Ingle Farm,32.57,5281,Salisbury Downs,32.9
+Pewsey Vale,SA,pewsey vale,5281,Salisbury Downs,35.98,5351,Ingle Farm,37.0
+Williamstown,SA,williamstown,5281,Salisbury Downs,26.58,5351,Ingle Farm,27.86
+Bethany,SA,bethany,5281,Salisbury Downs,41.44,5351,Ingle Farm,43.67
+Gomersal,SA,gomersal,5281,Salisbury Downs,37.25,5351,Ingle Farm,40.26
+Krondorf,SA,krondorf,5281,Salisbury Downs,40.35,5351,Ingle Farm,42.35
+Rowland Flat,SA,rowland flat,5281,Salisbury Downs,36.65,5351,Ingle Farm,38.93
+Stone Well,SA,stone well,5281,Salisbury Downs,42.98,5351,Ingle Farm,45.92
+Tanunda,SA,tanunda,5281,Salisbury Downs,41.74,5351,Ingle Farm,44.42
+Vine Vale,SA,vine vale,5281,Salisbury Downs,44.6,5351,Ingle Farm,46.97
+Angaston,SA,angaston,5281,Salisbury Downs,49.09,5351,Ingle Farm,51.29
+Black Hill,SA,black hill,5351,Ingle Farm,74.37,5281,Salisbury Downs,75.4
+Cambrai,SA,cambrai,5351,Ingle Farm,64.18,5281,Salisbury Downs,64.76
+Keyneton,SA,keyneton,5281,Salisbury Downs,54.72,5351,Ingle Farm,55.44
+Kongolia,SA,kongolia,5351,Ingle Farm,68.26,5281,Salisbury Downs,68.8
+Langs Landing,SA,langs landing,5351,Ingle Farm,90.17,5281,Salisbury Downs,90.59
+Moculta,SA,moculta,5281,Salisbury Downs,56.19,5351,Ingle Farm,58.29
+Mount Mckenzie,SA,mount mckenzie,5281,Salisbury Downs,48.69,5351,Ingle Farm,49.99
+Penrice,SA,penrice,5281,Salisbury Downs,50.04,5351,Ingle Farm,52.39
+Punyelroo,SA,punyelroo,5351,Ingle Farm,90.7,5281,Salisbury Downs,91.25
+Sedan,SA,sedan,5281,Salisbury Downs,65.4,5351,Ingle Farm,65.63
+Sunnydale,SA,sunnydale,5351,Ingle Farm,92.61,5281,Salisbury Downs,93.51
+Towitta,SA,towitta,5281,Salisbury Downs,62.42,5351,Ingle Farm,63.34
+Fisher,SA,fisher,5281,Salisbury Downs,89.84,5351,Ingle Farm,90.19
+Marks Landing,SA,marks landing,5351,Ingle Farm,90.25,5281,Salisbury Downs,90.6
+Swan Reach,SA,swan reach,5351,Ingle Farm,91.69,5281,Salisbury Downs,91.99
+Daveyston,SA,daveyston,5281,Salisbury Downs,40.45,5351,Ingle Farm,44.22
+Ebenezer,SA,ebenezer,5281,Salisbury Downs,54.31,5351,Ingle Farm,57.4
+Light Pass,SA,light pass,5281,Salisbury Downs,49.71,5351,Ingle Farm,52.35
+Marananga,SA,marananga,5281,Salisbury Downs,42.99,5351,Ingle Farm,46.19
+Moppa,SA,moppa,5281,Salisbury Downs,49.45,5351,Ingle Farm,53.22
+Nuriootpa,SA,nuriootpa,5281,Salisbury Downs,47.78,5351,Ingle Farm,50.7
+Seppeltsfield,SA,seppeltsfield,5281,Salisbury Downs,40.2,5351,Ingle Farm,43.52
+Stockwell,SA,stockwell,5281,Salisbury Downs,54.33,5351,Ingle Farm,57.08
+Annadale,SA,annadale,5281,Salisbury Downs,79.81,5351,Ingle Farm,81.3
+Dutton,SA,dutton,5281,Salisbury Downs,66.14,5351,Ingle Farm,68.84
+Dutton East,SA,dutton east,5281,Salisbury Downs,74.02,5351,Ingle Farm,76.28
+Sandleton,SA,sandleton,5281,Salisbury Downs,78.36,5351,Ingle Farm,79.3
+St Kitts,SA,st kitts,5281,Salisbury Downs,64.37,5351,Ingle Farm,67.51
+Steinfeld,SA,steinfeld,5281,Salisbury Downs,73.57,5351,Ingle Farm,75.47
+Truro,SA,truro,5281,Salisbury Downs,61.3,5351,Ingle Farm,63.76
+Moorundie,SA,moorundie,5281,Salisbury Downs,87.35,5351,Ingle Farm,87.86
+Greenock,SA,greenock,5281,Salisbury Downs,44.62,5351,Ingle Farm,48.09
+NAIN,SA,nain,5281,Salisbury Downs,45.02,5351,Ingle Farm,48.67
+Morn Hill,SA,morn hill,5281,Salisbury Downs,41.49,5351,Ingle Farm,46.43
+Roseworthy,SA,roseworthy,5281,Salisbury Downs,28.82,5351,Ingle Farm,33.46
+Shea-Oak Log,SA,shea-oak log,5281,Salisbury Downs,36.22,5351,Ingle Farm,40.4
+Templers,SA,templers,5281,Salisbury Downs,35.3,5351,Ingle Farm,40.13
+Freeling,SA,freeling,5281,Salisbury Downs,41.26,5351,Ingle Farm,45.67
+Allendale North,SA,allendale north,5281,Salisbury Downs,60.92,5351,Ingle Farm,65.27
+Bagot Well,SA,bagot well,5281,Salisbury Downs,60.53,5351,Ingle Farm,64.32
+Bethel,SA,bethel,5281,Salisbury Downs,51.37,5351,Ingle Farm,56.03
+Fords,SA,fords,5281,Salisbury Downs,47.66,5351,Ingle Farm,51.91
+Hamilton,SA,hamilton,5281,Salisbury Downs,63.6,5351,Ingle Farm,68.11
+Kapunda,SA,kapunda,5281,Salisbury Downs,55.05,5351,Ingle Farm,59.2
+Koonunga,SA,koonunga,5281,Salisbury Downs,53.96,5351,Ingle Farm,57.34
+St Johns,SA,st johns,5281,Salisbury Downs,53.37,5351,Ingle Farm,57.15
+Australia Plains,SA,australia plains,5281,Salisbury Downs,91.23,5351,Ingle Farm,94.97
+Bower,SA,bower,5281,Salisbury Downs,95.79,5351,Ingle Farm,99.35
+Buchanan,SA,buchanan,5281,Salisbury Downs,71.29,5351,Ingle Farm,75.38
+Eudunda,SA,eudunda,5281,Salisbury Downs,79.4,5351,Ingle Farm,83.26
+Frankton,SA,frankton,5281,Salisbury Downs,74.54,5351,Ingle Farm,77.17
+Hampden,SA,hampden,5281,Salisbury Downs,78.01,5351,Ingle Farm,82.14
+Hansborough,SA,hansborough,5281,Salisbury Downs,71.24,5351,Ingle Farm,74.72
+Julia,SA,julia,5281,Salisbury Downs,80.16,5351,Ingle Farm,84.46
+Neales Flat,SA,neales flat,5281,Salisbury Downs,79.71,5351,Ingle Farm,82.89
+Ngapala,SA,ngapala,5281,Salisbury Downs,86.42,5351,Ingle Farm,90.91
+Peep Hill,SA,peep hill,5281,Salisbury Downs,84.81,5351,Ingle Farm,88.39
+Point Pass,SA,point pass,5281,Salisbury Downs,86.89,5351,Ingle Farm,91.02
+Sutherlands,SA,sutherlands,5281,Salisbury Downs,87.82,5351,Ingle Farm,91.12
+Magdala,SA,magdala,5281,Salisbury Downs,40.75,5351,Ingle Farm,45.96
+Pinkerton Plains,SA,pinkerton plains,5281,Salisbury Downs,39.98,5351,Ingle Farm,45.61
+Wasleys,SA,wasleys,5281,Salisbury Downs,33.23,5351,Ingle Farm,38.53
+Woolsheds,SA,woolsheds,5281,Salisbury Downs,31.07,5351,Ingle Farm,36.68
+ALMA,SA,alma,5281,Salisbury Downs,58.61,5351,Ingle Farm,64.24
+Hamley Bridge,SA,hamley bridge,5281,Salisbury Downs,44.77,5351,Ingle Farm,50.26
+Salter Springs,SA,salter springs,5281,Salisbury Downs,65.23,5351,Ingle Farm,70.88
+Linwood,SA,linwood,5281,Salisbury Downs,43.44,5351,Ingle Farm,48.59
+Stockport,SA,stockport,5281,Salisbury Downs,49.84,5351,Ingle Farm,55.03
+Giles Corner,SA,giles corner,5281,Salisbury Downs,61.83,5351,Ingle Farm,67.17
+Tarlee,SA,tarlee,5281,Salisbury Downs,57.64,5351,Ingle Farm,62.74
+Navan,SA,navan,5281,Salisbury Downs,70.4,5351,Ingle Farm,75.7
+Rhynie,SA,rhynie,5281,Salisbury Downs,70.45,5351,Ingle Farm,75.92
+Riverton,SA,riverton,5281,Salisbury Downs,68.69,5351,Ingle Farm,73.9
+Woolshed Flat,SA,woolshed flat,5281,Salisbury Downs,72.73,5351,Ingle Farm,78.32
+Marrabel,SA,marrabel,5281,Salisbury Downs,74.18,5351,Ingle Farm,78.99
+Saddleworth,SA,saddleworth,5281,Salisbury Downs,78.01,5351,Ingle Farm,83.21
+Steelton,SA,steelton,5281,Salisbury Downs,82.7,5351,Ingle Farm,87.59
+Tarnma,SA,tarnma,5281,Salisbury Downs,73.63,5351,Ingle Farm,78.12
+Tothill Belt,SA,tothill belt,5281,Salisbury Downs,89.88,5351,Ingle Farm,94.65
+Tothill Creek,SA,tothill creek,5281,Salisbury Downs,81.55,5351,Ingle Farm,86.28
+Waterloo,SA,waterloo,5281,Salisbury Downs,89.6,5351,Ingle Farm,94.57
+Manoora,SA,manoora,5281,Salisbury Downs,88.39,5351,Ingle Farm,93.53
+Mintaro,SA,mintaro,5281,Salisbury Downs,94.59,5351,Ingle Farm,99.96
+Auburn,SA,auburn,5281,Salisbury Downs,83.07,5351,Ingle Farm,88.56
+Undalya,SA,undalya,5281,Salisbury Downs,77.98,5351,Ingle Farm,83.44
+Leasingham,SA,leasingham,5281,Salisbury Downs,88.14,5351,Ingle Farm,93.74
+Watervale,SA,watervale,5281,Salisbury Downs,89.98,5351,Ingle Farm,95.56
+Hoyleton,SA,hoyleton,5281,Salisbury Downs,86.45,5351,Ingle Farm,92.22
+Barabba,SA,barabba,5281,Salisbury Downs,43.32,5351,Ingle Farm,49.05
+OWEN,SA,owen,5281,Salisbury Downs,56.17,5351,Ingle Farm,61.98
+Pinery,SA,pinery,5281,Salisbury Downs,55.37,5351,Ingle Farm,61.29
+Stockyard Creek,SA,stockyard creek,5281,Salisbury Downs,51.91,5351,Ingle Farm,57.61
+Balaklava,SA,balaklava,5281,Salisbury Downs,72.16,5351,Ingle Farm,78.06
+Bowillia,SA,bowillia,5281,Salisbury Downs,93.86,5351,Ingle Farm,99.75
+Dalkey,SA,dalkey,5281,Salisbury Downs,67.59,5351,Ingle Farm,73.5
+Erith,SA,erith,5281,Salisbury Downs,63.47,5351,Ingle Farm,69.38
+Goyder,SA,goyder,5281,Salisbury Downs,83.46,5351,Ingle Farm,89.36
+Halbury,SA,halbury,5281,Salisbury Downs,77.28,5351,Ingle Farm,83.07
+Hoskin Corner,SA,hoskin corner,5281,Salisbury Downs,64.86,5351,Ingle Farm,70.75
+Mount Templeton,SA,mount templeton,5281,Salisbury Downs,87.87,5351,Ingle Farm,93.78
+Saints,SA,saints,5281,Salisbury Downs,73.54,5351,Ingle Farm,79.45
+STOW,SA,stow,5281,Salisbury Downs,87.56,5351,Ingle Farm,93.45
+Watchman,SA,watchman,5281,Salisbury Downs,81.27,5351,Ingle Farm,87.15
+Whitwarta,SA,whitwarta,5281,Salisbury Downs,79.44,5351,Ingle Farm,85.35
+AVON,SA,avon,5281,Salisbury Downs,58.92,5351,Ingle Farm,64.82
+Calomba,SA,calomba,5281,Salisbury Downs,46.33,5351,Ingle Farm,52.23
+Dublin,SA,dublin,5281,Salisbury Downs,38.14,5351,Ingle Farm,43.98
+Lewiston,SA,lewiston,5281,Salisbury Downs,18.95,5351,Ingle Farm,24.81
+Long Plains,SA,long plains,5281,Salisbury Downs,51.5,5351,Ingle Farm,57.37
+Lower Light,SA,lower light,5281,Salisbury Downs,29.43,5351,Ingle Farm,35.22
+Middle Beach,SA,middle beach,5281,Salisbury Downs,25.14,5351,Ingle Farm,30.94
+Parham,SA,parham,5281,Salisbury Downs,51.34,5351,Ingle Farm,56.85
+Port Gawler,SA,port gawler,5281,Salisbury Downs,19.52,5351,Ingle Farm,25.01
+Thompson Beach,SA,thompson beach,5281,Salisbury Downs,44.85,5351,Ingle Farm,50.23
+Two Wells,SA,two wells,5281,Salisbury Downs,23.27,5351,Ingle Farm,29.15
+Webb Beach,SA,webb beach,5281,Salisbury Downs,49.36,5351,Ingle Farm,54.83
+Wild Horse Plains,SA,wild horse plains,5281,Salisbury Downs,55.81,5351,Ingle Farm,61.59
+Windsor,SA,windsor,5281,Salisbury Downs,50.33,5351,Ingle Farm,56.07
+Fischer,SA,fischer,5281,Salisbury Downs,30.26,5351,Ingle Farm,35.92
+Grace Plains,SA,grace plains,5281,Salisbury Downs,46.84,5351,Ingle Farm,52.73
+Korunye,SA,korunye,5281,Salisbury Downs,27.59,5351,Ingle Farm,33.46
+Mallala,SA,mallala,5281,Salisbury Downs,38.74,5351,Ingle Farm,44.66
+Redbanks,SA,redbanks,5281,Salisbury Downs,31.38,5351,Ingle Farm,37.27
+Reeves Plains,SA,reeves plains,5281,Salisbury Downs,27.7,5351,Ingle Farm,33.42
+Beaufort,SA,beaufort,5281,Salisbury Downs,84.09,5351,Ingle Farm,89.92
+Bowmans,SA,bowmans,5281,Salisbury Downs,74.15,5351,Ingle Farm,80.04
+Inkerman,SA,inkerman,5281,Salisbury Downs,64.05,5351,Ingle Farm,69.83
+Kallora,SA,kallora,5281,Salisbury Downs,68.21,5351,Ingle Farm,74.09
+Nantawarra,SA,nantawarra,5281,Salisbury Downs,92.52,5351,Ingle Farm,98.42
+Port Wakefield,SA,port wakefield,5281,Salisbury Downs,78.68,5351,Ingle Farm,84.41
+Proof Range,SA,proof range,5281,Salisbury Downs,67.73,5351,Ingle Farm,73.43
+Port Arthur,SA,port arthur,5281,Salisbury Downs,88.37,5351,Ingle Farm,94.07
+Dowlingville,SA,dowlingville,5281,Salisbury Downs,80.85,5351,Ingle Farm,85.99
+Winulta,SA,winulta,5281,Salisbury Downs,83.22,5351,Ingle Farm,88.43
+Clinton,SA,clinton,5281,Salisbury Downs,82.56,5351,Ingle Farm,88.02
+Clinton Centre,SA,clinton centre,5281,Salisbury Downs,88.17,5351,Ingle Farm,93.4
+Port Clinton,SA,port clinton,5281,Salisbury Downs,82.56,5351,Ingle Farm,88.02
+Price,SA,price,5281,Salisbury Downs,79.11,5351,Ingle Farm,84.37
+Ardrossan,SA,ardrossan,5281,Salisbury Downs,75.74,5351,Ingle Farm,80.36
+Black Point,SA,black point,5281,Salisbury Downs,70.7,5351,Ingle Farm,74.12
+Cunningham,SA,cunningham,5281,Salisbury Downs,85.17,5351,Ingle Farm,89.58
+James Well,SA,james well,5281,Salisbury Downs,73.78,5351,Ingle Farm,78.01
+Petersville,SA,petersville,5281,Salisbury Downs,85.66,5351,Ingle Farm,90.13
+Pine Point,SA,pine point,5281,Salisbury Downs,71.67,5351,Ingle Farm,75.38
+Rogues Point,SA,rogues point,5281,Salisbury Downs,73.54,5351,Ingle Farm,77.72
+Sandilands,SA,sandilands,5281,Salisbury Downs,73.87,5351,Ingle Farm,78.09
+Tiddy Widdy Beach,SA,tiddy widdy beach,5281,Salisbury Downs,74.95,5351,Ingle Farm,79.68
+Wauraltee,SA,wauraltee,5281,Salisbury Downs,96.83,5351,Ingle Farm,99.81
+Yorke Valley,SA,yorke valley,5281,Salisbury Downs,93.2,5351,Ingle Farm,97.09
+Minlaton,SA,minlaton,5281,Salisbury Downs,94.04,5351,Ingle Farm,96.09
+Port Julia,SA,port julia,5281,Salisbury Downs,69.31,5351,Ingle Farm,72.35
+Ramsay,SA,ramsay,5281,Salisbury Downs,82.87,5351,Ingle Farm,84.01
+Wool Bay,SA,wool bay,5281,Salisbury Downs,83.11,5351,Ingle Farm,83.44
+Honiton,SA,honiton,5351,Ingle Farm,99.2,5281,Salisbury Downs,99.36
+Yorketown,SA,yorketown,5281,Salisbury Downs,97.57,5351,Ingle Farm,97.98
+Curramulka,SA,curramulka,5281,Salisbury Downs,83.97,5351,Ingle Farm,86.57
+Port Vincent,SA,port vincent,5281,Salisbury Downs,70.37,5351,Ingle Farm,72.39
+Sheaoak Flat,SA,sheaoak flat,5281,Salisbury Downs,69.74,5351,Ingle Farm,72.48
+Port Giles,SA,port giles,5281,Salisbury Downs,83.48,5351,Ingle Farm,83.6
+Stansbury,SA,stansbury,5281,Salisbury Downs,78.81,5351,Ingle Farm,79.95
+Coobowie,SA,coobowie,5281,Salisbury Downs,87.1,5351,Ingle Farm,87.13
+Edithburgh,SA,edithburgh,5351,Ingle Farm,87.48,5281,Salisbury Downs,87.77
+Sultana Point,SA,sultana point,5351,Ingle Farm,87.06,5281,Salisbury Downs,87.59
+Adelaide Airport,SA,adelaide airport,5351,Ingle Farm,17.6,5281,Salisbury Downs,21.32
+Export Park,SA,export park,5351,Ingle Farm,15.71,5281,Salisbury Downs,19.62

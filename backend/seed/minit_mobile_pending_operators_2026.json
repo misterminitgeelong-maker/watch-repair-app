@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generated": "2026-08-08",
+  "operators": [
+    {
+      "anchor_shop_no": "3269",
+      "mv_shop_no": "3904",
+      "operator_label": "Chadstone",
+      "state_code": "VIC",
+      "hub_locality": "Chadstone",
+      "lat": -37.8819831,
+      "lng": 145.0989646,
+      "suburb_count": 313,
+      "dispatch_phone": null,
+      "dispatch_email": null,
+      "status": "NEEDS_CONTACT_INFO",
+      "notes": "Confirmed real shop in TSS Dec25 export and Mister Minit's authoritative mobile-van-suburb-territories.csv, but no operator contact card on file. Add dispatch_phone/dispatch_email to minit_mobile_operators_2026.json once known, then re-run scripts/generate_mobile_territory_routes.py."
+    },
+    {
+      "anchor_shop_no": "6479",
+      "mv_shop_no": "6903",
+      "operator_label": "Belmont",
+      "state_code": "WA",
+      "hub_locality": "Cloverdale",
+      "lat": -31.9624535,
+      "lng": 115.9447259,
+      "suburb_count": 235,
+      "dispatch_phone": null,
+      "dispatch_email": null,
+      "status": "NEEDS_CONTACT_INFO",
+      "notes": "Confirmed real shop in TSS Dec25 export and Mister Minit's authoritative mobile-van-suburb-territories.csv, but no operator contact card on file. Add dispatch_phone/dispatch_email to minit_mobile_operators_2026.json once known, then re-run scripts/generate_mobile_territory_routes.py."
+    },
+    {
+      "anchor_shop_no": "2361",
+      "mv_shop_no": "2915",
+      "operator_label": "Glendale",
+      "state_code": "NSW",
+      "hub_locality": "Glendale",
+      "lat": -32.9267174,
+      "lng": 151.6508831,
+      "suburb_count": 78,
+      "dispatch_phone": null,
+      "dispatch_email": null,
+      "status": "NEEDS_CONTACT_INFO",
+      "notes": "Confirmed real shop in TSS Dec25 export and Mister Minit's authoritative mobile-van-suburb-territories.csv, but no operator contact card on file. Add dispatch_phone/dispatch_email to minit_mobile_operators_2026.json once known, then re-run scripts/generate_mobile_territory_routes.py."
+    },
+    {
+      "anchor_shop_no": "2381",
+      "mv_shop_no": "2911",
+      "operator_label": "Bathurst",
+      "state_code": "NSW",
+      "hub_locality": "Bathurst",
+      "lat": -33.4192822,
+      "lng": 149.5775008,
+      "suburb_count": 46,
+      "dispatch_phone": null,
+      "dispatch_email": null,
+      "status": "NEEDS_CONTACT_INFO",
+      "notes": "Confirmed real shop in TSS Dec25 export and Mister Minit's authoritative mobile-van-suburb-territories.csv, but no operator contact card on file. Add dispatch_phone/dispatch_email to minit_mobile_operators_2026.json once known, then re-run scripts/generate_mobile_territory_routes.py."
+    }
+  ]
+}

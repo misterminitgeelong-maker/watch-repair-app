@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "source": "Mobile Services Franchisees 2026.docx (matched to TSS Dec25)",
+  "version": 2,
+  "source": "Mobile Services Franchisees 2026.docx (matched to TSS Dec25); 3 shop-number corrections on 2026-08-08 against Mister Minit's authoritative mobile-van-suburb-territories.csv. Chadstone (3269), Belmont (6479), Glendale (2361), Bathurst (2381) are real vans confirmed present in the authoritative CSV and TSS export but still have NO dispatch phone/email on file — not seeded here yet; see backend/seed/minit_mobile_pending_operators_2026.json.",
   "operators": [
     {
       "shop_number": "6441",
@@ -61,12 +61,12 @@
       "match_notes": "TSS tags QLD SOUTH — verify region"
     },
     {
-      "shop_number": "4265",
+      "shop_number": "4188",
       "operator_label": "Maroochydore",
       "dispatch_phone": "0401709953",
       "dispatch_email": "maroochydore@mmms.au",
-      "match_confidence": "inferred",
-      "match_notes": "TSS shop name: Kawana"
+      "match_confidence": "high",
+      "match_notes": "Corrected 2026-08-08: was wrongly seeded as 4265 (TSS 'Kawana'); authoritative mobile-van-suburb-territories.csv confirms anchor shop is 4188 (TSS 'Sunshine 2')."
     },
     {
       "shop_number": "4277",
@@ -91,12 +91,12 @@
       "match_notes": "TSS shop name: Riverside"
     },
     {
-      "shop_number": "5281",
+      "shop_number": "5414",
       "operator_label": "Salisbury Downs",
       "dispatch_phone": "0404744648",
       "dispatch_email": "salisbury@mmms.au",
-      "match_confidence": "low",
-      "match_notes": "TSS shop name: Northpark"
+      "match_confidence": "high",
+      "match_notes": "Corrected 2026-08-08: was wrongly seeded as 5281 (TSS 'Northpark'); authoritative mobile-van-suburb-territories.csv confirms anchor shop is 5414 (TSS 'Hollywood Plaza')."
     },
     {
       "shop_number": "4064",
@@ -120,12 +120,12 @@
       "match_confidence": "high"
     },
     {
-      "shop_number": "4447",
+      "shop_number": "4299",
       "operator_label": "Cairns",
       "dispatch_phone": "0401822807",
       "dispatch_email": "smithfield@mmms.au",
       "match_confidence": "high",
-      "match_notes": "TSS shop name: Cairns Central"
+      "match_notes": "Corrected 2026-08-08: was wrongly seeded as 4447 (TSS 'Cairns Central', a separate retail-only shop with no mobile van per the authoritative CSV); anchor shop is 4299 (TSS 'Smithfield')."
     },
     {
       "shop_number": "8142",
