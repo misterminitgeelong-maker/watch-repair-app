@@ -420,6 +420,23 @@ class ParentMobileJobsReport(SQLModel):
     total_count: int
     jobs: list[ParentMobileJobNetworkRead] = Field(default_factory=list)
 
+class ShopEmailLeadBucket(SQLModel):
+    """Email-lead volume for one operator (or an unmatched/no-fields bucket)."""
+    operator_tenant_id: Optional[UUID] = None
+    operator_name: str
+    total_count: int = 0
+    new_count: int = 0
+    processed_count: int = 0
+    dismissed_count: int = 0
+    #: Oldest still-"new" email in this bucket — how stale the backlog is.
+    oldest_new_at: Optional[datetime] = None
+
+class ParentEmailLeadsByShopReport(SQLModel):
+    from_date: Optional[datetime] = None
+    to_date: Optional[datetime] = None
+    total_emails: int
+    shops: list[ShopEmailLeadBucket] = Field(default_factory=list)
+
 class ParentTroubleshootingItem(SQLModel):
     kind: str
     severity: str

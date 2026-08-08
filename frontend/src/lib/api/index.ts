@@ -360,6 +360,24 @@ export const getParentMobileJobsReport = (params?: {
   limit?: number
 }) => api.get<ParentMobileJobsReport>('/parent-accounts/me/operations/mobile-jobs', { params })
 
+export interface ShopEmailLeadBucket {
+  operator_tenant_id?: string | null
+  operator_name: string
+  total_count: number
+  new_count: number
+  processed_count: number
+  dismissed_count: number
+  oldest_new_at?: string | null
+}
+export interface ParentEmailLeadsByShopReport {
+  from_date?: string | null
+  to_date?: string | null
+  total_emails: number
+  shops: ShopEmailLeadBucket[]
+}
+export const getParentEmailLeadsByShopReport = (params?: { from_date?: string; to_date?: string }) =>
+  api.get<ParentEmailLeadsByShopReport>('/parent-accounts/me/operations/email-leads-by-shop', { params })
+
 export const getParentTroubleshooting = (limit = 50) =>
   api.get<{ items: ParentTroubleshootingItem[] }>('/parent-accounts/me/operations/troubleshooting', {
     params: { limit },

@@ -20,11 +20,14 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..minit_email_lead_parser import match_operator_for_lead, parse_powerfulform_body
 from ..minit_shops import tenant_slug_for_shop
 from ..models import (
     AutoKeyJob,
+    InboundEmail,
     ParentAccount,
     ParentDashboardBookingSnippet,
+    ParentEmailLeadsByShopReport,
     ParentMobileJobNetworkRead,
     ParentMobileJobsReport,
     ParentOperationsOverview,
@@ -33,6 +36,7 @@ from ..models import (
     ParentShopBookingsReport,
     ParentTroubleshootingItem,
     ParentTroubleshootingResponse,
+    ShopEmailLeadBucket,
     ShopMobileBookingRead,
     ShopMobileBookingRequest,
     Tenant,
@@ -717,6 +721,76 @@ def get_operations_mobile_jobs_report(
         active_count=active_count,
         total_count=len(jobs),
         jobs=jobs,
+    )
+
+
+@router.get("/me/operations/email-leads-by-shop", response_model=ParentEmailLeadsByShopReport)
+def get_email_leads_by_shop_report(
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Email-lead volume grouped by the operator each email names as nearest provider.
+
+    Answers "which shops' enquiries are actually getting actioned" — buckets by
+    match confidence (matched / unmatched name / no fields extracted at all) so a
+    shop with a real backlog isn't hidden inside an "unmatched" catch-all. Parses
+    on the fly (nothing is persisted) — fine at current volume; revisit if the
+    inbox grows into the thousands.
+    """
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+    start, end = _parse_date_range(from_date, to_date)
+
+    query = select(InboundEmail).where(InboundEmail.parent_account_id == parent.id)
+    if start is not None:
+        query = query.where(col(InboundEmail.created_at) >= start)
+    if end is not None:
+        query = query.where(col(InboundEmail.created_at) <= end)
+    emails = session.exec(query).all()
+
+    buckets: dict[str, ShopEmailLeadBucket] = {}
+
+    def _bucket(key: str, tenant_id: UUID | None, name: str) -> ShopEmailLeadBucket:
+        existing = buckets.get(key)
+        if existing:
+            return existing
+        created = ShopEmailLeadBucket(operator_tenant_id=tenant_id, operator_name=name)
+        buckets[key] = created
+        return created
+
+    for email in emails:
+        parsed = parse_powerfulform_body(email.text_body)
+        if not parsed.fields_found:
+            bucket = _bucket("no_fields", None, "No fields extracted (manual review needed)")
+        else:
+            match = match_operator_for_lead(session, parent_id=parent.id, parsed=parsed)
+            if match.tenant:
+                bucket = _bucket(str(match.tenant.id), match.tenant.id, match.tenant.name)
+            else:
+                label = parsed.nearest_provider_clean or "Unmatched operator"
+                bucket = _bucket(f"unmatched:{label}", None, f"{label} (no matching operator)")
+
+        bucket.total_count += 1
+        if email.status == "new":
+            bucket.new_count += 1
+            if bucket.oldest_new_at is None or email.created_at < bucket.oldest_new_at:
+                bucket.oldest_new_at = email.created_at
+        elif email.status == "processed":
+            bucket.processed_count += 1
+        elif email.status == "dismissed":
+            bucket.dismissed_count += 1
+
+    shops = sorted(buckets.values(), key=lambda b: (-b.new_count, b.operator_name.lower()))
+    return ParentEmailLeadsByShopReport(
+        from_date=start,
+        to_date=end,
+        total_emails=len(emails),
+        shops=shops,
     )
 
 

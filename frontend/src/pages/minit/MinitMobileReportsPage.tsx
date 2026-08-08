@@ -1,9 +1,82 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatTenantLabel, getParentMobileJobsReport } from '@/lib/api'
+import { formatTenantLabel, getParentEmailLeadsByShopReport, getParentMobileJobsReport } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { Card, Input, PageHeader, Spinner } from '@/components/ui'
 import { defaultReportFromDate, defaultReportToDate, toIsoEnd, toIsoStart } from './dateRange'
+
+function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['minit-email-leads-by-shop', fromYmd, toYmd],
+    queryFn: () =>
+      getParentEmailLeadsByShopReport({
+        from_date: toIsoStart(fromYmd),
+        to_date: toIsoEnd(toYmd),
+      }).then(r => r.data),
+  })
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>
+        Enquiries by shop
+      </h2>
+      <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+        Email enquiries grouped by the operator each one names — shows which shops' enquiries are
+        actually being turned into jobs and which are still sitting untouched in the Inbox.
+      </p>
+      {isLoading || !data ? (
+        <Spinner />
+      ) : data.shops.length === 0 ? (
+        <Card className="p-4">
+          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No email enquiries in range.</p>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
+                  <th className="text-left px-5 py-2 font-medium">Shop / operator</th>
+                  <th className="text-right px-5 py-2 font-medium">Total</th>
+                  <th className="text-right px-5 py-2 font-medium">Not actioned</th>
+                  <th className="text-right px-5 py-2 font-medium">Job created</th>
+                  <th className="text-right px-5 py-2 font-medium">Dismissed</th>
+                  <th className="text-left px-5 py-2 font-medium">Oldest unactioned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.shops.map(shop => (
+                  <tr
+                    key={`${shop.operator_tenant_id ?? 'none'}-${shop.operator_name}`}
+                    style={{ borderBottom: '1px solid var(--ms-border)' }}
+                  >
+                    <td className="px-5 py-2" style={{ color: 'var(--ms-text)' }}>{shop.operator_name}</td>
+                    <td className="px-5 py-2 text-right tabular-nums">{shop.total_count}</td>
+                    <td
+                      className="px-5 py-2 text-right tabular-nums font-semibold"
+                      style={{ color: shop.new_count > 0 ? '#C96A5A' : 'var(--ms-text-muted)' }}
+                    >
+                      {shop.new_count}
+                    </td>
+                    <td className="px-5 py-2 text-right tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
+                      {shop.processed_count}
+                    </td>
+                    <td className="px-5 py-2 text-right tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
+                      {shop.dismissed_count}
+                    </td>
+                    <td className="px-5 py-2 whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>
+                      {shop.oldest_new_at ? formatDate(shop.oldest_new_at) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </section>
+  )
+}
 
 export default function MinitMobileReportsPage() {
   const [fromYmd, setFromYmd] = useState(defaultReportFromDate)
@@ -32,6 +105,8 @@ export default function MinitMobileReportsPage() {
           <Input label="To" type="date" value={toYmd} onChange={e => setToYmd(e.target.value)} className="w-40" />
         </div>
       </Card>
+
+      <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
 
       {isLoading || !data ? (
         <Spinner />
