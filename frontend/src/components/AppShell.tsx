@@ -956,8 +956,10 @@ export default function AppShell() {
           </button>
         </header>
 
-        {/* pb-16 on mobile to clear the bottom tab bar (56px + safe area) */}
-        <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-20 md:pb-7${tourMode === 'guided' ? ' pb-28' : ''}`}>
+        {/* Bottom padding clears the fixed mobile tab bar, including the iOS
+            safe-area inset, so scrolled-to-bottom content/buttons never sit
+            underneath it. Desktop has no tab bar, so pb-7 is enough there. */}
+        <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-[calc(var(--ms-mobile-bar-h)+1rem)] md:pb-7${tourMode === 'guided' ? ' pb-[calc(var(--ms-mobile-bar-h)+5rem)]' : ''}`}>
           {availableSites.length > 1 && (
             <div className="print-hide mb-4 flex items-center justify-end gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
@@ -1117,6 +1119,7 @@ export default function AppShell() {
             backgroundColor: 'var(--cafe-espresso-2)',
             borderTop: '2px solid var(--ms-accent)',
             boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
           <div className="h-1" style={{ backgroundColor: 'var(--ms-border)' }}>

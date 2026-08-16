@@ -78,7 +78,7 @@ export default function BottomTabBar() {
         <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShowMore(false)}>
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
           <div
-            className="absolute bottom-16 left-0 right-0 mx-3 rounded-2xl overflow-hidden shadow-2xl"
+            className="absolute bottom-[calc(var(--ms-mobile-bar-h)+0.5rem)] left-0 right-0 mx-3 rounded-2xl overflow-hidden shadow-2xl"
             style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -125,7 +125,7 @@ export default function BottomTabBar() {
           backgroundColor: 'var(--ms-surface)',
           borderTop: '1px solid var(--ms-border)',
           paddingBottom: 'env(safe-area-inset-bottom)',
-          height: 'calc(56px + env(safe-area-inset-bottom))',
+          height: 'var(--ms-mobile-bar-h)',
         }}
         aria-label="Primary navigation"
       >

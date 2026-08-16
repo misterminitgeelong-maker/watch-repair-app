@@ -178,7 +178,7 @@ export default function PrintWatchIntakeTicketsPage() {
 
       {/* Mobile print prompt — shown when autoprint=1 and BLE is available */}
       {autoPrint && btSupported && btStatus !== 'printing' && (
-        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-[60] sm:hidden" style={{ backgroundColor: 'var(--ms-surface)', borderTop: '1px solid var(--ms-border)' }}>
+        <div className="print:hidden fixed bottom-0 left-0 right-0 p-4 z-[60] sm:hidden" style={{ backgroundColor: 'var(--ms-surface)', borderTop: '1px solid var(--ms-border)', paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem))' }}>
           {btStatus === 'connected' ? (
             <button
               onClick={printToNiimbot}

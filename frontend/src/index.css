@@ -86,6 +86,12 @@
   --ms-tracking-caps:    0.10em;
   --ms-tracking-wide:    0.18em;
   --ms-tracking-wider:   0.24em;
+
+  /* Mobile bottom tab bar — single source of truth for its total on-screen
+     height (56px content + the iOS home-indicator safe area). Anything
+     fixed/floating above the bar, or scrollable content padded to clear it,
+     should size off this variable so nothing overlaps on notched devices. */
+  --ms-mobile-bar-h:    calc(56px + env(safe-area-inset-bottom));
 }
 
 /* Dark mode — Night Workshop */

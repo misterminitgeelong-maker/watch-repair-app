@@ -104,7 +104,7 @@ export function AdminReturnBanner() {
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-3 text-sm font-medium"
-      style={{ backgroundColor: '#1F3A5F', color: '#E8F0FB' }}
+      style={{ backgroundColor: '#1F3A5F', color: '#E8F0FB', paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom) + 0.25rem))' }}
     >
       <span>
         Viewing as Platform Admin. Session window {returning ? 'ending...' : formatCountdown(remainingMs)}.
