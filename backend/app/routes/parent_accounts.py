@@ -260,9 +260,26 @@ def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
     parent = session.exec(
         select(ParentAccount).where(ParentAccount.owner_email == user.email)
     ).first()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Parent account not found")
-    return parent
+    if parent:
+        return parent
+
+    membership = session.exec(
+        select(ParentAccountMembership).where(ParentAccountMembership.user_id == user.id)
+    ).first()
+    if membership:
+        parent = session.get(ParentAccount, membership.parent_account_id)
+        if parent:
+            return parent
+
+    membership = session.exec(
+        select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == user.tenant_id)
+    ).first()
+    if membership:
+        parent = session.get(ParentAccount, membership.parent_account_id)
+        if parent:
+            return parent
+
+    raise HTTPException(status_code=404, detail="Parent account not found")
 
 
 def _normalize_plan_code(value: str | None) -> str:

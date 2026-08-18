@@ -171,3 +171,30 @@ def test_provision_shop_creates_minit_slug():
     assert res.status_code == 200, res.text
     sites = res.json()["sites"]
     assert any(s["tenant_slug"] == f"minit-{shop_num}" for s in sites)
+
+
+def test_hq_manager_can_read_operations_overview():
+    """HQ staff whose email is not owner_email still resolve the parent account."""
+    suffix = uuid4().hex[:8]
+    ctx = _setup_hq_network(suffix)
+    hq_h = ctx["hq"]
+    manager_email = f"hq-mgr-{suffix}@minit-ops.test"
+
+    created = client.post(
+        "/v1/users",
+        headers=hq_h,
+        json={
+            "email": manager_email,
+            "full_name": "HQ Manager",
+            "password": "pass123456",
+            "role": "manager",
+        },
+    )
+    assert created.status_code == 201, created.text
+
+    manager_token = _login(MINIT_HQ_SLUG, manager_email)
+    overview = client.get(
+        "/v1/parent-accounts/me/operations/overview",
+        headers=_headers(manager_token),
+    )
+    assert overview.status_code == 200, overview.text
