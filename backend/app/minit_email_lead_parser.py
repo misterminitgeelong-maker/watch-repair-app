@@ -182,3 +182,64 @@ def match_operator_for_lead(
             return OperatorMatch(tenant=tenant, confidence="matched_loose")
 
     return OperatorMatch(tenant=None, confidence="unmatched")
+
+
+@dataclass
+class EmailLeadOperatorBucket:
+    """Email-lead volume for one operator (or an unmatched/no-fields bucket)."""
+
+    operator_tenant_id: UUID | None
+    operator_name: str
+    total_count: int = 0
+    new_count: int = 0
+    processed_count: int = 0
+    dismissed_count: int = 0
+    #: Oldest still-"new" email in this bucket — how stale the backlog is.
+    oldest_new_at: object = None  # datetime | None; kept loosely typed to avoid importing datetime here
+
+
+def bucket_email_leads_by_operator(
+    session: Session,
+    *,
+    parent_id: UUID,
+    emails: "list",
+) -> list[EmailLeadOperatorBucket]:
+    """Group already-queried InboundEmail rows by matched operator + status counts.
+
+    Shared by the HTTP "email leads by shop" report and the weekly mobile
+    network report email — kept in one place so both agree on what counts as
+    "matched" vs "unmatched" vs "no fields extracted".
+    """
+    buckets: dict[str, EmailLeadOperatorBucket] = {}
+
+    def _bucket(key: str, tenant_id: UUID | None, name: str) -> EmailLeadOperatorBucket:
+        existing = buckets.get(key)
+        if existing:
+            return existing
+        created = EmailLeadOperatorBucket(operator_tenant_id=tenant_id, operator_name=name)
+        buckets[key] = created
+        return created
+
+    for email in emails:
+        parsed = parse_powerfulform_body(email.text_body)
+        if not parsed.fields_found:
+            bucket = _bucket("no_fields", None, "No fields extracted (manual review needed)")
+        else:
+            match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed)
+            if match.tenant:
+                bucket = _bucket(str(match.tenant.id), match.tenant.id, match.tenant.name)
+            else:
+                label = parsed.nearest_provider_clean or "Unmatched operator"
+                bucket = _bucket(f"unmatched:{label}", None, f"{label} (no matching operator)")
+
+        bucket.total_count += 1
+        if email.status == "new":
+            bucket.new_count += 1
+            if bucket.oldest_new_at is None or email.created_at < bucket.oldest_new_at:
+                bucket.oldest_new_at = email.created_at
+        elif email.status == "processed":
+            bucket.processed_count += 1
+        elif email.status == "dismissed":
+            bucket.dismissed_count += 1
+
+    return sorted(buckets.values(), key=lambda b: (-b.new_count, b.operator_name.lower()))

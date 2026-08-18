@@ -110,6 +110,10 @@ class ParentAccount(SQLModel, table=True):
     mobile_lead_max_operator_offers: int = Field(default=3)
     #: When true, all website leads skip operators and go straight to HQ (testing).
     mobile_lead_force_hq_dispatch: bool = Field(default=False)
+    #: Opt-in: weekly "mobile services network" scorecard email (per-operator jobs/
+    #: sales/enquiry-backlog for the most recently completed week) to owner_email.
+    mobile_weekly_report_opt_in: bool = Field(default=False)
+    last_mobile_weekly_report_sent_at: Optional[datetime] = None
 
 class MobileLeadDispatch(SQLModel, table=True):
     """Website lead offered sequentially to operators; escalates to HQ when exhausted."""

@@ -20,16 +20,20 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
-from ..minit_email_lead_parser import match_operator_for_lead, parse_powerfulform_body
+from ..minit_email_lead_parser import bucket_email_leads_by_operator
 from ..minit_shops import tenant_slug_for_shop
 from ..models import (
     AutoKeyJob,
     InboundEmail,
+    OperatorWeeklyStatsRead,
     ParentAccount,
     ParentDashboardBookingSnippet,
     ParentEmailLeadsByShopReport,
     ParentMobileJobNetworkRead,
     ParentMobileJobsReport,
+    ParentMobileWeeklyReportPreview,
+    ParentMobileWeeklyReportSettingsRead,
+    ParentMobileWeeklyReportSettingsUpdateRequest,
     ParentOperationsOverview,
     ParentRegionDashboardStat,
     ParentShopBookingVolume,
@@ -752,45 +756,127 @@ def get_email_leads_by_shop_report(
     if end is not None:
         query = query.where(col(InboundEmail.created_at) <= end)
     emails = session.exec(query).all()
+    buckets = bucket_email_leads_by_operator(session, parent_id=parent.id, emails=emails)
 
-    buckets: dict[str, ShopEmailLeadBucket] = {}
-
-    def _bucket(key: str, tenant_id: UUID | None, name: str) -> ShopEmailLeadBucket:
-        existing = buckets.get(key)
-        if existing:
-            return existing
-        created = ShopEmailLeadBucket(operator_tenant_id=tenant_id, operator_name=name)
-        buckets[key] = created
-        return created
-
-    for email in emails:
-        parsed = parse_powerfulform_body(email.text_body)
-        if not parsed.fields_found:
-            bucket = _bucket("no_fields", None, "No fields extracted (manual review needed)")
-        else:
-            match = match_operator_for_lead(session, parent_id=parent.id, parsed=parsed)
-            if match.tenant:
-                bucket = _bucket(str(match.tenant.id), match.tenant.id, match.tenant.name)
-            else:
-                label = parsed.nearest_provider_clean or "Unmatched operator"
-                bucket = _bucket(f"unmatched:{label}", None, f"{label} (no matching operator)")
-
-        bucket.total_count += 1
-        if email.status == "new":
-            bucket.new_count += 1
-            if bucket.oldest_new_at is None or email.created_at < bucket.oldest_new_at:
-                bucket.oldest_new_at = email.created_at
-        elif email.status == "processed":
-            bucket.processed_count += 1
-        elif email.status == "dismissed":
-            bucket.dismissed_count += 1
-
-    shops = sorted(buckets.values(), key=lambda b: (-b.new_count, b.operator_name.lower()))
     return ParentEmailLeadsByShopReport(
         from_date=start,
         to_date=end,
         total_emails=len(emails),
-        shops=shops,
+        shops=[
+            ShopEmailLeadBucket(
+                operator_tenant_id=b.operator_tenant_id,
+                operator_name=b.operator_name,
+                total_count=b.total_count,
+                new_count=b.new_count,
+                processed_count=b.processed_count,
+                dismissed_count=b.dismissed_count,
+                oldest_new_at=b.oldest_new_at,
+            )
+            for b in buckets
+        ],
+    )
+
+
+@router.get("/me/operations/mobile-weekly-report", response_model=ParentMobileWeeklyReportPreview)
+def get_mobile_weekly_report_preview(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Preview of the weekly Mobile Services scorecard for the most recently
+    completed week — the same data the opted-in weekly email would contain.
+    Read-only; does not send anything or change opt-in state.
+    """
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+
+    from ..services.mobile_weekly_report import _previous_week_bounds, build_mobile_weekly_report
+
+    today = datetime.now(timezone.utc).date()
+    start_dt, end_dt, _start_ymd, _end_ymd = _previous_week_bounds(today)
+    rows = build_mobile_weekly_report(session, parent=parent, start_dt=start_dt, end_dt=end_dt)
+
+    return ParentMobileWeeklyReportPreview(
+        from_date=start_dt,
+        to_date=end_dt,
+        rows=[
+            OperatorWeeklyStatsRead(
+                operator_tenant_id=r.operator_tenant_id,
+                operator_name=r.operator_name,
+                customers_count=r.customers_count,
+                jobs_count=r.jobs_count,
+                sales_cents=r.sales_cents,
+                prior_week_sales_cents=r.prior_week_sales_cents,
+                prior_week_jobs_count=r.prior_week_jobs_count,
+                enquiries_not_actioned=r.enquiries_not_actioned,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.get("/me/operations/mobile-weekly-report/settings", response_model=ParentMobileWeeklyReportSettingsRead)
+def get_mobile_weekly_report_settings(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+    return ParentMobileWeeklyReportSettingsRead(
+        opt_in=parent.mobile_weekly_report_opt_in,
+        last_sent_at=parent.last_mobile_weekly_report_sent_at,
+    )
+
+
+@router.put("/me/operations/mobile-weekly-report/settings", response_model=ParentMobileWeeklyReportSettingsRead)
+def update_mobile_weekly_report_settings(
+    body: ParentMobileWeeklyReportSettingsUpdateRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Opt this parent account's owner_email in/out of the weekly Mobile Services report email."""
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+    parent.mobile_weekly_report_opt_in = body.opt_in
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return ParentMobileWeeklyReportSettingsRead(
+        opt_in=parent.mobile_weekly_report_opt_in,
+        last_sent_at=parent.last_mobile_weekly_report_sent_at,
+    )
+
+
+@router.post("/me/operations/mobile-weekly-report/send-now", response_model=ParentMobileWeeklyReportSettingsRead)
+def send_mobile_weekly_report_now(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Send this week's Mobile Services report email immediately, regardless of
+    opt-in state or whether one already went out this ISO week — for testing
+    or an ad-hoc resend. Does not change the opt-in setting.
+    """
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+
+    from ..services.mobile_weekly_report import send_weekly_report_for_parent
+
+    send_weekly_report_for_parent(session, parent)
+    session.refresh(parent)
+    return ParentMobileWeeklyReportSettingsRead(
+        opt_in=parent.mobile_weekly_report_opt_in,
+        last_sent_at=parent.last_mobile_weekly_report_sent_at,
     )
 
 

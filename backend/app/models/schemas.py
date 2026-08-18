@@ -437,6 +437,28 @@ class ParentEmailLeadsByShopReport(SQLModel):
     total_emails: int
     shops: list[ShopEmailLeadBucket] = Field(default_factory=list)
 
+class OperatorWeeklyStatsRead(SQLModel):
+    operator_tenant_id: UUID
+    operator_name: str
+    customers_count: int
+    jobs_count: int
+    sales_cents: int
+    prior_week_sales_cents: int
+    prior_week_jobs_count: int
+    enquiries_not_actioned: int
+
+class ParentMobileWeeklyReportPreview(SQLModel):
+    from_date: datetime
+    to_date: datetime
+    rows: list[OperatorWeeklyStatsRead] = Field(default_factory=list)
+
+class ParentMobileWeeklyReportSettingsRead(SQLModel):
+    opt_in: bool
+    last_sent_at: Optional[datetime] = None
+
+class ParentMobileWeeklyReportSettingsUpdateRequest(SQLModel):
+    opt_in: bool
+
 class ParentTroubleshootingItem(SQLModel):
     kind: str
     severity: str

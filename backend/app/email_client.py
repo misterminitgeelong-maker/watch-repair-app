@@ -530,6 +530,85 @@ def send_sales_report_email(
     )
 
 
+def send_mobile_weekly_report_email(
+    *,
+    to_email: str,
+    period_start: str,
+    period_end: str,
+    rows: list[dict],
+    csv_bytes: bytes,
+    csv_filename: str,
+) -> tuple[bool, str | None]:
+    """Send the weekly Mobile Services network scorecard — one row per operator."""
+    if not (to_email or "").strip():
+        return False, None
+    total_sales_cents = sum(int(r.get("sales_cents", 0)) for r in rows)
+    total_jobs = sum(int(r.get("jobs_count", 0)) for r in rows)
+    needs_attention = [r for r in rows if int(r.get("enquiries_not_actioned", 0)) > 0]
+
+    line_items = [
+        {
+            "description": r.get("operator_name", "Operator"),
+            "quantity": r.get("jobs_count", 0),
+            "total_price_cents": r.get("sales_cents", 0),
+        }
+        for r in rows
+    ]
+    lines_plain = "\n".join(
+        f"  • {r.get('operator_name', 'Operator')}: {r.get('jobs_count', 0)} jobs, "
+        f"${r.get('sales_cents', 0) / 100:.2f} sales"
+        + (f" — {r.get('enquiries_not_actioned')} enquiries not actioned" if r.get("enquiries_not_actioned") else "")
+        for r in rows
+    ) or "  No mobile operators to report on."
+    attention_plain = (
+        "\n\nNeeds attention (unactioned email enquiries): "
+        + ", ".join(f"{r.get('operator_name')} ({r.get('enquiries_not_actioned')})" for r in needs_attention)
+        if needs_attention
+        else ""
+    )
+    subject = f"Mobile Services weekly report – {period_start} to {period_end}"
+    body_plain = (
+        f"Hi,\n\n"
+        f"Mobile Services network report for {period_start} to {period_end}:\n\n"
+        f"{lines_plain}\n\n"
+        f"Total: {total_jobs} jobs, ${total_sales_cents / 100:.2f} sales across the network."
+        f"{attention_plain}\n\n"
+        f"Full detail is attached as a CSV.\n\n"
+        f"— Mainspring"
+    )
+    note = "Full detail is attached as a CSV."
+    if needs_attention:
+        note += " " + ", ".join(
+            f"{_html.escape(str(r.get('operator_name')))} has {r.get('enquiries_not_actioned')} enquiries not yet actioned"
+            for r in needs_attention
+        ) + "."
+    body_html = render_transactional_email(
+        title="Mobile Services weekly report",
+        preheader=f"{period_start} to {period_end} · {total_jobs} jobs · ${total_sales_cents / 100:.2f}",
+        greeting="Hi,",
+        intro_html=(
+            f"Here's the <strong>Mobile Services network report</strong> for "
+            f"{_html.escape(period_start)} to {_html.escape(period_end)}."
+        ),
+        shop=ShopInfo(name="Mobile Services Network"),
+        line_items=line_items,
+        total_cents=total_sales_cents,
+        currency="AUD",
+        note_html=note,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mobile Services Network",
+        event="mobile_weekly_report",
+        attachment_bytes=csv_bytes,
+        attachment_filename=csv_filename,
+        attachment_mime_type="text/csv",
+    )
+
+
 def _send_email(
     *,
     to_email: str,

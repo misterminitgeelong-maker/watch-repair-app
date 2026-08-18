@@ -164,6 +164,23 @@ def _sales_report_email_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _mobile_weekly_report_loop() -> None:
+    """Send opted-in Minit HQ "mobile services network" scorecard emails weekly."""
+    report_logger = logging.getLogger("mainspring.mobile_weekly_report")
+    interval_seconds = max(settings.mobile_weekly_report_check_interval_minutes, 1) * 60
+    from .services.mobile_weekly_report import send_due_mobile_weekly_reports
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = send_due_mobile_weekly_reports(session)
+            if summary.get("sent"):
+                report_logger.info("Mobile weekly report emails sent: %s", summary)
+        except Exception:
+            report_logger.exception("Mobile weekly report run failed.")
+        time.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -205,6 +222,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_sales_report_email_loop,
             name="mainspring-sales-report-email",
+            daemon=True,
+        ).start()
+    if settings.mobile_weekly_report_email_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_mobile_weekly_report_loop,
+            name="mainspring-mobile-weekly-report",
             daemon=True,
         ).start()
     yield
