@@ -16,8 +16,13 @@ from ..models import (
     WatchRead,
     WatchUpdate,
 )
+from ..phone_utils import normalize_phone
 
 router = APIRouter(prefix="/v1", tags=["customers", "watches"])
+
+
+def _set_phone_normalized(customer: Customer) -> None:
+    customer.phone_normalized = normalize_phone(customer.phone or "") if customer.phone else None
 
 
 @router.post("/customers", response_model=CustomerRead, status_code=201)
@@ -27,6 +32,7 @@ def create_customer(
     session: Session = Depends(get_session),
 ):
     customer = Customer(tenant_id=auth.tenant_id, **payload.model_dump())
+    _set_phone_normalized(customer)
     session.add(customer)
     session.commit()
     session.refresh(customer)
@@ -88,6 +94,8 @@ def update_customer(
         raise HTTPException(status_code=400, detail="Customer name cannot be empty")
     for field, value in updates.items():
         setattr(customer, field, value)
+    if "phone" in updates:
+        _set_phone_normalized(customer)
     session.add(customer)
     session.commit()
     session.refresh(customer)

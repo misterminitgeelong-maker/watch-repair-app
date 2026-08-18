@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 from pydantic import field_serializer
-from sqlalchemy import CheckConstraint, Index, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, Index, UniqueConstraint, event, text
 from sqlmodel import Field, SQLModel
 from ..datetime_utils import as_utc_for_json
 
@@ -329,9 +329,19 @@ class Customer(SQLModel, table=True):
     full_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
+    phone_normalized: Optional[str] = Field(default=None, index=True, max_length=20)
     address: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@event.listens_for(Customer, "before_insert")
+@event.listens_for(Customer, "before_update")
+def _populate_customer_phone_normalized(_mapper, _connection, target: Customer) -> None:
+    from ..phone_utils import normalize_phone
+
+    target.phone_normalized = normalize_phone(target.phone or "") if target.phone else None
+
 
 class Watch(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)

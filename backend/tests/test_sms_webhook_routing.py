@@ -423,6 +423,57 @@ def test_inbox_alert_without_job_says_no_open_ticket(client: TestClient):
         assert "no open ticket" in event.event_summary
 
 
+def test_inbound_yes_approves_quote_for_tenant_that_texted_last(client: TestClient):
+    """Same phone at two shops: YES must approve the shop that last texted the customer."""
+    from app.models import Quote
+
+    from_phone, stored_phone = _phone_pair(10)
+    headers_a, tenant_a = _bootstrap_tenant(client, suffix=f"a{uuid4().hex[:6]}")
+    headers_b, tenant_b = _bootstrap_tenant(client, suffix=f"b{uuid4().hex[:6]}")
+
+    customer_a = _customer_with_phone(client, headers_a, stored_phone)
+    customer_b = _customer_with_phone(client, headers_b, stored_phone)
+    job_a = _watch_job(client, headers_a, customer_a, "Shop A quote")
+    job_b = _watch_job(client, headers_b, customer_b, "Shop B quote")
+    quote_a = _quote_for_job(client, headers_a, job_a.id)
+    quote_b = _quote_for_job(client, headers_b, job_b.id)
+
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        _add_sms_log(
+            session,
+            tenant_id=tenant_a,
+            to_phone=from_phone,
+            repair_job_id=job_a.id,
+            created_at=now - timedelta(minutes=10),
+        )
+        _add_sms_log(
+            session,
+            tenant_id=tenant_b,
+            to_phone=from_phone,
+            repair_job_id=job_b.id,
+            created_at=now - timedelta(minutes=1),
+        )
+
+    res = client.post(_WEBHOOK, data={"From": from_phone, "Body": "YES"})
+    assert res.status_code == 200
+    assert "approved" in res.text.lower()
+
+    with Session(engine) as session:
+        assert session.get(Quote, UUID(quote_b["id"])).status == "approved"
+        assert session.get(Quote, UUID(quote_a["id"])).status == "sent"
+        assert session.get(RepairJob, job_b.id).status == "go_ahead"
+        assert session.get(RepairJob, job_a.id).status == "awaiting_go_ahead"
+        msg = session.exec(
+            select(JobMessage)
+            .where(JobMessage.direction == "inbound")
+            .where(JobMessage.from_phone == from_phone)
+        ).first()
+        assert msg is not None
+        assert msg.tenant_id == tenant_b
+        assert msg.repair_job_id == job_b.id
+
+
 def test_webhook_rejects_invalid_signature_when_token_configured(client: TestClient, monkeypatch):
     monkeypatch.setattr("app.routes.sms_webhook.settings.twilio_auth_token", "test-auth-token")
     monkeypatch.setattr("app.routes.sms_webhook.settings.public_base_url", "https://example.test")

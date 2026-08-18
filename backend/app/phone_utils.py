@@ -24,3 +24,18 @@ def phones_match(a: str | None, b: str | None) -> bool:
     left = normalize_phone(a or "")
     right = normalize_phone(b or "")
     return bool(left and right and left == right)
+
+
+def phone_lookup_variants(raw: str) -> list[str]:
+    """Exact plus normalized AU forms so SmsLog.to_phone can be queried without a scan."""
+    variants: set[str] = set()
+    stripped = (raw or "").strip()
+    if stripped:
+        variants.add(stripped)
+    normalized = normalize_phone(raw or "")
+    if normalized:
+        variants.add(normalized)
+        if normalized.startswith("0") and len(normalized) == 10:
+            variants.add("+61" + normalized[1:])
+            variants.add("61" + normalized[1:])
+    return [v for v in variants if v]

@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from ..config import settings
 from ..database import get_session
@@ -27,7 +27,10 @@ from ..models import (
     TenantEventLog,
     Watch,
 )
-from ..phone_utils import normalize_phone as _normalize_phone, phones_match as _phones_match
+from ..phone_utils import (
+    normalize_phone as _normalize_phone,
+    phone_lookup_variants as _phone_lookup_variants,
+)
 
 router = APIRouter(prefix="/v1", tags=["sms-webhook"])
 
@@ -118,10 +121,12 @@ class _InboundTarget:
 
 
 def _find_customers_by_phone(session: Session, from_phone: str) -> list[Customer]:
-    rows = session.exec(
-        select(Customer).where(Customer.phone.isnot(None)).where(Customer.phone != "")
-    ).all()
-    return [row for row in rows if _phones_match(row.phone, from_phone)]
+    normalized = _normalize_phone(from_phone)
+    if not normalized:
+        return []
+    return list(
+        session.exec(select(Customer).where(Customer.phone_normalized == normalized)).all()
+    )
 
 
 def _collect_open_jobs_for_customer(
@@ -196,8 +201,15 @@ def _collect_open_jobs_for_customer(
     return matches
 
 
-def _find_open_job_target(session: Session, from_phone: str) -> _InboundTarget | None:
+def _find_open_job_target(
+    session: Session,
+    from_phone: str,
+    *,
+    tenant_id: UUID | None = None,
+) -> _InboundTarget | None:
     customers = _find_customers_by_phone(session, from_phone)
+    if tenant_id is not None:
+        customers = [c for c in customers if c.tenant_id == tenant_id]
     if not customers:
         return None
 
@@ -230,41 +242,51 @@ def _target_from_sms_log(row: SmsLog) -> _InboundTarget:
     )
 
 
-def _find_sms_log_fallback(session: Session, from_phone: str) -> SmsLog | None:
-    row = session.exec(
-        select(SmsLog)
-        .where(SmsLog.to_phone == from_phone)
-        .where(SmsLog.status == "sent")
-        .order_by(SmsLog.created_at.desc())
-    ).first()
-    if row:
-        return row
-
-    recent = session.exec(
-        select(SmsLog)
-        .where(SmsLog.status == "sent")
-        .order_by(SmsLog.created_at.desc())
-        .limit(200)
-    ).all()
-    for log in recent:
-        if _phones_match(log.to_phone, from_phone):
-            return log
-    return None
+def _find_sms_log_fallback(session: Session, from_phone: str) -> list[SmsLog]:
+    """Recent outbound texts to this phone, newest first — no full-table scan."""
+    variants = _phone_lookup_variants(from_phone)
+    if not variants:
+        return []
+    return list(
+        session.exec(
+            select(SmsLog)
+            .where(col(SmsLog.to_phone).in_(variants))
+            .where(SmsLog.status == "sent")
+            .order_by(SmsLog.created_at.desc())
+            .limit(50)
+        ).all()
+    )
 
 
 def _resolve_inbound_target(session: Session, from_phone: str) -> _InboundTarget | None:
+    logs = _find_sms_log_fallback(session, from_phone)
+    if logs:
+        tenant_ids = list(dict.fromkeys(row.tenant_id for row in logs))
+        if len(tenant_ids) > 1:
+            logger.warning(
+                "sms_webhook.inbound multiple tenants texted %s tenants=%s; preferring most recent",
+                _mask_phone(from_phone),
+                [str(t) for t in tenant_ids],
+            )
+        preferred_tenant = logs[0].tenant_id
+        open_job = _find_open_job_target(session, from_phone, tenant_id=preferred_tenant)
+        if open_job:
+            return open_job
+        return _target_from_sms_log(logs[0])
+
     open_job = _find_open_job_target(session, from_phone)
     if open_job:
         return open_job
-
-    sms_log = _find_sms_log_fallback(session, from_phone)
-    if sms_log:
-        return _target_from_sms_log(sms_log)
 
     customers = _find_customers_by_phone(session, from_phone)
     if customers:
         # Known customer but no open job and no prior outbound SMS — still surface in inbox.
         customer = customers[0]
+        if len({c.tenant_id for c in customers}) > 1:
+            logger.warning(
+                "sms_webhook.inbound multiple tenants for unmatched phone %s; using first customer",
+                _mask_phone(from_phone),
+            )
         return _InboundTarget(
             tenant_id=customer.tenant_id,
             customer_id=customer.id,
@@ -385,10 +407,10 @@ async def twilio_incoming_sms(
     production). Dry-run / test without a token skips signature checks.
 
     Routing order:
-    1. Customer phone match → most recent open job (watch / shoe / auto key).
-    2. Fallback → most recent sent SmsLog to that phone (exact or normalized).
-    3. If customer exists but no job/SmsLog match → message is still saved
-       (surfaced via phone-matched threads) plus an inbox alert.
+    1. Tenant(s) whose SmsLog most recently texted this phone — prefer an open
+       job in that tenant (warn when more than one tenant has history).
+    2. Else most recent open job across tenants (no SmsLog history).
+    3. Else a known customer with no open job — inbox alert only.
     4. Unknown sender → no-op (no tenant context).
     """
     form = await request.form()
