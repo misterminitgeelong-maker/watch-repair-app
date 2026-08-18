@@ -111,6 +111,21 @@ function MinitHqGate({ children }: { children: React.ReactNode }) {
   return <Navigate to={fallback} replace />
 }
 
+function RequireRole({ role, children }: { role: string; children: React.ReactNode }) {
+  const { role: actual, authStatus } = useAuth()
+  const { pathname } = useLocation()
+  if (authStatus === 'authenticating') return <RouteFallback />
+  if (actual === role) return <>{children}</>
+  if (pathname === '/dashboard') {
+    return (
+      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+        This page is only available to platform admins.
+      </div>
+    )
+  }
+  return <Navigate to="/dashboard" replace />
+}
+
 function AutoKeySection() {
   return <Outlet />
 }
@@ -205,7 +220,7 @@ export default function App() {
               <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
               <Route path="minit/troubleshooting" element={<MinitHqGate><MinitTroubleshootingPage /></MinitHqGate>} />
               <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
-              <Route path="platform-admin/users" element={<PlatformAdminUsersPage />} />
+              <Route path="platform-admin/users" element={<RequireRole role="platform_admin"><PlatformAdminUsersPage /></RequireRole>} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
               <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />
