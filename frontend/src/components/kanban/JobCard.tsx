@@ -19,6 +19,9 @@ export interface JobCardProps {
   href: string
   selected?: boolean
   extras?: React.ReactNode
+  status?: string
+  statusOptions?: { value: string; label: string }[]
+  onStatusChange?: (status: string) => void
   onLogWork?: () => void
   onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void
   onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void
@@ -92,6 +95,9 @@ export default function JobCard({
   href,
   selected,
   extras,
+  status,
+  statusOptions,
+  onStatusChange,
   onLogWork,
   onDragStart,
   onDragEnd,
@@ -166,6 +172,35 @@ export default function JobCard({
         </div>
       )}
       {extras && <div style={{ marginTop: 6 }}>{extras}</div>}
+      {statusOptions && statusOptions.length > 0 && onStatusChange && (
+        <select
+          value={status ?? statusOptions[0]!.value}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+          onChange={e => {
+            e.stopPropagation()
+            const next = e.target.value
+            if (next && next !== status) onStatusChange(next)
+          }}
+          aria-label="Change job status"
+          style={{
+            marginTop: 8,
+            width: '100%',
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '4px 6px',
+            borderRadius: 4,
+            border: '1px solid var(--ms-border)',
+            background: 'var(--ms-bg)',
+            color: 'var(--ms-text)',
+            cursor: 'pointer',
+          }}
+        >
+          {statusOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
       {(techName || quoteCents !== undefined) && (
         <div
           className="flex items-center justify-between"

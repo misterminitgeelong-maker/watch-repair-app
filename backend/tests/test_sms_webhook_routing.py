@@ -421,3 +421,39 @@ def test_inbox_alert_without_job_says_no_open_ticket(client: TestClient):
         ).first()
         assert event is not None
         assert "no open ticket" in event.event_summary
+
+
+def test_webhook_rejects_invalid_signature_when_token_configured(client: TestClient, monkeypatch):
+    monkeypatch.setattr("app.routes.sms_webhook.settings.twilio_auth_token", "test-auth-token")
+    monkeypatch.setattr("app.routes.sms_webhook.settings.public_base_url", "https://example.test")
+    monkeypatch.setattr("app.routes.sms_webhook.settings.app_env", "production")
+    res = client.post(
+        _WEBHOOK,
+        data={"From": "+61400009999", "Body": "hi"},
+        headers={"X-Twilio-Signature": "not-a-valid-signature"},
+    )
+    assert res.status_code == 403
+
+
+def test_webhook_accepts_valid_signature_when_token_configured(client: TestClient, monkeypatch):
+    from app.routes.sms_webhook import _twilio_signature_valid
+
+    token = "test-auth-token"
+    url = "https://example.test/v1/webhook/sms/incoming"
+    params = {"From": "+61400009998", "Body": "hello"}
+    sig = __import__("base64").b64encode(
+        __import__("hmac").new(
+            token.encode(),
+            (url + "".join(k + params[k] for k in sorted(params))).encode(),
+            __import__("hashlib").sha1,
+        ).digest()
+    ).decode()
+    assert _twilio_signature_valid(token, url, params, sig)
+
+    monkeypatch.setattr("app.routes.sms_webhook.settings.twilio_auth_token", token)
+    monkeypatch.setattr("app.routes.sms_webhook.settings.public_base_url", "https://example.test")
+    monkeypatch.setattr("app.routes.sms_webhook.settings.app_env", "production")
+    res = client.post(_WEBHOOK, data=params, headers={"X-Twilio-Signature": sig})
+    # Unknown sender → empty TwiML 200 (signature passed)
+    assert res.status_code == 200
+    assert "Response" in res.text

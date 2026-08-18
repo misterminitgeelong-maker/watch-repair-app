@@ -22,6 +22,7 @@ import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
 import { useToast } from '@/lib/toast'
+import { WorkflowRail, SHOE_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import { preparePhotoFile, uploadFilesSequential, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
 
 const FROM_PRICING_TYPES: ShoePricingType[] = [
@@ -645,6 +646,14 @@ export default function ShoeJobDetailPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['shoe-repair-job', id] }) },
   })
   const [showAddServices, setShowAddServices] = useState(false)
+  const shoeQuickStatusMut = useMutation({
+    mutationFn: (status: string) => updateShoeRepairJobStatus(id!, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shoe-repair-job', id] })
+      qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
+      qc.invalidateQueries({ queryKey: ['shoe-history', id] })
+    },
+  })
   const [activePairIdx, setActivePairIdx] = useState(0)
   const [editingCost, setEditingCost] = useState(false)
   const [costInput, setCostInput] = useState('')
@@ -814,6 +823,15 @@ export default function ShoeJobDetailPage() {
           Created: <span style={{ color: 'var(--ms-text)' }}>{formatDate(job.created_at)}</span>
         </span>
       </div>
+
+      <Card className="mb-5" style={{ padding: 0, overflow: 'hidden' }}>
+        <WorkflowRail
+          steps={SHOE_WORKFLOW_STEPS}
+          currentStatus={job.status}
+          disabled={shoeQuickStatusMut.isPending}
+          onStepClick={status => shoeQuickStatusMut.mutate(status)}
+        />
+      </Card>
 
       {/* Photo hero — full-width 4-col grid above main grid */}
       <Card className="overflow-hidden mb-5">

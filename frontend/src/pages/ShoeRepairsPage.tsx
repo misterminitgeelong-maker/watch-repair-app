@@ -16,6 +16,7 @@ import { formatDate, formatEstimatedTurnaround, STATUS_LABELS, COMPLEXITY_LABELS
 import NewShoeJobModal from '@/components/NewShoeJobModal'
 import RepairQueueModal from '@/components/RepairQueueModal'
 import { preparePhotoFile, uploadFilesSequential, getPhotoPrepareErrorMessage } from '@/lib/photoUpload'
+import { SHOE_JOBS_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import {
   KanbanBoard,
   JobCard as KanbanJobCard,
@@ -485,6 +486,26 @@ export default function ShoeRepairsPage() {
   const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
   const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [viewMode, setViewMode] = useState<'kanban' | 'cards'>(() => window.innerWidth < 640 ? 'cards' : 'kanban')
+
+  useEffect(() => {
+    if (searchParams.toString()) return
+    const saved = loadSavedView<import('@/lib/savedViews').ShoeJobsSavedView>(SHOE_JOBS_VIEWS_KEY, {})
+    if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView)
+    if (saved.statusFilter) setStatusFilter(saved.statusFilter)
+    if (saved.viewMode) setViewMode(saved.viewMode)
+    if (saved.costOutlierOnly !== undefined) setCostOutlierOnly(saved.costOutlierOnly)
+    if (saved.olderThanDays !== undefined) setOlderThanDays(saved.olderThanDays)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    saveSavedView(SHOE_JOBS_VIEWS_KEY, {
+      jobDirectoryView,
+      statusFilter,
+      viewMode,
+      costOutlierOnly,
+      olderThanDays,
+    })
+  }, [jobDirectoryView, statusFilter, viewMode, costOutlierOnly, olderThanDays])
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: string }) => updateShoeRepairJobStatus(jobId, status),

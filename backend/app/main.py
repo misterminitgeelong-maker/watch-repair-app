@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -312,7 +312,9 @@ app.add_middleware(
 
 @app.get("/v1/debug/demo-status")
 def debug_demo_status():
-    """Diagnostic: demo tenant state and B2B account count. No auth required."""
+    """Diagnostic: demo tenant state and B2B account count. Disabled in production."""
+    if settings.app_env == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     from sqlmodel import select, func
     from .config import settings
     from .models import CustomerAccount, Tenant
@@ -337,8 +339,9 @@ def debug_demo_status():
 
 @app.get("/v1/debug/sms-status")
 def debug_sms_status():
-    """Diagnostic: deployed commit, schema version, and inbound SMS routing stats.
-    No auth required; returns aggregate counts only — no message content or phone numbers."""
+    """Diagnostic: deployed commit, schema version, and inbound SMS routing stats. Disabled in production."""
+    if settings.app_env == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     from datetime import datetime, timedelta, timezone
     from sqlmodel import select, func
     from .models import JobMessage, TenantEventLog

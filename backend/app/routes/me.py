@@ -19,6 +19,31 @@ from ..models import RepairQueueDayState, Tenant
 router = APIRouter(prefix="/v1/me", tags=["me"])
 
 _MAX_DONE_IDS = 500
+_MAX_QUEUE_ORDER_IDS = 2000
+
+
+def _parse_uuid_id_list(raw_json: str | None) -> list[str]:
+    try:
+        parsed = json.loads(raw_json or "[]")
+        if not isinstance(parsed, list):
+            return []
+        return [str(x) for x in parsed]
+    except json.JSONDecodeError:
+        return []
+
+
+def _validate_uuid_id_list(ids: list[str]) -> list[str]:
+    out: list[str] = []
+    for raw in ids:
+        s = (raw or "").strip()
+        if not s:
+            continue
+        try:
+            UUID(s)
+        except ValueError as e:
+            raise ValueError(f"invalid job id: {raw!r}") from e
+        out.append(s)
+    return out
 
 
 def _shop_date_for_tenant(tenant_tz: str | None) -> str:
@@ -46,38 +71,26 @@ class RepairQueueDayStats(BaseModel):
 class RepairQueueDayUpsert(BaseModel):
     mode: Literal["watch", "shoe"]
     done_ids: list[str] = Field(default_factory=list, max_length=_MAX_DONE_IDS)
+    queue_order_ids: list[str] = Field(default_factory=list, max_length=_MAX_QUEUE_ORDER_IDS)
     stats: RepairQueueDayStats = Field(default_factory=RepairQueueDayStats)
 
-    @field_validator("done_ids")
+    @field_validator("done_ids", "queue_order_ids")
     @classmethod
     def uuid_like(cls, ids: list[str]) -> list[str]:
-        out: list[str] = []
-        for raw in ids:
-            s = (raw or "").strip()
-            if not s:
-                continue
-            try:
-                UUID(s)
-            except ValueError as e:
-                raise ValueError(f"invalid job id: {raw!r}") from e
-            out.append(s)
-        return out
+        return _validate_uuid_id_list(ids)
 
 
 class RepairQueueDayRead(BaseModel):
     shop_date: str
     mode: str
     done_ids: list[str]
+    queue_order_ids: list[str]
     stats: dict[str, int]
 
 
 def _row_to_read(row: RepairQueueDayState) -> RepairQueueDayRead:
-    try:
-        done_ids = json.loads(row.done_ids_json or "[]")
-        if not isinstance(done_ids, list):
-            done_ids = []
-    except json.JSONDecodeError:
-        done_ids = []
+    done_ids = _parse_uuid_id_list(row.done_ids_json)
+    queue_order_ids = _parse_uuid_id_list(getattr(row, "queue_order_ids_json", None) or "[]")
     try:
         stats = json.loads(row.stats_json or "{}")
         if not isinstance(stats, dict):
@@ -87,7 +100,8 @@ def _row_to_read(row: RepairQueueDayState) -> RepairQueueDayRead:
     return RepairQueueDayRead(
         shop_date=row.shop_date,
         mode=row.mode,
-        done_ids=[str(x) for x in done_ids],
+        done_ids=done_ids,
+        queue_order_ids=queue_order_ids,
         stats={k: int(v) for k, v in stats.items() if isinstance(v, (int, float))},
     )
 
@@ -115,6 +129,7 @@ def get_repair_queue_day_state(
             shop_date=shop_date,
             mode=mode,
             done_ids=[],
+            queue_order_ids=[],
             stats={"advanced": 0, "checkedIn": 0, "skipped": 0},
         )
     return _row_to_read(row)
@@ -132,6 +147,7 @@ def put_repair_queue_day_state(
     shop_date = _shop_date_for_tenant(tenant.timezone)
     stats_dump = payload.stats.model_dump()
     done_json = json.dumps(payload.done_ids)
+    queue_order_json = json.dumps(payload.queue_order_ids)
     stats_json = json.dumps(stats_dump)
     row = session.exec(
         select(RepairQueueDayState).where(
@@ -144,6 +160,7 @@ def put_repair_queue_day_state(
     now = datetime.now(timezone.utc)
     if row:
         row.done_ids_json = done_json
+        row.queue_order_ids_json = queue_order_json
         row.stats_json = stats_json
         row.updated_at = now
         session.add(row)
@@ -155,6 +172,7 @@ def put_repair_queue_day_state(
                 mode=payload.mode,
                 shop_date=shop_date,
                 done_ids_json=done_json,
+                queue_order_ids_json=queue_order_json,
                 stats_json=stats_json,
                 updated_at=now,
             )

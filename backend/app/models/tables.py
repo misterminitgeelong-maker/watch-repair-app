@@ -401,6 +401,7 @@ class RepairQueueDayState(SQLModel, table=True):
     shop_date: str = Field(max_length=10)  # YYYY-MM-DD in tenant TZ
     done_ids_json: str = Field(default="[]")
     stats_json: str = Field(default="{}")
+    queue_order_ids_json: str = Field(default="[]")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class WorkLog(SQLModel, table=True):

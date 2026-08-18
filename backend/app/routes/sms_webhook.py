@@ -1,13 +1,17 @@
+import hashlib
+import hmac
 import logging
+from base64 import b64encode
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlmodel import Session, select
 
+from ..config import settings
 from ..database import get_session
 from ..models import (
     Approval,
@@ -28,6 +32,37 @@ from ..phone_utils import normalize_phone as _normalize_phone, phones_match as _
 router = APIRouter(prefix="/v1", tags=["sms-webhook"])
 
 logger = logging.getLogger(__name__)
+
+
+def _twilio_webhook_url(request: Request) -> str:
+    """URL Twilio signed against — prefer public_base_url behind reverse proxies."""
+    base = (settings.public_base_url or "").rstrip("/")
+    if base:
+        return f"{base}/v1/webhook/sms/incoming"
+    return str(request.url)
+
+
+def _twilio_signature_valid(auth_token: str, url: str, params: dict[str, str], signature: str) -> bool:
+    """Validate X-Twilio-Signature (HMAC-SHA1) without requiring the twilio package."""
+    payload = url + "".join(key + params[key] for key in sorted(params))
+    digest = hmac.new(auth_token.encode("utf-8"), payload.encode("utf-8"), hashlib.sha1).digest()
+    expected = b64encode(digest).decode("utf-8")
+    return hmac.compare_digest(expected, signature or "")
+
+
+def _validate_twilio_signature(request: Request, form_params: dict[str, str]) -> None:
+    """Reject spoofed webhooks when Twilio auth token is configured. Skip in dry-run/test."""
+    token = (settings.twilio_auth_token or "").strip()
+    if not token:
+        return
+    # Pytest / unsigned local posts — signature checks run in staging/production.
+    if settings.app_env == "test":
+        return
+    signature = request.headers.get("X-Twilio-Signature", "")
+    url = _twilio_webhook_url(request)
+    if not _twilio_signature_valid(token, url, form_params, signature):
+        logger.warning("sms_webhook.signature invalid url=%s", url)
+        raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
 
 def _mask_phone(raw: str) -> str:
@@ -336,9 +371,8 @@ def _ticket_label(session: Session, target: _InboundTarget) -> str | None:
 
 
 @router.post("/webhook/sms/incoming", include_in_schema=False)
-def twilio_incoming_sms(
-    From: str = Form(...),
-    Body: str = Form(...),
+async def twilio_incoming_sms(
+    request: Request,
     session: Session = Depends(get_session),
 ):
     """
@@ -347,6 +381,9 @@ def twilio_incoming_sms(
     confirmation when the text is a YES/NO quote decision; otherwise returns
     empty TwiML so Twilio doesn't auto-reply.
 
+    When TWILIO_AUTH_TOKEN is set, validates X-Twilio-Signature (required in
+    production). Dry-run / test without a token skips signature checks.
+
     Routing order:
     1. Customer phone match → most recent open job (watch / shoe / auto key).
     2. Fallback → most recent sent SmsLog to that phone (exact or normalized).
@@ -354,8 +391,14 @@ def twilio_incoming_sms(
        (surfaced via phone-matched threads) plus an inbox alert.
     4. Unknown sender → no-op (no tenant context).
     """
-    from_phone = From.strip()
-    body_text = Body.strip()
+    form = await request.form()
+    form_params = {k: str(v) for k, v in form.items()}
+    _validate_twilio_signature(request, form_params)
+
+    from_phone = (form_params.get("From") or "").strip()
+    body_text = (form_params.get("Body") or "").strip()
+    if not from_phone:
+        raise HTTPException(status_code=422, detail="From is required")
 
     target = _resolve_inbound_target(session, from_phone)
     if not target:

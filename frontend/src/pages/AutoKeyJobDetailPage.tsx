@@ -32,6 +32,7 @@ import {
   resolveQuoteSignatureUrl,
   MOBILE_COMMISSION_LEAD_SOURCE_OPTIONS,
   type AutoKeyJobUpdatePayload,
+  type InvoiceSendChannel,
   type CuttingProfile,
   type CustomerAccount,
   type JobStatus,
@@ -397,6 +398,7 @@ export default function AutoKeyJobDetailPage() {
   )
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
+  const [invoiceSendChannel, setInvoiceSendChannel] = useState<InvoiceSendChannel>('both')
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['auto-key-job', id],
@@ -578,6 +580,36 @@ export default function AutoKeyJobDetailPage() {
     return kind === 'quote' ? 'Quote sent to customer via SMS.' : 'Invoice sent to customer via SMS.'
   }
 
+  const invoiceSendFeedback = (
+    data: {
+      email_sent?: boolean
+      email_skipped_reason?: string | null
+      email_error_detail?: string | null
+      sms_sent?: boolean
+      sms_skipped_reason?: string | null
+    },
+    channel: InvoiceSendChannel,
+  ) => {
+    const parts: string[] = []
+    if (channel !== 'email') {
+      if (data.sms_sent) parts.push('text sent')
+      else if (data.sms_skipped_reason === 'no_phone') parts.push('text skipped (no phone on file)')
+      else if (data.sms_skipped_reason && data.sms_skipped_reason !== 'not_requested') parts.push('text not sent')
+    }
+    if (channel !== 'sms') {
+      if (data.email_sent) parts.push('email sent')
+      else if (data.email_skipped_reason === 'no_email') parts.push('email skipped (no email on file)')
+      else if (data.email_skipped_reason === 'email_disabled' || data.email_skipped_reason === 'sendgrid_not_configured')
+        parts.push('email not configured on server')
+      else if (data.email_skipped_reason === 'send_failed') {
+        const detail = (data.email_error_detail || '').trim()
+        parts.push(detail ? `email failed: ${detail}` : 'email failed')
+      }
+    }
+    if (parts.length === 0) return 'Invoice not sent — customer has no phone or email on file.'
+    return `Invoice ${parts.join(', ')}.`
+  }
+
   const sendQuoteMut = useMutation({
     mutationFn: (quoteId: string) => sendAutoKeyQuote(quoteId),
     onSuccess: (res) => {
@@ -599,8 +631,9 @@ export default function AutoKeyJobDetailPage() {
   })
 
   const sendInvoiceMut = useMutation({
-    mutationFn: (invoiceId: string) => sendAutoKeyInvoice(invoiceId),
-    onSuccess: (res) => setSendInvoiceFeedback(mobileNotifyFeedback(res.data ?? {}, 'invoice')),
+    mutationFn: ({ invoiceId, channel }: { invoiceId: string; channel: InvoiceSendChannel }) =>
+      sendAutoKeyInvoice(invoiceId, channel),
+    onSuccess: (res, { channel }) => setSendInvoiceFeedback(invoiceSendFeedback(res.data ?? {}, channel)),
     onError: err => setSendInvoiceFeedback(getApiErrorMessage(err, 'Failed to send invoice.')),
   })
 
@@ -1426,10 +1459,20 @@ export default function AutoKeyJobDetailPage() {
                   <div className='flex gap-2 flex-wrap'>
                     {inv.status === 'unpaid' && (
                       <>
+                        <Select
+                          value={invoiceSendChannel}
+                          onChange={e => setInvoiceSendChannel(e.target.value as InvoiceSendChannel)}
+                          className="w-auto text-xs py-1"
+                          disabled={sendInvoiceMut.isPending}
+                        >
+                          <option value="both">Text + Email</option>
+                          <option value="sms">Text only</option>
+                          <option value="email">Email only</option>
+                        </Select>
                         <Button
                           variant="secondary"
                           className="text-xs py-1 px-2 flex items-center gap-1"
-                          onClick={() => { setSendInvoiceFeedback(''); sendInvoiceMut.mutate(inv.id) }}
+                          onClick={() => { setSendInvoiceFeedback(''); sendInvoiceMut.mutate({ invoiceId: inv.id, channel: invoiceSendChannel }) }}
                           disabled={sendInvoiceMut.isPending}
                         >
                           <Send size={12} /> {sendInvoiceMut.isPending ? 'Sending…' : 'Send to Customer'}

@@ -558,10 +558,10 @@ def notify_auto_key_invoice_ready(
     total_cents: int,
     currency: str,
     view_url: str,
-) -> None:
-    """SMS after job completed with link to customer invoice page."""
+) -> bool:
+    """SMS after job completed with link to customer invoice page. Returns True if provider accepted the message."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
-        return
+        return False
     sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
     total = total_cents / 100
     shop = shop_name.strip() or "us"
@@ -583,6 +583,7 @@ def notify_auto_key_invoice_ready(
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )
+    return sid is not None
 
 
 def notify_auto_key_quote_sent(

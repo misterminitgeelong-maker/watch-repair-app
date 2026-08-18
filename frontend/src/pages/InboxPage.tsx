@@ -49,6 +49,7 @@ export default function InboxPage() {
     mutationFn: (id: string) => deleteInboxEvent(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['inbox'] })
+      void qc.invalidateQueries({ queryKey: ['inbox-count'] })
     },
   })
 

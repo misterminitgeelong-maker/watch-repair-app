@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   X, ChevronRight, SkipForward, StickyNote, Wrench, CheckCheck,
@@ -11,7 +11,9 @@ import {
   getJob, getShoeRepairJob,
   getRepairQueueDayState, putRepairQueueDayState, deleteRepairQueueDayState,
   type RepairJob, type ShoeRepairJob, type RepairQueueDayStateResponse, type WorkLog,
+  WATCH_JOBS_LIST_MAX,
 } from '@/lib/api'
+import { WATCH_JOBS_BOARD_QUERY } from '@/lib/queryKeys'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
 import { STATUS_LABELS, previewWatchQueueSwipe } from '@/lib/utils'
@@ -151,32 +153,57 @@ function dayQueueStorageKey(mode: 'watch' | 'shoe'): string {
   return `repairQueueDay:v1:${mode}:${getLocalDateKey()}`
 }
 
-function readDayQueueState(mode: 'watch' | 'shoe'): { done: Set<string>; stats: SessionStats } {
+function readDayQueueState(mode: 'watch' | 'shoe'): { done: Set<string>; stats: SessionStats; queueOrder: string[] | null } {
   const emptyStats: SessionStats = { advanced: 0, checkedIn: 0, skipped: 0 }
   try {
     const raw = localStorage.getItem(dayQueueStorageKey(mode))
-    if (!raw) return { done: new Set(), stats: emptyStats }
-    const o = JSON.parse(raw) as { doneIds?: string[]; stats?: Partial<SessionStats> }
+    if (!raw) return { done: new Set(), stats: emptyStats, queueOrder: null }
+    const o = JSON.parse(raw) as { doneIds?: string[]; stats?: Partial<SessionStats>; queueOrderIds?: string[] }
     const stats: SessionStats = {
       advanced: typeof o.stats?.advanced === 'number' ? o.stats.advanced : 0,
       checkedIn: typeof o.stats?.checkedIn === 'number' ? o.stats.checkedIn : 0,
       skipped: typeof o.stats?.skipped === 'number' ? o.stats.skipped : 0,
     }
-    return { done: new Set(Array.isArray(o.doneIds) ? o.doneIds : []), stats }
+    const queueOrder = Array.isArray(o.queueOrderIds) && o.queueOrderIds.length > 0 ? o.queueOrderIds : null
+    return { done: new Set(Array.isArray(o.doneIds) ? o.doneIds : []), stats, queueOrder }
   } catch {
-    return { done: new Set(), stats: emptyStats }
+    return { done: new Set(), stats: emptyStats, queueOrder: null }
   }
 }
 
-function writeDayQueueState(mode: 'watch' | 'shoe', done: Set<string>, stats: SessionStats) {
+function writeDayQueueState(mode: 'watch' | 'shoe', done: Set<string>, stats: SessionStats, queueOrder: string[] | null) {
   try {
     localStorage.setItem(
       dayQueueStorageKey(mode),
-      JSON.stringify({ doneIds: [...done], stats }),
+      JSON.stringify({
+        doneIds: [...done],
+        stats,
+        ...(queueOrder && queueOrder.length > 0 ? { queueOrderIds: queueOrder } : {}),
+      }),
     )
   } catch {
     /* ignore quota / private mode */
   }
+}
+
+/** Keep saved queue position; drop removed jobs and append any new ones in sort order. */
+function mergeQueueOrder(existing: string[] | null, jobs: QueueJob[]): string[] {
+  const sortedIds = sortQueue(jobs).map(j => j.id)
+  const jobSet = new Set(sortedIds)
+  if (!existing?.length) return sortedIds
+
+  const merged: string[] = []
+  const seen = new Set<string>()
+  for (const id of existing) {
+    if (jobSet.has(id) && !seen.has(id)) {
+      merged.push(id)
+      seen.add(id)
+    }
+  }
+  for (const id of sortedIds) {
+    if (!seen.has(id)) merged.push(id)
+  }
+  return merged
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -184,11 +211,12 @@ function writeDayQueueState(mode: 'watch' | 'shoe', done: Set<string>, stats: Se
 export default function RepairQueueModal({ mode, onClose }: Props) {
   const qc = useQueryClient()
   const { sessionUserId: userId } = useAuth()
+  const initialDayState = readDayQueueState(mode)
 
   // ── Queue state (persisted for the local calendar day so reopening resumes progress) ──
-  const [queueOrder, setQueueOrder] = useState<string[] | null>(null)
-  const [done, setDone] = useState<Set<string>>(() => readDayQueueState(mode).done)
-  const [stats, setStats] = useState<SessionStats>(() => readDayQueueState(mode).stats)
+  const [queueOrder, setQueueOrder] = useState<string[] | null>(initialDayState.queueOrder)
+  const [done, setDone] = useState<Set<string>>(initialDayState.done)
+  const [stats, setStats] = useState<SessionStats>(initialDayState.stats)
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [showFilters, setShowFilters] = useState(false)
@@ -234,9 +262,15 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       checkedIn: d.stats.checkedIn ?? 0,
       skipped: d.stats.skipped ?? 0,
     }
+    const serverOrder = d.queue_order_ids?.length ? d.queue_order_ids : null
     setDone(nextDone)
     setStats(nextStats)
-    writeDayQueueState(mode, nextDone, nextStats)
+    if (serverOrder) {
+      setQueueOrder(serverOrder)
+      writeDayQueueState(mode, nextDone, nextStats, serverOrder)
+    } else {
+      writeDayQueueState(mode, nextDone, nextStats, queueOrder)
+    }
   }
 
   useEffect(() => {
@@ -249,19 +283,20 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
   }, [dayStateQuery.isFetched, dayStateQuery.isSuccess, dayStateQuery.data, mode])
 
   useEffect(() => {
-    writeDayQueueState(mode, done, stats)
-  }, [mode, done, stats])
+    writeDayQueueState(mode, done, stats, queueOrder)
+  }, [mode, done, stats, queueOrder])
 
   useEffect(() => {
     if (!remoteReady) return
     const t = setTimeout(() => {
       void putRepairQueueDayState(mode, {
         done_ids: [...done],
+        queue_order_ids: queueOrder ?? [],
         stats: { ...stats },
       }).catch(() => { /* offline or auth */ })
     }, 450)
     return () => clearTimeout(t)
-  }, [remoteReady, mode, done, stats])
+  }, [remoteReady, mode, done, stats, queueOrder])
 
   async function resetTodayQueueProgress() {
     setRemoteReady(false)
@@ -288,29 +323,29 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const watchQuery = useQuery({
-    queryKey: ['repair-jobs', 'all'],
-    queryFn: () => listJobs({ limit: 200 }).then(r => r.data),
+    queryKey: [...WATCH_JOBS_BOARD_QUERY.key],
+    queryFn: () => listJobs(WATCH_JOBS_BOARD_QUERY.params).then(r => r.data),
     enabled: mode === 'watch',
     staleTime: 30_000,
   })
   const shoeQuery = useQuery({
-    queryKey: ['shoe-repair-jobs'],
-    queryFn: () => listShoeRepairJobs().then(r => r.data),
+    queryKey: ['shoe-repair-jobs', 'queue'],
+    queryFn: () => listShoeRepairJobs({ limit: WATCH_JOBS_LIST_MAX }).then(r => r.data),
     enabled: mode === 'shoe',
     staleTime: 30_000,
   })
   const isLoading = mode === 'watch' ? watchQuery.isLoading : shoeQuery.isLoading
 
-  const allJobs: QueueJob[] = mode === 'watch'
+  const allJobs: QueueJob[] = useMemo(() => mode === 'watch'
     ? ((watchQuery.data ?? []) as RepairJob[])
         .filter(j => !EXCLUDE_STATUSES.has(j.status))
         .map(j => ({ id: j.id, job_number: j.job_number, title: j.title, priority: j.priority, status: j.status, created_at: j.created_at, collection_date: j.collection_date, customer_name: j.customer_name, description: j.description, type: 'watch' as const, claimed_by_user_id: j.claimed_by_user_id, claimed_by_name: j.claimed_by_name }))
     : ((shoeQuery.data ?? []) as ShoeRepairJob[])
         .filter(j => !EXCLUDE_STATUSES.has(j.status))
-        .map(j => ({ id: j.id, job_number: j.job_number, title: j.title, priority: j.priority, status: j.status, created_at: j.created_at, collection_date: j.collection_date, customer_name: undefined, description: j.description, items: j.items?.map(i => i.item_name).filter(Boolean), quote_status: j.quote_status, type: 'shoe' as const, claimed_by_user_id: j.claimed_by_user_id, claimed_by_name: j.claimed_by_name }))
+        .map(j => ({ id: j.id, job_number: j.job_number, title: j.title, priority: j.priority, status: j.status, created_at: j.created_at, collection_date: j.collection_date, customer_name: undefined, description: j.description, items: j.items?.map(i => i.item_name).filter(Boolean), quote_status: j.quote_status, type: 'shoe' as const, claimed_by_user_id: j.claimed_by_user_id, claimed_by_name: j.claimed_by_name })), [mode, watchQuery.data, shoeQuery.data])
 
   // Apply filters
-  const filteredJobs = allJobs.filter(j => {
+  const filteredJobs = useMemo(() => allJobs.filter(j => {
     if (filterStatuses.size > 0 && !filterStatuses.has(j.status)) return false
     if (filterPriorities.size > 0 && !filterPriorities.has(j.priority)) return false
     if (filterDueToday) {
@@ -318,14 +353,19 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
       if (urg > 1) return false
     }
     return true
-  })
+  }), [allJobs, filterStatuses, filterPriorities, filterDueToday])
+
+  const filteredJobIdsKey = useMemo(() => filteredJobs.map(j => j.id).join(','), [filteredJobs])
 
   useEffect(() => {
-    if (filteredJobs.length > 0 && queueOrder === null) {
-      setQueueOrder(sortQueue(filteredJobs).map(j => j.id))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredJobs.length, queueOrder])
+    if (filteredJobs.length === 0) return
+    setQueueOrder(prev => {
+      const merged = mergeQueueOrder(prev, filteredJobs)
+      if (prev && prev.length === merged.length && prev.every((id, i) => id === merged[i])) return prev
+      return merged
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- merge when visible job set changes
+  }, [filteredJobIdsKey])
 
   const jobMap = Object.fromEntries(filteredJobs.map(j => [j.id, j]))
   const visibleIds = (queueOrder ?? []).filter(id => !done.has(id) && jobMap[id])

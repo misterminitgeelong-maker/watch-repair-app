@@ -1,7 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from pydantic import BaseModel
+from sqlmodel import Session, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
@@ -21,6 +22,10 @@ INBOX_EVENT_TYPES = [
 ]
 
 
+class InboxCountRead(BaseModel):
+    count: int
+
+
 @router.delete("/inbox/{event_id}", status_code=204)
 def delete_inbox_event(
     event_id: UUID,
@@ -36,6 +41,29 @@ def delete_inbox_event(
     session.delete(event)
     session.commit()
     return None
+
+
+@router.get("/inbox/count", response_model=InboxCountRead)
+def get_inbox_count(
+    exclude: str | None = Query(
+        default=None,
+        description="Comma-separated event types to omit (e.g. inbound_email_received for HQ nav)",
+    ),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Lightweight badge count — avoids fetching full inbox rows on every screen."""
+    exclude_set = {e.strip() for e in (exclude or "").split(",") if e.strip()}
+    types = [t for t in INBOX_EVENT_TYPES if t not in exclude_set]
+    if not types:
+        return InboxCountRead(count=0)
+    count = session.exec(
+        select(func.count())
+        .select_from(TenantEventLog)
+        .where(TenantEventLog.tenant_id == auth.tenant_id)
+        .where(TenantEventLog.event_type.in_(types))
+    ).one()
+    return InboxCountRead(count=int(count))
 
 
 @router.get("/inbox", response_model=list[TenantEventLogRead])

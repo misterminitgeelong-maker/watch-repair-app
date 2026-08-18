@@ -15,12 +15,16 @@ import {
   type RepairJob,
   type SortDir,
 } from '@/lib/api'
+import { watchJobsListQueryKey } from '@/lib/queryKeys'
+import { saveWatchJobsNavContext } from '@/lib/jobNavContext'
+import { WATCH_JOBS_VIEWS_KEY, loadSavedView, saveSavedView, type WatchJobsSavedView } from '@/lib/savedViews'
 import { Card, PageHeader, Button, Spinner, EmptyState, Badge, Modal, ViewToggle } from '@/components/ui'
 import { formatDate, STATUS_LABELS, ACTIVE_DIRECTORY_STATUSES, CLOSED_DIRECTORY_STATUSES } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
 import RepairQueueModal from '@/components/RepairQueueModal'
 import LogWorkModal from '@/components/LogWorkModal'
 import { KanbanBoard, JobCard, WATCH_KANBAN_COLUMNS } from '@/components/kanban'
+import { findKanbanOrphanJobs } from '@/components/kanban/columns'
 
 function daysInShop(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
@@ -45,7 +49,14 @@ export default function JobsPage() {
   const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialPastCollectionOnly = searchParams.get('past_collection') === '1' || searchParams.get('past_collection') === 'true'
-  const initialView: BoardView = searchParams.get('view') === 'list' ? 'list' : 'board'
+  const initialView: BoardView =
+    searchParams.get('view') === 'list'
+      ? 'list'
+      : searchParams.get('view') === 'board'
+        ? 'board'
+        : typeof window !== 'undefined' && window.innerWidth < 640
+          ? 'list'
+          : 'board'
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [logWorkJobId, setLogWorkJobId] = useState<string | null>(null)
@@ -64,10 +75,40 @@ export default function JobsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [view, setView] = useState<BoardView>(initialView)
 
+  useEffect(() => {
+    if (searchParams.toString()) return
+    const saved = loadSavedView<WatchJobsSavedView>(WATCH_JOBS_VIEWS_KEY, {})
+    if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView)
+    if (saved.statusFilter) setStatusFilter(saved.statusFilter)
+    if (saved.view) setView(saved.view)
+    if (saved.assignedUserId !== undefined) setAssignedUserId(saved.assignedUserId)
+    if (saved.costOutlierOnly !== undefined) setCostOutlierOnly(saved.costOutlierOnly)
+    if (saved.olderThanDays !== undefined) setOlderThanDays(saved.olderThanDays)
+    if (saved.pastCollectionOnly !== undefined) setPastCollectionOnly(saved.pastCollectionOnly)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    saveSavedView(WATCH_JOBS_VIEWS_KEY, {
+      jobDirectoryView,
+      statusFilter,
+      view,
+      assignedUserId,
+      costOutlierOnly,
+      olderThanDays,
+      pastCollectionOnly,
+    })
+  }, [jobDirectoryView, statusFilter, view, assignedUserId, costOutlierOnly, olderThanDays, pastCollectionOnly])
+
   const apiStatus = statusFilter === 'all' ? undefined : statusFilter
 
   const jobsQuery = useQuery({
-    queryKey: ['jobs', 'all', apiStatus, assignedUserId || null, sortBy, sortDir, costOutlierOnly],
+    queryKey: watchJobsListQueryKey({
+      status: apiStatus,
+      assignedUserId: assignedUserId || null,
+      sortBy,
+      sortDir,
+      costOutlierOnly,
+    }),
     queryFn: () =>
       listJobs({
         limit: WATCH_JOBS_LIST_MAX,
@@ -165,6 +206,16 @@ export default function JobsPage() {
     return matchSearch && inDirectory && matchStatus && matchAge && matchPastCollection
   })
 
+  const showBoardCapWarning = jobs.length >= WATCH_JOBS_LIST_MAX
+  const kanbanOrphans = useMemo(
+    () => (view === 'board' && jobDirectoryView === 'active' ? findKanbanOrphanJobs(filtered, WATCH_KANBAN_COLUMNS) : []),
+    [filtered, view, jobDirectoryView],
+  )
+  const statusOptionsForCard = useMemo(
+    () => [...ACTIVE_DIRECTORY_STATUSES].map(s => ({ value: s, label: STATUS_LABELS[s] ?? s })),
+    [],
+  )
+
   const showSwitchToCompletedHint =
     !isLoading &&
     jobDirectoryView === 'active' &&
@@ -172,6 +223,10 @@ export default function JobsPage() {
     !search.trim() &&
     filtered.length === 0 &&
     completedCount > 0
+
+  useEffect(() => {
+    saveWatchJobsNavContext(filtered.map(j => j.id))
+  }, [filtered])
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -386,8 +441,21 @@ export default function JobsPage() {
 
       {jobs.length > 0 && !isLoading && (
         <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-          All matching jobs are loaded for this filter (up to {WATCH_JOBS_LIST_MAX.toLocaleString()} rows).
+          {showBoardCapWarning
+            ? `Showing the first ${WATCH_JOBS_LIST_MAX.toLocaleString()} jobs — narrow filters if any are missing from the board.`
+            : `All matching jobs are loaded for this filter (${jobs.length.toLocaleString()} row${jobs.length === 1 ? '' : 's'}).`}
         </p>
+      )}
+
+      {kanbanOrphans.length > 0 && (
+        <div
+          className="text-sm mb-3 px-4 py-3 rounded-xl"
+          style={{ backgroundColor: '#FBE7E3', border: '1px solid #E8B4AD', color: '#7B241C' }}
+        >
+          <strong>{kanbanOrphans.length} job{kanbanOrphans.length === 1 ? '' : 's'}</strong> with a status not shown on the board:{' '}
+          {[...new Set(kanbanOrphans.map(j => STATUS_LABELS[j.status] ?? j.status))].join(', ')}.
+          Switch to <button type="button" className="underline font-semibold" onClick={() => setView('list')}>list view</button> to see them.
+        </div>
       )}
 
       {listError && (
@@ -446,6 +514,11 @@ export default function JobsPage() {
                 techKey={job.assigned_user_id ?? null}
                 accentColor={column.color}
                 href={`/jobs/${job.id}`}
+                status={job.status}
+                statusOptions={statusOptionsForCard}
+                onStatusChange={nextStatus =>
+                  statusMut.mutate({ jobId: job.id, status: nextStatus as JobStatus })
+                }
                 draggable={!updatingJobId}
                 onLogWork={() => setLogWorkJobId(job.id)}
                 onDragStart={e => {

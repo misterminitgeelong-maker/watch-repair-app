@@ -239,11 +239,13 @@ def test_repair_queue_day_get_put_roundtrip():
         json={
             "mode": "watch",
             "done_ids": [jid],
+            "queue_order_ids": [jid],
             "stats": {"advanced": 2, "checkedIn": 1, "skipped": 0},
         },
     )
     assert p.status_code == 200
     assert p.json()["done_ids"] == [jid]
+    assert p.json()["queue_order_ids"] == [jid]
     assert p.json()["stats"]["advanced"] == 2
 
     g2 = client.get("/v1/me/repair-queue-day", params={"mode": "watch"}, headers=headers)

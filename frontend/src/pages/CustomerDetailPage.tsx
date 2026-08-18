@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Plus, ChevronLeft, Wrench, Star } from 'lucide-react'
-import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, getLoyaltyProfile, adjustLoyaltyPoints, type Watch, type ShoeRepairJob, type AutoKeyJob, type LoyaltyProfileResponse } from '@/lib/api'
+import { getCustomer, listWatches, createWatch, listJobs, listShoeRepairJobs, listAutoKeyJobs, getLoyaltyProfile, adjustLoyaltyPoints, WATCH_JOBS_LIST_MAX, type Watch, type ShoeRepairJob, type AutoKeyJob, type LoyaltyProfileResponse } from '@/lib/api'
 import { Card, PageHeader, Button, Input, Modal, Spinner, Badge, Select, Textarea } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import NewJobModal from '@/components/NewJobModal'
@@ -207,7 +207,11 @@ export default function CustomerDetailPage() {
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>('active')
   const { data: customer, isLoading } = useQuery({ queryKey: ['customer', id], queryFn: () => getCustomer(id!).then(r => r.data) })
   const { data: watches } = useQuery({ queryKey: ['watches', id], queryFn: () => listWatches(id).then(r => r.data) })
-  const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => listJobs().then(r => r.data) })
+  const { data: jobs } = useQuery({
+    queryKey: ['jobs', 'customer', id],
+    queryFn: () => listJobs({ customer_id: id!, limit: WATCH_JOBS_LIST_MAX }).then(r => r.data),
+    enabled: !!id,
+  })
   const { data: shoeJobs = [] } = useQuery({
     queryKey: ['shoe-repair-jobs', 'customer', id],
     queryFn: () => listShoeRepairJobs({ customer_id: id }).then(r => r.data),
@@ -219,8 +223,7 @@ export default function CustomerDetailPage() {
     enabled: !!id,
   })
 
-  const customerWatchIds = new Set((watches ?? []).map(w => w.id))
-  const customerJobs = (jobs ?? []).filter(j => customerWatchIds.has(j.watch_id))
+  const customerJobs = jobs ?? []
   const activeJobs = customerJobs.filter(j => !NON_ACTIVE_STATUSES.includes(j.status))
   const completedDirectoryJobs = customerJobs.filter(j => COMPLETED_DIRECTORY_STATUSES.includes(j.status))
   const noGoJobs = customerJobs.filter(j => j.status === 'no_go')

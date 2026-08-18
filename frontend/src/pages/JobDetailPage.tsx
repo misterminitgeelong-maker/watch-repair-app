@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare, Copy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare, Copy } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
@@ -30,6 +30,7 @@ import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { preparePhotoFile } from '@/lib/photoUpload'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
 import LogWorkModal from '@/components/LogWorkModal'
+import { getWatchJobsNavNeighbors } from '@/lib/jobNavContext'
 
 const STATUS_FLOW: Record<JobStatus, JobStatus | null> = {
   awaiting_quote:      'awaiting_go_ahead',
@@ -524,9 +525,10 @@ export default function JobDetailPage() {
   const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const toast = useToast()
-  const initialTab = searchParams.get('tab')
+  const initialTabParam = searchParams.get('tab')
+  const validTabs: Tab[] = ['details', 'worklogs', 'attachments', 'history', 'messages']
   const [tab, setTab] = useState<Tab>(
-    initialTab === 'messages' ? 'messages' : 'details',
+    validTabs.includes(initialTabParam as Tab) ? (initialTabParam as Tab) : 'details',
   )
   const [showStatus, setShowStatus] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -620,6 +622,10 @@ export default function JobDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sms-log', id] }),
   })
 
+  const needsQuotes = tab === 'details'
+  const needsWorkLogs = tab === 'details' || tab === 'worklogs'
+  const needsAttachments = tab === 'details' || tab === 'attachments'
+
   const quotesQuery = useOffsetPaginatedQuery({
     queryKey: ['quotes', id, 'paged', 'created_at', 'desc'],
     queryFn: (offset) =>
@@ -629,11 +635,15 @@ export default function JobDetailPage() {
         sort_by: 'created_at',
         sort_dir: 'desc',
       }).then((r) => r.data),
-    enabled: !!id,
+    enabled: !!id && needsQuotes,
   })
   const quotes = useMemo(() => flattenInfinitePages(quotesQuery.data), [quotesQuery.data])
 
-  const { data: workLogs } = useQuery({ queryKey: ['worklogs', id], queryFn: () => listWorkLogs(id!).then(r => r.data), enabled: !!id })
+  const { data: workLogs } = useQuery({
+    queryKey: ['worklogs', id],
+    queryFn: () => listWorkLogs(id!).then(r => r.data),
+    enabled: !!id && needsWorkLogs,
+  })
 
   const attachmentsQuery = useOffsetPaginatedQuery({
     queryKey: ['attachments', id, 'paged', attachmentSortBy, attachmentSortDir],
@@ -644,7 +654,7 @@ export default function JobDetailPage() {
         sort_by: attachmentSortBy,
         sort_dir: attachmentSortDir,
       }).then((r) => r.data),
-    enabled: !!id,
+    enabled: !!id && needsAttachments,
   })
   const attachments = useMemo(() => flattenInfinitePages(attachmentsQuery.data), [attachmentsQuery.data])
   const { data: history } = useQuery({ queryKey: ['history', id], queryFn: () => getStatusHistory(id!).then(r => r.data), enabled: tab === 'history' })
@@ -696,9 +706,11 @@ export default function JobDetailPage() {
   if (isLoading) return <Spinner />
   if (!job) return <p style={{ color: 'var(--ms-text-muted)' }}>Job not found.</p>
 
+  const boardNav = getWatchJobsNavNeighbors(job.id)
+
   return (
     <div>
-      <div className="mb-5">
+      <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <Link
           to="/jobs"
           className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
@@ -708,6 +720,26 @@ export default function JobDetailPage() {
         >
           <ChevronLeft size={14} /> Back to Jobs
         </Link>
+        {(boardNav.prevId || boardNav.nextId) && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="text-sm"
+              disabled={!boardNav.prevId}
+              onClick={() => boardNav.prevId && navigate(`/jobs/${boardNav.prevId}`)}
+            >
+              <ChevronLeft size={14} /> Prev
+            </Button>
+            <Button
+              variant="secondary"
+              className="text-sm"
+              disabled={!boardNav.nextId}
+              onClick={() => boardNav.nextId && navigate(`/jobs/${boardNav.nextId}`)}
+            >
+              Next <ChevronRight size={14} />
+            </Button>
+          </div>
+        )}
       </div>
       <PageHeader
         title={`#${job.job_number} · ${job.title}`}

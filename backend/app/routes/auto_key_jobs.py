@@ -2,7 +2,7 @@ import logging
 import re
 from datetime import date as date_type
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
@@ -324,31 +324,48 @@ def _send_mobile_invoice_notifications(
     invoice: AutoKeyInvoice,
     job: AutoKeyJob,
     shop_name: str,
-) -> tuple[bool, str | None, str | None]:
-    """SMS + email for Mobile Services invoice (same content as manual Send to Customer)."""
+    channel: Literal["sms", "email", "both"] = "both",
+) -> tuple[bool, str | None, str | None, bool, str | None]:
+    """SMS and/or email for Mobile Services invoice (same content as manual Send to Customer).
+
+    Returns (email_sent, email_skipped_reason, email_error_detail, sms_sent, sms_skipped_reason).
+    """
     from ..email_client import email_skip_reason, send_mobile_invoice_email
     from ..models import Tenant
     from ..pdf_invoice import build_invoice_pdf
 
     first = _customer_first_name(customer)
     view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
-    if (customer.phone or "").strip():
-        notify_auto_key_invoice_ready(
-            session,
-            tenant_id=tenant_id,
-            to_phone=customer.phone.strip(),
-            customer_name=first,
-            shop_name=shop_name,
-            job_number=job.job_number,
-            invoice_number=invoice.invoice_number,
-            total_cents=invoice.total_cents,
-            currency=invoice.currency or "AUD",
-            view_url=view_url,
-        )
+
+    sms_sent = False
+    sms_skipped_reason: str | None = None
+    if channel in ("sms", "both"):
+        phone = (customer.phone or "").strip()
+        if phone:
+            sms_sent = notify_auto_key_invoice_ready(
+                session,
+                tenant_id=tenant_id,
+                to_phone=phone,
+                customer_name=first,
+                shop_name=shop_name,
+                job_number=job.job_number,
+                invoice_number=invoice.invoice_number,
+                total_cents=invoice.total_cents,
+                currency=invoice.currency or "AUD",
+                view_url=view_url,
+            )
+        else:
+            sms_skipped_reason = "no_phone"
+    else:
+        sms_skipped_reason = "not_requested"
+
+    if channel not in ("email", "both"):
+        return False, "not_requested", None, sms_sent, sms_skipped_reason
+
     email = (customer.email or "").strip()
     skip = email_skip_reason(email)
     if skip:
-        return False, skip, None
+        return False, skip, None, sms_sent, sms_skipped_reason
 
     tenant = session.get(Tenant, tenant_id)
     line_items = _auto_key_invoice_line_items(session, invoice, job)
@@ -396,7 +413,7 @@ def _send_mobile_invoice_notifications(
         shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
     )
-    return sent, None if sent else "send_failed", err
+    return sent, None if sent else "send_failed", err, sms_sent, sms_skipped_reason
 
 
 @router.post("", response_model=AutoKeyJobRead, status_code=201)
@@ -1158,6 +1175,7 @@ def send_auto_key_quote(
 @router.post("/invoices/{invoice_id}/send", response_model=AutoKeyInvoiceSendResponse)
 def send_auto_key_invoice(
     invoice_id: UUID,
+    channel: Literal["sms", "email", "both"] = Query("both"),
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -1172,28 +1190,35 @@ def send_auto_key_invoice(
     email_sent = False
     email_skipped_reason: str | None = "no_customer"
     email_error_detail: str | None = None
+    sms_sent = False
+    sms_skipped_reason: str | None = "no_customer"
     try:
         _customer = session.get(Customer, job.customer_id)
         _tenant = session.get(Tenant, auth.tenant_id)
         _shop = (_tenant.name if _tenant else None) or "Mobile Services"
         if _customer:
             email_skipped_reason = None
-            email_sent, email_skipped_reason, email_error_detail = _send_mobile_invoice_notifications(
+            sms_skipped_reason = None
+            email_sent, email_skipped_reason, email_error_detail, sms_sent, sms_skipped_reason = _send_mobile_invoice_notifications(
                 session,
                 tenant_id=auth.tenant_id,
                 customer=_customer,
                 invoice=invoice,
                 job=job,
                 shop_name=_shop,
+                channel=channel,
             )
             session.commit()
             logger.info(
-                "auto_key_invoice.send tenant=%s invoice=%s email_sent=%s reason=%s detail=%s",
+                "auto_key_invoice.send tenant=%s invoice=%s channel=%s email_sent=%s reason=%s detail=%s sms_sent=%s sms_reason=%s",
                 auth.tenant_id,
                 invoice_id,
+                channel,
                 email_sent,
                 email_skipped_reason,
                 email_error_detail,
+                sms_sent,
+                sms_skipped_reason,
             )
     except Exception:
         logger.exception("auto_key_invoice.send_failed tenant=%s invoice=%s", auth.tenant_id, invoice_id)
@@ -1203,6 +1228,8 @@ def send_auto_key_invoice(
         email_sent=email_sent,
         email_skipped_reason=email_skipped_reason,
         email_error_detail=email_error_detail,
+        sms_sent=sms_sent,
+        sms_skipped_reason=sms_skipped_reason,
     )
 
 
