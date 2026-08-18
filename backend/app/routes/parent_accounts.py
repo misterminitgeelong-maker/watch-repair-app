@@ -1320,7 +1320,7 @@ def provision_minit_retail_shop(
     )
     session.commit()
     session.refresh(parent)
-    return _to_summary(session, parent)
+    return _to_summary(session, parent, include_sites=True)
 
 
 @router.delete("/me/sites/{tenant_id}", response_model=ParentAccountSummaryResponse)
