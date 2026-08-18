@@ -2,6 +2,8 @@ from datetime import timedelta, timezone, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, func, select
 
 from ..database import get_session
@@ -22,6 +24,7 @@ from ..models import (
     ShoeRepairJobItemCreate,
     ShoeRepairJobItemRead,
     ShoeRepairJobItemsAppend,
+    ShoeRepairJobNumberCounter,
     ShoeRepairJobRead,
     ShoeRepairJobCreateResponse,
     ShoeRepairJobShoe,
@@ -48,10 +51,33 @@ router = APIRouter(
 
 
 def _next_shoe_job_number(session: Session, tenant_id: UUID) -> str:
-    count = session.exec(
-        select(func.count()).select_from(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id)
-    ).one()
-    return f"SHO-{int(count) + 1:05d}"
+    for _ in range(20):
+        counter = session.exec(
+            select(ShoeRepairJobNumberCounter).where(ShoeRepairJobNumberCounter.tenant_id == tenant_id)
+        ).first()
+        if not counter:
+            counter = ShoeRepairJobNumberCounter(tenant_id=tenant_id, next_number=2)
+            session.add(counter)
+            try:
+                session.flush()
+                return "SHO-00001"
+            except IntegrityError:
+                session.rollback()
+                continue
+
+        current_number = int(counter.next_number)
+        result = session.exec(
+            update(ShoeRepairJobNumberCounter)
+            .where(ShoeRepairJobNumberCounter.tenant_id == tenant_id)
+            .where(ShoeRepairJobNumberCounter.next_number == current_number)
+            .values(next_number=current_number + 1)
+        )
+        if result.rowcount != 1:
+            continue
+        session.flush()
+        return f"SHO-{current_number:05d}"
+
+    raise HTTPException(status_code=500, detail="Could not allocate shoe job number")
 
 
 def _jobs_to_read(jobs: list[ShoeRepairJob], session: Session) -> list[ShoeRepairJobRead]:
@@ -314,7 +340,7 @@ def get_shoe_repair_job(
 def update_shoe_repair_job_status(
     job_id: UUID,
     payload: ShoeRepairJobStatusUpdate,
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
     job = session.get(ShoeRepairJob, job_id)

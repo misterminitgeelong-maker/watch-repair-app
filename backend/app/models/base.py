@@ -44,6 +44,16 @@ JobStatus = Literal[
     "invoice_paid",
     "failed_job",
 ]
+ShoeJobStatus = Literal[
+    "awaiting_quote",
+    "awaiting_go_ahead",
+    "go_ahead",
+    "no_go",
+    "working_on",
+    "completed",
+    "awaiting_collection",
+    "collected",
+]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
 QuoteItemType = Literal["labor", "part", "fee"]
