@@ -22,6 +22,7 @@ labanda_scraper/browser_profile/
 # Local DB files
 *.db
 *.db.bak
+*.db.bak-*
 
 # Build artifacts / stray captures (don't commit to the product repo)
 *.zip
