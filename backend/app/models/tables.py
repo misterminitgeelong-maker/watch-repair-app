@@ -390,6 +390,13 @@ class RepairJobNumberCounter(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class ShoeRepairJobNumberCounter(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    next_number: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class JobStatusHistory(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
