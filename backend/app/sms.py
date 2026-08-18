@@ -994,7 +994,7 @@ def notify_shoe_quote_sent(
     approval_url = f"{settings.public_base_url}/shoe-approve/{approval_token}"
     body = (
         f"Hi {customer_name}, your shoe repair quote from {shop_name} is {currency_symbol}{total:.2f}. "
-        f"Tap to approve or decline: {approval_url}"
+        f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
     sid = _send_sms(to_phone, body)
     _persist(

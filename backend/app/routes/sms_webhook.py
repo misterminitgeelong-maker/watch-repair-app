@@ -22,6 +22,7 @@ from ..models import (
     Quote,
     RepairJob,
     Shoe,
+    ShoeJobStatusHistory,
     ShoeRepairJob,
     SmsLog,
     TenantEventLog,
@@ -300,8 +301,8 @@ def _resolve_inbound_target(session: Session, from_phone: str) -> _InboundTarget
 class _QuoteDecisionResult:
     reply: str
     decision: str
-    quote_id: UUID
-    job: RepairJob | None
+    quote_id: UUID | None
+    job: RepairJob | ShoeRepairJob | None
 
 
 def _apply_keyword_quote_decision(
@@ -309,14 +310,7 @@ def _apply_keyword_quote_decision(
     target: _InboundTarget,
     body_text: str,
 ) -> _QuoteDecisionResult | None:
-    """Honour YES/NO replies to a watch repair quote SMS.
-
-    Returns the decision outcome (with a confirmation message to text back), or
-    None when the reply is not a quote decision or there is no pending quote on
-    the matched job.
-    """
-    if not target.repair_job_id:
-        return None
+    """Honour YES/NO replies to a watch or shoe repair quote SMS."""
     keyword = "".join(ch for ch in body_text.lower() if ch.isalnum())
     if keyword in _APPROVE_KEYWORDS:
         decision = "approved"
@@ -325,33 +319,72 @@ def _apply_keyword_quote_decision(
     else:
         return None
 
-    # "expired" only means the link timed out — an explicit SMS reply still counts.
-    quote = session.exec(
-        select(Quote)
-        .where(Quote.repair_job_id == target.repair_job_id)
-        .where(Quote.tenant_id == target.tenant_id)
-        .where(Quote.status.in_(("sent", "expired")))
-        .order_by(Quote.sent_at.desc())
-    ).first()
-    if not quote:
-        return None
+    if target.repair_job_id:
+        quote = session.exec(
+            select(Quote)
+            .where(Quote.repair_job_id == target.repair_job_id)
+            .where(Quote.tenant_id == target.tenant_id)
+            .where(Quote.status.in_(("sent", "expired")))
+            .order_by(Quote.sent_at.desc())
+        ).first()
+        if not quote:
+            return None
 
-    quote.status = decision
-    session.add(quote)
-    session.add(Approval(
-        tenant_id=quote.tenant_id,
-        quote_id=quote.id,
-        decision=decision,
-        user_agent="sms-reply",
-    ))
+        quote.status = decision
+        session.add(quote)
+        session.add(Approval(
+            tenant_id=quote.tenant_id,
+            quote_id=quote.id,
+            decision=decision,
+            user_agent="sms-reply",
+        ))
 
-    job = session.get(RepairJob, target.repair_job_id)
-    if job and job.status == "awaiting_go_ahead":
-        job.status = "go_ahead" if decision == "approved" else "no_go"
+        job = session.get(RepairJob, target.repair_job_id)
+        if job and job.status == "awaiting_go_ahead":
+            job.status = "go_ahead" if decision == "approved" else "no_go"
+            session.add(job)
+            session.add(JobStatusHistory(
+                tenant_id=job.tenant_id,
+                repair_job_id=job.id,
+                old_status="awaiting_go_ahead",
+                new_status=job.status,
+                changed_by_user_id=None,
+                change_note=f"Customer {decision} quote via SMS reply",
+            ))
+            session.add(TenantEventLog(
+                tenant_id=job.tenant_id,
+                actor_user_id=None,
+                entity_type="repair_job",
+                entity_id=job.id,
+                event_type="quote_approved" if decision == "approved" else "quote_declined",
+                event_summary=(
+                    f"Customer approved quote for job #{job.job_number} via SMS"
+                    if decision == "approved"
+                    else f"Customer declined quote for job #{job.job_number} via SMS — return watch"
+                ),
+            ))
+
+        reply = (
+            "Thanks! Your quote has been approved and we'll get started on your repair."
+            if decision == "approved"
+            else "No problem — we've recorded that you declined the quote. We'll be in touch about returning your watch."
+        )
+        return _QuoteDecisionResult(reply=reply, decision=decision, quote_id=quote.id, job=job)
+
+    if target.shoe_repair_job_id:
+        job = session.get(ShoeRepairJob, target.shoe_repair_job_id)
+        if not job or job.tenant_id != target.tenant_id:
+            return None
+        if job.quote_status not in ("sent",):
+            return None
+
+        job.quote_status = decision
+        if job.status == "awaiting_go_ahead":
+            job.status = "go_ahead" if decision == "approved" else "no_go"
         session.add(job)
-        session.add(JobStatusHistory(
+        session.add(ShoeJobStatusHistory(
             tenant_id=job.tenant_id,
-            repair_job_id=job.id,
+            shoe_repair_job_id=job.id,
             old_status="awaiting_go_ahead",
             new_status=job.status,
             changed_by_user_id=None,
@@ -360,22 +393,23 @@ def _apply_keyword_quote_decision(
         session.add(TenantEventLog(
             tenant_id=job.tenant_id,
             actor_user_id=None,
-            entity_type="repair_job",
+            entity_type="shoe_repair_job",
             entity_id=job.id,
             event_type="quote_approved" if decision == "approved" else "quote_declined",
             event_summary=(
-                f"Customer approved quote for job #{job.job_number} via SMS"
+                f"Customer approved shoe repair quote for job #{job.job_number} via SMS"
                 if decision == "approved"
-                else f"Customer declined quote for job #{job.job_number} via SMS — return watch"
+                else f"Customer declined shoe repair quote for job #{job.job_number} via SMS"
             ),
         ))
+        reply = (
+            "Thanks! Your quote has been approved and we'll get started on your repair."
+            if decision == "approved"
+            else "No problem — we've recorded that you declined the quote. We'll be in touch about returning your shoes."
+        )
+        return _QuoteDecisionResult(reply=reply, decision=decision, quote_id=None, job=job)
 
-    reply = (
-        "Thanks! Your quote has been approved and we'll get started on your repair."
-        if decision == "approved"
-        else "No problem — we've recorded that you declined the quote. We'll be in touch about returning your watch."
-    )
-    return _QuoteDecisionResult(reply=reply, decision=decision, quote_id=quote.id, job=job)
+    return None
 
 
 def _ticket_label(session: Session, target: _InboundTarget) -> str | None:
@@ -469,8 +503,8 @@ async def twilio_incoming_sms(
             payload={
                 "job_id": str(decision_result.job.id),
                 "job_number": decision_result.job.job_number,
-                "quote_id": str(decision_result.quote_id),
-                "type": "repair_job",
+                "quote_id": str(decision_result.quote_id) if decision_result.quote_id else None,
+                "type": "repair_job" if isinstance(decision_result.job, RepairJob) else "shoe_repair_job",
             },
         )
 

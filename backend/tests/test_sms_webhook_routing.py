@@ -314,6 +314,29 @@ def _quote_for_job(client: TestClient, headers: dict[str, str], job_id) -> dict:
     return quote.json()
 
 
+def test_inbound_yes_approves_pending_shoe_quote(client: TestClient):
+    from_phone, stored_phone = _phone_pair(11)
+    headers, tenant_id = _bootstrap_tenant(client)
+    customer_id = _customer_with_phone(client, headers, stored_phone)
+    job = _shoe_job(client, headers, customer_id, tenant_id, "Quote via SMS")
+    with Session(engine) as session:
+        db_job = session.get(ShoeRepairJob, job.id)
+        db_job.quote_status = "sent"
+        db_job.status = "awaiting_go_ahead"
+        session.add(db_job)
+        _add_sms_log(session, tenant_id=tenant_id, to_phone=stored_phone, shoe_repair_job_id=job.id)
+        session.commit()
+
+    res = client.post(_WEBHOOK, data={"From": from_phone, "Body": "YES"})
+    assert res.status_code == 200
+    assert "approved" in res.text.lower()
+
+    with Session(engine) as session:
+        db_job = session.get(ShoeRepairJob, job.id)
+        assert db_job.quote_status == "approved"
+        assert db_job.status == "go_ahead"
+
+
 def test_inbound_yes_approves_pending_watch_quote(client: TestClient):
     from app.models import Approval, Quote
 
