@@ -218,6 +218,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return featuresKnown ? 'authenticated' : 'authenticating'
   }, [token, featuresKnown])
 
+  function resetAuthState() {
+    setToken(null)
+    setRole(null)
+    setTenantId(null)
+    setTenantSlug(null)
+    setSessionUserId(null)
+    setActiveSiteTenantId(null)
+    setAvailableSites([])
+    setPlanCode('pro')
+    setProduct('mainspring')
+    setEnabledFeatures([])
+    setFeaturesKnown(false)
+    setMinitHqUi(null)
+    setSignupPaymentPending(false)
+    setSubscriptionStatus(null)
+    setTrialEnd(null)
+    setShopCalendarTodayYmd(null)
+    setScheduleCalendarTimezone('Australia/Sydney')
+    setTenantBusinessAddress(null)
+    clearMinitSessionHints()
+  }
+
   function scheduleProactiveRefresh(expiresInSeconds: number) {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     const ms = Math.max(60_000, Math.floor(expiresInSeconds * 0.9 * 1000))
@@ -243,24 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshSession() {
     const stored = getStoredAccessToken()
     if (!stored) {
-      setRole(null)
-      setTenantId(null)
-      setTenantSlug(null)
-      setSessionUserId(null)
-      setActiveSiteTenantId(null)
-      setAvailableSites([])
-      setPlanCode('pro')
-      setProduct('mainspring')
-      setEnabledFeatures([]); setFeaturesKnown(false)
-      setMinitHqUi(null)
-      setSignupPaymentPending(false)
-      setSubscriptionStatus(null)
-      setTrialEnd(null)
-      setShopCalendarTodayYmd(null)
-      setScheduleCalendarTimezone('Australia/Sydney')
-      setTenantBusinessAddress(null)
-      setFeaturesKnown(false)
-      clearMinitSessionHints()
+      resetAuthState()
       clearStoredTokens()
       return
     }
@@ -304,22 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(nextToken)
       setRole(parseRoleFromToken(nextToken))
       if (!nextToken) {
-        setTenantId(null)
-        setTenantSlug(null)
-        setSessionUserId(null)
-        setActiveSiteTenantId(null)
-        setAvailableSites([])
-        setPlanCode('pro')
-        setProduct('mainspring')
-        setEnabledFeatures([]); setFeaturesKnown(false)
-        setMinitHqUi(null)
-        setSignupPaymentPending(false)
-        setSubscriptionStatus(null)
-        setTrialEnd(null)
-        setShopCalendarTodayYmd(null)
-        setScheduleCalendarTimezone('Australia/Sydney')
-        setTenantBusinessAddress(null)
-        clearMinitSessionHints()
+        resetAuthState()
       }
     }
 
@@ -385,21 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (axios.isAxiosError(err) && err.response?.status === 401) {
               loggedOut = true
               clearStoredTokens()
-              setToken(null)
-              setRole(null)
-              setTenantId(null)
-              setTenantSlug(null)
-              setSessionUserId(null)
-              setActiveSiteTenantId(null)
-              setAvailableSites([])
-              setPlanCode('pro')
-              setProduct('mainspring')
-              setEnabledFeatures([]); setFeaturesKnown(false)
-              setMinitHqUi(null)
-              setSignupPaymentPending(false)
-              setShopCalendarTodayYmd(null)
-              setScheduleCalendarTimezone('Australia/Sydney')
-              clearMinitSessionHints()
+              resetAuthState()
             }
           }
         } finally {
@@ -437,21 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       timedOut = true
       if (!canceled) {
         clearStoredTokens()
-        setToken(null)
-        setRole(null)
-        setTenantId(null)
-        setTenantSlug(null)
-        setSessionUserId(null)
-        setActiveSiteTenantId(null)
-        setAvailableSites([])
-        setPlanCode('pro')
-        setProduct('mainspring')
-        setEnabledFeatures([]); setFeaturesKnown(false)
-        setMinitHqUi(null)
-        setSignupPaymentPending(false)
-        setShopCalendarTodayYmd(null)
-        setScheduleCalendarTimezone('Australia/Sydney')
-        clearMinitSessionHints()
+        resetAuthState()
         setSessionReady(true)
       }
     }, SESSION_INIT_TIMEOUT_MS)
@@ -468,21 +430,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!canceled && !timedOut) {
           clearStoredTokens()
-          setToken(null)
-          setRole(null)
-          setTenantId(null)
-          setTenantSlug(null)
-          setSessionUserId(null)
-          setActiveSiteTenantId(null)
-          setAvailableSites([])
-          setPlanCode('pro')
-          setProduct('mainspring')
-          setEnabledFeatures([]); setFeaturesKnown(false)
-          setMinitHqUi(null)
-          setSignupPaymentPending(false)
-          setShopCalendarTodayYmd(null)
-          setScheduleCalendarTimezone('Australia/Sydney')
-          clearMinitSessionHints()
+          resetAuthState()
         }
       } finally {
         clearTimeout(timeoutId)
@@ -509,24 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     proactiveRefreshTimer.current = null
     clearStoredTokens()
-    setToken(null)
-    setRole(null)
-    setTenantId(null)
-    setTenantSlug(null)
-    setSessionUserId(null)
-    setActiveSiteTenantId(null)
-    setAvailableSites([])
-    setPlanCode('pro')
-    setProduct('mainspring')
-    setEnabledFeatures([]); setFeaturesKnown(false)
-    setMinitHqUi(null)
-    setSignupPaymentPending(false)
-    setSubscriptionStatus(null)
-    setTrialEnd(null)
-    setShopCalendarTodayYmd(null)
-    setScheduleCalendarTimezone('Australia/Sydney')
-    setTenantBusinessAddress(null)
-    clearMinitSessionHints()
+    resetAuthState()
   }
 
   async function switchSite(nextTenantId: string) {
