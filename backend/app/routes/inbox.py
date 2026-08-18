@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, func, select
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context
+from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..models import TenantEventLog, TenantEventLogRead
 
 router = APIRouter(prefix="/v1", tags=["inbox"])
@@ -29,7 +29,7 @@ class InboxCountRead(BaseModel):
 @router.delete("/inbox/{event_id}", status_code=204)
 def delete_inbox_event(
     event_id: UUID,
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
     """Remove an inbox alert."""

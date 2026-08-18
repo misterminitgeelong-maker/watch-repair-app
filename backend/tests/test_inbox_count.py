@@ -54,3 +54,52 @@ def test_inbox_count_and_exclude(client, auth_headers):
     )
     assert filtered.status_code == 200
     assert filtered.json()["count"] == 1
+
+
+def test_intake_cannot_delete_inbox_alert(client, bootstrap_and_login):
+    suffix = uuid4().hex[:8]
+    slug = f"inbox-intake-{suffix}"
+    email = f"owner-{suffix}@inbox.test"
+    token = bootstrap_and_login(tenant_slug=slug, email=email)
+    owner_h = {"Authorization": f"Bearer {token}"}
+
+    created = client.post(
+        "/v1/users",
+        headers=owner_h,
+        json={
+            "full_name": "Intake Clerk",
+            "email": f"intake-{suffix}@inbox.test",
+            "password": "pass123456",
+            "role": "intake",
+        },
+    )
+    assert created.status_code == 201, created.text
+
+    login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": slug, "email": f"intake-{suffix}@inbox.test", "password": "pass123456"},
+    )
+    assert login.status_code == 200, login.text
+    intake_h = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    tid = _tenant_id_from_headers(owner_h)
+    event_id = uuid4()
+    with Session(engine) as session:
+        session.add(
+            TenantEventLog(
+                id=event_id,
+                tenant_id=tid,
+                entity_type="quote",
+                entity_id=uuid4(),
+                event_type="quote_approved",
+                event_summary="customer approved",
+            )
+        )
+        session.commit()
+
+    denied = client.delete(f"/v1/inbox/{event_id}", headers=intake_h)
+    assert denied.status_code == 403, denied.text
+
+    ok = client.delete(f"/v1/inbox/{event_id}", headers=owner_h)
+    assert ok.status_code == 204, ok.text
+
