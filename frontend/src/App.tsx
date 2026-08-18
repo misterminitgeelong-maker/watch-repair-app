@@ -12,11 +12,8 @@ import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
 
 function DashboardRoute() {
-  const { role, product, planCode, tenantSlug, minitHqUi } = useAuth()
-  const hq =
-    role === 'platform_admin'
-    || minitHqUi === true
-    || isMinitHqUi(product, planCode, tenantSlug)
+  const { product, planCode, tenantSlug, minitHqUi } = useAuth()
+  const hq = minitHqUi === true || isMinitHqUi(product, planCode, tenantSlug)
   if (hq) return <Navigate to="/minit/dashboard" replace />
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -96,10 +93,9 @@ const MinitReportsHubPage = lazy(() => import('@/pages/minit/MinitReportsHubPage
 
 /** Minit HQ pages — allow when server/session says HQ, not only when multi_site is in enabled_features. */
 function MinitHqGate({ children }: { children: React.ReactNode }) {
-  const { role, product, planCode, tenantSlug, minitHqUi, hasFeature } = useAuth()
+  const { product, planCode, tenantSlug, minitHqUi, hasFeature } = useAuth()
   const { pathname } = useLocation()
   const hq =
-    role === 'platform_admin' ||
     minitHqUi === true ||
     isMinitHqUi(product, planCode, tenantSlug) ||
     hasFeature('multi_site')

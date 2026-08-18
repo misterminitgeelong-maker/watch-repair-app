@@ -11,11 +11,8 @@ import { isMinitHqUi } from '@/lib/minitProduct'
  * Uses GET /inbox/count (DB COUNT) instead of fetching 50 inbox rows.
  */
 export function useInboxCount() {
-  const { minitHqUi, product, planCode, tenantSlug, role } = useAuth()
-  const hqNav =
-    role === 'platform_admin'
-    || minitHqUi === true
-    || isMinitHqUi(product, planCode, tenantSlug)
+  const { minitHqUi, product, planCode, tenantSlug } = useAuth()
+  const hqNav = minitHqUi === true || isMinitHqUi(product, planCode, tenantSlug)
 
   const { data: inboxCount = 0 } = useQuery({
     queryKey: ['inbox-count', hqNav ? 'hq' : 'shop'],
