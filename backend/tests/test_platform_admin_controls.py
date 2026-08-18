@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
 from uuid import uuid4
@@ -13,7 +14,27 @@ os.environ.setdefault("APP_ENV", "test")
 from app.config import settings  # noqa: E402
 from app.database import create_db_and_tables, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Tenant, TenantEventLog, User  # noqa: E402
+from app.models import (
+    AutoKeyJob,
+    Customer,
+    CustomerPortalSession,
+    InboundEmail,
+    IntakeJob,
+    JobMessage,
+    MobileLeadDispatch,
+    ParentAccount,
+    ParentAccountMembership,
+    PortalSession,
+    ProspectLead,
+    RefreshSession,
+    ShopMobileBookingRequest,
+    Tenant,
+    TenantApiKey,
+    TenantEventLog,
+    TenantWebhookSubscription,
+    User,
+    UserNotificationPreference,
+)  # noqa: E402
 
 create_db_and_tables()
 client = TestClient(app)
@@ -233,3 +254,151 @@ def test_billing_exempt_keeps_access_through_a_later_payment_pending_flag():
         assert blocked.status_code == 403
     finally:
         settings.stripe_secret_key = original_stripe_key
+
+
+def test_delete_tenant_clears_new_fk_tables():
+    suffix = uuid4().hex[:8]
+    token, tenant_id_str = _bootstrap_and_login(f"del-{suffix}", f"del-{suffix}@test.com")
+    _bootstrap_and_login(f"adm-{suffix}", f"adm-{suffix}@test.com")
+    _promote_to_platform_admin(f"adm-{suffix}@test.com")
+    admin_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"adm-{suffix}", "email": f"adm-{suffix}@test.com", "password": "pass123456"},
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+    tenant_id = UUID(tenant_id_str)
+
+    with Session(engine) as db:
+        user = db.exec(select(User).where(User.tenant_id == tenant_id)).first()
+        assert user is not None
+        customer = Customer(tenant_id=tenant_id, full_name="Delete Me", phone="0400111222")
+        db.add(customer)
+        db.flush()
+        job = AutoKeyJob(
+            tenant_id=tenant_id,
+            customer_id=customer.id,
+            job_number=f"AK-{suffix}",
+            title="Delete job",
+        )
+        db.add(job)
+        db.flush()
+        parent = ParentAccount(name="Delete parent", owner_email=f"parent-{suffix}@test.com")
+        db.add(parent)
+        db.flush()
+        db.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=tenant_id, user_id=user.id))
+        db.add(
+            JobMessage(
+                tenant_id=tenant_id,
+                auto_key_job_id=job.id,
+                direction="inbound",
+                body="hi",
+                from_phone="+61400111222",
+            )
+        )
+        db.add(
+            ShopMobileBookingRequest(
+                parent_account_id=parent.id,
+                requesting_tenant_id=tenant_id,
+                target_operator_tenant_id=tenant_id,
+                created_by_user_id=user.id,
+                customer_name="Booker",
+                job_address="1 Test St",
+            )
+        )
+        db.add(
+            MobileLeadDispatch(
+                parent_account_id=parent.id,
+                suburb="Sydney",
+                state_code="NSW",
+                suburb_normalized="sydney",
+                    payload_json="{}",
+                    candidate_operator_ids_json="[]",
+                    current_operator_tenant_id=tenant_id,
+                auto_key_job_id=job.id,
+            )
+        )
+        db.add(
+            IntakeJob(
+                customer_name="Intake",
+                job_address="2 Test St",
+                job_lat=-33.8,
+                job_lng=151.2,
+                claimed_by_tenant_id=tenant_id,
+                resulting_job_id=job.id,
+            )
+        )
+        db.add(
+            InboundEmail(
+                parent_account_id=parent.id,
+                subject="lead",
+                auto_key_job_id=job.id,
+            )
+        )
+        now = datetime.now(timezone.utc)
+        db.add(
+            PortalSession(
+                email=user.email,
+                token=uuid4().hex,
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+        db.add(
+            CustomerPortalSession(
+                tenant_id=tenant_id,
+                customer_id=customer.id,
+                token=uuid4().hex,
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+        db.add(
+            UserNotificationPreference(tenant_id=tenant_id, user_id=user.id)
+        )
+        db.add(
+            TenantApiKey(
+                tenant_id=tenant_id,
+                name="test",
+                key_prefix="msk_test",
+                key_hash="abc",
+            )
+        )
+        db.add(
+            TenantWebhookSubscription(
+                tenant_id=tenant_id,
+                url="https://example.test/hook",
+                event_types="quote_approved",
+                secret="s" * 32,
+            )
+        )
+        db.add(
+            RefreshSession(
+                tenant_id=tenant_id,
+                user_id=user.id,
+                jti=uuid4().hex,
+                expires_at=now + timedelta(days=7),
+            )
+        )
+        db.add(ProspectLead(tenant_id=tenant_id, name="Prospect shop"))
+        job_id = job.id
+        owner_email = user.email
+        db.commit()
+
+    res = client.delete(f"/v1/platform-admin/tenants/{tenant_id}", headers=admin_headers)
+    assert res.status_code == 204, res.text
+
+    with Session(engine) as db:
+        assert db.get(Tenant, tenant_id) is None
+        assert db.exec(select(JobMessage).where(JobMessage.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(ShopMobileBookingRequest).where(ShopMobileBookingRequest.requesting_tenant_id == tenant_id)).first() is None
+        assert db.exec(select(MobileLeadDispatch).where(MobileLeadDispatch.current_operator_tenant_id == tenant_id)).first() is None
+        assert db.exec(select(IntakeJob).where(IntakeJob.claimed_by_tenant_id == tenant_id)).first() is None
+        assert db.exec(select(InboundEmail).where(InboundEmail.auto_key_job_id == job_id)).first() is None
+        assert db.exec(select(PortalSession).where(PortalSession.email == owner_email)).first() is None
+        assert db.exec(select(CustomerPortalSession).where(CustomerPortalSession.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(UserNotificationPreference).where(UserNotificationPreference.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(TenantApiKey).where(TenantApiKey.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(TenantWebhookSubscription).where(TenantWebhookSubscription.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(RefreshSession).where(RefreshSession.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(ProspectLead).where(ProspectLead.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(User).where(User.tenant_id == tenant_id)).first() is None

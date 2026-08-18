@@ -443,21 +443,38 @@ def delete_platform_tenant(
     if not tenant:
         raise HTTPException(status_code=404, detail="Shop not found.")
 
-    tid = str(tenant_id)
+    # SQLite stores UUID as 32-char hex; Postgres uuid accepts hyphenated strings.
+    tid = tenant_id.hex if session.get_bind().dialect.name == "sqlite" else str(tenant_id)
     try:
         # Null out optional cross-tenant references on shared tables
-        session.execute(text("UPDATE intakejob SET claimed_by_tenant_id = NULL WHERE claimed_by_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("DELETE FROM intakejob WHERE claimed_by_tenant_id = :tid"), {"tid": tid})
         session.execute(text("UPDATE intakejob SET resulting_job_id = NULL WHERE resulting_job_id IN (SELECT id FROM autokeyjob WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("UPDATE parentaccounteventlog SET tenant_id = NULL WHERE tenant_id = :tid"), {"tid": tid})
+        session.execute(text("UPDATE parentaccounteventlog SET actor_user_id = NULL WHERE actor_user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("UPDATE parentaccount SET mobile_lead_default_tenant_id = NULL WHERE mobile_lead_default_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("UPDATE parentaccount SET mobile_lead_escalation_tenant_id = NULL WHERE mobile_lead_escalation_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("UPDATE autokeyjob SET referring_shop_tenant_id = NULL WHERE referring_shop_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("UPDATE autokeyjob SET shop_mobile_booking_request_id = NULL WHERE tenant_id = :tid"), {"tid": tid})
 
         # Delete tables that have no tenant_id but FK into tenant-owned tables
         session.execute(text("DELETE FROM importlogdetail WHERE import_log_id IN (SELECT id FROM importlog WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("DELETE FROM shoerepairjobshoe WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("DELETE FROM shoerepairjobitem WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("DELETE FROM shoejobstatushistory WHERE shoe_repair_job_id IN (SELECT id FROM shoerepairjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM inboundemail WHERE auto_key_job_id IN (SELECT id FROM autokeyjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM shopmobilebookingrequest WHERE requesting_tenant_id = :tid OR target_operator_tenant_id = :tid"), {"tid": tid})
+        session.execute(text("DELETE FROM mobileleaddispatch WHERE current_operator_tenant_id = :tid OR auto_key_job_id IN (SELECT id FROM autokeyjob WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM portalsession WHERE lower(email) IN (SELECT lower(email) FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
 
         # Delete tenant-owned tables in reverse FK dependency order
         for tbl in [
+            "jobmessage",                # → repairjob / shoerepairjob / autokeyjob
+            "usernotificationpreference",
+            "tenantapikey",
+            "tenantwebhooksubscription",
+            "refreshsession",
+            "customerportalsession",
+            "prospectlead",
             "pointsledger",              # → customerloyalty, invoice
             "autokeyquotelineitem",      # → autokeyquote
             "stocktakeline",             # → stocktakesession, stockitem
