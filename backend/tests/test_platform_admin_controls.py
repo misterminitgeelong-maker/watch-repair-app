@@ -90,6 +90,10 @@ def test_enter_shop_logs_event():
         headers=admin_headers,
     )
     assert ok.status_code == 200
+    body = ok.json()
+    assert body["expires_in_seconds"] == 30 * 60
+    assert body["refresh_token"] == ""
+    assert body["refresh_expires_in_seconds"] == 0
 
     with Session(engine) as db:
         event = db.exec(

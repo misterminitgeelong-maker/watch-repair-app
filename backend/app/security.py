@@ -33,10 +33,15 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 
 def create_access_token(
-    tenant_id: UUID | str, user_id: UUID | str, role: str, sid: str | None = None
+    tenant_id: UUID | str,
+    user_id: UUID | str,
+    role: str,
+    sid: str | None = None,
+    expires_minutes: int | None = None,
 ) -> tuple[str, int]:
     now = datetime.now(timezone.utc)
-    expires_delta = timedelta(minutes=settings.jwt_expire_minutes)
+    minutes = settings.jwt_expire_minutes if expires_minutes is None else expires_minutes
+    expires_delta = timedelta(minutes=minutes)
     expire = now + expires_delta
     payload = {
         "sub": str(user_id),
@@ -58,9 +63,13 @@ def create_refresh_token(
     role: str,
     sid: str | None = None,
     jti: str | None = None,
+    expires_minutes: int | None = None,
 ) -> tuple[str, int]:
     now = datetime.now(timezone.utc)
-    expires_delta = timedelta(days=settings.jwt_refresh_expire_days)
+    if expires_minutes is not None:
+        expires_delta = timedelta(minutes=expires_minutes)
+    else:
+        expires_delta = timedelta(days=settings.jwt_refresh_expire_days)
     expire = now + expires_delta
     payload = {
         "sub": str(user_id),

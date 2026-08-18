@@ -16,7 +16,6 @@ const ADMIN_PREV_TOKEN_KEY = 'admin_prev_token'
 const ADMIN_PREV_REFRESH_KEY = 'admin_prev_refresh_token'
 const ADMIN_IMPERSONATION_STARTED_KEY = 'admin_impersonation_started_at'
 const ADMIN_IMPERSONATION_EXPIRES_KEY = 'admin_impersonation_expires_at'
-const ADMIN_IMPERSONATION_DURATION_MS = 20 * 60 * 1000
 
 function formatCountdown(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000))
@@ -40,10 +39,11 @@ export function useAdminEnterShop() {
       const prevRefresh = localStorage.getItem('refresh_token') ?? sessionStorage.getItem('refresh_token') ?? ''
       if (prevAccess) sessionStorage.setItem(ADMIN_PREV_TOKEN_KEY, prevAccess)
       if (prevRefresh) sessionStorage.setItem(ADMIN_PREV_REFRESH_KEY, prevRefresh)
-      sessionStorage.setItem(ADMIN_IMPERSONATION_STARTED_KEY, String(Date.now()))
-      sessionStorage.setItem(ADMIN_IMPERSONATION_EXPIRES_KEY, String(Date.now() + ADMIN_IMPERSONATION_DURATION_MS))
 
       const { data } = await platformAdminEnterShop(tenantId)
+      const windowMs = Math.max(1, data.expires_in_seconds) * 1000
+      sessionStorage.setItem(ADMIN_IMPERSONATION_STARTED_KEY, String(Date.now()))
+      sessionStorage.setItem(ADMIN_IMPERSONATION_EXPIRES_KEY, String(Date.now() + windowMs))
 
       // Use AuthContext login so tokens + role are set correctly
       authLogin(data.access_token, data.refresh_token, data.expires_in_seconds)

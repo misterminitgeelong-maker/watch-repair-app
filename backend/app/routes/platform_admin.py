@@ -144,15 +144,15 @@ def enter_shop(
     )
     session.commit()
 
-    # Issue tokens with platform_admin role but scoped to the target tenant
-    access_token, expires = create_access_token(tenant_id, owner.id, "platform_admin")
-    refresh_token, refresh_expires = create_refresh_token(tenant_id, owner.id, "platform_admin")
+    # Short-lived impersonation: 30-minute access token, no refresh token so
+    # the window cannot be extended via /auth/refresh.
+    access_token, expires = create_access_token(tenant_id, owner.id, "platform_admin", expires_minutes=30)
 
     return PlatformEnterShopResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        refresh_token="",
         expires_in_seconds=expires,
-        refresh_expires_in_seconds=refresh_expires,
+        refresh_expires_in_seconds=0,
         tenant_id=tenant_id,
         tenant_name=tenant.name,
     )
