@@ -402,3 +402,114 @@ def test_delete_tenant_clears_new_fk_tables():
         assert db.exec(select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant_id)).first() is None
         assert db.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).first() is None
         assert db.exec(select(User).where(User.tenant_id == tenant_id)).first() is None
+
+
+def _naive_platform_reports(session: Session) -> dict:
+    """Pre-aggregation loop — used only to lock the new grouped query to the old contract."""
+    from app.models import Invoice, RepairJob, ShoeRepairJob
+    from sqlalchemy.sql.functions import coalesce
+    from sqlmodel import func as smfunc
+
+    tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    rows = []
+    for tenant in tenants:
+        users = int(session.exec(select(smfunc.count(User.id)).where(User.tenant_id == tenant.id)).one())
+        active_users = int(session.exec(select(smfunc.count(User.id)).where(User.tenant_id == tenant.id).where(User.is_active == True)).one())  # noqa: E712
+        repair_jobs = int(session.exec(select(smfunc.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id)).one())
+        shoe_jobs = int(session.exec(select(smfunc.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id)).one())
+        auto_key_jobs = int(session.exec(select(smfunc.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id)).one())
+        invoices = int(session.exec(select(smfunc.count(Invoice.id)).where(Invoice.tenant_id == tenant.id)).one())
+        paid_invoices = int(session.exec(select(smfunc.count(Invoice.id)).where(Invoice.tenant_id == tenant.id).where(Invoice.status == "paid")).one())
+        billed_total_cents = int(session.exec(select(coalesce(smfunc.sum(Invoice.total_cents), 0)).where(Invoice.tenant_id == tenant.id)).one())
+        paid_total_cents = int(session.exec(select(coalesce(smfunc.sum(Invoice.total_cents), 0)).where(Invoice.tenant_id == tenant.id).where(Invoice.status == "paid")).one())
+        jobs_last_30_days = (
+            int(session.exec(select(smfunc.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id).where(RepairJob.created_at >= thirty_days_ago)).one())
+            + int(session.exec(select(smfunc.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id).where(ShoeRepairJob.created_at >= thirty_days_ago)).one())
+            + int(session.exec(select(smfunc.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id).where(AutoKeyJob.created_at >= thirty_days_ago)).one())
+        )
+        invoices_last_30_days = int(session.exec(select(smfunc.count(Invoice.id)).where(Invoice.tenant_id == tenant.id).where(Invoice.created_at >= thirty_days_ago)).one())
+        last_activity_at = session.exec(select(TenantEventLog.created_at).where(TenantEventLog.tenant_id == tenant.id).order_by(TenantEventLog.created_at.desc()).limit(1)).first()
+        logins_last_7_days = int(session.exec(select(smfunc.count(TenantEventLog.id)).where(TenantEventLog.tenant_id == tenant.id).where(TenantEventLog.event_type == "login").where(TenantEventLog.created_at >= seven_days_ago)).one())
+        days_since_activity = None
+        if isinstance(last_activity_at, datetime):
+            normalized = last_activity_at if last_activity_at.tzinfo else last_activity_at.replace(tzinfo=timezone.utc)
+            days_since_activity = max(0, int((datetime.now(timezone.utc) - normalized).days))
+        health_status = "healthy"
+        if not tenant.is_active:
+            health_status = "suspended"
+        elif active_users == 0 or jobs_last_30_days == 0 or (days_since_activity is not None and days_since_activity > 7):
+            health_status = "attention"
+        rows.append({
+            "tenant_id": str(tenant.id),
+            "tenant_name": tenant.name,
+            "tenant_slug": tenant.slug,
+            "plan_code": tenant.plan_code,
+            "is_active": tenant.is_active,
+            "users": users,
+            "active_users": active_users,
+            "repair_jobs": repair_jobs,
+            "shoe_jobs": shoe_jobs,
+            "auto_key_jobs": auto_key_jobs,
+            "jobs_total": repair_jobs + shoe_jobs + auto_key_jobs,
+            "jobs_last_30_days": jobs_last_30_days,
+            "invoices": invoices,
+            "paid_invoices": paid_invoices,
+            "invoices_last_30_days": invoices_last_30_days,
+            "billed_total_cents": billed_total_cents,
+            "paid_total_cents": paid_total_cents,
+            "last_activity_at": last_activity_at,
+            "logins_last_7_days": logins_last_7_days,
+            "days_since_activity": days_since_activity,
+            "health_status": health_status,
+        })
+    rows.sort(key=lambda r: r["jobs_total"], reverse=True)
+    return {"tenants": rows}
+
+
+def test_platform_reports_match_naive_loop_on_three_tenants():
+    from app.models import Invoice, RepairJob, Watch
+    from app.routes.platform_admin import _build_platform_reports
+
+    suffix = uuid4().hex[:8]
+    tokens = []
+    for i in range(3):
+        token, tid = _bootstrap_and_login(f"rpt{i}-{suffix}", f"rpt{i}-{suffix}@test.com")
+        tokens.append((token, UUID(tid), i))
+    _promote_to_platform_admin(f"rpt0-{suffix}@test.com")
+    admin_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"rpt0-{suffix}", "email": f"rpt0-{suffix}@test.com", "password": "pass123456"},
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    with Session(engine) as db:
+        for token, tid, i in tokens:
+            if i == 0:
+                continue
+            cust = Customer(tenant_id=tid, full_name=f"C{i}")
+            db.add(cust)
+            db.flush()
+            watch = Watch(tenant_id=tid, customer_id=cust.id, brand="Omega")
+            db.add(watch)
+            db.flush()
+            repair = RepairJob(tenant_id=tid, watch_id=watch.id, job_number=f"JOB-{i}", title="svc")
+            db.add(repair)
+            db.flush()
+            db.add(AutoKeyJob(tenant_id=tid, customer_id=cust.id, job_number=f"AK-{i}", title="key"))
+            db.add(Invoice(tenant_id=tid, repair_job_id=repair.id, invoice_number=f"INV-{i}", status="paid" if i == 1 else "unpaid", total_cents=1000 * i, subtotal_cents=1000 * i, tax_cents=0))
+        db.commit()
+        grouped = _build_platform_reports(db)
+        naive = _naive_platform_reports(db)
+
+    def _strip(rows):
+        return [{k: v for k, v in r.items() if k != "last_activity_at"} for r in rows]
+
+    assert _strip(grouped["tenants"]) == _strip(naive["tenants"])
+
+    res = client.get("/v1/platform-admin/reports", headers=admin_headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert "totals" in body and "tenants" in body
+    assert body["totals"]["tenants"] >= 3

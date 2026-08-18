@@ -555,13 +555,52 @@ def list_platform_activity(
     ]
 
 
-@router.get("/reports")
-def get_platform_reports(
-    _: object = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
-):
+def _counts_by_tenant(session: Session, model, *filters) -> dict[UUID, int]:
+    stmt = select(model.tenant_id, func.count(model.id)).group_by(model.tenant_id)
+    for extra in filters:
+        stmt = stmt.where(extra)
+    return {tid: int(n) for tid, n in session.exec(stmt).all() if tid is not None}
+
+
+def _sums_by_tenant(session: Session, model, column, *filters) -> dict[UUID, int]:
+    stmt = select(model.tenant_id, func.coalesce(func.sum(column), 0)).group_by(model.tenant_id)
+    for extra in filters:
+        stmt = stmt.where(extra)
+    return {tid: int(n) for tid, n in session.exec(stmt).all() if tid is not None}
+
+
+def _build_platform_reports(session: Session) -> dict:
+    """Grouped aggregates — one query per metric, not per tenant."""
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+
+    users = _counts_by_tenant(session, User)
+    active_users = _counts_by_tenant(session, User, User.is_active == True)  # noqa: E712
+    repair_jobs = _counts_by_tenant(session, RepairJob)
+    shoe_jobs = _counts_by_tenant(session, ShoeRepairJob)
+    auto_key_jobs = _counts_by_tenant(session, AutoKeyJob)
+    invoices = _counts_by_tenant(session, Invoice)
+    paid_invoices = _counts_by_tenant(session, Invoice, Invoice.status == "paid")
+    billed_totals = _sums_by_tenant(session, Invoice, Invoice.total_cents)
+    paid_totals = _sums_by_tenant(session, Invoice, Invoice.total_cents, Invoice.status == "paid")
+    repair_last_30 = _counts_by_tenant(session, RepairJob, RepairJob.created_at >= thirty_days_ago)
+    shoe_last_30 = _counts_by_tenant(session, ShoeRepairJob, ShoeRepairJob.created_at >= thirty_days_ago)
+    auto_last_30 = _counts_by_tenant(session, AutoKeyJob, AutoKeyJob.created_at >= thirty_days_ago)
+    invoices_last_30 = _counts_by_tenant(session, Invoice, Invoice.created_at >= thirty_days_ago)
+    last_activity = {
+        tid: ts
+        for tid, ts in session.exec(
+            select(TenantEventLog.tenant_id, func.max(TenantEventLog.created_at)).group_by(TenantEventLog.tenant_id)
+        ).all()
+        if tid is not None
+    }
+    logins_last_7 = _counts_by_tenant(
+        session,
+        TenantEventLog,
+        TenantEventLog.event_type == "login",
+        TenantEventLog.created_at >= seven_days_ago,
+    )
 
     rows: list[dict] = []
     totals = {
@@ -585,66 +624,21 @@ def get_platform_reports(
             "tenants_no_active_users": 0,
         },
     }
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     for tenant in tenants:
-        users = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
-        active_users = int(
-            session.exec(
-                select(func.count(User.id))
-                .where(User.tenant_id == tenant.id)
-                .where(User.is_active == True)  # noqa: E712
-            ).one()
-        )
-        repair_jobs = int(session.exec(select(func.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id)).one())
-        shoe_jobs = int(session.exec(select(func.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id)).one())
-        auto_key_jobs = int(session.exec(select(func.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id)).one())
-        invoices = int(session.exec(select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant.id)).one())
-        paid_invoices = int(
-            session.exec(
-                select(func.count(Invoice.id))
-                .where(Invoice.tenant_id == tenant.id)
-                .where(Invoice.status == "paid")
-            ).one()
-        )
-        billed_total_cents = int(
-            session.exec(
-                select(func.coalesce(func.sum(Invoice.total_cents), 0))
-                .where(Invoice.tenant_id == tenant.id)
-            ).one()
-        )
-        paid_total_cents = int(
-            session.exec(
-                select(func.coalesce(func.sum(Invoice.total_cents), 0))
-                .where(Invoice.tenant_id == tenant.id)
-                .where(Invoice.status == "paid")
-            ).one()
-        )
-        # Count last-30 jobs separately to avoid cross-join inflation.
-        jobs_last_30_days = int(session.exec(select(func.count(RepairJob.id)).where(RepairJob.tenant_id == tenant.id).where(RepairJob.created_at >= thirty_days_ago)).one()) \
-            + int(session.exec(select(func.count(ShoeRepairJob.id)).where(ShoeRepairJob.tenant_id == tenant.id).where(ShoeRepairJob.created_at >= thirty_days_ago)).one()) \
-            + int(session.exec(select(func.count(AutoKeyJob.id)).where(AutoKeyJob.tenant_id == tenant.id).where(AutoKeyJob.created_at >= thirty_days_ago)).one())
-        invoices_last_30_days = int(
-            session.exec(
-                select(func.count(Invoice.id))
-                .where(Invoice.tenant_id == tenant.id)
-                .where(Invoice.created_at >= thirty_days_ago)
-            ).one()
-        )
-        last_activity_at = session.exec(
-            select(TenantEventLog.created_at)
-            .where(TenantEventLog.tenant_id == tenant.id)
-            .order_by(TenantEventLog.created_at.desc())
-            .limit(1)
-        ).first()
-        logins_last_7_days = int(
-            session.exec(
-                select(func.count(TenantEventLog.id))
-                .where(TenantEventLog.tenant_id == tenant.id)
-                .where(TenantEventLog.event_type == "login")
-                .where(TenantEventLog.created_at >= seven_days_ago)
-            ).one()
-        )
+        u = users.get(tenant.id, 0)
+        au = active_users.get(tenant.id, 0)
+        rj = repair_jobs.get(tenant.id, 0)
+        sj = shoe_jobs.get(tenant.id, 0)
+        ak = auto_key_jobs.get(tenant.id, 0)
+        inv = invoices.get(tenant.id, 0)
+        paid = paid_invoices.get(tenant.id, 0)
+        billed = billed_totals.get(tenant.id, 0)
+        paid_cents = paid_totals.get(tenant.id, 0)
+        jobs_last_30_days = repair_last_30.get(tenant.id, 0) + shoe_last_30.get(tenant.id, 0) + auto_last_30.get(tenant.id, 0)
+        inv_last_30 = invoices_last_30.get(tenant.id, 0)
+        last_activity_at = last_activity.get(tenant.id)
+        logins = logins_last_7.get(tenant.id, 0)
         days_since_activity = None
         if isinstance(last_activity_at, datetime):
             normalized_last_activity = (
@@ -656,7 +650,7 @@ def get_platform_reports(
         health_status = "healthy"
         if not tenant.is_active:
             health_status = "suspended"
-        elif active_users == 0 or jobs_last_30_days == 0 or (days_since_activity is not None and days_since_activity > 7):
+        elif au == 0 or jobs_last_30_days == 0 or (days_since_activity is not None and days_since_activity > 7):
             health_status = "attention"
 
         rows.append({
@@ -665,40 +659,40 @@ def get_platform_reports(
             "tenant_slug": tenant.slug,
             "plan_code": tenant.plan_code,
             "is_active": tenant.is_active,
-            "users": users,
-            "active_users": active_users,
-            "repair_jobs": repair_jobs,
-            "shoe_jobs": shoe_jobs,
-            "auto_key_jobs": auto_key_jobs,
-            "jobs_total": repair_jobs + shoe_jobs + auto_key_jobs,
+            "users": u,
+            "active_users": au,
+            "repair_jobs": rj,
+            "shoe_jobs": sj,
+            "auto_key_jobs": ak,
+            "jobs_total": rj + sj + ak,
             "jobs_last_30_days": jobs_last_30_days,
-            "invoices": invoices,
-            "paid_invoices": paid_invoices,
-            "invoices_last_30_days": invoices_last_30_days,
-            "billed_total_cents": billed_total_cents,
-            "paid_total_cents": paid_total_cents,
+            "invoices": inv,
+            "paid_invoices": paid,
+            "invoices_last_30_days": inv_last_30,
+            "billed_total_cents": billed,
+            "paid_total_cents": paid_cents,
             "last_activity_at": last_activity_at,
-            "logins_last_7_days": logins_last_7_days,
+            "logins_last_7_days": logins,
             "days_since_activity": days_since_activity,
             "health_status": health_status,
         })
 
-        totals["users"] += users
-        totals["active_users"] += active_users
-        totals["repair_jobs"] += repair_jobs
-        totals["shoe_jobs"] += shoe_jobs
-        totals["auto_key_jobs"] += auto_key_jobs
-        totals["invoices"] += invoices
-        totals["paid_invoices"] += paid_invoices
-        totals["billed_total_cents"] += billed_total_cents
-        totals["paid_total_cents"] += paid_total_cents
+        totals["users"] += u
+        totals["active_users"] += au
+        totals["repair_jobs"] += rj
+        totals["shoe_jobs"] += sj
+        totals["auto_key_jobs"] += ak
+        totals["invoices"] += inv
+        totals["paid_invoices"] += paid
+        totals["billed_total_cents"] += billed
+        totals["paid_total_cents"] += paid_cents
         totals["jobs_last_30_days"] += jobs_last_30_days
-        totals["invoices_last_30_days"] += invoices_last_30_days
+        totals["invoices_last_30_days"] += inv_last_30
         if tenant.is_active:
             totals["health"]["active_tenants"] += 1
         else:
             totals["health"]["suspended_tenants"] += 1
-        if active_users == 0:
+        if au == 0:
             totals["health"]["tenants_no_active_users"] += 1
         if jobs_last_30_days == 0:
             totals["health"]["tenants_no_jobs_30_days"] += 1
@@ -706,9 +700,16 @@ def get_platform_reports(
             totals["health"]["tenants_no_activity_7_days"] += 1
 
     rows.sort(key=lambda r: r["jobs_total"], reverse=True)
-
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "totals": totals,
         "tenants": rows,
     }
+
+
+@router.get("/reports")
+def get_platform_reports(
+    _: object = Depends(require_platform_admin),
+    session: Session = Depends(get_session),
+):
+    return _build_platform_reports(session)
