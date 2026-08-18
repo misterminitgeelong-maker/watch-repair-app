@@ -930,6 +930,12 @@ class InvoiceRead(SQLModel):
     xero_synced_at: Optional[datetime] = None
     xero_online_invoice_url: Optional[str] = None
 
+class InvoicePageResponse(SQLModel):
+    items: list[InvoiceRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 100
+    offset: int = 0
+
 class PaymentCreate(SQLModel):
     amount_cents: int
     provider_reference: Optional[str] = None
@@ -1062,7 +1068,7 @@ class ShoeRepairJobCreateResponse(ShoeRepairJobRead):
     tracking_sms_skipped_reason: Optional[str] = None
 
 class ShoeRepairJobStatusUpdate(SQLModel):
-    status: str
+    status: ShoeJobStatus
     note: Optional[str] = None
 
 class ShoeJobStatusHistoryRead(SQLModel):
@@ -1146,6 +1152,12 @@ class ShopMobileBookingRead(SQLModel):
     @field_serializer("preferred_scheduled_at", "operator_response_at", "job_scheduled_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
         return as_utc_for_json(v) if v is not None else None
+
+class ShopMobileBookingPageResponse(SQLModel):
+    items: list[ShopMobileBookingRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 100
+    offset: int = 0
 
 class ShopMobileBookingDeclineBody(SQLModel):
     decline_reason: Optional[str] = Field(default=None, max_length=2000)
@@ -1523,6 +1535,12 @@ class StockItemRead(SQLModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+class StockItemPageResponse(SQLModel):
+    items: list[StockItemRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 200
+    offset: int = 0
 
 class StockImportSummaryResponse(SQLModel):
     imported: int

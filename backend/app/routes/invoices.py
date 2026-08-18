@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
@@ -15,6 +15,7 @@ from ..models import (
     Invoice,
     InvoiceCreateFromQuoteResponse,
     InvoiceNumberCounter,
+    InvoicePageResponse,
     InvoiceRead,
     InvoiceSendResponse,
     InvoiceWithPayments,
@@ -64,15 +65,26 @@ def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
     raise HTTPException(status_code=500, detail="Could not allocate invoice number")
 
 
-@router.get("", response_model=list[InvoiceRead])
+@router.get("", response_model=InvoicePageResponse)
 def list_invoices(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    base = select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
+    total = int(
+        session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == auth.tenant_id)).one()
+    )
     invoices = session.exec(
-        select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
+        base.order_by(Invoice.created_at.desc()).offset(offset).limit(limit)
     ).all()
-    return [InvoiceRead.model_validate(inv, from_attributes=True) for inv in invoices]
+    return InvoicePageResponse(
+        items=[InvoiceRead.model_validate(inv, from_attributes=True) for inv in invoices],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/from-quote/{quote_id}", response_model=InvoiceCreateFromQuoteResponse, status_code=201)

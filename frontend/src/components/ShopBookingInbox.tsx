@@ -21,7 +21,7 @@ export default function ShopBookingInbox() {
 
   const { data: pending = [], isLoading } = useQuery({
     queryKey: ['shop-mobile-bookings', 'pending'],
-    queryFn: () => listShopMobileBookings('pending').then(r => r.data),
+    queryFn: () => listShopMobileBookings('pending').then(r => r.data.items),
   })
 
   const acceptMut = useMutation({

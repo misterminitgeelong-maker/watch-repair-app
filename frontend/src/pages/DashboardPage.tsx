@@ -251,7 +251,7 @@ export default function DashboardPage() {
 
   const invoicesQ = useQuery({
     queryKey: ['invoices'],
-    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data),
+    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data.items),
     enabled: mainspringDashboard,
   })
   const reportsQ = useQuery({

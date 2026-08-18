@@ -36,7 +36,7 @@ export default function StocktakesPage() {
 
   const { data: stockItems = [] } = useQuery({
     queryKey: ['stock-items-summary'],
-    queryFn: () => listStockItems().then(r => r.data),
+    queryFn: () => listStockItems({ limit: 500 }).then(r => r.data.items),
   })
 
   const inventoryStats = useMemo(() => {

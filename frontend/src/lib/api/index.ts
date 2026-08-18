@@ -458,7 +458,9 @@ export const suggestShopMobileOperator = (suburb: string, state_code: string) =>
 export const createShopMobileBooking = (payload: ShopMobileBookingCreate) =>
   api.post<ShopMobileBooking>('/shop-mobile-bookings', payload)
 export const listShopMobileBookings = (status?: ShopMobileBookingStatus) =>
-  api.get<ShopMobileBooking[]>('/shop-mobile-bookings', { params: status ? { status } : {} })
+  api.get<{ items: ShopMobileBooking[]; total: number; limit: number; offset: number }>('/shop-mobile-bookings', {
+    params: status ? { status } : {},
+  })
 export const getShopMobileBooking = (id: string) =>
   api.get<ShopMobileBooking>(`/shop-mobile-bookings/${id}`)
 export const cancelShopMobileBooking = (id: string) =>
@@ -900,8 +902,15 @@ export const importStockFile = (file: File) => {
   return api.post<StockImportSummaryResponse>('/stock/import', formData)
 }
 
-export const listStockItems = (params?: { search?: string; group_code?: string; group_name?: string; hide_zero_stock?: boolean }) =>
-  api.get<StockItem[]>('/stock/items', { params })
+export const listStockItems = (params?: {
+  search?: string
+  group_code?: string
+  group_name?: string
+  hide_zero_stock?: boolean
+  limit?: number
+  offset?: number
+}) =>
+  api.get<{ items: StockItem[]; total: number; limit: number; offset: number }>('/stock/items', { params })
 
 export const getStockItem = (id: string) => api.get<StockItem>(`/stock/items/${id}`)
 
@@ -1033,8 +1042,11 @@ export interface Invoice {
   xero_online_invoice_url?: string | null
   invoice?: Invoice
 }
-export const listInvoices = (params?: { limit?: number }) =>
-  api.get<Invoice[]>('/invoices', params && Object.keys(params).length ? { params } : undefined)
+export const listInvoices = (params?: { limit?: number; offset?: number }) =>
+  api.get<{ items: Invoice[]; total: number; limit: number; offset: number }>(
+    '/invoices',
+    params && Object.keys(params).length ? { params } : undefined,
+  )
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${id}`)
 export const getInvoiceLineItems = (invoiceId: string) =>
   api.get<Array<{ id: string; item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }>>(`/invoices/${invoiceId}/line-items`)

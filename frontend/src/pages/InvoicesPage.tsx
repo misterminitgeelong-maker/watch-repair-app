@@ -47,7 +47,7 @@ export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatusFilter = searchParams.get('status') ?? ''
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
-  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data) })
+  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data.items) })
   const filteredInvoices = useMemo(
     () => (invoices ?? []).filter((inv) => (statusFilter ? inv.status === statusFilter : true)),
     [invoices, statusFilter],

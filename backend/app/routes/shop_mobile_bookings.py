@@ -28,6 +28,7 @@ from ..models import (
     ParentAccountMembership,
     ShopMobileBookingCreate,
     ShopMobileBookingDeclineBody,
+    ShopMobileBookingPageResponse,
     ShopMobileBookingRead,
     ShopMobileBookingRequest,
     ShopMobileOperatorOption,
@@ -536,9 +537,11 @@ def create_booking(
     return _to_read(session, row)
 
 
-@router.get("", response_model=list[ShopMobileBookingRead])
+@router.get("", response_model=ShopMobileBookingPageResponse)
 def list_bookings(
     status: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -563,7 +566,14 @@ def list_bookings(
             expired_any = True
     if expired_any:
         session.commit()
-    return [_to_read(session, r) for r in rows]
+    total = len(rows)
+    page = rows[offset : offset + limit]
+    return ShopMobileBookingPageResponse(
+        items=[_to_read(session, r) for r in page],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{booking_id}", response_model=ShopMobileBookingRead)

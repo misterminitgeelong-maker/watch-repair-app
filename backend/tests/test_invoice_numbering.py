@@ -198,3 +198,20 @@ def test_send_invoice_requires_customer_email():
     assert res.status_code == 200
     assert res.json()["email_sent"] is False
     assert res.json()["email_skipped_reason"] == "email_disabled"
+
+
+def test_list_invoices_returns_paginated_page():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"inv-page-{suffix}", f"owner-{suffix}@inv.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    _create_invoice_from_quote(headers, _create_approved_quote(headers, watch_id))
+
+    res = client.get("/v1/invoices", headers=headers, params={"limit": 1, "offset": 0})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["limit"] == 1
+    assert body["offset"] == 0
+    assert body["total"] >= 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["invoice_number"]

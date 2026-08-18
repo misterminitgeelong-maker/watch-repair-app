@@ -86,7 +86,7 @@ export default function ShopMobileBookingsPage() {
 
   const { data: bookings = [], isLoading: listLoading } = useQuery({
     queryKey: ['shop-mobile-bookings'],
-    queryFn: () => listShopMobileBookings().then(r => r.data),
+    queryFn: () => listShopMobileBookings().then(r => r.data.items),
   })
 
   useEffect(() => {

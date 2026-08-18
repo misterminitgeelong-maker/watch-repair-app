@@ -77,7 +77,7 @@ def test_stock_import_deduplicates_and_maps_groups():
 
     items_res = client.get("/v1/stock/items", headers=headers)
     assert items_res.status_code == 200
-    items = items_res.json()
+    items = items_res.json()["items"]
     assert len(items) == 2
 
     key_item = next(item for item in items if item["item_code"] == "A100")
@@ -90,7 +90,7 @@ def test_stock_import_deduplicates_and_maps_groups():
 
     filtered_res = client.get("/v1/stock/items", headers=headers, params={"group_code": "DA"})
     assert filtered_res.status_code == 200
-    assert [item["item_code"] for item in filtered_res.json()] == ["A100"]
+    assert [item["item_code"] for item in filtered_res.json()["items"]] == ["A100"]
 
 
 def test_stocktake_workflow_filters_counts_completion_and_export():
@@ -170,7 +170,7 @@ def test_stocktake_workflow_filters_counts_completion_and_export():
 
     stock_item_res = client.get("/v1/stock/items", headers=headers, params={"group_code": "DA"})
     assert stock_item_res.status_code == 200
-    assert stock_item_res.json()[0]["system_stock_qty"] == 8
+    assert stock_item_res.json()["items"][0]["system_stock_qty"] == 8
 
     export_csv_res = client.get(f"/v1/stocktakes/{session_id}/export", headers=headers, params={"format": "csv"})
     assert export_csv_res.status_code == 200

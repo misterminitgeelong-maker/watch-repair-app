@@ -15,6 +15,7 @@ from ..models import (
     StockAdjustment,
     StockImportSummaryResponse,
     StockItem,
+    StockItemPageResponse,
     StockItemRead,
     StocktakeGroupSummaryRead,
     StocktakeLine,
@@ -386,25 +387,32 @@ async def import_stock_master(
     )
 
 
-@router.get("/stock/items", response_model=list[StockItemRead])
+@router.get("/stock/items", response_model=StockItemPageResponse)
 def list_stock_items(
     search: str | None = Query(default=None),
     group_code: str | None = Query(default=None),
     group_name: str | None = Query(default=None),
     hide_zero_stock: bool = Query(default=False),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     session_db: Session = Depends(get_session),
 ):
-    items = session_db.exec(
-        _list_stock_items_query(
-            auth,
-            search=search,
-            group_code=group_code,
-            group_name=group_name,
-            hide_zero_stock=hide_zero_stock,
-        )
-    ).all()
-    return [_serialize_stock_item(item) for item in items]
+    query = _list_stock_items_query(
+        auth,
+        search=search,
+        group_code=group_code,
+        group_name=group_name,
+        hide_zero_stock=hide_zero_stock,
+    )
+    total = int(session_db.exec(select(func.count()).select_from(query.order_by(None).subquery())).one())
+    items = session_db.exec(query.offset(offset).limit(limit)).all()
+    return StockItemPageResponse(
+        items=[_serialize_stock_item(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/stock/items/{item_id}", response_model=StockItemRead)

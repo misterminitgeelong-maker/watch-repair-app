@@ -20,6 +20,12 @@ create_db_and_tables()
 client = TestClient(app)
 
 
+def _items(res) -> list:
+    body = res.json()
+    assert isinstance(body, dict) and "items" in body, body
+    return body["items"]
+
+
 def _bootstrap(slug: str, email: str, plan_code: str) -> dict:
     res = client.post(
         "/v1/auth/bootstrap",
@@ -155,8 +161,8 @@ def test_booking_lifecycle_accept_decline_and_cross_parent_forbidden():
 
     incoming = client.get("/v1/shop-mobile-bookings", headers=op_h)
     assert incoming.status_code == 200
-    assert len(incoming.json()) == 1
-    assert incoming.json()[0]["id"] == booking_id
+    assert len(_items(incoming)) == 1
+    assert _items(incoming)[0]["id"] == booking_id
 
     accept = client.post(f"/v1/shop-mobile-bookings/{booking_id}/accept", headers=op_h)
     assert accept.status_code == 200, accept.text
@@ -231,7 +237,7 @@ def test_cancel_pending():
 
     incoming = client.get("/v1/shop-mobile-bookings?status=pending", headers=op_h)
     assert incoming.status_code == 200
-    assert all(r["id"] != bid for r in incoming.json())
+    assert all(r["id"] != bid for r in _items(incoming))
 
 
 def test_shop_booking_usage_endpoint():
@@ -287,7 +293,7 @@ def test_pending_booking_expires_after_seven_days():
 
     listed = client.get("/v1/shop-mobile-bookings", headers=op_h)
     assert listed.status_code == 200
-    expired = next(r for r in listed.json() if r["id"] == booking_id)
+    expired = next(r for r in _items(listed) if r["id"] == booking_id)
     assert expired["status"] == "expired"
 
     accept = client.post(f"/v1/shop-mobile-bookings/{booking_id}/accept", headers=op_h)
@@ -450,7 +456,7 @@ def test_booking_read_includes_requesting_shop_number():
 
     listed = client.get("/v1/shop-mobile-bookings", headers=op_h)
     assert listed.status_code == 200
-    row = next(r for r in listed.json() if r["id"] == body["id"])
+    row = next(r for r in _items(listed) if r["id"] == body["id"])
     assert row["requesting_shop_number"] == "3269"
 
 

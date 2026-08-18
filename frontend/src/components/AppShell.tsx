@@ -500,7 +500,7 @@ export default function AppShell() {
   })
   const { data: invoices } = useQuery({
     queryKey: ['invoices'],
-    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data),
+    queryFn: () => listInvoices({ limit: 500 }).then((r) => r.data.items),
     enabled: guidedTourDataEnabled,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
