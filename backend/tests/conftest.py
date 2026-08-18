@@ -23,15 +23,20 @@ os.environ.setdefault("APP_ENV", "test")
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import create_db_and_tables
+from app.database import create_db_and_tables, engine
 from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _initialise_schema():
-    """Ensure tables exist once for the whole session."""
+    """Ensure tables exist once for the whole session, then drop the throwaway DB."""
     create_db_and_tables()
     yield
+    engine.dispose()
+    try:
+        _TEST_DB.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 @pytest.fixture(scope="session")

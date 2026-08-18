@@ -93,8 +93,9 @@ def test_build_available_sites_batches_lookups() -> None:
     create_db_and_tables()
     with Session(engine) as session:
         _seed_many_shops(session, 15)
-        parent = session.exec(select(ParentAccount)).first()
-        assert parent is not None
+        parent = session.exec(
+            select(ParentAccount).where(ParentAccount.owner_email == "hq-scale@test.mainspring.au")
+        ).one()
         sites = _build_available_sites_for_email(session, parent.owner_email)
         users_for_email = session.exec(select(User).where(User.email == parent.owner_email)).all()
         tenant_ids_with_email = {u.tenant_id for u in users_for_email if u.is_active}

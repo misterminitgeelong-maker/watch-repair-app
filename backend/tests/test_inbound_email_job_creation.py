@@ -15,11 +15,12 @@ os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyJob, InboundEmail, ParentAccount, Tenant
+from app.shop_number import linked_tenant_ids_for_parent
 
 create_db_and_tables()
 client = TestClient(app)
@@ -145,12 +146,17 @@ def test_parsed_preview_is_read_only_and_matches_operator():
     assert data["match_confidence"] == "matched"
     assert data["suggested_operator_name"] == "Mobile Services Burwood"
 
-    # Preview must not have created anything.
+    # Preview must not have created a job on this parent network.
     with Session(engine) as session:
         row = session.get(InboundEmail, email_id)
         assert row.status == "new"
         assert row.auto_key_job_id is None
-        assert session.exec(select(AutoKeyJob)).first() is None
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).one()
+        tenant_ids = linked_tenant_ids_for_parent(session, parent.id)
+        leftover = session.exec(
+            select(AutoKeyJob).where(col(AutoKeyJob.tenant_id).in_(tenant_ids))
+        ).first()
+        assert leftover is None
 
 
 def test_parsed_preview_no_fields_found():

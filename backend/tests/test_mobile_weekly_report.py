@@ -108,7 +108,8 @@ def _seed_job_and_paid_invoice(tenant_id_str: str, *, created_at: datetime, tota
 def test_build_report_computes_current_and_prior_week_and_backlog():
     token = _ensure_hq()
     headers = {"Authorization": f"Bearer {token}"}
-    operator_id = _link_operator(headers, "Mobile Services Burwood")
+    operator_label = f"Mobile Services Unique {uuid4().hex[:8]}"
+    operator_id = _link_operator(headers, operator_label)
 
     now = datetime.now(timezone.utc)
     # This week: one paid job.
@@ -126,7 +127,7 @@ def test_build_report_computes_current_and_prior_week_and_backlog():
                 from_email="no-reply@powerfulform.com",
                 text_body=(
                     "Please Select Your Location: NSW\n"
-                    "Nearest Provider NSW: Mister Minit Mobile Services Burwood\n"
+                    f"Nearest Provider NSW: Mister Minit {operator_label}\n"
                     "First Name: Jamie\nLast Name: Test\nPhone: 0400 000 000\n"
                     "Service Required: Key Cutting\nHow would you like to be contacted: Phone"
                 ),
@@ -142,6 +143,11 @@ def test_build_report_computes_current_and_prior_week_and_backlog():
         rows = build_mobile_weekly_report(session, parent=parent, start_dt=start_dt, end_dt=end_dt)
 
     row = next(r for r in rows if str(r.operator_tenant_id) == operator_id)
+    with Session(engine) as session:
+        this_operator_jobs = session.exec(
+            select(AutoKeyJob).where(AutoKeyJob.tenant_id == UUID(operator_id))
+        ).all()
+        assert len(this_operator_jobs) == 2
     assert row.jobs_count == 1
     assert row.sales_cents == 15000
     assert row.prior_week_jobs_count == 1
