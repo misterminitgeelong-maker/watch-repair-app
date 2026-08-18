@@ -2,7 +2,7 @@ from datetime import timedelta, timezone, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlmodel import Session, delete, func, select
+from sqlmodel import Session, col, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -54,11 +54,76 @@ def _next_shoe_job_number(session: Session, tenant_id: UUID) -> str:
     return f"SHO-{int(count) + 1:05d}"
 
 
+def _jobs_to_read(jobs: list[ShoeRepairJob], session: Session) -> list[ShoeRepairJobRead]:
+    """Serialize jobs with batched shoe/item/user lookups (list endpoint)."""
+    if not jobs:
+        return []
+    job_ids = [job.id for job in jobs]
+    shoe_ids: set[UUID] = {job.shoe_id for job in jobs}
+    claimed_ids = {job.claimed_by_user_id for job in jobs if job.claimed_by_user_id}
+
+    items_by_job: dict[UUID, list[ShoeRepairJobItemRead]] = {jid: [] for jid in job_ids}
+    item_rows = session.exec(
+        select(ShoeRepairJobItem).where(col(ShoeRepairJobItem.shoe_repair_job_id).in_(job_ids))
+    ).all()
+    for row in item_rows:
+        items_by_job.setdefault(row.shoe_repair_job_id, []).append(ShoeRepairJobItemRead.model_validate(row))
+
+    extras_by_job: dict[UUID, list[ShoeRepairJobShoe]] = {jid: [] for jid in job_ids}
+    extra_rows = session.exec(
+        select(ShoeRepairJobShoe)
+        .where(col(ShoeRepairJobShoe.shoe_repair_job_id).in_(job_ids))
+        .order_by(ShoeRepairJobShoe.sort_order)
+    ).all()
+    for row in extra_rows:
+        extras_by_job.setdefault(row.shoe_repair_job_id, []).append(row)
+        shoe_ids.add(row.shoe_id)
+
+    shoes_by_id: dict[UUID, Shoe] = {}
+    if shoe_ids:
+        for shoe in session.exec(select(Shoe).where(col(Shoe.id).in_(shoe_ids))).all():
+            shoes_by_id[shoe.id] = shoe
+
+    users_by_id: dict[UUID, object] = {}
+    if claimed_ids:
+        from ..models import User as UserModel
+
+        for user in session.exec(select(UserModel).where(col(UserModel.id).in_(claimed_ids))).all():
+            users_by_id[user.id] = user
+
+    out: list[ShoeRepairJobRead] = []
+    for job in jobs:
+        data = job.model_dump()
+        data["items"] = items_by_job.get(job.id, [])
+        primary_shoe = shoes_by_id.get(job.shoe_id)
+        data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
+        extra: list[ShoeRepairJobShoeRead] = []
+        for ej in extras_by_job.get(job.id, []):
+            sh = shoes_by_id.get(ej.shoe_id)
+            extra.append(
+                ShoeRepairJobShoeRead(
+                    id=ej.id,
+                    shoe_id=ej.shoe_id,
+                    shoe=ShoeRead.model_validate(sh) if sh else None,
+                    sort_order=ej.sort_order,
+                )
+            )
+        data["extra_shoes"] = extra
+        claimed = users_by_id.get(job.claimed_by_user_id) if job.claimed_by_user_id else None
+        data["claimed_by_name"] = getattr(claimed, "full_name", None)
+        out.append(ShoeRepairJobRead(**data))
+    return out
+
+
 def _load_items(session: Session, job_id: UUID) -> list[ShoeRepairJobItemRead]:
     rows = session.exec(
         select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job_id)
     ).all()
     return [ShoeRepairJobItemRead.model_validate(r) for r in rows]
+
+
+def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
+    return _jobs_to_read([job], session)[0]
 
 
 def _create_job_items(
@@ -76,38 +141,6 @@ def _create_job_items(
                 **item.model_dump(),
             )
         )
-
-
-def _job_to_read(job: ShoeRepairJob, session: Session) -> ShoeRepairJobRead:
-    data = job.model_dump()
-    data["items"] = _load_items(session, job.id)
-    # Primary shoe details
-    primary_shoe = session.get(Shoe, job.shoe_id)
-    data["shoe"] = ShoeRead.model_validate(primary_shoe) if primary_shoe else None
-    # Extra shoes
-    extra_rows = session.exec(
-        select(ShoeRepairJobShoe)
-        .where(ShoeRepairJobShoe.shoe_repair_job_id == job.id)
-        .order_by(ShoeRepairJobShoe.sort_order)
-    ).all()
-    extra = []
-    for ej in extra_rows:
-        sh = session.get(Shoe, ej.shoe_id)
-        extra.append(ShoeRepairJobShoeRead(
-            id=ej.id,
-            shoe_id=ej.shoe_id,
-            shoe=ShoeRead.model_validate(sh) if sh else None,
-            sort_order=ej.sort_order,
-        ))
-    data["extra_shoes"] = extra
-    # Resolve claimed_by_name
-    if job.claimed_by_user_id:
-        from ..models import User as UserModel
-        u = session.get(UserModel, job.claimed_by_user_id)
-        data["claimed_by_name"] = u.full_name if u else None
-    else:
-        data["claimed_by_name"] = None
-    return ShoeRepairJobRead(**data)
 
 
 # ── Shoes (item being repaired) ───────────────────────────────────────────────
@@ -262,7 +295,7 @@ def list_shoe_repair_jobs(
     if cost_outlier:
         query = query.where(ShoeRepairJob.cost_cents > 5_000_000)
     jobs = session.exec(query.order_by(ShoeRepairJob.created_at.desc()).offset(skip).limit(limit)).all()
-    return [_job_to_read(j, session) for j in jobs]
+    return _jobs_to_read(jobs, session)
 
 
 @router.get("/{job_id}", response_model=ShoeRepairJobRead)
