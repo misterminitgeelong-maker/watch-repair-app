@@ -5,14 +5,15 @@ Pulls together every pricing dataset behind the Mobile Services module so it
 can be handed to shops for review before their pricing is loaded into
 Mainspring:
 
-  1. Trade / wholesale price list (backend/seed/job_pricing.json) - the only
-     dataset that carries retail + B2B/Tier1/Tier2/Tier3 wholesale pricing.
+  1. Mobile service price list (backend/seed/job_pricing.json).
   2. Full mobile services retail catalogue, as currently loaded in the app's
      `service_pricing` table (seeded by the 20260804 migration).
   3. OEM key pricing by vehicle make, as currently loaded in the app's
      `oem_key_pricing` table (seeded by the 20260804 and 20260805
      migrations).
   4. Garage door servicing price list (`garage_servicing_pricing` table).
+
+All prices are retail only and charm-priced to the nearest xx.95.
 
 Usage (from repo root or backend/):
   python scripts/export_mobile_services_price_list_pdf.py [--output PATH]
@@ -94,10 +95,15 @@ def load_catalogue_tables() -> tuple[list[dict], list[dict], list[dict]]:
     return oem, service, garage
 
 
+def round_to_95(value: float) -> float:
+    """Charm-price to the nearest xx.95 (e.g. 400.00 -> 399.95, 15.10 -> 14.95)."""
+    return round(value) - 0.05
+
+
 def money(value) -> str:
     if value is None:
         return "POA"
-    return f"${value:,.2f}"
+    return f"${round_to_95(value):,.2f}"
 
 
 def yesno(value) -> str:
@@ -234,19 +240,17 @@ def cell(text, styles, bold=False):
 
 
 def build_wholesale_section(story, styles, entries):
-    story.append(Paragraph("1. Trade / Wholesale Price List", styles["SectionHeading"]))
+    story.append(Paragraph("1. Mobile Service Price List", styles["SectionHeading"]))
     story.append(
         Paragraph(
-            "Retail price is what the mobile service charges the public. B2B Flat, "
-            "Tier 1, Tier 2 and Tier 3 are the wholesale rates offered to shop "
-            "partners, in increasing order of volume discount. Confirm these figures "
-            "with the shop before they are loaded into Mainspring.",
+            "Retail price is what the mobile service charges the public. Confirm "
+            "these figures with the shop before they are loaded into Mainspring.",
             styles["SectionIntro"],
         )
     )
     grouped = category_groups(entries, "category")
-    col_widths = [40 * mm, 15 * mm, 16 * mm, 16 * mm, 14 * mm, 14 * mm, 14 * mm, 41 * mm]
-    header = ["Service", "Unit", "Retail", "B2B Flat", "Tier 1", "Tier 2", "Tier 3", "Notes"]
+    col_widths = [60 * mm, 22 * mm, 22 * mm, 66 * mm]
+    header = ["Service", "Unit", "Retail", "Notes"]
     for category, items in grouped.items():
         rows = []
         for it in items:
@@ -255,10 +259,6 @@ def build_wholesale_section(story, styles, entries):
                     cell(it["service"], styles),
                     cell(it.get("unit"), styles),
                     cell(money(it.get("retail_2026")), styles),
-                    cell(money(it.get("b2b_flat")), styles),
-                    cell(money(it.get("tier1")), styles),
-                    cell(money(it.get("tier2")), styles),
-                    cell(money(it.get("tier3")), styles),
                     cell(it.get("notes"), styles),
                 ]
             )
@@ -276,9 +276,8 @@ def build_service_catalogue_section(story, styles, rows):
     story.append(
         Paragraph(
             "This is every line item currently loaded in the live Mobile Services "
-            "pricing catalogue (retail price only, no wholesale tier). It includes "
-            "callout fees and a few job types not covered in the wholesale sheet "
-            "above.",
+            "pricing catalogue. It includes callout fees and a few job types not "
+            "covered in the price list above.",
             styles["SectionIntro"],
         )
     )
@@ -310,9 +309,8 @@ def build_oem_section(story, styles, rows):
     story.append(Paragraph("3. OEM Key Pricing by Vehicle Make", styles["SectionHeading"]))
     story.append(
         Paragraph(
-            "Vehicle-specific key pricing (retail only, no wholesale tier defined). "
-            "“From” prices marked POA vary by vehicle condition/options and "
-            "should be confirmed at time of quote.",
+            "Vehicle-specific key pricing. “From” prices marked POA vary by vehicle "
+            "condition/options and should be confirmed at time of quote.",
             styles["SectionIntro"],
         )
     )
@@ -363,8 +361,7 @@ def build_garage_section(story, styles, rows):
     story.append(Paragraph("4. Garage Door Servicing Price List", styles["SectionHeading"]))
     story.append(
         Paragraph(
-            "Retail pricing only — no wholesale tier is currently defined for "
-            "garage door servicing.",
+            "Retail pricing for garage door servicing jobs.",
             styles["SectionIntro"],
         )
     )
@@ -396,14 +393,13 @@ def build_cover(story, styles, counts):
             f"Prepared: {date.today().strftime('%d %B %Y')}<br/>"
             f"Purpose: shop review copy, ahead of loading pricing into Mainspring<br/><br/>"
             f"Contents:<br/>"
-            f"1. Trade / wholesale price list — {counts['wholesale']} services "
-            f"(retail + B2B/Tier 1/Tier 2/Tier 3)<br/>"
+            f"1. Mobile service price list — {counts['wholesale']} services (retail)<br/>"
             f"2. Full mobile services retail catalogue — {counts['service']} line items<br/>"
             f"3. OEM key pricing by vehicle make — {counts['oem']} entries across "
             f"{counts['oem_makes']} makes<br/>"
             f"4. Garage door servicing price list — {counts['garage']} services<br/><br/>"
-            "All prices are current mobile-service seed data. Confirm before final "
-            "sign-off with each shop.",
+            "All prices are retail, rounded to the nearest 95c. Current mobile-service "
+            "seed data — confirm before final sign-off with each shop.",
             styles["CoverNote"],
         )
     )
