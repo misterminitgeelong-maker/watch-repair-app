@@ -64,7 +64,7 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _setup_network() -> tuple[str, str, str]:
+def _setup_network() -> tuple[str, str, str, dict[str, str]]:
     suffix = uuid4().hex[:8]
     hq_slug = f"hq-{suffix}"
     op1_slug = f"op1-{suffix}"
@@ -156,7 +156,7 @@ def _ingest_lead(ingest_id: str, *, suburb: str = "Sydney") -> dict:
 
 
 def test_website_lead_creates_dispatch_and_sms():
-    ingest_id, op1_id, _op2_id = _setup_network()
+    ingest_id, op1_id, _op2_id, _hq_h = _setup_network()
     body = _ingest_lead(ingest_id)
 
     assert body["dispatch_status"] == DISPATCH_STATUS_OFFERING
@@ -178,7 +178,7 @@ def test_website_lead_creates_dispatch_and_sms():
 
 
 def test_dispatch_escalates_to_next_operator_then_hq():
-    ingest_id, op1_id, op2_id = _setup_network()
+    ingest_id, op1_id, op2_id, _hq_h = _setup_network()
     body = _ingest_lead(ingest_id)
     dispatch_id = UUID(body["dispatch_id"])
     first_job_id = body["job_id"]
@@ -213,7 +213,7 @@ def test_dispatch_escalates_to_next_operator_then_hq():
 
 
 def test_outside_territory_goes_straight_to_hq():
-    ingest_id, _op1_id, _op2_id = _setup_network()
+    ingest_id, _op1_id, _op2_id, _hq_h = _setup_network()
     body = _ingest_lead(ingest_id, suburb="Birdsville")
 
     assert body["dispatch_status"] == DISPATCH_STATUS_ESCALATED_HQ
@@ -257,7 +257,7 @@ def test_force_hq_testing_mode_skips_operators():
 
 
 def test_quote_completes_dispatch():
-    ingest_id, _op1_id, _op2_id = _setup_network()
+    ingest_id, _op1_id, _op2_id, _hq_h = _setup_network()
     body = _ingest_lead(ingest_id)
     job_id = body["job_id"]
 
