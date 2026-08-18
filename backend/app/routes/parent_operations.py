@@ -152,6 +152,16 @@ def _booking_status_counts(
     return {str(status): int(count) for status, count in rows}
 
 
+def _tenants_by_ids(session: Session, ids: list[UUID]) -> dict[UUID, Tenant]:
+    unique = [tid for tid in dict.fromkeys(ids) if tid]
+    if not unique:
+        return {}
+    return {
+        t.id: t
+        for t in session.exec(select(Tenant).where(col(Tenant.id).in_(unique))).all()
+    }
+
+
 def _collect_troubleshooting_items(
     session: Session,
     parent: ParentAccount,
@@ -183,9 +193,14 @@ def _collect_troubleshooting_items(
         .order_by(ShopMobileBookingRequest.created_at.desc())
         .limit(limit)
     ).all()
+    problem_tenants = _tenants_by_ids(
+        session,
+        [row.requesting_tenant_id for row in problem_rows]
+        + [row.target_operator_tenant_id for row in problem_rows],
+    )
     for row in problem_rows:
-        shop = session.get(Tenant, row.requesting_tenant_id)
-        op = session.get(Tenant, row.target_operator_tenant_id)
+        shop = problem_tenants.get(row.requesting_tenant_id)
+        op = problem_tenants.get(row.target_operator_tenant_id)
         items.append(
             ParentTroubleshootingItem(
                 kind=f"booking_{row.status}",
@@ -204,15 +219,17 @@ def _collect_troubleshooting_items(
         )
 
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    for row in session.exec(
+    stale_rows = session.exec(
         select(ShopMobileBookingRequest)
         .where(ShopMobileBookingRequest.parent_account_id == parent.id)
         .where(ShopMobileBookingRequest.status == "pending")
         .where(col(ShopMobileBookingRequest.created_at) < week_ago)
         .order_by(ShopMobileBookingRequest.created_at.asc())
         .limit(20)
-    ).all():
-        shop = session.get(Tenant, row.requesting_tenant_id)
+    ).all()
+    stale_tenants = _tenants_by_ids(session, [row.requesting_tenant_id for row in stale_rows])
+    for row in stale_rows:
+        shop = stale_tenants.get(row.requesting_tenant_id)
         items.append(
             ParentTroubleshootingItem(
                 kind="booking_stale_pending",
@@ -272,8 +289,9 @@ def _collect_troubleshooting_items(
             .order_by(AutoKeyJob.created_at.asc())
             .limit(20)
         ).all()
+        stuck_tenants = _tenants_by_ids(session, [job.tenant_id for job in stuck])
         for job in stuck:
-            op = session.get(Tenant, job.tenant_id)
+            op = stuck_tenants.get(job.tenant_id)
             items.append(
                 ParentTroubleshootingItem(
                     kind="job_stuck_active",
@@ -621,8 +639,9 @@ def get_operations_bookings_report(
         elif st == "expired":
             vol.expired += 1
 
+    shops = _tenants_by_ids(session, [row.requesting_tenant_id for row in rows])
     for row in rows:
-        shop = session.get(Tenant, row.requesting_tenant_id)
+        shop = shops.get(row.requesting_tenant_id)
         if not shop:
             continue
         if row.requesting_tenant_id not in by_shop:
@@ -695,12 +714,15 @@ def get_operations_mobile_jobs_report(
 
     rows = session.exec(stmt.limit(limit)).all()
     active_count = sum(1 for j in rows if j.status in _AUTO_KEY_ACTIVE_STATUSES)
+    job_tenants = _tenants_by_ids(
+        session,
+        [job.tenant_id for job in rows]
+        + [job.referring_shop_tenant_id for job in rows if job.referring_shop_tenant_id],
+    )
     jobs: list[ParentMobileJobNetworkRead] = []
     for job in rows:
-        op = session.get(Tenant, job.tenant_id)
-        ref_shop = (
-            session.get(Tenant, job.referring_shop_tenant_id) if job.referring_shop_tenant_id else None
-        )
+        op = job_tenants.get(job.tenant_id)
+        ref_shop = job_tenants.get(job.referring_shop_tenant_id) if job.referring_shop_tenant_id else None
         jobs.append(
             ParentMobileJobNetworkRead(
                 id=job.id,
