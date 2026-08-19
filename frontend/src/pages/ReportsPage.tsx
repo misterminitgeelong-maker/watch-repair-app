@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download, Receipt } from 'lucide-react'
+import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download, Receipt, Globe2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { VswtRegionalReportSection } from '@/components/vswt/VswtRegionalReportSection'
 import {
   getCategorySummary,
   getExportCustomersCsv,
@@ -214,8 +216,28 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+type PageTab = 'overview' | 'regional'
+const PAGE_TABS: { key: PageTab; label: string; icon: React.ElementType }[] = [
+  { key: 'overview', label: 'Overview', icon: BarChart3 },
+  { key: 'regional', label: 'Regional Report', icon: Globe2 },
+]
+
 export default function ReportsPage() {
   const { hasFeature } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialPageTab = searchParams.get('tab')
+  const [pageTab, setPageTab] = useState<PageTab>(
+    initialPageTab === 'regional' ? 'regional' : 'overview',
+  )
+  const changePageTab = (next: PageTab) => {
+    setPageTab(next)
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev)
+      if (next === 'overview') params.delete('tab')
+      else params.set('tab', next)
+      return params
+    }, { replace: true })
+  }
   const [period, setPeriod] = useState<PeriodKey>('6m')
   const periodConfig = PERIODS.find(p => p.key === period)!
 
@@ -313,6 +335,7 @@ export default function ReportsPage() {
       <PageHeader
         title="Reports"
         action={
+          pageTab !== 'overview' ? undefined : (
           <div className="flex items-center gap-2">
             <div
               className="inline-flex rounded-lg p-0.5"
@@ -440,9 +463,33 @@ export default function ReportsPage() {
               )}
             </div>
           </div>
+          )
         }
       />
 
+      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto mb-6" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+        <div className="flex gap-0.5 min-w-max">
+          {PAGE_TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => changePageTab(t.key)}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-150"
+              style={{
+                borderBottom: pageTab === t.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
+                color: pageTab === t.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                fontWeight: pageTab === t.key ? 700 : 500,
+              }}
+            >
+              <t.icon size={14} />{t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pageTab === 'regional' && <VswtRegionalReportSection />}
+
+      {pageTab === 'overview' && (
+      <>
       <div className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard label="Revenue" value={formatCents(data.financials.revenue_cents)} icon={DollarSign} iconBg="#E8F5EC" iconColor="#1A6838" />
@@ -870,6 +917,8 @@ export default function ReportsPage() {
             ))}
           </div>
         </Card>
+      )}
+      </>
       )}
     </div>
   )

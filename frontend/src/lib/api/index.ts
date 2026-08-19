@@ -3156,3 +3156,137 @@ export const importCustomerOrders = (file: File, dryRun = true, sheetName?: stri
     { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 },
   )
 }
+
+// ── VSWT Regional Intelligence ──────────────────────────────────────────────────────────
+// Weekly Mister Minit HQ regional export, parsed and shared, then ranked per logged-in shop.
+// See backend/app/vswt_kpis.py for the KPI list/grouping this mirrors.
+
+export type VswtKpiType = 'currency' | 'percent' | 'count' | 'ratio'
+export type VswtKpiGroup =
+  | 'Headline' | 'Budget & Last Year' | 'Conversion' | 'Category Sales'
+  | 'Category Jobs' | 'Watch & Service Detail'
+
+export interface VswtKpiDef {
+  key: string
+  label: string
+  group: VswtKpiGroup
+  type: VswtKpiType
+}
+
+export type VswtUnavailableReason = 'no_shop_number' | 'no_data' | 'shop_not_found'
+export interface VswtUnavailable {
+  available: false
+  reason: VswtUnavailableReason
+}
+
+export interface VswtSummary {
+  available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  latest_week: number
+  weeks_tracked: number
+  region_size: number
+  peer_size: number
+  area_size: number
+  sales: { value: number | null; prev_value: number | null; region_rank: number | null; peer_rank: number | null; area_rank: number | null }
+  customers: { value: number | null; prev_value: number | null; region_rank: number | null }
+  jobs: { value: number | null; prev_value: number | null; region_rank: number | null }
+}
+export const getVswtSummary = () => api.get<VswtSummary | VswtUnavailable>('/reports/vswt/summary')
+
+export interface VswtScorecardCell { value: number | null; rank: number | null }
+export interface VswtScorecardWeekRow { week: number; region_size: number; cells: Record<string, VswtScorecardCell> }
+export interface VswtScorecard {
+  available: true
+  weeks: number[]
+  groups: VswtKpiGroup[]
+  kpis: VswtKpiDef[]
+  matrix: VswtScorecardWeekRow[]
+}
+export const getVswtScorecard = () => api.get<VswtScorecard | VswtUnavailable>('/reports/vswt/scorecard')
+
+export interface VswtRankingRow extends VswtKpiDef {
+  value: number | null
+  region_avg: number | null
+  region_rank: number | null
+  percentile: number | null
+  peer_avg: number | null
+  peer_rank: number | null
+}
+export interface VswtRankings {
+  available: true
+  week: number
+  weeks: number[]
+  region_size: number
+  peer_size: number
+  rows: VswtRankingRow[]
+}
+export const getVswtRankings = (week?: number) =>
+  api.get<VswtRankings | VswtUnavailable>('/reports/vswt/rankings', { params: week ? { week } : undefined })
+
+export interface VswtLeaderboardEntry { rank: number; shop_number: string; shop_name: string | null; value: number | null; is_me: boolean }
+export interface VswtLeaderboardBoard extends VswtKpiDef {
+  top: VswtLeaderboardEntry[]
+  bottom: VswtLeaderboardEntry[]
+  my_rank: number | null
+  total: number
+}
+export interface VswtLeaderboards {
+  available: true
+  week: number
+  weeks: number[]
+  groups: ('All' | VswtKpiGroup)[]
+  boards: VswtLeaderboardBoard[]
+}
+export const getVswtLeaderboards = (week?: number, group?: string) =>
+  api.get<VswtLeaderboards | VswtUnavailable>('/reports/vswt/leaderboards', {
+    params: { ...(week ? { week } : {}), ...(group ? { group } : {}) },
+  })
+
+export interface VswtTrends {
+  available: true
+  weeks: number[]
+  latest_week: number
+  sales_series: { week: number; shop: number | null; region_avg: number | null; peer_avg: number | null }[]
+  rank_series: { week: number; rank: number | null }[]
+  category_series: { name: string; shop: number | null; region_avg: number | null }[]
+  region_size: number
+}
+export const getVswtTrends = (weeksBack = 8) =>
+  api.get<VswtTrends | VswtUnavailable>('/reports/vswt/trends', { params: { weeks_back: weeksBack } })
+
+export interface VswtWeekSummary {
+  week: number
+  shop_count: number
+  source_filenames: string[]
+  uploaded_at: string | null
+}
+export const getVswtWeeks = () => api.get<{ weeks: VswtWeekSummary[] }>('/reports/vswt/weeks')
+export const deleteVswtWeek = (week: number) => api.delete<{ deleted_week: number }>(`/reports/vswt/weeks/${week}`)
+
+export interface VswtUploadBatchItem {
+  filename: string
+  internal_week: number | null
+  week_number: number
+  shop_count: number
+  overwrite: boolean
+  rows: Record<string, unknown>[]
+}
+export interface VswtUploadResult {
+  failed_files: string[]
+  batch: VswtUploadBatchItem[]
+  existing_weeks: number[]
+}
+export const uploadVswtFiles = (files: File[]) => {
+  const form = new FormData()
+  files.forEach(f => form.append('files', f))
+  return api.post<VswtUploadResult>('/reports/vswt/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  })
+}
+
+export interface VswtCommitFile { filename: string; week_number: number; rows: Record<string, unknown>[] }
+export const commitVswtBatch = (batch: VswtCommitFile[]) =>
+  api.post<{ saved: { week_number: number; shop_count: number }[] }>('/reports/vswt/commit', { batch })

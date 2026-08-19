@@ -1107,3 +1107,64 @@ class PointsLedger(SQLModel, table=True):
     note: Optional[str] = None
     idempotency_key: Optional[str] = Field(default=None, index=True)
     occurred_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class VswtWeeklyShopMetric(SQLModel, table=True):
+    """One row per VSWT shop per week, parsed from Mister Minit HQ's weekly regional export.
+
+    Shared regional reference data, not tenant-scoped: `shop_number` matches `Tenant.shop_number`
+    so a logged-in shop's own row can be found without a picker, but ranking needs every shop's
+    row for the week, so reads are not filtered by tenant_id the way most tables are.
+    """
+    __tablename__ = "vswt_weekly_shop_metric"
+    __table_args__ = (
+        UniqueConstraint("week_seq", "shop_number", name="uq_vswtweeklyshopmetric_week_shop"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    week_seq: int = Field(index=True)
+    shop_number: str = Field(index=True, max_length=10)
+    shop_name: Optional[str] = None
+    area_num: Optional[str] = None
+    area_name: Optional[str] = None
+    store_format: Optional[str] = None  # FR | CO | FR-CLOSED | CO-CLOSED
+    comp_status: Optional[str] = None  # Comp | Non Comp | MV
+
+    budget_sales_target: Optional[float] = None
+    sales_ty: Optional[float] = None
+    sales_ly: Optional[float] = None
+    sales_pct_change: Optional[float] = None
+    customer_ty: Optional[float] = None
+    customer_ly: Optional[float] = None
+    customer_pct_change: Optional[float] = None
+    jobs_ty: Optional[float] = None
+    jobs_ly: Optional[float] = None
+    jobs_pct_change: Optional[float] = None
+    jobs_per_100: Optional[float] = None
+    keys_per_100: Optional[float] = None
+    engrave_per_100: Optional[float] = None
+    auto_remote_per_100: Optional[float] = None
+    sharpen_per_100: Optional[float] = None
+    shoe_per_100: Optional[float] = None
+    jewellery_repairs_per_100: Optional[float] = None
+    shoe_sales_ty: Optional[float] = None
+    shoe_jobs_ty: Optional[float] = None
+    key_sales_ty: Optional[float] = None
+    key_jobs_ty: Optional[float] = None
+    engrave_sales_ty: Optional[float] = None
+    engrave_jobs_ty: Optional[float] = None
+    watch_sales_ty: Optional[float] = None
+    watch_jobs_ty: Optional[float] = None
+    merch_sales_ty: Optional[float] = None
+    merch_jobs_ty: Optional[float] = None
+    auto_key_jobs_ty: Optional[float] = None
+    gg_remotes_jobs_ty: Optional[float] = None
+    watch_batt_fitted_jobs_ty: Optional[float] = None
+    watch_band_jobs_ty: Optional[float] = None
+    third_party_watch_repair_jobs_ty: Optional[float] = None
+    watch_repair_jobs_ty: Optional[float] = None
+    sharpening_jobs_ty: Optional[float] = None
+    jewellery_serv_jobs_ty: Optional[float] = None
+
+    source_filename: Optional[str] = None
+    uploaded_by_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
