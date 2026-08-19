@@ -3,12 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import { getVswtRankings } from '@/lib/api'
 import { Badge, EmptyState, Spinner } from '@/components/ui'
 import { fmtVswtVal, rankToneBadgeVariant, rankTone } from './format'
+import { VswtViewingBanner, type ViewingShop } from './VswtViewingBanner'
 
-export function VswtRankings() {
+export function VswtRankings({
+  viewingShop, onBackToMyShop,
+}: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void } = {}) {
   const [week, setWeek] = useState<number | undefined>(undefined)
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-rankings', week],
-    queryFn: () => getVswtRankings(week).then(r => r.data),
+    queryKey: ['vswt-rankings', week, viewingShop?.shopNumber ?? null],
+    queryFn: () => getVswtRankings(week, viewingShop?.shopNumber).then(r => r.data),
   })
 
   if (isLoading) return <Spinner />
@@ -19,6 +22,7 @@ export function VswtRankings() {
 
   return (
     <div>
+      {viewingShop && onBackToMyShop && <VswtViewingBanner viewing={viewingShop} onBack={onBackToMyShop} />}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <span className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Week</span>
         <select
@@ -38,7 +42,7 @@ export function VswtRankings() {
           <thead>
             <tr style={{ background: 'var(--ms-bg)' }}>
               <th style={{ ...thStyle, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--ms-bg)' }}>KPI</th>
-              <th style={thStyle}>Your Shop</th>
+              <th style={thStyle}>{data.viewing_own_shop ? 'Your Shop' : (data.shop_name ?? 'Shop')}</th>
               <th style={thStyle}>Region Avg</th>
               <th style={thStyle}>Region Rank</th>
               <th style={thStyle}>Percentile</th>

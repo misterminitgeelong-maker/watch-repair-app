@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getVswtTrends } from '@/lib/api'
 import { Card, EmptyState, Spinner } from '@/components/ui'
 import { fmtVswtVal } from './format'
+import { VswtViewingBanner, type ViewingShop } from './VswtViewingBanner'
 
 const SHOP_COLOR = 'var(--ms-accent)'
 const REGION_COLOR = 'var(--ms-text-muted)'
@@ -64,8 +65,13 @@ function GroupedBars({
   )
 }
 
-export function VswtTrends() {
-  const { data, isLoading } = useQuery({ queryKey: ['vswt-trends'], queryFn: () => getVswtTrends(8).then(r => r.data) })
+export function VswtTrends({
+  viewingShop, onBackToMyShop,
+}: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void } = {}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['vswt-trends', viewingShop?.shopNumber ?? null],
+    queryFn: () => getVswtTrends(8, viewingShop?.shopNumber).then(r => r.data),
+  })
 
   if (isLoading) return <Spinner />
   if (!data) return <EmptyState message="Couldn't load trends." />
@@ -73,12 +79,14 @@ export function VswtTrends() {
 
   const weekLabels = data.sales_series.map(s => String(s.week))
   const maxRank = data.region_size
+  const shopLabel = data.viewing_own_shop ? 'Your Shop' : (data.shop_name ?? 'Shop')
 
   return (
     <div className="flex flex-col gap-5">
-      <ChartPanel title="Sales — your shop vs region vs peer average">
+      {viewingShop && onBackToMyShop && <VswtViewingBanner viewing={viewingShop} onBack={onBackToMyShop} />}
+      <ChartPanel title={`Sales — ${data.viewing_own_shop ? 'your shop' : shopLabel} vs region vs peer average`}>
         <Legend items={[
-          { label: 'Your Shop', color: SHOP_COLOR },
+          { label: shopLabel, color: SHOP_COLOR },
           { label: 'Region Avg', color: REGION_COLOR },
           { label: 'Peer Avg', color: PEER_COLOR },
         ]}
@@ -86,7 +94,7 @@ export function VswtTrends() {
         <GroupedBars
           categories={weekLabels}
           series={[
-            { label: 'Your Shop', color: SHOP_COLOR, values: data.sales_series.map(s => s.shop) },
+            { label: shopLabel, color: SHOP_COLOR, values: data.sales_series.map(s => s.shop) },
             { label: 'Region Avg', color: REGION_COLOR, values: data.sales_series.map(s => s.region_avg) },
             { label: 'Peer Avg', color: PEER_COLOR, values: data.sales_series.map(s => s.peer_avg) },
           ]}
@@ -110,11 +118,11 @@ export function VswtTrends() {
       </ChartPanel>
 
       <ChartPanel title={`Category sales — Week ${data.latest_week}`}>
-        <Legend items={[{ label: 'Your Shop', color: SHOP_COLOR }, { label: 'Region Avg', color: REGION_COLOR }]} />
+        <Legend items={[{ label: shopLabel, color: SHOP_COLOR }, { label: 'Region Avg', color: REGION_COLOR }]} />
         <GroupedBars
           categories={data.category_series.map(c => c.name)}
           series={[
-            { label: 'Your Shop', color: SHOP_COLOR, values: data.category_series.map(c => c.shop) },
+            { label: shopLabel, color: SHOP_COLOR, values: data.category_series.map(c => c.shop) },
             { label: 'Region Avg', color: REGION_COLOR, values: data.category_series.map(c => c.region_avg) },
           ]}
           format={v => fmtVswtVal(v, 'currency')}

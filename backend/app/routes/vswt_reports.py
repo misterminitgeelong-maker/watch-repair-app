@@ -366,26 +366,34 @@ def get_vswt_summary(
 
 @router.get("/scorecard")
 def get_vswt_scorecard(
+    shop_number: Optional[str] = Query(
+        None, description="View another Minit shop's scorecard instead of your own (you must be a Minit shop yourself)."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    shop_number = _shop_number_for(auth, session)
-    if shop_number is None:
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
         return {"available": False, "reason": "no_shop_number"}
+    target_shop_number = shop_number or my_shop_number
     weeks = _all_weeks(session)
     if not weeks:
         return {"available": False, "reason": "no_data"}
 
     matrix = []
     found_any = False
+    target_name = None
+    target_area = None
     for w in weeks:
         week_rows = _week_rows(session, w)
-        my_row = _find_shop(week_rows, shop_number)
-        if my_row is not None:
+        target_row = _find_shop(week_rows, target_shop_number)
+        if target_row is not None:
             found_any = True
+            target_name = target_row.shop_name
+            target_area = target_row.area_name
         cells = {}
         for kpi in KPI_DEFS:
-            value = getattr(my_row, kpi.key) if my_row else None
+            value = getattr(target_row, kpi.key) if target_row else None
             cells[kpi.key] = {"value": value, "rank": _rank_of(week_rows, kpi.key, value)}
         matrix.append({"week": w, "region_size": len(week_rows), "cells": cells})
 
@@ -394,6 +402,10 @@ def get_vswt_scorecard(
 
     return {
         "available": True,
+        "shop_number": target_shop_number,
+        "shop_name": target_name,
+        "area_name": target_area,
+        "viewing_own_shop": target_shop_number == my_shop_number,
         "weeks": weeks,
         "groups": KPI_GROUPS,
         "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in KPI_DEFS],
@@ -404,26 +416,30 @@ def get_vswt_scorecard(
 @router.get("/rankings")
 def get_vswt_rankings(
     week: Optional[int] = Query(None),
+    shop_number: Optional[str] = Query(
+        None, description="View another Minit shop's rankings instead of your own (you must be a Minit shop yourself)."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    shop_number = _shop_number_for(auth, session)
-    if shop_number is None:
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
         return {"available": False, "reason": "no_shop_number"}
+    target_shop_number = shop_number or my_shop_number
     weeks = _all_weeks(session)
     if not weeks:
         return {"available": False, "reason": "no_data"}
     target_week = week if week in weeks else weeks[-1]
 
     week_rows = _week_rows(session, target_week)
-    my_row = _find_shop(week_rows, shop_number)
-    if my_row is None:
+    target_row = _find_shop(week_rows, target_shop_number)
+    if target_row is None:
         return {"available": False, "reason": "shop_not_found", "week": target_week}
 
     peers = _peer_rows(week_rows)
     rows = []
     for kpi in KPI_DEFS:
-        value = getattr(my_row, kpi.key)
+        value = getattr(target_row, kpi.key)
         region_rank = _rank_of(week_rows, kpi.key, value)
         percentile = (
             (len(week_rows) - region_rank) / (len(week_rows) - 1)
@@ -447,11 +463,81 @@ def get_vswt_rankings(
 
     return {
         "available": True,
+        "shop_number": target_shop_number,
+        "shop_name": target_row.shop_name,
+        "area_name": target_row.area_name,
+        "viewing_own_shop": target_shop_number == my_shop_number,
         "week": target_week,
         "weeks": weeks,
         "region_size": len(week_rows),
         "peer_size": len(peers),
         "rows": rows,
+    }
+
+
+@router.get("/directory")
+def get_vswt_directory(
+    week: Optional[int] = Query(None),
+    search: Optional[str] = Query(None, description="Filter by shop name, shop number, or area (case-insensitive)."),
+    group: Optional[str] = Query(None, description="KPI group to include as columns; defaults to Headline."),
+    peer_only: bool = Query(False, description="Only franchise + comparable stores."),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Every shop in the region for one week, searchable — the entry point for browsing/looking
+    up any other Minit shop's numbers, not just your own. Gated the same as the rest of this
+    feature: you must be a Minit shop yourself to browse the network."""
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    weeks = _all_weeks(session)
+    if not weeks:
+        return {"available": False, "reason": "no_data"}
+    target_week = week if week in weeks else weeks[-1]
+
+    week_rows = _week_rows(session, target_week)
+    peer_numbers = {r.shop_number for r in _peer_rows(week_rows)}
+
+    kpi_group = group if group in KPI_GROUPS else "Headline"
+    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
+
+    rows = week_rows
+    if peer_only:
+        rows = [r for r in rows if r.shop_number in peer_numbers]
+    if search and search.strip():
+        q = search.strip().lower()
+        rows = [
+            r for r in rows
+            if q in (r.shop_name or "").lower()
+            or q in (r.shop_number or "").lower()
+            or q in (r.area_name or "").lower()
+        ]
+
+    out_rows = [
+        {
+            "shop_number": r.shop_number,
+            "shop_name": r.shop_name,
+            "area_name": r.area_name,
+            "store_format": r.store_format,
+            "comp_status": r.comp_status,
+            "is_peer": r.shop_number in peer_numbers,
+            "is_me": r.shop_number == my_shop_number,
+            "values": {k.key: getattr(r, k.key) for k in kpis},
+        }
+        for r in rows
+    ]
+
+    return {
+        "available": True,
+        "week": target_week,
+        "weeks": weeks,
+        "region_size": len(week_rows),
+        "peer_size": len(peer_numbers),
+        "result_size": len(out_rows),
+        "group": kpi_group,
+        "groups": KPI_GROUPS,
+        "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in kpis],
+        "rows": out_rows,
     }
 
 
@@ -524,12 +610,16 @@ def get_vswt_leaderboards(
 @router.get("/trends")
 def get_vswt_trends(
     weeks_back: int = Query(8, ge=1, le=104),
+    shop_number: Optional[str] = Query(
+        None, description="View another Minit shop's trends instead of your own (you must be a Minit shop yourself)."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    shop_number = _shop_number_for(auth, session)
-    if shop_number is None:
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
         return {"available": False, "reason": "no_shop_number"}
+    target_shop_number = shop_number or my_shop_number
     all_weeks = _all_weeks(session)
     if not all_weeks:
         return {"available": False, "reason": "no_data"}
@@ -538,22 +628,26 @@ def get_vswt_trends(
     sales_series = []
     rank_series = []
     found_any = False
+    target_name = None
+    target_area = None
     for w in weeks:
         week_rows = _week_rows(session, w)
-        my_row = _find_shop(week_rows, shop_number)
+        target_row = _find_shop(week_rows, target_shop_number)
         peers = _peer_rows(week_rows)
-        if my_row is not None:
+        if target_row is not None:
             found_any = True
+            target_name = target_row.shop_name
+            target_area = target_row.area_name
         sales_series.append(
             {
                 "week": w,
-                "shop": my_row.sales_ty if my_row else None,
+                "shop": target_row.sales_ty if target_row else None,
                 "region_avg": _average([r.sales_ty for r in week_rows]),
                 "peer_avg": _average([r.sales_ty for r in peers]),
             }
         )
         rank_series.append(
-            {"week": w, "rank": _rank_of(week_rows, "sales_ty", my_row.sales_ty) if my_row else None}
+            {"week": w, "rank": _rank_of(week_rows, "sales_ty", target_row.sales_ty) if target_row else None}
         )
 
     if not found_any:
@@ -561,11 +655,11 @@ def get_vswt_trends(
 
     latest = weeks[-1]
     latest_rows = _week_rows(session, latest)
-    latest_my_row = _find_shop(latest_rows, shop_number)
+    latest_target_row = _find_shop(latest_rows, target_shop_number)
     category_series = [
         {
             "name": label,
-            "shop": getattr(latest_my_row, key) if latest_my_row else None,
+            "shop": getattr(latest_target_row, key) if latest_target_row else None,
             "region_avg": _average([getattr(r, key) for r in latest_rows]),
         }
         for key, label in CATEGORY_SALES_KEYS
@@ -573,6 +667,10 @@ def get_vswt_trends(
 
     return {
         "available": True,
+        "shop_number": target_shop_number,
+        "shop_name": target_name,
+        "area_name": target_area,
+        "viewing_own_shop": target_shop_number == my_shop_number,
         "weeks": weeks,
         "latest_week": latest,
         "sales_series": sales_series,

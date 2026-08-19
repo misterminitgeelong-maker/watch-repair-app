@@ -3201,12 +3201,19 @@ export interface VswtScorecardCell { value: number | null; rank: number | null }
 export interface VswtScorecardWeekRow { week: number; region_size: number; cells: Record<string, VswtScorecardCell> }
 export interface VswtScorecard {
   available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  viewing_own_shop: boolean
   weeks: number[]
   groups: VswtKpiGroup[]
   kpis: VswtKpiDef[]
   matrix: VswtScorecardWeekRow[]
 }
-export const getVswtScorecard = () => api.get<VswtScorecard | VswtUnavailable>('/reports/vswt/scorecard')
+export const getVswtScorecard = (shopNumber?: string) =>
+  api.get<VswtScorecard | VswtUnavailable>('/reports/vswt/scorecard', {
+    params: shopNumber ? { shop_number: shopNumber } : undefined,
+  })
 
 export interface VswtRankingRow extends VswtKpiDef {
   value: number | null
@@ -3218,14 +3225,20 @@ export interface VswtRankingRow extends VswtKpiDef {
 }
 export interface VswtRankings {
   available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  viewing_own_shop: boolean
   week: number
   weeks: number[]
   region_size: number
   peer_size: number
   rows: VswtRankingRow[]
 }
-export const getVswtRankings = (week?: number) =>
-  api.get<VswtRankings | VswtUnavailable>('/reports/vswt/rankings', { params: week ? { week } : undefined })
+export const getVswtRankings = (week?: number, shopNumber?: string) =>
+  api.get<VswtRankings | VswtUnavailable>('/reports/vswt/rankings', {
+    params: { ...(week ? { week } : {}), ...(shopNumber ? { shop_number: shopNumber } : {}) },
+  })
 
 export interface VswtLeaderboardEntry { rank: number; shop_number: string; shop_name: string | null; value: number | null; is_me: boolean }
 export interface VswtLeaderboardBoard extends VswtKpiDef {
@@ -3248,6 +3261,10 @@ export const getVswtLeaderboards = (week?: number, group?: string) =>
 
 export interface VswtTrends {
   available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  viewing_own_shop: boolean
   weeks: number[]
   latest_week: number
   sales_series: { week: number; shop: number | null; region_avg: number | null; peer_avg: number | null }[]
@@ -3255,8 +3272,42 @@ export interface VswtTrends {
   category_series: { name: string; shop: number | null; region_avg: number | null }[]
   region_size: number
 }
-export const getVswtTrends = (weeksBack = 8) =>
-  api.get<VswtTrends | VswtUnavailable>('/reports/vswt/trends', { params: { weeks_back: weeksBack } })
+export const getVswtTrends = (weeksBack = 8, shopNumber?: string) =>
+  api.get<VswtTrends | VswtUnavailable>('/reports/vswt/trends', {
+    params: { weeks_back: weeksBack, ...(shopNumber ? { shop_number: shopNumber } : {}) },
+  })
+
+export interface VswtDirectoryRow {
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  store_format: string | null
+  comp_status: string | null
+  is_peer: boolean
+  is_me: boolean
+  values: Record<string, number | null>
+}
+export interface VswtDirectory {
+  available: true
+  week: number
+  weeks: number[]
+  region_size: number
+  peer_size: number
+  result_size: number
+  group: VswtKpiGroup
+  groups: VswtKpiGroup[]
+  kpis: VswtKpiDef[]
+  rows: VswtDirectoryRow[]
+}
+export const getVswtDirectory = (params: { week?: number; search?: string; group?: string; peerOnly?: boolean } = {}) =>
+  api.get<VswtDirectory | VswtUnavailable>('/reports/vswt/directory', {
+    params: {
+      ...(params.week ? { week: params.week } : {}),
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.group ? { group: params.group } : {}),
+      ...(params.peerOnly ? { peer_only: true } : {}),
+    },
+  })
 
 export interface VswtWeekSummary {
   week: number

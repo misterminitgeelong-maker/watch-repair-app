@@ -358,3 +358,115 @@ def test_summary_unavailable_when_shop_not_in_data(vswt_client):
     body = res.json()
     assert body["available"] is False
     assert body["reason"] == "shop_not_found"
+
+
+# ── Directory + browsing other shops ────────────────────────────────────────────────────
+
+def _seed_directory_week(vswt_client, headers, week: int) -> None:
+    raw = _build_workbook(week, [
+        _shop_row(3269, "Chadstone", 62000, area_name="VIC SOUTH", store_format="FR", comp_status="Comp"),
+        _shop_row(3904, "Doncaster", 81000, area_name="VIC SOUTH", store_format="FR", comp_status="Comp"),
+        _shop_row(4100, "Bondi", 45000, area_name="NSW EAST", store_format="FR", comp_status="Comp"),
+        _shop_row(4200, "Chatswood", 71000, area_name="NSW EAST", store_format="CO", comp_status="Comp"),
+    ])
+    up = vswt_client.post("/v1/reports/vswt/upload", headers=headers, files=[("files", ("d.xlsx", raw))])
+    b = up.json()["batch"][0]
+    commit = vswt_client.post(
+        "/v1/reports/vswt/commit", headers=headers,
+        json={"batch": [{"filename": b["filename"], "week_number": week, "rows": b["rows"]}]},
+    )
+    assert commit.status_code == 200, commit.text
+
+
+def test_directory_lists_every_shop_and_flags_me_and_peers(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-dir-basic", "owner-dirbasic@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 70)
+
+    res = vswt_client.get("/v1/reports/vswt/directory", headers=headers, params={"week": 70})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    assert body["region_size"] == 4
+    assert {r["shop_number"] for r in body["rows"]} == {"3269", "3904", "4100", "4200"}
+    me = next(r for r in body["rows"] if r["shop_number"] == "3269")
+    assert me["is_me"] is True
+    assert me["is_peer"] is True
+    chatswood = next(r for r in body["rows"] if r["shop_number"] == "4200")
+    assert chatswood["is_me"] is False
+    assert chatswood["is_peer"] is False  # CO, not FR+Comp
+    assert "sales_ty" in me["values"]  # Headline group by default
+
+
+def test_directory_search_filters_by_name_number_or_area(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-dir-search", "owner-dirsearch@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 71)
+
+    by_name = vswt_client.get("/v1/reports/vswt/directory", headers=headers, params={"week": 71, "search": "donc"})
+    assert {r["shop_number"] for r in by_name.json()["rows"]} == {"3904"}
+
+    by_number = vswt_client.get("/v1/reports/vswt/directory", headers=headers, params={"week": 71, "search": "4100"})
+    assert {r["shop_number"] for r in by_number.json()["rows"]} == {"4100"}
+
+    by_area = vswt_client.get("/v1/reports/vswt/directory", headers=headers, params={"week": 71, "search": "nsw east"})
+    assert {r["shop_number"] for r in by_area.json()["rows"]} == {"4100", "4200"}
+
+
+def test_directory_peer_only_excludes_non_franchise_comp(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-dir-peer", "owner-dirpeer@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 72)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/directory", headers=headers, params={"week": 72, "peer_only": True}
+    )
+    assert {r["shop_number"] for r in res.json()["rows"]} == {"3269", "3904", "4100"}  # excludes Chatswood (CO)
+
+
+def test_directory_requires_own_shop_number(vswt_client):
+    headers, _tid = _bootstrap(vswt_client, "vswt-dir-noshop", "owner-dirnoshop@test.com")
+    res = vswt_client.get("/v1/reports/vswt/directory", headers=headers)
+    body = res.json()
+    assert body["available"] is False
+    assert body["reason"] == "no_shop_number"
+
+
+def test_can_browse_another_shops_rankings_scorecard_and_trends(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-browse", "owner-browse@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 73)
+
+    rankings = vswt_client.get(
+        "/v1/reports/vswt/rankings", headers=headers, params={"week": 73, "shop_number": "3904"}
+    )
+    assert rankings.status_code == 200
+    rb = rankings.json()
+    assert rb["available"] is True
+    assert rb["shop_number"] == "3904"
+    assert rb["shop_name"] == "Doncaster"
+    assert rb["viewing_own_shop"] is False
+    sales_row = next(r for r in rb["rows"] if r["key"] == "sales_ty")
+    assert sales_row["value"] == 81000
+
+    scorecard = vswt_client.get(
+        "/v1/reports/vswt/scorecard", headers=headers, params={"shop_number": "3904"}
+    )
+    sb = scorecard.json()
+    assert sb["available"] is True
+    assert sb["shop_number"] == "3904"
+    assert sb["viewing_own_shop"] is False
+
+    trends = vswt_client.get(
+        "/v1/reports/vswt/trends", headers=headers, params={"shop_number": "3904"}
+    )
+    tb = trends.json()
+    assert tb["available"] is True
+    assert tb["shop_number"] == "3904"
+    assert tb["viewing_own_shop"] is False
+    assert tb["sales_series"][-1]["shop"] == 81000
+
+    # Omitting shop_number still defaults to your own shop.
+    own = vswt_client.get("/v1/reports/vswt/rankings", headers=headers, params={"week": 73})
+    assert own.json()["shop_number"] == "3269"
+    assert own.json()["viewing_own_shop"] is True

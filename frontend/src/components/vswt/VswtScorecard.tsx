@@ -2,9 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { getVswtScorecard } from '@/lib/api'
 import { EmptyState, Spinner } from '@/components/ui'
 import { fmtVswtVal, rankTone, rankToneColors } from './format'
+import { VswtViewingBanner, type ViewingShop } from './VswtViewingBanner'
 
-export function VswtScorecard() {
-  const { data, isLoading } = useQuery({ queryKey: ['vswt-scorecard'], queryFn: () => getVswtScorecard().then(r => r.data) })
+export function VswtScorecard({
+  viewingShop, onBackToMyShop,
+}: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void } = {}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['vswt-scorecard', viewingShop?.shopNumber ?? null],
+    queryFn: () => getVswtScorecard(viewingShop?.shopNumber).then(r => r.data),
+  })
 
   if (isLoading) return <Spinner />
   if (!data) return <EmptyState message="Couldn't load the scorecard." />
@@ -15,8 +21,9 @@ export function VswtScorecard() {
 
   return (
     <div>
+      {viewingShop && onBackToMyShop && <VswtViewingBanner viewing={viewingShop} onBack={onBackToMyShop} />}
       <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-        Your shop's rank out of the region, every metric, every week.
+        {data.viewing_own_shop ? "Your shop's" : `${data.shop_name ?? 'This shop'}'s`} rank out of the region, every metric, every week.
       </p>
       <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--ms-border)' }}>
         <table className="border-collapse text-xs" style={{ width: '100%' }}>

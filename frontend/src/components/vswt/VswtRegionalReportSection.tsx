@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload } from 'lucide-react'
+import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search } from 'lucide-react'
 import { getVswtSummary, type VswtSummary, type VswtUnavailable } from '@/lib/api'
 import { Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -11,8 +11,10 @@ import { VswtRankings } from './VswtRankings'
 import { VswtLeaderboards } from './VswtLeaderboards'
 import { VswtTrends } from './VswtTrends'
 import { VswtUploadPanel } from './VswtUploadPanel'
+import { VswtShopDirectory } from './VswtShopDirectory'
+import type { ViewingShop } from './VswtViewingBanner'
 
-type SubTab = 'overview' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends' | 'upload'
+type SubTab = 'overview' | 'directory' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends' | 'upload'
 
 const MANAGER_ROLES = new Set(['owner', 'manager', 'platform_admin'])
 
@@ -47,15 +49,24 @@ export function VswtRegionalReportSection() {
   const { role } = useAuth()
   const canUpload = role != null && MANAGER_ROLES.has(role)
   const [subTab, setSubTab] = useState<SubTab>('overview')
+  // Set by picking a shop in the Directory; carries across Scorecard/Rankings/Trends until the
+  // user explicitly goes "back to my shop" — switching those tabs while browsing keeps browsing.
+  const [viewingShop, setViewingShop] = useState<ViewingShop | null>(null)
 
   const subTabs: { key: SubTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Overview', icon: Gauge },
+    { key: 'directory', label: 'Shop Directory', icon: Search },
     { key: 'scorecard', label: 'Scorecard', icon: LayoutGrid },
     { key: 'rankings', label: 'Rankings', icon: Table2 },
     { key: 'leaderboards', label: 'Leaderboards', icon: Trophy },
     { key: 'trends', label: 'Trends', icon: LineChartIcon },
     ...(canUpload ? [{ key: 'upload' as SubTab, label: 'Upload', icon: Upload }] : []),
   ]
+
+  function viewShop(shopNumber: string, shopName: string | null) {
+    setViewingShop({ shopNumber, shopName })
+    setSubTab('rankings')
+  }
 
   return (
     <div>
@@ -68,10 +79,17 @@ export function VswtRegionalReportSection() {
       </div>
 
       {subTab === 'overview' && <VswtOverview canUpload={canUpload} onGoToUpload={() => setSubTab('upload')} />}
-      {subTab === 'scorecard' && <VswtScorecard />}
-      {subTab === 'rankings' && <VswtRankings />}
+      {subTab === 'directory' && <VswtShopDirectory onSelectShop={viewShop} />}
+      {subTab === 'scorecard' && (
+        <VswtScorecard viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
+      )}
+      {subTab === 'rankings' && (
+        <VswtRankings viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
+      )}
       {subTab === 'leaderboards' && <VswtLeaderboards />}
-      {subTab === 'trends' && <VswtTrends />}
+      {subTab === 'trends' && (
+        <VswtTrends viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
+      )}
       {subTab === 'upload' && canUpload && <VswtUploadPanel />}
     </div>
   )
