@@ -51,21 +51,30 @@ _WEEK_NUMBER_COL = 3  # column C
 # ── Parsing (Summary sheet -> list[dict]) ───────────────────────────────────────────────────
 
 def _parse_vswt_workbook(raw_bytes: bytes, filename: str) -> dict[str, Any]:
+    # read_only=True makes openpyxl stream the sheet instead of building its full in-memory
+    # object model (styles, formatting, merged cells, etc.) — we only ever read cell values via
+    # iter_rows(), so this is a large speed/memory win on real HQ export files, which carry much
+    # more formatting than the column data we actually use. Without it, a handful of files
+    # uploaded together was slow enough (CPU-bound, single-worker deployment) to trip the
+    # platform's health check and get the request killed mid-response.
     try:
-        wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True)
+        wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True, read_only=True)
     except Exception as exc:
         raise HTTPException(
             status_code=400, detail=f"Could not read '{filename}' as an Excel file: {exc}"
         ) from exc
 
-    sheet = None
-    for name in wb.sheetnames:
-        if name.strip().lower() == "summary":
-            sheet = wb[name]
-            break
-    if sheet is None:
-        sheet = wb.active
-    grid = list(sheet.iter_rows(values_only=True))
+    try:
+        sheet = None
+        for name in wb.sheetnames:
+            if name.strip().lower() == "summary":
+                sheet = wb[name]
+                break
+        if sheet is None:
+            sheet = wb.active
+        grid = list(sheet.iter_rows(values_only=True))
+    finally:
+        wb.close()
 
     internal_week_raw = None
     if len(grid) >= _WEEK_NUMBER_ROW:
