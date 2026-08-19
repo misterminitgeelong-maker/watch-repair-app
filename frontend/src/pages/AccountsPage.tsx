@@ -628,6 +628,7 @@ function ShopIdentityCard() {
     queryFn: () => getShopIdentity().then(r => r.data),
   })
 
+  const [shopNumber, setShopNumber] = useState('')
   const [abn, setAbn] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -639,6 +640,7 @@ function ShopIdentityCard() {
 
   useEffect(() => {
     if (data) {
+      setShopNumber(data.shop_number ?? '')
       setAbn(data.abn ?? '')
       setPhone(data.shop_phone ?? '')
       setEmail(data.shop_email ?? '')
@@ -656,6 +658,7 @@ function ShopIdentityCard() {
 
   const mut = useMutation({
     mutationFn: () => updateShopIdentity({
+      shop_number: shopNumber.trim() || null,
       abn: abn.trim() || null,
       shop_phone: phone.trim() || null,
       shop_email: email.trim() || null,
@@ -683,6 +686,18 @@ function ShopIdentityCard() {
         These details and branding appear on emails and PDF invoices sent to customers.
       </p>
       <div className="space-y-3">
+        <div>
+          <Input
+            label="Shop number"
+            value={shopNumber}
+            onChange={e => { setShopNumber(e.target.value.replace(/\D/g, '').slice(0, 10)); setSaved(false) }}
+            placeholder="3269"
+          />
+          <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Your Minit shop number (digits only). Links this shop to HQ regional data — e.g. VSWT
+            rankings on the Reports page — and must be unique among the sites in your account.
+          </p>
+        </div>
         <Input
           label="ABN"
           value={abn}

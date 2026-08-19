@@ -5,11 +5,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, require_manager_or_above
-from ..models import Tenant
+from ..models import ParentAccountMembership, Tenant
+from ..shop_number import assert_shop_number_unique_in_parent, validate_shop_number_format
 
 router = APIRouter(prefix="/v1/settings/shop-identity", tags=["shop-settings"])
 
@@ -36,6 +37,9 @@ class ShopIdentityRead(BaseModel):
     business_address: Optional[str] = None
     logo_url: Optional[str] = None
     brand_color: Optional[str] = None
+    #: Minit shop number (e.g. "3269") — links this shop to Minit HQ regional data
+    #: (VSWT rankings, TSS territory data). Unique among the sites in your account.
+    shop_number: Optional[str] = None
 
 
 class ShopIdentityUpdate(BaseModel):
@@ -45,6 +49,7 @@ class ShopIdentityUpdate(BaseModel):
     payment_instructions: Optional[str] = Field(default=None, max_length=500)
     logo_url: Optional[str] = Field(default=None, max_length=1000)
     brand_color: Optional[str] = Field(default=None, max_length=9)
+    shop_number: Optional[str] = Field(default=None, max_length=10)
 
 
 def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
@@ -57,6 +62,7 @@ def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
         business_address=tenant.business_address if tenant else None,
         logo_url=tenant.logo_url if tenant else None,
         brand_color=tenant.brand_color if tenant else None,
+        shop_number=tenant.shop_number if tenant else None,
     )
 
 
@@ -93,6 +99,20 @@ def update_shop_identity(
     if payload.brand_color is not None:
         # Lenient: blank or invalid hex clears the brand colour rather than erroring.
         tenant.brand_color = normalize_brand_color(payload.brand_color)
+    if payload.shop_number is not None:
+        shop_number = validate_shop_number_format(payload.shop_number)  # raises 400 if malformed
+        if shop_number:
+            membership = session.exec(
+                select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant.id)
+            ).first()
+            if membership:
+                assert_shop_number_unique_in_parent(  # raises 409 if another of your sites has it
+                    session,
+                    parent_id=membership.parent_account_id,
+                    shop_number=shop_number,
+                    exclude_tenant_id=tenant.id,
+                )
+        tenant.shop_number = shop_number
 
     session.add(tenant)
     session.commit()

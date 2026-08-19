@@ -3015,6 +3015,8 @@ export interface ShopIdentity {
   business_address: string | null
   logo_url: string | null
   brand_color: string | null
+  /** Minit shop number (e.g. "3269") — links this shop to Minit HQ regional data (VSWT rankings). */
+  shop_number: string | null
 }
 
 export const getShopIdentity = () =>
