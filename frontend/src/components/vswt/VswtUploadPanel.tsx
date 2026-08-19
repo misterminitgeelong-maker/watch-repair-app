@@ -13,8 +13,31 @@ import { Button, Card, Spinner } from '@/components/ui'
 
 const VSWT_QUERY_KEYS = ['vswt-summary', 'vswt-scorecard', 'vswt-rankings', 'vswt-leaderboards', 'vswt-trends', 'vswt-weeks']
 
+// Cloudflare/Railway reject overly large request bodies (413) before this app ever sees the
+// request — a handful of real HQ export files together can cross that. Splitting the selection
+// into byte-capped chunks and uploading them as separate requests sidesteps whatever the actual
+// upstream limit is, without needing access to those proxy settings.
+const MAX_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024 // 8MB per request, conservative
+
 interface DraftItem extends VswtUploadBatchItem {
   weekNumberInput: string
+}
+
+function chunkFilesBySize(files: File[], maxBytesPerChunk: number): File[][] {
+  const chunks: File[][] = []
+  let current: File[] = []
+  let currentSize = 0
+  for (const f of files) {
+    if (current.length > 0 && currentSize + f.size > maxBytesPerChunk) {
+      chunks.push(current)
+      current = []
+      currentSize = 0
+    }
+    current.push(f)
+    currentSize += f.size
+  }
+  if (current.length > 0) chunks.push(current)
+  return chunks
 }
 
 export function VswtUploadPanel() {
@@ -25,11 +48,26 @@ export function VswtUploadPanel() {
   const [existingWeeks, setExistingWeeks] = useState<number[]>([])
   const [failedFiles, setFailedFiles] = useState<string[]>([])
   const [status, setStatus] = useState<{ type: 'ok' | 'error'; message: string } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
 
   const weeksQuery = useQuery({ queryKey: ['vswt-weeks'], queryFn: () => getVswtWeeks().then(r => r.data.weeks) })
 
   const uploadMut = useMutation({
-    mutationFn: (files: File[]) => uploadVswtFiles(files).then(r => r.data),
+    mutationFn: async (files: File[]) => {
+      const chunks = chunkFilesBySize(files, MAX_UPLOAD_CHUNK_BYTES)
+      setUploadProgress({ done: 0, total: chunks.length })
+      const failedAcc: string[] = []
+      const batchAcc: VswtUploadBatchItem[] = []
+      let existingWeeksAcc: number[] = []
+      for (const [i, chunk] of chunks.entries()) {
+        const { data } = await uploadVswtFiles(chunk)
+        failedAcc.push(...data.failed_files)
+        batchAcc.push(...data.batch)
+        existingWeeksAcc = data.existing_weeks // same each time — nothing commits between chunks
+        setUploadProgress({ done: i + 1, total: chunks.length })
+      }
+      return { failed_files: failedAcc, batch: batchAcc, existing_weeks: existingWeeksAcc }
+    },
     onSuccess: result => {
       setStatus(null)
       setFailedFiles(result.failed_files)
@@ -37,6 +75,7 @@ export function VswtUploadPanel() {
       setDraft(result.batch.map(b => ({ ...b, weekNumberInput: String(b.week_number) })))
     },
     onError: err => setStatus({ type: 'error', message: getApiErrorMessage(err, 'Upload failed.') }),
+    onSettled: () => setUploadProgress(null),
   })
 
   const commitMut = useMutation({
@@ -108,7 +147,16 @@ export function VswtUploadPanel() {
         </div>
       </button>
 
-      {uploadMut.isPending && <Spinner />}
+      {uploadMut.isPending && (
+        <div className="flex flex-col items-center gap-1 mb-2">
+          <Spinner />
+          {uploadProgress && uploadProgress.total > 1 && (
+            <p className="text-xs -mt-3" style={{ color: 'var(--ms-text-muted)' }}>
+              Uploading batch {Math.min(uploadProgress.done + 1, uploadProgress.total)} of {uploadProgress.total}…
+            </p>
+          )}
+        </div>
+      )}
 
       {status && (
         <div
