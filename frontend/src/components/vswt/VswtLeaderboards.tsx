@@ -54,13 +54,13 @@ function LbList({ entries, type }: { entries: VswtLeaderboardEntry[]; type: 'cur
     <div className="space-y-0.5">
       {entries.map(e => (
         <div
-          key={e.shop_number}
+          key={e.shop_number ?? `rank-${e.rank}`}
           className="flex items-center gap-2 px-1.5 py-1 rounded"
           style={e.is_me ? { backgroundColor: 'var(--ms-accent-light)', border: '1px solid var(--ms-accent)' } : { border: '1px solid transparent' }}
         >
           <span className="w-6 text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>{e.rank}</span>
           <span className="flex-1 text-xs truncate" style={{ color: e.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: e.is_me ? 700 : 400 }}>
-            {e.shop_name ?? e.shop_number}
+            {e.shop_name ?? e.shop_number ?? 'Another shop'}
           </span>
           <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{fmtVswtVal(e.value, type)}</span>
         </div>

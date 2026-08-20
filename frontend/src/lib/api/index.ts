@@ -3240,7 +3240,9 @@ export const getVswtRankings = (week?: number, shopNumber?: string) =>
     params: { ...(week ? { week } : {}), ...(shopNumber ? { shop_number: shopNumber } : {}) },
   })
 
-export interface VswtLeaderboardEntry { rank: number; shop_number: string; shop_name: string | null; value: number | null; is_me: boolean }
+// shop_number/shop_name are null for bottom-list entries that aren't the viewing shop —
+// bottom performers are anonymized, only the viewer's own row (if it's down there) is named.
+export interface VswtLeaderboardEntry { rank: number; shop_number: string | null; shop_name: string | null; value: number | null; is_me: boolean }
 export interface VswtLeaderboardBoard extends VswtKpiDef {
   top: VswtLeaderboardEntry[]
   bottom: VswtLeaderboardEntry[]

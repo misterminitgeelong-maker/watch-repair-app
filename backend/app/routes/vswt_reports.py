@@ -586,9 +586,13 @@ def get_vswt_leaderboards(
                     }
                     for i, r in enumerate(top)
                 ],
+                # Bottom performers are anonymized — never name-and-shame a specific shop to the
+                # rest of the region. A shop still sees itself (is_me) if it's down here.
                 "bottom": [
                     {
-                        "rank": bottom_start + i + 1, "shop_number": r.shop_number, "shop_name": r.shop_name,
+                        "rank": bottom_start + i + 1,
+                        "shop_number": r.shop_number if r.shop_number == shop_number else None,
+                        "shop_name": r.shop_name if r.shop_number == shop_number else None,
                         "value": getattr(r, kpi.key), "is_me": r.shop_number == shop_number,
                     }
                     for i, r in enumerate(bottom)

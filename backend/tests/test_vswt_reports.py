@@ -251,6 +251,51 @@ def test_upload_then_commit_then_read_flow(vswt_client):
     assert trends.json()["sales_series"][-1]["shop"] == 50000
 
 
+def test_leaderboards_anonymizes_bottom_shops(vswt_client):
+    """Bottom-5 must never name-and-shame — only the viewing shop's own row (if it's down
+    there) carries a shop_number/shop_name. Top-5 stays named for everyone."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-shop-bottom", "owner-bottom@test.com")
+    _set_shop_number(tenant_id, "2000")
+
+    raw = _build_workbook(41, [
+        _shop_row(1000, "Alpha", 90000),
+        _shop_row(2000, "Bravo", 10000),  # me — lowest, so I land in "bottom"
+        _shop_row(3000, "Charlie", 80000),
+        _shop_row(4000, "Delta", 70000),
+        _shop_row(5000, "Echo", 60000),
+        _shop_row(6000, "Foxtrot", 50000),
+    ])
+    upload = vswt_client.post(
+        "/v1/reports/vswt/upload",
+        headers=headers,
+        files=[("files", ("VSWT-WSS__new_version__41.xlsx", raw,
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))],
+    )
+    batch = upload.json()["batch"]
+    vswt_client.post(
+        "/v1/reports/vswt/commit",
+        headers=headers,
+        json={"batch": [{"filename": batch[0]["filename"], "week_number": 41, "rows": batch[0]["rows"]}]},
+    )
+
+    leaderboards = vswt_client.get("/v1/reports/vswt/leaderboards", headers=headers, params={"week": 41})
+    assert leaderboards.status_code == 200
+    sales_board = next(b for b in leaderboards.json()["boards"] if b["key"] == "sales_ty")
+
+    # Top-5 stays named.
+    assert all(e["shop_number"] is not None and e["shop_name"] is not None for e in sales_board["top"])
+
+    # Bottom-5: only my own row (Bravo, is_me) is named; everyone else is anonymized.
+    for entry in sales_board["bottom"]:
+        if entry["is_me"]:
+            assert entry["shop_number"] == "2000"
+            assert entry["shop_name"] == "Bravo"
+        else:
+            assert entry["shop_number"] is None
+            assert entry["shop_name"] is None
+    assert any(e["is_me"] for e in sales_board["bottom"])
+
+
 def test_reupload_same_week_auto_bumps_to_a_free_week(vswt_client):
     """Auto-assignment always steers clear of a collision (matches the reference app): the
     second upload of an already-stored week number lands on the next free week, it does not
