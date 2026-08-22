@@ -8,6 +8,7 @@ import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBrandi
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { safeNextPath } from '@/lib/safeNext'
+import { markJustLoggedIn } from '@/lib/postLoginGate'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
 import { MarketingField } from '@/components/MarketingField'
 
@@ -66,7 +67,8 @@ export default function LoginPage() {
       if (mode === 'single' && isMinitHqTenantSlug(slug)) {
         void import('@/pages/minit/MinitOperationsPage')
       }
-      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'), { state: { justLoggedIn: true } })
+      markJustLoggedIn()
+      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'))
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
         setError('Server is temporarily unavailable. Please try again in a moment.')
@@ -103,7 +105,8 @@ export default function LoginPage() {
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)
-      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug), { state: { justLoggedIn: true } })
+      markJustLoggedIn()
+      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug))
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {

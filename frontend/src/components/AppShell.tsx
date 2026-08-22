@@ -14,6 +14,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
+import { clearJustLoggedIn, peekJustLoggedIn } from '@/lib/postLoginGate'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
@@ -450,12 +451,14 @@ export default function AppShell() {
   const navigate = useNavigate()
   const demoModeEnabled = isDemoModeEnabled()
 
-  // One-shot: LoginPage passes this on the navigate() right after a successful sign-in. Captured
-  // lazily so it only ever reflects the location AppShell first mounted with — later in-app
-  // navigation doesn't carry this state, so the gate never reappears after the first reveal.
-  const [showPostLoginGate, setShowPostLoginGate] = useState(
-    () => Boolean((location.state as { justLoggedIn?: boolean } | null)?.justLoggedIn),
-  )
+  // LoginPage marks this right before its post-login navigate(). Read (non-destructively) via a
+  // lazy initializer so each AppShell mount picks it back up — App.tsx's LocationBoundary keys its
+  // ErrorBoundary by location.pathname, so AppShell itself unmounts/remounts on every pathname
+  // change, and this app's post-login routing goes through one or more client-side redirects
+  // before settling (this component's own token-driven Navigate below, FeatureGate bouncing off
+  // /parent-account, MinitHqGate, ...) — each one remounts AppShell, so the flag has to survive
+  // being peeked more than once. Cleared for real in onDone below, once the gate actually finishes.
+  const [showPostLoginGate, setShowPostLoginGate] = useState(peekJustLoggedIn)
   const [switchingSite, setSwitchingSite] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
@@ -931,10 +934,8 @@ export default function AppShell() {
       {showPostLoginGate && (
         <PostLoginLoadingScreen
           onDone={() => {
+            clearJustLoggedIn()
             setShowPostLoginGate(false)
-            // Clear the flag from this history entry too, so refreshing the page after the gate
-            // has already run doesn't bring it back (browsers persist history state across reloads).
-            navigate(location.pathname + location.search, { replace: true, state: null })
           }}
         />
       )}
