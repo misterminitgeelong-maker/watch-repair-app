@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { getVswtDirectory, type VswtDirectoryRow, type VswtKpiGroup } from '@/lib/api'
 import { Badge, EmptyState, Spinner } from '@/components/ui'
@@ -14,13 +14,24 @@ type SortState = { key: string; dir: 'asc' | 'desc' }
 
 export function VswtShopDirectory({ onSelectShop }: { onSelectShop: (shopNumber: string, shopName: string | null) => void }) {
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [group, setGroup] = useState<VswtKpiGroup>('Headline')
   const [peerOnly, setPeerOnly] = useState(false)
   const [sort, setSort] = useState<SortState>({ key: 'shop_name', dir: 'asc' })
 
+  // Wait for a short pause in typing before refetching, so each keystroke doesn't
+  // fire its own round trip against the full region.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-directory', search, group, peerOnly],
-    queryFn: () => getVswtDirectory({ search: search || undefined, group, peerOnly }).then(r => r.data),
+    queryKey: ['vswt-directory', debouncedSearch, group, peerOnly],
+    queryFn: () => getVswtDirectory({ search: debouncedSearch || undefined, group, peerOnly }).then(r => r.data),
+    // Keep showing the previous rows while a new search/filter is in flight instead of
+    // blanking the table out to a spinner between every debounced fetch.
+    placeholderData: keepPreviousData,
   })
 
   const sortedRows = useMemo(() => {
