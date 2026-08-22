@@ -13,6 +13,7 @@ import {
   listShoeRepairJobs,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
@@ -449,6 +450,12 @@ export default function AppShell() {
   const navigate = useNavigate()
   const demoModeEnabled = isDemoModeEnabled()
 
+  // One-shot: LoginPage passes this on the navigate() right after a successful sign-in. Captured
+  // lazily so it only ever reflects the location AppShell first mounted with — later in-app
+  // navigation doesn't carry this state, so the gate never reappears after the first reveal.
+  const [showPostLoginGate, setShowPostLoginGate] = useState(
+    () => Boolean((location.state as { justLoggedIn?: boolean } | null)?.justLoggedIn),
+  )
   const [switchingSite, setSwitchingSite] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
@@ -920,7 +927,18 @@ export default function AppShell() {
   const guidedNextLabel = !guidedIsLast ? guidedTourSteps[guidedStep + 1]?.label : null
 
   return (
-    <div className="app-shell-root h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
+    <>
+      {showPostLoginGate && (
+        <PostLoginLoadingScreen
+          onDone={() => {
+            setShowPostLoginGate(false)
+            // Clear the flag from this history entry too, so refreshing the page after the gate
+            // has already run doesn't bring it back (browsers persist history state across reloads).
+            navigate(location.pathname + location.search, { replace: true, state: null })
+          }}
+        />
+      )}
+      <div className="app-shell-root h-screen md:flex md:overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <Sidebar className="hidden md:flex print-hide" />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1190,6 +1208,7 @@ export default function AppShell() {
         </div>
       )}
       <AdminReturnBanner />
-    </div>
+      </div>
+    </>
   )
 }

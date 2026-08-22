@@ -66,7 +66,7 @@ export default function LoginPage() {
       if (mode === 'single' && isMinitHqTenantSlug(slug)) {
         void import('@/pages/minit/MinitOperationsPage')
       }
-      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'))
+      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'), { state: { justLoggedIn: true } })
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
         setError('Server is temporarily unavailable. Please try again in a moment.')
@@ -103,7 +103,7 @@ export default function LoginPage() {
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)
-      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug))
+      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug), { state: { justLoggedIn: true } })
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {
