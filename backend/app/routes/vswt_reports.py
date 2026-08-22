@@ -19,8 +19,9 @@ from — keep field names in sync with that module rather than re-deriving them 
 from __future__ import annotations
 
 import io
+import statistics
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -35,6 +36,7 @@ from ..vswt_kpis import (
     COLUMN_MAP,
     KPI_DEFS,
     KPI_GROUPS,
+    KpiDef,
     PEER_COMP_STATUS,
     PEER_FORMAT,
     clean_cell,
@@ -133,6 +135,33 @@ def _peer_rows(week_rows: list[VswtWeeklyShopMetric]) -> list[VswtWeeklyShopMetr
 
 def _find_shop(week_rows: list[VswtWeeklyShopMetric], shop_number: str) -> Optional[VswtWeeklyShopMetric]:
     return next((r for r in week_rows if r.shop_number == shop_number), None)
+
+
+def _ranks_for_week(week_rows: list[VswtWeeklyShopMetric], key: str) -> dict[str, int]:
+    """Rank of every shop with a non-null `key` value for one week, all at once — O(n log n)
+    instead of calling `_rank_of` once per shop (which is itself O(n), so O(n^2) over a whole
+    week). Same "1 + count of strictly-greater values" tie semantics as `_rank_of`; used where we
+    need every shop's rank for a week, not just one shop's (e.g. consistency leaderboards)."""
+    present = sorted(
+        ((r.shop_number, getattr(r, key)) for r in week_rows if getattr(r, key) is not None),
+        key=lambda pair: pair[1],
+        reverse=True,
+    )
+    ranks: dict[str, int] = {}
+    for i, (shop_number, value) in enumerate(present):
+        prev_shop, prev_value = present[i - 1] if i > 0 else (None, None)
+        ranks[shop_number] = ranks[prev_shop] if value == prev_value else i + 1
+    return ranks
+
+
+def _rank_in_averages(averages: dict[str, float], shop_number: str) -> Optional[int]:
+    """Same ranking rule as `_rank_of`, but over a plain {shop_number: average_value} dict rather
+    than ORM rows — for ranking a shop's Month/Year average against the rest of the region's."""
+    value = averages.get(shop_number)
+    if value is None:
+        return None
+    higher = sum(1 for v in averages.values() if v > value)
+    return higher + 1
 
 
 def _all_weeks(session: Session) -> list[int]:
@@ -541,10 +570,187 @@ def get_vswt_directory(
     }
 
 
+@router.get("/shop-report")
+def get_vswt_shop_report(
+    shop_number: Optional[str] = Query(
+        None, description="View another Minit shop's report instead of your own (you must be a Minit shop yourself)."
+    ),
+    group: Optional[str] = Query(None, description="KPI group to include as rows; defaults to Headline."),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """One shop's Week / Month / Year numbers, each ranked against the rest of the region — the
+    Directory's per-shop drill-down. "Month" is a rolling trailing-4-week average; "Year" averages
+    every week on file (there's no calendar date on this data, only a sequence of weekly uploads,
+    so "Year" grows into a real year as more weeks accumulate). Averaging over many weeks — rather
+    than only ever showing the latest week — is what surfaces a shop that's consistently strong or
+    weak, instead of one that just had a single standout or disastrous week.
+    """
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    target_shop_number = shop_number or my_shop_number
+    weeks = _all_weeks(session)
+    if not weeks:
+        return {"available": False, "reason": "no_data"}
+
+    rows_by_week = {w: _week_rows(session, w) for w in weeks}
+    latest_week = weeks[-1]
+    latest_rows = rows_by_week[latest_week]
+    target_latest = _find_shop(latest_rows, target_shop_number)
+    if target_latest is None:
+        return {"available": False, "reason": "shop_not_found"}
+
+    month_weeks = set(weeks[-4:])
+    kpi_group = group if group in KPI_GROUPS else "Headline"
+    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
+
+    # Single pass over every week: accumulate each shop's raw values for the Month window and for
+    # all-time ("Year"), and record the target shop's own rank each week it appears (used below
+    # for the Year consistency stats — best/worst rank and how much it's varied).
+    month_raw: dict[str, dict[str, list[float]]] = {}  # shop_number -> kpi.key -> values
+    year_raw: dict[str, dict[str, list[float]]] = {}
+    target_week_ranks: dict[str, list[int]] = {k.key: [] for k in kpis}
+    for w in weeks:
+        week_rows = rows_by_week[w]
+        target_row = _find_shop(week_rows, target_shop_number)
+        if target_row is not None:
+            for kpi in kpis:
+                rank = _rank_of(week_rows, kpi.key, getattr(target_row, kpi.key))
+                if rank is not None:
+                    target_week_ranks[kpi.key].append(rank)
+        in_month = w in month_weeks
+        for r in week_rows:
+            for kpi in kpis:
+                v = getattr(r, kpi.key)
+                if v is None:
+                    continue
+                year_raw.setdefault(r.shop_number, {}).setdefault(kpi.key, []).append(v)
+                if in_month:
+                    month_raw.setdefault(r.shop_number, {}).setdefault(kpi.key, []).append(v)
+
+    # Region-wide average-per-shop, per KPI — used to rank the target's Month/Year average against
+    # everyone else's, the same way `_rank_of` ranks a single week's value.
+    month_avgs = {
+        kpi.key: {sn: _average(vals[kpi.key]) for sn, vals in month_raw.items() if vals.get(kpi.key)}
+        for kpi in kpis
+    }
+    year_avgs = {
+        kpi.key: {sn: _average(vals[kpi.key]) for sn, vals in year_raw.items() if vals.get(kpi.key)}
+        for kpi in kpis
+    }
+
+    rows = []
+    for kpi in kpis:
+        week_value = getattr(target_latest, kpi.key)
+        month_weeks_counted = len(month_raw.get(target_shop_number, {}).get(kpi.key, []))
+        year_weeks_counted = len(year_raw.get(target_shop_number, {}).get(kpi.key, []))
+        week_ranks = target_week_ranks[kpi.key]
+        rows.append(
+            {
+                "key": kpi.key, "label": kpi.label, "group": kpi.group, "type": kpi.type,
+                "week": {"value": week_value, "rank": _rank_of(latest_rows, kpi.key, week_value)},
+                "month": {
+                    "value": month_avgs[kpi.key].get(target_shop_number),
+                    "rank": _rank_in_averages(month_avgs[kpi.key], target_shop_number),
+                    "weeks_counted": month_weeks_counted,
+                },
+                "year": {
+                    "value": year_avgs[kpi.key].get(target_shop_number),
+                    "rank": _rank_in_averages(year_avgs[kpi.key], target_shop_number),
+                    "weeks_counted": year_weeks_counted,
+                    "best_rank": min(week_ranks) if week_ranks else None,
+                    "worst_rank": max(week_ranks) if week_ranks else None,
+                    "rank_stdev": statistics.pstdev(week_ranks) if len(week_ranks) > 1 else None,
+                },
+            }
+        )
+
+    return {
+        "available": True,
+        "shop_number": target_shop_number,
+        "shop_name": target_latest.shop_name,
+        "area_name": target_latest.area_name,
+        "viewing_own_shop": target_shop_number == my_shop_number,
+        "weeks_tracked": len(weeks),
+        "region_size": len(latest_rows),
+        "group": kpi_group,
+        "groups": KPI_GROUPS,
+        "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in kpis],
+        "rows": rows,
+    }
+
+
+def _consistency_boards(
+    session: Session, weeks: list[int], kpis: list[KpiDef], shop_number: Optional[str]
+) -> list[dict[str, Any]]:
+    """Top/bottom leaderboards ranked by average rank across every week on file, instead of one
+    week's value — rewards a shop that's reliably strong over a shop that just had one great week.
+    Mirrors the shape/anonymization rules of the "latest" leaderboards below exactly, so the
+    frontend can render both with the same component."""
+    rank_lists: dict[str, dict[str, list[int]]] = {}
+    shop_meta: dict[str, tuple[Optional[str], Optional[str]]] = {}
+    for w in weeks:
+        week_rows = _week_rows(session, w)
+        for r in week_rows:
+            shop_meta[r.shop_number] = (r.shop_name, r.area_name)
+        for kpi in kpis:
+            for sn, rank in _ranks_for_week(week_rows, kpi.key).items():
+                rank_lists.setdefault(sn, {}).setdefault(kpi.key, []).append(rank)
+
+    # A shop needs at least a handful of weeks on file before its average rank means anything —
+    # otherwise one lucky week could pass for "consistency". Caps at 3 so this doesn't lock the
+    # feature out entirely while only a few weeks have been uploaded so far.
+    min_weeks = min(3, len(weeks))
+
+    boards = []
+    for kpi in kpis:
+        entries = [
+            (sn, sum(ranks) / len(ranks), len(ranks))
+            for sn, by_kpi in rank_lists.items()
+            for ranks in [by_kpi.get(kpi.key, [])]
+            if len(ranks) >= min_weeks
+        ]
+        entries.sort(key=lambda e: e[1])  # ascending average rank = most consistently good first
+        total = len(entries)
+        my_index = next((i for i, e in enumerate(entries) if e[0] == shop_number), None)
+
+        def _entry(rank_pos: int, entry: tuple[str, float, int], anonymize: bool) -> dict[str, Any]:
+            sn, avg_rank, weeks_counted = entry
+            is_me = sn == shop_number
+            name, _area = shop_meta.get(sn, (None, None))
+            return {
+                "rank": rank_pos,
+                "shop_number": sn if (is_me or not anonymize) else None,
+                "shop_name": name if (is_me or not anonymize) else None,
+                "value": round(avg_rank, 2),
+                "weeks_counted": weeks_counted,
+                "is_me": is_me,
+            }
+
+        top = [_entry(i + 1, e, anonymize=False) for i, e in enumerate(entries[:5])]
+        bottom_slice = entries[-5:] if total > 5 else []
+        bottom_start = total - len(bottom_slice)
+        bottom = [_entry(bottom_start + i + 1, e, anonymize=True) for i, e in enumerate(bottom_slice)]
+
+        boards.append(
+            {
+                "key": kpi.key, "label": kpi.label, "group": kpi.group, "type": "ratio",
+                "top": top, "bottom": bottom,
+                "my_rank": (my_index + 1) if my_index is not None else None,
+                "total": total,
+            }
+        )
+    return boards
+
+
 @router.get("/leaderboards")
 def get_vswt_leaderboards(
     week: Optional[int] = Query(None),
     group: Optional[str] = Query(None),
+    mode: Literal["latest", "consistency"] = Query(
+        "latest", description="'latest' = this week's values; 'consistency' = average rank across every week on file."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -554,9 +760,20 @@ def get_vswt_leaderboards(
     weeks = _all_weeks(session)
     if not weeks:
         return {"available": False, "reason": "no_data"}
+    kpis = KPI_DEFS if not group or group == "All" else [k for k in KPI_DEFS if k.group == group]
+
+    if mode == "consistency":
+        return {
+            "available": True,
+            "mode": "consistency",
+            "week": weeks[-1],
+            "weeks": weeks,
+            "groups": ["All"] + list(KPI_GROUPS),
+            "boards": _consistency_boards(session, weeks, kpis, shop_number),
+        }
+
     target_week = week if week in weeks else weeks[-1]
     week_rows = _week_rows(session, target_week)
-    kpis = KPI_DEFS if not group or group == "All" else [k for k in KPI_DEFS if k.group == group]
 
     boards = []
     for kpi in kpis:
@@ -604,6 +821,7 @@ def get_vswt_leaderboards(
 
     return {
         "available": True,
+        "mode": "latest",
         "week": target_week,
         "weeks": weeks,
         "groups": ["All"] + list(KPI_GROUPS),

@@ -423,6 +423,21 @@ def _seed_directory_week(vswt_client, headers, week: int) -> None:
     assert commit.status_code == 200, commit.text
 
 
+def _seed_weeks(vswt_client, headers, week_numbers, rows_fn) -> None:
+    """Upload+commit one week per number in `week_numbers`, rows for each built by `rows_fn(week)
+    -> list[shop_row dict]` — for tests that need several weeks of history (Shop Report windows,
+    consistency leaderboards)."""
+    for w in week_numbers:
+        raw = _build_workbook(w, rows_fn(w))
+        up = vswt_client.post("/v1/reports/vswt/upload", headers=headers, files=[("files", (f"w{w}.xlsx", raw))])
+        b = up.json()["batch"][0]
+        commit = vswt_client.post(
+            "/v1/reports/vswt/commit", headers=headers,
+            json={"batch": [{"filename": b["filename"], "week_number": w, "rows": b["rows"]}]},
+        )
+        assert commit.status_code == 200, commit.text
+
+
 def test_directory_lists_every_shop_and_flags_me_and_peers(vswt_client):
     headers, tenant_id = _bootstrap(vswt_client, "vswt-dir-basic", "owner-dirbasic@test.com")
     _set_shop_number(tenant_id, "3269")
@@ -515,3 +530,162 @@ def test_can_browse_another_shops_rankings_scorecard_and_trends(vswt_client):
     own = vswt_client.get("/v1/reports/vswt/rankings", headers=headers, params={"week": 73})
     assert own.json()["shop_number"] == "3269"
     assert own.json()["viewing_own_shop"] is True
+
+
+# ── Shop Report (Week / Month / Year windows) ───────────────────────────────────────────
+#
+# These tests all use `watch_sales_ty` (Category Sales group) rather than the usual `sales_ty` —
+# no other test in this file ever sets that field, so it's a clean, unpolluted metric to compute
+# region-wide averages/ranks over in this shared (not per-test-isolated) table. They also use
+# shop numbers and week numbers not used anywhere else in this file, for the same reason: a
+# shop/week only ever shows up in accumulations this test itself seeded.
+
+def test_shop_report_week_month_year_windows_and_consistency_stats(vswt_client):
+    """Consistent Co posts a steady $20k of watch sales every week for 10 weeks. Big Week Co
+    posts $5k every week except one $100k blowout in the final (latest) week. That one week is
+    enough to put Big Week Co ahead on the Week view, and even still ahead on the rolling Month
+    average (only 4 weeks, so the blowout dominates) — but over the full Year average, Consistent
+    Co's steadiness wins."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-shop-report", "owner-sr@test.com")
+    _set_shop_number(tenant_id, "800001")
+
+    def rows(w):
+        rival_sales = 100000 if w == 900010 else 5000
+        return [
+            _shop_row(800001, "Consistent Co", 0, watch_sales_ty=20000),
+            _shop_row(800002, "Big Week Co", 0, watch_sales_ty=rival_sales),
+        ]
+
+    _seed_weeks(vswt_client, headers, range(900001, 900011), rows)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/shop-report", headers=headers, params={"group": "Category Sales"}
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    assert body["shop_number"] == "800001"
+    assert body["viewing_own_shop"] is True
+    assert body["weeks_tracked"] >= 10  # this table is shared across the whole test session
+    assert body["region_size"] == 2
+
+    row = next(r for r in body["rows"] if r["key"] == "watch_sales_ty")
+    assert row["week"] == {"value": 20000, "rank": 2}
+    assert row["month"]["value"] == pytest.approx(20000.0)
+    assert row["month"]["rank"] == 2
+    assert row["month"]["weeks_counted"] == 4
+    assert row["year"]["value"] == pytest.approx(20000.0)
+    assert row["year"]["rank"] == 1  # consistency wins over one huge week
+    assert row["year"]["weeks_counted"] == 10
+    assert row["year"]["best_rank"] == 1
+    assert row["year"]["worst_rank"] == 2
+    assert row["year"]["rank_stdev"] == pytest.approx(0.3)
+
+    rival = vswt_client.get(
+        "/v1/reports/vswt/shop-report", headers=headers,
+        params={"shop_number": "800002", "group": "Category Sales"},
+    )
+    rb = rival.json()
+    assert rb["available"] is True
+    assert rb["viewing_own_shop"] is False
+    rival_row = next(r for r in rb["rows"] if r["key"] == "watch_sales_ty")
+    assert rival_row["week"] == {"value": 100000, "rank": 1}
+    assert rival_row["year"]["value"] == pytest.approx(14500.0)
+    assert rival_row["year"]["rank"] == 2
+    assert rival_row["year"]["best_rank"] == 1
+    assert rival_row["year"]["worst_rank"] == 2
+
+
+def test_shop_report_unavailable_without_shop_number(vswt_client):
+    headers, _tid = _bootstrap(vswt_client, "vswt-sr-no-shop", "owner-srns@test.com")
+    res = vswt_client.get("/v1/reports/vswt/shop-report", headers=headers)
+    body = res.json()
+    assert body["available"] is False
+    assert body["reason"] == "no_shop_number"
+
+
+def test_shop_report_unavailable_when_shop_not_in_data(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-sr-missing", "owner-srm@test.com")
+    _set_shop_number(tenant_id, "800099")  # never appears in any seeded week
+    _seed_directory_week(vswt_client, headers, 900020)
+
+    res = vswt_client.get("/v1/reports/vswt/shop-report", headers=headers)
+    body = res.json()
+    assert body["available"] is False
+    assert body["reason"] == "shop_not_found"
+
+
+# ── Leaderboards: Consistency mode ──────────────────────────────────────────────────────
+
+def test_leaderboards_consistency_mode_ranks_by_average_rank_not_one_week(vswt_client):
+    """A shop with one huge week should not top the Consistency board over a shop that's
+    reliably ahead every other week — that's the whole point of the mode. Uses `key_sales_ty`
+    (distinct from the `watch_sales_ty` field used above) so this test's own shops don't mix into
+    the same ranking pool as the Shop Report test's, since Consistency boards aggregate across
+    every week on file regardless of which test wrote it."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-lb-consistency", "owner-lbc@test.com")
+    _set_shop_number(tenant_id, "800011")
+
+    def rows(w):
+        rival_sales = 100000 if w == 900040 else 5000
+        return [
+            _shop_row(800011, "Consistent Co", 0, key_sales_ty=20000),
+            _shop_row(800012, "Big Week Co", 0, key_sales_ty=rival_sales),
+        ]
+
+    _seed_weeks(vswt_client, headers, range(900031, 900041), rows)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/leaderboards", headers=headers,
+        params={"mode": "consistency", "group": "Category Sales"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    assert body["mode"] == "consistency"
+
+    board = next(b for b in body["boards"] if b["key"] == "key_sales_ty")
+    assert board["type"] == "ratio"
+    assert [e["shop_number"] for e in board["top"]] == ["800011", "800012"]
+    assert board["top"][0]["value"] == pytest.approx(1.1)  # rank 1 for 9 weeks, rank 2 once
+    assert board["top"][0]["weeks_counted"] == 10
+    assert board["top"][1]["value"] == pytest.approx(1.9)
+    assert board["bottom"] == []  # only 2 qualifying shops, nothing left to anonymize
+    assert board["my_rank"] == 1
+
+
+def test_leaderboards_consistency_requires_minimum_weeks_to_qualify(vswt_client):
+    """A shop that's only ever appeared once shouldn't be able to claim a top consistency spot
+    off a single lucky week. Uses `engrave_sales_ty` so it doesn't share a ranking pool with the
+    other Consistency-mode test above."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-lb-minweeks", "owner-lbmw@test.com")
+    _set_shop_number(tenant_id, "800021")
+
+    def rows(w):
+        base = [
+            _shop_row(800021, "Consistent Co", 0, engrave_sales_ty=20000),
+            _shop_row(800022, "Regular", 0, engrave_sales_ty=15000),
+        ]
+        if w == 900055:  # only ever uploaded once
+            base.append(_shop_row(800023, "One Week Wonder", 0, engrave_sales_ty=999999))
+        return base
+
+    _seed_weeks(vswt_client, headers, range(900051, 900056), rows)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/leaderboards", headers=headers,
+        params={"mode": "consistency", "group": "Category Sales"},
+    )
+    board = next(b for b in res.json()["boards"] if b["key"] == "engrave_sales_ty")
+    shop_numbers = {e["shop_number"] for e in board["top"] + board["bottom"]}
+    assert "800023" not in shop_numbers
+    assert board["total"] == 2  # only the two shops with >= min(3, len(weeks)) weeks qualify
+
+
+def test_leaderboards_latest_mode_is_still_the_default(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-lb-default-mode", "owner-lbdm@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 90)
+
+    res = vswt_client.get("/v1/reports/vswt/leaderboards", headers=headers, params={"week": 90})
+    assert res.json()["mode"] == "latest"

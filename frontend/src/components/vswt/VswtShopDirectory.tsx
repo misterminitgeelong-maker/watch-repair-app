@@ -4,11 +4,9 @@ import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { getVswtDirectory, type VswtDirectoryRow, type VswtKpiGroup } from '@/lib/api'
 import { Badge, EmptyState, Spinner } from '@/components/ui'
 import { PillToggle } from './VswtRegionalReportSection'
-import { fmtVswtVal } from './format'
+import { fmtVswtVal, VSWT_KPI_GROUPS } from './format'
 
-const GROUPS: VswtKpiGroup[] = [
-  'Headline', 'Budget & Last Year', 'Conversion', 'Category Sales', 'Category Jobs', 'Watch & Service Detail',
-]
+const GROUPS = VSWT_KPI_GROUPS
 
 type SortState = { key: string; dir: 'asc' | 'desc' }
 

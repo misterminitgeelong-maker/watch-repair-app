@@ -3240,25 +3240,62 @@ export const getVswtRankings = (week?: number, shopNumber?: string) =>
     params: { ...(week ? { week } : {}), ...(shopNumber ? { shop_number: shopNumber } : {}) },
   })
 
+export interface VswtShopReportWindow { value: number | null; rank: number | null }
+export interface VswtShopReportMonthWindow extends VswtShopReportWindow { weeks_counted: number }
+export interface VswtShopReportYearWindow extends VswtShopReportWindow {
+  weeks_counted: number
+  best_rank: number | null
+  worst_rank: number | null
+  rank_stdev: number | null
+}
+export interface VswtShopReportRow extends VswtKpiDef {
+  week: VswtShopReportWindow
+  month: VswtShopReportMonthWindow
+  year: VswtShopReportYearWindow
+}
+export interface VswtShopReport {
+  available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  viewing_own_shop: boolean
+  weeks_tracked: number
+  region_size: number
+  group: VswtKpiGroup
+  groups: VswtKpiGroup[]
+  kpis: VswtKpiDef[]
+  rows: VswtShopReportRow[]
+}
+export const getVswtShopReport = (shopNumber?: string, group?: string) =>
+  api.get<VswtShopReport | VswtUnavailable>('/reports/vswt/shop-report', {
+    params: { ...(shopNumber ? { shop_number: shopNumber } : {}), ...(group ? { group } : {}) },
+  })
+
 // shop_number/shop_name are null for bottom-list entries that aren't the viewing shop —
 // bottom performers are anonymized, only the viewer's own row (if it's down there) is named.
-export interface VswtLeaderboardEntry { rank: number; shop_number: string | null; shop_name: string | null; value: number | null; is_me: boolean }
+// weeks_counted is only present in Consistency mode (how many weeks the average rank is over).
+export interface VswtLeaderboardEntry {
+  rank: number; shop_number: string | null; shop_name: string | null; value: number | null
+  is_me: boolean; weeks_counted?: number
+}
 export interface VswtLeaderboardBoard extends VswtKpiDef {
   top: VswtLeaderboardEntry[]
   bottom: VswtLeaderboardEntry[]
   my_rank: number | null
   total: number
 }
+export type VswtLeaderboardMode = 'latest' | 'consistency'
 export interface VswtLeaderboards {
   available: true
+  mode: VswtLeaderboardMode
   week: number
   weeks: number[]
   groups: ('All' | VswtKpiGroup)[]
   boards: VswtLeaderboardBoard[]
 }
-export const getVswtLeaderboards = (week?: number, group?: string) =>
+export const getVswtLeaderboards = (week?: number, group?: string, mode?: VswtLeaderboardMode) =>
   api.get<VswtLeaderboards | VswtUnavailable>('/reports/vswt/leaderboards', {
-    params: { ...(week ? { week } : {}), ...(group ? { group } : {}) },
+    params: { ...(week ? { week } : {}), ...(group ? { group } : {}), ...(mode ? { mode } : {}) },
   })
 
 export interface VswtTrends {

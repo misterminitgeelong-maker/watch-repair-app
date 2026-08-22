@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search } from 'lucide-react'
+import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText } from 'lucide-react'
 import { getVswtSummary, type VswtSummary, type VswtUnavailable } from '@/lib/api'
 import { Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -10,11 +10,12 @@ import { VswtScorecard } from './VswtScorecard'
 import { VswtRankings } from './VswtRankings'
 import { VswtLeaderboards } from './VswtLeaderboards'
 import { VswtTrends } from './VswtTrends'
+import { VswtShopReport } from './VswtShopReport'
 import { VswtUploadPanel } from './VswtUploadPanel'
 import { VswtShopDirectory } from './VswtShopDirectory'
 import type { ViewingShop } from './VswtViewingBanner'
 
-type SubTab = 'overview' | 'directory' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends' | 'upload'
+type SubTab = 'overview' | 'directory' | 'shop-report' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends' | 'upload'
 
 const MANAGER_ROLES = new Set(['owner', 'manager', 'platform_admin'])
 
@@ -56,6 +57,7 @@ export function VswtRegionalReportSection() {
   const subTabs: { key: SubTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Overview', icon: Gauge },
     { key: 'directory', label: 'Shop Directory', icon: Search },
+    { key: 'shop-report', label: 'Shop Report', icon: FileText },
     { key: 'scorecard', label: 'Scorecard', icon: LayoutGrid },
     { key: 'rankings', label: 'Rankings', icon: Table2 },
     { key: 'leaderboards', label: 'Leaderboards', icon: Trophy },
@@ -65,7 +67,7 @@ export function VswtRegionalReportSection() {
 
   function viewShop(shopNumber: string, shopName: string | null) {
     setViewingShop({ shopNumber, shopName })
-    setSubTab('rankings')
+    setSubTab('shop-report')
   }
 
   return (
@@ -80,6 +82,9 @@ export function VswtRegionalReportSection() {
 
       {subTab === 'overview' && <VswtOverview canUpload={canUpload} onGoToUpload={() => setSubTab('upload')} />}
       {subTab === 'directory' && <VswtShopDirectory onSelectShop={viewShop} />}
+      {subTab === 'shop-report' && (
+        <VswtShopReport viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
+      )}
       {subTab === 'scorecard' && (
         <VswtScorecard viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
       )}

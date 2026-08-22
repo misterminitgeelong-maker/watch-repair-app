@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getVswtLeaderboards, type VswtLeaderboardEntry } from '@/lib/api'
+import { getVswtLeaderboards, type VswtLeaderboardEntry, type VswtLeaderboardMode } from '@/lib/api'
 import { Badge, Card, EmptyState, Spinner } from '@/components/ui'
 import { PillToggle } from './VswtRegionalReportSection'
 import { fmtVswtVal, rankToneBadgeVariant, rankTone } from './format'
 
 const GROUPS = ['All', 'Headline', 'Conversion', 'Category Sales', 'Category Jobs'] as const
+const MODES: { key: VswtLeaderboardMode; label: string }[] = [
+  { key: 'latest', label: 'Latest Week' },
+  { key: 'consistency', label: 'Consistency' },
+]
 
 export function VswtLeaderboards() {
   const [group, setGroup] = useState<string>('All')
+  const [mode, setMode] = useState<VswtLeaderboardMode>('latest')
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-leaderboards', group],
-    queryFn: () => getVswtLeaderboards(undefined, group === 'All' ? undefined : group).then(r => r.data),
+    queryKey: ['vswt-leaderboards', group, mode],
+    queryFn: () => getVswtLeaderboards(undefined, group === 'All' ? undefined : group, mode).then(r => r.data),
   })
 
   if (isLoading) return <Spinner />
@@ -22,15 +27,22 @@ export function VswtLeaderboards() {
     <div>
       <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
         <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-          Week {data.week} — who's ahead of you, and who's behind, across every KPI.
+          {mode === 'consistency'
+            ? "Averaged across every week on file — who's consistently ahead of you, not just this week."
+            : `Week ${data.week} — who's ahead of you, and who's behind, across every KPI.`}
         </p>
-        <PillToggle value={group} onChange={setGroup} options={GROUPS.map(g => ({ key: g, label: g }))} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <PillToggle value={mode} onChange={setMode} options={MODES} />
+          <PillToggle value={group} onChange={setGroup} options={GROUPS.map(g => ({ key: g, label: g }))} />
+        </div>
       </div>
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
         {data.boards.map(board => (
           <Card key={board.key} className="p-4">
             <div className="flex justify-between items-baseline mb-2.5">
-              <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{board.label}</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+                {board.label}{mode === 'consistency' && <span style={{ color: 'var(--ms-text-muted)', fontWeight: 400 }}> — avg rank</span>}
+              </p>
               {board.my_rank != null && (
                 <Badge variant={rankToneBadgeVariant(rankTone(board.my_rank, board.total))}>You: #{board.my_rank}</Badge>
               )}
@@ -62,7 +74,10 @@ function LbList({ entries, type }: { entries: VswtLeaderboardEntry[]; type: 'cur
           <span className="flex-1 text-xs truncate" style={{ color: e.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: e.is_me ? 700 : 400 }}>
             {e.shop_name ?? e.shop_number ?? 'Another shop'}
           </span>
-          <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{fmtVswtVal(e.value, type)}</span>
+          <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+            {fmtVswtVal(e.value, type)}
+            {e.weeks_counted != null && <span style={{ color: 'var(--ms-text-muted)' }}> · {e.weeks_counted} wks</span>}
+          </span>
         </div>
       ))}
     </div>

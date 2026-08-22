@@ -1,4 +1,10 @@
-import type { VswtKpiType } from '@/lib/api'
+import type { VswtKpiGroup, VswtKpiType } from '@/lib/api'
+
+/** Every KPI group, in display order — shared by Directory, Shop Report, and anywhere else a KPI
+ * group picker is needed, so the list is only ever spelled out once. */
+export const VSWT_KPI_GROUPS: VswtKpiGroup[] = [
+  'Headline', 'Budget & Last Year', 'Conversion', 'Category Sales', 'Category Jobs', 'Watch & Service Detail',
+]
 
 /** Formats one VSWT KPI value per its type — mirrors the reference app's fmtVal(). */
 export function fmtVswtVal(value: number | null | undefined, type: VswtKpiType): string {
