@@ -727,7 +727,7 @@ export default function AutoKeyJobsPage() {
                 { label: 'All', dir: 'all' as const, status: 'all' },
                 { label: 'Awaiting Quote', dir: 'active' as const, status: 'awaiting_quote' },
                 { label: 'Booking Confirmed', dir: 'active' as const, status: 'booking_confirmed' },
-                { label: 'Work Completed', dir: 'active' as const, status: 'work_completed' },
+                { label: 'Work Completed', dir: 'completed' as const, status: 'work_completed' },
                 { label: 'Invoice Paid', dir: 'completed' as const, status: 'invoice_paid' },
               ]).map(chip => {
                 const isActive = jobDirectoryView === chip.dir && statusFilter === chip.status

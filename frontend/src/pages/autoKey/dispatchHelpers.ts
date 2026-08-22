@@ -19,11 +19,10 @@ export const STATUSES: JobStatus[] = [
 ]
 
 // Kept in sync with AUTO_KEY_KANBAN_COLUMNS (components/kanban/columns.ts), which groups
-// booking_completed/work_completed/invoice_paid under its one "Booking Completed" column — these
-// two lists split that same set the way the List view's filter chips expect (Work Completed still
-// counts as "active" — done on the tools but not yet invoiced — while Invoice Paid is the true
-// closed/final state, matching each chip's own `dir`).
-export const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'invoice_paid', 'failed_job'] as const
+// booking_completed/work_completed/invoice_paid under its one "Booking Completed" column. Active
+// is every in-progress status — anything still waiting on a quote, booking, or the job itself;
+// Closed is anything the physical work is done on, whether or not it's been invoiced yet.
+export const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'work_completed', 'invoice_paid', 'failed_job'] as const
 export const AUTO_KEY_ACTIVE_STATUSES = [
   'awaiting_quote',
   'awaiting_customer_details',
@@ -33,7 +32,6 @@ export const AUTO_KEY_ACTIVE_STATUSES = [
   'en_route',
   'on_site',
   'booking_on_hold',
-  'work_completed',
 ] as const
 
 export function formatCents(value: number) {
