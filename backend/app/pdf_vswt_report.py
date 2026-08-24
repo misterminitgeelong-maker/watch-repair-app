@@ -50,11 +50,16 @@ def build_weekly_report_pdf(
     kpis: Sequence[KpiDef],
     shops: Sequence[dict[str, Any]],
     totals: dict[str, Any],
+    compare_within_selection: bool = False,
+    rank_pool_size: Optional[int] = None,
     generated_on: Optional[date] = None,
 ) -> bytes:
     """Landscape-A4, multi-section: a headline summary table (sales $, rank, customers, jobs,
     overall avg rank, group total), followed by one table per KPI group with every KPI in that
-    group as a "value (#rank)" cell — same grouping the Rankings/Directory tabs use."""
+    group as a "value (#rank)" cell — same grouping the Rankings/Directory tabs use.
+
+    `compare_within_selection` only changes what the ranks *mean* (region-wide vs. within this
+    report's own shops) — the caller already computed them accordingly; this just labels it."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -72,6 +77,7 @@ def build_weekly_report_pdf(
     heading = ParagraphStyle("heading", parent=normal, fontSize=18, fontName="Helvetica-Bold", textColor=_DARK, spaceAfter=1 * mm)
     section = ParagraphStyle("section", parent=normal, fontSize=11.5, fontName="Helvetica-Bold", textColor=_DARK, spaceBefore=6 * mm, spaceAfter=2 * mm)
     sub = ParagraphStyle("sub", parent=normal, fontSize=9.5, textColor=_MID_GREY)
+    note = ParagraphStyle("note", parent=normal, fontSize=8.5, fontName="Helvetica-Bold", textColor=_ACCENT, spaceAfter=2 * mm)
     label = ParagraphStyle("label", parent=normal, fontSize=7.5, fontName="Helvetica-Bold", textColor=_MID_GREY)
     cell = ParagraphStyle("cell", parent=normal, fontSize=8.5)
     cell_bold = ParagraphStyle("cell_bold", parent=cell, fontName="Helvetica-Bold", textColor=_DARK)
@@ -84,6 +90,9 @@ def build_weekly_report_pdf(
         Paragraph(title, heading),
         Paragraph(subtitle, sub),
     ]
+    if compare_within_selection:
+        pool = rank_pool_size if rank_pool_size is not None else len(shops)
+        story.append(Paragraph(f"Ranks compared within these {pool} shops only, not the whole region.", note))
 
     def _table_style(n_rows: int, has_totals: bool = False) -> TableStyle:
         # `has_totals` marks the last row as a totals row (accent rule above it, excluded from

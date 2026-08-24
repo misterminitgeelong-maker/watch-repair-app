@@ -924,25 +924,37 @@ def _weekly_report_data(
     week_rows: list[VswtWeeklyShopMetric],
     shop_numbers: list[str],
     my_shop_number: Optional[str],
+    compare_within_selection: bool = False,
 ) -> dict[str, Any]:
     """Shared by the JSON preview and the PDF export below, so both always show the same numbers.
-    Comprehensive by design: every KPI HQ tracks gets a value *and* a region rank for every
-    selected shop, not just the Headline group — the report is meant to stand on its own without
-    anyone needing to flip back to Rankings for the rest of the picture."""
+    Comprehensive by design: every KPI HQ tracks gets a value *and* a rank for every selected
+    shop, not just the Headline group — the report is meant to stand on its own without anyone
+    needing to flip back to Rankings for the rest of the picture.
+
+    `compare_within_selection` swaps what ranks are computed against: normally (False) every rank
+    is the shop's position in the *whole region* — same numbers as the rest of the VSWT tabs. Set
+    True to rank shops only against each other (e.g. "who's top of our own franchisee group this
+    week"), which needs the selected shops resolved first so the ranking pool is just them."""
     by_number = {r.shop_number: r for r in week_rows}
-    shops: list[dict[str, Any]] = []
+    selected_rows: list[VswtWeeklyShopMetric] = []
     missing: list[str] = []
     for sn in shop_numbers:
         r = by_number.get(sn)
         if r is None:
             missing.append(sn)
-            continue
+        else:
+            selected_rows.append(r)
+
+    rank_pool = selected_rows if compare_within_selection else week_rows
+
+    shops: list[dict[str, Any]] = []
+    for r in selected_rows:
         values: dict[str, Optional[float]] = {}
         ranks: dict[str, Optional[int]] = {}
         for kpi in KPI_DEFS:
             v = getattr(r, kpi.key)
             values[kpi.key] = v
-            ranks[kpi.key] = _rank_of(week_rows, kpi.key, v)
+            ranks[kpi.key] = _rank_of(rank_pool, kpi.key, v)
         ranked = [rk for rk in ranks.values() if rk is not None]
         shops.append(
             {
@@ -974,13 +986,21 @@ def _weekly_report_data(
         "jobs": sum(jobs_vals) if jobs_vals else None,
         "avg_sales_rank": (sum(sales_ranks) / len(sales_ranks)) if sales_ranks else None,
     }
-    return {"shops": shops, "missing_shop_numbers": missing, "totals": totals}
+    return {
+        "shops": shops,
+        "missing_shop_numbers": missing,
+        "totals": totals,
+        "rank_pool_size": len(rank_pool),
+    }
 
 
 @router.get("/weekly-report")
 def get_vswt_weekly_report(
     week: Optional[int] = Query(None),
     shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
+    compare_within_selection: bool = Query(
+        False, description="Rank shops only against each other instead of the whole region."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -997,7 +1017,7 @@ def get_vswt_weekly_report(
         raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
 
     week_rows = _week_rows(session, target_week)
-    data = _weekly_report_data(week_rows, numbers, my_shop_number)
+    data = _weekly_report_data(week_rows, numbers, my_shop_number, compare_within_selection)
     if not data["shops"]:
         return {"available": False, "reason": "shop_not_found", "week": target_week}
 
@@ -1006,6 +1026,7 @@ def get_vswt_weekly_report(
         "week": target_week,
         "weeks": weeks,
         "region_size": len(week_rows),
+        "compare_within_selection": compare_within_selection,
         "groups": KPI_GROUPS,
         "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in KPI_DEFS],
         **data,
@@ -1017,6 +1038,9 @@ def get_vswt_weekly_report_pdf(
     week: Optional[int] = Query(None),
     shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
     title: str = Query("Weekly Regional Report", description="Report title, e.g. your franchisee group's name."),
+    compare_within_selection: bool = Query(
+        False, description="Rank shops only against each other instead of the whole region."
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -1033,7 +1057,7 @@ def get_vswt_weekly_report_pdf(
         raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
 
     week_rows = _week_rows(session, target_week)
-    data = _weekly_report_data(week_rows, numbers, my_shop_number)
+    data = _weekly_report_data(week_rows, numbers, my_shop_number, compare_within_selection)
     if not data["shops"]:
         raise HTTPException(status_code=404, detail="None of the selected shops were found in this week's data.")
 
@@ -1041,6 +1065,8 @@ def get_vswt_weekly_report_pdf(
         title=title.strip() or "Weekly Regional Report",
         week=target_week,
         region_size=len(week_rows),
+        compare_within_selection=compare_within_selection,
+        rank_pool_size=data["rank_pool_size"],
         groups=KPI_GROUPS,
         kpis=KPI_DEFS,
         shops=data["shops"],

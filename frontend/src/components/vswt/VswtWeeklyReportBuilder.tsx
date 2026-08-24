@@ -49,6 +49,22 @@ function saveTitle(tenantId: string | null, title: string) {
   }
 }
 
+function loadCompareWithinSelection(tenantId: string | null): boolean {
+  try {
+    return localStorage.getItem(storageKey(tenantId, 'compare-within')) === '1'
+  } catch {
+    return false
+  }
+}
+
+function saveCompareWithinSelection(tenantId: string | null, value: boolean) {
+  try {
+    localStorage.setItem(storageKey(tenantId, 'compare-within'), value ? '1' : '0')
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const href = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -71,11 +87,13 @@ export function VswtWeeklyReportBuilder() {
   const [shopNames, setShopNames] = useState<Record<string, string | null>>({})
   const [title, setTitle] = useState(() => loadTitle(tenantId))
   const [week, setWeek] = useState<number | undefined>(undefined)
+  const [compareWithinSelection, setCompareWithinSelection] = useState(() => loadCompareWithinSelection(tenantId))
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   useEffect(() => { saveShopNumbers(tenantId, shopNumbers) }, [tenantId, shopNumbers])
   useEffect(() => { saveTitle(tenantId, title) }, [tenantId, title])
+  useEffect(() => { saveCompareWithinSelection(tenantId, compareWithinSelection) }, [tenantId, compareWithinSelection])
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
@@ -90,13 +108,15 @@ export function VswtWeeklyReportBuilder() {
   })
 
   const { data: reportData, isLoading: reportLoading, isFetching: reportFetching } = useQuery({
-    queryKey: ['vswt-weekly-report', shopNumbers, week],
-    queryFn: () => getVswtWeeklyReport({ shopNumbers, week }).then(r => r.data),
+    queryKey: ['vswt-weekly-report', shopNumbers, week, compareWithinSelection],
+    queryFn: () => getVswtWeeklyReport({ shopNumbers, week, compareWithinSelection }).then(r => r.data),
     enabled: shopNumbers.length > 0,
   })
 
   const downloadMut = useMutation({
-    mutationFn: () => getVswtWeeklyReportPdf({ shopNumbers, week: reportData?.available ? reportData.week : week, title }),
+    mutationFn: () => getVswtWeeklyReportPdf({
+      shopNumbers, week: reportData?.available ? reportData.week : week, title, compareWithinSelection,
+    }),
     onSuccess: r => {
       const weekLabel = reportData?.available ? reportData.week : week ?? 'latest'
       downloadBlob(r.data, `weekly-report-week-${weekLabel}.pdf`)
@@ -218,6 +238,20 @@ export function VswtWeeklyReportBuilder() {
             ))}
           </div>
         )}
+
+        <label className="flex items-center gap-2 text-sm mt-4 pt-3" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
+          <input
+            type="checkbox"
+            checked={compareWithinSelection}
+            onChange={e => setCompareWithinSelection(e.target.checked)}
+          />
+          Compare ranks within these shops only, not the whole region
+        </label>
+        <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          {compareWithinSelection
+            ? `Ranks below (#1, #2, …) are each shop's position among just the ${chipShops.length} shop${chipShops.length !== 1 ? 's' : ''} you've picked.`
+            : "Ranks below are each shop's position across the whole region — same numbers as the rest of Regional Reports."}
+        </p>
       </Card>
 
       {shopNumbers.length === 0 ? (
@@ -274,6 +308,11 @@ function WeeklyReportPreview({
               Week {data.week} · {data.region_size} shops in region · {data.shops.length} shop{data.shops.length !== 1 ? 's' : ''} in this report
               {isFetching && ' · refreshing…'}
             </p>
+            {data.compare_within_selection && (
+              <p className="text-xs mt-0.5 font-semibold" style={{ color: 'var(--ms-accent)' }}>
+                Ranks compared within these {data.rank_pool_size} shops only — not the whole region.
+              </p>
+            )}
             {data.missing_shop_numbers.length > 0 && (
               <p className="text-xs mt-0.5" style={{ color: 'var(--ms-badge-alert-text)' }}>
                 Not found this week: {data.missing_shop_numbers.join(', ')}

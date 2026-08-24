@@ -776,3 +776,46 @@ def test_weekly_report_pdf_404s_when_no_picked_shop_is_found(vswt_client):
         params={"week": 204, "shop_numbers": "9999999"},
     )
     assert res.status_code == 404
+
+
+def test_weekly_report_compare_within_selection_reranks_against_the_picked_shops_only(vswt_client):
+    """Region-wide, Chadstone (62k) is #3 of 4 (behind Doncaster 81k and Chatswood 71k). Leave
+    Doncaster out of the report and Chadstone should jump to #1 among just the picked shops."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-within", "owner-wrwithin@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 205)  # Chadstone 62k, Bondi 45k, Chatswood 71k (Doncaster 81k excluded)
+
+    region_res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report", headers=headers,
+        params={"week": 205, "shop_numbers": "3269,4100,4200"},
+    )
+    region_body = region_res.json()
+    assert region_body["compare_within_selection"] is False
+    assert region_body["rank_pool_size"] == 4  # whole region, including Doncaster who isn't even in the report
+    chadstone_region = next(s for s in region_body["shops"] if s["shop_number"] == "3269")
+    assert chadstone_region["sales_rank"] == 3  # behind Doncaster (81k) and Chatswood (71k) region-wide
+
+    within_res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report", headers=headers,
+        params={"week": 205, "shop_numbers": "3269,4100,4200", "compare_within_selection": True},
+    )
+    within_body = within_res.json()
+    assert within_body["compare_within_selection"] is True
+    assert within_body["rank_pool_size"] == 3  # just the 3 picked shops
+    chadstone_within = next(s for s in within_body["shops"] if s["shop_number"] == "3269")
+    assert chadstone_within["sales_rank"] == 2  # still behind Chatswood, but now out of 3 not 4
+    bondi_within = next(s for s in within_body["shops"] if s["shop_number"] == "4100")
+    assert bondi_within["sales_rank"] == 3  # last of the 3 picked shops (lowest sales)
+
+
+def test_weekly_report_pdf_compare_within_selection_downloads_fine(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-within-pdf", "owner-wrwithinpdf@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 206)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/pdf", headers=headers,
+        params={"week": 206, "shop_numbers": "3269,4100", "compare_within_selection": True},
+    )
+    assert res.status_code == 200, res.text
+    assert res.content[:4] == b"%PDF"

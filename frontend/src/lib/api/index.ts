@@ -3415,25 +3415,31 @@ export interface VswtWeeklyReport {
   week: number
   weeks: number[]
   region_size: number
+  // When true, every rank in `shops[].ranks`/`sales_rank`/`overall_avg_rank` was computed only
+  // against the other selected shops (rank_pool_size of them) — not the whole region.
+  compare_within_selection: boolean
+  rank_pool_size: number
   groups: VswtKpiGroup[]
   kpis: VswtKpiDef[]
   shops: VswtWeeklyReportShop[]
   missing_shop_numbers: string[]
   totals: VswtWeeklyReportTotals
 }
-export const getVswtWeeklyReport = (params: { week?: number; shopNumbers: string[] }) =>
+export const getVswtWeeklyReport = (params: { week?: number; shopNumbers: string[]; compareWithinSelection?: boolean }) =>
   api.get<VswtWeeklyReport | VswtUnavailable>('/reports/vswt/weekly-report', {
     params: {
       ...(params.week ? { week: params.week } : {}),
       shop_numbers: params.shopNumbers.join(','),
+      ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
     },
   })
-export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: string[]; title?: string }) =>
+export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: string[]; title?: string; compareWithinSelection?: boolean }) =>
   api.get<Blob>('/reports/vswt/weekly-report/pdf', {
     responseType: 'blob',
     params: {
       ...(params.week ? { week: params.week } : {}),
       shop_numbers: params.shopNumbers.join(','),
       ...(params.title ? { title: params.title } : {}),
+      ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
     },
   })
