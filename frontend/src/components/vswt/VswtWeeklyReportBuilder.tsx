@@ -303,18 +303,21 @@ function WeeklyReportPreview({
       <Card className="p-5">
         <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
           <div>
-            <h3 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>{title || DEFAULT_TITLE}</h3>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
+            <h3 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--ms-text)' }}>{title || DEFAULT_TITLE}</h3>
+            <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-text-mid)' }}>
               Week {data.week} · {data.region_size} shops in region · {data.shops.length} shop{data.shops.length !== 1 ? 's' : ''} in this report
               {isFetching && ' · refreshing…'}
             </p>
             {data.compare_within_selection && (
-              <p className="text-xs mt-0.5 font-semibold" style={{ color: 'var(--ms-accent)' }}>
+              <p
+                className="text-sm font-bold mt-2 inline-block px-2.5 py-1 rounded-md"
+                style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}
+              >
                 Ranks compared within these {data.rank_pool_size} shops only — not the whole region.
               </p>
             )}
             {data.missing_shop_numbers.length > 0 && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-badge-alert-text)' }}>
+              <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-badge-alert-text)' }}>
                 Not found this week: {data.missing_shop_numbers.join(', ')}
               </p>
             )}
@@ -334,7 +337,7 @@ function WeeklyReportPreview({
           </div>
         </div>
 
-        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>Summary</p>
+        <p className="text-base font-extrabold mb-3" style={{ color: 'var(--ms-accent)' }}>Summary</p>
         <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--ms-border)' }}>
           <table className="border-collapse text-sm" style={{ width: '100%' }}>
             <thead>
@@ -351,31 +354,31 @@ function WeeklyReportPreview({
             <tbody>
               {data.shops.map(s => (
                 <tr key={s.shop_number} style={s.is_me ? { backgroundColor: 'var(--ms-accent-light)' } : undefined}>
-                  <td style={{ ...tdStyle, textAlign: 'left', color: s.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: 600 }}>
+                  <td style={{ ...tdStyle, textAlign: 'left', color: s.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: 800 }}>
                     <span className="flex items-center gap-1.5">
                       {s.shop_name ?? s.shop_number}
                       {s.is_me && <Badge variant="default">You</Badge>}
                     </span>
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'left', color: 'var(--ms-text-mid)' }}>{s.area_name ?? '—'}</td>
-                  <td style={{ ...tdStyle, color: 'var(--ms-text)', fontWeight: 600 }}>{fmtVswtVal(s.sales_value, 'currency')}</td>
+                  <td style={{ ...tdStyle, textAlign: 'left', color: 'var(--ms-text-mid)', fontWeight: 500 }}>{s.area_name ?? '—'}</td>
+                  <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{fmtVswtVal(s.sales_value, 'currency')}</td>
                   <td style={tdStyle}>{s.sales_rank != null ? <Badge variant="default">#{s.sales_rank}</Badge> : <span style={{ color: 'var(--ms-text-muted)' }}>—</span>}</td>
                   <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{fmtVswtVal(s.customer_value, 'count')}</td>
                   <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{fmtVswtVal(s.jobs_value, 'count')}</td>
-                  <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{s.overall_avg_rank != null ? `#${s.overall_avg_rank.toFixed(1)}` : '—'}</td>
+                  <td style={{ ...tdStyle, color: 'var(--ms-accent)' }}>{s.overall_avg_rank != null ? `#${s.overall_avg_rank.toFixed(1)}` : '—'}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 700, color: 'var(--ms-text)' }}>Group total</td>
+                <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 800, color: 'var(--ms-text)' }}>Group total</td>
                 <td style={tdStyle} />
-                <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.sales, 'currency')}</td>
-                <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--ms-text)' }}>
+                <td style={{ ...tdStyle, fontWeight: 800, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.sales, 'currency')}</td>
+                <td style={{ ...tdStyle, fontWeight: 800, color: 'var(--ms-text)' }}>
                   {data.totals.avg_sales_rank != null ? `avg #${data.totals.avg_sales_rank.toFixed(1)}` : '—'}
                 </td>
-                <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.customers, 'count')}</td>
-                <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.jobs, 'count')}</td>
+                <td style={{ ...tdStyle, fontWeight: 800, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.customers, 'count')}</td>
+                <td style={{ ...tdStyle, fontWeight: 800, color: 'var(--ms-text)' }}>{fmtVswtVal(data.totals.jobs, 'count')}</td>
                 <td style={tdStyle} />
               </tr>
             </tfoot>
@@ -385,7 +388,7 @@ function WeeklyReportPreview({
 
       {kpisByGroup.map(({ group, kpis }) => (
         <Card key={group} className="p-5">
-          <p className="text-sm font-bold mb-2" style={{ color: 'var(--ms-text)' }}>{group}</p>
+          <p className="text-base font-extrabold mb-3" style={{ color: 'var(--ms-accent)' }}>{group}</p>
           <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--ms-border)' }}>
             <table className="border-collapse text-sm" style={{ width: '100%' }}>
               <thead>
@@ -397,10 +400,10 @@ function WeeklyReportPreview({
               <tbody>
                 {data.shops.map(s => (
                   <tr key={s.shop_number} style={s.is_me ? { backgroundColor: 'var(--ms-accent-light)' } : undefined}>
-                    <td style={{ ...tdStyle, textAlign: 'left', color: s.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: 600 }}>
+                    <td style={{ ...tdStyle, textAlign: 'left', color: s.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: 800 }}>
                       {s.shop_name ?? s.shop_number}
                     </td>
-                    {kpis.map(k => <ValueRankCell key={k.key} shop={s} kpi={k} />)}
+                    {kpis.map(k => <ValueRankCell key={k.key} shop={s} kpi={k} isMe={s.is_me} />)}
                   </tr>
                 ))}
               </tbody>
@@ -412,21 +415,27 @@ function WeeklyReportPreview({
   )
 }
 
-function ValueRankCell({ shop, kpi }: { shop: VswtWeeklyReportShop; kpi: VswtKpiDef }) {
+function ValueRankCell({ shop, kpi, isMe }: { shop: VswtWeeklyReportShop; kpi: VswtKpiDef; isMe: boolean }) {
   const value = shop.values[kpi.key]
   const rank = shop.ranks[kpi.key]
   return (
     <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>
       {fmtVswtVal(value, kpi.type)}
-      {rank != null && <span className="block text-[10px]" style={{ color: 'var(--ms-text-muted)' }}>#{rank}</span>}
+      {rank != null && (
+        <span className="block text-[12px] font-bold" style={{ color: isMe ? 'var(--ms-accent)' : 'var(--ms-text-mid)' }}>
+          #{rank}
+        </span>
+      )}
     </td>
   )
 }
 
+// Sized and weighted to read easily at a glance — bigger, bolder text and more breathing room
+// than a typical dense data table, mirroring the PDF export's typography.
 const thStyle: React.CSSProperties = {
-  padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: 'var(--ms-text-muted)',
-  borderBottom: '1px solid var(--ms-border)', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap',
+  padding: '11px 14px', textAlign: 'right', fontSize: 12.5, fontWeight: 800, color: 'var(--ms-text)',
+  borderBottom: '2px solid var(--ms-accent)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap',
 }
 const tdStyle: React.CSSProperties = {
-  padding: '7px 12px', textAlign: 'right', borderBottom: '1px solid var(--ms-border)',
+  padding: '10px 14px', textAlign: 'right', borderBottom: '1px solid var(--ms-border)', fontSize: 14.5, fontWeight: 700,
 }
