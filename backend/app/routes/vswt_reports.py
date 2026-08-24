@@ -20,17 +20,19 @@ from __future__ import annotations
 
 import io
 import statistics
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 
 import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import Response
 from sqlmodel import Session, delete as sa_delete, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import Tenant, VswtWeeklyShopMetric
+from ..pdf_vswt_report import build_weekly_report_pdf
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
     COLUMN_MAP,
@@ -686,8 +688,8 @@ def _consistency_boards(
 ) -> list[dict[str, Any]]:
     """Top/bottom leaderboards ranked by average rank across every week on file, instead of one
     week's value — rewards a shop that's reliably strong over a shop that just had one great week.
-    Mirrors the shape/anonymization rules of the "latest" leaderboards below exactly, so the
-    frontend can render both with the same component."""
+    Mirrors the shape of the "latest" leaderboards below exactly, so the frontend can render both
+    with the same component."""
     rank_lists: dict[str, dict[str, list[int]]] = {}
     shop_meta: dict[str, tuple[Optional[str], Optional[str]]] = {}
     for w in weeks:
@@ -715,23 +717,23 @@ def _consistency_boards(
         total = len(entries)
         my_index = next((i for i, e in enumerate(entries) if e[0] == shop_number), None)
 
-        def _entry(rank_pos: int, entry: tuple[str, float, int], anonymize: bool) -> dict[str, Any]:
+        def _entry(rank_pos: int, entry: tuple[str, float, int]) -> dict[str, Any]:
             sn, avg_rank, weeks_counted = entry
             is_me = sn == shop_number
             name, _area = shop_meta.get(sn, (None, None))
             return {
                 "rank": rank_pos,
-                "shop_number": sn if (is_me or not anonymize) else None,
-                "shop_name": name if (is_me or not anonymize) else None,
+                "shop_number": sn,
+                "shop_name": name,
                 "value": round(avg_rank, 2),
                 "weeks_counted": weeks_counted,
                 "is_me": is_me,
             }
 
-        top = [_entry(i + 1, e, anonymize=False) for i, e in enumerate(entries[:5])]
+        top = [_entry(i + 1, e) for i, e in enumerate(entries[:5])]
         bottom_slice = entries[-5:] if total > 5 else []
         bottom_start = total - len(bottom_slice)
-        bottom = [_entry(bottom_start + i + 1, e, anonymize=True) for i, e in enumerate(bottom_slice)]
+        bottom = [_entry(bottom_start + i + 1, e) for i, e in enumerate(bottom_slice)]
 
         boards.append(
             {
@@ -803,13 +805,11 @@ def get_vswt_leaderboards(
                     }
                     for i, r in enumerate(top)
                 ],
-                # Bottom performers are anonymized — never name-and-shame a specific shop to the
-                # rest of the region. A shop still sees itself (is_me) if it's down here.
                 "bottom": [
                     {
                         "rank": bottom_start + i + 1,
-                        "shop_number": r.shop_number if r.shop_number == shop_number else None,
-                        "shop_name": r.shop_name if r.shop_number == shop_number else None,
+                        "shop_number": r.shop_number,
+                        "shop_name": r.shop_name,
                         "value": getattr(r, kpi.key), "is_me": r.shop_number == shop_number,
                     }
                     for i, r in enumerate(bottom)
@@ -900,3 +900,151 @@ def get_vswt_trends(
         "category_series": category_series,
         "region_size": len(latest_rows),
     }
+
+
+# ── Weekly report builder ────────────────────────────────────────────────────────────────
+# Lets a shop hand-pick a handful of other shops (e.g. their own franchisee group) and get one
+# week's numbers for just those shops laid out together — for pasting into a group chat, not for
+# browsing the whole region like the Directory does.
+
+def _parse_shop_numbers(shop_numbers: str) -> list[str]:
+    # De-dupe while preserving the order the caller picked them in, so the report reads the same
+    # order the user built it in rather than region sort order.
+    seen: set[str] = set()
+    out: list[str] = []
+    for sn in shop_numbers.split(","):
+        sn = sn.strip()
+        if sn and sn not in seen:
+            seen.add(sn)
+            out.append(sn)
+    return out
+
+
+def _weekly_report_data(
+    week_rows: list[VswtWeeklyShopMetric],
+    shop_numbers: list[str],
+    kpis: list[KpiDef],
+    my_shop_number: Optional[str],
+) -> dict[str, Any]:
+    """Shared by the JSON preview and the PDF export below, so both always show the same numbers.
+    Sales rank is always included regardless of the chosen KPI group — it's the one number every
+    franchisee wants at a glance."""
+    by_number = {r.shop_number: r for r in week_rows}
+    shops: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for sn in shop_numbers:
+        r = by_number.get(sn)
+        if r is None:
+            missing.append(sn)
+            continue
+        shops.append(
+            {
+                "shop_number": r.shop_number,
+                "shop_name": r.shop_name,
+                "area_name": r.area_name,
+                "is_me": r.shop_number == my_shop_number,
+                "sales_value": r.sales_ty,
+                "sales_rank": _rank_of(week_rows, "sales_ty", r.sales_ty),
+                "customer_value": r.customer_ty,
+                "jobs_value": r.jobs_ty,
+                "values": {k.key: getattr(r, k.key) for k in kpis},
+            }
+        )
+    # Best sales first — reads like a mini leaderboard for the group, nulls sink to the bottom.
+    shops.sort(key=lambda s: (s["sales_value"] is None, -(s["sales_value"] or 0)))
+
+    sales_vals = [s["sales_value"] for s in shops if s["sales_value"] is not None]
+    customer_vals = [s["customer_value"] for s in shops if s["customer_value"] is not None]
+    jobs_vals = [s["jobs_value"] for s in shops if s["jobs_value"] is not None]
+    sales_ranks = [s["sales_rank"] for s in shops if s["sales_rank"] is not None]
+    totals = {
+        "sales": sum(sales_vals) if sales_vals else None,
+        "customers": sum(customer_vals) if customer_vals else None,
+        "jobs": sum(jobs_vals) if jobs_vals else None,
+        "avg_sales_rank": (sum(sales_ranks) / len(sales_ranks)) if sales_ranks else None,
+    }
+    return {"shops": shops, "missing_shop_numbers": missing, "totals": totals}
+
+
+@router.get("/weekly-report")
+def get_vswt_weekly_report(
+    week: Optional[int] = Query(None),
+    shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
+    group: Optional[str] = Query(None, description="KPI group to include as extra columns; defaults to Headline."),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    weeks = _all_weeks(session)
+    if not weeks:
+        return {"available": False, "reason": "no_data"}
+    target_week = week if week in weeks else weeks[-1]
+
+    numbers = _parse_shop_numbers(shop_numbers)
+    if not numbers:
+        raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
+
+    week_rows = _week_rows(session, target_week)
+    kpi_group = group if group in KPI_GROUPS else "Headline"
+    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
+    data = _weekly_report_data(week_rows, numbers, kpis, my_shop_number)
+    if not data["shops"]:
+        return {"available": False, "reason": "shop_not_found", "week": target_week}
+
+    return {
+        "available": True,
+        "week": target_week,
+        "weeks": weeks,
+        "region_size": len(week_rows),
+        "group": kpi_group,
+        "groups": KPI_GROUPS,
+        "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in kpis],
+        **data,
+    }
+
+
+@router.get("/weekly-report/pdf")
+def get_vswt_weekly_report_pdf(
+    week: Optional[int] = Query(None),
+    shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
+    group: Optional[str] = Query(None, description="KPI group to include as extra columns; defaults to Headline."),
+    title: str = Query("Weekly Regional Report", description="Report title, e.g. your franchisee group's name."),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        raise HTTPException(status_code=404, detail="This shop isn't linked to a VSWT shop number yet.")
+    weeks = _all_weeks(session)
+    if not weeks:
+        raise HTTPException(status_code=404, detail="No regional data has been uploaded yet.")
+    target_week = week if week in weeks else weeks[-1]
+
+    numbers = _parse_shop_numbers(shop_numbers)
+    if not numbers:
+        raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
+
+    week_rows = _week_rows(session, target_week)
+    kpi_group = group if group in KPI_GROUPS else "Headline"
+    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
+    data = _weekly_report_data(week_rows, numbers, kpis, my_shop_number)
+    if not data["shops"]:
+        raise HTTPException(status_code=404, detail="None of the selected shops were found in this week's data.")
+
+    pdf_bytes = build_weekly_report_pdf(
+        title=title.strip() or "Weekly Regional Report",
+        week=target_week,
+        region_size=len(week_rows),
+        kpis=kpis,
+        shops=data["shops"],
+        totals=data["totals"],
+        generated_on=date.today(),
+    )
+    filename = f"weekly-report-week-{target_week}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

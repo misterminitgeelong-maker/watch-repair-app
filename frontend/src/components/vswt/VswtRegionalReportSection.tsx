@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText } from 'lucide-react'
+import { Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText, ClipboardList } from 'lucide-react'
 import { getVswtSummary, type VswtSummary, type VswtUnavailable } from '@/lib/api'
 import { Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -13,9 +13,12 @@ import { VswtTrends } from './VswtTrends'
 import { VswtShopReport } from './VswtShopReport'
 import { VswtUploadPanel } from './VswtUploadPanel'
 import { VswtShopDirectory } from './VswtShopDirectory'
+import { VswtWeeklyReportBuilder } from './VswtWeeklyReportBuilder'
 import type { ViewingShop } from './VswtViewingBanner'
 
-type SubTab = 'overview' | 'directory' | 'shop-report' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends' | 'upload'
+type SubTab =
+  | 'overview' | 'directory' | 'shop-report' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends'
+  | 'weekly-report' | 'upload'
 
 const MANAGER_ROLES = new Set(['owner', 'manager', 'platform_admin'])
 
@@ -62,6 +65,7 @@ export function VswtRegionalReportSection() {
     { key: 'rankings', label: 'Rankings', icon: Table2 },
     { key: 'leaderboards', label: 'Leaderboards', icon: Trophy },
     { key: 'trends', label: 'Trends', icon: LineChartIcon },
+    { key: 'weekly-report', label: 'Weekly Report', icon: ClipboardList },
     ...(canUpload ? [{ key: 'upload' as SubTab, label: 'Upload', icon: Upload }] : []),
   ]
 
@@ -95,6 +99,7 @@ export function VswtRegionalReportSection() {
       {subTab === 'trends' && (
         <VswtTrends viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
       )}
+      {subTab === 'weekly-report' && <VswtWeeklyReportBuilder />}
       {subTab === 'upload' && canUpload && <VswtUploadPanel />}
     </div>
   )

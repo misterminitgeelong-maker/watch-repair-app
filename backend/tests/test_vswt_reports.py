@@ -251,9 +251,9 @@ def test_upload_then_commit_then_read_flow(vswt_client):
     assert trends.json()["sales_series"][-1]["shop"] == 50000
 
 
-def test_leaderboards_anonymizes_bottom_shops(vswt_client):
-    """Bottom-5 must never name-and-shame — only the viewing shop's own row (if it's down
-    there) carries a shop_number/shop_name. Top-5 stays named for everyone."""
+def test_leaderboards_names_every_shop_top_and_bottom(vswt_client):
+    """Both top-5 and bottom-5 carry every shop's name/number — this is a private franchisee
+    tool, not a public leaderboard, so there's no anonymization to hide who's struggling."""
     headers, tenant_id = _bootstrap(vswt_client, "vswt-shop-bottom", "owner-bottom@test.com")
     _set_shop_number(tenant_id, "2000")
 
@@ -285,15 +285,11 @@ def test_leaderboards_anonymizes_bottom_shops(vswt_client):
     # Top-5 stays named.
     assert all(e["shop_number"] is not None and e["shop_name"] is not None for e in sales_board["top"])
 
-    # Bottom-5: only my own row (Bravo, is_me) is named; everyone else is anonymized.
-    for entry in sales_board["bottom"]:
-        if entry["is_me"]:
-            assert entry["shop_number"] == "2000"
-            assert entry["shop_name"] == "Bravo"
-        else:
-            assert entry["shop_number"] is None
-            assert entry["shop_name"] is None
-    assert any(e["is_me"] for e in sales_board["bottom"])
+    # Bottom-5 is named too now — including my own row (Bravo, is_me).
+    assert all(e["shop_number"] is not None and e["shop_name"] is not None for e in sales_board["bottom"])
+    me = next(e for e in sales_board["bottom"] if e["is_me"])
+    assert me["shop_number"] == "2000"
+    assert me["shop_name"] == "Bravo"
 
 
 def test_reupload_same_week_auto_bumps_to_a_free_week(vswt_client):
@@ -650,7 +646,7 @@ def test_leaderboards_consistency_mode_ranks_by_average_rank_not_one_week(vswt_c
     assert board["top"][0]["value"] == pytest.approx(1.1)  # rank 1 for 9 weeks, rank 2 once
     assert board["top"][0]["weeks_counted"] == 10
     assert board["top"][1]["value"] == pytest.approx(1.9)
-    assert board["bottom"] == []  # only 2 qualifying shops, nothing left to anonymize
+    assert board["bottom"] == []  # only 2 qualifying shops, both already shown in "top"
     assert board["my_rank"] == 1
 
 
@@ -689,3 +685,86 @@ def test_leaderboards_latest_mode_is_still_the_default(vswt_client):
 
     res = vswt_client.get("/v1/reports/vswt/leaderboards", headers=headers, params={"week": 90})
     assert res.json()["mode"] == "latest"
+
+
+# ── Weekly report builder ───────────────────────────────────────────────────────────────
+
+def test_weekly_report_returns_picked_shops_sorted_by_sales_with_totals(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-basic", "owner-wrbasic@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 200)  # Chadstone 62k, Doncaster 81k, Bondi 45k, Chatswood 71k
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report", headers=headers,
+        params={"week": 200, "shop_numbers": "4100,3269,3904"},  # deliberately out of sales order
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    assert body["week"] == 200
+    assert body["region_size"] == 4
+    assert body["group"] == "Headline"
+
+    # Sorted best sales first, regardless of the order shop_numbers were passed in.
+    assert [s["shop_number"] for s in body["shops"]] == ["3904", "3269", "4100"]
+    assert body["shops"][0]["sales_value"] == 81000
+    assert body["shops"][0]["sales_rank"] == 1  # Doncaster: highest sales in the whole 4-shop region
+    me = next(s for s in body["shops"] if s["shop_number"] == "3269")
+    assert me["is_me"] is True
+
+    assert body["totals"]["sales"] == 62000 + 81000 + 45000
+    assert body["missing_shop_numbers"] == []
+
+
+def test_weekly_report_reports_missing_shop_numbers_without_failing(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-missing", "owner-wrmissing@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 201)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report", headers=headers,
+        params={"week": 201, "shop_numbers": "3269,9999999"},
+    )
+    body = res.json()
+    assert body["available"] is True
+    assert [s["shop_number"] for s in body["shops"]] == ["3269"]
+    assert body["missing_shop_numbers"] == ["9999999"]
+
+
+def test_weekly_report_requires_at_least_one_shop(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-empty", "owner-wrempty@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 202)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report", headers=headers,
+        params={"week": 202, "shop_numbers": "  , ,"},
+    )
+    assert res.status_code == 400
+
+
+def test_weekly_report_pdf_downloads_as_pdf(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-pdf", "owner-wrpdf@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 203)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/pdf", headers=headers,
+        params={"week": 203, "shop_numbers": "3269,3904", "title": "Change Makers Weekly Report"},
+    )
+    assert res.status_code == 200, res.text
+    assert res.headers["content-type"] == "application/pdf"
+    assert "attachment" in res.headers["content-disposition"]
+    assert res.content[:4] == b"%PDF"
+
+
+def test_weekly_report_pdf_404s_when_no_picked_shop_is_found(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wr-pdf-404", "owner-wrpdf404@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 204)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/pdf", headers=headers,
+        params={"week": 204, "shop_numbers": "9999999"},
+    )
+    assert res.status_code == 404

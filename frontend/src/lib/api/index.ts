@@ -3382,3 +3382,55 @@ export const uploadVswtFiles = (files: File[]) => {
 export interface VswtCommitFile { filename: string; week_number: number; rows: Record<string, unknown>[] }
 export const commitVswtBatch = (batch: VswtCommitFile[]) =>
   api.post<{ saved: { week_number: number; shop_count: number }[] }>('/reports/vswt/commit', { batch })
+
+// ── Weekly report builder ────────────────────────────────────────────────────────────────
+// Hand-pick a handful of shops (e.g. your own franchisee group) and get one week's numbers for
+// just those shops laid out together — for pasting into a group chat, not for browsing the region.
+
+export interface VswtWeeklyReportShop {
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  is_me: boolean
+  sales_value: number | null
+  sales_rank: number | null
+  customer_value: number | null
+  jobs_value: number | null
+  values: Record<string, number | null>
+}
+export interface VswtWeeklyReportTotals {
+  sales: number | null
+  customers: number | null
+  jobs: number | null
+  avg_sales_rank: number | null
+}
+export interface VswtWeeklyReport {
+  available: true
+  week: number
+  weeks: number[]
+  region_size: number
+  group: VswtKpiGroup
+  groups: VswtKpiGroup[]
+  kpis: VswtKpiDef[]
+  shops: VswtWeeklyReportShop[]
+  missing_shop_numbers: string[]
+  totals: VswtWeeklyReportTotals
+}
+export const getVswtWeeklyReport = (params: { week?: number; shopNumbers: string[]; group?: string }) =>
+  api.get<VswtWeeklyReport | VswtUnavailable>('/reports/vswt/weekly-report', {
+    params: {
+      ...(params.week ? { week: params.week } : {}),
+      shop_numbers: params.shopNumbers.join(','),
+      ...(params.group ? { group: params.group } : {}),
+    },
+  })
+export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: string[]; group?: string; title?: string }) =>
+  api.get<Blob>('/reports/vswt/weekly-report/pdf', {
+    responseType: 'blob',
+    params: {
+      ...(params.week ? { week: params.week } : {}),
+      shop_numbers: params.shopNumbers.join(','),
+      ...(params.group ? { group: params.group } : {}),
+      ...(params.title ? { title: params.title } : {}),
+    },
+  })
