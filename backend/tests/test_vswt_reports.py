@@ -703,7 +703,9 @@ def test_weekly_report_returns_picked_shops_sorted_by_sales_with_totals(vswt_cli
     assert body["available"] is True
     assert body["week"] == 200
     assert body["region_size"] == 4
-    assert body["group"] == "Headline"
+    # Comprehensive: every KPI group is present, not just Headline.
+    assert set(body["groups"]) >= {"Headline", "Conversion", "Category Sales"}
+    assert len(body["kpis"]) > 6  # every KPI across every group, not one group's worth
 
     # Sorted best sales first, regardless of the order shop_numbers were passed in.
     assert [s["shop_number"] for s in body["shops"]] == ["3904", "3269", "4100"]
@@ -711,6 +713,12 @@ def test_weekly_report_returns_picked_shops_sorted_by_sales_with_totals(vswt_cli
     assert body["shops"][0]["sales_rank"] == 1  # Doncaster: highest sales in the whole 4-shop region
     me = next(s for s in body["shops"] if s["shop_number"] == "3269")
     assert me["is_me"] is True
+
+    # Every KPI carries both a value and a region rank, plus a composite overall_avg_rank.
+    doncaster = body["shops"][0]
+    assert doncaster["ranks"]["sales_ty"] == 1
+    assert doncaster["values"]["sales_ty"] == 81000
+    assert doncaster["overall_avg_rank"] is not None
 
     assert body["totals"]["sales"] == 62000 + 81000 + 45000
     assert body["missing_shop_numbers"] == []

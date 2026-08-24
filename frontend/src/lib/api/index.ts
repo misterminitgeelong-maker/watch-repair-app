@@ -3387,6 +3387,10 @@ export const commitVswtBatch = (batch: VswtCommitFile[]) =>
 // Hand-pick a handful of shops (e.g. your own franchisee group) and get one week's numbers for
 // just those shops laid out together — for pasting into a group chat, not for browsing the region.
 
+// Comprehensive by design: `values`/`ranks` cover every KPI across every group (not just
+// Headline), keyed by VswtKpiDef.key — group them client-side via `kpis[].group` to render one
+// section per group. `overall_avg_rank` is a single composite "how's this shop doing overall"
+// number, averaged across every KPI that had a rank.
 export interface VswtWeeklyReportShop {
   shop_number: string
   shop_name: string | null
@@ -3396,7 +3400,9 @@ export interface VswtWeeklyReportShop {
   sales_rank: number | null
   customer_value: number | null
   jobs_value: number | null
+  overall_avg_rank: number | null
   values: Record<string, number | null>
+  ranks: Record<string, number | null>
 }
 export interface VswtWeeklyReportTotals {
   sales: number | null
@@ -3409,28 +3415,25 @@ export interface VswtWeeklyReport {
   week: number
   weeks: number[]
   region_size: number
-  group: VswtKpiGroup
   groups: VswtKpiGroup[]
   kpis: VswtKpiDef[]
   shops: VswtWeeklyReportShop[]
   missing_shop_numbers: string[]
   totals: VswtWeeklyReportTotals
 }
-export const getVswtWeeklyReport = (params: { week?: number; shopNumbers: string[]; group?: string }) =>
+export const getVswtWeeklyReport = (params: { week?: number; shopNumbers: string[] }) =>
   api.get<VswtWeeklyReport | VswtUnavailable>('/reports/vswt/weekly-report', {
     params: {
       ...(params.week ? { week: params.week } : {}),
       shop_numbers: params.shopNumbers.join(','),
-      ...(params.group ? { group: params.group } : {}),
     },
   })
-export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: string[]; group?: string; title?: string }) =>
+export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: string[]; title?: string }) =>
   api.get<Blob>('/reports/vswt/weekly-report/pdf', {
     responseType: 'blob',
     params: {
       ...(params.week ? { week: params.week } : {}),
       shop_numbers: params.shopNumbers.join(','),
-      ...(params.group ? { group: params.group } : {}),
       ...(params.title ? { title: params.title } : {}),
     },
   })

@@ -923,12 +923,12 @@ def _parse_shop_numbers(shop_numbers: str) -> list[str]:
 def _weekly_report_data(
     week_rows: list[VswtWeeklyShopMetric],
     shop_numbers: list[str],
-    kpis: list[KpiDef],
     my_shop_number: Optional[str],
 ) -> dict[str, Any]:
     """Shared by the JSON preview and the PDF export below, so both always show the same numbers.
-    Sales rank is always included regardless of the chosen KPI group — it's the one number every
-    franchisee wants at a glance."""
+    Comprehensive by design: every KPI HQ tracks gets a value *and* a region rank for every
+    selected shop, not just the Headline group — the report is meant to stand on its own without
+    anyone needing to flip back to Rankings for the rest of the picture."""
     by_number = {r.shop_number: r for r in week_rows}
     shops: list[dict[str, Any]] = []
     missing: list[str] = []
@@ -937,6 +937,13 @@ def _weekly_report_data(
         if r is None:
             missing.append(sn)
             continue
+        values: dict[str, Optional[float]] = {}
+        ranks: dict[str, Optional[int]] = {}
+        for kpi in KPI_DEFS:
+            v = getattr(r, kpi.key)
+            values[kpi.key] = v
+            ranks[kpi.key] = _rank_of(week_rows, kpi.key, v)
+        ranked = [rk for rk in ranks.values() if rk is not None]
         shops.append(
             {
                 "shop_number": r.shop_number,
@@ -944,10 +951,14 @@ def _weekly_report_data(
                 "area_name": r.area_name,
                 "is_me": r.shop_number == my_shop_number,
                 "sales_value": r.sales_ty,
-                "sales_rank": _rank_of(week_rows, "sales_ty", r.sales_ty),
+                "sales_rank": ranks.get("sales_ty"),
                 "customer_value": r.customer_ty,
                 "jobs_value": r.jobs_ty,
-                "values": {k.key: getattr(r, k.key) for k in kpis},
+                # Average rank across every tracked KPI — a single composite "how's this shop
+                # doing overall" number alongside the headline sales rank.
+                "overall_avg_rank": (sum(ranked) / len(ranked)) if ranked else None,
+                "values": values,
+                "ranks": ranks,
             }
         )
     # Best sales first — reads like a mini leaderboard for the group, nulls sink to the bottom.
@@ -970,7 +981,6 @@ def _weekly_report_data(
 def get_vswt_weekly_report(
     week: Optional[int] = Query(None),
     shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
-    group: Optional[str] = Query(None, description="KPI group to include as extra columns; defaults to Headline."),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -987,9 +997,7 @@ def get_vswt_weekly_report(
         raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
 
     week_rows = _week_rows(session, target_week)
-    kpi_group = group if group in KPI_GROUPS else "Headline"
-    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
-    data = _weekly_report_data(week_rows, numbers, kpis, my_shop_number)
+    data = _weekly_report_data(week_rows, numbers, my_shop_number)
     if not data["shops"]:
         return {"available": False, "reason": "shop_not_found", "week": target_week}
 
@@ -998,9 +1006,8 @@ def get_vswt_weekly_report(
         "week": target_week,
         "weeks": weeks,
         "region_size": len(week_rows),
-        "group": kpi_group,
         "groups": KPI_GROUPS,
-        "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in kpis],
+        "kpis": [{"key": k.key, "label": k.label, "group": k.group, "type": k.type} for k in KPI_DEFS],
         **data,
     }
 
@@ -1009,7 +1016,6 @@ def get_vswt_weekly_report(
 def get_vswt_weekly_report_pdf(
     week: Optional[int] = Query(None),
     shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
-    group: Optional[str] = Query(None, description="KPI group to include as extra columns; defaults to Headline."),
     title: str = Query("Weekly Regional Report", description="Report title, e.g. your franchisee group's name."),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
@@ -1027,9 +1033,7 @@ def get_vswt_weekly_report_pdf(
         raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
 
     week_rows = _week_rows(session, target_week)
-    kpi_group = group if group in KPI_GROUPS else "Headline"
-    kpis = [k for k in KPI_DEFS if k.group == kpi_group]
-    data = _weekly_report_data(week_rows, numbers, kpis, my_shop_number)
+    data = _weekly_report_data(week_rows, numbers, my_shop_number)
     if not data["shops"]:
         raise HTTPException(status_code=404, detail="None of the selected shops were found in this week's data.")
 
@@ -1037,7 +1041,8 @@ def get_vswt_weekly_report_pdf(
         title=title.strip() or "Weekly Regional Report",
         week=target_week,
         region_size=len(week_rows),
-        kpis=kpis,
+        groups=KPI_GROUPS,
+        kpis=KPI_DEFS,
         shops=data["shops"],
         totals=data["totals"],
         generated_on=date.today(),
