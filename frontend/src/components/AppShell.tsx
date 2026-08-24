@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
 import { clearJustLoggedIn, peekJustLoggedIn } from '@/lib/postLoginGate'
+import { prefetchPostLoginRoutes } from '@/lib/postLoginPrefetch'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
@@ -449,6 +450,7 @@ export default function AppShell() {
   const { theme } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const demoModeEnabled = isDemoModeEnabled()
 
   // LoginPage marks this right before its post-login navigate(). Read (non-destructively) via a
@@ -459,6 +461,18 @@ export default function AppShell() {
   // /parent-account, MinitHqGate, ...) — each one remounts AppShell, so the flag has to survive
   // being peeked more than once. Cleared for real in onDone below, once the gate actually finishes.
   const [showPostLoginGate, setShowPostLoginGate] = useState(peekJustLoggedIn)
+
+  // Warm Watch Repairs / Mobile Services / Reports board queries the moment the gate shows, so
+  // they're already in cache by the time the shop clicks into one of those sections — not just
+  // the single landing page the gate is actually holding for. Reads the initial state above
+  // (not the live one) so this only ever fires once per real login, on the AppShell instance
+  // that's up when the gate first appears; harmless if it refires on a redirect-chain remount
+  // since prefetchQuery dedupes against in-flight/fresh cache entries.
+  useEffect(() => {
+    if (showPostLoginGate) prefetchPostLoginRoutes(qc, hasFeature)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [switchingSite, setSwitchingSite] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
