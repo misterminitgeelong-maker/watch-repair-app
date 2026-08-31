@@ -60,7 +60,7 @@ export function PostLoginLoadingScreen({ onDone }: { onDone: () => void }) {
       style={{ backgroundColor: 'var(--ms-bg)' }}
     >
       <img
-        src={theme === 'minit' ? '/minit-logo-dark.svg' : '/mainspring-logo.svg'}
+        src={theme === 'minit' ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
         alt=""
         style={{ width: 'clamp(120px, 30vw, 160px)', height: 'auto', objectFit: 'contain' }}
       />
