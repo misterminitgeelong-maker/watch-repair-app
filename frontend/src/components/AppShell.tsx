@@ -955,7 +955,7 @@ export default function AppShell() {
         >
           <div style={{ width: 34 }} />
           <img
-            src={theme === 'minit' ? '/minit-logo-dark.svg' : '/mainspring-logo.svg'}
+            src={theme === 'minit' ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
             alt={theme === 'minit' ? 'Mister Minit' : 'Mainspring'}
             style={{
               width: 'clamp(116px, 38vw, 172px)',
