@@ -651,9 +651,24 @@ export default function AutoKeyJobsPage() {
             <div>
               <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services — Kanban</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                {filteredJobs.length} active job{filteredJobs.length !== 1 ? 's' : ''} across {AUTO_KEY_KANBAN_COLUMNS.length} stages
+                {filteredJobs.length} {jobDirectoryView === 'completed' ? 'completed' : jobDirectoryView === 'all' ? '' : 'active'} job{filteredJobs.length !== 1 ? 's' : ''} across {AUTO_KEY_KANBAN_COLUMNS.length} stages
               </p>
             </div>
+            {jobDirectoryView !== 'active' && (
+              <button
+                type="button"
+                onClick={() => { setJobDirectoryView('active'); setStatusFilter('all') }}
+                className="rounded-full text-xs font-semibold transition-colors"
+                style={{
+                  padding: '5px 13px',
+                  backgroundColor: 'var(--ms-accent-light)',
+                  color: 'var(--ms-accent)',
+                  border: '1px solid var(--ms-accent)',
+                }}
+              >
+                Showing {jobDirectoryView === 'completed' ? `Completed${statusFilter !== 'all' ? ` · ${STATUS_LABELS[statusFilter] ?? statusFilter}` : ''}` : 'All'} jobs — click to show Active
+              </button>
+            )}
           </div>
           {isLoading ? (
             <Spinner />
