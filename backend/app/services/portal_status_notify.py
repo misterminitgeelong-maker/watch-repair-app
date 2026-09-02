@@ -70,7 +70,7 @@ def notify_portal_status_change(
         ).first()
         if customer and customer.phone:
             body = f"{shop_name}: {summary}. Track: {status_url}"
-            sid = sms._send_sms(customer.phone, body)  # noqa: SLF001
+            sid, sms_status = sms._send_sms(customer.phone, body)  # noqa: SLF001
             sms._persist(  # noqa: SLF001
                 session,
                 tenant_id=tenant_id,
@@ -79,7 +79,7 @@ def notify_portal_status_change(
                 body=body,
                 event="portal_status",
                 provider_sid=sid,
-                status="sent" if sid else "dry_run",
+                status=sms_status,
             )
 
 

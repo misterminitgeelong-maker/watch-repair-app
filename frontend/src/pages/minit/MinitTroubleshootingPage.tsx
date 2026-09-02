@@ -5,7 +5,8 @@ import { formatDate } from '@/lib/utils'
 import { Card, PageHeader, Spinner } from '@/components/ui'
 
 function severityColor(severity: string) {
-  if (severity === 'warning') return '#C96A5A'
+  if (severity === 'error') return 'var(--ms-badge-alert-text)'
+  if (severity === 'warning') return 'var(--ms-badge-wait-text)'
   return 'var(--ms-text-muted)'
 }
 
@@ -23,7 +24,8 @@ export default function MinitTroubleshootingPage() {
     <div>
       <PageHeader title="Troubleshooting" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Actionable issues: failed bookings, stale pending requests, missing operator SMS numbers, and quiet shops.
+        Actionable issues: failed bookings, stale pending requests, operators we can't reach (no SMS number or
+        email), failed SMS/email alerts, and quiet shops.
       </p>
 
       {items.length === 0 ? (

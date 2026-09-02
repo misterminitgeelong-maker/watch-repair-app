@@ -12,11 +12,14 @@ import base64
 import html as _html
 import logging
 from typing import Sequence
+from uuid import UUID
 
 import httpx
+from sqlmodel import Session
 
 from .config import settings
 from .email_templates import ShopInfo, render_transactional_email
+from .models import EmailLog
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +274,8 @@ def send_shop_mobile_booking_email(
     job_address: str,
     accept_url: str,
     timeout_minutes: int,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Email the assigned operator when a shop sends a live mobile booking request."""
     if not (to_email or "").strip():
@@ -312,6 +317,50 @@ def send_shop_mobile_booking_email(
         body_html=body_html,
         shop_name="Mobile Services",
         event="shop_mobile_booking_pending",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
+def send_pool_jobs_waiting_email(
+    *,
+    to_email: str,
+    job_count: int,
+    pool_url: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """One digest email per operator when jobs have sat unclaimed in the Dispatch Pool nearby."""
+    if not (to_email or "").strip():
+        return False, None
+    plural = "job" if job_count == 1 else "jobs"
+    subject = f"{job_count} {plural} waiting in the Dispatch Pool near you"
+    body_plain = (
+        f"{job_count} {plural} have been sitting unclaimed in the Dispatch Pool near you — "
+        f"first operator to claim gets it.\n\n"
+        f"Open the pool: {pool_url}\n"
+    )
+    body_html = render_transactional_email(
+        title="Dispatch Pool",
+        preheader=f"{job_count} {plural} waiting near you",
+        greeting=f"{job_count} {plural} waiting near you",
+        intro_html=(
+            f"<strong>{job_count}</strong> {plural} have been sitting unclaimed in the Dispatch Pool "
+            "near you — first operator to claim gets it."
+        ),
+        shop=ShopInfo(name="Mobile Services"),
+        cta_label="Open the pool",
+        cta_url=pool_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mobile Services",
+        event="pool_jobs_waiting",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -326,6 +375,8 @@ def send_website_lead_alert_email(
     vehicle_model: str | None,
     registration_plate: str | None,
     inbox_url: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Email the operator when a website enquiry lands in their Lead Inbox — an FYI, not a live offer."""
     if not (to_email or "").strip():
@@ -370,67 +421,8 @@ def send_website_lead_alert_email(
         body_html=body_html,
         shop_name="Mobile Services",
         event="website_lead_alert",
-    )
-
-
-def send_mobile_lead_offer_email(
-    *,
-    to_email: str,
-    customer_name: str,
-    customer_phone: str | None,
-    suburb: str,
-    state_code: str,
-    vehicle_make: str | None,
-    vehicle_model: str | None,
-    registration_plate: str | None,
-    job_number: str,
-    accept_url: str,
-    timeout_minutes: int = 30,
-) -> tuple[bool, str | None]:
-    """Email the current operator when a website lead is offered to them for quoting."""
-    if not (to_email or "").strip():
-        return False, None
-    cust_line = customer_name.strip()
-    if customer_phone and customer_phone.strip():
-        cust_line += f" · {customer_phone.strip()}"
-    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
-    if registration_plate and registration_plate.strip():
-        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
-    location = f"{suburb.strip()} {state_code.strip().upper()}"
-
-    subject = f"New lead — quote within {timeout_minutes} min ({location})"
-    body_plain = (
-        f"New website lead — job #{job_number}.\n\n"
-        f"Customer: {cust_line}\n"
-        f"Location: {location}\n"
-        + (f"Vehicle: {veh}\n" if veh else "")
-        + f"\nYou have {timeout_minutes} minutes to accept before this offers to the next operator.\n\n"
-        f"Accept & quote: {accept_url}\n"
-    )
-    detail_lines = [f"<strong>Customer:</strong> {_html.escape(cust_line)}", f"<strong>Location:</strong> {_html.escape(location)}"]
-    if veh:
-        detail_lines.append(f"<strong>Vehicle:</strong> {_html.escape(veh)}")
-    intro_html = (
-        f"A new website lead needs a quote — <strong>job #{_html.escape(job_number)}</strong>. "
-        f"You have <strong>{timeout_minutes} minutes</strong> to accept before it offers to the next operator.<br><br>"
-        + "<br>".join(detail_lines)
-    )
-    body_html = render_transactional_email(
-        title=f"New lead · Job #{job_number}",
-        preheader=f"Quote within {timeout_minutes} min — {location}",
-        greeting="New lead offered to you",
-        intro_html=intro_html,
-        shop=ShopInfo(name="Mobile Services"),
-        cta_label="Accept & quote",
-        cta_url=accept_url,
-    )
-    return _send_email(
-        to_email=to_email.strip(),
-        subject=subject,
-        body_plain=body_plain,
-        body_html=body_html,
-        shop_name="Mobile Services",
-        event="mobile_lead_offer",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -795,15 +787,29 @@ def _send_email(
     attachment_bytes: bytes | None = None,
     attachment_filename: str = "attachment",
     attachment_mime_type: str = "text/csv",
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
+    """Send via SendGrid. When `session` + `tenant_id` are given, the attempt is persisted to
+    EmailLog (sent | dry_run | failed) — currently wired only for operator dispatch alerts
+    (live bookings, website leads), not the general customer-facing email traffic.
+    """
+
+    def _finish(ok: bool, status: str, error: str | None) -> tuple[bool, str | None]:
+        if session is not None and tenant_id is not None:
+            session.add(
+                EmailLog(tenant_id=tenant_id, to_email=to_email, event=event, status=status, error=error)
+            )
+        return ok, error
+
     from_addr = _from_email()
     if not _enabled():
         logger.info("email (disabled) %s to %s: %s", event, to_email, subject)
-        return False, None
+        return _finish(False, "dry_run", None)
     key = _api_key()
     if not key:
         logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
-        return False, None
+        return _finish(False, "dry_run", None)
     # text/plain must precede text/html per RFC / SendGrid ordering rules.
     content: list[dict] = [{"type": "text/plain", "value": body_plain}]
     if body_html:
@@ -856,13 +862,13 @@ def _send_email(
             )
         if 200 <= resp.status_code < 300:
             logger.info("Twilio SendGrid sent %s to %s from %s", event, to_email, from_addr)
-            return True, None
+            return _finish(True, "sent", None)
         detail = (resp.text or "").strip()[:400]
         err = f"SendGrid HTTP {resp.status_code} (from={from_addr})"
         if detail:
             err = f"{err}: {detail}"
         logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
-        return False, err
+        return _finish(False, "failed", err)
     except Exception as e:
         logger.exception("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
-        return False, str(e)[:400]
+        return _finish(False, "failed", str(e)[:400])
