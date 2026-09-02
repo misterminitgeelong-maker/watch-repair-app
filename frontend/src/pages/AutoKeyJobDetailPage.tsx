@@ -23,7 +23,6 @@ import {
   cloneAutoKeyJob,
   searchVehicleKeySpecs,
   sendAutoKeyArrivalSms,
-  acceptAutoKeyLeadOffer,
   updateAutoKeyInvoice,
   retryAutoKeyInvoiceXeroSync,
   getBillingLimits,
@@ -369,7 +368,7 @@ function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: strin
 
 export default function AutoKeyJobDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { hasFeature } = useAuth()
@@ -406,41 +405,6 @@ export default function AutoKeyJobDetailPage() {
     queryFn: () => getAutoKeyJob(id!).then(r => r.data),
     enabled: !!id,
   })
-
-  // Tapping "Accept & quote" in the dispatch SMS/email lands here with ?lead=accept:
-  // lock the offer to this operator (stops the countdown) then drop straight into quoting.
-  const acceptLeadRequested = useRef(false)
-  const acceptLeadMutation = useMutation({
-    mutationFn: () => acceptAutoKeyLeadOffer(id!),
-    onSuccess: (res) => {
-      if (res.data.accepted) {
-        toast.success("Lead accepted — you're locked in. Build your quote below.")
-        setShowQuoteModal(true)
-      } else if (res.data.expired) {
-        toast.error('This lead already moved to another operator before you accepted.')
-      }
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('lead')
-        return next
-      }, { replace: true })
-    },
-    onError: (e: unknown) => {
-      toast.error(getApiErrorMessage(e, 'Could not accept this lead — it may have already moved on.'))
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('lead')
-        return next
-      }, { replace: true })
-    },
-  })
-  useEffect(() => {
-    if (!job || acceptLeadRequested.current) return
-    if (searchParams.get('lead') !== 'accept') return
-    acceptLeadRequested.current = true
-    acceptLeadMutation.mutate()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [job?.id])
 
   useEffect(() => {
     if (!job) return

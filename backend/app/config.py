@@ -156,10 +156,6 @@ class Settings(BaseSettings):
     # How often the in-app scheduler checks for due reminders.
     quote_reminder_check_interval_minutes: int = 60
 
-    # Website lead dispatch cascade (operator offer → timeout → HQ).
-    mobile_lead_dispatch_enabled: bool = True
-    mobile_lead_dispatch_check_interval_minutes: int = 5
-
     # Shop-to-shop live booking requests: assigned operator offer → timeout → shared Dispatch Pool.
     shop_mobile_booking_pool_enabled: bool = True
     shop_mobile_booking_check_interval_minutes: int = 2
