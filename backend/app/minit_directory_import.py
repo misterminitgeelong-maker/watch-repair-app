@@ -39,8 +39,13 @@ from .minit_provision import (
 )
 from .models import ParentAccount, Tenant, User
 from .security import hash_password
+from .shop_number import linked_tenant_ids_for_parent
 
 _PREVIEW_LIMIT = 25
+# Commit progress every N shops during apply, rather than one giant
+# transaction — keeps memory bounded and surfaces a partial result if
+# something downstream (e.g. a proxy timeout) cuts the request short.
+_APPLY_FLUSH_EVERY = 50
 
 
 def _tenant_slug(shop_number: str) -> str:
@@ -109,7 +114,17 @@ def plan_directory_import(
 ) -> dict[str, object]:
     """Dry-run (default) or apply the directory import. Never touches an
     existing tenant's owner credentials — only fills in shops/owners/parent
-    accounts that don't exist yet."""
+    accounts that don't exist yet.
+
+    Fast for a re-run over a mostly-already-imported export (no per-shop
+    queries for shops that already exist) — but each brand-new owner still
+    costs a bcrypt hash (~100-300ms, unavoidable, and deliberately not cheaper
+    here: hash_password() is the same security-critical helper used for real
+    user passwords everywhere else). A single request creating on the order
+    of 300+ new owners at once can still approach a reverse proxy's request
+    timeout; if this network ever needs a bulk load that large again, prefer
+    running scripts/import_minit_directory.py directly (no HTTP timeout)
+    over the HQ upload endpoint."""
     hq_email = hq_owner_email.strip().lower()
     parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).first()
     if not parent:
@@ -231,14 +246,35 @@ def plan_directory_import(
         return result
 
     # ── Apply ────────────────────────────────────────────────────────────────
+    # Most calls are re-runs where the large majority of shops already exist —
+    # preload everything that would otherwise be a per-shop SELECT, so a mostly-
+    # unchanged 400+ shop export stays fast instead of doing hundreds of
+    # redundant round-trips (and risking the proxy's request timeout).
     created_tenant_slugs: list[str] = []
     created_owner_count = 0
     created_franchisee_parent_count = 0
     franchisee_parents: dict[str, ParentAccount] = {}
+    # tenant_ids already linked to each ParentAccount we touch, keyed by parent
+    # id — lets _link_tenant_to_parent skip its existence-check query.
+    linked_ids_by_parent: dict[object, set] = {parent.id: set(linked_tenant_ids_for_parent(session, parent.id))}
     # Emails that already had a ParentAccount before this run — used to tell a
     # genuinely-new franchisee ParentAccount apart from one _get_or_create_parent
     # merely reused, so the summary count is accurate rather than always "created".
     seen_existing_parent_emails = set(existing_franchisee_parent_emails)
+
+    existing_tenant_ids = [t.id for t in tenants_by_number.values()]
+    existing_owner_by_tenant_id: dict[object, User] = {}
+    if existing_tenant_ids:
+        for user in session.exec(
+            select(User)
+            .where(col(User.tenant_id).in_(existing_tenant_ids))
+            .where(User.role == "owner")
+            .where(User.is_active)
+            .order_by(col(User.created_at).asc())
+        ).all():
+            existing_owner_by_tenant_id.setdefault(user.tenant_id, user)
+
+    since_commit = 0
 
     for shop in directory.shops:
         if shop.status != "Open" or not shop.shop_number:
@@ -262,13 +298,10 @@ def plan_directory_import(
                 shop_phone=shop.phone or None,
                 shop_email=shop.shop_email or None,
             )
-            session.add(tenant)
-            session.flush()
+            session.add(tenant)  # tenant.id is already set (client-side uuid4 default)
             tenants_by_number[shop.shop_number] = tenant
             created_tenant_slugs.append(tenant.slug)
 
-        if is_new_tenant:
-            # Brand-new tenant: create its owner from the directory identity.
             owner = User(
                 tenant_id=tenant.id,
                 email=identity.email,
@@ -278,23 +311,21 @@ def plan_directory_import(
                 is_active=True,
             )
             session.add(owner)
-            session.flush()
             created_owner_count += 1
-            _link_tenant_to_parent(session, parent=parent, tenant=tenant, owner=owner)
+            existing_owner_by_tenant_id[tenant.id] = owner
+            _link_tenant_to_parent(
+                session, parent=parent, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[parent.id]
+            )
+            since_commit += 1
         else:
-            # Existing tenant — it's already linked to HQ (that's how it showed up
-            # in tenants_by_number). Never create or touch an owner here: the
-            # directory's franchisee identity might be stale or simply not match
-            # who actually holds this login (e.g. a real invite was already
-            # completed under a different email). Only look up who the real
-            # owner is now, for the multi-site parent-account link below.
-            owner = session.exec(
-                select(User)
-                .where(User.tenant_id == tenant.id)
-                .where(User.role == "owner")
-                .where(User.is_active)
-                .order_by(col(User.created_at).asc())
-            ).first()
+            # Existing tenant — guaranteed already linked to HQ (that's how it
+            # showed up in tenants_by_number, which is scoped to this parent).
+            # Never create or touch an owner here: the directory's franchisee
+            # identity might be stale or simply not match who actually holds
+            # this login (e.g. a real invite was already completed under a
+            # different email). Only look up who the real owner is now, for
+            # the multi-site parent-account link below.
+            owner = existing_owner_by_tenant_id.get(tenant.id)
             if owner is None:
                 continue
 
@@ -310,7 +341,15 @@ def plan_directory_import(
                     created_franchisee_parent_count += 1
                     seen_existing_parent_emails.add(franchisee.email)
                 franchisee_parents[franchisee.email] = fp
-            _link_tenant_to_parent(session, parent=fp, tenant=tenant, owner=owner)
+                linked_ids_by_parent[fp.id] = set(linked_tenant_ids_for_parent(session, fp.id))
+            _link_tenant_to_parent(
+                session, parent=fp, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[fp.id]
+            )
+            since_commit += 1
+
+        if since_commit >= _APPLY_FLUSH_EVERY:
+            session.commit()
+            since_commit = 0
 
     session.commit()
     result["created_tenant_count"] = len(created_tenant_slugs)
