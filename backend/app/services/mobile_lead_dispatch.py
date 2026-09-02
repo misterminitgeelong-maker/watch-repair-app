@@ -29,9 +29,9 @@ from ..models import (
     ParentAccount,
     ParentAccountEventLog,
     ParentAccountMembership,
+    ProspectLead,
     Tenant,
     TenantEventLog,
-    User,
 )
 from .. import email_client
 from .. import sms as sms_service
@@ -319,21 +319,6 @@ def _create_job_for_dispatch(
     return job
 
 
-def _operator_dispatch_email(session: Session, tenant: Tenant) -> str | None:
-    """Best email for operator dispatch alerts: shop email, else the tenant owner's login email."""
-    shop_email = (getattr(tenant, "shop_email", None) or "").strip()
-    if shop_email:
-        return shop_email
-    owner = session.exec(
-        select(User)
-        .where(User.tenant_id == tenant.id)
-        .where(User.role == "owner")
-        .where(User.is_active == True)  # noqa: E712
-        .order_by(User.created_at)
-    ).first()
-    return owner.email.strip() if owner and owner.email else None
-
-
 def _notify_operator_offer(session: Session, dispatch: MobileLeadDispatch, job: AutoKeyJob, tenant: Tenant) -> None:
     payload = json.loads(dispatch.payload_json)
     accept_url = f"{settings.public_base_url.rstrip('/')}/auto-key/{job.id}?lead=accept"
@@ -359,7 +344,7 @@ def _notify_operator_offer(session: Session, dispatch: MobileLeadDispatch, job: 
     else:
         logger.info("mobile_lead_dispatch.no_dispatch_phone tenant=%s dispatch=%s", tenant.id, dispatch.id)
 
-    email = _operator_dispatch_email(session, tenant)
+    email = sms_service.operator_dispatch_email(session, tenant)
     if email:
         ok, err = email_client.send_mobile_lead_offer_email(
             to_email=email,
@@ -558,6 +543,108 @@ def advance_expired_dispatch(session: Session, dispatch: MobileLeadDispatch) -> 
 
     escalate_dispatch_to_hq(session, dispatch)
     return "escalated_hq"
+
+
+def route_website_lead_to_prospect(
+    session: Session,
+    *,
+    parent: ParentAccount,
+    payload: dict[str, Any],
+    suburb: str,
+    state_code: str,
+) -> ProspectLead:
+    """Website enquiry (an email, not a live lead): route to one operator's Lead Inbox and
+    send a one-time SMS + email alert. No timer, no cascade, no job — unlike a live shop
+    booking, the operator works it from Lead Inbox at their own pace.
+    """
+    st = state_code.strip().upper()
+    force_hq = bool(parent.mobile_lead_force_hq_dispatch)
+    in_territory = False if force_hq else suburb_in_operator_territory(
+        session,
+        parent_id=parent.id,
+        suburb=suburb,
+        state_code=st,
+    )
+    tenant_id: UUID | None = None
+    if in_territory:
+        candidates = rank_mobile_operator_candidates(
+            session, parent_id=parent.id, suburb=suburb, state_code=st, max_candidates=1,
+        )
+        tenant_id = candidates[0] if candidates else None
+    if not tenant_id:
+        tenant_id = _escalation_tenant_id(session, parent)
+    if not tenant_id:
+        raise ValueError("no_operator_or_escalation_configured")
+
+    customer_name = str(payload.get("customer_name") or "Website lead").strip()[:300]
+    vehicle_bits = [payload.get("vehicle_make"), payload.get("vehicle_model"), payload.get("registration_plate")]
+    veh = " ".join(str(x).strip() for x in vehicle_bits if x and str(x).strip())
+    notes_parts = ["Submitted via website lead feed."]
+    if veh:
+        notes_parts.append(f"Vehicle: {veh}")
+    if payload.get("key_service_result"):
+        notes_parts.append(f"Key checker result: {str(payload['key_service_result']).strip()}")
+    if payload.get("website_notes"):
+        notes_parts.append(str(payload["website_notes"]).strip())
+
+    lead = ProspectLead(
+        tenant_id=tenant_id,
+        name=customer_name,
+        phone=str(payload.get("phone")).strip()[:80] if payload.get("phone") else None,
+        contact_email=str(payload.get("email")).strip().lower()[:320] if payload.get("email") else None,
+        suburb_name=suburb.strip()[:200],
+        state_code=st[:8],
+        notes="\n\n".join(notes_parts)[:4000],
+        status="new",
+        source="website_lead",
+    )
+    session.add(lead)
+    session.flush()
+
+    tenant = session.get(Tenant, tenant_id)
+    if tenant:
+        inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key/prospects/inbox"
+        phone = sms_service.operator_dispatch_phone(tenant)
+        if phone:
+            sms_service.notify_website_lead_alert(
+                session,
+                tenant_id=tenant_id,
+                to_phone=phone,
+                customer_name=customer_name,
+                customer_phone=payload.get("phone"),
+                suburb=suburb,
+                state_code=st,
+                vehicle_make=payload.get("vehicle_make"),
+                vehicle_model=payload.get("vehicle_model"),
+                registration_plate=payload.get("registration_plate"),
+                inbox_url=inbox_url,
+            )
+        email = sms_service.operator_dispatch_email(session, tenant)
+        if email:
+            ok, err = email_client.send_website_lead_alert_email(
+                to_email=email,
+                customer_name=customer_name,
+                customer_phone=payload.get("phone"),
+                suburb=suburb,
+                state_code=st,
+                vehicle_make=payload.get("vehicle_make"),
+                vehicle_model=payload.get("vehicle_model"),
+                registration_plate=payload.get("registration_plate"),
+                inbox_url=inbox_url,
+            )
+            if not ok and err:
+                logger.info("mobile_lead_dispatch.website_lead_email_failed tenant=%s err=%s", tenant_id, err)
+
+    session.add(
+        ParentAccountEventLog(
+            parent_account_id=parent.id,
+            tenant_id=tenant_id,
+            actor_email="website-lead@ingest",
+            event_type="website_lead_routed",
+            event_summary=f"Website lead routed to Lead Inbox ({customer_name}, {suburb.strip()} {st})",
+        )
+    )
+    return lead
 
 
 def start_mobile_lead_dispatch(

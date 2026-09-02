@@ -414,6 +414,8 @@ class ProspectLeadRead(BaseModel):
     contact_email: Optional[str] = None
     notes: Optional[str] = None
     status: str
+    #: prospected (found via Prospects search) | website_lead (routed from the website enquiry feed)
+    source: str = "prospected"
     next_follow_up_on: Optional[date] = None
     visit_scheduled_at: Optional[datetime] = None
     customer_account_id: Optional[UUID] = None

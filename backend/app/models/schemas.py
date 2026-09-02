@@ -1147,9 +1147,13 @@ class ShopMobileBookingRead(SQLModel):
     job_status: Optional[str] = None
     job_scheduled_at: Optional[datetime] = None
     schedule_conflict_warning: Optional[str] = None
+    #: Deadline for the target operator to accept before this falls into the shared Dispatch Pool.
+    offer_expires_at: Optional[datetime] = None
+    #: Set once this moved to the pool — the claimable IntakeJob any nearby operator can take.
+    pool_intake_job_id: Optional[UUID] = None
     created_at: datetime
 
-    @field_serializer("preferred_scheduled_at", "operator_response_at", "job_scheduled_at", "created_at")
+    @field_serializer("preferred_scheduled_at", "operator_response_at", "job_scheduled_at", "offer_expires_at", "created_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
         return as_utc_for_json(v) if v is not None else None
 

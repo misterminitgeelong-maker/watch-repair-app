@@ -50,7 +50,7 @@ from ..shop_number import format_tenant_label, linked_tenant_ids_for_parent, lin
 from .parent_accounts import _get_parent_account_for_user, _record_event
 from .shop_mobile_bookings import (
     BOOKABLE_OPERATOR_PLAN_CODES,
-    _maybe_expire_pending,
+    _maybe_move_pending_to_pool,
     _to_read,
 )
 
@@ -608,7 +608,7 @@ def get_operations_bookings_report(
     expired_any = False
     reads: list[ShopMobileBookingRead] = []
     for row in rows:
-        if _maybe_expire_pending(session, row):
+        if _maybe_move_pending_to_pool(session, row):
             expired_any = True
         reads.append(_to_read(session, row))
     if expired_any:

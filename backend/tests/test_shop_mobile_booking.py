@@ -272,7 +272,11 @@ def test_shop_booking_usage_endpoint():
     assert shop_row["accepted_bookings_count"] >= 1
 
 
-def test_pending_booking_expires_after_seven_days():
+def test_pending_booking_expires_after_offer_window():
+    # No GOOGLE_MAPS_WEB_SERVICES_KEY in the test env, so the booking never got geocoded
+    # at creation — an overdue offer with no coordinates falls back to plain "expired"
+    # rather than opening in the Dispatch Pool. See test_shop_mobile_booking.py's pool
+    # sibling for the geocoded, moved-to-pool path.
     suffix = uuid4().hex[:8]
     shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
 
@@ -287,7 +291,7 @@ def test_pending_booking_expires_after_seven_days():
     with Session(engine) as session:
         row = session.get(ShopMobileBookingRequest, UUID(booking_id))
         assert row is not None
-        row.created_at = datetime.now(timezone.utc) - timedelta(days=8)
+        row.offer_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
         session.add(row)
         session.commit()
 

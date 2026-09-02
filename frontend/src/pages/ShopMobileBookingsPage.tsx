@@ -25,6 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
   declined: 'Declined',
   cancelled: 'Cancelled',
   expired: 'Expired',
+  moved_to_pool: 'Moved to Dispatch Pool',
 }
 
 const ROUTING_LABEL: Record<string, string> = {
@@ -35,7 +36,7 @@ const ROUTING_LABEL: Record<string, string> = {
 
 function statusVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
   if (status === 'accepted') return 'success'
-  if (status === 'pending') return 'warning'
+  if (status === 'pending' || status === 'moved_to_pool') return 'warning'
   if (status === 'declined' || status === 'cancelled' || status === 'expired') return 'danger'
   return 'default'
 }

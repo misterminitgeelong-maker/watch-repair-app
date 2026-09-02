@@ -262,6 +262,117 @@ def send_mobile_quote_email(
     )
 
 
+def send_shop_mobile_booking_email(
+    *,
+    to_email: str,
+    shop_name: str,
+    customer_name: str,
+    customer_phone: str | None,
+    job_address: str,
+    accept_url: str,
+    timeout_minutes: int,
+) -> tuple[bool, str | None]:
+    """Email the assigned operator when a shop sends a live mobile booking request."""
+    if not (to_email or "").strip():
+        return False, None
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    shop = shop_name.strip() or "A shop"
+
+    subject = f"Live booking from {shop} — accept within {timeout_minutes} min"
+    body_plain = (
+        f"{shop} sent a live mobile booking request.\n\n"
+        f"Customer: {cust_line}\n"
+        f"Address: {job_address.strip()}\n\n"
+        f"Accept within {timeout_minutes} minutes or it opens to the shared Dispatch Pool "
+        f"for any nearby operator to claim.\n\n"
+        f"Accept & quote: {accept_url}\n"
+    )
+    intro_html = (
+        f"<strong>{_html.escape(shop)}</strong> sent a live mobile booking request. "
+        f"You have <strong>{timeout_minutes} minutes</strong> to accept before it opens to the shared "
+        f"Dispatch Pool for any nearby operator to claim.<br><br>"
+        f"<strong>Customer:</strong> {_html.escape(cust_line)}<br>"
+        f"<strong>Address:</strong> {_html.escape(job_address.strip())}"
+    )
+    body_html = render_transactional_email(
+        title="Live shop booking request",
+        preheader=f"Accept within {timeout_minutes} min — {shop}",
+        greeting="Live booking request",
+        intro_html=intro_html,
+        shop=ShopInfo(name="Mobile Services"),
+        cta_label="Accept & quote",
+        cta_url=accept_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mobile Services",
+        event="shop_mobile_booking_pending",
+    )
+
+
+def send_website_lead_alert_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    customer_phone: str | None,
+    suburb: str,
+    state_code: str,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    registration_plate: str | None,
+    inbox_url: str,
+) -> tuple[bool, str | None]:
+    """Email the operator when a website enquiry lands in their Lead Inbox — an FYI, not a live offer."""
+    if not (to_email or "").strip():
+        return False, None
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
+    if registration_plate and registration_plate.strip():
+        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
+    location = f"{suburb.strip()} {state_code.strip().upper()}"
+
+    subject = f"New lead in your Lead Inbox ({location})"
+    body_plain = (
+        f"A new website enquiry has been added to your Lead Inbox.\n\n"
+        f"Customer: {cust_line}\n"
+        f"Location: {location}\n"
+        + (f"Vehicle: {veh}\n" if veh else "")
+        + f"\nWork it whenever suits — this one has no countdown.\n\n"
+        f"Open Lead Inbox: {inbox_url}\n"
+    )
+    detail_lines = [f"<strong>Customer:</strong> {_html.escape(cust_line)}", f"<strong>Location:</strong> {_html.escape(location)}"]
+    if veh:
+        detail_lines.append(f"<strong>Vehicle:</strong> {_html.escape(veh)}")
+    intro_html = (
+        "A new website enquiry has been added to your Lead Inbox. No countdown on this one — "
+        "work it whenever suits.<br><br>" + "<br>".join(detail_lines)
+    )
+    body_html = render_transactional_email(
+        title="New lead in your Lead Inbox",
+        preheader=f"{location} — no countdown, work it whenever suits",
+        greeting="New lead in your Lead Inbox",
+        intro_html=intro_html,
+        shop=ShopInfo(name="Mobile Services"),
+        cta_label="Open Lead Inbox",
+        cta_url=inbox_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mobile Services",
+        event="website_lead_alert",
+    )
+
+
 def send_mobile_lead_offer_email(
     *,
     to_email: str,
