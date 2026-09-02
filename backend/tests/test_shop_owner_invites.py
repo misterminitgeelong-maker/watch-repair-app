@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import ShopOwnerInvite, User
+from app.models import EmailLog, ShopOwnerInvite, SmsLog, User
 
 create_db_and_tables()
 client = TestClient(app)
@@ -197,3 +197,54 @@ def test_create_invite_without_plan_code_keeps_current_plan():
     created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
     assert created.status_code == 200, created.text
     assert created.json()["plan_code"] == "booking_only"
+
+
+def test_create_invite_emails_the_link_and_logs_the_attempt():
+    from uuid import UUID as _UUID
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+
+    created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
+    assert created.status_code == 200, created.text
+    body = created.json()
+    # Twilio/SendGrid aren't configured in tests, so delivery itself is a
+    # dry-run — but the send was attempted and logged either way.
+    assert "email_sent" in body
+    assert "sms_sent" in body
+    assert body["sms_sent"] is False  # no mobile on file for this owner yet
+
+    with Session(engine) as session:
+        logs = session.exec(
+            select(EmailLog)
+            .where(EmailLog.tenant_id == _UUID(ctx["tenant_id"]))
+            .where(EmailLog.event == "shop_owner_invite")
+        ).all()
+        assert len(logs) == 1
+        assert logs[0].to_email == ctx["hq_email"]
+
+
+def test_create_invite_texts_the_link_when_owner_has_a_mobile_on_file():
+    from uuid import UUID as _UUID
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+
+    with Session(engine) as session:
+        tenant_id = _UUID(ctx["tenant_id"])
+        owner = session.exec(select(User).where(User.tenant_id == tenant_id)).first()
+        owner.mobile = "+61400123456"
+        session.add(owner)
+        session.commit()
+
+    created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["owner_mobile"] == "+61400123456"
+
+    with Session(engine) as session:
+        sms_logs = session.exec(
+            select(SmsLog).where(SmsLog.tenant_id == tenant_id).where(SmsLog.event == "shop_owner_invite")
+        ).all()
+        assert len(sms_logs) == 1
+        assert sms_logs[0].to_phone == "+61400123456"

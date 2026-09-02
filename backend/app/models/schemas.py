@@ -310,12 +310,17 @@ class ShopOwnerInviteRead(SQLModel):
     tenant_slug: str
     shop_number: Optional[str] = None
     owner_email: str
+    owner_mobile: Optional[str] = None
     plan_code: str
     status: str
     invite_url: str
     expires_at: datetime
     created_at: datetime
     completed_at: Optional[datetime] = None
+    #: Whether this creation call just sent the link — set only by the create
+    #: endpoint; the GET (latest-invite-status) endpoint leaves these False.
+    email_sent: bool = False
+    sms_sent: bool = False
 
 class ShopOwnerInvitePublicRead(SQLModel):
     tenant_name: str

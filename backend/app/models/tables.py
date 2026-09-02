@@ -90,6 +90,9 @@ class User(SQLModel, table=True):
     password_hash: str
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: This person's own mobile number (distinct from a tenant's shop_phone /
+    #: mobile_dispatch_phone) — used e.g. to SMS a shop-owner invite link.
+    mobile: Optional[str] = Field(default=None, max_length=40)
     #: JSON mobile commission rules (enabled, retainer_cents_per_period, rates_bp, eligible_job_statuses, …)
     mobile_commission_rules_json: Optional[str] = None
 

@@ -426,6 +426,58 @@ def send_website_lead_alert_email(
     )
 
 
+def send_shop_owner_invite_email(
+    *,
+    to_email: str,
+    owner_full_name: str,
+    tenant_name: str,
+    shop_number: str | None,
+    invite_url: str,
+    expiry_days: int,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Email a franchisee their one-time link to set up their own shop login."""
+    if not (to_email or "").strip():
+        return False, None
+    shop_label = tenant_name.strip()
+    if shop_number:
+        shop_label += f" (#{shop_number})"
+
+    subject = f"Set up your {shop_label} login"
+    body_plain = (
+        f"Hi {owner_full_name.strip() or 'there'},\n\n"
+        f"Set up your own login for {shop_label} — this replaces the shared HQ login "
+        f"you may have been using, with your own email and password.\n\n"
+        f"Set up your login: {invite_url}\n\n"
+        f"This link is one-time use and expires in {expiry_days} days. "
+        f"If you weren't expecting this, contact Mister Minit HQ.\n"
+    )
+    intro_html = (
+        f"Set up your own login for <strong>{_html.escape(shop_label)}</strong> — this replaces the "
+        f"shared HQ login you may have been using, with your own email and password."
+    )
+    body_html = render_transactional_email(
+        title=f"Set up your {shop_label} login",
+        preheader=f"One-time link, expires in {expiry_days} days",
+        greeting=f"Hi {owner_full_name.strip() or 'there'},",
+        intro_html=intro_html,
+        shop=ShopInfo(name="Mister Minit HQ"),
+        cta_label="Set up your login",
+        cta_url=invite_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mister Minit HQ",
+        event="shop_owner_invite",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
 def send_mobile_invoice_email(
     *,
     to_email: str,

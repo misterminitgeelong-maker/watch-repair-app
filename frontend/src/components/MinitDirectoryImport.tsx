@@ -100,9 +100,9 @@ export function MinitDirectoryImport() {
           <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
             Upload the Organisation Graph HTML export. Each shop's real franchisee gets their own login —
             single-site owners get their own shop, multi-site owners get all of theirs in one account — once
-            you send them an invite from Manage shops. Nothing is emailed automatically. Shops with no
-            franchisee on file keep the shared HQ login for now. Preview first; nothing is written until you
-            apply.
+            you send them an invite from Manage shops (that automatically texts and emails them the link).
+            Importing itself sends nothing. Shops with no franchisee on file keep the shared HQ login for now.
+            Preview first; nothing is written until you apply.
           </p>
 
           <input
