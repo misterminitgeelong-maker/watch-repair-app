@@ -207,6 +207,9 @@ class IntakeJob(SQLModel, table=True):
     claimed_at: Optional[datetime] = None
     # If claimed, the resulting AutoKeyJob id
     resulting_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id")
+    #: Set once this job has been folded into a "jobs waiting nearby" digest alert — a job is
+    #: alerted at most once, ever, regardless of how long it stays unclaimed after that.
+    alerted_at: Optional[datetime] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ParentAccountMembership(SQLModel, table=True):
@@ -579,6 +582,20 @@ class SmsLog(SQLModel, table=True):
     provider_sid: Optional[str] = None  # Twilio message SID
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EmailLog(SQLModel, table=True):
+    """Audit trail for operator-facing dispatch alert emails (live bookings, website leads).
+
+    Deliberately scoped to the alerts an operator can silently miss with real consequences —
+    not a general-purpose log of every customer-facing email (quotes, invoices, receipts).
+    """
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    to_email: str
+    event: str  # e.g. "shop_mobile_booking_pending", "website_lead_alert"
+    status: str = "dry_run"  # "sent" | "dry_run" | "failed"
+    error: Optional[str] = Field(default=None, max_length=500)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 
 class JobMessage(SQLModel, table=True):
     """Manual two-way SMS messages between shop and customer, linked to a job."""

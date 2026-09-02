@@ -133,6 +133,8 @@ def route_website_lead_to_prospect(
                 vehicle_model=payload.get("vehicle_model"),
                 registration_plate=payload.get("registration_plate"),
                 inbox_url=inbox_url,
+                session=session,
+                tenant_id=tenant_id,
             )
             if not ok and err:
                 logger.info("mobile_lead_dispatch.website_lead_email_failed tenant=%s err=%s", tenant_id, err)

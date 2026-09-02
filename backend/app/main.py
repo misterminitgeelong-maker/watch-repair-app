@@ -148,6 +148,23 @@ def _shop_mobile_booking_pool_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _pool_alert_loop() -> None:
+    """Digest-alert nearby operators once Dispatch Pool jobs have sat unclaimed a while."""
+    pool_alert_logger = logging.getLogger("mainspring.pool_alerts")
+    interval_seconds = max(settings.pool_alert_check_interval_minutes, 1) * 60
+    from .services.pool_alerts import process_stale_pool_jobs
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = process_stale_pool_jobs(session)
+            if summary.get("stale_jobs"):
+                pool_alert_logger.info("Dispatch Pool alert sweep: %s", summary)
+        except Exception:
+            pool_alert_logger.exception("Dispatch Pool alert sweep failed.")
+        time.sleep(interval_seconds)
+
+
 def _sales_report_email_loop() -> None:
     """Send opted-in weekly/monthly sales-by-category report emails once each period ends."""
     report_logger = logging.getLogger("mainspring.sales_report_email")
@@ -217,6 +234,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_shop_mobile_booking_pool_loop,
             name="mainspring-shop-mobile-booking-pool",
+            daemon=True,
+        ).start()
+    if settings.pool_alert_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_pool_alert_loop,
+            name="mainspring-pool-alerts",
             daemon=True,
         ).start()
     if settings.sales_report_email_enabled and settings.app_env != "test":

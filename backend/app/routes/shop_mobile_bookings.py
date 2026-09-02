@@ -614,7 +614,10 @@ async def create_booking(
                 job_address=row.job_address,
                 accept_url=accept_url,
                 timeout_minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES,
+                session=session,
+                tenant_id=operator_tid,
             )
+            session.commit()
             if not ok and err:
                 logger.info("shop_mobile_booking.dispatch_email_failed booking=%s err=%s", row.id, err)
         except Exception:  # noqa: BLE001

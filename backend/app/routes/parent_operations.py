@@ -24,6 +24,7 @@ from ..minit_email_lead_parser import bucket_email_leads_by_operator
 from ..minit_shops import tenant_slug_for_shop
 from ..models import (
     AutoKeyJob,
+    EmailLog,
     InboundEmail,
     OperatorWeeklyStatsRead,
     ParentAccount,
@@ -43,9 +44,11 @@ from ..models import (
     ShopEmailLeadBucket,
     ShopMobileBookingRead,
     ShopMobileBookingRequest,
+    SmsLog,
     Tenant,
     User,
 )
+from .. import sms as sms_service
 from ..shop_number import format_tenant_label, linked_tenant_ids_for_parent, linked_tenants_for_parent
 from .parent_accounts import _get_parent_account_for_user, _record_event
 from .shop_mobile_bookings import (
@@ -185,6 +188,74 @@ def _collect_troubleshooting_items(
                     tenant_slug=op.slug,
                 )
             )
+        if not sms_service.operator_dispatch_email(session, op):
+            items.append(
+                ParentTroubleshootingItem(
+                    kind="operator_missing_dispatch_email",
+                    severity="error",
+                    title="Operator has no email we can alert",
+                    detail=(
+                        f"{format_tenant_label(op.name, op.shop_number)} — no shop email set and "
+                        "no owner account found. They can only be reached by SMS, if that's set."
+                    ),
+                    tenant_id=op.id,
+                    tenant_slug=op.slug,
+                )
+            )
+
+    op_ids = [op.id for op in operators]
+    if op_ids:
+        week_ago_notif = datetime.now(timezone.utc) - timedelta(days=7)
+        failed_sms = session.exec(
+            select(SmsLog)
+            .where(col(SmsLog.tenant_id).in_(op_ids))
+            .where(SmsLog.status == "failed")
+            .where(col(SmsLog.created_at) >= week_ago_notif)
+            .order_by(SmsLog.created_at.desc())
+            .limit(20)
+        ).all()
+        failed_sms_tenants = _tenants_by_ids(session, [row.tenant_id for row in failed_sms])
+        for row in failed_sms:
+            op = failed_sms_tenants.get(row.tenant_id)
+            items.append(
+                ParentTroubleshootingItem(
+                    kind="notification_sms_failed",
+                    severity="error",
+                    title=f"SMS delivery failed: {row.event}",
+                    detail=f"{format_tenant_label(op.name, op.shop_number) if op else 'Operator'} — to {row.to_phone}",
+                    tenant_id=row.tenant_id,
+                    tenant_slug=op.slug if op else None,
+                    related_id=row.id,
+                    created_at=row.created_at,
+                )
+            )
+
+        failed_email = session.exec(
+            select(EmailLog)
+            .where(col(EmailLog.tenant_id).in_(op_ids))
+            .where(EmailLog.status == "failed")
+            .where(col(EmailLog.created_at) >= week_ago_notif)
+            .order_by(EmailLog.created_at.desc())
+            .limit(20)
+        ).all()
+        failed_email_tenants = _tenants_by_ids(session, [row.tenant_id for row in failed_email])
+        for row in failed_email:
+            op = failed_email_tenants.get(row.tenant_id)
+            items.append(
+                ParentTroubleshootingItem(
+                    kind="notification_email_failed",
+                    severity="error",
+                    title=f"Email delivery failed: {row.event}",
+                    detail=(
+                        f"{format_tenant_label(op.name, op.shop_number) if op else 'Operator'} — to {row.to_email}"
+                        + (f" ({row.error})" if row.error else "")
+                    ),
+                    tenant_id=row.tenant_id,
+                    tenant_slug=op.slug if op else None,
+                    related_id=row.id,
+                    created_at=row.created_at,
+                )
+            )
 
     problem_rows = session.exec(
         select(ShopMobileBookingRequest)
@@ -305,8 +376,10 @@ def _collect_troubleshooting_items(
                 )
             )
 
+    _SEVERITY_RANK = {"error": 0, "warning": 1, "info": 2}
+
     def _attention_rank(item: ParentTroubleshootingItem) -> tuple[int, float]:
-        severity_rank = 0 if item.severity == "warning" else 1
+        severity_rank = _SEVERITY_RANK.get(item.severity, 2)
         ts = item.created_at.timestamp() if item.created_at else 0.0
         return (severity_rank, -ts)
 

@@ -160,6 +160,12 @@ class Settings(BaseSettings):
     shop_mobile_booking_pool_enabled: bool = True
     shop_mobile_booking_check_interval_minutes: int = 2
 
+    # Dispatch Pool digest alerts: one SMS+email per nearby operator once a job has sat
+    # unclaimed this long — never a push per job, and never repeated for the same job.
+    pool_alert_enabled: bool = True
+    pool_alert_after_minutes: int = 10
+    pool_alert_check_interval_minutes: int = 5
+
     # Scheduled weekly/monthly sales-by-category report emails (opt-in per user).
     sales_report_email_enabled: bool = True
     sales_report_check_interval_minutes: int = 60

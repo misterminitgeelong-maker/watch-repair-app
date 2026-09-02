@@ -154,7 +154,51 @@ def test_operations_overview_and_bookings_for_hq():
 
     trouble = client.get("/v1/parent-accounts/me/operations/troubleshooting", headers=ctx["hq"])
     assert trouble.status_code == 200, trouble.text
+    items = trouble.json()["items"]
     assert "items" in trouble.json()
+
+    # Operator was bootstrapped with no mobile_dispatch_phone — should be flagged.
+    kinds = {item["kind"] for item in items if item["tenant_id"] == ctx["op_id"]}
+    assert "operator_missing_dispatch_phone" in kinds
+    # ...but it DOES have an owner login email, so the email gap should not fire.
+    assert "operator_missing_dispatch_email" not in kinds
+
+
+def test_troubleshooting_surfaces_failed_notifications():
+    from uuid import UUID as _UUID
+
+    from app.models import EmailLog, SmsLog
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_hq_network(suffix)
+    op_id = _UUID(ctx["op_id"])
+
+    with Session(engine) as session:
+        session.add(SmsLog(
+            tenant_id=op_id, to_phone="+61400000000", body="test",
+            event="shop_mobile_booking_pending", status="failed",
+        ))
+        session.add(EmailLog(
+            tenant_id=op_id, to_email="broken@example.com",
+            event="website_lead_alert", status="failed", error="SendGrid HTTP 400",
+        ))
+        session.commit()
+
+    trouble = client.get("/v1/parent-accounts/me/operations/troubleshooting", headers=ctx["hq"])
+    assert trouble.status_code == 200, trouble.text
+    items = trouble.json()["items"]
+
+    sms_items = [i for i in items if i["kind"] == "notification_sms_failed" and i["tenant_id"] == ctx["op_id"]]
+    email_items = [i for i in items if i["kind"] == "notification_email_failed" and i["tenant_id"] == ctx["op_id"]]
+    assert len(sms_items) == 1
+    assert sms_items[0]["severity"] == "error"
+    assert len(email_items) == 1
+    assert "SendGrid HTTP 400" in email_items[0]["detail"]
+
+    # Error-severity items must rank ahead of warning/info ones.
+    severities = [i["severity"] for i in items]
+    first_non_error = next((i for i, s in enumerate(severities) if s != "error"), len(severities))
+    assert all(s == "error" for s in severities[:first_non_error])
 
 
 def test_provision_shop_creates_minit_slug():
