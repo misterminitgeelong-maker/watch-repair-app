@@ -139,6 +139,24 @@ def plan_directory_import(
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id, site_kind="retail")
     tenants_by_number = tenants_by_shop_number_in_parent(session, parent.id, site_kind="retail")
 
+    # A tenant can already exist under the right slug without shop_number set
+    # (e.g. linked to HQ by hand via "Link existing tenant" rather than
+    # provisioned through this importer or the xlsx one) — shop_number alone
+    # would miss it and this would try to INSERT a duplicate, colliding on
+    # tenant.slug's global unique constraint. Slug is a global uniqueness
+    # constraint too (not scoped to this parent), so resolve it the same way.
+    all_open_slugs = {
+        _tenant_slug(s.shop_number) for s in directory.shops if s.status == "Open" and s.shop_number
+    }
+    tenants_by_slug: dict[str, Tenant] = (
+        {t.slug: t for t in session.exec(select(Tenant).where(col(Tenant.slug).in_(all_open_slugs))).all()}
+        if all_open_slugs
+        else {}
+    )
+
+    def _resolve_existing_tenant(shop: DirectoryShop) -> Tenant | None:
+        return tenants_by_number.get(shop.shop_number) or tenants_by_slug.get(_tenant_slug(shop.shop_number))
+
     counts = _PlanCounts(total_in_export=len(directory.shops))
     would_create: list[dict[str, str]] = []
     already_exists: list[dict[str, str]] = []
@@ -183,7 +201,7 @@ def plan_directory_import(
         else:
             entry["owner_source"] = "franchisee_multi_site" if franchisee and franchisee.is_multi_site else "franchisee"
 
-        if shop.shop_number in existing_numbers:
+        if _resolve_existing_tenant(shop) is not None:
             counts.already_exists += 1
             if len(already_exists) < _PREVIEW_LIMIT:
                 already_exists.append(entry)
@@ -263,7 +281,7 @@ def plan_directory_import(
     # merely reused, so the summary count is accurate rather than always "created".
     seen_existing_parent_emails = set(existing_franchisee_parent_emails)
 
-    existing_tenant_ids = [t.id for t in tenants_by_number.values()]
+    existing_tenant_ids = list({t.id for t in tenants_by_number.values()} | {t.id for t in tenants_by_slug.values()})
     existing_owner_by_tenant_id: dict[object, User] = {}
     if existing_tenant_ids:
         for user in session.exec(
@@ -285,7 +303,7 @@ def plan_directory_import(
             shop, franchisee, hq_owner_email=hq_email, hq_owner_full_name=hq_owner_full_name
         )
 
-        tenant = tenants_by_number.get(shop.shop_number)
+        tenant = _resolve_existing_tenant(shop)
         is_new_tenant = tenant is None
         if is_new_tenant:
             tenant = Tenant(
@@ -321,16 +339,46 @@ def plan_directory_import(
             )
             since_commit += 1
         else:
-            # Existing tenant — guaranteed already linked to HQ (that's how it
-            # showed up in tenants_by_number, which is scoped to this parent).
-            # Never create or touch an owner here: the directory's franchisee
-            # identity might be stale or simply not match who actually holds
-            # this login (e.g. a real invite was already completed under a
-            # different email). Only look up who the real owner is now, for
-            # the multi-site parent-account link below.
+            # Existing tenant — found either via shop_number (already linked to
+            # HQ, that's how tenants_by_number is scoped) or by slug (a tenant
+            # that predates this importer, e.g. linked to HQ by hand without
+            # shop_number set — see _resolve_existing_tenant). Never create or
+            # touch an owner here: the directory's franchisee identity might be
+            # stale or simply not match who actually holds this login (e.g. a
+            # real invite was already completed under a different email). Only
+            # look up who the real owner is now, for the multi-site
+            # parent-account link below.
             owner = existing_owner_by_tenant_id.get(tenant.id)
             if owner is None:
                 continue
+
+            # Fill in metadata gaps only — never overwrite a non-empty value,
+            # in case it was deliberately edited since. This is what makes a
+            # slug-only match (no shop_number) resolve correctly next run too.
+            if not tenant.shop_number:
+                tenant.shop_number = shop.shop_number
+                session.add(tenant)
+            if not tenant.minit_area and shop.area:
+                tenant.minit_area = shop.area
+                session.add(tenant)
+            if not tenant.minit_region and shop.region:
+                tenant.minit_region = shop.region
+                session.add(tenant)
+            if not tenant.business_address and shop.address:
+                tenant.business_address = shop.address[:2000]
+                session.add(tenant)
+            if not tenant.shop_phone and shop.phone:
+                tenant.shop_phone = shop.phone
+                session.add(tenant)
+            if not tenant.shop_email and shop.shop_email:
+                tenant.shop_email = shop.shop_email
+                session.add(tenant)
+
+            # A slug-only match might not be linked to HQ's parent yet.
+            _link_tenant_to_parent(
+                session, parent=parent, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[parent.id]
+            )
+
             # Mobile is contact metadata, not a credential — safe to fill in
             # even for an existing owner, unlike email/password/full_name.
             if (

@@ -340,6 +340,100 @@ def test_apply_stores_franchisee_mobile_on_new_owner():
         assert owner.mobile == "+61400555111"
 
 
+def test_apply_recognizes_existing_tenant_by_slug_when_shop_number_is_missing():
+    """Regression: a tenant linked to HQ by hand (e.g. via "Link existing
+    tenant") never gets shop_number set, only slug/name. Matching only by
+    shop_number missed it and tried to INSERT a duplicate tenant with the
+    same slug, crashing on tenant.slug's unique constraint."""
+    hq_email = _fresh_hq()
+    shop = _shop("2901", name="Chadstone")
+    franchisee = _franchisee("real-franchisee", "Real Franchisee", "real.franchisee@example.com", ["shop:2901"])
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).first()
+        tenant = Tenant(name="Chadstone", slug="minit-2901", plan_code="booking_only")  # no shop_number set
+        session.add(tenant)
+        session.flush()
+        real_owner = User(
+            tenant_id=tenant.id,
+            email="already.claimed@example.com",
+            full_name="Already Claimed",
+            role="owner",
+            password_hash=hash_password("realSecretPass1"),
+            is_active=True,
+        )
+        session.add(real_owner)
+        session.flush()
+        session.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=tenant.id, user_id=real_owner.id))
+        session.commit()
+        real_owner_hash = real_owner.password_hash
+
+    with Session(engine) as session:
+        preview = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=False)
+        assert preview["shops"]["already_exists"] == 1
+        assert preview["shops"]["would_create"] == 0
+
+    with Session(engine) as session:
+        result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["created_tenant_count"] == 0
+        assert result["created_owner_count"] == 0
+
+        tenant = session.exec(select(Tenant).where(Tenant.slug == "minit-2901")).first()
+        assert tenant.shop_number == "2901"  # backfilled
+        assert tenant.name == "Chadstone"  # untouched (matched export anyway, but never overwritten)
+
+        owners = session.exec(select(User).where(User.tenant_id == tenant.id)).all()
+        assert len(owners) == 1
+        assert owners[0].email == "already.claimed@example.com"
+        assert owners[0].password_hash == real_owner_hash
+
+    # Re-running is now a clean no-op via the normal shop_number path.
+    with Session(engine) as session:
+        again = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert again["created_tenant_count"] == 0
+        assert again["shops"]["already_exists"] == 1
+        assert again["shops"]["would_create"] == 0
+
+
+def test_apply_links_a_matching_tenant_found_only_by_slug():
+    """A tenant with the right slug that isn't linked to HQ's parent at all
+    yet gets linked, not duplicated."""
+    hq_email = _fresh_hq()
+    shop = _shop("2902")
+    directory = DirectoryData(shops=[shop], franchisees=[])
+
+    with Session(engine) as session:
+        tenant = Tenant(name="Unlinked Shop", slug="minit-2902", plan_code="booking_only")
+        session.add(tenant)
+        session.flush()
+        owner = User(
+            tenant_id=tenant.id,
+            email="unlinked.owner@example.com",
+            full_name="Unlinked Owner",
+            role="owner",
+            password_hash=hash_password("realSecretPass1"),
+            is_active=True,
+        )
+        session.add(owner)
+        session.commit()
+
+    with Session(engine) as session:
+        result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["created_tenant_count"] == 0
+
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).first()
+        tenant = session.exec(select(Tenant).where(Tenant.slug == "minit-2902")).first()
+        membership = session.exec(
+            select(ParentAccountMembership)
+            .where(ParentAccountMembership.parent_account_id == parent.id)
+            .where(ParentAccountMembership.tenant_id == tenant.id)
+        ).first()
+        assert membership is not None
+        assert tenant.shop_number == "2902"
+
+
 def test_apply_backfills_mobile_on_an_existing_owner_missing_one():
     hq_email = _fresh_hq()
     shop = _shop("2801")
