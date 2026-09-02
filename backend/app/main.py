@@ -131,23 +131,6 @@ def _quote_reminder_loop() -> None:
         time.sleep(interval_seconds)
 
 
-def _mobile_lead_dispatch_loop() -> None:
-    """Escalate website leads when operators do not quote within the offer window."""
-    dispatch_logger = logging.getLogger("mainspring.mobile_lead_dispatch")
-    interval_seconds = max(settings.mobile_lead_dispatch_check_interval_minutes, 1) * 60
-    from .services.mobile_lead_dispatch import process_due_mobile_lead_dispatches
-
-    while True:
-        try:
-            with Session(engine) as session:
-                summary = process_due_mobile_lead_dispatches(session)
-            if any(summary.get(k) for k in ("next_operator", "escalated_hq", "quoted")):
-                dispatch_logger.info("Mobile lead dispatch processed: %s", summary)
-        except Exception:
-            dispatch_logger.exception("Mobile lead dispatch run failed.")
-        time.sleep(interval_seconds)
-
-
 def _shop_mobile_booking_pool_loop() -> None:
     """Move overdue live shop booking offers into the shared Dispatch Pool."""
     pool_logger = logging.getLogger("mainspring.shop_mobile_booking_pool")
@@ -228,12 +211,6 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_quote_reminder_loop,
             name="mainspring-quote-reminders",
-            daemon=True,
-        ).start()
-    if settings.mobile_lead_dispatch_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_mobile_lead_dispatch_loop,
-            name="mainspring-mobile-lead-dispatch",
             daemon=True,
         ).start()
     if settings.shop_mobile_booking_pool_enabled and settings.app_env != "test":

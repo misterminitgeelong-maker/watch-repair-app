@@ -1,5 +1,4 @@
 import os
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -14,14 +13,7 @@ from fastapi.testclient import TestClient
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import AutoKeyJob, MobileLeadDispatch, SmsLog, Tenant
-from app.services.mobile_lead_dispatch import (
-    DISPATCH_STATUS_ESCALATED_HQ,
-    DISPATCH_STATUS_OFFERING,
-    DISPATCH_STATUS_QUOTED,
-    advance_expired_dispatch,
-    complete_dispatch_if_quoted,
-)
+from app.models import AutoKeyJob, ProspectLead, SmsLog, Tenant
 
 create_db_and_tables()
 client = TestClient(app)
@@ -64,7 +56,7 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _setup_network() -> tuple[str, str, str, dict[str, str]]:
+def _setup_network(*, force_hq: bool = False) -> tuple[str, str, str, str, dict[str, str]]:
     suffix = uuid4().hex[:8]
     hq_slug = f"hq-{suffix}"
     op1_slug = f"op1-{suffix}"
@@ -114,12 +106,13 @@ def _setup_network() -> tuple[str, str, str, dict[str, str]]:
     )
     assert esc.status_code == 200, esc.text
 
-    dispatch_settings = client.put(
-        "/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings",
-        headers=hq_h,
-        json={"offer_timeout_minutes": 30, "max_operator_offers": 2},
-    )
-    assert dispatch_settings.status_code == 200, dispatch_settings.text
+    if force_hq:
+        settings = client.put(
+            "/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings",
+            headers=hq_h,
+            json={"force_hq_dispatch": True},
+        )
+        assert settings.status_code == 200, settings.text
 
     route1 = client.post(
         "/v1/parent-accounts/me/mobile-lead-routes",
@@ -135,7 +128,7 @@ def _setup_network() -> tuple[str, str, str, dict[str, str]]:
     )
     assert route2.status_code == 200, route2.text
 
-    return ingest_id, op1_id, op2_id, hq_h
+    return ingest_id, op1_id, op2_id, hq_id, hq_h
 
 
 def _ingest_lead(ingest_id: str, *, suburb: str = "Sydney") -> dict:
@@ -155,120 +148,72 @@ def _ingest_lead(ingest_id: str, *, suburb: str = "Sydney") -> dict:
     return res.json()
 
 
-def test_website_lead_creates_dispatch_and_sms():
-    ingest_id, op1_id, _op2_id, _hq_h = _setup_network()
-    body = _ingest_lead(ingest_id)
+def test_website_lead_routes_to_mapped_operator_and_alerts_with_no_timer():
+    """A website enquiry is just an email — routed to Lead Inbox, no job, no countdown."""
+    ingest_id, op1_id, _op2_id, _hq_id, _hq_h = _setup_network()
+    op1_jobs_before = 0
+    with Session(engine) as session:
+        op1_jobs_before = len(
+            session.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == UUID(op1_id))).all()
+        )
 
-    assert body["dispatch_status"] == DISPATCH_STATUS_OFFERING
+    body = _ingest_lead(ingest_id)
     assert body["tenant_id"] == op1_id
-    assert body["job_id"] is not None
-    assert body["offer_expires_at"] is not None
+    assert "lead_id" in body
+    assert "dispatch_id" not in body
+    assert "job_id" not in body
 
     with Session(engine) as session:
-        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
-        assert dispatch is not None
-        assert dispatch.status == DISPATCH_STATUS_OFFERING
-        assert str(dispatch.current_operator_tenant_id) == op1_id
+        lead = session.get(ProspectLead, UUID(body["lead_id"]))
+        assert lead is not None
+        assert str(lead.tenant_id) == op1_id
+        assert lead.source == "website_lead"
+        assert lead.status == "new"
+        assert lead.name == "Jane Doe"
+
+        # No live job is created for a website lead — it sits in Lead Inbox until the
+        # operator works it.
+        op1_jobs_after = session.exec(
+            select(AutoKeyJob).where(AutoKeyJob.tenant_id == UUID(op1_id))
+        ).all()
+        assert len(op1_jobs_after) == op1_jobs_before
 
         sms_rows = session.exec(
-            select(SmsLog).where(SmsLog.event == "mobile_lead_offer")
+            select(SmsLog).where(SmsLog.event == "website_lead_alert")
         ).all()
         assert len(sms_rows) >= 1
-        assert "30 min" in sms_rows[0].body
+        # No timeout/countdown language — this is a one-time FYI, unlike a live shop booking.
+        assert "min" not in sms_rows[0].body.lower()
+        assert "Lead Inbox" in sms_rows[0].body
 
 
-def test_dispatch_escalates_to_next_operator_then_hq():
-    ingest_id, op1_id, op2_id, _hq_h = _setup_network()
-    body = _ingest_lead(ingest_id)
-    dispatch_id = UUID(body["dispatch_id"])
-    first_job_id = body["job_id"]
+def test_website_lead_routes_by_suburb_map():
+    """Different suburbs route to the operator mapped for that suburb."""
+    ingest_id, _op1_id, op2_id, _hq_id, _hq_h = _setup_network()
+    body = _ingest_lead(ingest_id, suburb="Parramatta")
+    assert body["tenant_id"] == op2_id
 
     with Session(engine) as session:
-        dispatch = session.get(MobileLeadDispatch, dispatch_id)
-        assert dispatch is not None
-        dispatch.offer_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
-        session.add(dispatch)
-        session.commit()
-
-        action = advance_expired_dispatch(session, dispatch)
-        session.commit()
-        session.refresh(dispatch)
-        assert action == "next_operator"
-        assert str(dispatch.current_operator_tenant_id) == op2_id
-        assert str(dispatch.auto_key_job_id) != first_job_id
-
-        first_job = session.get(AutoKeyJob, UUID(first_job_id))
-        assert first_job is not None
-        assert first_job.status == "failed_job"
-
-        dispatch.offer_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
-        session.add(dispatch)
-        session.commit()
-
-        action2 = advance_expired_dispatch(session, dispatch)
-        session.commit()
-        session.refresh(dispatch)
-        assert action2 == "escalated_hq"
-        assert dispatch.status == DISPATCH_STATUS_ESCALATED_HQ
+        lead = session.get(ProspectLead, UUID(body["lead_id"]))
+        assert lead is not None
+        assert str(lead.tenant_id) == op2_id
+        assert lead.suburb_name == "Parramatta"
 
 
 def test_outside_territory_goes_straight_to_hq():
-    ingest_id, _op1_id, _op2_id, _hq_h = _setup_network()
+    ingest_id, _op1_id, _op2_id, hq_id, _hq_h = _setup_network()
     body = _ingest_lead(ingest_id, suburb="Birdsville")
-
-    assert body["dispatch_status"] == DISPATCH_STATUS_ESCALATED_HQ
-    assert body["offer_expires_at"] is None
+    assert body["tenant_id"] == hq_id
 
     with Session(engine) as session:
-        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
-        assert dispatch is not None
-        assert dispatch.status == DISPATCH_STATUS_ESCALATED_HQ
-
-        sms_rows = session.exec(
-            select(SmsLog)
-            .where(SmsLog.event == "mobile_lead_offer")
-            .where(SmsLog.auto_key_job_id == UUID(body["job_id"]))
-        ).all()
-        assert len(sms_rows) == 0
+        lead = session.get(ProspectLead, UUID(body["lead_id"]))
+        assert lead is not None
+        assert str(lead.tenant_id) == hq_id
+        assert lead.source == "website_lead"
 
 
 def test_force_hq_testing_mode_skips_operators():
-    ingest_id, _op1_id, _op2_id, hq_h = _setup_network()
-    settings = client.put(
-        "/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings",
-        headers=hq_h,
-        json={"force_hq_dispatch": True},
-    )
-    assert settings.status_code == 200, settings.text
-
+    ingest_id, op1_id, _op2_id, hq_id, _hq_h = _setup_network(force_hq=True)
     body = _ingest_lead(ingest_id, suburb="Sydney")
-    assert body["dispatch_status"] == DISPATCH_STATUS_ESCALATED_HQ
-    assert body["offer_expires_at"] is None
-
-    with Session(engine) as session:
-        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
-        assert dispatch is not None
-        sms_rows = session.exec(
-            select(SmsLog)
-            .where(SmsLog.event == "mobile_lead_offer")
-            .where(SmsLog.auto_key_job_id == UUID(body["job_id"]))
-        ).all()
-        assert len(sms_rows) == 0
-
-
-def test_quote_completes_dispatch():
-    ingest_id, _op1_id, _op2_id, _hq_h = _setup_network()
-    body = _ingest_lead(ingest_id)
-    job_id = body["job_id"]
-
-    with Session(engine) as session:
-        dispatch = session.get(MobileLeadDispatch, UUID(body["dispatch_id"]))
-        assert dispatch is not None
-        job = session.get(AutoKeyJob, UUID(job_id))
-        assert job is not None
-        job.status = "quote_sent"
-        session.add(job)
-        complete_dispatch_if_quoted(session, job.id)
-        session.commit()
-        session.refresh(dispatch)
-        assert dispatch.status == DISPATCH_STATUS_QUOTED
+    assert body["tenant_id"] == hq_id
+    assert body["tenant_id"] != op1_id
