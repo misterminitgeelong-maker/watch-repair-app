@@ -212,6 +212,7 @@ export interface ShopOwnerInvite {
   tenant_slug: string
   shop_number?: string | null
   owner_email: string
+  plan_code: PlanCode | string
   status: 'pending' | 'completed' | 'revoked' | 'expired'
   invite_url: string
   expires_at: string
@@ -219,9 +220,18 @@ export interface ShopOwnerInvite {
   completed_at?: string | null
 }
 
-/** Send (or reissue) a one-time invite letting a shop set its own login. */
-export const createShopOwnerInvite = (tenantId: string) =>
-  api.post<ShopOwnerInvite>(`/parent-accounts/me/sites/${tenantId}/invite`, {})
+/** Curated plan/tier choices meaningful when inviting a Minit shop owner — must match
+ * MINIT_INVITE_PLAN_CODES in backend/app/routes/parent_accounts.py. */
+export const MINIT_INVITE_PLAN_OPTIONS: Array<{ code: PlanCode; label: string }> = [
+  { code: 'booking_only', label: 'Retail shop — booking only' },
+  { code: 'basic_auto_key', label: 'Mobile operator — Basic' },
+  { code: 'pro', label: 'Mobile operator — Pro (multi-site)' },
+]
+
+/** Send (or reissue) a one-time invite letting a shop set its own login.
+ * Pass `planCode` to set the shop's plan/tier at the same time. */
+export const createShopOwnerInvite = (tenantId: string, planCode?: PlanCode | string) =>
+  api.post<ShopOwnerInvite>(`/parent-accounts/me/sites/${tenantId}/invite`, planCode ? { plan_code: planCode } : {})
 export const getShopOwnerInvite = (tenantId: string) =>
   api.get<ShopOwnerInvite | null>(`/parent-accounts/me/sites/${tenantId}/invite`)
 

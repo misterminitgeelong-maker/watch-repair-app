@@ -157,3 +157,43 @@ def test_complete_invite_rejects_weak_password():
 def test_unknown_invite_token_is_404():
     res = client.get("/v1/public/shop-invite/does-not-exist")
     assert res.status_code == 404
+
+
+def test_create_invite_can_set_plan_level():
+    from uuid import UUID as _UUID
+
+    from app.models import Tenant as _Tenant
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)  # provisioned as booking_only
+
+    created = client.post(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite",
+        headers=ctx["hq"],
+        json={"plan_code": "basic_auto_key"},
+    )
+    assert created.status_code == 200, created.text
+    assert created.json()["plan_code"] == "basic_auto_key"
+
+    with Session(engine) as session:
+        tenant = session.get(_Tenant, _UUID(ctx["tenant_id"]))
+        assert tenant.plan_code == "basic_auto_key"
+
+
+def test_create_invite_rejects_plan_outside_curated_set():
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+    res = client.post(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite",
+        headers=ctx["hq"],
+        json={"plan_code": "basic_watch"},  # not a mobile-services plan
+    )
+    assert res.status_code == 400
+
+
+def test_create_invite_without_plan_code_keeps_current_plan():
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+    created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
+    assert created.status_code == 200, created.text
+    assert created.json()["plan_code"] == "booking_only"

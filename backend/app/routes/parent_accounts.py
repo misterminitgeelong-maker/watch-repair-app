@@ -57,6 +57,7 @@ from ..models import (
     ShopBookingUsageShopBreakdown,
     ShopMobileBookingRequest,
     ShopOwnerInvite,
+    ShopOwnerInviteCreateRequest,
     ShopOwnerInviteRead,
     Tenant,
     User,
@@ -955,6 +956,16 @@ def link_tenant_to_parent_account(
 
 SHOP_OWNER_INVITE_EXPIRY_DAYS = 7
 
+#: Plan/tier choices meaningful when inviting a Minit shop owner — a curated
+#: subset of VALID_PLAN_CODES (no watch/shoe bundles; this flow is mobile-
+#: services only). HQ picks one when sending the invite; leaving it unset
+#: keeps the tenant's current plan.
+MINIT_INVITE_PLAN_CODES: dict[str, str] = {
+    "booking_only": "Retail shop — booking only",
+    "basic_auto_key": "Mobile operator — Basic",
+    "pro": "Mobile operator — Pro (multi-site)",
+}
+
 
 def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOwnerInviteRead:
     tenant = session.get(Tenant, invite.tenant_id)
@@ -966,6 +977,7 @@ def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOw
         tenant_slug=tenant.slug if tenant else "",
         shop_number=tenant.shop_number if tenant else None,
         owner_email=owner.email if owner else "",
+        plan_code=tenant.plan_code if tenant else "",
         status=invite.status,
         invite_url=f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}",
         expires_at=invite.expires_at,
@@ -977,11 +989,13 @@ def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOw
 @router.post("/me/sites/{tenant_id}/invite", response_model=ShopOwnerInviteRead)
 def create_shop_owner_invite(
     tenant_id: UUID,
+    payload: ShopOwnerInviteCreateRequest | None = None,
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(get_session),
 ):
     """Create (or reissue) a one-time invite letting a shop set its own login,
-    replacing the shared HQ owner credentials it was provisioned with."""
+    replacing the shared HQ owner credentials it was provisioned with.
+    Optionally sets the shop's plan/tier at the same time."""
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -1009,6 +1023,28 @@ def create_shop_owner_invite(
     ).first()
     if not owner_user:
         raise HTTPException(status_code=404, detail="No owner user found for this site")
+
+    requested_plan = (payload.plan_code if payload else None) or None
+    if requested_plan:
+        normalized_plan = requested_plan.strip().lower()
+        if normalized_plan not in MINIT_INVITE_PLAN_CODES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"plan_code must be one of: {', '.join(MINIT_INVITE_PLAN_CODES)}",
+            )
+        if tenant.plan_code != normalized_plan:
+            previous_plan = tenant.plan_code
+            tenant.plan_code = normalized_plan
+            session.add(tenant)
+            _record_event(
+                session,
+                parent_account_id=parent.id,
+                tenant_id=tenant.id,
+                actor_user_id=current_user.id,
+                actor_email=current_user.email,
+                event_type="plan_changed",
+                event_summary=f"Changed '{tenant.name}' plan from {previous_plan} to {normalized_plan}",
+            )
 
     # Reissuing revokes any invite still pending for this tenant, so a shop
     # never has two live claim links.

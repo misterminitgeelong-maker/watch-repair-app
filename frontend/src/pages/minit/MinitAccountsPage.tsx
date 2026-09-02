@@ -6,8 +6,11 @@ import {
   formatTenantLabel,
   getApiErrorMessage,
   linkTenantToParentAccount,
+  MINIT_INVITE_PLAN_OPTIONS,
   provisionMinitShop,
   unlinkTenantFromParentAccount,
+  type ParentAccountSite,
+  type PlanCode,
   type ShopOwnerInvite,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -35,7 +38,8 @@ export default function MinitAccountsPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [retailLimit, setRetailLimit] = useState(50)
-  const [invitingId, setInvitingId] = useState('')
+  const [inviteTarget, setInviteTarget] = useState<ParentAccountSite | null>(null)
+  const [invitePlanCode, setInvitePlanCode] = useState<PlanCode | string>('')
   const [inviteResult, setInviteResult] = useState<ShopOwnerInvite | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
 
@@ -113,11 +117,14 @@ export default function MinitAccountsPage() {
   })
 
   const inviteMut = useMutation({
-    mutationFn: (tenantId: string) => createShopOwnerInvite(tenantId).then(r => r.data),
+    mutationFn: ({ tenantId, planCode }: { tenantId: string; planCode: string }) =>
+      createShopOwnerInvite(tenantId, planCode || undefined).then(r => r.data),
     onSuccess: invite => {
       setError('')
       setInviteCopied(false)
+      setInviteTarget(null)
       setInviteResult(invite)
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not create an invite link.')),
   })
@@ -134,13 +141,16 @@ export default function MinitAccountsPage() {
     }
   }
 
-  async function handleInvite(tenantId: string) {
-    setInvitingId(tenantId)
-    try {
-      await inviteMut.mutateAsync(tenantId)
-    } finally {
-      setInvitingId('')
-    }
+  function openInvite(site: ParentAccountSite) {
+    setError('')
+    const currentPlan = MINIT_INVITE_PLAN_OPTIONS.some(o => o.code === site.plan_code) ? site.plan_code : ''
+    setInvitePlanCode(currentPlan)
+    setInviteTarget(site)
+  }
+
+  function sendInvite() {
+    if (!inviteTarget) return
+    inviteMut.mutate({ tenantId: inviteTarget.tenant_id, planCode: invitePlanCode })
   }
 
   async function copyInviteLink() {
@@ -219,13 +229,12 @@ export default function MinitAccountsPage() {
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
-                  onClick={() => handleInvite(site.tenant_id)}
-                  disabled={invitingId === site.tenant_id}
-                  title="Send a link letting this shop set its own email & password"
+                  onClick={() => openInvite(site)}
+                  title="Choose a plan level and send a link letting this shop set its own email & password"
                 >
                   <span className="inline-flex items-center gap-1">
                     <KeyRound size={13} />
-                    {invitingId === site.tenant_id ? 'Sending…' : 'Invite owner'}
+                    Invite owner
                   </span>
                 </Button>
                 <Button
@@ -280,13 +289,12 @@ export default function MinitAccountsPage() {
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
-                  onClick={() => handleInvite(site.tenant_id)}
-                  disabled={invitingId === site.tenant_id}
-                  title="Send a link letting this shop set its own email & password"
+                  onClick={() => openInvite(site)}
+                  title="Choose a plan level and send a link letting this shop set its own email & password"
                 >
                   <span className="inline-flex items-center gap-1">
                     <KeyRound size={13} />
-                    {invitingId === site.tenant_id ? 'Sending…' : 'Invite owner'}
+                    Invite owner
                   </span>
                 </Button>
                 <Button
@@ -338,13 +346,42 @@ export default function MinitAccountsPage() {
         </Modal>
       )}
 
+      {inviteTarget && (
+        <Modal title="Invite owner" onClose={() => setInviteTarget(null)}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              Choose the account level for {formatTenantLabel(inviteTarget.tenant_name, inviteTarget.shop_number)}{' '}
+              before sending the login invite to <strong>{inviteTarget.owner_email}</strong>.
+            </p>
+            <Select
+              label="Account level"
+              value={invitePlanCode}
+              onChange={e => setInvitePlanCode(e.target.value)}
+            >
+              <option value="">Keep current plan ({inviteTarget.plan_code})</option>
+              {MINIT_INVITE_PLAN_OPTIONS.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.label}</option>
+              ))}
+            </Select>
+            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setInviteTarget(null)}>Cancel</Button>
+              <Button onClick={sendInvite} disabled={inviteMut.isPending}>
+                {inviteMut.isPending ? 'Sending…' : 'Send invite'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {inviteResult && (
         <Modal title="Invite sent" onClose={() => setInviteResult(null)}>
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
               Share this one-time link with {inviteResult.tenant_name}
-              {inviteResult.shop_number ? ` (#${inviteResult.shop_number})` : ''}. It lets{' '}
-              <strong>{inviteResult.owner_email}</strong> set their own email &amp; password — it expires{' '}
+              {inviteResult.shop_number ? ` (#${inviteResult.shop_number})` : ''} — account level{' '}
+              <strong>{MINIT_INVITE_PLAN_OPTIONS.find(o => o.code === inviteResult.plan_code)?.label ?? inviteResult.plan_code}</strong>.
+              It lets <strong>{inviteResult.owner_email}</strong> set their own email &amp; password — it expires{' '}
               {new Date(inviteResult.expires_at).toLocaleDateString()}.
             </p>
             <div className="flex items-center gap-2">
