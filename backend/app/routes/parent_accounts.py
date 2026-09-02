@@ -1,6 +1,7 @@
 from calendar import monthrange
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -55,9 +56,12 @@ from ..models import (
     ShopBookingUsageResponse,
     ShopBookingUsageShopBreakdown,
     ShopMobileBookingRequest,
+    ShopOwnerInvite,
+    ShopOwnerInviteRead,
     Tenant,
     User,
 )
+from ..config import settings
 from ..security import hash_password
 from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
@@ -947,6 +951,128 @@ def link_tenant_to_parent_account(
 
     session.refresh(parent)
     return _to_summary(session, parent)
+
+
+SHOP_OWNER_INVITE_EXPIRY_DAYS = 7
+
+
+def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOwnerInviteRead:
+    tenant = session.get(Tenant, invite.tenant_id)
+    owner = session.get(User, invite.owner_user_id)
+    return ShopOwnerInviteRead(
+        id=invite.id,
+        tenant_id=invite.tenant_id,
+        tenant_name=tenant.name if tenant else "",
+        tenant_slug=tenant.slug if tenant else "",
+        shop_number=tenant.shop_number if tenant else None,
+        owner_email=owner.email if owner else "",
+        status=invite.status,
+        invite_url=f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}",
+        expires_at=invite.expires_at,
+        created_at=invite.created_at,
+        completed_at=invite.completed_at,
+    )
+
+
+@router.post("/me/sites/{tenant_id}/invite", response_model=ShopOwnerInviteRead)
+def create_shop_owner_invite(
+    tenant_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Create (or reissue) a one-time invite letting a shop set its own login,
+    replacing the shared HQ owner credentials it was provisioned with."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    membership = session.exec(
+        select(ParentAccountMembership)
+        .where(ParentAccountMembership.parent_account_id == parent.id)
+        .where(ParentAccountMembership.tenant_id == tenant.id)
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Site is not linked to your account")
+
+    owner_user = session.exec(
+        select(User)
+        .where(User.tenant_id == tenant.id)
+        .where(User.role == "owner")
+        .where(User.is_active)
+        .order_by(col(User.created_at).asc())
+    ).first()
+    if not owner_user:
+        raise HTTPException(status_code=404, detail="No owner user found for this site")
+
+    # Reissuing revokes any invite still pending for this tenant, so a shop
+    # never has two live claim links.
+    pending = session.exec(
+        select(ShopOwnerInvite)
+        .where(ShopOwnerInvite.tenant_id == tenant.id)
+        .where(ShopOwnerInvite.status == "pending")
+    ).all()
+    for row in pending:
+        row.status = "revoked"
+        session.add(row)
+
+    now = datetime.now(timezone.utc)
+    invite = ShopOwnerInvite(
+        tenant_id=tenant.id,
+        parent_account_id=parent.id,
+        owner_user_id=owner_user.id,
+        created_by_user_id=current_user.id,
+        expires_at=now + timedelta(days=SHOP_OWNER_INVITE_EXPIRY_DAYS),
+    )
+    session.add(invite)
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=tenant.id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="shop_owner_invite_created",
+        event_summary=f"Sent an owner-login invite for '{tenant.name}' ({tenant.slug})",
+    )
+    session.commit()
+    session.refresh(invite)
+    return _shop_owner_invite_read(session, invite)
+
+
+@router.get("/me/sites/{tenant_id}/invite", response_model=Optional[ShopOwnerInviteRead])
+def get_shop_owner_invite(
+    tenant_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """The most recent owner-login invite for a site, if any has ever been sent."""
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+
+    membership = session.exec(
+        select(ParentAccountMembership)
+        .where(ParentAccountMembership.parent_account_id == parent.id)
+        .where(ParentAccountMembership.tenant_id == tenant_id)
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Site is not linked to your account")
+
+    invite = session.exec(
+        select(ShopOwnerInvite)
+        .where(ShopOwnerInvite.tenant_id == tenant_id)
+        .order_by(col(ShopOwnerInvite.created_at).desc())
+    ).first()
+    if not invite:
+        return None
+    return _shop_owner_invite_read(session, invite)
 
 
 @router.post("/me/create-tenant", response_model=ParentAccountSummaryResponse)

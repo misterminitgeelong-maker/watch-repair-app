@@ -296,6 +296,31 @@ class ParentAccountLinkTenantRequest(SQLModel):
     owner_email: str
     shop_number: Optional[str] = Field(default=None, max_length=10)
 
+class ShopOwnerInviteRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    tenant_name: str
+    tenant_slug: str
+    shop_number: Optional[str] = None
+    owner_email: str
+    status: str
+    invite_url: str
+    expires_at: datetime
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+class ShopOwnerInvitePublicRead(SQLModel):
+    tenant_name: str
+    shop_number: Optional[str] = None
+    masked_email: str
+    status: str
+    expires_at: datetime
+
+class ShopOwnerInviteCompleteRequest(SQLModel):
+    full_name: str
+    email: str
+    password: str
+
 class ParentAccountCreateTenantRequest(SQLModel):
     tenant_name: str
     tenant_slug: str

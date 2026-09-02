@@ -219,6 +219,26 @@ class ParentAccountMembership(SQLModel, table=True):
     user_id: UUID = Field(index=True, foreign_key="user.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class ShopOwnerInvite(SQLModel, table=True):
+    """One-time, expiring invite letting a shop owner set their own email/password.
+
+    Provisioned shops start out sharing the HQ owner's credentials (see
+    ``minit_provision.py``); an invite is locked to one specific existing owner
+    ``User`` row at creation time so completion never has to re-guess "the
+    owner" for a tenant that could in principle have more than one.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    owner_user_id: UUID = Field(index=True, foreign_key="user.id")
+    token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    status: str = Field(default="pending", index=True)  # pending | completed | revoked | expired
+    created_by_user_id: UUID = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    completed_at: Optional[datetime] = None
+
 class ShopMobileBookingRequest(SQLModel, table=True):
     """Shop-initiated request for a mobile operator to accept before a job is created."""
 

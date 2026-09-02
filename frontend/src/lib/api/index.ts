@@ -205,6 +205,48 @@ export const createTenantFromParentAccount = (payload: {
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
 
+export interface ShopOwnerInvite {
+  id: string
+  tenant_id: string
+  tenant_name: string
+  tenant_slug: string
+  shop_number?: string | null
+  owner_email: string
+  status: 'pending' | 'completed' | 'revoked' | 'expired'
+  invite_url: string
+  expires_at: string
+  created_at: string
+  completed_at?: string | null
+}
+
+/** Send (or reissue) a one-time invite letting a shop set its own login. */
+export const createShopOwnerInvite = (tenantId: string) =>
+  api.post<ShopOwnerInvite>(`/parent-accounts/me/sites/${tenantId}/invite`, {})
+export const getShopOwnerInvite = (tenantId: string) =>
+  api.get<ShopOwnerInvite | null>(`/parent-accounts/me/sites/${tenantId}/invite`)
+
+export interface ShopOwnerInvitePublic {
+  tenant_name: string
+  shop_number?: string | null
+  masked_email: string
+  status: string
+  expires_at: string
+}
+
+export const getShopOwnerInvitePublic = (token: string) =>
+  api.get<ShopOwnerInvitePublic>(`/public/shop-invite/${token}`)
+export const completeShopOwnerInvite = (
+  token: string,
+  payload: { full_name: string; email: string; password: string },
+) =>
+  api.post<{
+    access_token: string
+    token_type: string
+    expires_in_seconds: number
+    refresh_token?: string
+    refresh_expires_in_seconds?: number
+  }>(`/public/shop-invite/${token}/complete`, payload)
+
 export interface ShopBookingUsageShop {
   tenant_id: string
   tenant_name: string
