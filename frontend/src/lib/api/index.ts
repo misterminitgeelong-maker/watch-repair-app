@@ -205,6 +205,58 @@ export const createTenantFromParentAccount = (payload: {
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
 
+export interface ShopOwnerInvite {
+  id: string
+  tenant_id: string
+  tenant_name: string
+  tenant_slug: string
+  shop_number?: string | null
+  owner_email: string
+  plan_code: PlanCode | string
+  status: 'pending' | 'completed' | 'revoked' | 'expired'
+  invite_url: string
+  expires_at: string
+  created_at: string
+  completed_at?: string | null
+}
+
+/** Curated plan/tier choices meaningful when inviting a Minit shop owner — must match
+ * MINIT_INVITE_PLAN_CODES in backend/app/routes/parent_accounts.py. */
+export const MINIT_INVITE_PLAN_OPTIONS: Array<{ code: PlanCode; label: string }> = [
+  { code: 'booking_only', label: 'Retail shop — booking only' },
+  { code: 'basic_auto_key', label: 'Mobile operator — Basic' },
+  { code: 'pro', label: 'Mobile operator — Pro (multi-site)' },
+]
+
+/** Send (or reissue) a one-time invite letting a shop set its own login.
+ * Pass `planCode` to set the shop's plan/tier at the same time. */
+export const createShopOwnerInvite = (tenantId: string, planCode?: PlanCode | string) =>
+  api.post<ShopOwnerInvite>(`/parent-accounts/me/sites/${tenantId}/invite`, planCode ? { plan_code: planCode } : {})
+export const getShopOwnerInvite = (tenantId: string) =>
+  api.get<ShopOwnerInvite | null>(`/parent-accounts/me/sites/${tenantId}/invite`)
+
+export interface ShopOwnerInvitePublic {
+  tenant_name: string
+  shop_number?: string | null
+  masked_email: string
+  status: string
+  expires_at: string
+}
+
+export const getShopOwnerInvitePublic = (token: string) =>
+  api.get<ShopOwnerInvitePublic>(`/public/shop-invite/${token}`)
+export const completeShopOwnerInvite = (
+  token: string,
+  payload: { full_name: string; email: string; password: string },
+) =>
+  api.post<{
+    access_token: string
+    token_type: string
+    expires_in_seconds: number
+    refresh_token?: string
+    refresh_expires_in_seconds?: number
+  }>(`/public/shop-invite/${token}/complete`, payload)
+
 export interface ShopBookingUsageShop {
   tenant_id: string
   tenant_name: string

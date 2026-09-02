@@ -296,6 +296,39 @@ class ParentAccountLinkTenantRequest(SQLModel):
     owner_email: str
     shop_number: Optional[str] = Field(default=None, max_length=10)
 
+class ShopOwnerInviteCreateRequest(SQLModel):
+    #: Optional plan/tier to set on the tenant when the invite is sent — e.g.
+    #: "booking_only" (retail), "basic_auto_key" (mobile operator, Basic), or
+    #: "pro" (mobile operator, Pro/multi-site). Leave unset to keep the
+    #: tenant's current plan.
+    plan_code: Optional[str] = None
+
+class ShopOwnerInviteRead(SQLModel):
+    id: UUID
+    tenant_id: UUID
+    tenant_name: str
+    tenant_slug: str
+    shop_number: Optional[str] = None
+    owner_email: str
+    plan_code: str
+    status: str
+    invite_url: str
+    expires_at: datetime
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+class ShopOwnerInvitePublicRead(SQLModel):
+    tenant_name: str
+    shop_number: Optional[str] = None
+    masked_email: str
+    status: str
+    expires_at: datetime
+
+class ShopOwnerInviteCompleteRequest(SQLModel):
+    full_name: str
+    email: str
+    password: str
+
 class ParentAccountCreateTenantRequest(SQLModel):
     tenant_name: str
     tenant_slug: str

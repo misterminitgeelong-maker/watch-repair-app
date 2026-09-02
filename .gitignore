@@ -21,6 +21,7 @@ labanda_scraper/browser_profile/
 
 # Local DB files
 *.db
+*.db-journal
 *.db.bak
 *.db.bak-*
 

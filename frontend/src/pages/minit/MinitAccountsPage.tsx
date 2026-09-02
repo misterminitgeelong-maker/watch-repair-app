@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Copy, KeyRound } from 'lucide-react'
 import {
+  createShopOwnerInvite,
   formatTenantLabel,
   getApiErrorMessage,
   linkTenantToParentAccount,
+  MINIT_INVITE_PLAN_OPTIONS,
   provisionMinitShop,
   unlinkTenantFromParentAccount,
+  type ParentAccountSite,
+  type PlanCode,
+  type ShopOwnerInvite,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
@@ -32,6 +38,10 @@ export default function MinitAccountsPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [retailLimit, setRetailLimit] = useState(50)
+  const [inviteTarget, setInviteTarget] = useState<ParentAccountSite | null>(null)
+  const [invitePlanCode, setInvitePlanCode] = useState<PlanCode | string>('')
+  const [inviteResult, setInviteResult] = useState<ShopOwnerInvite | null>(null)
+  const [inviteCopied, setInviteCopied] = useState(false)
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -106,6 +116,19 @@ export default function MinitAccountsPage() {
     onError: err => setError(getApiErrorMessage(err, 'Could not remove shop.')),
   })
 
+  const inviteMut = useMutation({
+    mutationFn: ({ tenantId, planCode }: { tenantId: string; planCode: string }) =>
+      createShopOwnerInvite(tenantId, planCode || undefined).then(r => r.data),
+    onSuccess: invite => {
+      setError('')
+      setInviteCopied(false)
+      setInviteTarget(null)
+      setInviteResult(invite)
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not create an invite link.')),
+  })
+
   if (isLoading) return <Spinner />
 
   async function handleRemove(tenantId: string) {
@@ -115,6 +138,28 @@ export default function MinitAccountsPage() {
       await unlinkMut.mutateAsync(tenantId)
     } finally {
       setRemovingId('')
+    }
+  }
+
+  function openInvite(site: ParentAccountSite) {
+    setError('')
+    const currentPlan = MINIT_INVITE_PLAN_OPTIONS.some(o => o.code === site.plan_code) ? site.plan_code : ''
+    setInvitePlanCode(currentPlan)
+    setInviteTarget(site)
+  }
+
+  function sendInvite() {
+    if (!inviteTarget) return
+    inviteMut.mutate({ tenantId: inviteTarget.tenant_id, planCode: invitePlanCode })
+  }
+
+  async function copyInviteLink() {
+    if (!inviteResult) return
+    try {
+      await navigator.clipboard.writeText(inviteResult.invite_url)
+      setInviteCopied(true)
+    } catch {
+      setInviteCopied(false)
     }
   }
 
@@ -180,14 +225,27 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                className="text-xs px-3 py-1.5"
-                onClick={() => handleRemove(site.tenant_id)}
-                disabled={removingId === site.tenant_id}
-              >
-                {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => openInvite(site)}
+                  title="Choose a plan level and send a link letting this shop set its own email & password"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <KeyRound size={13} />
+                    Invite owner
+                  </span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => handleRemove(site.tenant_id)}
+                  disabled={removingId === site.tenant_id}
+                >
+                  {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
+                </Button>
+              </div>
             </div>
             )
           })}
@@ -227,14 +285,27 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                className="text-xs px-3 py-1.5"
-                onClick={() => handleRemove(site.tenant_id)}
-                disabled={removingId === site.tenant_id}
-              >
-                {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => openInvite(site)}
+                  title="Choose a plan level and send a link letting this shop set its own email & password"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <KeyRound size={13} />
+                    Invite owner
+                  </span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-xs px-3 py-1.5"
+                  onClick={() => handleRemove(site.tenant_id)}
+                  disabled={removingId === site.tenant_id}
+                >
+                  {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
+                </Button>
+              </div>
             </div>
             )
           })}
@@ -270,6 +341,58 @@ export default function MinitAccountsPage() {
               >
                 {provisionMut.isPending || linkMut.isPending ? 'Saving…' : 'Add shop'}
               </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {inviteTarget && (
+        <Modal title="Invite owner" onClose={() => setInviteTarget(null)}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              Choose the account level for {formatTenantLabel(inviteTarget.tenant_name, inviteTarget.shop_number)}{' '}
+              before sending the login invite to <strong>{inviteTarget.owner_email}</strong>.
+            </p>
+            <Select
+              label="Account level"
+              value={invitePlanCode}
+              onChange={e => setInvitePlanCode(e.target.value)}
+            >
+              <option value="">Keep current plan ({inviteTarget.plan_code})</option>
+              {MINIT_INVITE_PLAN_OPTIONS.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.label}</option>
+              ))}
+            </Select>
+            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setInviteTarget(null)}>Cancel</Button>
+              <Button onClick={sendInvite} disabled={inviteMut.isPending}>
+                {inviteMut.isPending ? 'Sending…' : 'Send invite'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {inviteResult && (
+        <Modal title="Invite sent" onClose={() => setInviteResult(null)}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              Share this one-time link with {inviteResult.tenant_name}
+              {inviteResult.shop_number ? ` (#${inviteResult.shop_number})` : ''} — account level{' '}
+              <strong>{MINIT_INVITE_PLAN_OPTIONS.find(o => o.code === inviteResult.plan_code)?.label ?? inviteResult.plan_code}</strong>.
+              It lets <strong>{inviteResult.owner_email}</strong> set their own email &amp; password — it expires{' '}
+              {new Date(inviteResult.expires_at).toLocaleDateString()}.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input readOnly value={inviteResult.invite_url} onFocus={e => e.currentTarget.select()} />
+              <Button variant="secondary" onClick={copyInviteLink} className="px-3 py-2 shrink-0">
+                <Copy size={14} />
+              </Button>
+            </div>
+            {inviteCopied && <p className="text-xs" style={{ color: '#1A6A3A' }}>Copied to clipboard.</p>}
+            <div className="flex justify-end">
+              <Button onClick={() => setInviteResult(null)}>Done</Button>
             </div>
           </div>
         </Modal>
