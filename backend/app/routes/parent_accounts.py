@@ -27,6 +27,8 @@ from ..minit_mobile_operators import (
     load_mobile_operators_seed,
     resolve_mobile_operators,
 )
+from ..minit_directory_import import plan_directory_import
+from ..minit_directory_parser import DirectoryParseError, build_directory, extract_org_graph
 from ..minit_provision import import_minit_mobile_operators, import_minit_shops
 from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
@@ -1261,6 +1263,75 @@ async def import_shops_from_xlsx(
         sheet_name=parsed.sheet_name,
         errors=errors[:100],
     )
+
+
+MAX_IMPORT_DIRECTORY_BYTES = 8 * 1024 * 1024
+_ALLOWED_DIRECTORY_SUFFIXES = frozenset({".html", ".htm"})
+
+
+@router.post("/me/import-directory")
+async def import_directory_export(
+    file: UploadFile = File(...),
+    apply: bool = Query(default=False),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Preview (default) or apply importing shops + real franchisee owners from
+    a Mister Minit "Organisation Graph" directory HTML export (HQ only).
+
+    Preview (apply=false, the default) makes no changes — call again with
+    apply=true, using the same file, once you're happy with the preview."""
+    _require_minit_hq(auth, session)
+    current_user = session.get(User, auth.user_id)
+    if not current_user or not current_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    parent = _get_parent_account_for_user(session, current_user)
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+    suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if f".{suffix}" not in _ALLOWED_DIRECTORY_SUFFIXES:
+        raise HTTPException(status_code=400, detail="Only .html directory exports are supported")
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(raw_bytes) > MAX_IMPORT_DIRECTORY_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum size of {MAX_IMPORT_DIRECTORY_BYTES // (1024 * 1024)} MB",
+        )
+
+    try:
+        html_text = raw_bytes.decode("utf-8")
+        graph = extract_org_graph(html_text)
+        directory = build_directory(graph)
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="File is not valid UTF-8 text") from exc
+    except DirectoryParseError as exc:
+        raise HTTPException(status_code=400, detail=f"Could not read directory export: {exc}") from exc
+
+    summary = plan_directory_import(session, directory, hq_owner_email=current_user.email, apply=apply)
+
+    if apply and summary.get("hq_parent_found"):
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=None,
+            actor_user_id=current_user.id,
+            actor_email=current_user.email,
+            event_type="import_directory",
+            event_summary=(
+                f"Imported directory from {filename}: "
+                f"{summary.get('created_tenant_count', 0)} shops, "
+                f"{summary.get('created_owner_count', 0)} owners, "
+                f"{summary.get('created_franchisee_parent_account_count', 0)} franchisee accounts"
+            ),
+        )
+        session.commit()
+
+    return summary
 
 
 @router.post("/me/import-operators", response_model=ParentImportShopsResponse)

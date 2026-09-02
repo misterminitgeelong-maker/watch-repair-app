@@ -4,6 +4,7 @@ import { formatTenantLabel, type ParentAccountSite } from '@/lib/api'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { MinitShopImport } from '@/components/MinitShopImport'
+import { MinitDirectoryImport } from '@/components/MinitDirectoryImport'
 import { Button, Card, Input, PageHeader, Select } from '@/components/ui'
 
 /** TSS region display order (matches import). */
@@ -229,6 +230,7 @@ export default function MinitShopsPage() {
               <Button variant="secondary">Manage shops</Button>
             </Link>
             <MinitShopImport />
+            <MinitDirectoryImport />
           </div>
         }
       />

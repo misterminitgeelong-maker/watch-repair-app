@@ -298,6 +298,73 @@ export const importParentShopsFromXlsx = (file: File) => {
   })
 }
 
+export interface DirectoryImportEntry {
+  shop_number: string
+  name: string
+  slug: string
+  area: string
+  region: string
+  address: string
+  ownership: string
+  owner_email: string
+  owner_full_name: string
+  owner_source: string
+}
+
+export interface DirectoryImportWarning {
+  kind: string
+  detail: string
+}
+
+export interface DirectoryImportSummary {
+  hq_parent_found: boolean
+  note?: string
+  parent_account_id?: string
+  parent_account_name?: string
+  dry_run?: boolean
+  shops?: {
+    total_in_export: number
+    open: number
+    closed_skipped: number
+    already_exists: number
+    would_create: number
+  }
+  franchisees?: {
+    total_in_export: number
+    single_site: number
+    multi_site: number
+    would_create_parent_accounts: number
+    existing_parent_accounts_reused: number
+  }
+  fallback_to_hq_login?: {
+    company_owned_no_franchisee: number
+    franchisee_missing_email: number
+  }
+  would_create_sample?: DirectoryImportEntry[]
+  would_create_truncated?: boolean
+  already_exists_sample?: DirectoryImportEntry[]
+  already_exists_truncated?: boolean
+  warnings_sample?: DirectoryImportWarning[]
+  warnings_count?: number
+  created_tenant_count?: number
+  created_tenant_slugs?: string[]
+  created_tenant_slugs_truncated?: boolean
+  created_owner_count?: number
+  created_franchisee_parent_account_count?: number
+}
+
+/** Preview (apply=false, default) or apply importing shops + real franchisee owners
+ * from a Mister Minit "Organisation Graph" directory HTML export. */
+export const importMinitDirectory = (file: File, apply: boolean) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<DirectoryImportSummary>('/parent-accounts/me/import-directory', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params: { apply },
+    timeout: 600000,
+  })
+}
+
 export interface ParentDashboardBookingSnippet {
   id: string
   customer_name: string
