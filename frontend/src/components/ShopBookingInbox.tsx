@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   acceptShopMobileBooking,
   declineShopMobileBooking,
@@ -15,6 +15,7 @@ import { formatDate } from '@/lib/utils'
 export default function ShopBookingInbox() {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [error, setError] = useState('')
   const [declineTarget, setDeclineTarget] = useState<ShopMobileBooking | null>(null)
   const [declineReason, setDeclineReason] = useState('')
@@ -52,15 +53,31 @@ export default function ShopBookingInbox() {
     onError: err => setError(getApiErrorMessage(err, 'Could not decline booking.')),
   })
 
+  // Tapping "Accept & quote" in a live booking SMS/email lands here with ?accept_booking=<id>:
+  // accept it immediately rather than making them find it in the list below.
+  const acceptBookingRequested = useRef(false)
+  const acceptBookingParam = searchParams.get('accept_booking')
+  useEffect(() => {
+    if (!acceptBookingParam || acceptBookingRequested.current) return
+    acceptBookingRequested.current = true
+    acceptMut.mutate(acceptBookingParam)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('accept_booking')
+      return next
+    }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptBookingParam])
+
   if (isLoading) return null
-  if (pending.length === 0) return null
+  if (pending.length === 0 && !error) return null
 
   return (
     <Card className="mb-6 p-5">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
           Shop booking requests
-          <Badge variant="warning" className="ml-2">{pending.length}</Badge>
+          {pending.length > 0 && <Badge variant="warning" className="ml-2">{pending.length}</Badge>}
         </h2>
         <Link to="/auto-key" className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
           View all jobs

@@ -243,6 +243,13 @@ class ShopMobileBookingRequest(SQLModel, table=True):
     operator_response_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     decline_reason: Optional[str] = Field(default=None, max_length=2000)
     resulting_auto_key_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id", unique=True)
+    #: Deadline for the target operator to accept before this falls into the shared Dispatch Pool.
+    offer_expires_at: Optional[datetime] = Field(default=None, index=True)
+    #: Geocoded at creation (best-effort) so a pool fallback never needs to re-geocode.
+    job_lat: Optional[float] = None
+    job_lng: Optional[float] = None
+    #: Set once this moved to the pool — the claimable IntakeJob any nearby operator can take.
+    pool_intake_job_id: Optional[UUID] = Field(default=None, foreign_key="intakejob.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ParentAccountEventLog(SQLModel, table=True):
@@ -319,6 +326,8 @@ class ProspectLead(SQLModel, table=True):
     contact_email: Optional[str] = None
     notes: Optional[str] = None
     status: str = Field(default="new")  # new | quote_needed | contacted | follow_up_due | won | lost
+    #: prospected (found via Prospects search) | website_lead (routed from the website enquiry feed)
+    source: str = Field(default="prospected", max_length=20, index=True)
     visit_scheduled_at: Optional[datetime] = None
     next_follow_up_on: Optional[date] = None
     customer_account_id: Optional[UUID] = Field(default=None, index=True)

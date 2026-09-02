@@ -1,4 +1,8 @@
-"""Public webhook: website submits mobile key enquiry → dispatch cascade + inbox alert."""
+"""Public webhook: website submits mobile key enquiry → routed to Lead Inbox + SMS/email alert.
+
+This is an async enquiry, not a live lead — no offer timer, no operator-to-operator cascade.
+Compare shop_mobile_bookings.py, which handles the live, timed "book mobile now" case.
+"""
 
 from uuid import UUID
 
@@ -10,7 +14,7 @@ from ..database import get_session
 from ..limiter import limiter
 from ..models import ParentAccount
 from ..security import verify_password
-from ..services.mobile_lead_dispatch import lead_payload_from_body, start_mobile_lead_dispatch
+from ..services.mobile_lead_dispatch import lead_payload_from_body, route_website_lead_to_prospect
 from ..minit_mobile_routing import AU_STATES, normalize_suburb_name
 
 router = APIRouter(prefix="/v1/public", tags=["mobile-lead-ingest"])
@@ -64,14 +68,15 @@ def ingest_mobile_key_lead(
         raise HTTPException(status_code=400, detail="suburb is required")
 
     payload = lead_payload_from_body(body)
-    dispatch = start_mobile_lead_dispatch(
-        session,
-        parent=parent,
-        payload=payload,
-        suburb=body.suburb.strip(),
-        state_code=st,
-    )
-    if dispatch.status == "failed" and not dispatch.auto_key_job_id:
+    try:
+        lead = route_website_lead_to_prospect(
+            session,
+            parent=parent,
+            payload=payload,
+            suburb=body.suburb.strip(),
+            state_code=st,
+        )
+    except ValueError:
         raise HTTPException(
             status_code=422,
             detail=(
@@ -80,26 +85,10 @@ def ingest_mobile_key_lead(
             ),
         )
     session.commit()
-    session.refresh(dispatch)
-
-    job_id = dispatch.auto_key_job_id
-    tenant_id = dispatch.current_operator_tenant_id
-    message = "Lead dispatched to mobile operator; quote within the configured time window."
-    if dispatch.status == "escalated_hq":
-        message = (
-            "Lead sent to HQ for manual dispatch (testing mode)."
-            if parent.mobile_lead_force_hq_dispatch
-            else (
-                "Outside mobile operator coverage (~100km from nearest hub); "
-                "lead sent to HQ for manual dispatch."
-            )
-        )
+    session.refresh(lead)
 
     return {
-        "dispatch_id": str(dispatch.id),
-        "dispatch_status": dispatch.status,
-        "job_id": str(job_id) if job_id else None,
-        "tenant_id": str(tenant_id) if tenant_id else None,
-        "offer_expires_at": dispatch.offer_expires_at.isoformat() if dispatch.offer_expires_at else None,
-        "message": message,
+        "lead_id": str(lead.id),
+        "tenant_id": str(lead.tenant_id),
+        "message": "Lead added to the operator's Lead Inbox; they've been alerted by SMS and email.",
     }

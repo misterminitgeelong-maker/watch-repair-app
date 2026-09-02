@@ -116,7 +116,18 @@ function LeadCard({ lead }: { lead: InboundLead }) {
       style={{ borderColor: overdue ? '#C96A5A' : 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold text-sm leading-snug" style={{ color: 'var(--ms-text)' }}>{lead.name}</p>
+        <p className="font-semibold text-sm leading-snug flex items-center gap-1.5" style={{ color: 'var(--ms-text)' }}>
+          {lead.name}
+          {lead.source === 'website_lead' && (
+            <span
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
+              style={{ backgroundColor: 'var(--ms-badge-blue-bg)', color: 'var(--ms-badge-blue-text)' }}
+              title="Routed automatically from the website enquiry feed"
+            >
+              Website
+            </span>
+          )}
+        </p>
         {lead.next_follow_up_on && (
           <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: overdue ? '#C96A5A' : 'var(--ms-text-muted)' }}>
             {overdue ? 'Due ' : 'Follow-up '}

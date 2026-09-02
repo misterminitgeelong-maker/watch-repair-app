@@ -148,6 +148,23 @@ def _mobile_lead_dispatch_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _shop_mobile_booking_pool_loop() -> None:
+    """Move overdue live shop booking offers into the shared Dispatch Pool."""
+    pool_logger = logging.getLogger("mainspring.shop_mobile_booking_pool")
+    interval_seconds = max(settings.shop_mobile_booking_check_interval_minutes, 1) * 60
+    from .routes.shop_mobile_bookings import process_due_shop_mobile_bookings
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = process_due_shop_mobile_bookings(session)
+            if summary.get("moved_to_pool") or summary.get("expired"):
+                pool_logger.info("Shop mobile booking pool sweep: %s", summary)
+        except Exception:
+            pool_logger.exception("Shop mobile booking pool sweep failed.")
+        time.sleep(interval_seconds)
+
+
 def _sales_report_email_loop() -> None:
     """Send opted-in weekly/monthly sales-by-category report emails once each period ends."""
     report_logger = logging.getLogger("mainspring.sales_report_email")
@@ -217,6 +234,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_mobile_lead_dispatch_loop,
             name="mainspring-mobile-lead-dispatch",
+            daemon=True,
+        ).start()
+    if settings.shop_mobile_booking_pool_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_shop_mobile_booking_pool_loop,
+            name="mainspring-shop-mobile-booking-pool",
             daemon=True,
         ).start()
     if settings.sales_report_email_enabled and settings.app_env != "test":

@@ -8,11 +8,11 @@ This keeps the app fully functional in development without a Twilio account.
 import logging
 from uuid import UUID
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from .config import settings
 from .datetime_utils import format_in_timezone
-from .models import JobMessage, SmsLog, Tenant
+from .models import JobMessage, SmsLog, Tenant, User
 
 logger = logging.getLogger(__name__)
 
@@ -671,6 +671,74 @@ def operator_dispatch_phone(tenant: Tenant | None) -> str | None:
     return str(raw).strip()
 
 
+def operator_dispatch_email(session: Session, tenant: Tenant | None) -> str | None:
+    """Best email for operator dispatch alerts: shop email, else the tenant owner's login email."""
+    if not tenant:
+        return None
+    shop_email = (getattr(tenant, "shop_email", None) or "").strip()
+    if shop_email:
+        return shop_email
+    owner = session.exec(
+        select(User)
+        .where(User.tenant_id == tenant.id)
+        .where(User.role == "owner")
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(User.created_at)
+    ).first()
+    return owner.email.strip() if owner and owner.email else None
+
+
+def notify_website_lead_alert(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    customer_phone: str | None,
+    suburb: str,
+    state_code: str,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    registration_plate: str | None,
+    inbox_url: str,
+) -> bool:
+    """SMS operator when a website enquiry (email, not a live lead) is routed to their Lead Inbox.
+
+    No timer, no cascade — this is a one-time FYI, unlike a live shop booking offer.
+    """
+    lines = ["New lead in your Lead Inbox."]
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    lines.append(f"Customer: {cust_line}")
+    lines.append(f"Location: {suburb.strip()} {state_code.strip().upper()}")
+
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
+    if registration_plate and registration_plate.strip():
+        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
+    if veh:
+        lines.append(f"Vehicle: {veh}")
+
+    lines.append(f"Lead Inbox: {inbox_url}")
+
+    body = "\n".join(lines)
+    if len(body) > 1500:
+        body = body[:1490] + "…"
+
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="website_lead_alert",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
 def notify_mobile_lead_offer(
     session: Session,
     *,
@@ -741,13 +809,16 @@ def notify_shop_mobile_booking_request(
     preferred_scheduled_at,
     job_type: str | None,
     notes: str | None,
+    accept_url: str | None = None,
+    timeout_minutes: int | None = None,
 ) -> bool:
     """SMS operator when a shop submits a pending mobile booking request."""
     from datetime import datetime
 
     shop = shop_name.strip() or "A shop"
     visit = "At shop" if visit_location_type == "at_shop" else "Customer site"
-    lines = [f"New shop booking from {shop} — review in app."]
+    urgency = f" — accept within {timeout_minutes} min or it opens to the Dispatch Pool." if timeout_minutes else " — review in app."
+    lines = [f"New shop booking from {shop}{urgency}"]
     cust_line = customer_name.strip()
     if customer_phone and customer_phone.strip():
         cust_line += f" · {customer_phone.strip()}"
@@ -785,8 +856,8 @@ def notify_shop_mobile_booking_request(
         n = notes.strip()
         lines.append(f"Notes: {n[:120]}{'…' if len(n) > 120 else ''}")
 
-    inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key"
-    lines.append(f"Open: {inbox_url}")
+    link = (accept_url or "").strip() or f"{settings.public_base_url.rstrip('/')}/auto-key"
+    lines.append(f"Accept: {link}")
 
     body = "\n".join(lines)
     if len(body) > 1500:
@@ -886,6 +957,34 @@ def notify_shop_mobile_booking_expired(
         to_phone=to_phone,
         body=body,
         event="shop_mobile_booking_expired",
+        provider_sid=sid,
+        status="sent" if sid else "dry_run",
+    )
+    return sid is not None
+
+
+def notify_shop_mobile_booking_moved_to_pool(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    operator_name: str,
+) -> bool:
+    """SMS the requesting shop when the assigned operator missed the offer window and it opened to the Dispatch Pool."""
+    body = (
+        f"{shop_name}: {operator_name.strip()} didn't respond in time for {customer_name.strip()}'s booking, "
+        f"so it's now open in the Dispatch Pool for any nearby operator to claim."
+    )
+    sid = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_moved_to_pool",
         provider_sid=sid,
         status="sent" if sid else "dry_run",
     )

@@ -160,6 +160,10 @@ class Settings(BaseSettings):
     mobile_lead_dispatch_enabled: bool = True
     mobile_lead_dispatch_check_interval_minutes: int = 5
 
+    # Shop-to-shop live booking requests: assigned operator offer → timeout → shared Dispatch Pool.
+    shop_mobile_booking_pool_enabled: bool = True
+    shop_mobile_booking_check_interval_minutes: int = 2
+
     # Scheduled weekly/monthly sales-by-category report emails (opt-in per user).
     sales_report_email_enabled: bool = True
     sales_report_check_interval_minutes: int = 60

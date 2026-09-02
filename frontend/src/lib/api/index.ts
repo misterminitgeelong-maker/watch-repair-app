@@ -384,7 +384,7 @@ export const getParentTroubleshooting = (limit = 50) =>
   })
 
 // ── Shop mobile operator bookings ─────────────────────────────────────────────
-export type ShopMobileBookingStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
+export type ShopMobileBookingStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'moved_to_pool'
 export type ShopMobileVisitLocationType = 'customer_site' | 'at_shop'
 
 export interface ShopMobileOperatorOption {
@@ -429,6 +429,8 @@ export interface ShopMobileBooking {
   job_status?: string | null
   job_scheduled_at?: string | null
   schedule_conflict_warning?: string | null
+  offer_expires_at?: string | null
+  pool_intake_job_id?: string | null
   created_at: string
 }
 
@@ -2668,6 +2670,8 @@ export interface InboundLead {
   contact_email?: string | null
   notes?: string | null
   status: InboundLeadStatus
+  /** 'prospected' (found via Prospects search) | 'website_lead' (routed from the website enquiry feed) */
+  source?: string
   next_follow_up_on?: string | null
   visit_scheduled_at?: string | null
   customer_account_id?: string | null

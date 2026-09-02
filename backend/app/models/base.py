@@ -73,7 +73,7 @@ PlanCode = Literal[
     "minit_hq",
     "pro",
 ]
-ShopMobileBookingStatus = Literal["pending", "accepted", "declined", "cancelled", "expired"]
+ShopMobileBookingStatus = Literal["pending", "accepted", "declined", "cancelled", "expired", "moved_to_pool"]
 ShopMobileVisitLocationType = Literal["customer_site", "at_shop"]
 AutoKeyProgrammingStatus = Literal["pending", "in_progress", "programmed", "failed", "not_required"]
 CustomerAccountSourceType = Literal["watch", "shoe", "auto_key"]

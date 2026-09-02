@@ -7,7 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
+from ..config import settings
 from ..database import get_session
+from ..dispatch_utils import geocode_address
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -16,12 +18,14 @@ from ..dependencies import (
     normalize_plan_code,
     require_feature,
 )
+from .. import email_client
 from .. import sms as sms_service
 from ..shop_number import format_tenant_label
 from ..models import (
     AutoKeyJob,
     Customer,
     CustomerAccountMembership,
+    IntakeJob,
     MobileSuburbRoute,
     ParentAccount,
     ParentAccountEventLog,
@@ -42,7 +46,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/shop-mobile-bookings", tags=["shop-mobile-bookings"])
 
 AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
-PENDING_EXPIRY_DAYS = 7
+#: Live lead — the customer is waiting. If the assigned operator doesn't respond in time,
+#: the job opens to the shared Dispatch Pool for any nearby operator to claim.
+SHOP_BOOKING_OFFER_TIMEOUT_MINUTES = 15
 
 
 def _normalize_suburb(name: str) -> str:
@@ -184,6 +190,15 @@ def _notify_shop_booking_outcome(
                 customer_name=row.customer_name,
                 operator_name=op_label,
             )
+        elif outcome == "moved_to_pool":
+            sms_service.notify_shop_mobile_booking_moved_to_pool(
+                session,
+                tenant_id=row.requesting_tenant_id,
+                to_phone=to_phone,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                operator_name=op_label,
+            )
     except Exception:  # noqa: BLE001
         logger.warning(
             "shop_mobile_booking.shop_notify_failed booking=%s outcome=%s",
@@ -260,17 +275,53 @@ def _find_or_create_customer(
     return c
 
 
-def _maybe_expire_pending(session: Session, row: ShopMobileBookingRequest) -> bool:
-    if row.status != "pending":
+def _next_intake_job_would_dup(session: Session, row: ShopMobileBookingRequest) -> bool:
+    """Guard against a double-move if two requests race on the same overdue row."""
+    return bool(row.pool_intake_job_id) or row.status != "pending"
+
+
+def _maybe_move_pending_to_pool(session: Session, row: ShopMobileBookingRequest) -> bool:
+    """Once the offer window passes with no response, open the job to the shared Dispatch
+    Pool (any nearby operator can claim it) rather than leaving it stuck with one operator.
+    Falls back to a plain "expired" if the address couldn't be geocoded at creation time.
+    """
+    if row.status != "pending" or not row.offer_expires_at:
         return False
-    created = row.created_at
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    if created + timedelta(days=PENDING_EXPIRY_DAYS) >= datetime.now(timezone.utc):
+    expires = row.offer_expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires > datetime.now(timezone.utc):
         return False
-    row.status = "expired"
-    session.add(row)
-    _notify_shop_booking_outcome(session, row, outcome="expired")
+    if _next_intake_job_would_dup(session, row):
+        return False
+
+    if row.job_lat is not None and row.job_lng is not None:
+        shop = session.get(Tenant, row.requesting_tenant_id)
+        shop_label = format_tenant_label(shop.name if shop else "A shop", shop.shop_number if shop else None)
+        intake = IntakeJob(
+            customer_name=row.customer_name,
+            customer_phone=row.phone,
+            customer_email=row.email,
+            job_address=row.job_address,
+            job_lat=row.job_lat,
+            job_lng=row.job_lng,
+            vehicle_make=row.vehicle_make,
+            vehicle_model=row.vehicle_model,
+            registration_plate=row.registration_plate,
+            description=f"Shop booking from {shop_label} — no response within the offer window.",
+            status="unclaimed",
+            current_ring=1,
+        )
+        session.add(intake)
+        session.flush()
+        row.status = "moved_to_pool"
+        row.pool_intake_job_id = intake.id
+        session.add(row)
+        _notify_shop_booking_outcome(session, row, outcome="moved_to_pool")
+    else:
+        row.status = "expired"
+        session.add(row)
+        _notify_shop_booking_outcome(session, row, outcome="expired")
     return True
 
 
@@ -354,6 +405,8 @@ def _to_read(
         job_status=job_status,
         job_scheduled_at=job_scheduled_at,
         schedule_conflict_warning=schedule_conflict_warning,
+        offer_expires_at=row.offer_expires_at,
+        pool_intake_job_id=row.pool_intake_job_id,
         created_at=row.created_at,
     )
 
@@ -425,7 +478,7 @@ def suggest_operator(
 
 
 @router.post("", response_model=ShopMobileBookingRead, status_code=201)
-def create_booking(
+async def create_booking(
     body: ShopMobileBookingCreate,
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
     session: Session = Depends(get_session),
@@ -454,6 +507,16 @@ def create_booking(
         elif shop and not job_address:
             job_address = f"{shop.name} (shop location)"
 
+    # Best-effort geocode now so a missed-offer fallback into the Dispatch Pool never has to
+    # re-geocode later (and never blocks a booking on a flaky geocoder — falls straight to
+    # "expired" if this comes back empty).
+    job_lat: float | None = None
+    job_lng: float | None = None
+    try:
+        job_lat, job_lng = await geocode_address(job_address)
+    except Exception:  # noqa: BLE001
+        logger.info("shop_mobile_booking.geocode_failed address=%s", job_address, exc_info=True)
+
     row = ShopMobileBookingRequest(
         parent_account_id=parent_id,
         requesting_tenant_id=auth.tenant_id,
@@ -474,6 +537,9 @@ def create_booking(
         preferred_scheduled_at=body.preferred_scheduled_at,
         job_type=body.job_type.strip()[:120] if body.job_type else None,
         notes=body.notes.strip()[:4000] if body.notes else None,
+        offer_expires_at=datetime.now(timezone.utc) + timedelta(minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES),
+        job_lat=job_lat,
+        job_lng=job_lng,
     )
     session.add(row)
     session.flush()
@@ -506,6 +572,7 @@ def create_booking(
     session.refresh(row)
 
     operator = session.get(Tenant, operator_tid)
+    accept_url = f"{settings.public_base_url.rstrip('/')}/auto-key?accept_booking={row.id}"
     dispatch_phone = sms_service.operator_dispatch_phone(operator)
     if dispatch_phone:
         try:
@@ -524,11 +591,35 @@ def create_booking(
                 preferred_scheduled_at=row.preferred_scheduled_at,
                 job_type=row.job_type,
                 notes=row.notes,
+                accept_url=accept_url,
+                timeout_minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES,
             )
             session.commit()
         except Exception:  # noqa: BLE001
             logger.warning(
                 "shop_mobile_booking.dispatch_sms_failed booking=%s operator=%s",
+                row.id,
+                operator_tid,
+                exc_info=True,
+            )
+
+    operator_email = sms_service.operator_dispatch_email(session, operator)
+    if operator_email:
+        try:
+            ok, err = email_client.send_shop_mobile_booking_email(
+                to_email=operator_email,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                customer_phone=row.phone,
+                job_address=row.job_address,
+                accept_url=accept_url,
+                timeout_minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES,
+            )
+            if not ok and err:
+                logger.info("shop_mobile_booking.dispatch_email_failed booking=%s err=%s", row.id, err)
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "shop_mobile_booking.dispatch_email_failed booking=%s operator=%s",
                 row.id,
                 operator_tid,
                 exc_info=True,
@@ -562,7 +653,7 @@ def list_bookings(
     rows = session.exec(q).all()
     expired_any = False
     for r in rows:
-        if _maybe_expire_pending(session, r):
+        if _maybe_move_pending_to_pool(session, r):
             expired_any = True
     if expired_any:
         session.commit()
@@ -584,7 +675,7 @@ def get_booking(
 ):
     row = _get_booking_or_404(session, booking_id)
     _assert_can_view(auth, row)
-    if _maybe_expire_pending(session, row):
+    if _maybe_move_pending_to_pool(session, row):
         session.commit()
         session.refresh(row)
     return _to_read(session, row)
@@ -668,7 +759,7 @@ def accept_booking(
         raise HTTPException(status_code=403, detail="Only the target operator can accept")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending requests can be accepted")
-    if _maybe_expire_pending(session, row):
+    if _maybe_move_pending_to_pool(session, row):
         session.commit()
         raise HTTPException(status_code=400, detail="Booking request has expired")
 
@@ -783,3 +874,22 @@ def accept_booking(
     _notify_shop_booking_outcome(session, row, outcome="accepted")
     session.commit()
     return _to_read(session, row, schedule_conflict_warning=conflict_warning)
+
+
+def process_due_shop_mobile_bookings(session: Session) -> dict[str, int]:
+    """Background sweep: move overdue pending shop bookings into the shared Dispatch Pool."""
+    now = datetime.now(timezone.utc)
+    rows = session.exec(
+        select(ShopMobileBookingRequest)
+        .where(ShopMobileBookingRequest.status == "pending")
+        .where(ShopMobileBookingRequest.offer_expires_at.is_not(None))  # type: ignore[union-attr]
+        .where(ShopMobileBookingRequest.offer_expires_at <= now)
+    ).all()
+
+    summary = {"checked": len(rows), "moved_to_pool": 0, "expired": 0}
+    for row in rows:
+        if _maybe_move_pending_to_pool(session, row):
+            summary[row.status if row.status in summary else "expired"] += 1
+    if summary["checked"]:
+        session.commit()
+    return summary
