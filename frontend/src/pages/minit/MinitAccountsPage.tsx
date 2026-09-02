@@ -378,12 +378,23 @@ export default function MinitAccountsPage() {
         <Modal title="Invite sent" onClose={() => setInviteResult(null)}>
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-              Share this one-time link with {inviteResult.tenant_name}
+              For {inviteResult.tenant_name}
               {inviteResult.shop_number ? ` (#${inviteResult.shop_number})` : ''} — account level{' '}
               <strong>{MINIT_INVITE_PLAN_OPTIONS.find(o => o.code === inviteResult.plan_code)?.label ?? inviteResult.plan_code}</strong>.
               It lets <strong>{inviteResult.owner_email}</strong> set their own email &amp; password — it expires{' '}
               {new Date(inviteResult.expires_at).toLocaleDateString()}.
             </p>
+            {inviteResult.email_sent || inviteResult.sms_sent ? (
+              <p className="text-sm rounded-lg px-3 py-2" style={{ color: '#1A6A3A', backgroundColor: '#EBF8EF' }}>
+                Sent to {inviteResult.owner_email}
+                {inviteResult.sms_sent ? ` and ${inviteResult.owner_mobile} by text` : ''} automatically.
+              </p>
+            ) : (
+              <p className="text-sm rounded-lg px-3 py-2" style={{ color: '#8A5010', backgroundColor: '#FFF8EE' }}>
+                Couldn&rsquo;t send automatically{inviteResult.owner_mobile ? '' : ' (no mobile on file for SMS)'} — share
+                the link below yourself.
+              </p>
+            )}
             <div className="flex items-center gap-2">
               <Input readOnly value={inviteResult.invite_url} onFocus={e => e.currentTarget.select()} />
               <Button variant="secondary" onClick={copyInviteLink} className="px-3 py-2 shrink-0">

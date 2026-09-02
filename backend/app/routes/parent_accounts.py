@@ -1,6 +1,7 @@
 from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 import json
+import logging
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -9,6 +10,8 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select
 
+from .. import email_client
+from .. import sms as sms_service
 from ..database import get_session
 from ..dependencies import (
     AuthContext,
@@ -969,7 +972,55 @@ MINIT_INVITE_PLAN_CODES: dict[str, str] = {
 }
 
 
-def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOwnerInviteRead:
+def _send_shop_owner_invite_notifications(
+    session: Session,
+    *,
+    invite: ShopOwnerInvite,
+    tenant: Tenant,
+    owner: User,
+) -> tuple[bool, bool]:
+    """Best-effort: text and/or email the invite link to the franchisee. Never
+    raises — a delivery failure shouldn't undo an invite that's already
+    created; HQ can still copy the link from the response either way."""
+    invite_url = f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}"
+    email_sent = False
+    sms_sent = False
+    try:
+        email_sent, _ = email_client.send_shop_owner_invite_email(
+            to_email=owner.email,
+            owner_full_name=owner.full_name,
+            tenant_name=tenant.name,
+            shop_number=tenant.shop_number,
+            invite_url=invite_url,
+            expiry_days=SHOP_OWNER_INVITE_EXPIRY_DAYS,
+            session=session,
+            tenant_id=tenant.id,
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to send shop-owner invite email for tenant %s", tenant.id)
+    if (owner.mobile or "").strip():
+        try:
+            sms_sent = sms_service.notify_shop_owner_invite(
+                session,
+                tenant_id=tenant.id,
+                to_phone=owner.mobile,
+                tenant_name=tenant.name,
+                shop_number=tenant.shop_number,
+                invite_url=invite_url,
+                expiry_days=SHOP_OWNER_INVITE_EXPIRY_DAYS,
+            )
+        except Exception:
+            logging.getLogger(__name__).exception("Failed to send shop-owner invite SMS for tenant %s", tenant.id)
+    return email_sent, sms_sent
+
+
+def _shop_owner_invite_read(
+    session: Session,
+    invite: ShopOwnerInvite,
+    *,
+    email_sent: bool = False,
+    sms_sent: bool = False,
+) -> ShopOwnerInviteRead:
     tenant = session.get(Tenant, invite.tenant_id)
     owner = session.get(User, invite.owner_user_id)
     return ShopOwnerInviteRead(
@@ -979,12 +1030,15 @@ def _shop_owner_invite_read(session: Session, invite: ShopOwnerInvite) -> ShopOw
         tenant_slug=tenant.slug if tenant else "",
         shop_number=tenant.shop_number if tenant else None,
         owner_email=owner.email if owner else "",
+        owner_mobile=owner.mobile if owner else None,
         plan_code=tenant.plan_code if tenant else "",
         status=invite.status,
         invite_url=f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}",
         expires_at=invite.expires_at,
         created_at=invite.created_at,
         completed_at=invite.completed_at,
+        email_sent=email_sent,
+        sms_sent=sms_sent,
     )
 
 
@@ -1079,7 +1133,11 @@ def create_shop_owner_invite(
     )
     session.commit()
     session.refresh(invite)
-    return _shop_owner_invite_read(session, invite)
+
+    email_sent, sms_sent = _send_shop_owner_invite_notifications(session, invite=invite, tenant=tenant, owner=owner_user)
+    session.commit()
+
+    return _shop_owner_invite_read(session, invite, email_sent=email_sent, sms_sent=sms_sent)
 
 
 @router.get("/me/sites/{tenant_id}/invite", response_model=Optional[ShopOwnerInviteRead])

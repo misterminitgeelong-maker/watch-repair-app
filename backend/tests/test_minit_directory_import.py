@@ -137,8 +137,10 @@ def _shop(number, *, status="Open", ownership="Franchised", franchisee_id=None, 
     )
 
 
-def _franchisee(slug, full_name, email, shop_ids):
-    f = DirectoryFranchisee(id=f"franchisee:{slug}", full_name=full_name, business_name=full_name, email=email)
+def _franchisee(slug, full_name, email, shop_ids, mobile=""):
+    f = DirectoryFranchisee(
+        id=f"franchisee:{slug}", full_name=full_name, business_name=full_name, email=email, mobile=mobile
+    )
     f.shop_ids = list(shop_ids)
     return f
 
@@ -322,3 +324,54 @@ def test_apply_is_idempotent():
             select(ParentAccount).where(ParentAccount.owner_email == "idempotent@example.com")
         ).all()
         assert len(own_parent) == 1  # not duplicated on re-run
+
+
+def test_apply_stores_franchisee_mobile_on_new_owner():
+    hq_email = _fresh_hq()
+    shop = _shop("2701")
+    franchisee = _franchisee("mobile-owner", "Mobile Owner", "mobile.owner@example.com", ["shop:2701"], mobile="+61400555111")
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        tenant = session.exec(select(Tenant).where(Tenant.shop_number == "2701")).first()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).first()
+        assert owner.mobile == "+61400555111"
+
+
+def test_apply_backfills_mobile_on_an_existing_owner_missing_one():
+    hq_email = _fresh_hq()
+    shop = _shop("2801")
+    franchisee = _franchisee("backfill-owner", "Backfill Owner", "backfill@example.com", ["shop:2801"])
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        # First run: no mobile in the export yet.
+        result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["backfilled_mobile_count"] == 0
+        tenant = session.exec(select(Tenant).where(Tenant.shop_number == "2801")).first()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).first()
+        assert owner.mobile is None
+        original_password_hash = owner.password_hash
+        original_email = owner.email
+
+    # A later export adds the franchisee's mobile — re-running should fill the
+    # gap on the existing owner without touching their email/password.
+    franchisee.mobile = "+61400777222"
+    with Session(engine) as session:
+        result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["backfilled_mobile_count"] == 1
+        assert result["created_owner_count"] == 0
+
+        tenant = session.exec(select(Tenant).where(Tenant.shop_number == "2801")).first()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).first()
+        assert owner.mobile == "+61400777222"
+        assert owner.email == original_email
+        assert owner.password_hash == original_password_hash
+
+    # Re-running again is a no-op — the gap is already filled.
+    with Session(engine) as session:
+        result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["backfilled_mobile_count"] == 0

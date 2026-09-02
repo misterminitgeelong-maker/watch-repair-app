@@ -212,12 +212,16 @@ export interface ShopOwnerInvite {
   tenant_slug: string
   shop_number?: string | null
   owner_email: string
+  owner_mobile?: string | null
   plan_code: PlanCode | string
   status: 'pending' | 'completed' | 'revoked' | 'expired'
   invite_url: string
   expires_at: string
   created_at: string
   completed_at?: string | null
+  /** Set on the create response only — whether that call just sent the link. */
+  email_sent?: boolean
+  sms_sent?: boolean
 }
 
 /** Curated plan/tier choices meaningful when inviting a Minit shop owner — must match

@@ -253,6 +253,7 @@ def plan_directory_import(
     created_tenant_slugs: list[str] = []
     created_owner_count = 0
     created_franchisee_parent_count = 0
+    backfilled_mobile_count = 0
     franchisee_parents: dict[str, ParentAccount] = {}
     # tenant_ids already linked to each ParentAccount we touch, keyed by parent
     # id — lets _link_tenant_to_parent skip its existence-check query.
@@ -302,6 +303,7 @@ def plan_directory_import(
             tenants_by_number[shop.shop_number] = tenant
             created_tenant_slugs.append(tenant.slug)
 
+            owner_mobile = (franchisee.mobile or "").strip() if (franchisee and identity.fallback_reason is None) else ""
             owner = User(
                 tenant_id=tenant.id,
                 email=identity.email,
@@ -309,6 +311,7 @@ def plan_directory_import(
                 role="owner",
                 password_hash=_new_placeholder_password_hash(),
                 is_active=True,
+                mobile=owner_mobile or None,
             )
             session.add(owner)
             created_owner_count += 1
@@ -328,6 +331,17 @@ def plan_directory_import(
             owner = existing_owner_by_tenant_id.get(tenant.id)
             if owner is None:
                 continue
+            # Mobile is contact metadata, not a credential — safe to fill in
+            # even for an existing owner, unlike email/password/full_name.
+            if (
+                not (owner.mobile or "").strip()
+                and franchisee is not None
+                and identity.fallback_reason is None
+                and (franchisee.mobile or "").strip()
+            ):
+                owner.mobile = franchisee.mobile.strip()
+                session.add(owner)
+                backfilled_mobile_count += 1
 
         if franchisee is not None and franchisee.is_multi_site and identity.fallback_reason is None:
             fp = franchisee_parents.get(franchisee.email)
@@ -357,4 +371,5 @@ def plan_directory_import(
     result["created_tenant_slugs_truncated"] = len(created_tenant_slugs) > 50
     result["created_owner_count"] = created_owner_count
     result["created_franchisee_parent_account_count"] = created_franchisee_parent_count
+    result["backfilled_mobile_count"] = backfilled_mobile_count
     return result

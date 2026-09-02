@@ -796,6 +796,39 @@ def notify_mobile_lead_offer(
     return sid is not None
 
 
+def notify_shop_owner_invite(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    tenant_name: str,
+    shop_number: str | None,
+    invite_url: str,
+    expiry_days: int,
+) -> bool:
+    """Text a franchisee their one-time link to set up their own shop login."""
+    shop_label = tenant_name.strip()
+    if shop_number:
+        shop_label += f" (#{shop_number})"
+    body = (
+        f"Mister Minit: set up your own login for {shop_label} "
+        f"(replaces the shared HQ login) — {invite_url} "
+        f"— link expires in {expiry_days} days."
+    )
+    sid, sms_status = _send_sms(to_phone, body)
+    _persist(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_owner_invite",
+        provider_sid=sid,
+        status=sms_status,
+    )
+    return sid is not None
+
+
 def notify_shop_mobile_booking_request(
     session: Session,
     *,
