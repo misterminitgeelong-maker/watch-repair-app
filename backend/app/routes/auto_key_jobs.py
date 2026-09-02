@@ -15,7 +15,7 @@ from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..gst import compute_gst_amounts
-from ..services.mobile_lead_dispatch import complete_dispatch_if_quoted
+from ..services.mobile_lead_dispatch import accept_lead_offer, complete_dispatch_if_quoted
 from ..models import (
     Attachment,
     AutoKeyJob,
@@ -673,6 +673,31 @@ def get_quote_suggestions(
             for i, (desc, qty, unit) in enumerate(items)
         ],
     }
+
+
+@router.post("/{job_id}/accept-lead-offer")
+def accept_lead_offer_route(
+    job_id: UUID,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Operator taps Accept from the SMS/email dispatch offer — locks the job to them and
+    stops the countdown before they build the quote."""
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Auto key job not found")
+    try:
+        dispatch = accept_lead_offer(session, job_id=job_id, tenant_id=auth.tenant_id)
+    except ValueError as exc:
+        if str(exc) == "not_a_dispatch_lead":
+            if job.status == "failed_job":
+                # Offer timed out and moved to the next operator (or HQ) before this tap landed.
+                return {"ok": True, "accepted": False, "expired": True}
+            # Not every job comes from the dispatch cascade — nothing to accept, not an error.
+            return {"ok": True, "accepted": False}
+        raise HTTPException(status_code=403, detail="This offer is not assigned to your team")
+    logger.info("auto_key_job.lead_offer_accepted tenant=%s job=%s", auth.tenant_id, job_id)
+    return {"ok": True, "accepted": True, "accepted_at": dispatch.accepted_at}
 
 
 @router.post("/{job_id}/arrival-sms")

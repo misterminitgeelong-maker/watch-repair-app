@@ -686,6 +686,7 @@ def notify_mobile_lead_offer(
     registration_plate: str | None,
     job_number: str,
     timeout_minutes: int = 30,
+    accept_url: str | None = None,
 ) -> bool:
     """SMS operator when a website lead is assigned for quoting."""
     lines = [f"New website lead — quote within {timeout_minutes} min."]
@@ -702,8 +703,8 @@ def notify_mobile_lead_offer(
         lines.append(f"Vehicle: {veh}")
 
     lines.append(f"Job #{job_number}")
-    inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key"
-    lines.append(f"Quote in app: {inbox_url}")
+    link = (accept_url or "").strip() or f"{settings.public_base_url.rstrip('/')}/auto-key"
+    lines.append(f"Accept & quote: {link}")
 
     body = "\n".join(lines)
     if len(body) > 1500:

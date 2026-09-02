@@ -262,6 +262,67 @@ def send_mobile_quote_email(
     )
 
 
+def send_mobile_lead_offer_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    customer_phone: str | None,
+    suburb: str,
+    state_code: str,
+    vehicle_make: str | None,
+    vehicle_model: str | None,
+    registration_plate: str | None,
+    job_number: str,
+    accept_url: str,
+    timeout_minutes: int = 30,
+) -> tuple[bool, str | None]:
+    """Email the current operator when a website lead is offered to them for quoting."""
+    if not (to_email or "").strip():
+        return False, None
+    cust_line = customer_name.strip()
+    if customer_phone and customer_phone.strip():
+        cust_line += f" · {customer_phone.strip()}"
+    veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
+    if registration_plate and registration_plate.strip():
+        veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
+    location = f"{suburb.strip()} {state_code.strip().upper()}"
+
+    subject = f"New lead — quote within {timeout_minutes} min ({location})"
+    body_plain = (
+        f"New website lead — job #{job_number}.\n\n"
+        f"Customer: {cust_line}\n"
+        f"Location: {location}\n"
+        + (f"Vehicle: {veh}\n" if veh else "")
+        + f"\nYou have {timeout_minutes} minutes to accept before this offers to the next operator.\n\n"
+        f"Accept & quote: {accept_url}\n"
+    )
+    detail_lines = [f"<strong>Customer:</strong> {_html.escape(cust_line)}", f"<strong>Location:</strong> {_html.escape(location)}"]
+    if veh:
+        detail_lines.append(f"<strong>Vehicle:</strong> {_html.escape(veh)}")
+    intro_html = (
+        f"A new website lead needs a quote — <strong>job #{_html.escape(job_number)}</strong>. "
+        f"You have <strong>{timeout_minutes} minutes</strong> to accept before it offers to the next operator.<br><br>"
+        + "<br>".join(detail_lines)
+    )
+    body_html = render_transactional_email(
+        title=f"New lead · Job #{job_number}",
+        preheader=f"Quote within {timeout_minutes} min — {location}",
+        greeting="New lead offered to you",
+        intro_html=intro_html,
+        shop=ShopInfo(name="Mobile Services"),
+        cta_label="Accept & quote",
+        cta_url=accept_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mobile Services",
+        event="mobile_lead_offer",
+    )
+
+
 def send_mobile_invoice_email(
     *,
     to_email: str,

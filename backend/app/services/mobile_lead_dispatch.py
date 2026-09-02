@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Session, func, select
 
+from ..config import settings
 from ..dependencies import PLAN_FEATURES, AuthContext, enforce_plan_limit, normalize_plan_code
 from ..minit_mobile_routing import (
     candidate_operator_ids_json,
@@ -30,7 +31,9 @@ from ..models import (
     ParentAccountMembership,
     Tenant,
     TenantEventLog,
+    User,
 )
+from .. import email_client
 from .. import sms as sms_service
 
 logger = logging.getLogger(__name__)
@@ -316,27 +319,102 @@ def _create_job_for_dispatch(
     return job
 
 
+def _operator_dispatch_email(session: Session, tenant: Tenant) -> str | None:
+    """Best email for operator dispatch alerts: shop email, else the tenant owner's login email."""
+    shop_email = (getattr(tenant, "shop_email", None) or "").strip()
+    if shop_email:
+        return shop_email
+    owner = session.exec(
+        select(User)
+        .where(User.tenant_id == tenant.id)
+        .where(User.role == "owner")
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(User.created_at)
+    ).first()
+    return owner.email.strip() if owner and owner.email else None
+
+
 def _notify_operator_offer(session: Session, dispatch: MobileLeadDispatch, job: AutoKeyJob, tenant: Tenant) -> None:
-    phone = sms_service.operator_dispatch_phone(tenant)
-    if not phone:
-        logger.info("mobile_lead_dispatch.no_dispatch_phone tenant=%s dispatch=%s", tenant.id, dispatch.id)
-        return
     payload = json.loads(dispatch.payload_json)
-    sms_service.notify_mobile_lead_offer(
-        session,
-        tenant_id=tenant.id,
-        auto_key_job_id=job.id,
-        to_phone=phone,
-        customer_name=str(payload.get("customer_name") or "Customer"),
-        customer_phone=payload.get("phone"),
-        suburb=dispatch.suburb,
-        state_code=dispatch.state_code,
-        vehicle_make=payload.get("vehicle_make"),
-        vehicle_model=payload.get("vehicle_model"),
-        registration_plate=payload.get("registration_plate"),
-        job_number=job.job_number,
-        timeout_minutes=dispatch.offer_timeout_minutes,
-    )
+    accept_url = f"{settings.public_base_url.rstrip('/')}/auto-key/{job.id}?lead=accept"
+
+    phone = sms_service.operator_dispatch_phone(tenant)
+    if phone:
+        sms_service.notify_mobile_lead_offer(
+            session,
+            tenant_id=tenant.id,
+            auto_key_job_id=job.id,
+            to_phone=phone,
+            customer_name=str(payload.get("customer_name") or "Customer"),
+            customer_phone=payload.get("phone"),
+            suburb=dispatch.suburb,
+            state_code=dispatch.state_code,
+            vehicle_make=payload.get("vehicle_make"),
+            vehicle_model=payload.get("vehicle_model"),
+            registration_plate=payload.get("registration_plate"),
+            job_number=job.job_number,
+            timeout_minutes=dispatch.offer_timeout_minutes,
+            accept_url=accept_url,
+        )
+    else:
+        logger.info("mobile_lead_dispatch.no_dispatch_phone tenant=%s dispatch=%s", tenant.id, dispatch.id)
+
+    email = _operator_dispatch_email(session, tenant)
+    if email:
+        ok, err = email_client.send_mobile_lead_offer_email(
+            to_email=email,
+            customer_name=str(payload.get("customer_name") or "Customer"),
+            customer_phone=payload.get("phone"),
+            suburb=dispatch.suburb,
+            state_code=dispatch.state_code,
+            vehicle_make=payload.get("vehicle_make"),
+            vehicle_model=payload.get("vehicle_model"),
+            registration_plate=payload.get("registration_plate"),
+            job_number=job.job_number,
+            accept_url=accept_url,
+            timeout_minutes=dispatch.offer_timeout_minutes,
+        )
+        if not ok and err:
+            logger.info("mobile_lead_dispatch.offer_email_failed tenant=%s dispatch=%s err=%s", tenant.id, dispatch.id, err)
+    else:
+        logger.info("mobile_lead_dispatch.no_dispatch_email tenant=%s dispatch=%s", tenant.id, dispatch.id)
+
+
+def accept_lead_offer(session: Session, *, job_id: UUID, tenant_id: UUID) -> MobileLeadDispatch:
+    """Operator taps Accept from the SMS/email offer — locks the job to them immediately.
+
+    Stops timeout escalation (process_due_mobile_lead_dispatches only advances rows with a
+    still-set offer_expires_at) so they can build the quote at their own pace instead of
+    racing the countdown. Idempotent: accepting an already-accepted offer is a no-op.
+    """
+    dispatch = session.exec(
+        select(MobileLeadDispatch).where(MobileLeadDispatch.auto_key_job_id == job_id)
+    ).first()
+    if not dispatch:
+        raise ValueError("not_a_dispatch_lead")
+    if dispatch.current_operator_tenant_id != tenant_id:
+        raise ValueError("not_your_offer")
+    if dispatch.status != DISPATCH_STATUS_OFFERING:
+        # Already quoted, escalated, or failed — nothing to accept.
+        return dispatch
+
+    if not dispatch.accepted_at:
+        now = datetime.now(timezone.utc)
+        dispatch.accepted_at = now
+        dispatch.offer_expires_at = None
+        dispatch.updated_at = now
+        session.add(dispatch)
+        session.add(
+            ParentAccountEventLog(
+                parent_account_id=dispatch.parent_account_id,
+                tenant_id=tenant_id,
+                actor_email="mobile-operator@accept",
+                event_type="mobile_lead_dispatch_accepted",
+                event_summary=f"Lead offer accepted for job {job_id} — no longer timed out",
+            )
+        )
+        session.commit()
+    return dispatch
 
 
 def offer_dispatch_to_current_operator(session: Session, dispatch: MobileLeadDispatch) -> AutoKeyJob | None:

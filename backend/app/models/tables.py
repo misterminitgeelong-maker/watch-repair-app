@@ -135,6 +135,8 @@ class MobileLeadDispatch(SQLModel, table=True):
     auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
     offer_timeout_minutes: int = Field(default=30)
     max_operator_offers: int = Field(default=3)
+    #: Set when the current operator taps Accept — stops timeout escalation even before a quote is sent.
+    accepted_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

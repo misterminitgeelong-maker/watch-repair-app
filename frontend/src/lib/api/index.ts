@@ -2389,6 +2389,11 @@ export const uploadAutoKeyAttachment = (file: File, jobId: string, label?: strin
 export const sendAutoKeyArrivalSms = (jobId: string, time_window?: string) =>
   api.post<{ ok: boolean }>(`/auto-key-jobs/${jobId}/arrival-sms`, time_window ? { time_window } : undefined)
 
+export const acceptAutoKeyLeadOffer = (jobId: string) =>
+  api.post<{ ok: boolean; accepted: boolean; accepted_at?: string | null; expired?: boolean }>(
+    `/auto-key-jobs/${jobId}/accept-lead-offer`,
+  )
+
 export const sendAutoKeyDayBeforeReminders = () =>
   api.post<{ sent: number }>('/auto-key-jobs/day-before-reminders')
 
