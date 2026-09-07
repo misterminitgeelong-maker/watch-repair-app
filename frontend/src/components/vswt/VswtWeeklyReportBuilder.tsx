@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { Download, Search, X } from 'lucide-react'
 import {
-  getVswtDirectory, getVswtWeeklyReport, getVswtWeeklyReportPdf,
-  type VswtKpiDef, type VswtUnavailable, type VswtWeeklyReport, type VswtWeeklyReportShop,
+  getVswtDirectory, getVswtWeeklyReport, getVswtWeeklyReportCompare, getVswtWeeklyReportComparePdf, getVswtWeeklyReportPdf,
+  type VswtKpiDef, type VswtUnavailable, type VswtWeeklyReport, type VswtWeeklyReportCompare,
+  type VswtWeeklyReportCompareWeekEntry, type VswtWeeklyReportShop,
 } from '@/lib/api'
 import { Badge, Button, Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -90,6 +91,11 @@ export function VswtWeeklyReportBuilder() {
   const [compareWithinSelection, setCompareWithinSelection] = useState(() => loadCompareWithinSelection(tenantId))
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  // 'single' previews/downloads one week's numbers (the original report); 'compare' lays the
+  // same picked shops out across every week HQ has sent (or a chosen subset) instead. `null`
+  // for the subset means "every uploaded week" — the default, and what most people want.
+  const [mode, setMode] = useState<'single' | 'compare'>('single')
+  const [compareWeeks, setCompareWeeks] = useState<number[] | null>(null)
 
   useEffect(() => { saveShopNumbers(tenantId, shopNumbers) }, [tenantId, shopNumbers])
   useEffect(() => { saveTitle(tenantId, title) }, [tenantId, title])
@@ -110,7 +116,7 @@ export function VswtWeeklyReportBuilder() {
   const { data: reportData, isLoading: reportLoading, isFetching: reportFetching } = useQuery({
     queryKey: ['vswt-weekly-report', shopNumbers, week, compareWithinSelection],
     queryFn: () => getVswtWeeklyReport({ shopNumbers, week, compareWithinSelection }).then(r => r.data),
-    enabled: shopNumbers.length > 0,
+    enabled: shopNumbers.length > 0 && mode === 'single',
   })
 
   const downloadMut = useMutation({
@@ -120,6 +126,25 @@ export function VswtWeeklyReportBuilder() {
     onSuccess: r => {
       const weekLabel = reportData?.available ? reportData.week : week ?? 'latest'
       downloadBlob(r.data, `weekly-report-week-${weekLabel}.pdf`)
+    },
+  })
+
+  const { data: compareData, isLoading: compareLoading, isFetching: compareFetching } = useQuery({
+    queryKey: ['vswt-weekly-report-compare', shopNumbers, compareWeeks, compareWithinSelection],
+    queryFn: () => getVswtWeeklyReportCompare({
+      shopNumbers, weeks: compareWeeks ?? undefined, compareWithinSelection,
+    }).then(r => r.data),
+    enabled: shopNumbers.length > 0 && mode === 'compare',
+  })
+
+  const downloadCompareMut = useMutation({
+    mutationFn: () => getVswtWeeklyReportComparePdf({
+      shopNumbers, weeks: compareWeeks ?? undefined, title, compareWithinSelection,
+    }),
+    onSuccess: r => {
+      const weeks = compareData?.available ? compareData.weeks : compareWeeks
+      const span = weeks && weeks.length > 0 ? `${weeks[0]}-${weeks[weeks.length - 1]}` : 'all'
+      downloadBlob(r.data, `weekly-report-weeks-${span}.pdf`)
     },
   })
 
@@ -138,9 +163,10 @@ export function VswtWeeklyReportBuilder() {
   const chipShops = useMemo(
     () => shopNumbers.map(sn => {
       const fromReport = reportData?.available ? reportData.shops.find(s => s.shop_number === sn) : undefined
-      return { shop_number: sn, shop_name: fromReport?.shop_name ?? shopNames[sn] ?? null }
+      const fromCompare = compareData?.available ? compareData.shops.find(s => s.shop_number === sn) : undefined
+      return { shop_number: sn, shop_name: fromReport?.shop_name ?? fromCompare?.shop_name ?? shopNames[sn] ?? null }
     }),
-    [shopNumbers, shopNames, reportData],
+    [shopNumbers, shopNames, reportData, compareData],
   )
 
   return (
@@ -148,7 +174,8 @@ export function VswtWeeklyReportBuilder() {
       <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
         Search the region, pick the shops you want in this week's report, then download it as a PDF
         ready to drop into your group chat — every KPI HQ tracks, with a rank alongside each value.
-        Your picks and title are remembered for next time.
+        Switch to "Compare weeks" below to lay the same shops out across every week HQ has sent
+        instead of just one. Your picks and title are remembered for next time.
       </p>
 
       <Card className="p-4 mb-4">
@@ -254,9 +281,30 @@ export function VswtWeeklyReportBuilder() {
         </p>
       </Card>
 
+      <div
+        className="inline-flex rounded-lg p-0.5 gap-0.5 mb-4"
+        style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
+      >
+        {(['single', 'compare'] as const).map(m => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+            style={{
+              backgroundColor: mode === m ? 'var(--ms-surface)' : 'transparent',
+              color: mode === m ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+              boxShadow: mode === m ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            }}
+          >
+            {m === 'single' ? 'One week' : 'Compare weeks'}
+          </button>
+        ))}
+      </div>
+
       {shopNumbers.length === 0 ? (
         <EmptyState message="Pick at least one shop above to preview and download a report." />
-      ) : (
+      ) : mode === 'single' ? (
         <WeeklyReportPreview
           reportData={reportData}
           isLoading={reportLoading}
@@ -265,6 +313,17 @@ export function VswtWeeklyReportBuilder() {
           onWeekChange={setWeek}
           onDownload={() => downloadMut.mutate()}
           downloading={downloadMut.isPending}
+        />
+      ) : (
+        <WeeklyReportComparePreview
+          compareData={compareData}
+          isLoading={compareLoading}
+          isFetching={compareFetching}
+          title={title}
+          selectedWeeks={compareWeeks}
+          onWeeksChange={setCompareWeeks}
+          onDownload={() => downloadCompareMut.mutate()}
+          downloading={downloadCompareMut.isPending}
         />
       )}
     </div>
@@ -412,6 +471,169 @@ function WeeklyReportPreview({
         </Card>
       ))}
     </div>
+  )
+}
+
+const COMPARE_METRICS = ['Sales $', 'Customers', 'Jobs', 'Overall Avg Rank'] as const
+type CompareMetric = (typeof COMPARE_METRICS)[number]
+
+/** Same picked shops as the single-week preview, but pivoted: one table per headline metric,
+ * shops as rows and weeks as columns, so a trend across every week HQ has sent (or a chosen
+ * subset) reads at a glance instead of needing a report per week. */
+function WeeklyReportComparePreview({
+  compareData: data, isLoading, isFetching, title, selectedWeeks, onWeeksChange, onDownload, downloading,
+}: {
+  compareData: VswtWeeklyReportCompare | VswtUnavailable | undefined
+  isLoading: boolean
+  isFetching: boolean
+  title: string
+  selectedWeeks: number[] | null
+  onWeeksChange: (weeks: number[] | null) => void
+  onDownload: () => void
+  downloading: boolean
+}) {
+  if (isLoading) return <Spinner />
+  if (!data) return <EmptyState message="Couldn't load this report." />
+  if (!data.available) {
+    return <EmptyState message="None of the selected shops were found in the region's data." />
+  }
+
+  const { weeks, all_weeks: allWeeks } = data
+  const usingAllWeeks = selectedWeeks === null
+
+  function toggleWeek(w: number) {
+    const base = selectedWeeks ?? allWeeks
+    const next = base.includes(w) ? base.filter(x => x !== w) : [...base, w].sort((a, b) => a - b)
+    onWeeksChange(next.length === allWeeks.length ? null : next)
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-5">
+        <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h3 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--ms-text)' }}>{title || DEFAULT_TITLE}</h3>
+            <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+              {weeks.length} of {allWeeks.length} uploaded week{allWeeks.length !== 1 ? 's' : ''} compared · {data.shops.length} shop{data.shops.length !== 1 ? 's' : ''} in this report
+              {isFetching && ' · refreshing…'}
+            </p>
+            {data.compare_within_selection && (
+              <p
+                className="text-sm font-bold mt-2 inline-block px-2.5 py-1 rounded-md"
+                style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}
+              >
+                Ranks compared within these shops only — not the whole region.
+              </p>
+            )}
+            {data.missing_shop_numbers.length > 0 && (
+              <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-badge-alert-text)' }}>
+                Not found in any selected week: {data.missing_shop_numbers.join(', ')}
+              </p>
+            )}
+          </div>
+          <Button onClick={onDownload} disabled={downloading}>
+            <Download size={14} /> {downloading ? 'Preparing…' : 'Download PDF'}
+          </Button>
+        </div>
+
+        <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--ms-text-muted)' }}>
+          Weeks to compare
+        </label>
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
+          <button
+            type="button"
+            onClick={() => onWeeksChange(null)}
+            className="px-2.5 py-1 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: usingAllWeeks ? 'var(--ms-accent)' : 'var(--ms-bg)',
+              color: usingAllWeeks ? 'white' : 'var(--ms-text-mid)',
+              border: '1px solid var(--ms-border)',
+            }}
+          >
+            All {allWeeks.length} weeks
+          </button>
+          {allWeeks.map(w => {
+            const active = weeks.includes(w)
+            return (
+              <button
+                key={w}
+                type="button"
+                onClick={() => toggleWeek(w)}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{
+                  backgroundColor: active ? 'var(--ms-accent-light)' : 'var(--ms-bg)',
+                  color: active ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+                  border: '1px solid var(--ms-border)',
+                }}
+              >
+                Week {w}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+          Defaults to every week HQ has sent — click a week to drop it from the comparison, or "All weeks" to reset.
+        </p>
+      </Card>
+
+      {COMPARE_METRICS.map(metric => (
+        <Card key={metric} className="p-5">
+          <p className="text-base font-extrabold mb-3" style={{ color: 'var(--ms-accent)' }}>{metric}</p>
+          <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--ms-border)' }}>
+            <table className="border-collapse text-sm" style={{ width: '100%' }}>
+              <thead>
+                <tr style={{ background: 'var(--ms-bg)' }}>
+                  <th style={{ ...thStyle, textAlign: 'left' }}>Shop</th>
+                  {weeks.map(w => <th key={w} style={thStyle}>Week {w}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {data.shops.map(s => (
+                  <tr key={s.shop_number} style={s.is_me ? { backgroundColor: 'var(--ms-accent-light)' } : undefined}>
+                    <td style={{ ...tdStyle, textAlign: 'left', color: s.is_me ? 'var(--ms-accent)' : 'var(--ms-text)', fontWeight: 800 }}>
+                      <span className="flex items-center gap-1.5">
+                        {s.shop_name ?? s.shop_number}
+                        {s.is_me && <Badge variant="default">You</Badge>}
+                      </span>
+                    </td>
+                    {weeks.map(w => (
+                      <CompareCell key={w} entry={s.weeks[String(w)] ?? null} metric={metric} isMe={s.is_me} />
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function CompareCell({ entry, metric, isMe }: { entry: VswtWeeklyReportCompareWeekEntry | null; metric: CompareMetric; isMe: boolean }) {
+  if (!entry) return <td style={{ ...tdStyle, color: 'var(--ms-text-muted)' }}>—</td>
+  if (metric === 'Sales $') {
+    return (
+      <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>
+        {fmtVswtVal(entry.sales_value, 'currency')}
+        {entry.sales_rank != null && (
+          <span className="block text-[12px] font-bold" style={{ color: isMe ? 'var(--ms-accent)' : 'var(--ms-text-mid)' }}>
+            #{entry.sales_rank}
+          </span>
+        )}
+      </td>
+    )
+  }
+  if (metric === 'Customers') {
+    return <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{fmtVswtVal(entry.customer_value, 'count')}</td>
+  }
+  if (metric === 'Jobs') {
+    return <td style={{ ...tdStyle, color: 'var(--ms-text)' }}>{fmtVswtVal(entry.jobs_value, 'count')}</td>
+  }
+  return (
+    <td style={{ ...tdStyle, color: 'var(--ms-accent)' }}>
+      {entry.overall_avg_rank != null ? `#${entry.overall_avg_rank.toFixed(1)}` : '—'}
+    </td>
   )
 }
 

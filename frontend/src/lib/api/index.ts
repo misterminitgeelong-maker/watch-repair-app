@@ -3570,3 +3570,48 @@ export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: str
       ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
     },
   })
+
+// ── Weekly report builder: compare across weeks ─────────────────────────────────────────
+// Same hand-picked shops, but laid out across every uploaded week (or a chosen subset) instead
+// of one — each shop's `weeks` is keyed by week number (as a string, since it round-trips
+// through JSON), `null` for a week that shop didn't appear in that export.
+export interface VswtWeeklyReportCompareWeekEntry {
+  sales_value: number | null
+  sales_rank: number | null
+  customer_value: number | null
+  jobs_value: number | null
+  overall_avg_rank: number | null
+}
+export interface VswtWeeklyReportCompareShop {
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  is_me: boolean
+  weeks: Record<string, VswtWeeklyReportCompareWeekEntry | null>
+}
+export interface VswtWeeklyReportCompare {
+  available: true
+  weeks: number[]
+  all_weeks: number[]
+  compare_within_selection: boolean
+  shops: VswtWeeklyReportCompareShop[]
+  missing_shop_numbers: string[]
+}
+export const getVswtWeeklyReportCompare = (params: { weeks?: number[]; shopNumbers: string[]; compareWithinSelection?: boolean }) =>
+  api.get<VswtWeeklyReportCompare | VswtUnavailable>('/reports/vswt/weekly-report/compare', {
+    params: {
+      ...(params.weeks && params.weeks.length > 0 ? { weeks: params.weeks.join(',') } : {}),
+      shop_numbers: params.shopNumbers.join(','),
+      ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
+    },
+  })
+export const getVswtWeeklyReportComparePdf = (params: { weeks?: number[]; shopNumbers: string[]; title?: string; compareWithinSelection?: boolean }) =>
+  api.get<Blob>('/reports/vswt/weekly-report/compare/pdf', {
+    responseType: 'blob',
+    params: {
+      ...(params.weeks && params.weeks.length > 0 ? { weeks: params.weeks.join(',') } : {}),
+      shop_numbers: params.shopNumbers.join(','),
+      ...(params.title ? { title: params.title } : {}),
+      ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
+    },
+  })

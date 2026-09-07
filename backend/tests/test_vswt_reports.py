@@ -819,3 +819,161 @@ def test_weekly_report_pdf_compare_within_selection_downloads_fine(vswt_client):
     )
     assert res.status_code == 200, res.text
     assert res.content[:4] == b"%PDF"
+
+
+# ── Weekly report builder: compare across weeks ─────────────────────────────────────────
+
+def _seed_wr_compare_weeks(vswt_client, headers, weeks: list[int]) -> None:
+    """Chadstone's sales climb $1000 each week in `weeks`; Doncaster stays flat at 81000 the
+    whole time — enough of a spread for tests to tell "this week's number" from "another week's
+    number" apart, and for Chadstone's rank to move across the run."""
+    for i, week in enumerate(weeks):
+        raw = _build_workbook(week, [
+            _shop_row(3269, "Chadstone", 60000 + i * 1000, area_name="VIC SOUTH", customer_ty=100 + i, jobs_ty=50 + i),
+            _shop_row(3904, "Doncaster", 81000, area_name="VIC SOUTH", customer_ty=120, jobs_ty=70),
+        ])
+        up = vswt_client.post("/v1/reports/vswt/upload", headers=headers, files=[("files", ("d.xlsx", raw))])
+        b = up.json()["batch"][0]
+        commit = vswt_client.post(
+            "/v1/reports/vswt/commit", headers=headers,
+            json={"batch": [{"filename": b["filename"], "week_number": week, "rows": b["rows"]}]},
+        )
+        assert commit.status_code == 200, commit.text
+
+
+def test_weekly_report_compare_defaults_to_every_uploaded_week(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-all", "owner-wrcall@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_wr_compare_weeks(vswt_client, headers, [300, 301, 302])
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare", headers=headers,
+        params={"shop_numbers": "3904,3269"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    # No `weeks` param: defaults to every week ever uploaded (this table isn't tenant-scoped, so
+    # that includes weeks other tests in this shared DB seeded too) — sorted oldest first, and
+    # this test's own three weeks are in there.
+    assert body["weeks"] == sorted(body["weeks"])
+    assert body["weeks"] == body["all_weeks"]
+    assert {300, 301, 302} <= set(body["weeks"])
+    assert body["missing_shop_numbers"] == []
+
+    chadstone = next(s for s in body["shops"] if s["shop_number"] == "3269")
+    # Sales climbed 60000 -> 61000 -> 62000 across the three seeded weeks.
+    series = chadstone["weeks"]
+    values_by_week = {int(k): v["sales_value"] for k, v in series.items() if v is not None}
+    assert values_by_week[300] == 60000
+    assert values_by_week[301] == 61000
+    assert values_by_week[302] == 62000
+    # Chadstone is behind Doncaster (81000) both weeks it appears alongside it here.
+    ranks_by_week = {int(k): v["sales_rank"] for k, v in series.items() if v is not None}
+    assert ranks_by_week[300] == 2
+    assert ranks_by_week[301] == 2
+    assert ranks_by_week[302] == 2
+
+
+def test_weekly_report_compare_can_pick_a_subset_of_weeks(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-subset", "owner-wrcsubset@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_wr_compare_weeks(vswt_client, headers, [310, 311, 312])
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare", headers=headers,
+        params={"shop_numbers": "3269", "weeks": "312,310"},  # deliberately out of order
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["weeks"] == [310, 312]  # normalised to ascending, unknown/omitted week dropped
+    assert {310, 311, 312} <= set(body["all_weeks"])
+    chadstone = body["shops"][0]
+    assert set(int(k) for k in chadstone["weeks"]) == {310, 312}
+
+
+def test_weekly_report_compare_nulls_a_week_a_shop_is_missing_from(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-gap", "owner-wrcgap@test.com")
+    _set_shop_number(tenant_id, "3269")
+    # Week 320: both shops. Week 321: Doncaster only (Chadstone dropped out that week).
+    raw1 = _build_workbook(320, [
+        _shop_row(3269, "Chadstone", 60000, area_name="VIC SOUTH"),
+        _shop_row(3904, "Doncaster", 81000, area_name="VIC SOUTH"),
+    ])
+    raw2 = _build_workbook(321, [
+        _shop_row(3904, "Doncaster", 82000, area_name="VIC SOUTH"),
+    ])
+    for raw, week in [(raw1, 320), (raw2, 321)]:
+        up = vswt_client.post("/v1/reports/vswt/upload", headers=headers, files=[("files", ("d.xlsx", raw))])
+        b = up.json()["batch"][0]
+        commit = vswt_client.post(
+            "/v1/reports/vswt/commit", headers=headers,
+            json={"batch": [{"filename": b["filename"], "week_number": week, "rows": b["rows"]}]},
+        )
+        assert commit.status_code == 200, commit.text
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare", headers=headers,
+        params={"shop_numbers": "3269,3904"},
+    )
+    body = res.json()
+    assert body["available"] is True
+    assert body["missing_shop_numbers"] == []  # Chadstone was found in at least one week
+    chadstone = next(s for s in body["shops"] if s["shop_number"] == "3269")
+    assert chadstone["weeks"]["320"]["sales_value"] == 60000
+    assert chadstone["weeks"]["321"] is None  # not in that week's export
+
+
+def test_weekly_report_compare_requires_at_least_one_shop(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-empty", "owner-wrcempty@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 330)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare", headers=headers,
+        params={"shop_numbers": "  , ,"},
+    )
+    assert res.status_code == 400
+
+
+def test_weekly_report_compare_pdf_downloads_as_pdf(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-pdf", "owner-wrcpdf@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_wr_compare_weeks(vswt_client, headers, [340, 341])
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare/pdf", headers=headers,
+        params={"shop_numbers": "3269,3904", "title": "Season Trend"},
+    )
+    assert res.status_code == 200, res.text
+    assert res.headers["content-type"] == "application/pdf"
+    assert "attachment" in res.headers["content-disposition"]
+    assert res.content[:4] == b"%PDF"
+
+
+def test_weekly_report_compare_pdf_handles_more_weeks_than_fit_one_table(vswt_client):
+    """More weeks than comfortably fit as columns on one page (the report defaults to *every*
+    uploaded week) must still render — split across several tables per metric — rather than
+    reportlab choking on a table too wide for the page."""
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-pdf-many", "owner-wrcpdfmany@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_wr_compare_weeks(vswt_client, headers, list(range(360, 372)))  # 12 weeks, well past the 8-per-table split
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare/pdf", headers=headers,
+        params={"shop_numbers": "3269,3904"},
+    )
+    assert res.status_code == 200, res.text
+    assert res.content[:4] == b"%PDF"
+
+
+def test_weekly_report_compare_pdf_404s_when_no_picked_shop_is_found(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-wrc-pdf-404", "owner-wrcpdf404@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_directory_week(vswt_client, headers, 350)
+
+    res = vswt_client.get(
+        "/v1/reports/vswt/weekly-report/compare/pdf", headers=headers,
+        params={"shop_numbers": "9999999"},
+    )
+    assert res.status_code == 404

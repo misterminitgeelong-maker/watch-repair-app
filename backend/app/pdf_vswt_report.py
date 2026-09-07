@@ -199,3 +199,145 @@ def build_weekly_report_pdf(
 
     doc.build(story)
     return buf.getvalue()
+
+
+def build_weekly_report_compare_pdf(
+    *,
+    title: str,
+    weeks: Sequence[int],
+    shops: Sequence[dict[str, Any]],
+    compare_within_selection: bool = False,
+    generated_on: Optional[date] = None,
+) -> bytes:
+    """Same look and feel as `build_weekly_report_pdf`, but for comparing a hand-picked group of
+    shops across every selected week instead of one week's snapshot — one table per headline
+    metric (Sales $, Customers, Jobs, Overall Avg Rank), shops as rows and weeks as columns, so a
+    trend across the weeks HQ has sent reads at a glance instead of needing a report per week.
+
+    `shops` here is exactly the shape `_weekly_report_compare_data()` in routes/vswt_reports.py
+    builds: each shop carries a `weeks` dict keyed by week number, `None` for a week that shop
+    didn't appear in that export.
+    """
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
+        title=title,
+    )
+
+    styles = getSampleStyleSheet()
+    normal = styles["Normal"]
+    normal.fontName = "Helvetica"
+    normal.fontSize = 10.5
+    normal.leading = 14
+
+    heading = ParagraphStyle("heading", parent=normal, fontSize=23, fontName="Helvetica-Bold", textColor=_DARK, spaceAfter=1.5 * mm)
+    section = ParagraphStyle("section", parent=normal, fontSize=14.5, fontName="Helvetica-Bold", textColor=_ACCENT, spaceBefore=8 * mm, spaceAfter=2.5 * mm)
+    sub = ParagraphStyle("sub", parent=normal, fontSize=11, fontName="Helvetica-Bold", textColor=_MID_GREY)
+    note = ParagraphStyle("note", parent=normal, fontSize=10.5, fontName="Helvetica-Bold", textColor=_ACCENT)
+    label = ParagraphStyle("label", parent=normal, fontSize=9, fontName="Helvetica-Bold", textColor=_DARK)
+    cell = ParagraphStyle("cell", parent=normal, fontSize=10.5, fontName="Helvetica-Bold", textColor=_DARK)
+    cell_muted = ParagraphStyle("cell_muted", parent=cell, fontName="Helvetica", textColor=_MID_GREY)
+    cell_me = ParagraphStyle("cell_me", parent=cell, textColor=_ACCENT)
+
+    week_span = f"Week {weeks[0]}" if len(weeks) == 1 else f"Weeks {weeks[0]}–{weeks[-1]}"
+    subtitle = f"{week_span} · {len(weeks)} week{'s' if len(weeks) != 1 else ''} compared · {len(shops)} shop{'s' if len(shops) != 1 else ''} in this report"
+    if generated_on:
+        subtitle += f" · generated {generated_on.strftime('%d %b %Y')}"
+
+    story: list[Any] = [
+        Paragraph(title, heading),
+        Paragraph(subtitle, sub),
+    ]
+    if compare_within_selection:
+        note_tbl = Table(
+            [[Paragraph(f"Ranks compared within these {len(shops)} shops only, not the whole region.", note)]],
+            colWidths=[landscape(A4)[0] - 28 * mm],
+        )
+        note_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), _ACCENT_LIGHT),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(Spacer(1, 2 * mm))
+        story.append(note_tbl)
+
+    def _table_style(n_rows: int) -> TableStyle:
+        return TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), _ACCENT_LIGHT),
+            ("ROWBACKGROUNDS", (0, 1), (-1, n_rows - 1), [colors.white, _LIGHT_GREY]),
+            ("LINEBELOW", (0, 0), (-1, 0), 1.25, _ACCENT),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ])
+
+    def _name_cell(s: dict[str, Any]) -> Paragraph:
+        name = (s["shop_name"] or s["shop_number"] or "—") + (" (you)" if s["is_me"] else "")
+        return Paragraph(name, cell_me if s["is_me"] else cell)
+
+    page_width = landscape(A4)[0] - 28 * mm
+    shop_col = 48 * mm
+    # A table only splits across pages by row, never by column, and a week column much narrower
+    # than this stops being readable — so once there are more weeks than comfortably fit on one
+    # page, split each metric into several tables (a handful of weeks each) rather than cramming
+    # every uploaded week into one row of illegibly thin columns.
+    _MAX_WEEKS_PER_TABLE = 8
+    week_chunks = [weeks[i:i + _MAX_WEEKS_PER_TABLE] for i in range(0, len(weeks), _MAX_WEEKS_PER_TABLE)] or [[]]
+
+    def _metric_table(metric_label: str, get_cell: Any) -> list[Any]:
+        blocks: list[Any] = []
+        for chunk in week_chunks:
+            heading_text = metric_label
+            if len(week_chunks) > 1:
+                heading_text += f" — Week {chunk[0]}" if len(chunk) == 1 else f" — Weeks {chunk[0]}–{chunk[-1]}"
+            headers = ["Shop"] + [f"Week {w}" for w in chunk]
+            rows: list[list[Any]] = [[Paragraph(h, label) for h in headers]]
+            for s in shops:
+                style = cell_me if s["is_me"] else cell
+                row: list[Any] = [_name_cell(s)]
+                for w in chunk:
+                    row.append(get_cell(s["weeks"].get(w), style))
+                rows.append(row)
+            week_col = (page_width - shop_col) / max(len(chunk), 1)
+            tbl = Table(rows, colWidths=[shop_col] + [week_col] * len(chunk), repeatRows=1)
+            tbl.setStyle(_table_style(len(rows)))
+            # Keep each table's heading with it so a section never starts at the very bottom of a
+            # page with the table stranded on the next one.
+            blocks.append(KeepTogether([Paragraph(heading_text, section), tbl]))
+        return blocks
+
+    def _sales_cell(wk: Optional[dict[str, Any]], style: ParagraphStyle) -> Paragraph:
+        if wk is None:
+            return Paragraph("—", cell_muted)
+        text = _fmt_val(wk["sales_value"], "currency")
+        if wk["sales_rank"] is not None:
+            rank_color = "#4f46e5" if style is cell_me else "#6b7280"
+            return Paragraph(f'{text}<br/><font size="9" color="{rank_color}">#{wk["sales_rank"]}</font>', style)
+        return Paragraph(text, style)
+
+    def _plain_cell(key: str, kpi_type: str) -> Any:
+        def fn(wk: Optional[dict[str, Any]], style: ParagraphStyle) -> Paragraph:
+            if wk is None:
+                return Paragraph("—", cell_muted)
+            return Paragraph(_fmt_val(wk[key], kpi_type), style)
+        return fn
+
+    def _avg_rank_cell(wk: Optional[dict[str, Any]], style: ParagraphStyle) -> Paragraph:
+        if wk is None or wk["overall_avg_rank"] is None:
+            return Paragraph("—", cell_muted)
+        return Paragraph(f'#{wk["overall_avg_rank"]:.1f}', style)
+
+    story.append(Spacer(1, 5 * mm))
+    story.extend(_metric_table("Sales $", _sales_cell))
+    story.extend(_metric_table("Customers", _plain_cell("customer_value", "count")))
+    story.extend(_metric_table("Jobs", _plain_cell("jobs_value", "count")))
+    story.extend(_metric_table("Overall Avg Rank", _avg_rank_cell))
+
+    doc.build(story)
+    return buf.getvalue()

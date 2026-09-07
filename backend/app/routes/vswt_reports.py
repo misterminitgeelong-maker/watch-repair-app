@@ -32,7 +32,7 @@ from sqlmodel import Session, delete as sa_delete, select
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import Tenant, VswtWeeklyShopMetric
-from ..pdf_vswt_report import build_weekly_report_pdf
+from ..pdf_vswt_report import build_weekly_report_compare_pdf, build_weekly_report_pdf
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
     COLUMN_MAP,
@@ -994,6 +994,107 @@ def _weekly_report_data(
     }
 
 
+def _parse_weeks_param(weeks_param: Optional[str], all_weeks: list[int]) -> list[int]:
+    """Comma-separated week numbers to compare, or `None`/"all" for every uploaded week — the
+    default, since "compare against all the weeks uploaded" is the point of this report. Unknown
+    or unparsable entries are dropped rather than erroring; an empty result falls back to every
+    week so a bad param never produces an empty report. Always returned oldest-first regardless
+    of the order the caller passed them in, since this is a trend over time."""
+    if not weeks_param or weeks_param.strip().lower() == "all":
+        return all_weeks
+    known = set(all_weeks)
+    seen: set[int] = set()
+    out: list[int] = []
+    for part in weeks_param.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            w = int(part)
+        except ValueError:
+            continue
+        if w in known and w not in seen:
+            seen.add(w)
+            out.append(w)
+    out.sort()
+    return out or all_weeks
+
+
+def _weekly_report_compare_data(
+    session: Session,
+    weeks: list[int],
+    shop_numbers: list[str],
+    my_shop_number: Optional[str],
+    compare_within_selection: bool = False,
+) -> dict[str, Any]:
+    """Same hand-picked shops as `_weekly_report_data`, but laid out across every selected week
+    instead of just one — each shop gets a per-week series of headline numbers (sales value +
+    rank, customers, jobs, overall avg rank) so a group's trend across every week HQ has sent
+    reads at a glance, in one downloadable report, instead of needing a separate report per week.
+
+    A shop missing from a given week's export (new shop, or dropped out that week) gets `None`
+    for that week rather than being excluded from the whole report; a shop missing from *every*
+    selected week ends up in `missing_shop_numbers` instead, same as the single-week report."""
+    shop_order = shop_numbers  # preserve the order the caller picked them in
+    per_shop_weeks: dict[str, dict[int, Optional[dict[str, Any]]]] = {sn: {} for sn in shop_order}
+    identity_row: dict[str, VswtWeeklyShopMetric] = {}
+
+    for week in weeks:
+        week_rows = _week_rows(session, week)
+        by_number = {r.shop_number: r for r in week_rows}
+        selected_rows = [by_number[sn] for sn in shop_order if sn in by_number]
+        rank_pool = selected_rows if compare_within_selection else week_rows
+
+        for sn in shop_order:
+            r = by_number.get(sn)
+            if r is None:
+                per_shop_weeks[sn][week] = None
+                continue
+            identity_row[sn] = r
+            ranked = [
+                _rank_of(rank_pool, kpi.key, getattr(r, kpi.key))
+                for kpi in KPI_DEFS
+                if getattr(r, kpi.key) is not None
+            ]
+            per_shop_weeks[sn][week] = {
+                "sales_value": r.sales_ty,
+                "sales_rank": _rank_of(rank_pool, "sales_ty", r.sales_ty),
+                "customer_value": r.customer_ty,
+                "jobs_value": r.jobs_ty,
+                "overall_avg_rank": (sum(ranked) / len(ranked)) if ranked else None,
+            }
+
+    shops: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for sn in shop_order:
+        row = identity_row.get(sn)
+        if row is None:
+            missing.append(sn)
+            continue
+        shops.append(
+            {
+                "shop_number": sn,
+                "shop_name": row.shop_name,
+                "area_name": row.area_name,
+                "is_me": sn == my_shop_number,
+                "weeks": per_shop_weeks[sn],
+            }
+        )
+
+    # Best sales in the most recent selected week first, same "reads like a mini leaderboard"
+    # feel as the single-week report; nulls (no data that week) sink to the bottom.
+    latest_week = weeks[-1] if weeks else None
+
+    def _sort_key(s: dict[str, Any]) -> tuple[bool, float]:
+        latest = s["weeks"].get(latest_week) if latest_week is not None else None
+        sales = latest["sales_value"] if latest else None
+        return (sales is None, -(sales or 0))
+
+    shops.sort(key=_sort_key)
+
+    return {"shops": shops, "missing_shop_numbers": missing}
+
+
 @router.get("/weekly-report")
 def get_vswt_weekly_report(
     week: Optional[int] = Query(None),
@@ -1074,6 +1175,90 @@ def get_vswt_weekly_report_pdf(
         generated_on=date.today(),
     )
     filename = f"weekly-report-week-{target_week}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/weekly-report/compare")
+def get_vswt_weekly_report_compare(
+    weeks: Optional[str] = Query(
+        None, description='Comma-separated week numbers to compare, or omitted/"all" for every uploaded week.'
+    ),
+    shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
+    compare_within_selection: bool = Query(
+        False, description="Rank shops only against each other instead of the whole region."
+    ),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Same picked-shop report as `/weekly-report`, but across every uploaded week (or a chosen
+    subset) at once, so a group's trend is visible in one report instead of one per week."""
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    all_weeks = _all_weeks(session)
+    if not all_weeks:
+        return {"available": False, "reason": "no_data"}
+
+    numbers = _parse_shop_numbers(shop_numbers)
+    if not numbers:
+        raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
+
+    target_weeks = _parse_weeks_param(weeks, all_weeks)
+    data = _weekly_report_compare_data(session, target_weeks, numbers, my_shop_number, compare_within_selection)
+    if not data["shops"]:
+        return {"available": False, "reason": "shop_not_found"}
+
+    return {
+        "available": True,
+        "weeks": target_weeks,
+        "all_weeks": all_weeks,
+        "compare_within_selection": compare_within_selection,
+        **data,
+    }
+
+
+@router.get("/weekly-report/compare/pdf")
+def get_vswt_weekly_report_compare_pdf(
+    weeks: Optional[str] = Query(
+        None, description='Comma-separated week numbers to compare, or omitted/"all" for every uploaded week.'
+    ),
+    shop_numbers: str = Query(..., description="Comma-separated shop numbers to include, in the order picked."),
+    title: str = Query("Weekly Regional Report", description="Report title, e.g. your franchisee group's name."),
+    compare_within_selection: bool = Query(
+        False, description="Rank shops only against each other instead of the whole region."
+    ),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    my_shop_number = _shop_number_for(auth, session)
+    if my_shop_number is None:
+        raise HTTPException(status_code=404, detail="This shop isn't linked to a VSWT shop number yet.")
+    all_weeks = _all_weeks(session)
+    if not all_weeks:
+        raise HTTPException(status_code=404, detail="No regional data has been uploaded yet.")
+
+    numbers = _parse_shop_numbers(shop_numbers)
+    if not numbers:
+        raise HTTPException(status_code=400, detail="Pick at least one shop for the report.")
+
+    target_weeks = _parse_weeks_param(weeks, all_weeks)
+    data = _weekly_report_compare_data(session, target_weeks, numbers, my_shop_number, compare_within_selection)
+    if not data["shops"]:
+        raise HTTPException(status_code=404, detail="None of the selected shops were found in the selected weeks' data.")
+
+    pdf_bytes = build_weekly_report_compare_pdf(
+        title=title.strip() or "Weekly Regional Report",
+        weeks=target_weeks,
+        compare_within_selection=compare_within_selection,
+        shops=data["shops"],
+        generated_on=date.today(),
+    )
+    week_span = f"{target_weeks[0]}" if len(target_weeks) == 1 else f"{target_weeks[0]}-{target_weeks[-1]}"
+    filename = f"weekly-report-weeks-{week_span}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
