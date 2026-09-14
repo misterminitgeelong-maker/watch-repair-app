@@ -313,7 +313,7 @@ export function AutoKeyJobCard({
               <button
                 type="button"
                 className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2"
-                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
                 onClick={() => { void handleStatusChange(nextStatus) }}
                 disabled={statusMut.isPending}
               >
