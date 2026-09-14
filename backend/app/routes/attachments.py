@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from PIL import Image, UnidentifiedImageError
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -72,6 +73,21 @@ def _decode_signed_download_token(token: str) -> tuple[UUID, UUID, str]:
         raise HTTPException(status_code=401, detail="Invalid download token") from exc
 
 
+def _compress_image(raw: bytes) -> bytes | None:
+    """Re-encode an uploaded image as a bounded JPEG; None if PIL can't read it."""
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img = img.convert("RGB")
+        max_dim = 2000
+        if img.width > max_dim or img.height > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        return buf.getvalue()
+    except UnidentifiedImageError:
+        return None  # not a recognised image, store as-is
+
+
 @router.post("", response_model=AttachmentRead, status_code=201)
 async def upload_attachment(
     file: UploadFile = File(...),
@@ -115,21 +131,15 @@ async def upload_attachment(
     if len(raw) > settings.attachment_max_upload_bytes:
         raise HTTPException(status_code=413, detail="File too large")
 
-    # Compress images on upload
+    # Compress images on upload. Decode + LANCZOS resize + JPEG encode is pure
+    # CPU and this handler is async, so run it in a worker thread rather than
+    # stalling the single event loop for every other request.
     if content_type.startswith("image/"):
-        try:
-            img = Image.open(io.BytesIO(raw))
-            img = img.convert("RGB")
-            max_dim = 2000
-            if img.width > max_dim or img.height > max_dim:
-                img.thumbnail((max_dim, max_dim), Image.LANCZOS)
-            buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=85, optimize=True)
-            raw = buf.getvalue()
+        compressed = await run_in_threadpool(_compress_image, raw)
+        if compressed is not None:
+            raw = compressed
             safe_name = Path(safe_name).stem + ".jpg"
             content_type = "image/jpeg"
-        except UnidentifiedImageError:
-            pass  # not a recognised image, store as-is
 
     file_id = uuid4().hex
     if auto_key_job_id:
@@ -137,7 +147,10 @@ async def upload_attachment(
         storage_key = f"{job_subdir}/{file_id}_{safe_name}"
     else:
         storage_key = f"{file_id}_{safe_name}"
-    file_size = attachment_storage.save_bytes(storage_key, raw, content_type=content_type)
+    # Storage write is blocking (local disk or a synchronous Supabase upload).
+    file_size = await run_in_threadpool(
+        attachment_storage.save_bytes, storage_key, raw, content_type=content_type
+    )
 
     attachment = Attachment(
         tenant_id=auth.tenant_id,
