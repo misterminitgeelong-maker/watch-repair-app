@@ -47,6 +47,12 @@ import {
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
+import {
+  autoKeyJobsListKey,
+  invalidateAutoKeyDispatchBoard,
+  invalidateAutoKeyJobCollections,
+  invalidateAutoKeyScheduleViews,
+} from '@/lib/autoKeyJobQueries'
 
 import {
   STATUSES,
@@ -145,7 +151,7 @@ export default function AutoKeyJobsPage() {
   const deleteMut = useMutation({
     mutationFn: (jobId: string) => deleteAutoKeyJob(jobId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setDeleteJob(null)
       setDeleteError('')
     },
@@ -172,7 +178,7 @@ export default function AutoKeyJobsPage() {
     onSuccess: () => {
       toast.success(`Updated ${bulkSelected.size} job(s)`)
       setBulkSelected(new Set())
-      void qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
     },
     onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Bulk update failed')),
   })
@@ -240,7 +246,7 @@ export default function AutoKeyJobsPage() {
   }, [sessionReady, shopCalendarTodayYmd])
 
   const { data: jobsRaw, isLoading, isError, error: jobsQueryError } = useQuery({
-    queryKey: ['auto-key-jobs'],
+    queryKey: autoKeyJobsListKey,
     queryFn: () => listAutoKeyJobs().then(r => r.data),
   })
   const jobs = Array.isArray(jobsRaw) ? jobsRaw : []
@@ -334,8 +340,7 @@ export default function AutoKeyJobsPage() {
     },
     onSuccess: () => {
       setVisitOrderErr('')
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+      invalidateAutoKeyDispatchBoard(qc)
     },
     onError: (err: unknown) => setVisitOrderErr(getApiErrorMessage(err, 'Could not save the visit order. Please try again.')),
   })
@@ -349,15 +354,14 @@ export default function AutoKeyJobsPage() {
     },
     onSuccess: () => {
       setVisitOrderErr('')
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+      invalidateAutoKeyDispatchBoard(qc)
     },
     onError: (err: unknown) => setVisitOrderErr(getApiErrorMessage(err, 'Could not reset the visit order. Please try again.')),
   })
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
-    onSuccess: () => { setBoardActionErr(''); qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }) },
+    onSuccess: () => { setBoardActionErr(''); invalidateAutoKeyJobCollections(qc) },
     onError: (err: unknown) => setBoardActionErr(getApiErrorMessage(err, 'Could not move the job to the new status. It has been left where it was.')),
   })
 
@@ -367,9 +371,7 @@ export default function AutoKeyJobsPage() {
     onSuccess: () => {
       setWeekScheduleErr(null)
       setWeekRelocateJobId(null)
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dashboard'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dispatch'] })
+      invalidateAutoKeyScheduleViews(qc)
     },
     onError: (err: unknown) => {
       setWeekScheduleErr(getApiErrorMessage(err, 'Could not update the job time. Check your connection and that you can edit jobs.'))
@@ -913,7 +915,7 @@ export default function AutoKeyJobsPage() {
         <POSView
           customers={customers}
           customerAccounts={customerAccounts}
-          onComplete={() => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })}
+          onComplete={() => invalidateAutoKeyJobCollections(qc)}
         />
       )}
 

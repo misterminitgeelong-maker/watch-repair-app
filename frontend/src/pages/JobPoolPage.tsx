@@ -5,6 +5,7 @@ import { MapPin, Radio } from 'lucide-react'
 import { claimPoolJob, getApiErrorMessage, listJobPool, type IntakePoolJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 
 const RING_COLORS: Record<number, { bg: string; text: string }> = {
   1: { bg: 'var(--ms-badge-done-bg)', text: 'var(--ms-badge-done-text)' },
@@ -84,7 +85,7 @@ export default function JobPoolPage() {
     mutationFn: (id: string) => claimPoolJob(id).then(r => r.data),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['job-pool'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       navigate(`/auto-key/${data.auto_key_job_id}`)
     },
     onError: (err) => setError(getApiErrorMessage(err)),
