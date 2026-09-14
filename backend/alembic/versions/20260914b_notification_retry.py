@@ -1,7 +1,7 @@
 """add attempt tracking (and email payload) for notification redelivery
 
 Revision ID: 20260914b_notification_retry
-Revises: 20260914a_stripe_webhook_event
+Revises: 20260914b_shoe_fk_backfill
 Create Date: 2026-09-14
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = "20260914b_notification_retry"
-down_revision: Union[str, None] = "20260914a_stripe_webhook_event"
+down_revision: Union[str, None] = "20260914b_shoe_fk_backfill"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

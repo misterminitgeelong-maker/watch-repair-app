@@ -47,7 +47,7 @@ const memory: MemoryStores = {
   dead: new Map(),
 }
 
-function useMemory(): boolean {
+function memoryFallback(): boolean {
   return typeof indexedDB === 'undefined'
 }
 
@@ -185,7 +185,7 @@ export async function enqueueOffline(
     idempotencyKey: crypto.randomUUID(),
     attemptCount: 0,
   }
-  if (useMemory()) {
+  if (memoryFallback()) {
     memory.queue.set(row.id, row)
     return
   }
@@ -195,7 +195,7 @@ export async function enqueueOffline(
 }
 
 export async function listOfflineQueue(): Promise<OfflineQueueItem[]> {
-  if (useMemory()) {
+  if (memoryFallback()) {
     return [...memory.queue.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   }
   const rows = ((await withStore(STORE, 'readonly', store => store.getAll())) ?? []) as OfflineQueueItem[]
@@ -203,7 +203,7 @@ export async function listOfflineQueue(): Promise<OfflineQueueItem[]> {
 }
 
 export async function listDeadLetters(): Promise<DeadLetterItem[]> {
-  if (useMemory()) {
+  if (memoryFallback()) {
     return [...memory.dead.values()].sort((a, b) => a.deadAt.localeCompare(b.deadAt))
   }
   const rows = ((await withStore(DEAD_STORE, 'readonly', store => store.getAll())) ?? []) as DeadLetterItem[]
@@ -211,7 +211,7 @@ export async function listDeadLetters(): Promise<DeadLetterItem[]> {
 }
 
 export async function discardDeadLetter(id: string): Promise<void> {
-  if (useMemory()) {
+  if (memoryFallback()) {
     memory.dead.delete(id)
     return
   }
@@ -285,7 +285,7 @@ async function flushItems(items: OfflineQueueItem[], send: FlushSend, ops: Queue
 }
 
 export async function flushOfflineQueue(send: FlushSend): Promise<{ flushed: number; deadLettered: number; skipped: number }> {
-  if (useMemory()) {
+  if (memoryFallback()) {
     return flushItems(await listOfflineQueue(), send, memoryMutations())
   }
   const db = await openDb()
