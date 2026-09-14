@@ -4,7 +4,7 @@ from uuid import uuid4
 
 # Use a fresh sqlite file for every test run so schema changes are always applied.
 _TEST_DB = Path(__file__).with_name(f"test_{uuid4().hex}.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 

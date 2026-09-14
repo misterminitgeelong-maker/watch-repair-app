@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Session, select
 
 _TEST_DB = Path(__file__).with_name(f"test_auto_key_contracts_{uuid4().hex}.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient  # noqa: E402

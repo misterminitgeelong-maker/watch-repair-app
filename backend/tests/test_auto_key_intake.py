@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 _TEST_DB = Path(__file__).with_name(f"test_ak_intake_{uuid4().hex}.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session

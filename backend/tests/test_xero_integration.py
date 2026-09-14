@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 import pytest
 
 _TEST_DB = Path(__file__).with_name(f"test_xero_{uuid4().hex}.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB.as_posix()}"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
