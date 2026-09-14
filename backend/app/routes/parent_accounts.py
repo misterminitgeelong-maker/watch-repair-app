@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select
@@ -1271,6 +1272,27 @@ async def import_shops_from_xlsx(
             detail=f"File exceeds maximum size of {MAX_IMPORT_SHOPS_XLSX_BYTES // (1024 * 1024)} MB",
         )
 
+    # Workbook parse plus N tenant provisions is CPU/DB-heavy and fully
+    # synchronous; run it in a worker thread so it does not block the event
+    # loop (and therefore every other request) for the duration of the import.
+    return await run_in_threadpool(
+        _import_shops_from_xlsx_sync,
+        raw_bytes=raw_bytes,
+        filename=filename,
+        parent=parent,
+        current_user=current_user,
+        session=session,
+    )
+
+
+def _import_shops_from_xlsx_sync(
+    *,
+    raw_bytes: bytes,
+    filename: str,
+    parent: ParentAccount,
+    current_user: User,
+    session: Session,
+) -> ParentImportShopsResponse:
     try:
         parsed = parse_minit_shops_xlsx_detailed(file_obj=raw_bytes, collect_row_errors=True)
     except ValueError as exc:
