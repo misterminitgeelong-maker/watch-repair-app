@@ -33,6 +33,7 @@ import { useAuth } from '@/context/AuthContext'
 import { isMinitRestrictedUi } from '@/lib/minitProduct'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { Link, useNavigate } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['completed', 'awaiting_collection', 'collected']
@@ -190,8 +191,7 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
   const mut = useMutation({
     mutationFn: () => createAutoKeyQuickIntake({ full_name: fullName.trim(), phone: phone.trim() }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs', 'dashboard'] })
+      invalidateAutoKeyJobCollections(qc)
       onClose()
     },
     onError: (e: unknown) => setErr(getApiErrorMessage(e, 'Could not start quick job.')),

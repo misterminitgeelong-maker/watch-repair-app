@@ -11,6 +11,7 @@ import {
 } from '@/lib/api'
 import { Badge, Button, Card, Modal, Textarea } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 
 export default function ShopBookingInbox() {
   const navigate = useNavigate()
@@ -33,7 +34,7 @@ export default function ShopBookingInbox() {
         setError(row.schedule_conflict_warning)
       }
       qc.invalidateQueries({ queryKey: ['shop-mobile-bookings'] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       if (row.resulting_auto_key_job_id) {
         navigate(`/auto-key/${row.resulting_auto_key_job_id}`)
       }
