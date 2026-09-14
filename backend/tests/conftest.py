@@ -167,10 +167,12 @@ def pytest_sessionstart(session):
     _bootstrap_schema()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _dispose_engine():
-    """Release pooled connections at the end, then drop the throwaway sqlite file."""
-    yield
+def pytest_sessionfinish(session, exitstatus):
+    """Release pooled connections, then drop the throwaway sqlite file.
+
+    A hook rather than a session fixture so it also runs for --collect-only
+    (module imports create the sqlite file during collection).
+    """
     engine.dispose()
     if IS_SQLITE:
         try:
