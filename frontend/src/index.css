@@ -114,6 +114,7 @@
   --ms-error:          #9E2A14;
   --ms-danger:         #8A2410;
   --ms-danger-hover:   #6B1B0A;
+  --ms-on-danger:      #FFFFFF;
   --ms-overlay:        rgba(10, 10, 10, 0.50);
 
   /* Legacy espresso tints — still used by AppShell / Sidebar / RepairQueueModal */
@@ -199,6 +200,7 @@
   --ms-error:           #F09090;
   --ms-danger:          #C05040;
   --ms-danger-hover:    #A03828;
+  --ms-on-danger:       #0A0A0A;
   --ms-overlay:         rgba(0, 0, 0, 0.65);
 }
 
@@ -235,6 +237,7 @@
   --ms-error:           #A33838;
   --ms-danger:          #8B3020;
   --ms-danger-hover:    #6A2010;
+  --ms-on-danger:       #FFFFFF;
   --ms-overlay:         rgba(20, 18, 16, 0.52);
 }
 
@@ -288,6 +291,7 @@
   --ms-error:           #B5102A;
   --ms-danger:          #9A0C22;
   --ms-danger-hover:    #7A081A;
+  --ms-on-danger:       #FFFFFF;
   --ms-overlay:         rgba(0, 0, 0, 0.50);
 }
 

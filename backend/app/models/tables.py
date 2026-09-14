@@ -627,9 +627,15 @@ class SmsLog(SQLModel, table=True):
     """Audit trail for every SMS sent (or attempted) by the system."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
-    repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
-    shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
-    auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
+    # No foreign key to the job tables, deliberately. This row is written in its own
+    # transaction before the provider call (see sms._begin_sms_log) so the attempt is
+    # recorded even if the caller later rolls back — which means it can legitimately
+    # reference a job that is not committed yet, and must outlive one that is deleted
+    # (routes/repair_jobs.py deletes jobs). tenant_id keeps its FK: a tenant always
+    # exists before any message is sent.
+    repair_job_id: Optional[UUID] = Field(default=None, index=True)
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True)
+    auto_key_job_id: Optional[UUID] = Field(default=None, index=True)
     to_phone: str
     body: str
     event: str  # e.g. "quote_sent", "job_live", "status_ready"

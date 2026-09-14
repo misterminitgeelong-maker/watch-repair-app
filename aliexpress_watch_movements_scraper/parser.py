@@ -23,6 +23,46 @@ RAW_FIELDS = [
 ]
 
 
+def _strip_trailing_commas(raw: str) -> str:
+    """Drop trailing commas before ``}`` / ``]`` that sit outside JSON strings.
+
+    A global ``re.sub(r',\\s*}', '}', raw)`` corrupts any string value that
+    happens to contain that sequence (e.g. a title ending with a comma).
+    """
+    out: list[str] = []
+    in_string = False
+    escape = False
+    i = 0
+    n = len(raw)
+    while i < n:
+        ch = raw[i]
+        if in_string:
+            out.append(ch)
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == ",":
+            j = i + 1
+            while j < n and raw[j] in " \t\r\n":
+                j += 1
+            if j < n and raw[j] in "}]":
+                i += 1
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _safe_text(el, default=""):
     if el is None:
         return default
@@ -134,8 +174,7 @@ def _extract_embedded_items(html: str) -> list[dict]:
                 m = re.search(pattern, content, re.DOTALL)
                 if m:
                     raw = "[" + m.group(1) + "]" if extract_key == "products" else m.group(0)
-                    raw = re.sub(r',\s*}', '}', raw)
-                    raw = re.sub(r',\s*]', ']', raw)
+                    raw = _strip_trailing_commas(raw)
                     arr = json.loads(raw)
                     if isinstance(arr, list) and len(arr) > 0:
                         items.extend(arr)

@@ -48,6 +48,7 @@ import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
 import { useToast } from '@/lib/toast'
 import { formatCents, dollarsToCents, computeGstAmounts } from '@/lib/money'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
@@ -458,7 +459,7 @@ export default function AutoKeyJobDetailPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setKeyTypeEdit(null)
       setBladeCodeEdit(null)
       setChipTypeEdit(null)
@@ -520,7 +521,7 @@ export default function AutoKeyJobDetailPage() {
   const deleteMut = useMutation({
     mutationFn: () => deleteAutoKeyJob(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       navigate('/auto-key')
     },
     onError: (e: unknown) => setDeleteError(getApiErrorMessage(e, 'Failed to delete job.')),
@@ -530,7 +531,7 @@ export default function AutoKeyJobDetailPage() {
     mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(id!, status),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update status.')),
@@ -611,7 +612,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['auto-key-quotes', id] })
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setStatusFeedback(mobileNotifyFeedback(res.data ?? {}, 'quote'))
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to send quote.')),
@@ -621,7 +622,7 @@ export default function AutoKeyJobDetailPage() {
     mutationFn: (quoteId: string) => createAutoKeyInvoiceFromQuote(id!, quoteId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to create invoice.')),
   })
@@ -637,7 +638,7 @@ export default function AutoKeyJobDetailPage() {
     mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(id!, { assigned_user_id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to assign tech.')),
@@ -647,7 +648,7 @@ export default function AutoKeyJobDetailPage() {
     mutationFn: (commission_lead_source: string) => updateAutoKeyJob(id!, { commission_lead_source }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update commission source.')),
@@ -669,7 +670,7 @@ export default function AutoKeyJobDetailPage() {
       updateAutoKeyInvoice(id!, invId, { status: 'paid', payment_method: method }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-invoices', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setInvoiceToPay(null)
       setError('')
     },
@@ -680,7 +681,7 @@ export default function AutoKeyJobDetailPage() {
     mutationFn: (customer_account_id: string | null) => updateAutoKeyJob(id!, { customer_account_id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update customer account.')),
@@ -691,7 +692,7 @@ export default function AutoKeyJobDetailPage() {
       updateAutoKeyJob(id!, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update schedule.')),
@@ -702,7 +703,7 @@ export default function AutoKeyJobDetailPage() {
       updateAutoKeyJob(id!, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update key details.')),

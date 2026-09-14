@@ -25,6 +25,7 @@ import { Button, Input, Modal, Select, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { dollarsToCents } from '@/lib/money'
 import { STATUS_LABELS } from '@/lib/utils'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, formatCents } from './dispatchHelpers'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 
@@ -257,7 +258,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
       })
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       onClose()
     },
     onError: (err) => setError(getApiErrorMessage(err, 'Failed to create Mobile Services job.')),
