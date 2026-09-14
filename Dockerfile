@@ -48,4 +48,12 @@ ENV DATABASE_URL="sqlite:////app/data/watch_repair.db" \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+# The container is only reachable through the platform edge proxy (Railway), which
+# connects from a non-loopback address. Uvicorn only honours X-Forwarded-For from
+# FORWARDED_ALLOW_IPS (default 127.0.0.1), so without this every request reports
+# the proxy's IP as request.client.host and the slowapi limiter collapses into one
+# global bucket. Railway publishes no proxy CIDR, so trust all hops by default;
+# override FORWARDED_ALLOW_IPS with a specific range if one becomes available.
+ENV FORWARDED_ALLOW_IPS="*"
+
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]
