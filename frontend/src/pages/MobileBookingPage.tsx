@@ -10,11 +10,7 @@ import {
   type PublicAutoKeyBooking,
 } from '@/lib/api'
 import { Button, Card } from '@/components/ui'
-
-function formatMoney(cents: number, currency: string) {
-  const code = (currency || 'AUD').toUpperCase().slice(0, 3)
-  return (cents / 100).toLocaleString('en-AU', { style: 'currency', currency: code })
-}
+import { formatMoney } from '@/lib/money'
 
 function SignaturePad({
   onSave,

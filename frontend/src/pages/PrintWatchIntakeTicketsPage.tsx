@@ -5,13 +5,9 @@ import { Bluetooth, BluetoothOff, ChevronLeft, Printer } from 'lucide-react'
 import QRCode from 'qrcode'
 import { getCustomer, getJob, getWatch } from '@/lib/api'
 import { Spinner } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatCents } from '@/lib/utils'
 import { renderWatchLabel, LABEL_50x70 } from '@/lib/niimbot'
 import { useNiimbotPrinter } from '@/hooks/useNiimbotPrinter'
-
-function formatCents(value: number) {
-  return (value / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
 
 export default function PrintWatchIntakeTicketsPage() {
   const { id } = useParams<{ id: string }>()

@@ -34,9 +34,7 @@ export const AUTO_KEY_ACTIVE_STATUSES = [
   'booking_on_hold',
 ] as const
 
-export function formatCents(value: number) {
-  return `$${(value / 100).toFixed(2)}`
-}
+export { formatCents } from '@/lib/money'
 
 export function ymdLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
