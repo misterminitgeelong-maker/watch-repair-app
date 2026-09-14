@@ -140,6 +140,24 @@ cd backend
 python -m pytest tests/test_quote_token_lifecycle.py
 ```
 
+With no `DATABASE_URL` set the suite uses a throwaway SQLite file and builds the
+schema with `create_all` -- the fast local path. CI runs the same suite against
+Postgres with the schema built by `alembic upgrade head`, which is what
+production runs; SQLite does not enforce foreign keys or type affinity, so a
+Postgres run is the one that counts. To reproduce it locally, point
+`DATABASE_URL` at a Postgres database whose name contains `test` (the suite
+drops and rebuilds its `public` schema and truncates every table between
+modules):
+
+```bash
+cd backend
+DATABASE_URL=postgresql://user:pass@localhost:5432/mainspring_test python -m pytest
+```
+
+`TEST_SCHEMA_BOOTSTRAP=alembic|create_all` overrides the default (alembic on
+Postgres, create_all on SQLite). The pytest header prints the database and
+bootstrap mode actually used.
+
 ## Operational Notes
 
 - **Production config safety checks:** startup fails in production if unsafe values are detected (default JWT secret, wildcard CORS, localhost public URL, unintended SQLite usage).
