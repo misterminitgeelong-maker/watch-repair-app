@@ -229,3 +229,64 @@ def test_stocktake_can_be_deleted_with_lines_and_adjustments():
     list_res = client.get("/v1/stocktakes", headers=headers)
     assert list_res.status_code == 200
     assert all(item["id"] != session_id for item in list_res.json())
+
+def _stock_xlsx_bytes() -> bytes:
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "DATA"
+    ws.append(["Item Code", "Group", "Line Desc", "Description (2)", "Description (3)", "Per", "Pack Description", "Pack Qty", "Item Price", "Ord Inc Tax", "Stock"])
+    ws.append(["A100", "DA", "BLANK KEY", None, "BRASS", "EA", "PKT", 10, 1.23, 2.34, 5])
+    ws.append(["B200", "NB", "BATTERY CR2032", None, None, "EA", None, 1, 0.50, 4.95, 0])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_stock_import_accepts_xlsx_workbook():
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"stock-xlsx-{suffix}",
+        email=f"owner-{suffix}@stock-xlsx.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.post(
+        "/v1/stock/import",
+        headers=headers,
+        files={
+            "file": (
+                "stock.xlsx",
+                io.BytesIO(_stock_xlsx_bytes()),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["imported"] == 2
+    assert body["created"] == 2
+    assert body["sheet_names"] == ["DATA"]
+
+
+def test_stock_import_rejects_oversized_file():
+    from app.routes.stocktakes import MAX_IMPORT_STOCK_BYTES
+
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(
+        tenant_slug=f"stock-big-{suffix}",
+        email=f"owner-{suffix}@stock-big.test",
+        password="pass123456",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    oversized = b"PK" + b"\0" * MAX_IMPORT_STOCK_BYTES
+    res = client.post(
+        "/v1/stock/import",
+        headers=headers,
+        files={"file": ("stock.xlsx", io.BytesIO(oversized), "application/octet-stream")},
+    )
+    assert res.status_code == 413
+    assert "maximum size" in res.json()["detail"]

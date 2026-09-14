@@ -5,6 +5,7 @@ from uuid import UUID
 
 import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
 from sqlmodel import Session, delete, func, select
@@ -306,6 +307,11 @@ def _report_rows(report: StocktakeReportRead) -> list[dict[str, str | int | floa
     return rows
 
 
+# Stock master workbooks are parsed with openpyxl/xlrd from an untrusted zip;
+# bound the input before it is inflated. Mirrors MAX_IMPORT_SHOPS_XLSX_BYTES.
+MAX_IMPORT_STOCK_BYTES = 5 * 1024 * 1024
+
+
 @router.post("/stock/import", response_model=StockImportSummaryResponse)
 async def import_stock_master(
     file: UploadFile = File(...),
@@ -315,9 +321,33 @@ async def import_stock_master(
     raw_bytes = await file.read()
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(raw_bytes) > MAX_IMPORT_STOCK_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum size of {MAX_IMPORT_STOCK_BYTES // (1024 * 1024)} MB",
+        )
 
+    # Workbook parse, full-table read and N upserts are CPU/DB-heavy and fully
+    # synchronous; run them in a worker thread so a large file does not block
+    # the event loop (and therefore every other request) for the whole import.
+    return await run_in_threadpool(
+        _import_stock_master_sync,
+        raw_bytes=raw_bytes,
+        filename=file.filename or "stock-import",
+        auth=auth,
+        session_db=session_db,
+    )
+
+
+def _import_stock_master_sync(
+    *,
+    raw_bytes: bytes,
+    filename: str,
+    auth: AuthContext,
+    session_db: Session,
+) -> StockImportSummaryResponse:
     try:
-        sheets = load_stock_sheets(file.filename or "stock-import", raw_bytes)
+        sheets = load_stock_sheets(filename, raw_bytes)
         merged_items, meta = merge_stock_records(sheets)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
