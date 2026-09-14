@@ -33,7 +33,7 @@ function statusStyle(status: string): { bg: string; color: string; label: string
     case 'accepted':
       return { bg: 'rgba(40,120,80,0.12)', color: '#2D7A52', label: 'Accepted' }
     case 'declined':
-      return { bg: 'rgba(201,106,90,0.12)', color: '#C96A5A', label: 'Declined' }
+      return { bg: 'rgba(201,106,90,0.12)', color: 'var(--ms-error)', label: 'Declined' }
     case 'cancelled':
       return { bg: 'var(--ms-border)', color: 'var(--ms-text-muted)', label: 'Cancelled' }
     case 'expired':
@@ -90,7 +90,7 @@ function AttentionRow({ item }: { item: ParentTroubleshootingItem }) {
       <AlertTriangle
         size={16}
         className="shrink-0 mt-0.5"
-        style={{ color: isWarning ? '#C96A5A' : 'var(--ms-text-muted)' }}
+        style={{ color: isWarning ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}
       />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
@@ -179,7 +179,7 @@ export default function MinitOperationsPage() {
     return (
       <div>
         <PageHeader title="Dashboard" />
-        <p className="text-sm" style={{ color: '#C96A5A' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-error)' }}>
           Could not load dashboard. Confirm you are signed in as Minit HQ (mmsupport).
         </p>
       </div>
@@ -215,10 +215,10 @@ export default function MinitOperationsPage() {
       {attentionCount > 0 && (
         <Card
           className="mb-6 p-4 flex flex-wrap items-center justify-between gap-3"
-          style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.06)' }}
+          style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.06)' }}
         >
           <div className="flex items-start gap-3">
-            <AlertTriangle size={22} style={{ color: '#C96A5A', flexShrink: 0 }} />
+            <AlertTriangle size={22} style={{ color: 'var(--ms-error)', flexShrink: 0 }} />
             <div>
               <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
                 {attentionCount} item{attentionCount === 1 ? '' : 's'} need attention

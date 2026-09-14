@@ -87,7 +87,7 @@ export function AddTechnicianModal({
           )}
         </div>
         {error === 'duplicate_email' && (
-          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: '#C96A5A' }}>
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-error)' }}>
             <p className="font-medium" style={{ color: 'var(--ms-text)' }}>This email is already on your team</p>
             <p style={{ color: 'var(--ms-text-muted)' }}>
               Each address can only be used once. If you already added this technician, open{' '}
@@ -97,7 +97,7 @@ export function AddTechnicianModal({
             </p>
           </div>
         )}
-        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button
@@ -214,7 +214,7 @@ export function MobileCommissionRulesModal({ onClose }: { onClose: () => void })
           )}
         </div>
       )}
-      {error && <p className="text-sm mt-2" style={{ color: '#C96A5A' }}>{error}</p>}
+      {error && <p className="text-sm mt-2" style={{ color: 'var(--ms-error)' }}>{error}</p>}
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
         <Button type="button" disabled={!techs.length || mut.isPending} onClick={() => { setError(''); mut.mutate() }}>

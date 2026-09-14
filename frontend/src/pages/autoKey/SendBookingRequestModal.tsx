@@ -44,7 +44,7 @@ export function SendBookingRequestModal({ onClose }: { onClose: () => void }) {
           onChange={e => setName(e.target.value)}
           placeholder="e.g. Sam Taylor"
         />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button

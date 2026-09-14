@@ -217,7 +217,7 @@ function CreateQuoteInlineForm({ jobId, isBusinessAccount, onClose }: { jobId: s
         <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Total: ${(total / 100).toFixed(2)}</p>
       </div>
 
-      {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+      {err && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{err}</p>}
       <div className="flex gap-2 pt-1">
         <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
         <Button
@@ -258,7 +258,7 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
   return (
     <div
       className="mb-5 rounded-xl border p-4 space-y-3"
-      style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.08)' }}
+      style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.08)' }}
       role="alert"
     >
       <div className="flex items-center gap-2 flex-wrap">
@@ -306,7 +306,7 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
 function SeverityBadge({ severity }: { severity: string }) {
   const s = severity.toLowerCase()
   let bg = 'rgba(201,162,72,0.12)', color = '#9A7220'
-  if (s.includes('very high') || s.includes('critical')) { bg = 'rgba(201,106,90,0.15)'; color = '#C96A5A' }
+  if (s.includes('very high') || s.includes('critical')) { bg = 'rgba(201,106,90,0.15)'; color = 'var(--ms-error)' }
   else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
   else if (s.includes('low'))   { bg = 'rgba(120,180,120,0.15)'; color = '#4A8A4A' }
   return (
@@ -845,7 +845,7 @@ export default function AutoKeyJobDetailPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium touch-manipulation shrink-0"
-            style={{ backgroundColor: 'rgba(201,162,72,0.12)', color: 'var(--ms-accent)', border: '1px solid rgba(201,162,72,0.3)' }}
+            style={{ backgroundColor: 'var(--ms-accent-pop)', color: 'var(--ms-accent)', border: '1px solid var(--ms-accent-light)' }}
           >
             <MapPin size={14} /> Nav
           </a>
@@ -957,7 +957,7 @@ export default function AutoKeyJobDetailPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 min-h-9 px-3 py-1.5 rounded-lg text-sm font-medium mt-2 touch-manipulation"
-                  style={{ color: 'var(--ms-text)', backgroundColor: 'rgba(201, 162, 72, 0.15)', border: '1px solid var(--ms-accent)' }}
+                  style={{ color: 'var(--ms-text)', backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent)' }}
                 >
                   <MapPin size={14} /> Get Directions
                 </a>
@@ -968,7 +968,7 @@ export default function AutoKeyJobDetailPage() {
                 type="button"
                 onClick={() => setShowArrivalSms(true)}
                 className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg text-sm font-medium touch-manipulation"
-                style={{ color: 'var(--ms-accent)', backgroundColor: 'rgba(201, 162, 72, 0.12)' }}
+                style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-pop)' }}
               >
                 <MessageSquare size={16} /> Send arrival SMS to customer
               </button>
@@ -1028,8 +1028,8 @@ export default function AutoKeyJobDetailPage() {
                         <div className='flex flex-wrap gap-1 mt-1'>
                           {m.akl_complexity && <AklComplexityPill complexity={m.akl_complexity} className='px-2 text-xs' />}
                           {m.bsu_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,162,72,0.15)', color: '#9A7220' }}>BSU required</span>}
-                          {m.pin_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: '#C96A5A' }}>PIN required</span>}
-                          {m.dealer_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: '#C96A5A' }}>Dealer only</span>}
+                          {m.pin_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: 'var(--ms-error)' }}>PIN required</span>}
+                          {m.dealer_required && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: 'var(--ms-error)' }}>Dealer only</span>}
                           {m.eeprom_required && !m.obd_programmable && <span className='rounded-full px-1.5 py-0.5 text-[10px] font-semibold' style={{ backgroundColor: 'rgba(120,100,180,0.15)', color: '#7060B0' }}>EEPROM</span>}
                         </div>
                       </button>
@@ -1080,10 +1080,10 @@ export default function AutoKeyJobDetailPage() {
           {/* Known Issues warning */}
           {jobContext?.known_issues && jobContext.known_issues.length > 0 && (
             <div className='space-y-2 pt-2'>
-              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: '#C96A5A' }}>⚠ Known Issues</h3>
+              <h3 className='font-semibold text-xs uppercase tracking-widest' style={{ color: 'var(--ms-error)' }}>⚠ Known Issues</h3>
               {jobContext.known_issues.map((issue: KnownIssue, i: number) => (
                 <div key={i} className='rounded-lg border p-3 space-y-1 text-sm'
-                  style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.07)' }}>
+                  style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.07)' }}>
                   <div className='flex items-start justify-between gap-2'>
                     <span className='font-medium' style={{ color: 'var(--ms-text)' }}>{issue.issue}</span>
                     {issue.severity && <SeverityBadge severity={issue.severity} />}
@@ -1328,7 +1328,7 @@ export default function AutoKeyJobDetailPage() {
             placeholder='Address for mobile visits'
           />
 
-          {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
+          {error && <p className='text-sm' style={{ color: 'var(--ms-error)' }}>{error}</p>}
           </div>{/* end info tab group (status/assign/schedule) */}
           {job && (
             <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
@@ -1379,7 +1379,7 @@ export default function AutoKeyJobDetailPage() {
                   <div className='flex items-center justify-between'>
                     <div>
                       <p style={{ color: 'var(--ms-text)' }}>{formatDate(q.created_at)}</p>
-                      <p className='text-xs capitalize' style={{ color: q.status === 'sent' ? '#4A8A4A' : q.status === 'declined' ? '#C96A5A' : 'var(--ms-text-muted)' }}>
+                      <p className='text-xs capitalize' style={{ color: q.status === 'sent' ? '#4A8A4A' : q.status === 'declined' ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
                         {q.status}{q.sent_at ? ` · sent ${formatDate(q.sent_at)}` : ''}
                       </p>
                     </div>
@@ -1559,7 +1559,7 @@ export default function AutoKeyJobDetailPage() {
               value={editTotal}
               onChange={e => setEditTotal(e.target.value)}
             />
-            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => setInvoiceToEdit(null)}>Cancel</Button>
               <Button
@@ -1594,7 +1594,7 @@ export default function AutoKeyJobDetailPage() {
               <option value="eftpos">EFTPOS</option>
               <option value="bank">Bank transfer</option>
             </Select>
-            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => setInvoiceToPay(null)}>Cancel</Button>
               <Button
@@ -1619,7 +1619,7 @@ export default function AutoKeyJobDetailPage() {
             <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
               <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.title}</p>
             </div>
-            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }} disabled={deleteMut.isPending}>Cancel</Button>
               <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>

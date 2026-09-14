@@ -176,7 +176,7 @@ export default function MinitAccountsPage() {
       </p>
 
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
@@ -332,7 +332,7 @@ export default function MinitAccountsPage() {
                 <Input label="Shop number (optional)" value={shopNumber} onChange={e => setShopNumber(e.target.value)} />
               </>
             )}
-            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button
@@ -363,7 +363,7 @@ export default function MinitAccountsPage() {
                 <option key={opt.code} value={opt.code}>{opt.label}</option>
               ))}
             </Select>
-            {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+            {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setInviteTarget(null)}>Cancel</Button>
               <Button onClick={sendInvite} disabled={inviteMut.isPending}>

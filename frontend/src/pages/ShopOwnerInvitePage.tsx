@@ -129,7 +129,7 @@ export default function ShopOwnerInvitePage() {
                 autoComplete="new-password"
                 required
               />
-              {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+              {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
               <Button type="submit" className="w-full" disabled={mut.isPending}>
                 {mut.isPending ? 'Setting up…' : 'Save & sign in'}
               </Button>

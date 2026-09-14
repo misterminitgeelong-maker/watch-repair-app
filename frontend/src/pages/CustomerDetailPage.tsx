@@ -49,7 +49,7 @@ function AdjustPointsModal({ customerId, onClose }: { customerId: string; onClos
           onChange={e => setNote(e.target.value)}
           placeholder="e.g. Goodwill adjustment"
         />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending || !valid}>
@@ -147,7 +147,7 @@ function LoyaltyPanel({ customerId }: { customerId: string }) {
               </div>
               <span
                 className="text-sm font-semibold"
-                style={{ color: row.points_delta >= 0 ? '#3A7D44' : '#C96A5A' }}
+                style={{ color: row.points_delta >= 0 ? '#3A7D44' : 'var(--ms-error)' }}
               >
                 {row.points_delta >= 0 ? '+' : ''}{row.points_delta}
               </span>
@@ -189,7 +189,7 @@ function AddWatchModal({ customerId, onClose }: { customerId: string; onClose: (
           <option value="kinetic">Kinetic</option>
         </Select>
         <Textarea label="Condition Notes" value={form.condition_notes} onChange={set('condition_notes')} rows={2} />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>{mut.isPending ? 'Saving…' : 'Add Watch'}</Button>

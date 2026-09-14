@@ -241,7 +241,7 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
         {showPhotos && (
           <div className="mt-3">
             {uploadError && (
-              <p className="text-xs mb-2" style={{ color: '#C96A5A' }} onClick={e => e.stopPropagation()} role="alert">
+              <p className="text-xs mb-2" style={{ color: 'var(--ms-error)' }} onClick={e => e.stopPropagation()} role="alert">
                 {uploadError}
               </p>
             )}
@@ -361,7 +361,7 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
             <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               This action cannot be undone.
             </p>
-            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
             <div className="flex gap-2 pt-2">
               <Button
                 variant="secondary"

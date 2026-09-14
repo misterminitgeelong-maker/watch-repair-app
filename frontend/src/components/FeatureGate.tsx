@@ -24,7 +24,7 @@ export function FeatureGate({ feature, children }: { feature: FeatureKey; childr
     : '/dashboard'
   if (pathname === fallback || pathname.startsWith(`${fallback}/`)) {
     return (
-      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+      <div className="p-6 text-sm" style={{ color: 'var(--ms-error)' }}>
         This page is not available on your plan. Open Account or sign in again if the problem persists.
       </div>
     )

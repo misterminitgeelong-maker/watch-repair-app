@@ -159,7 +159,7 @@ export default function PricingPage() {
             <Link
               to="/signup"
               className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-sidebar)', boxShadow: '0 5px 16px rgba(201,162,72,0.25)' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
             >
               Start your shop
             </Link>

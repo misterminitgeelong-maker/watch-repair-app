@@ -78,7 +78,7 @@ export default function SignupCheckoutPage() {
 
         {error ? (
           <div className="space-y-3">
-            <p className="text-sm text-center" style={{ color: '#C96A5A' }}>
+            <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>
               {error}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

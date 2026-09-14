@@ -220,7 +220,7 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
           </section>
         )}
 
-        {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+        {err && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{err}</p>}
         <div className="flex gap-2 pt-1">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" onClick={() => { setErr(''); mut.mutate() }} disabled={mut.isPending || !canSave}>
@@ -450,7 +450,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
                 className="opacity-40 hover:opacity-100 transition-opacity"
                 title="Remove service"
               >
-                <X size={13} style={{ color: '#C96A5A' }} />
+                <X size={13} style={{ color: 'var(--ms-error)' }} />
               </button>
             </div>
           ))}
@@ -883,7 +883,7 @@ export default function ShoeJobDetailPage() {
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
         <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
         {uploadError && (
-          <p className="px-5 pb-2 text-sm" style={{ color: '#C96A5A' }}>{uploadError}</p>
+          <p className="px-5 pb-2 text-sm" style={{ color: 'var(--ms-error)' }}>{uploadError}</p>
         )}
         {photos.length === 0 ? (
           <div
@@ -971,7 +971,7 @@ export default function ShoeJobDetailPage() {
                     onClick={() => removePairMutation.mutate(activePair.entryId!)}
                     disabled={removePairMutation.isPending}
                     className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-0.5"
-                    style={{ color: '#C96A5A' }}
+                    style={{ color: 'var(--ms-error)' }}
                     title="Remove this pair from job"
                   >
                     <X size={12} /> Remove

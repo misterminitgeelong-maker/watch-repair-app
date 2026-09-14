@@ -45,7 +45,7 @@ function PoaBadge() {
   return (
     <span
       className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-      style={{ backgroundColor: 'rgba(201,106,90,0.15)', color: '#C96A5A' }}
+      style={{ backgroundColor: 'rgba(201,106,90,0.15)', color: 'var(--ms-error)' }}
     >
       POA
     </span>
@@ -262,7 +262,7 @@ export default function PricingSelector({
         className="w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors cursor-pointer"
         style={{
           borderColor: 'var(--ms-border)',
-          backgroundColor: isSelected ? 'rgba(201,162,72,0.1)' : 'transparent',
+          backgroundColor: isSelected ? 'var(--ms-accent-pop)' : 'transparent',
         }}
       >
         <div className="flex items-start justify-between gap-2">
@@ -318,7 +318,7 @@ export default function PricingSelector({
         className="w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors cursor-pointer"
         style={{
           borderColor: 'var(--ms-border)',
-          backgroundColor: isSelected ? 'rgba(201,162,72,0.1)' : 'transparent',
+          backgroundColor: isSelected ? 'var(--ms-accent-pop)' : 'transparent',
         }}
       >
         <div className="flex items-start justify-between gap-2">
@@ -370,7 +370,7 @@ export default function PricingSelector({
         className="w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors"
         style={{
           borderColor: 'var(--ms-border)',
-          backgroundColor: isSelected ? 'rgba(201,162,72,0.1)' : 'transparent',
+          backgroundColor: isSelected ? 'var(--ms-accent-pop)' : 'transparent',
         }}
       >
         <div className="flex items-start justify-between gap-2">
@@ -467,7 +467,7 @@ export default function PricingSelector({
                 />
               </div>
               {makesError && (
-                <p className="text-sm py-2 px-1" style={{ color: '#C96A5A' }}>
+                <p className="text-sm py-2 px-1" style={{ color: 'var(--ms-error)' }}>
                   {getApiErrorMessage(makesQueryError, 'Could not load vehicle makes')}
                 </p>
               )}
@@ -514,7 +514,7 @@ export default function PricingSelector({
                 </p>
               )}
               {oemError && (
-                <p className="text-sm py-2 px-1" style={{ color: '#C96A5A' }}>
+                <p className="text-sm py-2 px-1" style={{ color: 'var(--ms-error)' }}>
                   {getApiErrorMessage(oemQueryError, 'Could not load pricing for this make')}
                 </p>
               )}
@@ -546,7 +546,7 @@ export default function PricingSelector({
           {tab === 'general_service' && (
             <>
               {servicesError && (
-                <p className="text-sm py-4 text-center" style={{ color: '#C96A5A' }}>
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-error)' }}>
                   {getApiErrorMessage(servicesQueryError, 'Could not load general services')}
                 </p>
               )}
@@ -570,7 +570,7 @@ export default function PricingSelector({
           {tab === 'garage_door' && (
             <>
               {garageError && (
-                <p className="text-sm py-4 text-center" style={{ color: '#C96A5A' }}>
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--ms-error)' }}>
                   {getApiErrorMessage(garageQueryError, 'Could not load garage services')}
                 </p>
               )}
@@ -589,7 +589,7 @@ export default function PricingSelector({
 
         <div className="border-t px-4 py-3 space-y-2" style={{ borderColor: 'var(--ms-border-strong)' }}>
           {selectedRow?.isPoa && effectivePrice == null && (
-            <p className="text-xs" style={{ color: '#C96A5A' }}>Enter a price to continue</p>
+            <p className="text-xs" style={{ color: 'var(--ms-error)' }}>Enter a price to continue</p>
           )}
           {selectedRow && effectivePrice != null && (
             <p className="text-sm" style={{ color: 'var(--ms-text)' }}>

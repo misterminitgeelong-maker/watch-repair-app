@@ -350,7 +350,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
       <Steps current={step} />
 
       {error && (
-        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(201,106,90,0.1)', color: '#C96A5A' }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(201,106,90,0.1)', color: 'var(--ms-error)' }}>
           {error}
         </p>
       )}

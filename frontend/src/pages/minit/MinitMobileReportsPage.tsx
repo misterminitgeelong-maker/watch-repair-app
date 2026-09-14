@@ -54,7 +54,7 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
                     <td className="px-5 py-2 text-right tabular-nums">{shop.total_count}</td>
                     <td
                       className="px-5 py-2 text-right tabular-nums font-semibold"
-                      style={{ color: shop.new_count > 0 ? '#C96A5A' : 'var(--ms-text-muted)' }}
+                      style={{ color: shop.new_count > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}
                     >
                       {shop.new_count}
                     </td>

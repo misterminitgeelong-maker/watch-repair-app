@@ -245,7 +245,7 @@ export default function ParentAccountPage() {
 
       {/* Global error */}
       {error && !showAddModal && (
-        <div className='mb-4 text-sm rounded-lg px-4 py-3' style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className='mb-4 text-sm rounded-lg px-4 py-3' style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
@@ -357,7 +357,7 @@ export default function ParentAccountPage() {
                 <option value='booking_only'>Shop booking only ($15/mo)</option>
                 <option value='pro'>Pro — full access ($50/mo)</option>
               </Select>
-              {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
+              {error && <p className='text-sm' style={{ color: 'var(--ms-error)' }}>{error}</p>}
               <div className='flex justify-end gap-2 pt-1'>
                 <Button variant='secondary' onClick={closeModal}>Cancel</Button>
                 <Button
@@ -396,7 +396,7 @@ export default function ParentAccountPage() {
                 onChange={e => setOwnerEmail(e.target.value)}
                 placeholder='owner@mainspringsouth.com'
               />
-              {error && <p className='text-sm' style={{ color: '#C96A5A' }}>{error}</p>}
+              {error && <p className='text-sm' style={{ color: 'var(--ms-error)' }}>{error}</p>}
               <div className='flex justify-end gap-2 pt-1'>
                 <Button variant='secondary' onClick={closeModal}>Cancel</Button>
                 <Button

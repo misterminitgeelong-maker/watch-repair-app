@@ -335,7 +335,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             {showLastJobBanner && customerLastJob && (
               <div
                 className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm"
-                style={{ borderColor: 'var(--ms-accent)', backgroundColor: 'rgba(201,162,72,0.08)' }}
+                style={{ borderColor: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-pop)' }}
               >
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'var(--ms-accent)' }}>
@@ -446,8 +446,8 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                         <div className="flex flex-wrap gap-1 mt-1">
                           {m.akl_complexity && <AklComplexityPill complexity={m.akl_complexity} />}
                           {m.bsu_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,162,72,0.15)', color: '#9A7220' }}>BSU required</span>}
-                          {m.pin_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: '#C96A5A' }}>PIN required</span>}
-                          {m.dealer_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: '#C96A5A' }}>Dealer only</span>}
+                          {m.pin_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: 'var(--ms-error)' }}>PIN required</span>}
+                          {m.dealer_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: 'var(--ms-error)' }}>Dealer only</span>}
                           {m.eeprom_required && !m.obd_programmable && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(120,100,180,0.15)', color: '#7060B0' }}>EEPROM</span>}
                         </div>
                       </button>
@@ -606,7 +606,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
         <div className="flex gap-2 pt-2">
           {step === 1 ? (

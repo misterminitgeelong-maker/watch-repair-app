@@ -84,7 +84,7 @@ export default function ShopBookingInbox() {
         </Link>
       </div>
       {error && (
-        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{error}</p>
+        <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{error}</p>
       )}
       <div className="space-y-3">
         {pending.map(b => (

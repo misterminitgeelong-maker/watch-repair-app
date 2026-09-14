@@ -127,7 +127,7 @@ export default function ToolkitPage() {
       <div>
         <MobileServicesSubNav className="mb-4" />
         <PageHeader title="Mobile toolkit" />
-        <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(catErrObj, 'Could not load toolkit.')}</p>
+        <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(catErrObj, 'Could not load toolkit.')}</p>
       </div>
     )
   }
@@ -260,7 +260,7 @@ export default function ToolkitPage() {
             What do I need?
           </Button>
         </div>
-        {recErr && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{recErr}</p>}
+        {recErr && <p className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{recErr}</p>}
         {recommend && (
           <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--ms-text)' }}>
             <p className="font-medium">

@@ -281,7 +281,7 @@ function CreateSendQuoteModal({ jobId, isBusinessAccount, onClose, onSent }: { j
             </p>
           )
         })()}
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => void handleSubmit()} disabled={step === 'sending'}>
@@ -427,7 +427,7 @@ function EditTicketModal({ job, watch, customer, onClose }: { job: RepairJob; wa
           </section>
         )}
 
-        {err && <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p>}
+        {err && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{err}</p>}
         <div className="flex gap-2 pt-1">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" onClick={() => { setErr(''); mut.mutate() }} disabled={mut.isPending || !canSave}>
@@ -1057,7 +1057,7 @@ export default function JobDetailPage() {
               </div>
               <div>
                 {quotesQuery.error && (
-                  <p className="px-5 py-2 text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(quotesQuery.error, 'Could not load quotes.')}</p>
+                  <p className="px-5 py-2 text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(quotesQuery.error, 'Could not load quotes.')}</p>
                 )}
                 {quotesQuery.isLoading && quotes.length === 0 ? (
                   <div className="px-5 py-5"><Spinner /></div>
@@ -1209,10 +1209,10 @@ export default function JobDetailPage() {
             </div>
           </div>
           {uploadError && (
-            <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{uploadError}</p>
+            <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{uploadError}</p>
           )}
           {attachmentsQuery.error && (
-            <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(attachmentsQuery.error, 'Could not load attachments.')}</p>
+            <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(attachmentsQuery.error, 'Could not load attachments.')}</p>
           )}
           {attachmentsQuery.isLoading && attachments.length === 0 ? (
             <Spinner />
@@ -1278,7 +1278,7 @@ export default function JobDetailPage() {
               </p>
             )}
             {resendMut.isError && (
-              <p className="text-xs self-center" style={{ color: '#C96A5A' }}>Failed to send</p>
+              <p className="text-xs self-center" style={{ color: 'var(--ms-error)' }}>Failed to send</p>
             )}
           </div>
           <JobMessageThread jobId={id!} threadScope="repair" />

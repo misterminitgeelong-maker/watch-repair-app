@@ -52,7 +52,7 @@ export const MARKETING_CSS = `
   color: var(--mkt-ink);
 }
 .mkt-landing * { box-sizing: border-box; }
-.mkt-serif { font-family: Georgia, 'Palatino Linotype', Palatino, serif; }
+.mkt-serif { font-family: 'Instrument Serif', Georgia, 'Palatino Linotype', Palatino, serif; }
 
 @keyframes mktPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 .mkt-pulse-dot { animation: mktPulse 1.6s ease-in-out infinite; }

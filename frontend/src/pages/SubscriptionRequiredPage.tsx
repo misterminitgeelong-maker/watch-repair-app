@@ -61,7 +61,7 @@ export default function SubscriptionRequiredPage() {
       </p>
 
       {error && (
-        <p className="mt-4 text-sm" style={{ color: '#C96A5A' }}>
+        <p className="mt-4 text-sm" style={{ color: 'var(--ms-error)' }}>
           {error}
         </p>
       )}

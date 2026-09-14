@@ -1,47 +1,102 @@
 @import "tailwindcss";
 
-/* ── Refined Warmth tokens (Mainspring) ──────────────────────────────────
+/* ── Tailwind scale overrides ────────────────────────────────────────────
+   The app leans on ~560 stock rounded-* utilities and ~40 shadow-* ones
+   that were never a design decision. Remapping the scales here retunes
+   every one of them at once, without touching a component.
+
+   Shape: the in-app identity follows the marketing layer (ink, vermilion,
+   rules instead of cards) — near-square corners everywhere. `rounded-full`
+   is unaffected: in v4 it resolves to calc(infinity * 1px), not this scale,
+   so pills, avatars and status dots stay round.
+
+   Elevation policy: inline surfaces (cards, panels, rows) carry no shadow
+   and separate with a hairline rule instead; only overlays (modals, sheets,
+   dropdowns, toasts) keep a real shadow. shadow-sm/md are used on sticky
+   bars and hover states, so they stay as a faint lift; lg/xl/2xl are all
+   overlay surfaces and share one elevation.
+   ----------------------------------------------------------------------- */
+@theme {
+  --radius-xs:  1px;
+  --radius-sm:  2px;
+  --radius-md:  2px;
+  --radius-lg:  2px;
+  --radius-xl:  2px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 6px;
+}
+
+@theme inline {
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs:  0 0 #0000;
+  --shadow-sm:  var(--ms-shadow-lift);
+  --shadow-md:  var(--ms-shadow-lift);
+  --shadow-lg:  var(--ms-shadow-overlay);
+  --shadow-xl:  var(--ms-shadow-overlay);
+  --shadow-2xl: var(--ms-shadow-overlay);
+
+  --font-sans:    var(--ms-font);
+  --font-heading: var(--ms-font-heading);
+  --font-display: var(--ms-font-display);
+}
+
+/* ── Mainspring in-app tokens ────────────────────────────────────────────
    Primary token set. Legacy --cafe-* names are aliased to these values
    further down so existing call sites keep resolving during the phased
    migration. New code should use --ms-* directly.
+
+   Palette: ink on paper with one vermilion accent — the same identity the
+   public pages (see lib/marketingTheme.ts) already carry, so signing up on
+   an editorial page and landing in the product reads as one thing. The
+   values are deliberately repeated here rather than imported: the two
+   token sets stay separate, they just agree.
    ----------------------------------------------------------------------- */
 :root {
-  /* Backgrounds */
-  --ms-bg:              #F5F1EC;
-  --ms-surface:         #FDFCF9;
-  --ms-surface-alt:     #EDE7DF;
-  --ms-hover:           #F0EAE1;
+  /* Backgrounds — paper canvas, near-white surfaces, oatmeal step */
+  --ms-bg:              #F1EEE7;
+  --ms-surface:         #FCFCFA;
+  --ms-surface-alt:     #EBE6DC;
+  --ms-hover:           #F3F1EB;
 
-  /* Text */
-  --ms-text:            #1A1410;
-  --ms-text-mid:        #5C4B3C;
-  --ms-text-muted:      #8E7B6B;
+  /* Text — true ink; the greys follow it (no warm cast) */
+  --ms-text:            #0A0A0A;
+  --ms-text-mid:        #4A4A46;
+  --ms-text-muted:      #66665F;
 
-  /* Borders */
-  --ms-border:          #E2D9CE;
-  --ms-border-strong:   #C8BEB2;
+  /* Borders — hairline rules */
+  --ms-border:          #D8D6CE;
+  --ms-border-strong:   #B8B6AE;
 
-  /* Accent — gold */
-  --ms-accent:          #9A6E26;
-  --ms-accent-hover:    #7A5520;
-  --ms-accent-light:    #F6EDD8;
-  --ms-accent-pop:      rgba(154, 110, 38, 0.10);
+  /* Accent — vermilion. Two steps deeper than the marketing #E8452A so
+     it holds AA both as 13px text on --ms-surface (4.8:1) and under
+     white button text (4.9:1); the marketing value fails both at 3.9:1.
+     Hover is the marketing "vermilion deep". */
+  --ms-accent:          #D23518;
+  --ms-accent-hover:    #B32D16;
+  --ms-accent-light:    #FBE3DD;
+  --ms-accent-pop:      rgba(210, 53, 24, 0.10);
+  --ms-on-accent:       #FFFFFF;
 
-  /* Sidebar */
-  --ms-sidebar:         #1C1510;
-  --ms-sidebar-text:    #BCA898;
-  --ms-sidebar-act-text:#EDE0CE;
-  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
+  /* Sidebar — an ink block */
+  --ms-sidebar:         #0A0A0A;
+  --ms-sidebar-text:    #A3A39C;
+  --ms-sidebar-act-text:#F7F7F4;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.10);
   --ms-sidebar-hover:   rgba(255, 255, 255, 0.05);
-  --ms-sidebar-border:  rgba(255, 255, 255, 0.07);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.08);
 
-  /* Radius */
-  --ms-radius:          12px;
-  --ms-radius-sm:       8px;
+  /* Radius — near-square */
+  --ms-radius:          2px;
+  --ms-radius-sm:       2px;
 
-  /* Shadows */
-  --ms-shadow:          0 1px 3px rgba(60, 30, 10, 0.05), 0 4px 16px rgba(60, 30, 10, 0.05);
-  --ms-shadow-hover:    0 4px 12px rgba(60, 30, 10, 0.08), 0 16px 36px rgba(60, 30, 10, 0.08);
+  /* Shadows — inline surfaces carry none (hairline border + background
+     step instead); overlays get one real elevation; "lift" is the faint
+     shadow for sticky bars and hover states. */
+  --ms-shadow:          none;
+  --ms-shadow-hover:    none;
+  --ms-shadow-lift:     0 1px 2px rgba(10, 10, 10, 0.06);
+  --ms-shadow-overlay:  0 16px 48px rgba(10, 10, 10, 0.18);
 
   /* Status badge colours */
   --ms-badge-wait-bg:   #FFF7E5;  --ms-badge-wait-text:  #8A5A10;
@@ -54,18 +109,26 @@
   --ms-badge-orange-bg: #FFF0E0;  --ms-badge-orange-text:#9A5010;
   --ms-badge-green-bg:  #E8F5ED;  --ms-badge-green-text: #1A6838;
 
-  /* Error / danger (semantic feedback) */
-  --ms-error:          #8B3A2A;
-  --ms-danger:         #7A3020;
-  --ms-danger-hover:   #5A2015;
-  --ms-overlay:        rgba(28, 21, 16, 0.50);
+  /* Error / danger (semantic feedback) — a step darker than the accent so
+     the two never read as the same red side by side. */
+  --ms-error:          #9E2A14;
+  --ms-danger:         #8A2410;
+  --ms-danger-hover:   #6B1B0A;
+  --ms-overlay:        rgba(10, 10, 10, 0.50);
 
   /* Legacy espresso tints — still used by AppShell / Sidebar / RepairQueueModal */
   --cafe-espresso-2:  color-mix(in srgb, var(--ms-sidebar) 80%, #fff);
   --cafe-espresso-3:  color-mix(in srgb, var(--ms-sidebar) 70%, #fff);
 
+  /* Typefaces — three roles, loaded in index.html.
+     body:    Plus Jakarta Sans — body, forms, tables
+     heading: Archivo — h1–h3, uppercase micro-labels, stat numbers
+     display: Instrument Serif — page titles and the wordmark only */
+  --ms-font:            'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ms-font-heading:    'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --ms-font-display:    'Instrument Serif', Georgia, 'Times New Roman', serif;
+
   /* Typography scale */
-  --ms-font:            'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --ms-text-xs:         10px;
   --ms-text-sm:         11px;
   --ms-text-base:       13px;
@@ -94,31 +157,36 @@
   --ms-mobile-bar-h:    calc(56px + env(safe-area-inset-bottom));
 }
 
-/* Dark mode — Night Workshop */
+/* Dark mode — Night Workshop. Same brand at night: ink canvas, neutral
+   greys, vermilion lifted so it holds on dark surfaces (5.7:1). White on
+   that lifted red would fail, so buttons carry ink text here. */
 [data-theme="dark"] {
-  --ms-bg:              #121110;
-  --ms-surface:         #1C1A18;
-  --ms-surface-alt:     #242220;
-  --ms-hover:           #2A2825;
-  --ms-text:            #F0EAE0;
-  --ms-text-mid:        #BEB4A8;
-  --ms-text-muted:      #7A726A;
-  --ms-border:          rgba(255, 255, 255, 0.08);
-  --ms-border-strong:   rgba(255, 255, 255, 0.14);
-  --ms-accent:          #D4940A;
-  --ms-accent-hover:    #F0A820;
-  --ms-accent-light:    rgba(212, 148, 10, 0.14);
-  --ms-accent-pop:      rgba(212, 148, 10, 0.09);
-  --ms-sidebar:         #0C0B0A;
-  --ms-sidebar-text:    #887A6E;
-  --ms-sidebar-act-text:#E8D8C0;
-  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
-  --ms-sidebar-hover:   rgba(255, 255, 255, 0.04);
-  --ms-sidebar-border:  rgba(255, 255, 255, 0.05);
-  --ms-radius:          10px;
-  --ms-radius-sm:       6px;
-  --ms-shadow:          0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
-  --ms-shadow-hover:    0 4px 16px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.35);
+  --ms-bg:              #111110;
+  --ms-surface:         #1B1B19;
+  --ms-surface-alt:     #242422;
+  --ms-hover:           #2A2A27;
+  --ms-text:            #F2F2EF;
+  --ms-text-mid:        #BDBDB6;
+  --ms-text-muted:      #8A8A82;
+  --ms-border:          rgba(255, 255, 255, 0.10);
+  --ms-border-strong:   rgba(255, 255, 255, 0.18);
+  --ms-accent:          #FF5C3F;
+  --ms-accent-hover:    #FF7A60;
+  --ms-accent-light:    rgba(255, 92, 63, 0.16);
+  --ms-accent-pop:      rgba(255, 92, 63, 0.10);
+  --ms-on-accent:       #0A0A0A;
+  --ms-sidebar:         #0A0A0A;
+  --ms-sidebar-text:    #8C8C85;
+  --ms-sidebar-act-text:#F2F2EF;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.10);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.05);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.07);
+  --ms-radius:          2px;
+  --ms-radius-sm:       2px;
+  --ms-shadow:          none;
+  --ms-shadow-hover:    none;
+  --ms-shadow-lift:     0 1px 2px rgba(0, 0, 0, 0.35);
+  --ms-shadow-overlay:  0 16px 48px rgba(0, 0, 0, 0.55);
   --ms-badge-wait-bg:   rgba(200,150,20,0.15);  --ms-badge-wait-text:  #D8C060;
   --ms-badge-in-bg:     rgba(60,130,200,0.15);  --ms-badge-in-text:    #70B8F0;
   --ms-badge-done-bg:   rgba(60,170,90,0.15);   --ms-badge-done-text:  #70D890;
@@ -134,7 +202,9 @@
   --ms-overlay:         rgba(0, 0, 0, 0.65);
 }
 
-/* Neutral variant — Steel & Amber */
+/* Neutral variant — Steel & Amber. A deliberately different flavour, so
+   its hues stay; it takes the shared shape language (radius, elevation)
+   and ink button text, which its amber needs for AA (white was 3.5:1). */
 [data-theme="neutral"] {
   --ms-bg:              #F6F5F3;
   --ms-surface:         #FFFFFF;
@@ -149,23 +219,28 @@
   --ms-accent-hover:    #9A5C0C;
   --ms-accent-light:    #FEF3E2;
   --ms-accent-pop:      rgba(192, 120, 32, 0.09);
+  --ms-on-accent:       #141210;
   --ms-sidebar:         #181614;
   --ms-sidebar-text:    #A8A29C;
   --ms-sidebar-act-text:#EDEBE7;
   --ms-sidebar-active:  rgba(255, 255, 255, 0.07);
   --ms-sidebar-hover:   rgba(255, 255, 255, 0.04);
   --ms-sidebar-border:  rgba(255, 255, 255, 0.06);
-  --ms-radius:          8px;
-  --ms-radius-sm:       6px;
-  --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
-  --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
+  --ms-radius:          2px;
+  --ms-radius-sm:       2px;
+  --ms-shadow:          none;
+  --ms-shadow-hover:    none;
+  --ms-shadow-lift:     0 1px 2px rgba(0, 0, 0, 0.06);
+  --ms-shadow-overlay:  0 16px 48px rgba(0, 0, 0, 0.16);
   --ms-error:           #A33838;
   --ms-danger:          #8B3020;
   --ms-danger-hover:    #6A2010;
   --ms-overlay:         rgba(20, 18, 16, 0.52);
 }
 
-/* Mister Minit — navy sidebar (brand primary), red accent, clean white canvas */
+/* Mister Minit — navy sidebar (brand primary), red accent, clean white
+   canvas. These hues are the franchise's real identity and must not be
+   restyled; only the shape language (radius, elevation) is shared. */
 [data-theme="minit"] {
   --ms-bg:              #F4F4F4;
   --ms-surface:         #FFFFFF;
@@ -183,6 +258,7 @@
   --ms-accent-hover:    #B5102A;
   --ms-accent-light:    #FDEAED;
   --ms-accent-pop:      rgba(227, 24, 55, 0.10);
+  --ms-on-accent:       #FFFFFF;
 
   --ms-sidebar:         #2B3990;
   --ms-sidebar-text:    rgba(255, 255, 255, 0.84);
@@ -191,11 +267,13 @@
   --ms-sidebar-hover:   rgba(255, 255, 255, 0.08);
   --ms-sidebar-border:  rgba(255, 255, 255, 0.12);
 
-  --ms-radius:          8px;
-  --ms-radius-sm:       5px;
+  --ms-radius:          2px;
+  --ms-radius-sm:       2px;
 
-  --ms-shadow:          0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
-  --ms-shadow-hover:    0 2px 8px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
+  --ms-shadow:          none;
+  --ms-shadow-hover:    none;
+  --ms-shadow-lift:     0 1px 2px rgba(0, 0, 0, 0.06);
+  --ms-shadow-overlay:  0 16px 48px rgba(0, 0, 0, 0.16);
 
   --ms-badge-wait-bg:   #EEF0FB;  --ms-badge-wait-text:   #2B3990;
   --ms-badge-in-bg:     #E8F2F8;  --ms-badge-in-text:     #1E6A8A;
@@ -223,40 +301,52 @@
   }
 
   h1 {
-    font-family: var(--ms-font);
+    font-family: var(--ms-font-heading);
     font-size: var(--ms-text-xl);
-    font-weight: var(--ms-weight-extrabold);
+    font-weight: var(--ms-weight-bold);
     letter-spacing: var(--ms-tracking-tight);
     color: var(--ms-text);
   }
 
   h2 {
-    font-family: var(--ms-font);
+    font-family: var(--ms-font-heading);
     font-size: var(--ms-text-lg);
     font-weight: var(--ms-weight-semibold);
+    letter-spacing: -0.01em;
     color: var(--ms-text);
   }
 
   h3 {
-    font-family: var(--ms-font);
+    font-family: var(--ms-font-heading);
     font-size: var(--ms-text-md);
     font-weight: var(--ms-weight-semibold);
     color: var(--ms-text);
   }
 
   .ms-caps-label {
+    font-family: var(--ms-font-heading);
     font-size: var(--ms-text-xs);
-    font-weight: var(--ms-weight-bold);
+    font-weight: var(--ms-weight-semibold);
     letter-spacing: var(--ms-tracking-caps);
     text-transform: uppercase;
     color: var(--ms-text-muted);
   }
 
   .ms-stat-value {
+    font-family: var(--ms-font-heading);
     font-size: var(--ms-text-display);
-    font-weight: var(--ms-weight-extrabold);
+    font-weight: var(--ms-weight-bold);
     letter-spacing: var(--ms-tracking-tight);
+    font-variant-numeric: tabular-nums;
     color: var(--ms-text);
+  }
+
+  /* Display face — page titles and the wordmark only. Instrument Serif
+     ships a single regular weight, so never pair this with a bold. */
+  .ms-display {
+    font-family: var(--ms-font-display);
+    font-weight: var(--ms-weight-normal);
+    letter-spacing: -0.01em;
   }
 
   button { cursor: pointer; }
@@ -266,6 +356,18 @@
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--ms-bg); }
   ::-webkit-scrollbar-thumb { background: var(--ms-border-strong); border-radius: 3px; }
+}
+
+@layer components {
+  /* Interactive Card: the affordance is the rule darkening, not a lift.
+     Driven by CSS so keyboard focus inside the card gets the same cue. */
+  .ms-card-hoverable {
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .ms-card-hoverable:hover,
+  .ms-card-hoverable:focus-within {
+    border-color: var(--ms-border-strong);
+  }
 }
 
 /* ── Print ───────────────────────────────────────────────────────────────

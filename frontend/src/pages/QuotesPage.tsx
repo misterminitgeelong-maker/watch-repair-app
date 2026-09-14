@@ -44,7 +44,7 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
     <input type="number" min="0" step="1" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.unit_price_cents} placeholder="5000" onChange={e => { const n = Number.parseInt(e.target.value, 10); onChange(index, 'unit_price_cents', Number.isFinite(n) ? n : 0) }} />
   )
   const deleteBtn = (
-    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: '#C96A5A' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = '#C96A5A')}>
+    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: 'var(--ms-error)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-danger)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-error)')}>
       <Trash2 size={14} />
     </button>
   )
@@ -211,7 +211,7 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={!jobId || items.some(i => !i.description) || mut.isPending}>
@@ -371,7 +371,7 @@ export default function QuotesPage() {
       </div>
 
       {quotesQuery.error && (
-        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(quotesQuery.error)}</p>
+        <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(quotesQuery.error)}</p>
       )}
       {quotesQuery.hasNextPage && (
         <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
@@ -386,9 +386,9 @@ export default function QuotesPage() {
         </div>
       )}
       {invoiceError && (
-        <div className="mb-3 rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ backgroundColor: '#FDF0EE', color: '#C96A5A', border: '1px solid #E8B4AA' }}>
+        <div className="mb-3 rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ backgroundColor: '#FDF0EE', color: 'var(--ms-error)', border: '1px solid #E8B4AA' }}>
           <span>{invoiceError}</span>
-          <button onClick={() => setInvoiceError('')} style={{ color: '#C96A5A' }}>✕</button>
+          <button onClick={() => setInvoiceError('')} style={{ color: 'var(--ms-error)' }}>✕</button>
         </div>
       )}
 

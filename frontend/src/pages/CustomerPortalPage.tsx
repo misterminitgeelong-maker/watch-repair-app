@@ -389,7 +389,7 @@ function CustomerPortalLookupPage() {
           </button>
         </form>
 
-        {error && <p className="text-sm text-center" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
         {data !== null && (
           <PortalResults

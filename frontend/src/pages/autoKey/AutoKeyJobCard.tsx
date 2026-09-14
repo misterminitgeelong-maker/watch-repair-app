@@ -165,7 +165,7 @@ export function AutoKeyJobCard({
               </span>
             )}
             {job.priority === 'urgent' && (
-              <span className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(201,100,90,0.15)', color: '#C96A5A' }}>
+              <span className="text-[11px] font-bold uppercase rounded-full px-2 py-0.5" style={{ backgroundColor: 'rgba(201,100,90,0.15)', color: 'var(--ms-error)' }}>
                 Urgent
               </span>
             )}
@@ -403,7 +403,7 @@ export function AutoKeyJobCard({
             <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.title}</p>
           </div>
           <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>This action cannot be undone.</p>
-          {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+          {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
           <div className="flex gap-2 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}>Cancel</Button>
             <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>

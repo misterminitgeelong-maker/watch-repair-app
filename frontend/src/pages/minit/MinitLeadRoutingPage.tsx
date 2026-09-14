@@ -22,7 +22,7 @@ export default function MinitLeadRoutingPage() {
       {error && (
         <div
           className="mb-4 text-sm rounded-lg px-4 py-3"
-          style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}
+          style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}
         >
           {error}
         </div>

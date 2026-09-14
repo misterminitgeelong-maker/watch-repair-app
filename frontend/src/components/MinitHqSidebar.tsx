@@ -157,7 +157,7 @@ export default function MinitHqSidebar({
                 {item.to === '/minit/inbox' && inboxCount > 0 && (
                   <span
                     className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
-                    style={{ backgroundColor: '#C96A5A', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}
                   >
                     {inboxCount > 99 ? '99+' : inboxCount}
                   </span>

@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
               ? 'A new version of the app has been deployed. Please reload to update.'
               : 'An unexpected error occurred. Please try refreshing the page or return to the dashboard.'}
           </p>
-          <p className="text-xs mb-6 max-w-md text-center font-mono px-3 py-2 rounded" style={{ color: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.08)', border: '1px solid rgba(201,106,90,0.2)' }}>
+          <p className="text-xs mb-6 max-w-md text-center font-mono px-3 py-2 rounded" style={{ color: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.08)', border: '1px solid rgba(201,106,90,0.2)' }}>
             {this.state.error.message}
           </p>
           <div className="flex gap-3">

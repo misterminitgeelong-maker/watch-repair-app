@@ -1,7 +1,7 @@
 import type { SlaChip, SlaChipKind } from './dispatchHelpers'
 
 const SLA_CHIP_STYLES: Record<SlaChipKind, { backgroundColor: string; color: string }> = {
-  late: { backgroundColor: 'rgba(201,100,90,0.15)', color: '#C96A5A' },
+  late: { backgroundColor: 'rgba(201,100,90,0.15)', color: 'var(--ms-error)' },
   at_risk: { backgroundColor: 'rgba(200,130,50,0.16)', color: '#B87030' },
   aging: { backgroundColor: 'rgba(138,117,99,0.2)', color: '#7A6453' },
 }

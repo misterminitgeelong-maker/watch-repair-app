@@ -126,7 +126,7 @@ export default function ApprovePage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <div className="max-w-md text-center">
-          <XCircle className="mx-auto mb-4" size={40} style={{ color: '#C96A5A' }} />
+          <XCircle className="mx-auto mb-4" size={40} style={{ color: 'var(--ms-error)' }} />
           <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>{title}</h1>
           <p style={{ color: 'var(--ms-text-muted)' }}>{body}</p>
         </div>
@@ -138,7 +138,7 @@ export default function ApprovePage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
         <div className="max-w-md text-center">
-          <XCircle className="mx-auto mb-4" size={40} style={{ color: '#C96A5A' }} />
+          <XCircle className="mx-auto mb-4" size={40} style={{ color: 'var(--ms-error)' }} />
           <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Invalid link</h1>
           <p style={{ color: 'var(--ms-text-muted)' }}>We could not load this quote. Please contact the shop.</p>
         </div>
@@ -249,7 +249,7 @@ export default function ApprovePage() {
         </div>
 
         {error && (
-          <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>{error}</div>
+          <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>{error}</div>
         )}
 
         <div className="mb-5">

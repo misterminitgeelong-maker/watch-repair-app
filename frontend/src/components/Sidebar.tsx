@@ -242,7 +242,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 <item.icon size={16} style={{ color: isActive ? 'var(--ms-sidebar-act-text)' : undefined, flexShrink: 0 }} />
                 {item.label}
                 {(item.to === '/inbox' || item.to === '/minit/inbox') && inboxCount > 0 && (
-                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}>
                     {inboxCount > 99 ? '99+' : inboxCount}
                   </span>
                 )}

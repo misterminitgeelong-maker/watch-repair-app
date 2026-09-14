@@ -66,7 +66,7 @@ export default function ShoeApprovePage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={bg}>
         <div className="max-w-md text-center">
-          <XCircle className="mx-auto mb-4" size={40} style={{ color: '#C96A5A' }} />
+          <XCircle className="mx-auto mb-4" size={40} style={{ color: 'var(--ms-error)' }} />
           <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>{title}</h1>
           <p style={{ color: 'var(--ms-text-muted)' }}>{body}</p>
         </div>
@@ -166,7 +166,7 @@ export default function ShoeApprovePage() {
 
         {/* Decision buttons */}
         {submitError && (
-          <p className="text-sm text-center" style={{ color: '#C96A5A' }}>{submitError}</p>
+          <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>{submitError}</p>
         )}
         <div className="grid grid-cols-2 gap-3 pt-2">
           <button

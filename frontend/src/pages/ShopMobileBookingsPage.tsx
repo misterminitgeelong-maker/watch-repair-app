@@ -188,7 +188,7 @@ export default function ShopMobileBookingsPage() {
       </p>
 
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
@@ -291,7 +291,7 @@ export default function ShopMobileBookingsPage() {
               </p>
             )}
             {routingLookupError && (
-              <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>{routingLookupError}</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--ms-error)' }}>{routingLookupError}</p>
             )}
             {!routeSuburb.trim() && jobAddress.trim() && (
               <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
@@ -349,7 +349,7 @@ export default function ShopMobileBookingsPage() {
                     </p>
                   )}
                   {b.status === 'declined' && b.decline_reason && (
-                    <p className="text-xs mt-1" style={{ color: '#C96A5A' }}>{b.decline_reason}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-error)' }}>{b.decline_reason}</p>
                   )}
                 </div>
                 {b.status === 'pending' && (

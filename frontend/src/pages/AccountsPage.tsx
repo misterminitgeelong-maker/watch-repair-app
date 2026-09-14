@@ -150,7 +150,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         </Select>
 
         {error === 'duplicate_email' && (
-          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: '#C96A5A' }}>
+          <div className="text-sm space-y-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border-strong)', color: 'var(--ms-error)' }}>
             <p className="font-medium" style={{ color: 'var(--ms-text)' }}>This email is already on your team</p>
             <p style={{ color: 'var(--ms-text-muted)' }}>
               Close this dialog and find them in the table on this page to edit role, password, or status. Technicians also appear under{' '}
@@ -158,7 +158,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
         )}
-        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && error !== 'duplicate_email' && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -354,7 +354,7 @@ export default function AccountsPage() {
         </div>
       )}
       {billingStatus === 'cancelled' && (
-        <div className="mb-4 flex items-center justify-between rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA', color: '#C96A5A' }}>
+        <div className="mb-4 flex items-center justify-between rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA', color: 'var(--ms-error)' }}>
           <span>Checkout was cancelled. Your plan has not changed.</span>
           <button onClick={dismissBillingBanner} className="ml-4 text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
         </div>
@@ -477,7 +477,7 @@ export default function AccountsPage() {
       </div>
 
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
@@ -862,9 +862,9 @@ function AppearanceCard() {
     )
   }
   const themes: { key: Theme; label: string; desc: string; swatches: string[] }[] = [
-    { key: 'warm',    label: 'Refined Warmth', desc: 'Cream parchment, gold accent.',        swatches: ['#F5F1EC', '#FDFCF9', '#9A6E26', '#1C1510'] },
+    { key: 'warm',    label: 'Refined Warmth', desc: 'Paper canvas, ink and vermilion.',     swatches: ['#F1EEE7', '#FCFCFA', '#D23518', '#0A0A0A'] },
     { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#C07820', '#181614'] },
-    { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',   swatches: ['#121110', '#1C1A18', '#D4940A', '#0C0B0A'] },
+    { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',   swatches: ['#111110', '#1B1B19', '#FF5C3F', '#0A0A0A'] },
     { key: 'minit',   label: 'Mister Minit',   desc: 'Brand red sidebar, clean white UI.',   swatches: ['#F4F4F4', '#FFFFFF', '#E31837', '#C41230'] },
   ]
   return (
@@ -1020,7 +1020,7 @@ function StripeConnectCard() {
       {(connectMut.isError || refreshMut.isError) && (
         <div
           className="mt-3 rounded-lg px-4 py-3 text-sm"
-          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: '#C96A5A' }}
+          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: 'var(--ms-error)' }}
         >
           <strong>Setup failed:</strong>{' '}
           {getApiErrorMessage(connectMut.error ?? refreshMut.error, 'Could not reach Stripe — check that STRIPE_SECRET_KEY is set in your deployment environment, then try again.')}
@@ -1104,7 +1104,7 @@ function XeroConnectCard() {
         {statusLine}
       </p>
       {xeroError && (
-        <p className="text-xs mt-2" style={{ color: '#C96A5A' }}>
+        <p className="text-xs mt-2" style={{ color: 'var(--ms-error)' }}>
           Connection failed ({xeroError}). Try again.
         </p>
       )}
@@ -1135,7 +1135,7 @@ function XeroConnectCard() {
       {(connectMut.isError || disconnectMut.isError) && (
         <div
           className="mt-3 rounded-lg px-4 py-3 text-sm"
-          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: '#C96A5A' }}
+          style={{ background: 'rgba(201,90,90,0.12)', border: '1px solid rgba(201,90,90,0.4)', color: 'var(--ms-error)' }}
         >
           <strong>Setup failed:</strong>{' '}
           {getApiErrorMessage(connectMut.error ?? disconnectMut.error, 'Could not reach Xero — check server env vars.')}
@@ -1231,7 +1231,7 @@ function BillingCard() {
       </div>
 
       {portalError && (
-        <p className="text-xs mt-3" style={{ color: '#C96A5A' }}>{portalError}</p>
+        <p className="text-xs mt-3" style={{ color: 'var(--ms-error)' }}>{portalError}</p>
       )}
 
       {stripe_configured && !stripe_subscription_id && (

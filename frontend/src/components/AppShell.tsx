@@ -132,7 +132,7 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
   return (
     <div
       className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
-      style={{ backgroundColor: 'rgba(201,162,72,0.1)', border: '1px solid rgba(201,162,72,0.35)' }}
+      style={{ backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent-light)' }}
     >
       <span style={{ color: 'var(--ms-text)' }}>
         <strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.

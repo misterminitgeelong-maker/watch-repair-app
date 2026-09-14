@@ -160,7 +160,7 @@ function PendingActions({
   return (
     <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
       {message && <p className="text-xs font-medium" style={{ color: '#1F6D4C' }}>{message}</p>}
-      {error && <p className="text-xs" style={{ color: '#C96A5A' }}>{error}</p>}
+      {error && <p className="text-xs" style={{ color: 'var(--ms-error)' }}>{error}</p>}
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => {
           const isDeclineOnlyQuick =
@@ -271,7 +271,7 @@ function MessageToShop({
         Send message
       </button>
       {sent && <p className="text-xs mt-1" style={{ color: '#1F6D4C' }}>Message sent.</p>}
-      {err && <p className="text-xs mt-1" style={{ color: '#C96A5A' }}>{err}</p>}
+      {err && <p className="text-xs mt-1" style={{ color: 'var(--ms-error)' }}>{err}</p>}
     </div>
   )
 }

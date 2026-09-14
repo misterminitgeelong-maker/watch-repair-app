@@ -116,7 +116,7 @@ export default function JobCard({
       style={{
         backgroundColor: 'var(--ms-surface)',
         border: overdue ? '1px solid #E8B4AA' : '1px solid var(--ms-border)',
-        borderLeft: `3px solid ${overdue ? '#C96A5A' : accentColor}`,
+        borderLeft: `3px solid ${overdue ? 'var(--ms-error)' : accentColor}`,
         borderRadius: 'var(--ms-radius-sm)',
         padding: '11px 12px',
         marginBottom: 8,

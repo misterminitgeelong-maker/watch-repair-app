@@ -104,7 +104,7 @@ function MinitHqGate({ children }: { children: React.ReactNode }) {
   const fallback = defaultHomePathForMinit(planCode, tenantSlug)
   if (pathname === fallback) {
     return (
-      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+      <div className="p-6 text-sm" style={{ color: 'var(--ms-error)' }}>
         Minit HQ pages are only available on the support account (mmsupport). Switch back to HQ in the site menu.
       </div>
     )
@@ -119,7 +119,7 @@ function RequireRole({ role, children }: { role: string; children: React.ReactNo
   if (actual === role) return <>{children}</>
   if (pathname === '/dashboard') {
     return (
-      <div className="p-6 text-sm" style={{ color: '#C96A5A' }}>
+      <div className="p-6 text-sm" style={{ color: 'var(--ms-error)' }}>
         This page is only available to platform admins.
       </div>
     )

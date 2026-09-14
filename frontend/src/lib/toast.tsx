@@ -26,7 +26,7 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 
 const VARIANT_STYLE: Record<ToastVariant, { bg: string; border: string; color: string }> = {
   success: { bg: '#F0FAF0', border: '#1F6D4C', color: '#1F6D4C' },
-  error: { bg: '#FDF0EE', border: '#C96A5A', color: '#8B3A3A' },
+  error: { bg: '#FDF0EE', border: 'var(--ms-error)', color: '#8B3A3A' },
   info: { bg: 'var(--ms-surface)', border: 'var(--ms-border-strong)', color: 'var(--ms-text)' },
 }
 

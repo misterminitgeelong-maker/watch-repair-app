@@ -27,7 +27,7 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
         <Input label="Email" type="email" value={form.email} onChange={set('email')} placeholder="jane@example.com" />
         <Input label="Phone" value={form.phone} onChange={set('phone')} placeholder="+1 555 000 0000" />
         <Textarea label="Notes" value={form.notes} onChange={set('notes')} rows={2} placeholder="VIP client, allergic to…" />
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={!form.full_name || mut.isPending}>
@@ -172,7 +172,7 @@ export default function CustomersPage() {
       </div>
 
       {customersQuery.error && (
-        <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{getApiErrorMessage(customersQuery.error)}</p>
+        <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(customersQuery.error)}</p>
       )}
       {(customersQuery.hasNextPage || search.trim()) && (
         <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>

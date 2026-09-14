@@ -499,7 +499,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               <Textarea label="Notes" value={newCustomer.notes} onChange={setC('notes')} rows={2} placeholder="VIP, allergic to…" />
             </>
           )}
-          {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={requestClose} disabled={busy}>Cancel</Button>
             <Button onClick={nextStep1} disabled={busy}>Next →</Button>
@@ -595,7 +595,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             </div>
           ))}
 
-          {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             {preselectedCustomer
               ? <Button variant="ghost" onClick={requestClose} disabled={busy}>Cancel</Button>
@@ -667,7 +667,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           </Select>
           <Input label="Deposit ($)" type="number" min="0" step="0.01" value={job.deposit_cents} onChange={setJ('deposit_cents')} placeholder="0.00" />
           <Input label="Pre-Quote ($)" type="number" min="0" step="0.01" value={job.pre_quote_cents} onChange={setJ('pre_quote_cents')} placeholder="0.00" />
-          {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(2)}>← Back</Button>
             <Button onClick={() => { if (!job.title) { setError('Job title is required.'); return }; setError(''); setStep(4) }} disabled={!job.title}>Next →</Button>
@@ -810,7 +810,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             </div>
           ))}
 
-          {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(3)}>← Back</Button>
             <Button

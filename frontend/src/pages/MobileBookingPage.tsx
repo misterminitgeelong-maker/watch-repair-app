@@ -287,7 +287,7 @@ export default function MobileBookingPage() {
                 onSave={sig => confirmMut.mutate(sig)}
               />
               {confirmMut.isError && (
-                <p className="text-sm text-center" style={{ color: '#C96A5A' }}>
+                <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>
                   {getApiErrorMessage(confirmMut.error, 'Could not confirm. Try again or call the shop.')}
                 </p>
               )}

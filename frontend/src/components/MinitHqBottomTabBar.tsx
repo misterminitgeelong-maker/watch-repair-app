@@ -68,7 +68,7 @@ export default function MinitHqBottomTabBar() {
                 {item.to === '/minit/inbox' && inboxCount > 0 && (
                   <span
                     className="absolute top-0.5 right-3 text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center leading-[14px]"
-                    style={{ backgroundColor: '#C96A5A', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}
                   >
                     {inboxCount > 99 ? '99+' : inboxCount}
                   </span>

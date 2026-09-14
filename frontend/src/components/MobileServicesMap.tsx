@@ -861,7 +861,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
         </p>
       )}
       {routeOrder === 'driving' && drivingErr && (
-        <p className="text-sm" style={{ color: '#C96A5A' }}>
+        <p className="text-sm" style={{ color: 'var(--ms-error)' }}>
           {drivingErr}
         </p>
       )}

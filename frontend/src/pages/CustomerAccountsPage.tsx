@@ -97,7 +97,7 @@ function CreateCustomerAccountModal({ onClose }: { onClose: () => void }) {
         <Input label="Credit limit ($)" type="number" min="0" value={form.credit_limit} onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))} />
         <Textarea label="Account notes" value={form.account_notes} onChange={e => setForm(f => ({ ...f, account_notes: e.target.value }))} rows={2} maxLength={256} />
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
         <div className="flex gap-2 pt-2">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
@@ -381,8 +381,8 @@ export default function CustomerAccountsPage() {
       {showCreate && <CreateCustomerAccountModal onClose={() => setShowCreate(false)} />}
 
       {isError ? (
-        <div className="rounded-lg border p-4" style={{ borderColor: '#C96A5A', backgroundColor: '#FDF2F0' }}>
-          <p className="text-sm font-semibold" style={{ color: '#C96A5A' }}>Could not load customer accounts</p>
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-error)', backgroundColor: '#FDF2F0' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--ms-error)' }}>Could not load customer accounts</p>
           <p className="text-xs mt-1" style={{ color: '#5F4734' }}>
             {getApiErrorMessage(error as unknown, 'Request timed out or failed')}
           </p>
@@ -509,7 +509,7 @@ export default function CustomerAccountsPage() {
                   </div>
 
                   {billingErrorByAccount[account.id] && (
-                    <p className="mt-2 text-xs" style={{ color: '#C96A5A' }}>{billingErrorByAccount[account.id]}</p>
+                    <p className="mt-2 text-xs" style={{ color: 'var(--ms-error)' }}>{billingErrorByAccount[account.id]}</p>
                   )}
 
                   {statement && (

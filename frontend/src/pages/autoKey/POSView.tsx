@@ -314,7 +314,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
                   <button type="button" onClick={() => updateQty(line.id, line.quantity - 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}><Minus size={14} /></button>
                   <span className="text-sm w-6 text-center" style={{ color: 'var(--ms-text)' }}>{line.quantity}</span>
                   <button type="button" onClick={() => updateQty(line.id, line.quantity + 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>+</button>
-                  <button type="button" onClick={() => removeFromCart(line.id)} className="w-7 h-7 rounded flex items-center justify-center" style={{ color: '#C96A5A' }}><X size={14} /></button>
+                  <button type="button" onClick={() => removeFromCart(line.id)} className="w-7 h-7 rounded flex items-center justify-center" style={{ color: 'var(--ms-error)' }}><X size={14} /></button>
                 </div>
               </div>
             ))}
@@ -341,7 +341,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>GST</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
         </div>
-        {error && <p className="text-sm mt-3" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <Button
           className="w-full mt-4"
           onClick={() => completeMut.mutate()}

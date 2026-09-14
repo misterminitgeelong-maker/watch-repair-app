@@ -209,17 +209,17 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
         Use <strong>Enter Shop</strong> to open that shop account and view its full dashboard, jobs, customers, and settings.
       </p>
       {isError && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           Could not load shops. Check backend logs.
         </div>
       )}
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
       {adminActionError && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {adminActionError}
         </div>
       )}
@@ -282,7 +282,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
                         disabled={deleteAccount.isPending}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: '#C96A5A' }}
+                        style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: 'var(--ms-error)' }}
                       >
                         Delete Account
                       </button>
@@ -381,7 +381,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           onClick={() => handleDeleteAccount(t.id, t.name, t.slug)}
                           disabled={deleteAccount.isPending}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: '#C96A5A' }}
+                          style={{ backgroundColor: 'transparent', border: '1px solid #E8B4AA', color: 'var(--ms-error)' }}
                         >
                           Delete Account
                         </button>
@@ -402,7 +402,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
             <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Edit Shop — {editModal.name}</h3>
             <p className="text-xs mb-4" style={{ color: 'var(--ms-text-muted)' }}>Leave a field blank to keep its current value.</p>
             {editError && (
-              <div className="mb-3 text-xs rounded-lg px-3 py-2" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+              <div className="mb-3 text-xs rounded-lg px-3 py-2" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
                 {editError}
               </div>
             )}
@@ -529,7 +529,7 @@ function UsersTab({ search, setSearch }: { search: string; setSearch: (v: string
     <>
       <SearchBar value={search} onChange={setSearch} placeholder="Search users, roles, or shops…" />
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}
@@ -828,7 +828,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
         </button>
       </div>
       {isError && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           Could not load activity log.
         </div>
       )}
@@ -1004,7 +1004,7 @@ function ReportsTab() {
   if (isLoading) return <Spinner />
   if (isError || !data) {
     return (
-      <div className="text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+      <div className="text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
         Could not load platform reports.
       </div>
     )
@@ -1019,7 +1019,7 @@ function ReportsTab() {
         </span>
       </div>
       {error && (
-        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: '#C96A5A', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
+        <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
           {error}
         </div>
       )}

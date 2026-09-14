@@ -39,7 +39,7 @@ export function PlannerJobDetailModal({
   return (
     <Modal title={j ? `Job #${j.job_number}` : 'Job details'} onClose={onClose}>
       {isLoading && <Spinner />}
-      {isError && <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(error, 'Could not load job')}</p>}
+      {isError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(error, 'Could not load job')}</p>}
       {j && (
         <div className="space-y-4">
           <p className="text-base font-medium" style={{ color: 'var(--ms-text)' }}>{j.title}</p>

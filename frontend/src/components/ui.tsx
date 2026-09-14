@@ -49,31 +49,25 @@ export function Badge({
   )
 }
 
+/**
+ * Inline surface. Carries no shadow by policy — it separates from the page
+ * with a hairline rule and the surface/bg step. Border colour lives in the
+ * class (not inline style) so the `.ms-card-hoverable` :hover rule can
+ * override it; callers passing `style.borderColor` still win as before.
+ */
 export function Card({
   className, children, style, hoverable, ...props
 }: React.HTMLAttributes<HTMLDivElement> & { hoverable?: boolean }) {
   return (
     <div
       {...props}
-      className={cn('border', className)}
+      className={cn('border border-[var(--ms-border)]', hoverable && 'ms-card-hoverable', className)}
       style={{
         backgroundColor: 'var(--ms-surface)',
-        borderColor: 'var(--ms-border)',
         borderRadius: 'var(--ms-radius)',
         boxShadow: 'var(--ms-shadow)',
-        transition: hoverable ? 'box-shadow 0.18s ease, transform 0.18s ease' : undefined,
         ...style,
       }}
-      onMouseEnter={hoverable ? e => {
-        e.currentTarget.style.boxShadow = 'var(--ms-shadow-hover)'
-        e.currentTarget.style.transform = 'translateY(-2px)'
-        props.onMouseEnter?.(e)
-      } : props.onMouseEnter}
-      onMouseLeave={hoverable ? e => {
-        e.currentTarget.style.boxShadow = 'var(--ms-shadow)'
-        e.currentTarget.style.transform = ''
-        props.onMouseLeave?.(e)
-      } : props.onMouseLeave}
     >
       {children}
     </div>
@@ -85,14 +79,14 @@ export function PageHeader({ title, action }: { title: string; action?: React.Re
     <div className="mb-6 flex flex-col gap-3 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1
-          className="text-lg font-extrabold leading-tight sm:text-xl"
-          style={{ color: 'var(--ms-text)', letterSpacing: '-0.02em' }}
+          className="ms-display text-[26px] leading-none sm:text-[30px]"
+          style={{ color: 'var(--ms-text)' }}
         >
           {title}
         </h1>
         <div
-          className="mt-1"
-          style={{ height: 2, width: 26, borderRadius: 2, backgroundColor: 'var(--ms-accent)' }}
+          className="mt-2"
+          style={{ height: 2, width: 28, backgroundColor: 'var(--ms-accent)' }}
         />
       </div>
       {action}
@@ -124,7 +118,7 @@ export function Button({
     : { padding: '8px 16px', fontSize: 13 }
 
   const variants: Record<ButtonVariant, React.CSSProperties> = {
-    primary:   { backgroundColor: 'var(--ms-accent)',     color: '#fff',                 borderColor: 'var(--ms-accent)' },
+    primary:   { backgroundColor: 'var(--ms-accent)',     color: 'var(--ms-on-accent)',  borderColor: 'var(--ms-accent)' },
     secondary: { backgroundColor: 'var(--ms-surface)',    color: 'var(--ms-text-mid)',   borderColor: 'var(--ms-border)' },
     ghost:     { backgroundColor: 'transparent',          color: 'var(--ms-text-mid)',   borderColor: 'transparent' },
     danger:    { backgroundColor: 'var(--ms-danger)',     color: '#fff',                 borderColor: 'var(--ms-danger)' },
@@ -175,8 +169,8 @@ const inputBase: React.CSSProperties = {
   padding: '0 12px',
 }
 
-const labelClass = 'text-[10px] font-bold uppercase'
-const labelStyle: React.CSSProperties = { color: 'var(--ms-text-muted)', letterSpacing: '0.10em', marginBottom: 5 }
+const labelClass = 'text-[10px] font-semibold uppercase'
+const labelStyle: React.CSSProperties = { fontFamily: 'var(--ms-font-heading)', color: 'var(--ms-text-muted)', letterSpacing: '0.10em', marginBottom: 5 }
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }>(
   function Input({ label, error, ...props }, ref) {
@@ -290,7 +284,7 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
           backgroundColor: 'var(--ms-surface)',
           border: '1px solid var(--ms-border)',
           borderRadius: 'var(--ms-radius)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          boxShadow: 'var(--ms-shadow-overlay)',
         }}
       >
         <div
@@ -361,7 +355,7 @@ export function ViewToggle<T extends string>({
               color: active ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
               backgroundColor: active ? 'var(--ms-surface)' : 'transparent',
               borderRadius: 'var(--ms-radius-sm)',
-              boxShadow: active ? 'var(--ms-shadow)' : 'none',
+              boxShadow: active ? 'inset 0 0 0 1px var(--ms-border)' : 'none',
               border: 'none',
               cursor: 'pointer',
             }}

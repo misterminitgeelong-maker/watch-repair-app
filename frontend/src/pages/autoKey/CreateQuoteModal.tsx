@@ -171,7 +171,7 @@ export function CreateQuoteModal({ jobId, isBusinessAccount, onClose }: { jobId:
           <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Total: ${(total / 100).toFixed(2)}</p>
         </div>
 
-        {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         <div className="flex gap-2 pt-1">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button

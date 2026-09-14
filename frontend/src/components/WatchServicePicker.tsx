@@ -158,7 +158,7 @@ export default function WatchServicePicker({
               onChange={e => setAddForm(f => ({ ...f, price: e.target.value }))}
               placeholder="0.00"
             />
-            {addError && <p className="text-xs" style={{ color: '#C96A5A' }}>{addError}</p>}
+            {addError && <p className="text-xs" style={{ color: 'var(--ms-error)' }}>{addError}</p>}
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => { setAddOpen(false); setAddError('') }}>Cancel</Button>
               <Button onClick={submitAdd} disabled={createMut.isPending}>{createMut.isPending ? 'Adding…' : 'Add'}</Button>

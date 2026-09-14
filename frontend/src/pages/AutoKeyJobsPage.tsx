@@ -617,7 +617,7 @@ export default function AutoKeyJobsPage() {
             <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
               <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{deleteJob.job_number} · {deleteJob.title}</p>
             </div>
-            {deleteError && <p className="text-sm" style={{ color: '#C96A5A' }}>{deleteError}</p>}
+            {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => { setDeleteJob(null); setDeleteError('') }} disabled={deleteMut.isPending}>Cancel</Button>
               <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate(deleteJob.id)} disabled={deleteMut.isPending}>
@@ -1074,7 +1074,7 @@ export default function AutoKeyJobsPage() {
           </div>
           {weekError && !weekLoading && (
             <Card className="p-4">
-              <p className="text-sm" style={{ color: '#C96A5A' }}>{getApiErrorMessage(weekErr, 'Could not load jobs for this week.')}</p>
+              <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(weekErr, 'Could not load jobs for this week.')}</p>
               <Button variant="secondary" className="mt-3" type="button" onClick={() => refetchWeek()}>Retry</Button>
             </Card>
           )}
@@ -1397,7 +1397,7 @@ export default function AutoKeyJobsPage() {
                   )}
                 </div>
                 {visitOrderErr && (
-                  <p className="text-sm mb-3" style={{ color: '#C96A5A' }}>{visitOrderErr}</p>
+                  <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{visitOrderErr}</p>
                 )}
                 {dispatchJobs.length === 0 ? (
                   <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No jobs scheduled for this date.</p>
@@ -1596,7 +1596,7 @@ export default function AutoKeyJobsPage() {
                           <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.08em' }}>{card.label}</p>
                           <p
                             className="text-2xl font-extrabold"
-                            style={{ color: card.good == null ? 'var(--ms-text)' : card.good ? '#4F7A4A' : '#C96A5A' }}
+                            style={{ color: card.good == null ? 'var(--ms-text)' : card.good ? '#4F7A4A' : 'var(--ms-error)' }}
                           >
                             {card.value}
                           </p>

@@ -159,7 +159,7 @@ export default function MobileJobIntakePage() {
           </div>
           <Textarea label="Anything else we should know?" value={description} onChange={e => setDescription(e.target.value)} rows={3} />
 
-          {formError ? <p className="text-sm" style={{ color: '#C96A5A' }}>{formError}</p> : null}
+          {formError ? <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{formError}</p> : null}
 
           <Button
             className="w-full"

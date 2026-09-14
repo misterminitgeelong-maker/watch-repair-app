@@ -18,7 +18,7 @@ const PIPELINE: { key: InboundLeadStatus; label: string; color: string }[] = [
   { key: 'new', label: 'New', color: 'var(--ms-accent)' },
   { key: 'quote_needed', label: 'Quote needed', color: '#B87030' },
   { key: 'contacted', label: 'Contacted', color: '#4F7A4A' },
-  { key: 'follow_up_due', label: 'Follow-up due', color: '#C96A5A' },
+  { key: 'follow_up_due', label: 'Follow-up due', color: 'var(--ms-error)' },
 ]
 
 const STATUS_OPTIONS: { value: InboundLeadStatus; label: string }[] = [
@@ -78,7 +78,7 @@ function AddLeadForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
       <Input label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="What do they need?" />
-      {error && <p className="text-sm" style={{ color: '#C96A5A' }}>{error}</p>}
+      {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
       <div className="flex gap-2">
         <Button onClick={() => mut.mutate()} disabled={mut.isPending || !name.trim()}>
           {mut.isPending ? 'Saving…' : 'Add lead'}
@@ -113,7 +113,7 @@ function LeadCard({ lead }: { lead: InboundLead }) {
   return (
     <div
       className="rounded-lg border p-3 space-y-2"
-      style={{ borderColor: overdue ? '#C96A5A' : 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
+      style={{ borderColor: overdue ? 'var(--ms-error)' : 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-sm leading-snug flex items-center gap-1.5" style={{ color: 'var(--ms-text)' }}>
@@ -129,7 +129,7 @@ function LeadCard({ lead }: { lead: InboundLead }) {
           )}
         </p>
         {lead.next_follow_up_on && (
-          <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: overdue ? '#C96A5A' : 'var(--ms-text-muted)' }}>
+          <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: overdue ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
             {overdue ? 'Due ' : 'Follow-up '}
             {new Date(`${lead.next_follow_up_on}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
           </span>
@@ -191,7 +191,7 @@ function LeadCard({ lead }: { lead: InboundLead }) {
           </button>
         )}
       </div>
-      {error && <p className="text-xs" style={{ color: '#C96A5A' }}>{error}</p>}
+      {error && <p className="text-xs" style={{ color: 'var(--ms-error)' }}>{error}</p>}
     </div>
   )
 }
@@ -225,7 +225,7 @@ export default function LeadInboxPage() {
       {adding && <div className="mb-5"><AddLeadForm onDone={() => setAdding(false)} /></div>}
 
       {followUpsDue.length > 0 && (
-        <div className="mb-5 rounded-lg border p-3" style={{ borderColor: '#C96A5A', backgroundColor: 'rgba(201,106,90,0.08)' }}>
+        <div className="mb-5 rounded-lg border p-3" style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.08)' }}>
           <p className="text-sm font-semibold" style={{ color: '#A4392B' }}>
             {followUpsDue.length} follow-up{followUpsDue.length !== 1 ? 's' : ''} overdue
           </p>

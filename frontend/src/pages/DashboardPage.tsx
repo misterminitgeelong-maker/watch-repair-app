@@ -38,19 +38,8 @@ import { Link, useNavigate } from 'react-router-dom'
 const CLOSED_JOB_STATUSES = ['completed', 'awaiting_collection', 'collected']
 
 const DASHBOARD_CSS = `
-@keyframes dashboardRise {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.dashboard-rise { animation: dashboardRise 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.dashboard-panel {
-  box-shadow: 0 2px 6px rgba(80,50,15,0.06), 0 10px 28px rgba(80,50,15,0.08);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-.dashboard-panel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(80,50,15,0.08), 0 20px 40px rgba(80,50,15,0.12);
-}
+.dashboard-panel { transition: border-color 0.15s ease; }
+.dashboard-panel:hover { border-color: var(--ms-border-strong); }
 `
 
 type DashboardStatProps = {
@@ -60,9 +49,6 @@ type DashboardStatProps = {
   helper: string
   to: string
   icon: React.ElementType
-  iconBg: string
-  iconColor: string
-  index: number
 }
 
 type RecentItem = {
@@ -172,30 +158,24 @@ function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefin
   )
 }
 
-function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon, iconBg, iconColor, index }: DashboardStatProps) {
+function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon }: DashboardStatProps) {
   return (
-    <Link to={to} className="dashboard-rise block" style={{ animationDelay: `${index * 0.06}s` }}>
+    <Link to={to} className="block">
       <Card className="dashboard-panel h-full p-4">
         <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.12em' }}>
+            <p className="ms-caps-label whitespace-nowrap overflow-hidden text-ellipsis">
               <span className="sm:hidden">{mobileLabel ?? label}</span>
               <span className="hidden sm:inline">{label}</span>
             </p>
-            <p
-              className="mt-2 font-extrabold leading-none"
-              style={{ color: 'var(--ms-text)', fontSize: 26, letterSpacing: '-0.02em' }}
-            >
+            <p className="ms-stat-value mt-2 leading-none">
               {value}
             </p>
             <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm truncate" style={{ color: 'var(--ms-text-mid)' }}>
               {helper}
             </p>
           </div>
-          <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg, color: iconColor }}>
-            <Icon size={17} className="sm:hidden" />
-            <Icon size={20} className="hidden sm:block" />
-          </div>
+          <Icon size={16} strokeWidth={1.75} className="mt-0.5 shrink-0" style={{ color: 'var(--ms-text-muted)' }} aria-hidden />
         </div>
       </Card>
     </Link>
@@ -224,7 +204,7 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
       <div className="space-y-3">
         <Input label="Customer full name *" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" autoFocus />
         <Input label="Mobile *" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0412 345 678" />
-        {err ? <p className="text-sm" style={{ color: '#C96A5A' }}>{err}</p> : null}
+        {err ? <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{err}</p> : null}
         <div className="flex gap-2 pt-2">
           <Button variant="secondary" className="flex-1" type="button" onClick={onClose}>Cancel</Button>
           <Button
@@ -420,8 +400,6 @@ export default function DashboardPage() {
       helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across service lines`,
       to: '/jobs',
       icon: Wrench,
-      iconBg: '#EFE7DC',
-      iconColor: '#8D6725',
     },
     {
       label: 'Customers',
@@ -429,8 +407,6 @@ export default function DashboardPage() {
       helper: `${customerAccounts?.length ?? 0} business account groups`,
       to: '/customers',
       icon: Users,
-      iconBg: '#DFF0EC',
-      iconColor: '#2A6B65',
     },
     {
       label: 'Quotes Awaiting Action',
@@ -439,8 +415,6 @@ export default function DashboardPage() {
       helper: `${reports?.sales_funnel.approval_rate_percent ?? 0}% approval rate`,
       to: '/quotes',
       icon: FileText,
-      iconBg: '#F3EBF9',
-      iconColor: '#68409C',
     },
     {
       label: 'Open Invoices',
@@ -449,8 +423,6 @@ export default function DashboardPage() {
       helper: `${formatCents(invoicesOpenValue)} awaiting payment`,
       to: '/invoices',
       icon: Receipt,
-      iconBg: '#FDE9E1',
-      iconColor: '#A2502E',
     },
     {
       label: 'Outstanding Work Value',
@@ -459,8 +431,6 @@ export default function DashboardPage() {
       helper: `${watchAwaitingGoAheadCount} watch jobs waiting for approval`,
       to: '/reports',
       icon: DollarSign,
-      iconBg: '#E8F0E4',
-      iconColor: '#3B6B42',
     },
     {
       label: 'Team & Sites',
@@ -469,30 +439,14 @@ export default function DashboardPage() {
       helper: `${formatPlanName(planCode)} plan${availableSites.length > 1 ? ' with multi-site context' : ''}`,
       to: '/accounts',
       icon: UserCog,
-      iconBg: '#E6EDF8',
-      iconColor: '#345B9C',
     },
   ]
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div>
       <style>{DASHBOARD_CSS}</style>
 
-      <div
-        style={{
-          position: 'absolute',
-          top: 70,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 1100,
-          height: 300,
-          pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 780px 220px at 50% 50%, rgba(201,162,72,0.10) 0%, transparent 72%)',
-          zIndex: 0,
-        }}
-      />
-
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div>
         <PageHeader title="Operations Dashboard" />
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
@@ -548,35 +502,35 @@ export default function DashboardPage() {
 
         <Card className="dashboard-panel mb-6 overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
-            <div className="p-6 sm:p-7" style={{ background: 'linear-gradient(135deg, rgba(61,35,18,0.98) 0%, rgba(92,63,37,0.96) 100%)' }}>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: '#D6C4AD' }}>
+            <div className="p-6 sm:p-7" style={{ backgroundColor: 'var(--ms-sidebar)' }}>
+              <p className="ms-caps-label tracking-[0.18em]" style={{ color: 'var(--ms-sidebar-text)' }}>
                 Shop-wide overview
               </p>
-              <h2 className="mt-3 text-3xl font-semibold leading-tight" style={{ color: '#FFF7EA' }}>
+              <h2 className="ms-display mt-3 text-3xl leading-tight" style={{ color: 'var(--ms-sidebar-act-text)' }}>
                 All your repairs, one place.
               </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: '#E7D8C3' }}>
+              <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: 'var(--ms-sidebar-text)' }}>
                 {totalServiceJobs > 0
                   ? `${totalServiceJobs} active ${totalServiceJobs === 1 ? 'job' : 'jobs'} across your service lines.`
                   : 'No active jobs right now — ready for the next one.'}
               </p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
-                <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
+                <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'var(--ms-sidebar-active)', color: 'var(--ms-sidebar-act-text)' }}>
                   {formatPlanName(planCode)} plan
                 </span>
-                <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF7EA' }}>
+                <span className="rounded-full px-3 py-1.5" style={{ backgroundColor: 'var(--ms-sidebar-active)', color: 'var(--ms-sidebar-act-text)' }}>
                   {availableSites.length} {availableSites.length === 1 ? 'site' : 'sites'} linked
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
+            <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'var(--ms-border)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Revenue</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.financials.revenue_cents ?? 0)}
                 </p>
               </div>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface-alt)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Gross Profit</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.financials.gross_profit_cents ?? 0)}
@@ -587,13 +541,13 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F4ECE2' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface-alt)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Approval Rate</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {reports?.sales_funnel.approval_rate_percent ?? 0}%
                 </p>
               </div>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: '#F7F0E6' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Avg / Job</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.operations.avg_revenue_per_job_cents ?? 0)}
@@ -707,8 +661,8 @@ export default function DashboardPage() {
         )}
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
-          {statCards.map((card, index) => (
-            <DashboardStatCard key={card.label} {...card} index={index} />
+          {statCards.map((card) => (
+            <DashboardStatCard key={card.label} {...card} />
           ))}
         </div>
 

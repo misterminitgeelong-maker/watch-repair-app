@@ -108,7 +108,7 @@ export default function BottomTabBar() {
                 type="button"
                 onClick={() => { logout(); setShowMore(false) }}
                 className="flex flex-col items-center gap-1.5 py-4 px-2 text-center transition-colors active:opacity-60"
-                style={{ color: '#C96A5A' }}
+                style={{ color: 'var(--ms-error)' }}
               >
                 <LogOut size={20} />
                 <span className="text-xs font-medium leading-tight">Sign out</span>
@@ -154,7 +154,7 @@ export default function BottomTabBar() {
               <div className="relative">
                 <Inbox size={22} strokeWidth={isActive ? 2.5 : 1.8} />
                 {inboxCount > 0 && (
-                  <span className="absolute -top-1 -right-2 text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center leading-[14px]" style={{ backgroundColor: '#C96A5A', color: '#fff' }}>
+                  <span className="absolute -top-1 -right-2 text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center leading-[14px]" style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}>
                     {inboxCount > 99 ? '99+' : inboxCount}
                   </span>
                 )}
