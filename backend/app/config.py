@@ -14,6 +14,14 @@ class Settings(BaseSettings):
 
     app_name: str = "Mainspring API"
     database_url: str = "sqlite:///./watch_repair.db"
+    # SQLAlchemy connection pool (server databases only; ignored for SQLite).
+    # Sync endpoints run on the FastAPI threadpool alongside background threads,
+    # so size this against the worker thread count, not the process count.
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
+    # Seconds before a pooled connection is recycled. Keep below the server's
+    # idle timeout so a stale socket is never handed to a request.
+    db_pool_recycle_seconds: int = 1800
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use

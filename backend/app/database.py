@@ -17,10 +17,21 @@ def _normalize_database_url(raw_url: str) -> str:
 database_url = _normalize_database_url(settings.database_url)
 
 _connect_args = {}
+_engine_kwargs = {}
 if database_url.startswith("sqlite"):
     _connect_args["check_same_thread"] = False
+else:
+    # QueuePool tuning for server databases only. SQLite (tests, Docker default)
+    # keeps SQLAlchemy's defaults: in-memory SQLite uses SingletonThreadPool,
+    # which rejects max_overflow outright.
+    _engine_kwargs.update(
+        pool_pre_ping=True,
+        pool_recycle=settings.db_pool_recycle_seconds,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+    )
 
-engine = create_engine(database_url, echo=False, connect_args=_connect_args)
+engine = create_engine(database_url, echo=False, connect_args=_connect_args, **_engine_kwargs)
 
 
 def create_db_and_tables() -> None:
