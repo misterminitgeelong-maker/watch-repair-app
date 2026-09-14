@@ -1782,8 +1782,49 @@ export interface AutoKeyJobCreatePayload {
   callout_inclusive?: boolean | null
 }
 
-export const listAutoKeyJobs = (params?: { customer_id?: string; status?: string; assigned_user_id?: string; date_from?: string; date_to?: string; include_unscheduled?: boolean; active_only?: boolean; limit?: number }) =>
-  api.get<AutoKeyJob[]>('/auto-key-jobs', params && Object.keys(params).length ? { params } : undefined)
+export const AUTO_KEY_JOBS_PAGE_SIZE = 500
+const AUTO_KEY_JOBS_MAX_PAGES = 40
+
+export type ListAutoKeyJobsParams = {
+  customer_id?: string
+  status?: string
+  assigned_user_id?: string
+  date_from?: string
+  date_to?: string
+  include_unscheduled?: boolean
+  active_only?: boolean
+  limit?: number
+  skip?: number
+}
+
+export async function listAutoKeyJobs(params?: ListAutoKeyJobsParams) {
+  const pageExplicit = params?.limit != null || params?.skip != null
+  if (pageExplicit) {
+    return api.get<AutoKeyJob[]>('/auto-key-jobs', { params })
+  }
+  const all: AutoKeyJob[] = []
+  let skip = 0
+  let total = Number.POSITIVE_INFINITY
+  let last = await api.get<AutoKeyJob[]>('/auto-key-jobs', {
+    params: { ...params, skip: 0, limit: AUTO_KEY_JOBS_PAGE_SIZE },
+  })
+  for (let page = 0; page < AUTO_KEY_JOBS_MAX_PAGES; page += 1) {
+    const rows = last.data ?? []
+    const headerTotal = Number(last.headers['x-total-count'])
+    if (Number.isFinite(headerTotal)) total = headerTotal
+    all.push(...rows)
+    if (rows.length < AUTO_KEY_JOBS_PAGE_SIZE || all.length >= total) {
+      last.data = all
+      return last
+    }
+    skip += AUTO_KEY_JOBS_PAGE_SIZE
+    last = await api.get<AutoKeyJob[]>('/auto-key-jobs', {
+      params: { ...params, skip, limit: AUTO_KEY_JOBS_PAGE_SIZE },
+    })
+  }
+  last.data = all
+  return last
+}
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
@@ -2275,7 +2316,7 @@ export function isDuplicateTenantUserEmailError(error: unknown): boolean {
 
 // ── Pagination / sorting constants ───────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 50
-export const WATCH_JOBS_LIST_MAX = 2000
+export const WATCH_JOBS_LIST_MAX = 500
 export type SortDir = 'asc' | 'desc'
 
 // ── Mobile commission lead source options ─────────────────────────────────────

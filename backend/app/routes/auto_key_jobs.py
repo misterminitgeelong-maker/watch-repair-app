@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
@@ -15,6 +15,8 @@ from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..gst import compute_gst_amounts
+from ..list_page import query_total, set_total_count
+from ..stale_write import reject_stale_write
 from ..models import (
     Attachment,
     AutoKeyJob,
@@ -311,6 +313,8 @@ def _send_mobile_quote_email(
         shop_logo_url=tenant.logo_url if tenant else None,
         shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
+        session=session,
+        tenant_id=tenant_id,
     )
     return sent, None if sent else "send_failed", err
 
@@ -411,6 +415,8 @@ def _send_mobile_invoice_notifications(
         shop_logo_url=tenant.logo_url if tenant else None,
         shop_brand_color=tenant.brand_color if tenant else None,
         pdf_bytes=pdf_bytes,
+        session=session,
+        tenant_id=tenant_id,
     )
     return sent, None if sent else "send_failed", err, sms_sent, sms_skipped_reason
 
@@ -597,10 +603,11 @@ def create_auto_key_quick_intake(
 
 @router.get("", response_model=list[AutoKeyJobRead])
 def list_auto_key_jobs(
+    response: Response,
     status: str | None = Query(default=None),
     customer_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=500, ge=1, le=2000),
+    limit: int = Query(default=500, ge=1, le=500),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
@@ -627,6 +634,7 @@ def list_auto_key_jobs(
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
     if active_only:
         query = query.where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+    set_total_count(response, query_total(session, query))
     jobs = session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
 
     # Batch enrich with customer names
@@ -793,6 +801,7 @@ def get_auto_key_job(
 def update_auto_key_job_status(
     job_id: UUID,
     payload: AutoKeyJobStatusUpdate,
+    request: Request,
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -800,8 +809,10 @@ def update_auto_key_job_status(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
 
+    reject_stale_write(job.updated_at, request)
     previous_status = job.status
     job.status = payload.status
+    job.updated_at = datetime.now(timezone.utc)
     session.add(job)
 
     # Auto-create invoice on work_completed when no invoice is present yet.
@@ -946,6 +957,7 @@ def update_auto_key_job_status(
 def update_auto_key_job_fields(
     job_id: UUID,
     payload: AutoKeyJobFieldUpdate,
+    request: Request,
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -953,6 +965,7 @@ def update_auto_key_job_fields(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
 
+    reject_stale_write(job.updated_at, request)
     update_data = payload.model_dump(exclude_unset=True)
     if "customer_account_id" in update_data and update_data["customer_account_id"] is not None:
         account = session.get(CustomerAccount, update_data["customer_account_id"])
@@ -964,6 +977,7 @@ def update_auto_key_job_fields(
     if job.key_quantity < 1:
         job.key_quantity = 1
 
+    job.updated_at = datetime.now(timezone.utc)
     session.add(job)
     session.commit()
     session.refresh(job)

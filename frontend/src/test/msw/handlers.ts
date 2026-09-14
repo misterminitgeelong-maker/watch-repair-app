@@ -48,5 +48,15 @@ export const autoKeyJobsHandlers = [
 ]
 
 export function autoKeyJobsHandlersWith(jobs: OpenApiAutoKeyJobRead[]) {
-  return [http.get('*/v1/auto-key-jobs', () => HttpResponse.json(jobs))]
+  return [
+    http.get('*/v1/auto-key-jobs', ({ request }) => {
+      const url = new URL(request.url)
+      const skip = Number(url.searchParams.get('skip') ?? '0')
+      const limit = Number(url.searchParams.get('limit') ?? String(jobs.length || 500))
+      const page = jobs.slice(skip, skip + limit)
+      return HttpResponse.json(page, {
+        headers: { 'X-Total-Count': String(jobs.length) },
+      })
+    }),
+  ]
 }

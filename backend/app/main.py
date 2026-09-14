@@ -16,6 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
+from .idempotency import MutationIdempotencyMiddleware
 from .config import settings, validate_runtime_config
 from .database import create_db_and_tables, engine
 from .limiter import limiter
@@ -200,6 +201,23 @@ def _mobile_weekly_report_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _notification_redelivery_loop() -> None:
+    """Sweep failed SMS/email rows and redeliver under the attempt cap."""
+    redelivery_logger = logging.getLogger("mainspring.notification_redelivery")
+    interval_seconds = max(settings.notification_redelivery_check_interval_minutes, 1) * 60
+    from .services.notification_redelivery import redeliver_failed_notifications
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = redeliver_failed_notifications(session)
+            if summary.get("email_sent") or summary.get("sms_sent"):
+                redelivery_logger.info("Notification redelivery: %s", summary)
+        except Exception:
+            redelivery_logger.exception("Notification redelivery run failed.")
+        time.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -255,6 +273,12 @@ async def lifespan(app: FastAPI):
             name="mainspring-mobile-weekly-report",
             daemon=True,
         ).start()
+    if settings.notification_redelivery_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_notification_redelivery_loop,
+            name="mainspring-notification-redelivery",
+            daemon=True,
+        ).start()
     yield
 
 
@@ -264,6 +288,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(MutationIdempotencyMiddleware)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -355,6 +381,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count"],
 )
 
 

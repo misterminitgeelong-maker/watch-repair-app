@@ -58,6 +58,8 @@ def notify_portal_status_change(
                 old_status=old_status,
                 new_status=new_status,
                 status_url=status_url,
+                session=session,
+                tenant_id=tenant_id,
             )
         except Exception:
             logger.exception("portal status email failed email=%s job=%s", email, job_number)
@@ -70,16 +72,13 @@ def notify_portal_status_change(
         ).first()
         if customer and customer.phone:
             body = f"{shop_name}: {summary}. Track: {status_url}"
-            sid, sms_status = sms._send_sms(customer.phone, body)  # noqa: SLF001
-            sms._persist(  # noqa: SLF001
+            sms._logged_send(  # noqa: SLF001
                 session,
                 tenant_id=tenant_id,
                 repair_job_id=None,
                 to_phone=customer.phone,
                 body=body,
                 event="portal_status",
-                provider_sid=sid,
-                status=sms_status,
             )
 
 

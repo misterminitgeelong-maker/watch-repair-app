@@ -1139,6 +1139,8 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
         to_email=email,
         portal_url=portal_url,
         expires_days=_PORTAL_SESSION_TTL_DAYS,
+        session=session,
+        tenant_id=customer.tenant_id,
     )
 
     return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}

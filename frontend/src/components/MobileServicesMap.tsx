@@ -11,22 +11,39 @@ import {
   useMarkerRef,
 } from '@vis.gl/react-google-maps'
 import L from 'leaflet'
-import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap as useLeafletMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Marker as LeafletMarker, Popup, Polyline, useMap as useLeafletMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { getApiErrorMessage, optimizeDrivingRoute } from '@/lib/api'
+import { asyncPool } from '@/lib/asyncPool'
+import {
+  approximateMelbourneCoords,
+  cacheGeocode,
+  countApproximatedPins,
+  loadGeocodeCache,
+  realMapCoords,
+  saveGeocodeCache,
+  type MapPinCoords,
+} from '@/lib/geocodeCache'
 import { nearestNeighborOrder } from '@/lib/mobileRouteUtils'
 import { STATUS_LABELS } from '@/lib/utils'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
+const GEOCODE_CONCURRENCY = 5
 
-/** Deterministic spread around Melbourne when Google geocoding is unavailable (no API key or API failure). */
-function approximateMelbourneCoords(address: string): { lat: number; lng: number } {
-  let h = 2166136261
-  for (let i = 0; i < address.length; i++) h = Math.imul(h ^ address.charCodeAt(i), 16777619)
-  const u = (h >>> 0) / 0xffffffff
-  const v = ((h >>> 16) >>> 0) / 0xffff
-  return { lat: -37.8136 + (u - 0.5) * 0.14, lng: 144.9631 + (v - 0.5) * 0.2 }
+const APPROX_PIN_ICON =
+  'data:image/svg+xml;charset=UTF-8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#F4E6C3" stroke="#6A4A10" stroke-width="2" stroke-dasharray="3 2"/><text x="16" y="21" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#6A4A10">?</text></svg>',
+  )
+
+function approxLeafletIcon(): L.DivIcon {
+  return L.divIcon({
+    className: 'ms-approx-pin',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: '<div style="width:28px;height:28px;border-radius:50%;border:2px dashed #6A4A10;background:#F4E6C3;color:#6A4A10;font:700 14px/28px sans-serif;text-align:center">?</div>',
+  })
 }
 
 interface Customer {
@@ -67,35 +84,6 @@ interface Props {
 
 type JobWithAddr = Job & { _addressForMap: string }
 
-const GEOCODE_CACHE_KEY = 'geocode_cache'
-
-function loadGeocodeCache(): Map<string, { lat: number; lng: number }> {
-  try {
-    const raw = sessionStorage.getItem(GEOCODE_CACHE_KEY)
-    if (!raw) return new Map()
-    const parsed = JSON.parse(raw) as { key: string; lat: number; lng: number }[]
-    if (!Array.isArray(parsed)) return new Map()
-    const map = new Map<string, { lat: number; lng: number }>()
-    for (const { key, lat, lng } of parsed) {
-      if (typeof key === 'string' && typeof lat === 'number' && typeof lng === 'number') {
-        map.set(key, { lat, lng })
-      }
-    }
-    return map
-  } catch {
-    return new Map()
-  }
-}
-
-function saveGeocodeCache(map: Map<string, { lat: number; lng: number }>) {
-  try {
-    const entries = Array.from(map.entries(), ([key, coords]) => ({ key, ...coords }))
-    sessionStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(entries))
-  } catch {
-    // ignore
-  }
-}
-
 const geocodeCache = loadGeocodeCache()
 
 /** Geocode with Maps JavaScript API (same key/referrer rules as the map; avoids REST Geocoding restrictions). */
@@ -126,7 +114,7 @@ function GoogleMapsJsGeocodeEffect({
 }: {
   jobsKey: string
   filteredJobsRef: MutableRefObject<JobWithAddr[]>
-  setGeocoded: Dispatch<SetStateAction<Map<string, { lat: number; lng: number }>>>
+  setGeocoded: Dispatch<SetStateAction<Map<string, MapPinCoords>>>
   setLoading: Dispatch<SetStateAction<boolean>>
 }) {
   const apiStatus = useApiLoadingStatus()
@@ -146,9 +134,10 @@ function GoogleMapsJsGeocodeEffect({
         }
         return
       }
-      const results = new Map<string, { lat: number; lng: number }>()
+      const results = new Map<string, MapPinCoords>()
       for (const j of snapshot) {
-        results.set(j.id, approximateMelbourneCoords(j._addressForMap))
+        const approx = approximateMelbourneCoords(j._addressForMap)
+        results.set(j.id, { ...approx, approximated: true })
       }
       if (!isStale()) {
         setGeocoded(results)
@@ -186,31 +175,24 @@ function GoogleMapsJsGeocodeEffect({
         return
       }
 
-      const results = new Map<string, { lat: number; lng: number }>()
-      const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
-
-      for (let i = 0; i < snapshot.length; i++) {
-        if (isStale()) {
-          setLoading(false)
-          return
-        }
-        const j = snapshot[i]
+      const results = new Map<string, MapPinCoords>()
+      await asyncPool(snapshot, GEOCODE_CONCURRENCY, async (j) => {
+        if (isStale()) return
         const ck = j._addressForMap.trim().toLowerCase()
-        let coords = geocodeCache.get(ck) ?? null
+        const cached = geocodeCache.get(ck)
+        let coords = cached ? { lat: cached.lat, lng: cached.lng } : null
         if (!coords) {
           coords = await geocodeAddressWithJsApi(geocoder, j._addressForMap)
-          if (coords) {
-            geocodeCache.set(ck, coords)
-            saveGeocodeCache(geocodeCache)
-          }
+          if (coords) cacheGeocode(geocodeCache, ck, coords.lat, coords.lng)
         }
-        if (isStale()) {
-          setLoading(false)
-          return
+        if (isStale()) return
+        if (coords) {
+          results.set(j.id, { ...coords, approximated: false })
+        } else {
+          results.set(j.id, { ...approximateMelbourneCoords(j._addressForMap), approximated: true })
         }
-        results.set(j.id, coords ?? fallbackFor(j._addressForMap))
-        if (i < snapshot.length - 1) await new Promise((r) => setTimeout(r, 120))
-      }
+      })
+      saveGeocodeCache(geocodeCache)
       if (!isStale()) {
         setGeocoded(results)
         setLoading(false)
@@ -294,12 +276,14 @@ function MarkerWithInfoWindow({
   customers,
   displayAddress,
   stopNumber,
+  approximated,
 }: {
   job: Job
   position: { lat: number; lng: number }
   customers: Customer[]
   displayAddress: string
   stopNumber: number
+  approximated: boolean
 }) {
   const [markerRef, marker] = useMarkerRef()
   const [infoWindowShown, setInfoWindowShown] = useState(false)
@@ -312,12 +296,18 @@ function MarkerWithInfoWindow({
       <Marker
         ref={markerRef}
         position={position}
-        label={{
-          text: labelText,
-          color: '#2C1810',
-          fontSize: '13px',
-          fontWeight: 'bold',
-        }}
+        icon={approximated ? APPROX_PIN_ICON : undefined}
+        label={
+          approximated
+            ? undefined
+            : {
+                text: labelText,
+                color: '#2C1810',
+                fontSize: '13px',
+                fontWeight: 'bold',
+              }
+        }
+        title={approximated ? `Approximate position · #${job.job_number}` : labelText}
         onClick={handleMarkerClick}
       />
       {infoWindowShown && marker && (
@@ -336,6 +326,7 @@ function MarkerWithInfoWindow({
               </span>
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              {approximated ? 'Approximate position (not geocoded). ' : ''}
               {displayAddress}
             </p>
             <div className="mt-2 flex items-center gap-3">
@@ -375,14 +366,16 @@ function MapContent({
 }: {
   orderedJobs: JobWithAddr[]
   customers: Customer[]
-  geocoded: Map<string, { lat: number; lng: number }>
+  geocoded: Map<string, MapPinCoords>
   routePath: google.maps.LatLngLiteral[]
 }) {
   const map = useGoogleMap()
 
   useEffect(() => {
     if (!map || geocoded.size === 0) return
-    const coords = Array.from(geocoded.values())
+    const all = Array.from(geocoded.values())
+    const real = all.filter((c) => !c.approximated)
+    const coords = real.length > 0 ? real : all
     if (coords.length === 1) {
       map.setCenter(coords[0])
       map.setZoom(14)
@@ -414,6 +407,7 @@ function MapContent({
             customers={customers}
             displayAddress={displayAddress}
             stopNumber={idx + 1}
+            approximated={coords.approximated}
           />
         )
       })}
@@ -442,13 +436,22 @@ function LeafletDispatchMap({
 }: {
   orderedJobs: JobWithAddr[]
   customers: Customer[]
-  geocoded: Map<string, { lat: number; lng: number }>
+  geocoded: Map<string, MapPinCoords>
   routePath: google.maps.LatLngLiteral[]
 }) {
-  const positions = useMemo(
+  const pinPositions = useMemo(
+    () =>
+      orderedJobs
+        .map((j) => geocoded.get(j.id))
+        .filter((c): c is MapPinCoords => Boolean(c))
+        .map((c) => [c.lat, c.lng] as [number, number]),
+    [orderedJobs, geocoded],
+  )
+  const linePositions = useMemo(
     () => routePath.map((p) => [p.lat, p.lng] as [number, number]),
     [routePath],
   )
+  const approxIcon = useMemo(() => approxLeafletIcon(), [])
   return (
     <MapContainer
       center={[MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng]}
@@ -460,14 +463,50 @@ function LeafletDispatchMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <LeafletFitBounds positions={positions.length > 0 ? positions : [[MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng]]} />
-      {routePath.length >= 2 && (
-        <Polyline positions={positions} pathOptions={{ color: '#C9772A', weight: 3, opacity: 0.88 }} />
+      <LeafletFitBounds positions={pinPositions.length > 0 ? pinPositions : [[MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng]]} />
+      {linePositions.length >= 2 && (
+        <Polyline positions={linePositions} pathOptions={{ color: '#C9772A', weight: 3, opacity: 0.88 }} />
       )}
       {orderedJobs.map((job, idx) => {
         const coords = geocoded.get(job.id)
         if (!coords) return null
         const displayAddress = job._addressForMap ?? job.job_address ?? ''
+        if (coords.approximated) {
+          return (
+            <LeafletMarker key={job.id} position={[coords.lat, coords.lng]} icon={approxIcon}>
+              <Popup>
+                <div className="min-w-[200px] text-sm" style={{ color: '#2C1810' }}>
+                  <p className="font-semibold" style={{ color: '#6A4A10' }}>
+                    Approximate · #{job.job_number}
+                  </p>
+                  <p className="mt-1 font-medium">{vehicleLabel(job)}</p>
+                  <p className="mt-0.5 text-xs" style={{ color: '#5c4a3a' }}>
+                    {customerName(customers, job.customer_id)}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: '#6b5b4a' }}>
+                    Position is hashed, not geocoded. {displayAddress}
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <a href={`/auto-key/${job.id}`} className="inline-block text-xs font-semibold" style={{ color: '#B8860B' }}>
+                      View job →
+                    </a>
+                    {displayAddress && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(displayAddress)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-xs font-semibold"
+                        style={{ color: '#B8860B' }}
+                      >
+                        Get directions →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </Popup>
+            </LeafletMarker>
+          )
+        }
         return (
           <CircleMarker
             key={job.id}
@@ -518,7 +557,7 @@ function LeafletDispatchMap({
 }
 
 function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisitOrder, applyVisitOrderPending }: Props) {
-  const [geocoded, setGeocoded] = useState<Map<string, { lat: number; lng: number }>>(new Map())
+  const [geocoded, setGeocoded] = useState<Map<string, MapPinCoords>>(new Map())
   const [loading, setLoading] = useState(true)
   const [mapFilter, setMapFilter] = useState<'mobile_visits' | 'all_addresses'>('mobile_visits')
   const [routeOrder, setRouteOrder] = useState<'scheduled' | 'optimized' | 'driving'>('scheduled')
@@ -553,7 +592,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
     if (sortedBySchedule.length === 0) return []
     return nearestNeighborOrder(
       sortedBySchedule,
-      (j) => geocoded.get(j.id) ?? null,
+      (j) => realMapCoords(geocoded.get(j.id)),
       0,
     )
   }, [sortedBySchedule, geocoded])
@@ -577,7 +616,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
     const pts: google.maps.LatLngLiteral[] = []
     for (const j of orderedJobs) {
       const c = geocoded.get(j.id)
-      if (c) pts.push(c)
+      if (c && !c.approximated) pts.push(c)
     }
     return pts
   }, [orderedJobs, geocoded])
@@ -591,6 +630,11 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
     () => filteredJobs.filter((j) => !geocoded.has(j.id)),
     [filteredJobs, geocoded],
   )
+
+  const approximatedCount = useMemo(() => countApproximatedPins(geocoded.values()), [geocoded])
+  const allStopsReal =
+    sortedBySchedule.length > 0 && sortedBySchedule.every((j) => realMapCoords(geocoded.get(j.id)))
+  const canOptimize = sortedBySchedule.length >= 2 && allStopsReal && approximatedCount === 0
 
   /** Geocode effect keys off `jobsKey` only; `filteredJobs` gets new array refs without content changes (e.g. customers query). */
   const filteredJobsRef = useRef(filteredJobs)
@@ -610,9 +654,9 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
       return
     }
     if (sortedBySchedule.length === 0) return
-    if (!sortedBySchedule.every((j) => geocoded.has(j.id))) return
+    if (!sortedBySchedule.every((j) => realMapCoords(geocoded.get(j.id)))) return
 
-    const stops = sortedBySchedule.map((j) => geocoded.get(j.id)!)
+    const stops = sortedBySchedule.map((j) => realMapCoords(geocoded.get(j.id))!)
     const fp = `${jobsKey}|${stops.map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`).join(';')}`
     if (lastDrivingFetchKey.current === fp) return
     lastDrivingFetchKey.current = fp
@@ -677,11 +721,9 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
         return
       }
 
-      const results = new Map<string, { lat: number; lng: number }>()
-      const fallbackFor = (addr: string) => approximateMelbourneCoords(addr)
-
+      const results = new Map<string, MapPinCoords>()
       for (const j of filteredJobsSnapshot) {
-        results.set(j.id, fallbackFor(j._addressForMap))
+        results.set(j.id, { ...approximateMelbourneCoords(j._addressForMap), approximated: true })
       }
       if (isStale()) {
         setLoading(false)
@@ -733,10 +775,6 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
     )
   }
 
-  const allStopsGeocoded =
-    sortedBySchedule.length > 0 && sortedBySchedule.every((j) => geocoded.has(j.id))
-  const canOptimize = sortedBySchedule.length >= 2 && allStopsGeocoded
-
   const routeStopsLegend =
     routeOrder === 'scheduled'
       ? 'by appointment time'
@@ -761,6 +799,12 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
         <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--ms-border)', color: 'var(--ms-text-mid)' }}>
           OpenStreetMap with approximate pin positions (works without a browser key). Set{' '}
           <span className="font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</span> at <strong>build time</strong> (e.g. Docker/Railway build args) for Google Maps and JavaScript geocoding.
+        </p>
+      )}
+      {approximatedCount > 0 && (
+        <p className="text-xs rounded-lg border px-3 py-2" style={{ backgroundColor: '#F7F0E6', borderColor: 'var(--ms-border)', color: 'var(--ms-text-mid)' }}>
+          {approximatedCount} pin{approximatedCount === 1 ? ' is' : 's are'} approximate (not geocoded) and{' '}
+          {approximatedCount === 1 ? 'is' : 'are'} shown as a dashed “?” marker. Optimized and Driving stay off until those addresses geocode.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
@@ -811,13 +855,19 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
               backgroundColor: routeOrder === 'optimized' ? 'var(--ms-surface)' : 'transparent',
               color: routeOrder === 'optimized' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
-            title={!canOptimize ? 'Geocode all stops first (wait for loading to finish).' : 'Reorder by nearest-neighbor from the first scheduled stop'}
+            title={
+              !canOptimize
+                ? approximatedCount > 0
+                  ? `${approximatedCount} pin${approximatedCount === 1 ? ' is' : 's are'} approximate and excluded from optimisation.`
+                  : 'Geocode all stops first (wait for loading to finish).'
+                : 'Reorder by nearest-neighbor from the first scheduled stop'
+            }
           >
             Optimized
           </button>
           <button
             type="button"
-            disabled={!allStopsGeocoded || loading}
+            disabled={!allStopsReal || loading}
             onClick={() => setRouteOrder('driving')}
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition touch-manipulation disabled:opacity-45"
             style={{
@@ -825,8 +875,10 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
               color: routeOrder === 'driving' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
             }}
             title={
-              !allStopsGeocoded
-                ? 'Geocode every stop first.'
+              !allStopsReal
+                ? approximatedCount > 0
+                  ? `${approximatedCount} pin${approximatedCount === 1 ? ' is' : 's are'} approximate — cannot compute a driving order from hashed locations.`
+                  : 'Geocode every stop first.'
                 : 'Shortest driving order via Google (first & last appointment fixed). Requires server GOOGLE_MAPS_WEB_SERVICES_KEY.'
             }
           >
@@ -850,7 +902,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
           Line shows a straight path between stops (not driving directions). Use Open in Google Maps for turn-by-turn.
         </p>
       )}
-      {routeOrder === 'driving' && allStopsGeocoded && sortedBySchedule.length >= 3 && (
+      {routeOrder === 'driving' && allStopsReal && sortedBySchedule.length >= 3 && (
         <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           First and last stops stay in appointment order; Google reorders the middle for driving distance. Map line is still straight between stops; use Open in Google Maps for roads.
         </p>

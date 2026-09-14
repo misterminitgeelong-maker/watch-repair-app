@@ -210,20 +210,24 @@ def bootstrap_and_login(client: TestClient):
         email: str | None = None,
         password: str = "supersecret123",
         owner_full_name: str = "Main Owner",
+        plan_code: str | None = None,
     ) -> str:
         suffix = uuid4().hex[:8]
         tenant_slug = tenant_slug or f"tenant-{suffix}"
         email = email or f"owner-{suffix}@example.test"
 
+        payload = {
+            "tenant_name": f"Tenant {tenant_slug}",
+            "tenant_slug": tenant_slug,
+            "owner_email": email,
+            "owner_full_name": owner_full_name,
+            "owner_password": password,
+        }
+        if plan_code:
+            payload["plan_code"] = plan_code
         bootstrap_res = client.post(
             "/v1/auth/bootstrap",
-            json={
-                "tenant_name": f"Tenant {tenant_slug}",
-                "tenant_slug": tenant_slug,
-                "owner_email": email,
-                "owner_full_name": owner_full_name,
-                "owner_password": password,
-            },
+            json=payload,
         )
         assert bootstrap_res.status_code == 200, bootstrap_res.text
 

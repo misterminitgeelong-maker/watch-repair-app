@@ -310,6 +310,27 @@ class StripeWebhookEvent(SQLModel, table=True):
     event_type: str
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class MutationIdempotencyKey(SQLModel, table=True):
+    """Client-generated keys that make a retried POST/PATCH/PUT a no-op.
+
+    Offline queue items generate a key at enqueue time. If the server committed
+    but the response was lost, replay hits the unique (tenant_id, key) row and
+    returns the stored response instead of creating a duplicate.
+    """
+    __tablename__ = "mutationidempotencykey"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "key", name="uq_mutation_idempotency_tenant_key"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    key: str = Field(max_length=128, index=True)
+    method: str = Field(max_length=16)
+    path: str = Field(max_length=512)
+    request_hash: str = Field(max_length=64)
+    status_code: int
+    response_body: str = Field(default="")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class CustomService(SQLModel, table=True):
     """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -614,20 +635,27 @@ class SmsLog(SQLModel, table=True):
     event: str  # e.g. "quote_sent", "job_live", "status_ready"
     provider_sid: Optional[str] = None  # Twilio message SID
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
+    attempt_count: int = 0
+    last_attempt_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EmailLog(SQLModel, table=True):
-    """Audit trail for operator-facing dispatch alert emails (live bookings, website leads).
+    """Audit trail for every email sent or attempted — customer-facing and operator alerts.
 
-    Deliberately scoped to the alerts an operator can silently miss with real consequences —
-    not a general-purpose log of every customer-facing email (quotes, invoices, receipts).
+    Rows are written before the provider call so a later commit failure leaves a
+    spurious log rather than a silent send. `payload_json` holds enough of the
+    message (subject, bodies, shop name, reply-to) for the redelivery sweep;
+    attachments are not stored.
     """
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     to_email: str
-    event: str  # e.g. "shop_mobile_booking_pending", "website_lead_alert"
+    event: str  # e.g. "quote_sent", "shop_mobile_booking_pending"
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
     error: Optional[str] = Field(default=None, max_length=500)
+    attempt_count: int = 0
+    last_attempt_at: Optional[datetime] = None
+    payload_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 
 class JobMessage(SQLModel, table=True):
@@ -792,6 +820,7 @@ class AutoKeyJob(SQLModel, table=True):
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     #: Set the first time the job transitions to work_completed. Used for KPI cycle-time,
     #: schedule adherence, and same-day invoice metrics.
     work_completed_at: Optional[datetime] = None

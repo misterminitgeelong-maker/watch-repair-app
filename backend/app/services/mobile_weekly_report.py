@@ -183,6 +183,8 @@ def send_weekly_report_for_parent(session: Session, parent: ParentAccount) -> bo
         ],
         csv_bytes=csv_bytes,
         csv_filename=f"mobile-services-weekly-report-{start_ymd}_{end_ymd}.csv",
+        session=session,
+        tenant_id=parent.mobile_lead_escalation_tenant_id or parent.mobile_lead_default_tenant_id,
     )
     parent.last_mobile_weekly_report_sent_at = datetime.now(timezone.utc)
     session.add(parent)

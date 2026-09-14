@@ -2,8 +2,10 @@ from datetime import datetime, timezone
 from datetime import timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlmodel import Session, select
+
+from ..list_page import query_total, set_total_count
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
@@ -50,9 +52,10 @@ def _quote_token_is_expired(quote: Quote) -> bool:
 
 @router.get("/quotes", response_model=list[QuoteRead])
 def list_quotes(
+    response: Response,
     repair_job_id: UUID | None = None,
     status: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=20000),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc"),
@@ -77,6 +80,7 @@ def list_quotes(
     if sort_dir.lower() not in {"asc", "desc"}:
         raise HTTPException(status_code=400, detail="Invalid sort_dir")
     query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    set_total_count(response, query_total(session, query.order_by(None)))
     query = query.offset(offset).limit(limit)
     return session.exec(query).all()
 
@@ -222,6 +226,8 @@ def send_quote(
                     job_number=job.job_number,
                     shop_name=shop_name,
                     line_items=line_items_data,
+                    session=session,
+                    tenant_id=auth.tenant_id,
                 )
 
     session.commit()
@@ -310,6 +316,8 @@ def resend_quote(
                     job_number=job.job_number,
                     shop_name=shop_name,
                     line_items=line_items_data,
+                    session=session,
+                    tenant_id=auth.tenant_id,
                 )
 
     session.commit()
