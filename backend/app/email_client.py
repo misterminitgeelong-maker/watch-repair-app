@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import base64
 import html as _html
+import json
 import logging
+import time
 from typing import Sequence
 from uuid import UUID
 
@@ -18,8 +20,18 @@ import httpx
 from sqlmodel import Session
 
 from .config import settings
+from .database import engine
 from .email_templates import ShopInfo, render_transactional_email
 from .models import EmailLog
+from .notification_retry import (
+    backoff_seconds,
+    http_status_from_exc,
+    inline_retry_attempts,
+    is_retryable_http_status,
+    is_timeout_exc,
+    is_transport_exc,
+    pin_attempts_if_permanent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +90,8 @@ def send_quote_sent_email(
     job_number: str,
     shop_name: str = "Your repair shop",
     line_items: Sequence[dict] | None = None,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a watch repair quote is sent to the customer."""
     if not (to_email or "").strip():
@@ -116,6 +130,8 @@ def send_quote_sent_email(
         body_html=body_html,
         shop_name=shop_name,
         event="quote_sent",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -133,6 +149,8 @@ def send_invoice_email(
     shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
     pay_url: str | None = None,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a watch repair invoice is sent to the customer."""
     if not (to_email or "").strip():
@@ -185,6 +203,8 @@ def send_invoice_email(
         event="invoice_sent",
         pdf_bytes=pdf_bytes,
         pdf_filename=f"Invoice-{invoice_number}.pdf",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -207,6 +227,8 @@ def send_mobile_quote_email(
     shop_logo_url: str | None = None,
     shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) quote is sent."""
     if not (to_email or "").strip():
@@ -262,6 +284,8 @@ def send_mobile_quote_email(
         event="mobile_quote_sent",
         pdf_bytes=pdf_bytes,
         pdf_filename=f"Quote-{job_number}.pdf",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -498,6 +522,8 @@ def send_mobile_invoice_email(
     shop_logo_url: str | None = None,
     shop_brand_color: str | None = None,
     pdf_bytes: bytes | None = None,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a Mobile Services (auto key) invoice is sent."""
     if not (to_email or "").strip():
@@ -554,6 +580,8 @@ def send_mobile_invoice_email(
         event="mobile_invoice_sent",
         pdf_bytes=pdf_bytes,
         pdf_filename=f"Invoice-{invoice_number}.pdf",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -563,6 +591,8 @@ def send_portal_bookmark_email(
     portal_url: str,
     expires_days: int = 30,
     shop_name: str = "Mainspring",
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send a bookmark link for the cross-shop customer repair portal."""
     if not (to_email or "").strip():
@@ -593,6 +623,8 @@ def send_portal_bookmark_email(
         body_html=body_html,
         shop_name=shop_name,
         event="portal_bookmark",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -604,6 +636,8 @@ def send_portal_status_email(
     old_status: str,
     new_status: str,
     status_url: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Email when a portal customer opted into status change notifications."""
     if not (to_email or "").strip():
@@ -633,6 +667,8 @@ def send_portal_status_email(
         body_html=body_html,
         shop_name=shop_name,
         event="portal_status",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -643,6 +679,8 @@ def send_job_ready_email(
     job_number: str,
     status_token: str,
     shop_name: str = "Your repair shop",
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send email when a job is ready for collection (completed / awaiting_collection)."""
     if not (to_email or "").strip():
@@ -673,6 +711,8 @@ def send_job_ready_email(
         body_html=body_html,
         shop_name=shop_name,
         event="job_ready",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -689,6 +729,8 @@ def send_sales_report_email(
     category_summary: dict[str, dict],
     csv_bytes: bytes,
     csv_filename: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send a scheduled weekly/monthly sales-by-category report with the sales CSV attached."""
     if not (to_email or "").strip():
@@ -743,6 +785,8 @@ def send_sales_report_email(
         attachment_bytes=csv_bytes,
         attachment_filename=csv_filename,
         attachment_mime_type="text/csv",
+        session=session,
+        tenant_id=tenant_id,
     )
 
 
@@ -754,6 +798,8 @@ def send_mobile_weekly_report_email(
     rows: list[dict],
     csv_bytes: bytes,
     csv_filename: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
 ) -> tuple[bool, str | None]:
     """Send the weekly Mobile Services network scorecard — one row per operator."""
     if not (to_email or "").strip():
@@ -822,6 +868,86 @@ def send_mobile_weekly_report_email(
         attachment_bytes=csv_bytes,
         attachment_filename=csv_filename,
         attachment_mime_type="text/csv",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
+def _payload_json(*, subject: str, body_plain: str, body_html: str | None, shop_name: str, reply_to: str | None) -> str:
+    return json.dumps(
+        {
+            "subject": subject,
+            "body_plain": body_plain,
+            "body_html": body_html,
+            "shop_name": shop_name,
+            "reply_to": reply_to,
+        }
+    )
+
+
+def _is_sqlite() -> bool:
+    return engine.dialect.name == "sqlite"
+
+
+def _begin_email_log(session: Session | None, **kwargs):
+    row = EmailLog(**kwargs)
+    if session is None or not _is_sqlite():
+        with Session(engine) as log_session:
+            log_session.add(row)
+            log_session.commit()
+            log_session.refresh(row)
+            return row.id
+    session.add(row)
+    session.flush()
+    return row.id
+
+
+def _finish_email_log(session: Session | None, log_id, **fields) -> None:
+    from datetime import datetime, timezone
+
+    if session is not None and _is_sqlite():
+        row = session.get(EmailLog, log_id)
+        if row is None:
+            return
+        for key, value in fields.items():
+            setattr(row, key, value)
+        if "last_attempt_at" not in fields:
+            row.last_attempt_at = datetime.now(timezone.utc)
+        session.add(row)
+        return
+    with Session(engine) as log_session:
+        row = log_session.get(EmailLog, log_id)
+        if row is None:
+            return
+        for key, value in fields.items():
+            setattr(row, key, value)
+        if "last_attempt_at" not in fields:
+            row.last_attempt_at = datetime.now(timezone.utc)
+        log_session.add(row)
+        log_session.commit()
+
+
+def send_email_from_payload(
+    *,
+    to_email: str,
+    event: str,
+    payload: dict,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+    existing_log_id=None,
+) -> tuple[bool, str | None]:
+    """Redeliver a previously recorded email from its stored payload (no attachments)."""
+    return _send_email(
+        to_email=to_email,
+        subject=str(payload.get("subject") or event),
+        body_plain=str(payload.get("body_plain") or ""),
+        body_html=payload.get("body_html"),
+        shop_name=str(payload.get("shop_name") or "Mainspring"),
+        event=event,
+        reply_to=payload.get("reply_to"),
+        session=session,
+        tenant_id=tenant_id,
+        existing_log_id=existing_log_id,
     )
 
 
@@ -841,27 +967,57 @@ def _send_email(
     attachment_mime_type: str = "text/csv",
     session: Session | None = None,
     tenant_id: UUID | None = None,
+    existing_log_id=None,
 ) -> tuple[bool, str | None]:
-    """Send via SendGrid. When `session` + `tenant_id` are given, the attempt is persisted to
-    EmailLog (sent | dry_run | failed) — currently wired only for operator dispatch alerts
-    (live bookings, website leads), not the general customer-facing email traffic.
+    """Send via SendGrid. When `session` + `tenant_id` are given (or an existing log
+    id), the attempt is persisted to EmailLog *before* the provider call so a later
+    commit failure leaves a spurious row rather than a silent send.
     """
+    from datetime import datetime, timezone
 
-    def _finish(ok: bool, status: str, error: str | None) -> tuple[bool, str | None]:
-        if session is not None and tenant_id is not None:
-            session.add(
-                EmailLog(tenant_id=tenant_id, to_email=to_email, event=event, status=status, error=error)
+    now = datetime.now(timezone.utc)
+    log_id = existing_log_id
+    payload_blob = _payload_json(
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        reply_to=reply_to,
+    )
+    if log_id is None and session is not None and tenant_id is not None:
+        log_id = _begin_email_log(
+            session,
+            tenant_id=tenant_id,
+            to_email=to_email,
+            event=event,
+            status="failed",
+            error=None,
+            attempt_count=0,
+            last_attempt_at=now,
+            payload_json=payload_blob,
+        )
+
+    def _finish(ok: bool, status: str, error: str | None, attempts: int, *, permanent: bool = False) -> tuple[bool, str | None]:
+        if log_id is not None:
+            _finish_email_log(
+                session,
+                log_id,
+                status=status,
+                error=(error or None) and str(error)[:500],
+                attempt_count=pin_attempts_if_permanent(attempts, permanent=permanent),
+                last_attempt_at=datetime.now(timezone.utc),
+                payload_json=payload_blob,
             )
         return ok, error
 
     from_addr = _from_email()
     if not _enabled():
         logger.info("email (disabled) %s to %s: %s", event, to_email, subject)
-        return _finish(False, "dry_run", None)
+        return _finish(False, "dry_run", None, 0)
     key = _api_key()
     if not key:
         logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
-        return _finish(False, "dry_run", None)
+        return _finish(False, "dry_run", None, 0)
     # text/plain must precede text/html per RFC / SendGrid ordering rules.
     content: list[dict] = [{"type": "text/plain", "value": body_plain}]
     if body_html:
@@ -871,14 +1027,11 @@ def _send_email(
         "from": {"email": from_addr, "name": _from_name(shop_name)},
         "subject": subject,
         "content": content,
-        # Category for SendGrid analytics/deliverability segmentation.
         "categories": [event],
     }
-    # Replies should reach the shop, not the unattended noreply sender.
     reply = (reply_to or "").strip()
     if reply and "@" in reply and reply.lower() != from_addr.lower():
         payload["reply_to"] = {"email": reply, "name": _from_name(shop_name)}
-    # List-Unsubscribe improves inbox placement and is expected by Gmail/Yahoo.
     unsub_target = reply if (reply and "@" in reply) else from_addr
     payload["headers"] = {
         "List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>",
@@ -905,22 +1058,43 @@ def _send_email(
         )
     if attachments:
         payload["attachments"] = attachments
-    try:
-        with httpx.Client(timeout=15.0) as client:
-            resp = client.post(
-                "https://api.sendgrid.com/v3/mail/send",
-                json=payload,
-                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            )
-        if 200 <= resp.status_code < 300:
-            logger.info("Twilio SendGrid sent %s to %s from %s", event, to_email, from_addr)
-            return _finish(True, "sent", None)
-        detail = (resp.text or "").strip()[:400]
-        err = f"SendGrid HTTP {resp.status_code} (from={from_addr})"
-        if detail:
-            err = f"{err}: {detail}"
-        logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
-        return _finish(False, "failed", err)
-    except Exception as e:
-        logger.exception("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
-        return _finish(False, "failed", str(e)[:400])
+
+    max_attempts = inline_retry_attempts()
+    last_error: str | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                )
+            if 200 <= resp.status_code < 300:
+                logger.info("Twilio SendGrid sent %s to %s from %s", event, to_email, from_addr)
+                return _finish(True, "sent", None, attempt)
+            detail = (resp.text or "").strip()[:400]
+            err = f"SendGrid HTTP {resp.status_code} (from={from_addr})"
+            if detail:
+                err = f"{err}: {detail}"
+            last_error = err
+            if 400 <= resp.status_code < 500:
+                logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
+                return _finish(False, "failed", err, attempt, permanent=True)
+            if attempt < max_attempts and is_retryable_http_status(resp.status_code):
+                time.sleep(backoff_seconds(attempt - 1))
+                continue
+            logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
+            return _finish(False, "failed", err, attempt)
+        except Exception as e:
+            last_error = str(e)[:400]
+            retryable = is_timeout_exc(e) or is_transport_exc(e)
+            status = http_status_from_exc(e)
+            if status is not None and 400 <= status < 500:
+                logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
+                return _finish(False, "failed", last_error, attempt, permanent=True)
+            if retryable and attempt < max_attempts:
+                time.sleep(backoff_seconds(attempt - 1))
+                continue
+            logger.exception("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
+            return _finish(False, "failed", last_error, attempt)
+    return _finish(False, "failed", last_error, max_attempts)

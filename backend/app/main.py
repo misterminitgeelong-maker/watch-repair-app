@@ -200,6 +200,23 @@ def _mobile_weekly_report_loop() -> None:
         time.sleep(interval_seconds)
 
 
+def _notification_redelivery_loop() -> None:
+    """Sweep failed SMS/email rows and redeliver under the attempt cap."""
+    redelivery_logger = logging.getLogger("mainspring.notification_redelivery")
+    interval_seconds = max(settings.notification_redelivery_check_interval_minutes, 1) * 60
+    from .services.notification_redelivery import redeliver_failed_notifications
+
+    while True:
+        try:
+            with Session(engine) as session:
+                summary = redeliver_failed_notifications(session)
+            if summary.get("email_sent") or summary.get("sms_sent"):
+                redelivery_logger.info("Notification redelivery: %s", summary)
+        except Exception:
+            redelivery_logger.exception("Notification redelivery run failed.")
+        time.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -253,6 +270,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_mobile_weekly_report_loop,
             name="mainspring-mobile-weekly-report",
+            daemon=True,
+        ).start()
+    if settings.notification_redelivery_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_notification_redelivery_loop,
+            name="mainspring-notification-redelivery",
             daemon=True,
         ).start()
     yield

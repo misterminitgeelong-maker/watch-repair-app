@@ -388,6 +388,8 @@ def update_repair_job_status(
                     job_number=job.job_number,
                     status_token=job.status_token,
                     shop_name=shop_name,
+                    session=session,
+                    tenant_id=auth.tenant_id,
                 )
 
     session.commit()
@@ -668,6 +670,8 @@ def resend_notification(
                 customer_name=customer.full_name,
                 job_number=job.job_number,
                 status_token=job.status_token,
+                session=session,
+                tenant_id=auth.tenant_id,
             )
             email_sent = True
 
@@ -703,6 +707,8 @@ def resend_notification(
                 approval_token=quote.approval_token,
                 job_number=job.job_number,
                 shop_name=_shop_name,
+                session=session,
+                tenant_id=auth.tenant_id,
             )
             email_sent = bool(sent)
 

@@ -65,6 +65,8 @@ def _send_one_report(session: Session, tenant_id: UUID, to_email: str, shop_name
         category_summary=category_summary,
         csv_bytes=csv_bytes,
         csv_filename=f"sales-report-{start_ymd}_{end_ymd}.csv",
+        session=session,
+        tenant_id=tenant_id,
     )
     return sent
 

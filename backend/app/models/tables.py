@@ -614,20 +614,27 @@ class SmsLog(SQLModel, table=True):
     event: str  # e.g. "quote_sent", "job_live", "status_ready"
     provider_sid: Optional[str] = None  # Twilio message SID
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
+    attempt_count: int = 0
+    last_attempt_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EmailLog(SQLModel, table=True):
-    """Audit trail for operator-facing dispatch alert emails (live bookings, website leads).
+    """Audit trail for every email sent or attempted — customer-facing and operator alerts.
 
-    Deliberately scoped to the alerts an operator can silently miss with real consequences —
-    not a general-purpose log of every customer-facing email (quotes, invoices, receipts).
+    Rows are written before the provider call so a later commit failure leaves a
+    spurious log rather than a silent send. `payload_json` holds enough of the
+    message (subject, bodies, shop name, reply-to) for the redelivery sweep;
+    attachments are not stored.
     """
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
     to_email: str
-    event: str  # e.g. "shop_mobile_booking_pending", "website_lead_alert"
+    event: str  # e.g. "quote_sent", "shop_mobile_booking_pending"
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
     error: Optional[str] = Field(default=None, max_length=500)
+    attempt_count: int = 0
+    last_attempt_at: Optional[datetime] = None
+    payload_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 
 class JobMessage(SQLModel, table=True):

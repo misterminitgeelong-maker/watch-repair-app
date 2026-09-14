@@ -222,6 +222,8 @@ def send_quote(
                     job_number=job.job_number,
                     shop_name=shop_name,
                     line_items=line_items_data,
+                    session=session,
+                    tenant_id=auth.tenant_id,
                 )
 
     session.commit()
@@ -310,6 +312,8 @@ def resend_quote(
                     job_number=job.job_number,
                     shop_name=shop_name,
                     line_items=line_items_data,
+                    session=session,
+                    tenant_id=auth.tenant_id,
                 )
 
     session.commit()

@@ -169,6 +169,14 @@ class Settings(BaseSettings):
     # How often the in-app scheduler checks for due reminders.
     quote_reminder_check_interval_minutes: int = 60
 
+    # Outbound notification retry: inline (timeouts/5xx) then an out-of-band sweep.
+    notification_inline_retry_attempts: int = 3
+    notification_redelivery_max_attempts: int = 5
+    notification_retry_backoff_seconds: float = 0.4
+    notification_retry_backoff_cap_seconds: float = 4.0
+    notification_redelivery_enabled: bool = True
+    notification_redelivery_check_interval_minutes: int = 15
+
     # Shop-to-shop live booking requests: assigned operator offer → timeout → shared Dispatch Pool.
     shop_mobile_booking_pool_enabled: bool = True
     shop_mobile_booking_check_interval_minutes: int = 2
