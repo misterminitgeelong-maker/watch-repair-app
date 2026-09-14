@@ -332,6 +332,11 @@ def plan_directory_import(
                 mobile=owner_mobile or None,
             )
             session.add(owner)
+            # Flush before linking: the membership row references both, and with no
+            # ORM relationships between the models the unit of work has no ordering
+            # information -- Postgres rejects the membership if it is inserted first.
+            # (The old slow path's existence-check SELECT autoflushed here for us.)
+            session.flush()
             created_owner_count += 1
             existing_owner_by_tenant_id[tenant.id] = owner
             _link_tenant_to_parent(
