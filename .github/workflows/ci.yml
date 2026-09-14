@@ -9,6 +9,27 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Same image as docker-compose.yml. The suite drops and rebuilds the
+    # "public" schema at session start and truncates every table between
+    # modules, so the database name must contain "test" (conftest enforces it).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mainspring
+          POSTGRES_PASSWORD: mainspring
+          POSTGRES_DB: mainspring_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mainspring -d mainspring_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mainspring:mainspring@localhost:5432/mainspring_test
+      JWT_SECRET: ci-secret-not-for-production
+      APP_ENV: test
     steps:
       - uses: actions/checkout@v4
 
@@ -23,37 +44,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run backend tests
-        env:
-          DATABASE_URL: "sqlite:///./test.db"
-          JWT_SECRET: "ci-secret-not-for-production"
-          APP_ENV: test
-        run: |
-          cd backend
-          python -m pytest tests/ -v --tb=short
-
-      - name: Validate Alembic migrations (upgrade to head)
-        env:
-          DATABASE_URL: "sqlite:///./alembic_ci.db"
-          JWT_SECRET: "ci-secret-not-for-production"
-          APP_ENV: test
+      # Runs first, on the still-empty database, so this step is the proof that
+      # the migration chain applies cleanly to a fresh Postgres.
+      - name: Validate Alembic migrations (upgrade to head on empty Postgres)
         run: |
           cd backend
           python -m alembic upgrade head
+          python -m alembic current
+
+      # conftest drops the schema and rebuilds it with `alembic upgrade head`,
+      # then prints the resolved DATABASE_URL in the pytest header. If that line
+      # ever says sqlite, this job is proving nothing.
+      - name: Run backend tests (Postgres, Alembic-migrated schema)
+        env:
+          TEST_SCHEMA_BOOTSTRAP: alembic
+        run: |
+          cd backend
+          echo "DATABASE_URL (env) = $DATABASE_URL"
+          python -m pytest tests/ -v --tb=short
 
       - name: Check migrations match models (schema drift)
-        env:
-          JWT_SECRET: "ci-secret-not-for-production"
-          APP_ENV: test
         run: |
           cd backend
           python scripts/check_migrations.py
 
-      - name: Run backend smoke checks
-        env:
-          DATABASE_URL: "sqlite:///./smoke_ci.db"
-          JWT_SECRET: "ci-secret-not-for-production"
-          APP_ENV: test
+      - name: Run backend smoke checks (Postgres)
         run: |
           cd backend
           python scripts/run_smoke_checks.py
@@ -62,6 +77,29 @@ jobs:
         run: |
           cd backend
           python scripts/check_seed_sanity.py
+
+  # The no-services path developers iterate on locally: no DATABASE_URL, so
+  # conftest falls back to a throwaway sqlite file and create_all.
+  backend-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backend tests (sqlite fallback)
+        run: |
+          cd backend
+          python -m pytest tests/ -q --tb=short
 
   frontend:
     runs-on: ubuntu-latest
