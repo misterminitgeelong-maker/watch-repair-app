@@ -551,7 +551,7 @@ export default function JobsPage() {
         type="button"
         onClick={() => setShowAdd(true)}
         className="sm:hidden fixed bottom-[calc(var(--ms-mobile-bar-h)+1rem)] right-5 z-30 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold shadow-lg"
-        style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', boxShadow: '0 4px 16px rgba(60,30,10,0.35)' }}
+        style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
         aria-label="New job ticket"
       >
         <Plus size={18} />New Job

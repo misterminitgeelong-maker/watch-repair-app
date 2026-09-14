@@ -9,9 +9,11 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
 
+from starlette.requests import Request
+
 from app.config import settings
 from app.database import create_db_and_tables
-from app.limiter import limiter
+from app.limiter import client_ip_key, limiter
 from app.main import app
 
 create_db_and_tables()
@@ -184,6 +186,48 @@ def test_public_jobs_endpoints_rate_limited():
         second = client.post("/v1/public/portal/create-session", json={"email": "nobody@example.test"})
         assert first.status_code == 404
         assert second.status_code == 429
+    finally:
+        settings.rate_limit_public_test = old
+        limiter.reset()
+
+
+def _ip_request(headers: dict[str, str], client=("127.0.0.1", 123)) -> Request:
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/",
+        "raw_path": b"/",
+        "query_string": b"",
+        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+        "client": client,
+        "server": ("test", 80),
+    }
+    return Request(scope)
+
+
+def test_client_ip_key_prefers_valid_cf_connecting_ip():
+    assert client_ip_key(_ip_request({"cf-connecting-ip": "203.0.113.10"})) == "203.0.113.10"
+    assert client_ip_key(_ip_request({"cf-connecting-ip": "2001:db8::1"})) == "2001:db8::1"
+
+
+def test_client_ip_key_ignores_malformed_cf_header():
+    assert client_ip_key(_ip_request({"cf-connecting-ip": "not-an-ip"})) == "127.0.0.1"
+
+
+def test_public_rate_limit_is_per_cf_connecting_ip():
+    limiter.reset()
+    old = settings.rate_limit_public_test
+    settings.rate_limit_public_test = "1/minute"
+    try:
+        first = client.get("/v1/public/jobs/not-a-real-token", headers={"CF-Connecting-IP": "203.0.113.1"})
+        second = client.get("/v1/public/jobs/not-a-real-token", headers={"CF-Connecting-IP": "203.0.113.1"})
+        other = client.get("/v1/public/jobs/not-a-real-token", headers={"CF-Connecting-IP": "203.0.113.2"})
+        assert first.status_code == 404
+        assert second.status_code == 429
+        assert other.status_code == 404
     finally:
         settings.rate_limit_public_test = old
         limiter.reset()

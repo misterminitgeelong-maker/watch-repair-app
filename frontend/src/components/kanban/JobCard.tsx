@@ -43,7 +43,7 @@ function PriorityPill({ priority }: { priority?: string | null }) {
         fontSize: 9,
         fontWeight: 700,
         padding: '2px 6px',
-        borderRadius: 4,
+        borderRadius: 'var(--ms-radius)',
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
       }}
@@ -136,7 +136,7 @@ export default function JobCard({
           <PriorityPill priority={priority} />
           <AgingPill days={daysInShop} />
           {overdue && (
-            <span style={{ backgroundColor: '#FEEEED', color: 'var(--ms-error)', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <span style={{ backgroundColor: '#FEEEED', color: 'var(--ms-error)', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 'var(--ms-radius)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Stale
             </span>
           )}
@@ -189,7 +189,7 @@ export default function JobCard({
             fontSize: 10,
             fontWeight: 600,
             padding: '4px 6px',
-            borderRadius: 4,
+            borderRadius: 'var(--ms-radius)',
             border: '1px solid var(--ms-border)',
             background: 'var(--ms-bg)',
             color: 'var(--ms-text)',
@@ -249,7 +249,7 @@ export default function JobCard({
             fontSize: 10,
             fontWeight: 600,
             padding: '4px 0',
-            borderRadius: 4,
+            borderRadius: 'var(--ms-radius)',
             border: '1px solid var(--ms-border)',
             background: 'var(--ms-bg)',
             color: 'var(--ms-text-muted)',
