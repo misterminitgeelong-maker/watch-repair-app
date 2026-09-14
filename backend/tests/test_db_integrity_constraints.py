@@ -148,7 +148,9 @@ def test_negative_minutes_and_file_size_rejected():
             deposit_cents=0,
         )
         session.add(job)
-        session.flush()
+        # Commit, not flush: each rollback below must discard only the offending
+        # row, not the job every later insert points at (Postgres enforces the FK).
+        session.commit()
 
         session.add(
             WorkLog(
