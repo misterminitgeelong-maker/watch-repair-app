@@ -153,7 +153,10 @@ def _wipe_all_tables() -> None:
 
 
 def pytest_report_header(config):
+    # The dialect line is the one to check in CI: GitHub masks the URL's
+    # credential prefix (scheme included), the dialect name cannot be masked.
     return [
+        f"database dialect: {engine.dialect.name} ({engine.dialect.driver})",
         f"database: {_redacted_database_url()}",
         f"schema bootstrap: {SCHEMA_BOOTSTRAP}",
     ]

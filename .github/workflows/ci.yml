@@ -53,8 +53,9 @@ jobs:
           python -m alembic current
 
       # conftest drops the schema and rebuilds it with `alembic upgrade head`,
-      # then prints the resolved DATABASE_URL in the pytest header. If that line
-      # ever says sqlite, this job is proving nothing.
+      # then prints the resolved database in the pytest header. Check the
+      # "database dialect:" line -- GitHub masks the URL's credential prefix. If
+      # it ever says sqlite, this job is proving nothing.
       - name: Run backend tests (Postgres, Alembic-migrated schema)
         env:
           TEST_SCHEMA_BOOTSTRAP: alembic
