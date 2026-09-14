@@ -15,6 +15,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # shoerepairjob is created later in the chain (20260612_reconcile_shoe_tables)
+    # on a fresh database; 20260914b_shoe_fk_backfill adds the FK afterwards.
+    shoe_fk = []
+    if sa.inspect(op.get_bind()).has_table("shoerepairjob"):
+        shoe_fk.append(sa.ForeignKeyConstraint(["shoe_repair_job_id"], ["shoerepairjob.id"]))
     op.create_table(
         "jobmessage",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -30,9 +35,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["auto_key_job_id"], ["autokeyjob.id"]),
         sa.ForeignKeyConstraint(["repair_job_id"], ["repairjob.id"]),
-        sa.ForeignKeyConstraint(["shoe_repair_job_id"], ["shoerepairjob.id"]),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenant.id"]),
         sa.PrimaryKeyConstraint("id"),
+        *shoe_fk,
     )
     op.create_index("ix_jobmessage_tenant_id", "jobmessage", ["tenant_id"])
     op.create_index("ix_jobmessage_repair_job_id", "jobmessage", ["repair_job_id"])

@@ -28,8 +28,11 @@ def upgrade() -> None:
         "attachment",
         ["shoe_repair_job_id"],
     )
-    # Foreign key only for non-SQLite (SQLite doesn't support ADD CONSTRAINT)
-    if op.get_bind().dialect.name != "sqlite":
+    # Foreign key only for non-SQLite (SQLite doesn't support ADD CONSTRAINT).
+    # shoerepairjob is created later in the chain (20260612_reconcile_shoe_tables)
+    # on a fresh database; 20260914b_shoe_fk_backfill adds this FK afterwards.
+    bind = op.get_bind()
+    if bind.dialect.name != "sqlite" and sa.inspect(bind).has_table("shoerepairjob"):
         op.create_foreign_key(
             "fk_attachment_shoe_repair_job_id",
             "attachment",
@@ -40,7 +43,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if op.get_bind().dialect.name != "sqlite":
+    bind = op.get_bind()
+    if bind.dialect.name != "sqlite" and any(
+        fk["name"] == "fk_attachment_shoe_repair_job_id" for fk in sa.inspect(bind).get_foreign_keys("attachment")
+    ):
         op.drop_constraint("fk_attachment_shoe_repair_job_id", "attachment", type_="foreignkey")
     op.drop_index("ix_attachment_shoe_repair_job_id", table_name="attachment")
     op.drop_column("attachment", "shoe_repair_job_id")
