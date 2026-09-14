@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
 import {
@@ -218,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return featuresKnown ? 'authenticated' : 'authenticating'
   }, [token, featuresKnown])
 
-  function resetAuthState() {
+  const resetAuthState = useCallback(() => {
     setToken(null)
     setRole(null)
     setTenantId(null)
@@ -238,9 +238,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setScheduleCalendarTimezone('Australia/Sydney')
     setTenantBusinessAddress(null)
     clearMinitSessionHints()
-  }
+  }, [])
 
-  function scheduleProactiveRefresh(expiresInSeconds: number) {
+  const scheduleProactiveRefresh = useCallback((expiresInSeconds: number) => {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     const ms = Math.max(60_000, Math.floor(expiresInSeconds * 0.9 * 1000))
     proactiveRefreshTimer.current = setTimeout(() => {
@@ -260,9 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.dispatchEvent(new Event('auth:token-cleared'))
         })
     }, ms)
-  }
+  }, [])
 
-  async function refreshSession() {
+  const refreshSession = useCallback(async () => {
     const stored = getStoredAccessToken()
     if (!stored) {
       resetAuthState()
@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setShopCalendarTodayYmd(data.shop_calendar_today_ymd ?? null)
     setScheduleCalendarTimezone(data.schedule_calendar_timezone ?? 'Australia/Sydney')
     setTenantBusinessAddress(data.tenant_business_address?.trim() || null)
-  }
+  }, [resetAuthState])
 
   useEffect(() => {
     function syncTokenFromStorage() {
@@ -444,75 +444,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canceled = true
       clearTimeout(timeoutId)
     }
-  }, [token])
+    // refreshSession / resetAuthState are stable useCallbacks, so this still only re-runs on token changes.
+  }, [token, refreshSession, resetAuthState])
 
-  function login(accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) {
-    setStoredTokens(accessToken, refreshToken ?? null)
-    setToken(accessToken)
-    setRole(parseRoleFromToken(accessToken))
-    if (typeof expiresInSeconds === 'number' && expiresInSeconds > 0) scheduleProactiveRefresh(expiresInSeconds)
-  }
+  const login = useCallback(
+    (accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) => {
+      setStoredTokens(accessToken, refreshToken ?? null)
+      setToken(accessToken)
+      setRole(parseRoleFromToken(accessToken))
+      if (typeof expiresInSeconds === 'number' && expiresInSeconds > 0) scheduleProactiveRefresh(expiresInSeconds)
+    },
+    [scheduleProactiveRefresh],
+  )
 
-  function logout() {
+  const logout = useCallback(() => {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     proactiveRefreshTimer.current = null
     clearStoredTokens()
     resetAuthState()
-  }
+  }, [resetAuthState])
 
-  async function switchSite(nextTenantId: string) {
-    const { data } = await switchActiveSite(nextTenantId)
-    setStoredTokens(data.access_token, data.refresh_token ?? null)
-    setToken(data.access_token)
-    setRole(parseRoleFromToken(data.access_token))
-    const exp = data.expires_in_seconds ?? 480 * 60
-    if (exp > 0) scheduleProactiveRefresh(exp)
-    await refreshSession()
-  }
-
-  function hasFeature(feature: FeatureKey) {
-    if (role === 'platform_admin') return true
-    if (minitHqUi === true && (feature === 'multi_site' || feature === 'shop_mobile_booking')) {
-      return true
-    }
-    if (enabledFeatures.includes(feature)) return true
-    return featuresForPlan(effectiveMinitPlanCode(planCode, tenantSlug)).includes(feature)
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{
-        token,
-        role,
-        tenantId,
-        tenantSlug,
-        sessionUserId,
-        activeSiteTenantId,
-        availableSites,
-        planCode,
-        product,
-        enabledFeatures,
-        signupPaymentPending,
-        subscriptionStatus,
-        trialEnd,
-        shopCalendarTodayYmd,
-        scheduleCalendarTimezone,
-        sessionReady,
-        featuresKnown,
-        authStatus,
-        minitHqUi,
-        initializing,
-        tenantBusinessAddress,
-        login,
-        logout,
-        hasFeature,
-        refreshSession,
-        switchSite,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const switchSite = useCallback(
+    async (nextTenantId: string) => {
+      const { data } = await switchActiveSite(nextTenantId)
+      setStoredTokens(data.access_token, data.refresh_token ?? null)
+      setToken(data.access_token)
+      setRole(parseRoleFromToken(data.access_token))
+      const exp = data.expires_in_seconds ?? 480 * 60
+      if (exp > 0) scheduleProactiveRefresh(exp)
+      await refreshSession()
+    },
+    [scheduleProactiveRefresh, refreshSession],
   )
+
+  const hasFeature = useCallback(
+    (feature: FeatureKey) => {
+      if (role === 'platform_admin') return true
+      if (minitHqUi === true && (feature === 'multi_site' || feature === 'shop_mobile_booking')) {
+        return true
+      }
+      if (enabledFeatures.includes(feature)) return true
+      return featuresForPlan(effectiveMinitPlanCode(planCode, tenantSlug)).includes(feature)
+    },
+    [role, minitHqUi, enabledFeatures, planCode, tenantSlug],
+  )
+
+  // The provider re-renders on every navigation (useLocation) and on each of
+  // its state slices; memoise the value so consumers only re-render when
+  // something they read actually changed.
+  const value = useMemo<AuthCtx>(
+    () => ({
+      token,
+      role,
+      tenantId,
+      tenantSlug,
+      sessionUserId,
+      activeSiteTenantId,
+      availableSites,
+      planCode,
+      product,
+      enabledFeatures,
+      signupPaymentPending,
+      subscriptionStatus,
+      trialEnd,
+      shopCalendarTodayYmd,
+      scheduleCalendarTimezone,
+      sessionReady,
+      featuresKnown,
+      authStatus,
+      minitHqUi,
+      initializing,
+      tenantBusinessAddress,
+      login,
+      logout,
+      hasFeature,
+      refreshSession,
+      switchSite,
+    }),
+    [
+      token,
+      role,
+      tenantId,
+      tenantSlug,
+      sessionUserId,
+      activeSiteTenantId,
+      availableSites,
+      planCode,
+      product,
+      enabledFeatures,
+      signupPaymentPending,
+      subscriptionStatus,
+      trialEnd,
+      shopCalendarTodayYmd,
+      scheduleCalendarTimezone,
+      sessionReady,
+      featuresKnown,
+      authStatus,
+      minitHqUi,
+      initializing,
+      tenantBusinessAddress,
+      login,
+      logout,
+      hasFeature,
+      refreshSession,
+      switchSite,
+    ],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

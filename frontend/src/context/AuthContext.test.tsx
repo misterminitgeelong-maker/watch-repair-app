@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
-import api, { getStoredAccessToken, type AuthSession } from '@/lib/api'
+import api, { getStoredAccessToken, setStoredTokens, type AuthSession } from '@/lib/api'
 import { testServer } from '@/test/msw/server'
 import { AuthProvider, useAuth } from './AuthContext'
 
@@ -138,5 +138,42 @@ describe('AuthContext', () => {
     await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
     // Token must not be wiped on a non-401 failure - only a genuine 401 logs out.
     expect(getStoredAccessToken()).toBe(TEST_JWT)
+  })
+
+  it('keeps the same context value across a navigation once the session is settled', async () => {
+    // The provider calls useLocation(), so it re-renders on every route change.
+    // The value must be memoised or all ~30 consumers re-render on each navigation.
+    const seen: unknown[] = []
+    function IdentityProbe() {
+      const ctx = useAuth()
+      const navigate = useNavigate()
+      seen.push(ctx)
+      return (
+        <div>
+          <div data-testid="auth-status">{ctx.authStatus}</div>
+          <button onClick={() => navigate('/elsewhere')}>go</button>
+        </div>
+      )
+    }
+    setStoredTokens(TEST_JWT, null)
+    render(
+      <MemoryRouter initialEntries={['/start']}>
+        <AuthProvider>
+          <IdentityProbe />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+    const settled = seen[seen.length - 1]
+    const { login, logout, hasFeature } = settled as ReturnType<typeof useAuth>
+
+    await userEvent.click(screen.getByText('go'))
+
+    const afterNav = seen[seen.length - 1] as ReturnType<typeof useAuth>
+    expect(afterNav).toBe(settled)
+    expect(afterNav.login).toBe(login)
+    expect(afterNav.logout).toBe(logout)
+    expect(afterNav.hasFeature).toBe(hasFeature)
+    expect(afterNav.hasFeature('watch')).toBe(true)
   })
 })
