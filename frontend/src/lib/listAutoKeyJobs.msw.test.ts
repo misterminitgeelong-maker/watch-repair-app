@@ -32,4 +32,17 @@ describe('listAutoKeyJobs with MSW', () => {
     expect(data[0]?.job_number).toBe('AK-777')
     expect(data[0]?.title).toBe('Keyed response')
   })
+
+  it('auto-pages past the default 500-row cap so truncation is not silent', async () => {
+    const jobs = Array.from({ length: 501 }, (_, i) =>
+      makeMockAutoKeyJob({
+        id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+        job_number: `AK-${String(i + 1).padStart(4, '0')}`,
+      }),
+    )
+    testServer.use(...autoKeyJobsHandlersWith(jobs))
+    const { data } = await listAutoKeyJobs()
+    expect(data).toHaveLength(501)
+    expect(data[500]?.job_number).toBe('AK-0501')
+  })
 })

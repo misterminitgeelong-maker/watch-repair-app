@@ -15,6 +15,7 @@ from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..gst import compute_gst_amounts
+from ..list_page import query_total, set_total_count
 from ..stale_write import reject_stale_write
 from ..models import (
     Attachment,
@@ -602,10 +603,11 @@ def create_auto_key_quick_intake(
 
 @router.get("", response_model=list[AutoKeyJobRead])
 def list_auto_key_jobs(
+    response: Response,
     status: str | None = Query(default=None),
     customer_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=500, ge=1, le=2000),
+    limit: int = Query(default=500, ge=1, le=500),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
@@ -632,6 +634,7 @@ def list_auto_key_jobs(
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
     if active_only:
         query = query.where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+    set_total_count(response, query_total(session, query))
     jobs = session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
 
     # Batch enrich with customer names

@@ -10,6 +10,7 @@ from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, enforce_plan_limit, require_feature, require_tech_or_above
+from ..list_page import query_total, set_total_count
 from ..tenant_helpers import get_tenant_repair_job
 from ..models import (
     Approval,
@@ -243,12 +244,13 @@ def create_repair_job(
 
 @router.get("", response_model=list[RepairJobRead])
 def list_repair_jobs(
+    response: Response,
     status: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
     customer_id: UUID | None = Query(default=None, description="Filter jobs whose watch belongs to this customer"),
     q: str | None = Query(default=None),
     cost_outlier: bool | None = Query(default=None, description="When true, only include jobs with outlier cost values"),
-    limit: int = Query(default=50, ge=1, le=20000),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc"),
@@ -282,6 +284,7 @@ def list_repair_jobs(
     if sort_dir.lower() not in {"asc", "desc"}:
         raise HTTPException(status_code=400, detail="Invalid sort_dir")
     query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
+    set_total_count(response, query_total(session, query.order_by(None)))
     query = query.offset(offset).limit(limit)
     jobs = session.exec(query).all()
 
