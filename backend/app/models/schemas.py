@@ -1271,6 +1271,7 @@ class AutoKeyJobRead(SQLModel):
     deposit_cents: int
     cost_cents: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
     scheduled_at: Optional[datetime] = None
     job_address: Optional[str] = None
     job_type: Optional[str] = None
@@ -1286,7 +1287,7 @@ class AutoKeyJobRead(SQLModel):
     quoted_price: Optional[float] = None
     callout_inclusive: Optional[bool] = None
 
-    @field_serializer("scheduled_at", "created_at")
+    @field_serializer("scheduled_at", "created_at", "updated_at")
     def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
         """Naive DB datetimes are UTC; expose as timezone-aware so JSON is unambiguous for browsers."""
         return as_utc_for_json(v) if v is not None else None

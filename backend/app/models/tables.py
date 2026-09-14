@@ -310,6 +310,27 @@ class StripeWebhookEvent(SQLModel, table=True):
     event_type: str
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class MutationIdempotencyKey(SQLModel, table=True):
+    """Client-generated keys that make a retried POST/PATCH/PUT a no-op.
+
+    Offline queue items generate a key at enqueue time. If the server committed
+    but the response was lost, replay hits the unique (tenant_id, key) row and
+    returns the stored response instead of creating a duplicate.
+    """
+    __tablename__ = "mutationidempotencykey"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "key", name="uq_mutation_idempotency_tenant_key"),
+    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    key: str = Field(max_length=128, index=True)
+    method: str = Field(max_length=16)
+    path: str = Field(max_length=512)
+    request_hash: str = Field(max_length=64)
+    status_code: int
+    response_body: str = Field(default="")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class CustomService(SQLModel, table=True):
     """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -799,6 +820,7 @@ class AutoKeyJob(SQLModel, table=True):
     deposit_cents: int = 0
     cost_cents: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     #: Set the first time the job transitions to work_completed. Used for KPI cycle-time,
     #: schedule adherence, and same-day invoice metrics.
     work_completed_at: Optional[datetime] = None

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
@@ -15,6 +15,7 @@ from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..gst import compute_gst_amounts
+from ..stale_write import reject_stale_write
 from ..models import (
     Attachment,
     AutoKeyJob,
@@ -797,6 +798,7 @@ def get_auto_key_job(
 def update_auto_key_job_status(
     job_id: UUID,
     payload: AutoKeyJobStatusUpdate,
+    request: Request,
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -804,8 +806,10 @@ def update_auto_key_job_status(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
 
+    reject_stale_write(job.updated_at, request)
     previous_status = job.status
     job.status = payload.status
+    job.updated_at = datetime.now(timezone.utc)
     session.add(job)
 
     # Auto-create invoice on work_completed when no invoice is present yet.
@@ -950,6 +954,7 @@ def update_auto_key_job_status(
 def update_auto_key_job_fields(
     job_id: UUID,
     payload: AutoKeyJobFieldUpdate,
+    request: Request,
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
@@ -957,6 +962,7 @@ def update_auto_key_job_fields(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
 
+    reject_stale_write(job.updated_at, request)
     update_data = payload.model_dump(exclude_unset=True)
     if "customer_account_id" in update_data and update_data["customer_account_id"] is not None:
         account = session.get(CustomerAccount, update_data["customer_account_id"])
@@ -968,6 +974,7 @@ def update_auto_key_job_fields(
     if job.key_quantity < 1:
         job.key_quantity = 1
 
+    job.updated_at = datetime.now(timezone.utc)
     session.add(job)
     session.commit()
     session.refresh(job)

@@ -16,6 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
+from .idempotency import MutationIdempotencyMiddleware
 from .config import settings, validate_runtime_config
 from .database import create_db_and_tables, engine
 from .limiter import limiter
@@ -287,6 +288,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(MutationIdempotencyMiddleware)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
