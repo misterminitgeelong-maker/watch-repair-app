@@ -18,6 +18,7 @@ import {
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, Modal, Select } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, computeSlaChip, formatCents, nextMobileStatus } from './dispatchHelpers'
 import { SlaChipBadge } from './SlaChipBadge'
 import { CreateQuoteModal } from './CreateQuoteModal'
@@ -68,19 +69,19 @@ export function AutoKeyJobCard({
 
   const statusMut = useMutation({
     mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(job.id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onSuccess: () => invalidateAutoKeyJobCollections(qc),
     onError: (err) => setActionError(getApiErrorMessage(err, 'Could not update job status. Please try again.')),
   })
 
   const updateAccountMut = useMutation({
     mutationFn: (customer_account_id: string | null) => updateAutoKeyJob(job.id, { customer_account_id }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onSuccess: () => invalidateAutoKeyJobCollections(qc),
     onError: (err) => setActionError(getApiErrorMessage(err, 'Could not update the linked account.')),
   })
 
   const assignTechMut = useMutation({
     mutationFn: (assigned_user_id: string | null) => updateAutoKeyJob(job.id, { assigned_user_id }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-key-jobs'] }),
+    onSuccess: () => invalidateAutoKeyJobCollections(qc),
     onError: (err) => setActionError(getApiErrorMessage(err, 'Could not assign the technician.')),
   })
 
@@ -94,7 +95,7 @@ export function AutoKeyJobCard({
     mutationFn: (quoteId: string) => createAutoKeyInvoiceFromQuote(job.id, quoteId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-invoices', job.id] })
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
     },
     onError: (err) => setActionError(getApiErrorMessage(err, 'Could not create the invoice from this quote.')),
   })
@@ -102,7 +103,7 @@ export function AutoKeyJobCard({
   const deleteMut = useMutation({
     mutationFn: () => deleteAutoKeyJob(job.id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       setShowDeleteConfirm(false)
       setDeleteError('')
     },
@@ -312,7 +313,7 @@ export function AutoKeyJobCard({
               <button
                 type="button"
                 className="w-full inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none md:min-h-10 md:py-2"
-                style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}
+                style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
                 onClick={() => { void handleStatusChange(nextStatus) }}
                 disabled={statusMut.isPending}
               >

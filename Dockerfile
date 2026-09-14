@@ -7,6 +7,9 @@ ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
 # Optional: API origin when UI and API are on different hosts (e.g. https://mainspring.au). Omit for same-origin Docker deploy.
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Frontend Sentry (JavaScript/React project DSN — not the backend Python DSN).
+ARG VITE_SENTRY_DSN=
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 # Git commit for deploy verification (Railway injects RAILWAY_GIT_COMMIT_SHA at image build).
 ARG RAILWAY_GIT_COMMIT_SHA
 ENV VITE_APP_BUILD_ID=${RAILWAY_GIT_COMMIT_SHA}

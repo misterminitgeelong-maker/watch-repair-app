@@ -129,7 +129,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     primary:   { backgroundColor: 'var(--ms-accent)',     color: 'var(--ms-on-accent)',  borderColor: 'var(--ms-accent)' },
     secondary: { backgroundColor: 'var(--ms-surface)',    color: 'var(--ms-text-mid)',   borderColor: 'var(--ms-border)' },
     ghost:     { backgroundColor: 'transparent',          color: 'var(--ms-text-mid)',   borderColor: 'transparent' },
-    danger:    { backgroundColor: 'var(--ms-danger)',     color: '#fff',                 borderColor: 'var(--ms-danger)' },
+    danger:    { backgroundColor: 'var(--ms-danger)',     color: 'var(--ms-on-danger)',  borderColor: 'var(--ms-danger)' },
     subtle:    { backgroundColor: 'var(--ms-accent-pop)', color: 'var(--ms-accent)',     borderColor: 'var(--ms-accent-light)' },
   }
 

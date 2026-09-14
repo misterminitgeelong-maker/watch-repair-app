@@ -18,6 +18,7 @@ import { Card, Button, Input, Select } from '@/components/ui'
 import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import PricingSelector from '@/components/PricingSelector'
+import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 
 const POS_QUICK_ITEMS = [
   // General service (Mobile Services Suggested Pricing 2026)
@@ -154,7 +155,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
       )
     },
     onSuccess: ({ job }) => {
-      qc.invalidateQueries({ queryKey: ['auto-key-jobs'] })
+      invalidateAutoKeyJobCollections(qc)
       qc.invalidateQueries({ queryKey: ['auto-key-job', job.id] })
       setCart([])
       setCustomerId('')
