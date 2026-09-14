@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 import { cn, STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
 
@@ -96,19 +97,26 @@ export function PageHeader({ title, action }: { title: string; action?: React.Re
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'subtle'
 
-export function Button({
-  children, onClick, type = 'button', variant = 'primary', disabled, className, size, style: styleProp, title,
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  type?: 'button' | 'submit' | 'reset'
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
-  disabled?: boolean
-  className?: string
   size?: 'sm' | 'normal'
-  style?: React.CSSProperties
-  title?: string
-}) {
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    children,
+    className,
+    size,
+    variant = 'primary',
+    style: styleProp,
+    disabled,
+    type = 'button',
+    onMouseEnter,
+    onMouseLeave,
+    ...rest
+  },
+  ref,
+) {
   const isSmall = size === 'sm'
   const base =
     'inline-flex items-center justify-center gap-2 border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none'
@@ -135,9 +143,8 @@ export function Button({
 
   return (
     <button
+      ref={ref}
       type={type}
-      title={title}
-      onClick={onClick}
       disabled={disabled}
       className={cn(base, className)}
       style={{
@@ -147,18 +154,21 @@ export function Button({
         borderRadius: 'var(--ms-radius-sm)',
         ...styleProp,
       }}
+      {...rest}
       onMouseEnter={e => {
+        onMouseEnter?.(e)
         if (disabled) return
         e.currentTarget.style.backgroundColor = hover[variant]
       }}
       onMouseLeave={e => {
+        onMouseLeave?.(e)
         e.currentTarget.style.backgroundColor = variants[variant].backgroundColor as string
       }}
     >
       {children}
     </button>
   )
-}
+})
 
 const inputBase: React.CSSProperties = {
   height: 36,
@@ -271,14 +281,75 @@ interface ModalProps {
   /** When true, the close button is disabled (e.g. during submit). */
   closeDisabled?: boolean
 }
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+function focusableIn(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+  )
+}
+
 export function Modal({ title, children, onClose, size = 'default', closeDisabled = false }: ModalProps) {
   const maxWidth = size === 'wide' ? 'sm:max-w-[780px]' : 'sm:max-w-[480px]'
-  return (
+  const titleId = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const panel = panelRef.current
+    const initial = panel ? focusableIn(panel)[0] : undefined
+    ;(initial ?? panel)?.focus()
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        if (!closeDisabled) {
+          event.preventDefault()
+          onClose()
+        }
+        return
+      }
+      if (event.key !== 'Tab' || !panel) return
+      const nodes = focusableIn(panel)
+      if (nodes.length === 0) {
+        event.preventDefault()
+        panel.focus()
+        return
+      }
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      previousFocusRef.current?.focus?.()
+    }
+  }, [onClose, closeDisabled])
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
       style={{ backgroundColor: 'var(--ms-overlay)', backdropFilter: 'blur(4px)' }}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={cn('mx-2 max-h-[90vh] w-full overflow-hidden sm:mx-4', maxWidth)}
         style={{
           backgroundColor: 'var(--ms-surface)',
@@ -295,13 +366,14 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
             borderBottom: '1px solid var(--ms-border)',
           }}
         >
-          <h2 className="pr-2 text-[15px] font-bold" style={{ color: 'var(--ms-text)' }}>
+          <h2 id={titleId} className="pr-2 text-[15px] font-bold" style={{ color: 'var(--ms-text)' }}>
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={closeDisabled}
+            aria-label="Close"
             aria-disabled={closeDisabled}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             style={{ color: 'var(--ms-text-muted)' }}
@@ -318,7 +390,8 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
