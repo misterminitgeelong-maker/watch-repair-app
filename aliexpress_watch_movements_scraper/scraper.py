@@ -28,6 +28,19 @@ from config import (
 logger = logging.getLogger(__name__)
 
 
+class IncompleteScrape(Exception):
+    """Pagination stopped early. ``pages`` holds every HTML document fetched so far."""
+
+    def __init__(self, pages: list[str], page_num: int, search_term: str, cause: BaseException):
+        self.pages = pages
+        self.page_num = page_num
+        self.search_term = search_term
+        super().__init__(
+            f"Partial scrape for {search_term!r}: got {len(pages)} page(s), failed on page {page_num}: {cause}"
+        )
+        self.__cause__ = cause
+
+
 def _random_delay():
     """Apply rate limiting with random delay."""
     delay = random.uniform(MIN_DELAY_BETWEEN_REQUESTS, MAX_DELAY_BETWEEN_REQUESTS)
@@ -38,7 +51,7 @@ def _random_delay():
 @retry(
     stop=stop_after_attempt(MAX_RETRIES),
     wait=wait_exponential(multiplier=2, min=4, max=60),
-    retry=retry_if_exception_type((PlaywrightTimeout, ConnectionError, Exception)),
+    retry=retry_if_exception_type((PlaywrightTimeout, ConnectionError, OSError)),
     reraise=True,
 )
 def _fetch_page_with_retry(page, url: str) -> str:
@@ -67,8 +80,9 @@ def scrape_search_results(search_term: str, page, max_pages: int = PAGES_PER_SEA
             html = _fetch_page_with_retry(page, url)
             results.append(html)
         except Exception as e:
-            logger.warning("Failed to fetch page %d for '%s': %s", page_num, search_term, e)
-            break
+            if not results:
+                raise
+            raise IncompleteScrape(results, page_num, search_term, e) from e
     return results
 
 
@@ -135,7 +149,11 @@ def run_live_scrape(
             page = context.new_page()
 
         for term in search_terms:
-            pages_html = scrape_search_results(term, page, max_pages=max_pages)
+            try:
+                pages_html = scrape_search_results(term, page, max_pages=max_pages)
+            except IncompleteScrape as partial:
+                logger.error("%s — continuing with the pages already fetched", partial)
+                pages_html = partial.pages
             for i, html in enumerate(pages_html):
                 all_pages.append((term, str(i + 1), html))
                 # Optionally save raw HTML for debugging
