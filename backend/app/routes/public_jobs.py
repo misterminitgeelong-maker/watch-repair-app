@@ -8,13 +8,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
 from ..database import get_session
+from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
@@ -39,6 +40,14 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
+
+
+def get_public_read_rate_limit() -> str:
+    return settings.rate_limit_public_test if settings.app_env == "test" else settings.rate_limit_public_read
+
+
+def get_public_write_rate_limit() -> str:
+    return settings.rate_limit_public_test if settings.app_env == "test" else settings.rate_limit_public_write
 
 from .attachments import attachment_storage  # noqa: E402
 
@@ -116,7 +125,8 @@ def _customer_intake_title(customer_full_name: str, make: str | None, year: int 
 
 
 @router.get("/jobs/{status_token}")
-def get_public_job_status(status_token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_job_status(request: Request, status_token: str, session: Session = Depends(get_session)):
     job = session.exec(select(RepairJob).where(RepairJob.status_token == status_token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -155,7 +165,8 @@ def get_public_job_status(status_token: str, session: Session = Depends(get_sess
 
 
 @router.get("/jobs/{status_token}/qr")
-def get_public_job_qr(status_token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_job_qr(request: Request, status_token: str, session: Session = Depends(get_session)):
     job = session.exec(select(RepairJob).where(RepairJob.status_token == status_token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -169,7 +180,8 @@ def get_public_job_qr(status_token: str, session: Session = Depends(get_session)
 
 
 @router.get("/shoe-jobs/{status_token}")
-def get_public_shoe_job_status(status_token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_shoe_job_status(request: Request, status_token: str, session: Session = Depends(get_session)):
     job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == status_token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -226,7 +238,8 @@ def get_public_shoe_job_status(status_token: str, session: Session = Depends(get
 
 
 @router.get("/shoe-jobs/{status_token}/qr")
-def get_public_shoe_job_qr(status_token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_shoe_job_qr(request: Request, status_token: str, session: Session = Depends(get_session)):
     job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == status_token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -251,7 +264,8 @@ def _shoe_quote_token_is_expired(job: ShoeRepairJob) -> bool:
 
 
 @router.get("/shoe-quotes/{token}")
-def get_public_shoe_quote(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_shoe_quote(request: Request, token: str, session: Session = Depends(get_session)):
     job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.quote_approval_token == token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -300,7 +314,9 @@ class ShoeQuoteDecisionRequest(SQLModel):
 
 
 @router.post("/shoe-quotes/{token}/decision")
+@limiter.limit(get_public_write_rate_limit)
 def decide_shoe_quote(
+    request: Request,
     token: str,
     payload: ShoeQuoteDecisionRequest,
     session: Session = Depends(get_session),
@@ -353,7 +369,8 @@ def decide_shoe_quote(
 
 
 @router.get("/auto-key-booking/{token}")
-def get_public_auto_key_booking(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_auto_key_booking(request: Request, token: str, session: Session = Depends(get_session)):
     job = session.exec(select(AutoKeyJob).where(AutoKeyJob.booking_confirmation_token == token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
@@ -405,7 +422,9 @@ class AutoKeyBookingConfirmBody(SQLModel):
 
 
 @router.post("/auto-key-booking/{token}/confirm")
+@limiter.limit(get_public_write_rate_limit)
 def confirm_public_auto_key_booking(
+    request: Request,
     token: str,
     body: AutoKeyBookingConfirmBody = AutoKeyBookingConfirmBody(),
     session: Session = Depends(get_session),
@@ -453,7 +472,8 @@ def confirm_public_auto_key_booking(
 
 
 @router.get("/auto-key-intake/{token}")
-def get_public_auto_key_intake(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_auto_key_intake(request: Request, token: str, session: Session = Depends(get_session)):
     job = session.exec(
         select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
     ).first()
@@ -481,7 +501,9 @@ def get_public_auto_key_intake(token: str, session: Session = Depends(get_sessio
 
 
 @router.post("/auto-key-intake/{token}/submit")
+@limiter.limit(get_public_write_rate_limit)
 def submit_public_auto_key_intake(
+    request: Request,
     token: str,
     payload: PublicAutoKeyIntakeSubmit,
     session: Session = Depends(get_session),
@@ -546,7 +568,8 @@ def submit_public_auto_key_intake(
 
 
 @router.get("/auto-key-invoice/{token}")
-def get_public_auto_key_invoice(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_auto_key_invoice(request: Request, token: str, session: Session = Depends(get_session)):
     invoice = session.exec(
         select(AutoKeyInvoice).where(AutoKeyInvoice.customer_view_token == token)
     ).first()
@@ -628,7 +651,8 @@ def _stripe_checkout_client():
 
 
 @router.post("/auto-key-invoice/{token}/checkout")
-def create_public_auto_key_invoice_checkout(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_write_rate_limit)
+def create_public_auto_key_invoice_checkout(request: Request, token: str, session: Session = Depends(get_session)):
     """Start Stripe Checkout for a Mobile Services invoice (customer pays online)."""
     if not settings.enable_stripe_invoice_checkout:
         raise HTTPException(status_code=503, detail="Online invoice payment is disabled.")
@@ -719,7 +743,8 @@ def create_public_auto_key_invoice_checkout(token: str, session: Session = Depen
 
 
 @router.get("/auto-key-jobs/{status_token}")
-def get_public_auto_key_job_status(status_token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_auto_key_job_status(request: Request, status_token: str, session: Session = Depends(get_session)):
     """Public job summary for customer portal detail view (status_token is the opaque link id)."""
     job = session.exec(select(AutoKeyJob).where(AutoKeyJob.status_token == status_token)).first()
     if not job:
@@ -1056,7 +1081,9 @@ class CustomerLookupRequest(SQLModel):
 
 
 @router.post("/customer-lookup", response_model=CustomerPortalLookupResponse)
+@limiter.limit(get_public_write_rate_limit)
 def customer_lookup(
+    request: Request,
     payload: CustomerLookupRequest,
     include_history: bool = Query(default=False),
     session: Session = Depends(get_session),
@@ -1082,7 +1109,8 @@ class PortalSessionRequest(SQLModel):
 
 
 @router.post("/portal/create-session")
-def create_portal_session(payload: PortalSessionRequest, session: Session = Depends(get_session)):
+@limiter.limit(get_public_write_rate_limit)
+def create_portal_session(request: Request, payload: PortalSessionRequest, session: Session = Depends(get_session)):
     """Create a 30-day bookmarkable portal session for the given email."""
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
@@ -1117,7 +1145,9 @@ def create_portal_session(payload: PortalSessionRequest, session: Session = Depe
 
 
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)
+@limiter.limit(get_public_read_rate_limit)
 def get_portal_session_jobs(
+    request: Request,
     token: str,
     include_history: bool = Query(default=False),
     session: Session = Depends(get_session),
@@ -1145,7 +1175,9 @@ class PortalNotificationPrefsUpdate(SQLModel):
 
 
 @router.patch("/portal/session/{token}/preferences")
+@limiter.limit(get_public_write_rate_limit)
 def update_portal_preferences(
+    request: Request,
     token: str,
     payload: PortalNotificationPrefsUpdate,
     session: Session = Depends(get_session),
@@ -1169,7 +1201,9 @@ class PortalMessageToShopRequest(SQLModel):
 
 
 @router.post("/portal/session/{token}/message-to-shop", status_code=201)
+@limiter.limit(get_public_write_rate_limit)
 def portal_message_to_shop(
+    request: Request,
     token: str,
     payload: PortalMessageToShopRequest,
     session: Session = Depends(get_session),
@@ -1218,7 +1252,8 @@ def portal_message_to_shop(
 # ── Public auto-key quote portal ─────────────────────────────────────────────
 
 @router.get("/auto-key-quote/{token}")
-def get_public_auto_key_quote(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_public_auto_key_quote(request: Request, token: str, session: Session = Depends(get_session)):
     quote = session.exec(
         select(AutoKeyQuote).where(AutoKeyQuote.quote_approval_token == token)
     ).first()
@@ -1277,7 +1312,9 @@ class AutoKeyQuoteDecision(SQLModel):
 
 
 @router.post("/auto-key-quote/{token}/decision")
+@limiter.limit(get_public_write_rate_limit)
 def decide_public_auto_key_quote(
+    request: Request,
     token: str,
     body: AutoKeyQuoteDecision,
     session: Session = Depends(get_session),
@@ -1367,7 +1404,8 @@ def decide_public_auto_key_quote(
 
 
 @router.get("/auto-key-quote/{token}/signature")
-def get_quote_signature(token: str, session: Session = Depends(get_session)):
+@limiter.limit(get_public_read_rate_limit)
+def get_quote_signature(request: Request, token: str, session: Session = Depends(get_session)):
     """Returns a short-lived redirect to the signature image in Supabase Storage."""
     quote = session.exec(
         select(AutoKeyQuote).where(AutoKeyQuote.quote_approval_token == token)

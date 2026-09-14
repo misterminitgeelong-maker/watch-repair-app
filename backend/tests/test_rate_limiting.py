@@ -157,3 +157,33 @@ def test_import_csv_rate_limited():
     finally:
         settings.rate_limit_import_csv = old
         limiter.reset()
+
+
+def test_public_jobs_endpoints_rate_limited():
+    """Every unauthenticated /v1/public route carries a per-IP limit (reads and writes)."""
+    limiter.reset()
+    old = settings.rate_limit_public_test
+    settings.rate_limit_public_test = "1/minute"
+    try:
+        # Read: token-addressed status page. The limiter runs before the handler,
+        # so even an unknown token counts against the bucket.
+        first = client.get("/v1/public/jobs/not-a-real-token")
+        second = client.get("/v1/public/jobs/not-a-real-token")
+        assert first.status_code == 404
+        assert second.status_code == 429
+
+        limiter.reset()
+        # Write: email-keyed lookup with no token at all.
+        first = client.post("/v1/public/customer-lookup", json={"email": "nobody@example.test"})
+        second = client.post("/v1/public/customer-lookup", json={"email": "nobody@example.test"})
+        assert first.status_code == 200
+        assert second.status_code == 429
+
+        limiter.reset()
+        first = client.post("/v1/public/portal/create-session", json={"email": "nobody@example.test"})
+        second = client.post("/v1/public/portal/create-session", json={"email": "nobody@example.test"})
+        assert first.status_code == 404
+        assert second.status_code == 429
+    finally:
+        settings.rate_limit_public_test = old
+        limiter.reset()

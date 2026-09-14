@@ -146,6 +146,11 @@ class Settings(BaseSettings):
     rate_limit_public_quote_get: str = "30/minute"
     rate_limit_public_quote_decision: str = "20/minute"
     rate_limit_import_csv: str = "5/minute"
+    # Unauthenticated /v1/public/* endpoints (token-addressed job/quote/portal pages).
+    # Reads are generous; anything that mutates, emails, or creates a Stripe session is tight.
+    rate_limit_public_read: str = "60/minute"
+    rate_limit_public_write: str = "10/minute"
+    rate_limit_public_test: str = "1000/minute"
     # Shared limiter storage backend for multi-instance deployments, e.g.
     # "redis://localhost:6379/0" or "memcached://localhost:11211".
     # Empty string = in-process memory storage, which is correct for a single
