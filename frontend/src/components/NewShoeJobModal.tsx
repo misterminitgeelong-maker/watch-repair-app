@@ -17,7 +17,6 @@ import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import { STATUS_LABELS } from '@/lib/utils'
 import { preparePhotoFile, getPhotoPrepareErrorMessage, uploadFilesSequential } from '@/lib/photoUpload'
-import { pushModalCloseHandler } from '@/lib/modalBackStack'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
@@ -117,11 +116,6 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     }
     onClose()
   }, [busy, step, createdJobId, onClose])
-
-  useEffect(() => {
-    if (createdJobId) return
-    return pushModalCloseHandler(requestClose)
-  }, [createdJobId, requestClose])
 
   useEffect(() => () => {
     intakePhotos.forEach(p => URL.revokeObjectURL(p.preview))
