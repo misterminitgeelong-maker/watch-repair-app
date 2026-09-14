@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
 from .idempotency import MutationIdempotencyMiddleware
-from .config import settings, validate_runtime_config
+from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
 from .database import create_db_and_tables, engine
 from .limiter import limiter
 from .routes.auth import router as auth_router
@@ -73,15 +73,31 @@ _SENTRY_ENABLED = False
 sentry_sdk = None
 
 
-if getattr(settings, "sentry_dsn", "").strip():
-    import sentry_sdk
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn.strip(),
-        traces_sample_rate=0.1,
-        profiles_sample_rate=0.0,
-        environment=getattr(settings, "app_env", "production"),
-    )
-    _SENTRY_ENABLED = True
+def _init_sentry() -> None:
+    """Initialise Sentry if configured. A bad DSN must not prevent the app from binding a port."""
+    global _SENTRY_ENABLED, sentry_sdk
+    dsn = getattr(settings, "sentry_dsn", "").strip()
+    if not dsn:
+        return
+    startup_log = logging.getLogger("mainspring.startup")
+    if not sentry_dsn_looks_valid(dsn):
+        startup_log.warning("Ignoring malformed SENTRY_DSN; continuing without Sentry")
+        return
+    try:
+        import sentry_sdk as sentry_mod
+        sentry_mod.init(
+            dsn=dsn,
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.0,
+            environment=getattr(settings, "app_env", "production"),
+        )
+        sentry_sdk = sentry_mod
+        _SENTRY_ENABLED = True
+    except Exception:
+        startup_log.warning("Sentry.init failed; continuing without Sentry", exc_info=True)
+
+
+_init_sentry()
 
 
 def _run_optional_startup_tasks() -> None:

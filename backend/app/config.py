@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -228,6 +229,22 @@ def _is_sqlite_url(database_url: str) -> bool:
     return (database_url or "").strip().lower().startswith("sqlite")
 
 
+def sentry_dsn_looks_valid(dsn: str) -> bool:
+    """True when DSN is empty (Sentry off) or a plausible https://key@host/project URL."""
+    value = (dsn or "").strip()
+    if not value:
+        return True
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if "@" not in (parsed.netloc or ""):
+        return False
+    if not parsed.hostname:
+        return False
+    path = (parsed.path or "").strip("/")
+    return bool(path)
+
+
 def validate_runtime_config() -> None:
     """
     Enforce strict safety checks in production only.
@@ -268,4 +285,11 @@ def validate_runtime_config() -> None:
             "ALLOW_PUBLIC_BOOTSTRAP is True in production. Set ALLOW_PUBLIC_BOOTSTRAP=false after bootstrapping your first tenant.",
             UserWarning,
             stacklevel=0,
+        )
+
+    dsn = (settings.sentry_dsn or "").strip()
+    if dsn and not sentry_dsn_looks_valid(dsn):
+        logging.getLogger("mainspring.startup").warning(
+            "SENTRY_DSN is set but is not a valid Sentry DSN (https://<key>@<host>/<project>). "
+            "Sentry will stay disabled rather than blocking boot."
         )
