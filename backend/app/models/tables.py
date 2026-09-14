@@ -300,6 +300,16 @@ class TenantEventLog(SQLModel, table=True):
     event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class StripeWebhookEvent(SQLModel, table=True):
+    """Stripe event IDs already applied by the billing webhook.
+
+    Stripe retries on any non-2xx and may deliver the same event more than once;
+    the primary key on the event ID turns a redelivery into a no-op.
+    """
+    id: str = Field(primary_key=True, max_length=255)  # Stripe event id, e.g. "evt_..."
+    event_type: str
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class CustomService(SQLModel, table=True):
     """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)

@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..config import settings
@@ -22,6 +23,7 @@ from ..models import (
     BillingLimitsUsage,
     RepairJob,
     ShoeRepairJob,
+    StripeWebhookEvent,
     Tenant,
     TenantEventLog,
     User,
@@ -410,6 +412,18 @@ async def stripe_webhook(
         event = _stripe.Webhook.construct_event(body, stripe_signature, settings.stripe_webhook_secret)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    # Idempotency: Stripe redelivers events (retries, manual resends), so record
+    # the event ID before applying it and acknowledge any repeat with a 200 so
+    # Stripe stops retrying. A concurrent duplicate loses on the primary key.
+    event_id = event["id"]
+    if event_id:
+        session.add(StripeWebhookEvent(id=event_id, event_type=event["type"]))
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            return {"status": "duplicate"}
 
     obj = event.data.object
 
