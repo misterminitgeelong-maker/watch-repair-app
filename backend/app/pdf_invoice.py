@@ -24,6 +24,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from .money import format_cents
+
 logger = logging.getLogger(__name__)
 
 _DARK = colors.HexColor("#1a1a2e")
@@ -37,9 +39,6 @@ _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$
 _LOGO_MAX_H = 16 * mm
 _LOGO_MAX_W = 60 * mm
 
-
-def _currency_symbol(currency: str) -> str:
-    return "$" if (currency or "AUD").upper() in ("AUD", "USD", "NZD", "CAD") else f"{currency} "
 
 
 def _resolve_accent(brand_color: str | None) -> colors.Color:
@@ -193,7 +192,6 @@ def _build_document_pdf(
 ) -> bytes:
     """Shared invoice/quote PDF renderer."""
     buf = io.BytesIO()
-    sym = _currency_symbol(currency)
     accent = _resolve_accent(brand_color)
 
     doc = SimpleDocTemplate(
@@ -321,8 +319,8 @@ def _build_document_pdf(
         items_rows.append([
             Paragraph(desc, normal),
             Paragraph(str(qty), normal),
-            Paragraph(f"{sym}{unit_cents / 100:.2f}", normal),
-            Paragraph(f"{sym}{total_li_cents / 100:.2f}", normal),
+            Paragraph(f"{format_cents(unit_cents, currency)}", normal),
+            Paragraph(f"{format_cents(total_li_cents, currency)}", normal),
         ])
 
     items_tbl = Table(
@@ -351,15 +349,15 @@ def _build_document_pdf(
     if subtotal_cents and tax_cents:
         totals_data.append([
             Paragraph("Subtotal", normal),
-            Paragraph(f"{sym}{subtotal_cents / 100:.2f}", normal),
+            Paragraph(f"{format_cents(subtotal_cents, currency)}", normal),
         ])
         totals_data.append([
             Paragraph("Tax", normal),
-            Paragraph(f"{sym}{tax_cents / 100:.2f}", normal),
+            Paragraph(f"{format_cents(tax_cents, currency)}", normal),
         ])
     totals_data.append([
         Paragraph("<b>Total</b>", bold9),
-        Paragraph(f"<b>{sym}{total_cents / 100:.2f}</b>", bold9),
+        Paragraph(f"<b>{format_cents(total_cents, currency)}</b>", bold9),
     ])
 
     totals_tbl = Table(

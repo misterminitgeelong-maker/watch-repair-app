@@ -23,6 +23,7 @@ from .config import settings
 from .database import engine
 from .email_templates import ShopInfo, render_transactional_email
 from .models import EmailLog
+from .money import format_cents
 from .notification_retry import (
     backoff_seconds,
     http_status_from_exc,
@@ -55,10 +56,6 @@ def _from_name(shop_name: str | None = None) -> str:
     return (shop_name or "").strip() or "Mainspring"
 
 
-def _currency_symbol(currency: str) -> str:
-    cur = (currency or "AUD").upper()
-    return "$" if cur in ("AUD", "USD", "NZD", "CAD") else f"{currency} "
-
 
 def email_skip_reason(to_email: str | None) -> str | None:
     """Why email was not attempted; None means send may proceed."""
@@ -71,13 +68,13 @@ def email_skip_reason(to_email: str | None) -> str | None:
     return None
 
 
-def _format_line_items(line_items: Sequence[dict]) -> str:
+def _format_line_items(line_items: Sequence[dict], currency: str | None = None) -> str:
     lines: list[str] = []
     for li in line_items:
         desc = (li.get("description") or "Item").strip()
         qty = li.get("quantity", 1)
         total_cents = int(li.get("total_price_cents") or 0)
-        lines.append(f"  • {desc} — qty {qty} — ${total_cents / 100:.2f}")
+        lines.append(f"  • {desc} — qty {qty} — {format_cents(total_cents, currency)}")
     return "\n".join(lines) if lines else ""
 
 
@@ -97,20 +94,19 @@ def send_quote_sent_email(
     if not (to_email or "").strip():
         return False, None
     approval_url = f"{settings.public_base_url.rstrip('/')}/approve/{approval_token}"
-    total = total_cents / 100
     items_block = _format_line_items(line_items or [])
     if items_block:
         items_block = f"\n\nLine items:\n{items_block}\n"
     subject = f"Your watch repair quote – Job #{job_number}"
     body_plain = (
         f"Hi {customer_name},\n\n"
-        f"Your watch repair quote for job #{job_number} is ${total:.2f}.{items_block}\n"
+        f"Your watch repair quote for job #{job_number} is {format_cents(total_cents)}.{items_block}\n"
         f"Reply YES to approve or NO to decline, or open this link to view details:\n{approval_url}\n\n"
         f"Thanks,\n{shop_name}"
     )
     body_html = render_transactional_email(
         title=f"Quote · Job #{job_number}",
-        preheader=f"Your watch repair quote is ${total:.2f}",
+        preheader=f"Your watch repair quote is {format_cents(total_cents)}",
         greeting=f"Hi {customer_name},",
         intro_html=(
             f"Here is your quote for <strong>watch repair job #{_html.escape(job_number)}</strong>. "
@@ -155,9 +151,7 @@ def send_invoice_email(
     """Send email when a watch repair invoice is sent to the customer."""
     if not (to_email or "").strip():
         return False, None
-    sym = _currency_symbol(currency)
-    total = total_cents / 100
-    items_block = _format_line_items(line_items or [])
+    items_block = _format_line_items(line_items or [], currency)
     if items_block:
         items_block = f"\n\nLine items:\n{items_block}\n"
     pay_url = (pay_url or "").strip() or None
@@ -169,7 +163,7 @@ def send_invoice_email(
     body_plain = (
         f"Hi {customer_name},\n\n"
         f"Please find your invoice {invoice_number} for watch repair job #{job_number}.\n"
-        f"Amount due: {sym}{total:.2f}.{items_block}\n"
+        f"Amount due: {format_cents(total_cents, currency)}.{items_block}\n"
         f"{closing}"
         f"Thanks,\n{shop_name}"
     )
@@ -183,7 +177,7 @@ def send_invoice_email(
     )
     body_html = render_transactional_email(
         title=f"Invoice {invoice_number}",
-        preheader=f"Invoice {invoice_number} · {sym}{total:.2f}",
+        preheader=f"Invoice {invoice_number} · {format_cents(total_cents, currency)}",
         greeting=f"Hi {customer_name},",
         intro_html=intro_html,
         shop=ShopInfo(name=shop_name, logo_url=shop_logo_url, brand_color=shop_brand_color),
@@ -233,24 +227,22 @@ def send_mobile_quote_email(
     """Send email when a Mobile Services (auto key) quote is sent."""
     if not (to_email or "").strip():
         return False, None
-    sym = _currency_symbol(currency)
-    total = total_cents / 100
     portal_url = f"{settings.public_base_url.rstrip('/')}/mobile-quote/{quote_approval_token}"
-    items_block = _format_line_items(line_items or [])
+    items_block = _format_line_items(line_items or [], currency)
     if items_block:
         items_block = f"\n\nLine items:\n{items_block}\n"
     shop = shop_name.strip() or "us"
     subject = f"Your quote from {shop} – Job #{job_number}"
     body_plain = (
         f"Hi {customer_name},\n\n"
-        f"Your quote from {shop} for job #{job_number} is {sym}{total:.2f}.{items_block}\n"
+        f"Your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}.{items_block}\n"
         f"Please review and accept here:\n{portal_url}\n\n"
         f"Reply to this email if you have any questions.\n\n"
         f"Thanks,\n{shop_name}"
     )
     body_html = render_transactional_email(
         title=f"Quote · Job #{job_number}",
-        preheader=f"Your quote from {shop} is {sym}{total:.2f}",
+        preheader=f"Your quote from {shop} is {format_cents(total_cents, currency)}",
         greeting=f"Hi {customer_name},",
         intro_html=(
             f"Here is your quote for <strong>job #{_html.escape(job_number)}</strong>. "
@@ -528,10 +520,8 @@ def send_mobile_invoice_email(
     """Send email when a Mobile Services (auto key) invoice is sent."""
     if not (to_email or "").strip():
         return False, None
-    sym = _currency_symbol(currency)
-    total = total_cents / 100
     view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{customer_view_token}"
-    items_block = _format_line_items(line_items or [])
+    items_block = _format_line_items(line_items or [], currency)
     if items_block:
         items_block = f"\n\nLine items:\n{items_block}\n"
     shop = shop_name.strip() or "us"
@@ -539,14 +529,14 @@ def send_mobile_invoice_email(
     body_plain = (
         f"Hi {customer_name},\n\n"
         f"Your job #{job_number} with {shop} is complete. "
-        f"Invoice {invoice_number} total: {sym}{total:.2f}.{items_block}\n"
+        f"Invoice {invoice_number} total: {format_cents(total_cents, currency)}.{items_block}\n"
         f"View your invoice and pay online (if available):\n{view_url}\n\n"
         f"Thank you for your business.\n\n"
         f"{shop_name}"
     )
     body_html = render_transactional_email(
         title=f"Invoice {invoice_number}",
-        preheader=f"Invoice {invoice_number} from {shop} · {sym}{total:.2f}",
+        preheader=f"Invoice {invoice_number} from {shop} · {format_cents(total_cents, currency)}",
         greeting=f"Hi {customer_name},",
         intro_html=(
             f"Your <strong>job #{_html.escape(job_number)}</strong> is complete — thank you. "
@@ -749,7 +739,7 @@ def send_sales_report_email(
     ]
     lines_plain = "\n".join(
         f"  • {_SALES_REPORT_CATEGORY_LABELS.get(key, key)}: {cat.get('jobs', 0)} jobs, "
-        f"${cat.get('revenue_cents', 0) / 100:.2f} revenue"
+        f"{format_cents(cat.get('revenue_cents', 0))} revenue"
         for key, cat in active_categories.items()
     ) or "  No sales recorded for this period."
     subject = f"{period_label} sales report – {period_start} to {period_end}"
@@ -757,13 +747,13 @@ def send_sales_report_email(
         f"Hi,\n\n"
         f"Your {period_label.lower()} sales report for {period_start} to {period_end}:\n\n"
         f"{lines_plain}\n\n"
-        f"Total revenue: ${total_revenue_cents / 100:.2f}\n\n"
+        f"Total revenue: {format_cents(total_revenue_cents)}\n\n"
         f"Full transaction-level detail is attached as a CSV.\n\n"
         f"— {shop_name}"
     )
     body_html = render_transactional_email(
         title=f"{period_label} sales report",
-        preheader=f"{period_start} to {period_end} · ${total_revenue_cents / 100:.2f} revenue",
+        preheader=f"{period_start} to {period_end} · {format_cents(total_revenue_cents)} revenue",
         greeting="Hi,",
         intro_html=(
             f"Here's your <strong>{_html.escape(period_label.lower())} sales report</strong> for "
@@ -818,7 +808,7 @@ def send_mobile_weekly_report_email(
     ]
     lines_plain = "\n".join(
         f"  • {r.get('operator_name', 'Operator')}: {r.get('jobs_count', 0)} jobs, "
-        f"${r.get('sales_cents', 0) / 100:.2f} sales"
+        f"{format_cents(r.get('sales_cents', 0))} sales"
         + (f" — {r.get('enquiries_not_actioned')} enquiries not actioned" if r.get("enquiries_not_actioned") else "")
         for r in rows
     ) or "  No mobile operators to report on."
@@ -833,7 +823,7 @@ def send_mobile_weekly_report_email(
         f"Hi,\n\n"
         f"Mobile Services network report for {period_start} to {period_end}:\n\n"
         f"{lines_plain}\n\n"
-        f"Total: {total_jobs} jobs, ${total_sales_cents / 100:.2f} sales across the network."
+        f"Total: {total_jobs} jobs, {format_cents(total_sales_cents)} sales across the network."
         f"{attention_plain}\n\n"
         f"Full detail is attached as a CSV.\n\n"
         f"— Mainspring"
@@ -846,7 +836,7 @@ def send_mobile_weekly_report_email(
         ) + "."
     body_html = render_transactional_email(
         title="Mobile Services weekly report",
-        preheader=f"{period_start} to {period_end} · {total_jobs} jobs · ${total_sales_cents / 100:.2f}",
+        preheader=f"{period_start} to {period_end} · {total_jobs} jobs · {format_cents(total_sales_cents)}",
         greeting="Hi,",
         intro_html=(
             f"Here's the <strong>Mobile Services network report</strong> for "
