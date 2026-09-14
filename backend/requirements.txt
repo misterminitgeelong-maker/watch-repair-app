@@ -18,7 +18,9 @@ openpyxl>=3.1.5
 xlrd>=2.0.1
 qrcode[pil]>=7.4.2
 slowapi>=0.1.9
-stripe>=7.0.0
+# <15: stripe-python 15.0.0 (2026-03-26) dropped dict inheritance from StripeObject,
+# which breaks every obj.get(...) in the billing webhook and Stripe Connect code.
+stripe>=7.0.0,<15
 sentry-sdk[fastapi]>=2.0.0
 supabase>=2.3.0
 reportlab>=4.2.0
