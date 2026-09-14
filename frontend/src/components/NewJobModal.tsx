@@ -19,7 +19,6 @@ import WatchServicePicker, { type SelectedWatchService } from '@/components/Watc
 import { STATUS_LABELS } from '@/lib/utils'
 import { dollarsToCents } from '@/lib/money'
 import { preparePhotoFile, getPhotoPrepareErrorMessage, getIntakeSubmitErrorMessage, yieldToMainThread } from '@/lib/photoUpload'
-import { pushModalCloseHandler } from '@/lib/modalBackStack'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
@@ -194,11 +193,6 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     }
     onClose()
   }, [busy, step, createdJobId, onClose])
-
-  useEffect(() => {
-    if (createdJobId) return
-    return pushModalCloseHandler(requestClose)
-  }, [createdJobId, requestClose])
 
   function handleCountChange(count: number) {
     setWatchCount(count)
