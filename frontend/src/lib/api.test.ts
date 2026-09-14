@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import type { AxiosError } from 'axios'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { API_ROUTES, getApiErrorMessage } from './api'
 
-function axiosLikeError(partial: Partial<AxiosError> & { response: AxiosError['response'] }): AxiosError {
-  return { isAxiosError: true, name: 'AxiosError', message: 'Request failed', ...partial } as AxiosError
+function axiosLikeError(partial: { response: Pick<AxiosResponse, 'status' | 'data'> }): AxiosError {
+  const response = {
+    statusText: '',
+    headers: {},
+    config: {},
+    ...partial.response,
+  } as AxiosResponse
+  return { isAxiosError: true, name: 'AxiosError', message: 'Request failed', response } as AxiosError
 }
 
 describe('getApiErrorMessage', () => {
