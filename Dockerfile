@@ -56,4 +56,10 @@ EXPOSE 8000
 # override FORWARDED_ALLOW_IPS with a specific range if one becomes available.
 ENV FORWARDED_ALLOW_IPS="*"
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]
+# Migrations are NOT run here. On Railway they run once per deploy via the
+# preDeployCommand in railway.toml, so overlapping containers in a rolling
+# restart never race the same DDL and a failed migration fails the deploy step
+# instead of producing an unbootable service. Elsewhere run
+# `alembic upgrade head` before starting the container; the app refuses to
+# boot against a database with no alembic_version table.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]

@@ -5,3 +5,7 @@ buildArgs = { RAILWAY_GIT_COMMIT_SHA = "${{RAILWAY_GIT_COMMIT_SHA}}" }
 
 [deploy]
 healthcheckPath = "/v1/health"
+# Run schema migrations once per deploy, in a separate container from the same
+# image, before the new deployment starts. A non-zero exit aborts the deploy.
+# (Moved out of the Dockerfile CMD so rolling restarts don't race the DDL.)
+preDeployCommand = ["alembic upgrade head"]

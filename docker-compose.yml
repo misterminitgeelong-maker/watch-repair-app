@@ -1,6 +1,8 @@
 version: "3.9"
 
 services:
+  # The image does not run migrations on start. After the db is healthy:
+  #   docker compose run --rm app alembic upgrade head
   app:
     build: .
     ports:
