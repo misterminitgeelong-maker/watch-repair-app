@@ -390,6 +390,224 @@ def get_portal_url(
 
 # ── Stripe Webhook ─────────────────────────────────────────────────────────────
 
+# ── Stripe webhook event handlers ─────────────────────────────────────────────
+# One function per event type, dispatched through _WEBHOOK_HANDLERS below. This
+# was a single 197-line if/elif ladder with tenant lookup, plan extraction,
+# status mapping and trial-date handling inlined in every branch.
+#
+# Each handler returns a status dict to answer with immediately, or None to fall
+# through to the default acknowledgement. That mirrors the early `return`s the
+# ladder already had, rather than changing when the endpoint answers early.
+
+
+def _handle_subscription_upsert(session: Session, obj, _stripe) -> dict | None:
+    """Subscription created or updated: sync plan, ids, status and trial end.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    tenant_id_str = obj.get("metadata", {}).get("tenant_id")
+    if tenant_id_str:
+        try:
+            tenant_id = UUID(tenant_id_str)
+        except ValueError:
+            return {"status": "ignored"}
+        tenant = session.get(Tenant, tenant_id)
+        if tenant:
+            plan_code = _extract_plan_code_from_subscription(obj)
+            if plan_code:
+                old_plan = tenant.plan_code
+                tenant.plan_code = plan_code
+                if plan_code != old_plan:
+                    session.add(
+                        TenantEventLog(
+                            tenant_id=tenant.id,
+                            entity_type="tenant",
+                            event_type="plan_changed",
+                            event_summary=(
+                                f"Plan changed from '{old_plan}' to '{plan_code}' via Stripe"
+                            ),
+                        )
+                    )
+            tenant.stripe_subscription_id = obj.get("id")
+            tenant.stripe_customer_id = obj.get("customer")
+            tenant.signup_payment_pending = False
+            # Sync subscription lifecycle status
+            stripe_status = obj.get("status")
+            if stripe_status in ("trialing", "active", "past_due", "canceled", "unpaid", "incomplete", "incomplete_expired"):
+                tenant.subscription_status = stripe_status
+            raw_trial_end = obj.get("trial_end")
+            if raw_trial_end:
+                tenant.trial_end = datetime.fromtimestamp(int(raw_trial_end), tz=timezone.utc)
+            elif stripe_status != "trialing":
+                tenant.trial_end = None
+            session.add(tenant)
+            session.commit()
+
+
+def _handle_subscription_deleted(session: Session, obj, _stripe) -> dict | None:
+    """Subscription cancelled: clear it and gate the tenant again.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    sub_id = obj.get("id")
+    if sub_id:
+        tenant = session.exec(
+            select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
+        ).first()
+        if tenant:
+            tenant.stripe_subscription_id = None
+            tenant.subscription_status = "canceled"
+            tenant.trial_end = None
+            tenant.signup_payment_pending = True
+            session.add(tenant)
+            session.commit()
+
+
+def _handle_invoice_payment_failed(session: Session, obj, _stripe) -> dict | None:
+    """A failed charge puts the tenant past_due.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    sub_id = (obj.get("subscription") or "")
+    if sub_id:
+        tenant = session.exec(
+            select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
+        ).first()
+        if tenant:
+            tenant.subscription_status = "past_due"
+            session.add(tenant)
+            session.commit()
+
+
+def _handle_invoice_paid(session: Session, obj, _stripe) -> dict | None:
+    """A paid invoice revives a past_due tenant, and nothing else.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    sub_id = (obj.get("subscription") or "")
+    if sub_id:
+        tenant = session.exec(
+            select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
+        ).first()
+        if tenant and tenant.subscription_status == "past_due":
+            tenant.subscription_status = "active"
+            session.add(tenant)
+            session.commit()
+
+
+def _handle_checkout_completed(session: Session, obj, _stripe) -> dict | None:
+    """Checkout finished: either a SaaS signup or an auto-key invoice payment.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    # SaaS signup: unlock tenant as soon as Checkout completes (subscription.* may arrive slightly later).
+    if (obj.get("mode") or "") == "subscription":
+        sub_id = obj.get("subscription")
+        if sub_id:
+            try:
+                _stripe.api_key = settings.stripe_secret_key
+                sub = _stripe.Subscription.retrieve(sub_id)
+                tenant_id_str = (sub.get("metadata") or {}).get("tenant_id")
+                if tenant_id_str:
+                    try:
+                        tid = UUID(str(tenant_id_str))
+                    except ValueError:
+                        tid = None
+                    if tid:
+                        tenant = session.get(Tenant, tid)
+                        if tenant:
+                            tenant.signup_payment_pending = False
+                            tenant.stripe_subscription_id = str(sub_id)
+                            cust = obj.get("customer")
+                            if cust:
+                                tenant.stripe_customer_id = str(cust)
+                            session.add(tenant)
+                            session.commit()
+            except Exception:
+                logging.getLogger(__name__).exception("checkout.session.completed subscription unlock failed")
+        return {"status": "ok"}
+    meta = obj.get("metadata") or {}
+    if meta.get("purpose") != "auto_key_invoice":
+        return {"status": "ok"}
+    inv_raw = meta.get("auto_key_invoice_id")
+    if not inv_raw:
+        return {"status": "ok"}
+    try:
+        inv_uuid = UUID(str(inv_raw))
+    except ValueError:
+        return {"status": "ok"}
+    invoice = session.get(AutoKeyInvoice, inv_uuid)
+    if not invoice or invoice.status != "unpaid":
+        return {"status": "ok"}
+    if (obj.get("payment_status") or "") != "paid":
+        return {"status": "ok"}
+    amount_total = obj.get("amount_total")
+    if amount_total is not None and int(amount_total) != int(invoice.total_cents):
+        logging.getLogger(__name__).warning(
+            "Stripe checkout amount_total %s != invoice.total_cents %s for invoice %s",
+            amount_total,
+            invoice.total_cents,
+            invoice.id,
+        )
+        return {"status": "ok"}
+    invoice.status = "paid"
+    invoice.payment_method = "stripe"
+    invoice.paid_at = datetime.now(timezone.utc)
+    session.add(invoice)
+    # Auto-advance job status to invoice_paid
+    job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+    if job and job.status != "invoice_paid":
+        job.status = "invoice_paid"
+        session.add(job)
+    session.commit()
+
+
+def _handle_account_updated(session: Session, obj, _stripe) -> dict | None:
+    """Stripe Connect capability flags changed for a connected account.
+
+    Returns a status dict to send back immediately, or None to fall through
+    to the default {"status": "ok"} acknowledgement.
+    """
+    acct_id = obj.get("id")
+    meta = obj.get("metadata") or {}
+    tenant = None
+    if acct_id:
+        tenant = session.exec(
+            select(Tenant).where(Tenant.stripe_connect_account_id == acct_id)
+        ).first()
+    if not tenant and meta.get("tenant_id"):
+        try:
+            tid = UUID(str(meta["tenant_id"]))
+            tenant = session.get(Tenant, tid)
+        except ValueError:
+            tenant = None
+    if tenant:
+        if acct_id and not (tenant.stripe_connect_account_id or "").strip():
+            tenant.stripe_connect_account_id = acct_id
+        tenant.stripe_connect_charges_enabled = bool(obj.get("charges_enabled"))
+        tenant.stripe_connect_payouts_enabled = bool(obj.get("payouts_enabled"))
+        tenant.stripe_connect_details_submitted = bool(obj.get("details_submitted"))
+        session.add(tenant)
+        session.commit()
+
+
+
+_WEBHOOK_HANDLERS = {
+    "customer.subscription.created": _handle_subscription_upsert,
+    "customer.subscription.updated": _handle_subscription_upsert,
+    "customer.subscription.deleted": _handle_subscription_deleted,
+    "invoice.payment_failed": _handle_invoice_payment_failed,
+    "invoice.paid": _handle_invoice_paid,
+    "checkout.session.completed": _handle_checkout_completed,
+    "account.updated": _handle_account_updated,
+}
+
+
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
@@ -427,164 +645,12 @@ async def stripe_webhook(
 
     obj = event.data.object
 
-    if event["type"] in ("customer.subscription.created", "customer.subscription.updated"):
-        tenant_id_str = obj.get("metadata", {}).get("tenant_id")
-        if tenant_id_str:
-            try:
-                tenant_id = UUID(tenant_id_str)
-            except ValueError:
-                return {"status": "ignored"}
-            tenant = session.get(Tenant, tenant_id)
-            if tenant:
-                plan_code = _extract_plan_code_from_subscription(obj)
-                if plan_code:
-                    old_plan = tenant.plan_code
-                    tenant.plan_code = plan_code
-                    if plan_code != old_plan:
-                        session.add(
-                            TenantEventLog(
-                                tenant_id=tenant.id,
-                                entity_type="tenant",
-                                event_type="plan_changed",
-                                event_summary=(
-                                    f"Plan changed from '{old_plan}' to '{plan_code}' via Stripe"
-                                ),
-                            )
-                        )
-                tenant.stripe_subscription_id = obj.get("id")
-                tenant.stripe_customer_id = obj.get("customer")
-                tenant.signup_payment_pending = False
-                # Sync subscription lifecycle status
-                stripe_status = obj.get("status")
-                if stripe_status in ("trialing", "active", "past_due", "canceled", "unpaid", "incomplete", "incomplete_expired"):
-                    tenant.subscription_status = stripe_status
-                raw_trial_end = obj.get("trial_end")
-                if raw_trial_end:
-                    tenant.trial_end = datetime.fromtimestamp(int(raw_trial_end), tz=timezone.utc)
-                elif stripe_status != "trialing":
-                    tenant.trial_end = None
-                session.add(tenant)
-                session.commit()
+    handler = _WEBHOOK_HANDLERS.get(event["type"])
+    if handler is not None:
+        result = handler(session, obj, _stripe)
+        if result is not None:
+            return result
 
-    elif event["type"] == "customer.subscription.deleted":
-        sub_id = obj.get("id")
-        if sub_id:
-            tenant = session.exec(
-                select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
-            ).first()
-            if tenant:
-                tenant.stripe_subscription_id = None
-                tenant.subscription_status = "canceled"
-                tenant.trial_end = None
-                tenant.signup_payment_pending = True
-                session.add(tenant)
-                session.commit()
-
-    elif event["type"] == "invoice.payment_failed":
-        sub_id = (obj.get("subscription") or "")
-        if sub_id:
-            tenant = session.exec(
-                select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
-            ).first()
-            if tenant:
-                tenant.subscription_status = "past_due"
-                session.add(tenant)
-                session.commit()
-
-    elif event["type"] == "invoice.paid":
-        sub_id = (obj.get("subscription") or "")
-        if sub_id:
-            tenant = session.exec(
-                select(Tenant).where(Tenant.stripe_subscription_id == sub_id)
-            ).first()
-            if tenant and tenant.subscription_status == "past_due":
-                tenant.subscription_status = "active"
-                session.add(tenant)
-                session.commit()
-
-    elif event["type"] == "checkout.session.completed":
-        # SaaS signup: unlock tenant as soon as Checkout completes (subscription.* may arrive slightly later).
-        if (obj.get("mode") or "") == "subscription":
-            sub_id = obj.get("subscription")
-            if sub_id:
-                try:
-                    _stripe.api_key = settings.stripe_secret_key
-                    sub = _stripe.Subscription.retrieve(sub_id)
-                    tenant_id_str = (sub.get("metadata") or {}).get("tenant_id")
-                    if tenant_id_str:
-                        try:
-                            tid = UUID(str(tenant_id_str))
-                        except ValueError:
-                            tid = None
-                        if tid:
-                            tenant = session.get(Tenant, tid)
-                            if tenant:
-                                tenant.signup_payment_pending = False
-                                tenant.stripe_subscription_id = str(sub_id)
-                                cust = obj.get("customer")
-                                if cust:
-                                    tenant.stripe_customer_id = str(cust)
-                                session.add(tenant)
-                                session.commit()
-                except Exception:
-                    logging.getLogger(__name__).exception("checkout.session.completed subscription unlock failed")
-            return {"status": "ok"}
-        meta = obj.get("metadata") or {}
-        if meta.get("purpose") != "auto_key_invoice":
-            return {"status": "ok"}
-        inv_raw = meta.get("auto_key_invoice_id")
-        if not inv_raw:
-            return {"status": "ok"}
-        try:
-            inv_uuid = UUID(str(inv_raw))
-        except ValueError:
-            return {"status": "ok"}
-        invoice = session.get(AutoKeyInvoice, inv_uuid)
-        if not invoice or invoice.status != "unpaid":
-            return {"status": "ok"}
-        if (obj.get("payment_status") or "") != "paid":
-            return {"status": "ok"}
-        amount_total = obj.get("amount_total")
-        if amount_total is not None and int(amount_total) != int(invoice.total_cents):
-            logging.getLogger(__name__).warning(
-                "Stripe checkout amount_total %s != invoice.total_cents %s for invoice %s",
-                amount_total,
-                invoice.total_cents,
-                invoice.id,
-            )
-            return {"status": "ok"}
-        invoice.status = "paid"
-        invoice.payment_method = "stripe"
-        invoice.paid_at = datetime.now(timezone.utc)
-        session.add(invoice)
-        # Auto-advance job status to invoice_paid
-        job = session.get(AutoKeyJob, invoice.auto_key_job_id)
-        if job and job.status != "invoice_paid":
-            job.status = "invoice_paid"
-            session.add(job)
-        session.commit()
-
-    elif event["type"] == "account.updated":
-        acct_id = obj.get("id")
-        meta = obj.get("metadata") or {}
-        tenant = None
-        if acct_id:
-            tenant = session.exec(
-                select(Tenant).where(Tenant.stripe_connect_account_id == acct_id)
-            ).first()
-        if not tenant and meta.get("tenant_id"):
-            try:
-                tid = UUID(str(meta["tenant_id"]))
-                tenant = session.get(Tenant, tid)
-            except ValueError:
-                tenant = None
-        if tenant:
-            if acct_id and not (tenant.stripe_connect_account_id or "").strip():
-                tenant.stripe_connect_account_id = acct_id
-            tenant.stripe_connect_charges_enabled = bool(obj.get("charges_enabled"))
-            tenant.stripe_connect_payouts_enabled = bool(obj.get("payouts_enabled"))
-            tenant.stripe_connect_details_submitted = bool(obj.get("details_submitted"))
-            session.add(tenant)
-            session.commit()
-
+    # Stripe retries anything it does not get a 2xx for, so every other event
+    # type is acknowledged rather than erroring.
     return {"status": "ok"}
