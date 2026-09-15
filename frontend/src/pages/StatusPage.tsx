@@ -2,15 +2,11 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Clock, RefreshCw, Wrench } from 'lucide-react'
 import { getPublicJobStatus, type PublicJobStatus } from '@/lib/api'
-import { STATUS_LABELS, formatDate } from '@/lib/utils'
+import { STATUS_LABELS, formatDate, formatCents } from '@/lib/utils'
 
 function readableStatus(status: string) {
   const known = STATUS_LABELS as Record<string, string>
   return known[status] ?? status.replace(/_/g, ' ')
-}
-
-function formatCents(value: number) {
-  return (value / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
 export default function StatusPage() {

@@ -10,11 +10,7 @@ import {
 } from '@/lib/api'
 import { Button, Card } from '@/components/ui'
 import { useEffect, useRef, useState, useCallback } from 'react'
-
-function formatMoney(cents: number, currency: string) {
-  const code = (currency || 'AUD').toUpperCase().slice(0, 3)
-  return (cents / 100).toLocaleString('en-AU', { style: 'currency', currency: code })
-}
+import { formatMoney } from '@/lib/money'
 
 // ── Signature pad ────────────────────────────────────────────────────────────
 

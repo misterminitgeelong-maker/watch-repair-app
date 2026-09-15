@@ -2,14 +2,10 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Clock, RefreshCw, Footprints } from 'lucide-react'
 import { getPublicShoeJobStatus, type PublicShoeJobStatus } from '@/lib/api'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatCents } from '@/lib/utils'
 
 function readableStatus(status: string) {
   return status.replace(/_/g, ' ')
-}
-
-function formatCents(value: number) {
-  return (value / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
 export default function ShoeStatusPage() {

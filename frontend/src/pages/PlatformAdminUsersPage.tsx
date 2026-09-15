@@ -4,13 +4,13 @@ import { BarChart3, Clock, Download, Search } from 'lucide-react'
 import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantBillingExempt, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 import { useAdminEnterShop } from '@/lib/adminImpersonation'
+import { formatCents } from '@/lib/money'
 
 type Tab = 'shops' | 'users' | 'activity' | 'reports'
 
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
-const formatCents = (value: number) => `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export default function PlatformAdminPage() {
   const [tab, setTab] = useState<Tab>('shops')

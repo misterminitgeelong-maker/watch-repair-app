@@ -47,13 +47,13 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spin
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
 import { useToast } from '@/lib/toast'
+import { formatCents, dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { preparePhotoFile } from '@/lib/photoUpload'
-import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 
 interface LineItemDraft { description: string; quantity: string; unitPrice: string }
 
@@ -330,10 +330,6 @@ const STATUSES: JobStatus[] = [
   'invoice_paid',
   'failed_job',
 ]
-
-function formatCents(value: number) {
-  return `$${(value / 100).toFixed(2)}`
-}
 
 function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: string; signedAt?: string | null; signerName?: string | null }) {
   const [url, setUrl] = useState<string | null>(null)

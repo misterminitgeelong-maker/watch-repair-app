@@ -43,6 +43,7 @@ jobs:
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       # Runs first, on the still-empty database, so this step is the proof that
       # the migration chain applies cleanly to a fresh Postgres.
@@ -96,6 +97,7 @@ jobs:
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run backend tests (sqlite fallback)
         run: |
