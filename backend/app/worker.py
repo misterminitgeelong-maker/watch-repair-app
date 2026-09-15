@@ -33,16 +33,10 @@ from sqlalchemy.exc import OperationalError
 
 from .config import settings, validate_runtime_config
 from .database import engine
+from .logging_config import configure_logging
 from .sweeps import Sweep, all_sweeps, enabled_sweeps, run_sweep_once, start_sweep_threads
 
 logger = logging.getLogger("mainspring.worker")
-
-
-def _configure_logging() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
 
 
 def _check_schema() -> None:
@@ -146,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    _configure_logging()
+    configure_logging()
 
     if args.list:
         for sweep in all_sweeps():
