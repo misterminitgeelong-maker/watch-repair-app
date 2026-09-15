@@ -11,7 +11,7 @@ from alembic import context
 # Ensure app package is importable when running alembic from backend/
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.config import settings  # noqa: E402
+from app.database import database_url as normalized_database_url  # noqa: E402
 import app.models  # noqa: E402, F401  – registers all SQLModel tables
 
 # this is the Alembic Config object, which provides
@@ -24,7 +24,14 @@ if config.config_file_name is not None:
 
 # Override sqlalchemy.url with value from app settings so we never
 # hard-code credentials in alembic.ini.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+#
+# Use the *normalised* URL rather than settings.database_url directly. SQLAlchemy
+# picks its driver from the URL scheme, so a bare "postgresql://" resolves to
+# psycopg2 while the app itself runs on psycopg 3 (app.database rewrites the
+# scheme to "postgresql+psycopg://"). Taking the raw value here made migrations
+# depend on a second, otherwise-unused driver — and that dependency was invisible
+# to grep, because nothing imports psycopg2 by name.
+config.set_main_option("sqlalchemy.url", normalized_database_url)
 
 target_metadata = SQLModel.metadata
 

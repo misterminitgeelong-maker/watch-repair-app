@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dollarsToCents, lineItemsSubtotalCents, totalWithTaxCents, computeGstAmounts } from './money'
+import { dollarsToCents, lineItemsSubtotalCents, totalWithTaxCents, computeGstAmounts, formatCents, formatMoney } from './money'
 
 describe('dollarsToCents', () => {
   it('converts whole and decimal dollars to cents', () => {
@@ -93,5 +93,16 @@ describe('computeGstAmounts', () => {
       const { subtotalCents, taxCents, totalCents } = computeGstAmounts(entered, true, inclusive)
       expect(subtotalCents + taxCents).toBe(totalCents)
     }
+  })
+})
+
+describe('formatCents / formatMoney', () => {
+  it('renders AUD with grouping and two decimal places', () => {
+    expect(formatCents(0)).toBe('$0.00')
+    expect(formatMoney(123456, 'AUD')).toBe('$1,234.56')
+  })
+
+  it('honours an explicit currency code', () => {
+    expect(formatMoney(1000, 'USD')).toMatch(/10\.00/)
   })
 })

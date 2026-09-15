@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
+from .money import format_cents
 from .config import settings
 from .database import engine
 from .datetime_utils import format_in_timezone
@@ -337,8 +338,6 @@ def notify_quote_sent(
     line_items: list[dict] | None = None,
 ) -> None:
     """Send the quote approval SMS to the customer."""
-    total = total_cents / 100
-    currency_symbol = "$"
     approval_url = f"{settings.public_base_url}/approve/{approval_token}"
 
     shop = shop_name.strip() or "us"
@@ -350,11 +349,11 @@ def notify_quote_sent(
             for li in filled:
                 desc = li["description"].strip()
                 item_total = li.get("total_price_cents") or (li.get("quantity", 1) * li.get("unit_price_cents", 0))
-                parts.append(f"{desc} ({currency_symbol}{item_total / 100:.2f})")
+                parts.append(f"{desc} ({format_cents(item_total)})")
             work_summary = " This includes: " + ", ".join(parts) + "."
 
     body = (
-        f"Hi {customer_name}, your repair quote from {shop} is {currency_symbol}{total:.2f}.{work_summary} "
+        f"Hi {customer_name}, your repair quote from {shop} is {format_cents(total_cents)}.{work_summary} "
         f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
     sid, sms_status = _logged_send(
@@ -380,11 +379,10 @@ def notify_quote_reminder(
     shop_name: str = "your watch repair shop",
 ) -> None:
     """Remind the customer about a quote they haven't decided on yet."""
-    total = total_cents / 100
     approval_url = f"{settings.public_base_url}/approve/{approval_token}"
     shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, just a friendly reminder from {shop} — your repair quote of ${total:.2f} "
+        f"Hi {customer_name}, just a friendly reminder from {shop} — your repair quote of {format_cents(total_cents)} "
         f"for job #{job_number} is still waiting for your go-ahead. "
         f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
@@ -414,12 +412,10 @@ def notify_auto_key_quote_reminder(
     """Remind the customer about a mobile services quote they haven't decided on yet."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
-    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
-    total = total_cents / 100
     portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
     shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, just a friendly reminder from {shop} — your quote of {sym}{total:.2f} "
+        f"Hi {customer_name}, just a friendly reminder from {shop} — your quote of {format_cents(total_cents, currency)} "
         f"for job #{job_number} is still waiting for your decision. "
         f"Review and accept here: {portal_url} — Reply to this message if you have any questions."
     )
@@ -675,12 +671,10 @@ def notify_auto_key_invoice_ready(
     """SMS after job completed with link to customer invoice page. Returns True if provider accepted the message."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return False
-    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
-    total = total_cents / 100
     shop = shop_name.strip() or "us"
     body = (
         f"Hi {customer_name}, your job #{job_number} with {shop} is now complete. "
-        f"Your invoice total is {sym}{total:.2f}. You can view your invoice here: {view_url} — "
+        f"Your invoice total is {format_cents(total_cents, currency)}. You can view your invoice here: {view_url} — "
         f"Thank you for your business."
     )
     if len(body) > 1500:
@@ -712,12 +706,10 @@ def notify_auto_key_quote_sent(
     """SMS when a quote is sent — lets the customer know the price and links to the approval portal."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
-    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
-    total = total_cents / 100
     portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
     shop = shop_name.strip() or "us"
     body = (
-        f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {sym}{total:.2f}. "
+        f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}. "
         f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
     )
     if len(body) > 1500:
@@ -1159,12 +1151,10 @@ def notify_auto_key_booking_request(
         when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b at %I:%M%p").replace(" 0", " ")
     except (ValueError, TypeError):
         when = str(scheduled_at)[:16] if scheduled_at else ""
-    sym = "$" if currency.upper() in ("AUD", "USD", "NZD") else ""
-    total = quote_total_cents / 100
     body = (
         f"Hi {customer_name}, your booking with {shop} is confirmed — "
         f"job #{job_number}{veh_bit} on {when}. "
-        f"Quoted total: {sym}{total:.2f}. Please confirm your booking here: {confirm_url}"
+        f"Quoted total: {format_cents(quote_total_cents, currency)}. Please confirm your booking here: {confirm_url}"
     )
     if len(body) > 1500:
         body = body[:1490] + "…"
@@ -1222,11 +1212,9 @@ def notify_shoe_quote_sent(
     shop_name: str = "your shoe repair shop",
 ) -> None:
     """Send the shoe quote approval SMS to the customer."""
-    total = total_cents / 100
-    currency_symbol = "$"
     approval_url = f"{settings.public_base_url}/shoe-approve/{approval_token}"
     body = (
-        f"Hi {customer_name}, your shoe repair quote from {shop_name} is {currency_symbol}{total:.2f}. "
+        f"Hi {customer_name}, your shoe repair quote from {shop_name} is {format_cents(total_cents)}. "
         f"Reply YES to approve or NO to decline, or tap here to view: {approval_url}"
     )
     sid, sms_status = _logged_send(

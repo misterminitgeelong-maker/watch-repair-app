@@ -4,10 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import axios from 'axios'
 import { CheckCircle, XCircle, Clock, Footprints } from 'lucide-react'
 import { getPublicShoeQuote, decideShoeQuote, getApiErrorMessage } from '@/lib/api'
-
-function formatCents(c: number) {
-  return (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
+import { formatCents } from '@/lib/money'
 
 function loadErrorCopy(error: unknown): { title: string; body: string } {
   if (axios.isAxiosError(error)) {

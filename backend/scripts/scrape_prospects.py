@@ -4,7 +4,8 @@ Raw prospect scraper: fetches businesses from directory sites and exports to Exc
 No Google API — uses direct HTTP requests and HTML parsing.
 
 Usage:
-  cd backend && python -m scripts.scrape_prospects --state VIC --limit 10 -o prospects.xlsx
+  cd backend && pip install -r requirements.txt -r requirements-dev.txt
+  python -m scripts.scrape_prospects --state VIC --limit 10 -o prospects.xlsx
   python -m scripts.scrape_prospects --category mechanics --state NSW -o mechanics_nsw.xlsx
 
 Options:

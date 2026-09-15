@@ -5,10 +5,7 @@ import axios from 'axios'
 import { CheckCircle, XCircle, Clock, WrenchIcon } from 'lucide-react'
 import { getPublicQuote, submitQuoteDecision, getApiErrorMessage } from '@/lib/api'
 import SignaturePad from '@/components/SignaturePad'
-
-function formatCents(c: number) {
-  return (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
+import { formatCents } from '@/lib/money'
 
 function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
   const [remaining, setRemaining] = useState(() => new Date(expiresAt).getTime() - Date.now())

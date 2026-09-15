@@ -1,0 +1,4 @@
+# Dev/CI only — not installed into the production image.
+pytest==8.3.3
+# backend/scripts/scrape_prospects.py (not part of the API process)
+beautifulsoup4>=4.12.0

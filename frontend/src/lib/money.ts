@@ -70,3 +70,18 @@ export function computeGstAmounts(enteredCents: number, gstEnabled: boolean, gst
   const taxCents = Math.round(enteredCents * GST_RATE)
   return { subtotalCents: enteredCents, taxCents, totalCents: enteredCents + taxCents }
 }
+
+/** Display a cent amount as currency. Defaults to AUD / en-AU for this product. */
+export function formatMoney(cents: number, currency = 'AUD'): string {
+  const code = (currency || 'AUD').toUpperCase().slice(0, 3) || 'AUD'
+  try {
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: code }).format(cents / 100)
+  } catch {
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100)
+  }
+}
+
+/** Alias used across shop screens; same rendering as formatMoney. */
+export function formatCents(cents: number, currency = 'AUD'): string {
+  return formatMoney(cents, currency)
+}
