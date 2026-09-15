@@ -1,3 +1,11 @@
+"""
+Cross-tenant by design: login and site switching, which resolve a user before a tenant is known.
+
+Endpoints here take ``unscoped_session`` rather than ``get_session`` so the ORM
+tenant filter in app/tenant_scope.py does not apply. That is deliberate and is
+meant to be visible: an endpoint crossing the tenant boundary says so in its
+signature, and these modules are the complete list of places that do.
+"""
 import logging
 from datetime import datetime, timedelta, timezone
 from random import randint
@@ -8,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, col, func, select
 
 from ..config import settings
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, apply_demo_auto_key_dispatch_calendar, ensure_demo_b2b_accounts
 from ..dependencies import (
     AuthContext,
@@ -766,7 +774,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
 
 @router.post("/signup", response_model=TenantSignupResponse)
 @limiter.limit("10/minute")
-def signup(request: Request, payload: TenantSignupRequest, session: Session = Depends(get_session)):
+def signup(request: Request, payload: TenantSignupRequest, session: Session = Depends(unscoped_session)):
     tenant_slug = _normalize_slug(payload.tenant_slug)
     owner_email = _normalize_email(payload.email)
     owner_name = payload.full_name.strip()
@@ -857,7 +865,7 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
 
 
 @router.post("/bootstrap", response_model=BootstrapResponse)
-def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(get_session)):
+def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscoped_session)):
     if not settings.allow_public_bootstrap:
         raise HTTPException(status_code=403, detail="Bootstrap is disabled")
 
@@ -939,10 +947,10 @@ def _issue_session_tokens(
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(get_login_rate_limit)
-def login(request: Request, payload: LoginRequest, session: Session = Depends(get_session)):
+def login(request: Request, payload: LoginRequest, session: Session = Depends(unscoped_session)):
     return _login_impl(request, payload, session)
 
-def _login_impl(request: Request, payload: LoginRequest, session: Session = Depends(get_session)):
+def _login_impl(request: Request, payload: LoginRequest, session: Session = Depends(unscoped_session)):
     tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -981,7 +989,7 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
 
 @router.post("/multi-site-login", response_model=MultiSiteLoginResponse)
 @limiter.limit("20/minute")
-def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: Session = Depends(get_session)):
+def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: Session = Depends(unscoped_session)):
     email = _normalize_email(payload.email)
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required")
@@ -1057,7 +1065,7 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
 @router.post("/demo-seed")
 def seed_demo_data(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)
@@ -1077,7 +1085,7 @@ def seed_demo_data(
 
 
 @router.post("/ensure-testing-tenant")
-def ensure_testing_tenant_endpoint(session: Session = Depends(get_session)):
+def ensure_testing_tenant_endpoint(session: Session = Depends(unscoped_session)):
     """Force-create/update the testing tenant from env vars. Use when login fails with 'Invalid credentials'.
     Enable with ALLOW_ENSURE_TESTING_TENANT=true or when APP_ENV is not production."""
     if settings.app_env.lower() == "production" and not settings.allow_ensure_testing_tenant:
@@ -1094,7 +1102,7 @@ def ensure_testing_tenant_endpoint(session: Session = Depends(get_session)):
 
 
 @router.post("/ensure-minit-pilot")
-def ensure_minit_pilot_endpoint(session: Session = Depends(get_session)):
+def ensure_minit_pilot_endpoint(session: Session = Depends(unscoped_session)):
     """Create or refresh Mister Minit HQ + pilot shops from MINIT_* env vars.
 
     Use when Minit login returns 'Invalid credentials' because the pilot was never seeded on this database.
@@ -1129,7 +1137,7 @@ def ensure_minit_pilot_endpoint(session: Session = Depends(get_session)):
 
 
 @router.post("/dev-auto-login", response_model=TokenResponse)
-def dev_auto_login(session: Session = Depends(get_session)):
+def dev_auto_login(session: Session = Depends(unscoped_session)):
     if settings.app_env.lower() == "production" or not settings.allow_dev_auto_login:
         raise HTTPException(status_code=403, detail="Dev auto-login is disabled")
 
@@ -1188,7 +1196,7 @@ def dev_auto_login(session: Session = Depends(get_session)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_session)):
+def refresh_tokens(payload: RefreshRequest, session: Session = Depends(unscoped_session)):
     try:
         claims = decode_refresh_token(payload.refresh_token)
     except ValueError:
@@ -1256,7 +1264,7 @@ def refresh_tokens(payload: RefreshRequest, session: Session = Depends(get_sessi
 @router.get("/export-my-data", summary="Export tenant data for portability (GDPR-style)")
 def export_my_data(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability."""
     customers = session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
@@ -1278,7 +1286,7 @@ def export_my_data(
 @router.get("/session", response_model=AuthSessionResponse)
 def get_session_info(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)
@@ -1291,7 +1299,7 @@ def get_session_info(
 @router.get("/sessions", summary="List known sessions for current user")
 def list_sessions(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """List the user's active (non-revoked, unexpired) persisted sessions.
 
@@ -1338,7 +1346,7 @@ def list_sessions(
 @router.post("/sessions/revoke-others", summary="Revoke all other sessions for current user")
 def revoke_other_sessions(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Revoke every persisted session for the user except the current device.
 
@@ -1374,7 +1382,7 @@ def revoke_other_sessions(
 def switch_active_site(
     payload: ActiveSiteSwitchRequest,
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -1441,7 +1449,7 @@ def switch_active_site(
 def update_session_plan(
     payload: TenantPlanUpdateRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)

@@ -1,3 +1,11 @@
+"""
+Cross-tenant by design: parent-account membership management across its shops.
+
+Endpoints here take ``unscoped_session`` rather than ``get_session`` so the ORM
+tenant filter in app/tenant_scope.py does not apply. That is deliberate and is
+meant to be visible: an endpoint crossing the tenant boundary says so in its
+signature, and these modules are the complete list of places that do.
+"""
 from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 import json
@@ -13,7 +21,7 @@ from sqlmodel import Session, col, func, select
 
 from .. import email_client
 from .. import sms as sms_service
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -338,7 +346,7 @@ def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID)
 @router.post("/me/mobile-lead-ingest/enable", response_model=ParentAccountSummaryResponse)
 def enable_mobile_lead_ingest(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Assign a public ingest id for website POSTs (if not already set)."""
     current_user = session.get(User, auth.user_id)
@@ -366,7 +374,7 @@ def enable_mobile_lead_ingest(
 def set_mobile_lead_webhook_secret(
     body: ParentMobileLeadWebhookSecretBody,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -393,7 +401,7 @@ def set_mobile_lead_webhook_secret(
 @router.delete("/me/mobile-lead-ingest/secret", response_model=ParentAccountSummaryResponse)
 def clear_mobile_lead_webhook_secret(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -419,7 +427,7 @@ def clear_mobile_lead_webhook_secret(
 def set_mobile_lead_default_tenant(
     body: ParentMobileLeadDefaultTenantBody,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -452,7 +460,7 @@ def set_mobile_lead_default_tenant(
 def set_mobile_lead_escalation_tenant(
     body: ParentMobileLeadEscalationTenantBody,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -485,7 +493,7 @@ def set_mobile_lead_escalation_tenant(
 def set_mobile_lead_dispatch_settings(
     body: ParentMobileLeadDispatchSettingsBody,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -521,7 +529,7 @@ def set_mobile_lead_dispatch_settings(
 @router.get("/me/mobile-lead-routes/summary", response_model=MobileSuburbRoutesSummary)
 def mobile_suburb_routes_summary(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Route counts by operator — avoids loading thousands of suburb rows in HQ UI."""
     current_user = session.get(User, auth.user_id)
@@ -567,7 +575,7 @@ def list_mobile_suburb_routes(
     search: str | None = Query(default=None, description="Filter by suburb name (case-insensitive)"),
     limit: int = Query(default=200, ge=1, le=500),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -598,7 +606,7 @@ def list_mobile_suburb_routes(
 def create_mobile_suburb_route(
     payload: MobileSuburbRouteCreateRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -651,7 +659,7 @@ def test_mobile_operator_routing(
     suburb: str = Query(..., min_length=1),
     state_code: str = Query(..., min_length=2, max_length=8),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Preview which mobile operator would receive a lead for suburb + state."""
     _require_minit_hq(auth, session)
@@ -682,7 +690,7 @@ def test_mobile_operator_routing(
 def delete_mobile_suburb_route(
     route_id: UUID,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -714,7 +722,7 @@ def _tenant_has_shop_mobile_booking(plan_code: str) -> bool:
 def get_shop_booking_usage(
     month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Calendar month YYYY-MM"),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Per-shop booking counts for Minit-style billing (accepted + pending in month)."""
     current_user = session.get(User, auth.user_id)
@@ -798,7 +806,7 @@ def get_parent_account_summary(
         description="When false (default), omit the sites array for faster HQ loads.",
     ),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     user = session.get(User, auth.user_id)
     if not user or not user.is_active:
@@ -811,7 +819,7 @@ def get_parent_account_summary(
 @router.get("/me/lead-ingest", response_model=ParentLeadIngestConfigResponse)
 def get_parent_lead_ingest_config(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     user = session.get(User, auth.user_id)
     if not user or not user.is_active:
@@ -831,7 +839,7 @@ def list_parent_account_sites(
         description="Filter by retail, operator, or all (default).",
     ),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     user = session.get(User, auth.user_id)
     if not user or not user.is_active:
@@ -856,7 +864,7 @@ def list_parent_account_activity(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     user = session.get(User, auth.user_id)
     if not user or not user.is_active:
@@ -891,7 +899,7 @@ def list_parent_account_activity(
 def link_tenant_to_parent_account(
     payload: ParentAccountLinkTenantRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -1048,7 +1056,7 @@ def create_shop_owner_invite(
     tenant_id: UUID,
     payload: ShopOwnerInviteCreateRequest | None = None,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Create (or reissue) a one-time invite letting a shop set its own login,
     replacing the shared HQ owner credentials it was provisioned with.
@@ -1145,7 +1153,7 @@ def create_shop_owner_invite(
 def get_shop_owner_invite(
     tenant_id: UUID,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """The most recent owner-login invite for a site, if any has ever been sent."""
     current_user = session.get(User, auth.user_id)
@@ -1176,7 +1184,7 @@ def get_shop_owner_invite(
 def create_tenant_from_parent_account(
     payload: ParentAccountCreateTenantRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
@@ -1247,7 +1255,7 @@ def create_tenant_from_parent_account(
 async def import_shops_from_xlsx(
     file: UploadFile = File(...),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Bulk create/update retail shops from a Minit shop-list Excel workbook (HQ only)."""
     _require_minit_hq(auth, session)
@@ -1354,7 +1362,7 @@ async def import_directory_export(
     file: UploadFile = File(...),
     apply: bool = Query(default=False),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ) -> dict[str, object]:
     """Preview (default) or apply importing shops + real franchisee owners from
     a Mister Minit "Organisation Graph" directory HTML export (HQ only).
@@ -1418,7 +1426,7 @@ async def import_directory_export(
 async def import_mobile_operators_from_xlsx(
     file: UploadFile = File(...),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Bulk create/update mobile operators from bundled seed + TSS workbook (HQ only)."""
     _require_minit_hq(auth, session)
@@ -1524,7 +1532,7 @@ def import_mobile_territory_routes(
     apply: bool = Query(default=False, description="When true, write routes to the database."),
     replace_existing: bool = Query(default=False, description="Delete existing routes before import."),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Import bundled AU territory suburb routes (HQ only). Dry-run by default."""
     _require_minit_hq(auth, session)
@@ -1586,7 +1594,7 @@ def import_mobile_territory_routes(
 def provision_minit_retail_shop(
     payload: ParentProvisionShopRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent."""
     current_user = session.get(User, auth.user_id)
@@ -1657,7 +1665,7 @@ def provision_minit_retail_shop(
 def unlink_tenant_from_parent_account(
     tenant_id: UUID,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:

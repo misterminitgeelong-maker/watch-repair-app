@@ -11,6 +11,7 @@ from sqlmodel import Session
 
 from .config import settings
 from .database import get_session
+from .tenant_scope import scope_to_tenant
 from .models import Tenant, User
 from .security import decode_access_token
 
@@ -175,10 +176,10 @@ class AuthContext:
     sid: str | None = None
 
 
-def get_auth_context(
+def _resolve_auth_context(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    session: Session = Depends(get_session),
+    credentials: HTTPAuthorizationCredentials,
+    session: Session,
 ) -> AuthContext:
     if credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid auth scheme")
@@ -284,6 +285,26 @@ def get_auth_context(
         raise
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
+
+
+def get_auth_context(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    session: Session = Depends(get_session),
+) -> AuthContext:
+    """Resolve the caller, then restrict their session to their own tenant.
+
+    FastAPI caches ``get_session`` per request, so the session stamped here is
+    the same object the endpoint receives. That is what makes tenant isolation
+    apply to every authenticated route without editing any of them.
+
+    Routes that legitimately span tenants — login, platform admin, parent
+    operations, billing webhooks — take ``unscoped_session`` instead, which
+    puts crossing the boundary in the signature where a reviewer can see it.
+    """
+    ctx = _resolve_auth_context(request, credentials, session)
+    scope_to_tenant(session, ctx.tenant_id)
+    return ctx
 
 
 def require_roles(*allowed_roles: str) -> Callable[[AuthContext], AuthContext]:
