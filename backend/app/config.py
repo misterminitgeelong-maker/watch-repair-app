@@ -221,6 +221,10 @@ class Settings(BaseSettings):
     # Set this false on the web service once the worker service is deployed;
     # the advisory locks make the overlap in between safe rather than a window
     # where every sweep fires twice.
+    # Nothing configured logging before, so every INFO record was dropped and
+    # warnings arrived without a timestamp. See app/logging_config.py.
+    log_level: str = "INFO"
+
     run_sweeps_in_web_process: bool = True
     # How long a stopping worker waits for an in-flight sweep before exiting.
     # Longer than a typical pass, shorter than a platform's SIGKILL timeout.

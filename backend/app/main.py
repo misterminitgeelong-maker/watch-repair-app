@@ -16,6 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
+from .logging_config import configure_logging
 from .idempotency import MutationIdempotencyMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
 from .database import create_db_and_tables, engine
@@ -72,6 +73,10 @@ from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accoun
 
 _SENTRY_ENABLED = False
 sentry_sdk = None
+
+
+# Before anything else in this module logs, so startup records are not lost.
+configure_logging()
 
 
 def _init_sentry() -> None:

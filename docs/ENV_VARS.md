@@ -20,6 +20,7 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `TWILIO_ACCOUNT_SID` | (empty) | No | Twilio SID for SMS. Leave blank for dry-run. |
 | `TWILIO_AUTH_TOKEN` | (empty) | No | Twilio auth token. |
 | `TWILIO_FROM_NUMBER` | (empty) | No | E.164 number for sending SMS. |
+| `LOG_LEVEL` | `INFO` | No | Level for this application's own loggers (`app.*` and `mainspring.*`). Third-party libraries stay at WARNING regardless, so `INFO` does not turn on SQLAlchemy's statement log. Set `WARNING` to quiet the per-request access line. |
 | `RUN_SWEEPS_IN_WEB_PROCESS` | `True` | No | Whether the web process runs the recurring background sweeps itself. Set `false` once a separate `python -m app.worker` service is deployed — see [BACKGROUND_WORKERS.md](BACKGROUND_WORKERS.md). Safe to have both running: the sweeps take an advisory lock, so work never happens twice. |
 | `WORKER_SHUTDOWN_GRACE_SECONDS` | `20` | No | How long a stopping worker waits for an in-flight sweep before exiting. |
 | `QUOTE_REMINDER_ENABLED` | `True` | No | Auto-send a reminder SMS for quotes (watch + mobile services) still awaiting a customer decision. |
