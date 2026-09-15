@@ -216,6 +216,16 @@ class Settings(BaseSettings):
     retention_sweep_enabled: bool = True
     retention_sweep_check_interval_minutes: int = 360
 
+    # The recurring sweeps can run inside the web process (the default, and how
+    # this has always run) or as a separate `python -m app.worker` service.
+    # Set this false on the web service once the worker service is deployed;
+    # the advisory locks make the overlap in between safe rather than a window
+    # where every sweep fires twice.
+    run_sweeps_in_web_process: bool = True
+    # How long a stopping worker waits for an in-flight sweep before exiting.
+    # Longer than a typical pass, shorter than a platform's SIGKILL timeout.
+    worker_shutdown_grace_seconds: int = 20
+
     attachment_storage_backend: str = "auto"
 
     # Supabase Storage (set these to switch from local FS to Supabase)
