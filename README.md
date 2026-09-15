@@ -168,3 +168,25 @@ bootstrap mode actually used.
 ## Web app
 
 The **React** UI in `frontend/` is deployed as a **web-only** application (browser and installable PWA). See **`frontend/README.md`** for local dev, build, and environment variables.
+
+## Data-collection tools
+
+The AliExpress watch-movement scraper, the Labanda catalogue parser and the
+automotive locksmith prospect builder used to live in this repository. They are
+now at
+[misterminitgeelong-maker/mainspring-scrapers](https://github.com/misterminitgeelong-maker/mainspring-scrapers).
+
+Nothing in the backend or frontend imports them, and they shipped in no
+deployment image — but their captured HTML made up roughly 180 MB of every
+checkout of this repository.
+
+Two of those tools write into `backend/seed/watch_movements.json`. They locate
+this repository via a `MAINSPRING_REPO` environment variable, defaulting to a
+sibling checkout.
+
+The git history here was deliberately **not** rewritten, so the captured pages
+remain recoverable:
+
+```bash
+git show 160e593d69ecf6b562faaccd8ac5321f86acb365:aliexpress_watch_movements_scraper/data/raw_html/<file>
+```
