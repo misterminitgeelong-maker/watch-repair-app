@@ -343,7 +343,10 @@ def test_redelivery_sweep_skips_exhausted_rows(live_email, monkeypatch):
         session.commit()
         summary = redeliver_failed_notifications(session)
         assert summary["email_sent"] == 0
-        assert summary["skipped"] >= 1
+        # Exhausted rows are now filtered by the query (attempt_count < cap) rather
+        # than loaded and discarded in Python, so they never reach the skip counter.
+        # Previously every row past the cap was re-loaded on every sweep, forever.
+        assert summary["skipped"] == 0
     assert posts == []
 
 

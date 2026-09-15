@@ -1,8 +1,24 @@
-"""HTTP Idempotency-Key handling for offline-queue replays."""
+"""HTTP Idempotency-Key handling for offline-queue replays.
+
+The key is **reserved before the mutation runs**, not recorded after it. That
+ordering is the whole mechanism: the unique constraint on (tenant_id, key) is
+what stops a second request executing, so it has to be taken while the first
+request is still in flight.
+
+Recording afterwards only prevents a duplicate *row*; both requests still run.
+That is reachable in this app — the axios client times out at 20 seconds, so a
+slow mutation aborts client-side, gets queued by the offline interceptor, and is
+replayed with the same key while the original is still executing on the server.
+
+Every completed response is recorded, not just 2xx. "The mutation committed but
+the caller never saw the response" is the exact failure this exists to cover,
+and a 500 after commit is the clearest example of it.
+"""
 from __future__ import annotations
 
 import hashlib
 import logging
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import Request
@@ -22,6 +38,18 @@ IDEMPOTENCY_HEADER = "Idempotency-Key"
 _MUTATING = {"POST", "PATCH", "PUT", "DELETE"}
 _MAX_STORED_BODY = 64_000
 
+STATE_IN_PROGRESS = "in_progress"
+STATE_COMPLETED = "completed"
+
+# A reservation older than this whose request never completed is treated as
+# abandoned (process killed mid-request) and is cleared by the retention sweep
+# in services/idempotency_retention.py rather than blocking the key forever.
+IN_PROGRESS_ABANDONED_AFTER = timedelta(minutes=10)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 def _tenant_id_from_request(request: Request) -> UUID | None:
     auth = request.headers.get("Authorization") or ""
@@ -36,43 +64,53 @@ def _tenant_id_from_request(request: Request) -> UUID | None:
         return None
 
 
-def _lookup(tenant_id: UUID, key: str) -> MutationIdempotencyKey | None:
-    with Session(engine) as session:
-        return session.exec(
-            select(MutationIdempotencyKey)
-            .where(MutationIdempotencyKey.tenant_id == tenant_id)
-            .where(MutationIdempotencyKey.key == key)
-        ).first()
+def _lookup(session: Session, tenant_id: UUID, key: str) -> MutationIdempotencyKey | None:
+    return session.exec(
+        select(MutationIdempotencyKey)
+        .where(MutationIdempotencyKey.tenant_id == tenant_id)
+        .where(MutationIdempotencyKey.key == key)
+    ).first()
 
 
-def _store(
-    *,
-    tenant_id: UUID,
-    key: str,
-    method: str,
-    path: str,
-    request_hash: str,
-    status_code: int,
-    response_body: str,
-) -> MutationIdempotencyKey | None:
+def _reserve(
+    *, tenant_id: UUID, key: str, method: str, path: str, request_hash: str
+) -> tuple[UUID | None, MutationIdempotencyKey | None]:
+    """Claim the key before running the mutation.
+
+    Returns ``(reservation_id, None)`` when this request won the key, or
+    ``(None, existing_row)`` when someone else already holds it.
+    """
     with Session(engine) as session:
-        session.add(
-            MutationIdempotencyKey(
-                tenant_id=tenant_id,
-                key=key,
-                method=method,
-                path=path,
-                request_hash=request_hash,
-                status_code=status_code,
-                response_body=response_body[:_MAX_STORED_BODY],
-            )
+        row = MutationIdempotencyKey(
+            tenant_id=tenant_id,
+            key=key,
+            method=method,
+            path=path,
+            request_hash=request_hash,
+            state=STATE_IN_PROGRESS,
+            status_code=0,
+            response_body="",
         )
+        session.add(row)
         try:
             session.commit()
         except IntegrityError:
             session.rollback()
-            return _lookup(tenant_id, key)
-    return _lookup(tenant_id, key)
+            return None, _lookup(session, tenant_id, key)
+        return row.id, None
+
+
+def _complete(reservation_id: UUID, *, status_code: int, response_body: str) -> None:
+    with Session(engine) as session:
+        row = session.get(MutationIdempotencyKey, reservation_id)
+        if row is None:
+            return
+        row.state = STATE_COMPLETED
+        row.status_code = status_code
+        row.response_body = response_body[:_MAX_STORED_BODY]
+        row.completed_at = _utcnow()
+        session.add(row)
+        session.commit()
 
 
 def _replay_body(request: Request, body: bytes) -> None:
@@ -86,12 +124,8 @@ def _replay_body(request: Request, body: bytes) -> None:
     request._body = body
 
 
-def _cached_response(row: MutationIdempotencyKey) -> Response:
-    return Response(
-        content=row.response_body,
-        status_code=row.status_code,
-        media_type="application/json",
-    )
+def _mismatch(row: MutationIdempotencyKey, method: str, path: str, request_hash: str) -> bool:
+    return row.method != method or row.path != path or row.request_hash != request_hash
 
 
 class MutationIdempotencyMiddleware(BaseHTTPMiddleware):
@@ -114,18 +148,42 @@ class MutationIdempotencyMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         method = request.method
 
-        existing = _lookup(tenant_id, key)
-        if existing is not None:
-            if existing.method != method or existing.path != path or existing.request_hash != request_hash:
+        reservation_id, existing = _reserve(
+            tenant_id=tenant_id, key=key, method=method, path=path, request_hash=request_hash
+        )
+
+        if reservation_id is None:
+            if existing is None:
+                # Lost the insert race and then could not read the winner back;
+                # treat as in-flight rather than executing a possible duplicate.
+                return JSONResponse({"detail": "idempotent_request_in_progress"}, status_code=409)
+            if _mismatch(existing, method, path, request_hash):
                 return JSONResponse(
                     {"detail": "Idempotency-Key reused with a different request"},
                     status_code=409,
                 )
-            return _cached_response(existing)
+            if existing.state == STATE_COMPLETED:
+                return Response(
+                    content=existing.response_body,
+                    status_code=existing.status_code,
+                    media_type="application/json",
+                )
+            # The original request is still running. Refusing here is the point:
+            # executing now is exactly the duplicate this middleware prevents.
+            return JSONResponse({"detail": "idempotent_request_in_progress"}, status_code=409)
 
-        response = await call_next(request)
-        if not (200 <= response.status_code < 300):
-            return response
+        try:
+            response = await call_next(request)
+        except Exception:
+            # The route raised, so the caller never saw a response — but the work
+            # may already have committed. Record a 500 rather than releasing the
+            # key, so a replay returns this instead of running the mutation again.
+            _complete(
+                reservation_id,
+                status_code=500,
+                response_body='{"detail":"Internal Server Error"}',
+            )
+            raise
 
         resp_body = getattr(response, "body", None)
         headers = dict(response.headers)
@@ -146,18 +204,5 @@ class MutationIdempotencyMiddleware(BaseHTTPMiddleware):
             text = resp_body.decode("utf-8") if isinstance(resp_body, (bytes, bytearray)) else str(resp_body)
         except Exception:
             text = ""
-        stored = _store(
-            tenant_id=tenant_id,
-            key=key,
-            method=method,
-            path=path,
-            request_hash=request_hash,
-            status_code=response.status_code,
-            response_body=text,
-        )
-        if stored is not None and stored.request_hash != request_hash:
-            return JSONResponse(
-                {"detail": "Idempotency-Key reused with a different request"},
-                status_code=409,
-            )
+        _complete(reservation_id, status_code=response.status_code, response_body=text)
         return new_response

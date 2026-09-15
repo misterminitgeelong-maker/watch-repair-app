@@ -327,9 +327,14 @@ class MutationIdempotencyKey(SQLModel, table=True):
     method: str = Field(max_length=16)
     path: str = Field(max_length=512)
     request_hash: str = Field(max_length=64)
-    status_code: int
+    # The row is inserted BEFORE the mutation runs, so the unique constraint is
+    # what stops a concurrent replay executing twice. state tracks that window:
+    # "in_progress" until the response is known, then "completed".
+    state: str = Field(default="in_progress", max_length=16)
+    status_code: int = Field(default=0)
     response_body: str = Field(default="")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    completed_at: Optional[datetime] = Field(default=None)
 
 class CustomService(SQLModel, table=True):
     """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""

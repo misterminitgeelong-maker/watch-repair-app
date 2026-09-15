@@ -19,6 +19,7 @@ from sqlmodel import Session
 from .idempotency import MutationIdempotencyMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
 from .database import create_db_and_tables, engine
+from .advisory_lock import sweep_lock
 from .limiter import limiter
 from .routes.auth import router as auth_router
 from .routes.me import router as me_router
@@ -140,8 +141,12 @@ def _quote_reminder_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = send_due_quote_reminders(session)
+            with sweep_lock("quote_reminders") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = send_due_quote_reminders(session)
             if summary.get("watch_sent") or summary.get("mobile_sent"):
                 reminder_logger.info("Quote reminders sent: %s", summary)
         except Exception:
@@ -157,8 +162,12 @@ def _shop_mobile_booking_pool_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = process_due_shop_mobile_bookings(session)
+            with sweep_lock("shop_mobile_booking_pool") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = process_due_shop_mobile_bookings(session)
             if summary.get("moved_to_pool") or summary.get("expired"):
                 pool_logger.info("Shop mobile booking pool sweep: %s", summary)
         except Exception:
@@ -174,8 +183,12 @@ def _pool_alert_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = process_stale_pool_jobs(session)
+            with sweep_lock("pool_alerts") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = process_stale_pool_jobs(session)
             if summary.get("stale_jobs"):
                 pool_alert_logger.info("Dispatch Pool alert sweep: %s", summary)
         except Exception:
@@ -191,8 +204,12 @@ def _sales_report_email_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = send_due_sales_report_emails(session)
+            with sweep_lock("sales_report_email") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = send_due_sales_report_emails(session)
             if summary.get("weekly_sent") or summary.get("monthly_sent"):
                 report_logger.info("Sales report emails sent: %s", summary)
         except Exception:
@@ -208,8 +225,12 @@ def _mobile_weekly_report_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = send_due_mobile_weekly_reports(session)
+            with sweep_lock("mobile_weekly_report") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = send_due_mobile_weekly_reports(session)
             if summary.get("sent"):
                 report_logger.info("Mobile weekly report emails sent: %s", summary)
         except Exception:
@@ -225,12 +246,37 @@ def _notification_redelivery_loop() -> None:
 
     while True:
         try:
-            with Session(engine) as session:
-                summary = redeliver_failed_notifications(session)
+            with sweep_lock("notification_redelivery") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = redeliver_failed_notifications(session)
             if summary.get("email_sent") or summary.get("sms_sent"):
                 redelivery_logger.info("Notification redelivery: %s", summary)
         except Exception:
             redelivery_logger.exception("Notification redelivery run failed.")
+        time.sleep(interval_seconds)
+
+
+def _retention_sweep_loop() -> None:
+    """Trim the two unbounded tables batch 3 added (idempotency keys, email payloads)."""
+    retention_logger = logging.getLogger("mainspring.retention")
+    interval_seconds = max(settings.retention_sweep_check_interval_minutes, 1) * 60
+    from .services.idempotency_retention import run_retention
+
+    while True:
+        try:
+            with sweep_lock("retention") as owned:
+                if not owned:
+                    time.sleep(interval_seconds)
+                    continue
+                with Session(engine) as session:
+                    summary = run_retention(session)
+            if summary.get("idempotency_keys_removed") or summary.get("email_payloads_cleared"):
+                retention_logger.info("Retention sweep: %s", summary)
+        except Exception:
+            retention_logger.exception("Retention sweep failed.")
         time.sleep(interval_seconds)
 
 
@@ -281,6 +327,12 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=_sales_report_email_loop,
             name="mainspring-sales-report-email",
+            daemon=True,
+        ).start()
+    if settings.retention_sweep_enabled and settings.app_env != "test":
+        threading.Thread(
+            target=_retention_sweep_loop,
+            name="mainspring-retention",
             daemon=True,
         ).start()
     if settings.mobile_weekly_report_email_enabled and settings.app_env != "test":
