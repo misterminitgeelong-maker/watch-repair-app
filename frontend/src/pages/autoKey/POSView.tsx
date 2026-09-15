@@ -109,7 +109,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
 
       if (cart.length === 0) throw new Error('Add at least one item.')
 
-      const accountId = customerAccountId && customerAccounts.some((a: CustomerAccount) => a.id === customerAccountId && a.customer_ids.includes(cid))
+      const accountId = customerAccountId && customerAccounts.some((a: CustomerAccount) => a.id === customerAccountId && (a.customer_ids ?? []).includes(cid))
         ? customerAccountId
         : undefined
 
@@ -211,7 +211,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
                   >
                     <option value="">Personal / no B2B</option>
                     {customerAccounts
-                      .filter((a: CustomerAccount) => a.customer_ids.includes(customerId))
+                      .filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(customerId))
                       .map((a: CustomerAccount) => (
                         <option key={a.id} value={a.id}>
                           {a.name}{a.account_code ? ` (${a.account_code})` : ''}
@@ -224,7 +224,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
                     onChange={e => setLinkToJobId(e.target.value)}
                   >
                     <option value="">Create new job</option>
-                    {(activeJobsForCustomer ?? []).map((j: { id: string; job_number: string; vehicle_make?: string; vehicle_model?: string }) => (
+                    {(activeJobsForCustomer ?? []).map((j: { id: string; job_number: string; vehicle_make?: string | null; vehicle_model?: string | null }) => (
                       <option key={j.id} value={j.id}>
                         {j.job_number} · {[j.vehicle_make, j.vehicle_model].filter(Boolean).join(' ') || 'No vehicle'}
                       </option>

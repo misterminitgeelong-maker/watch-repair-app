@@ -133,7 +133,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
     queryFn: () => listCustomerAccounts().then(r => r.data),
   })
   const matchingAccounts = activeCustomerId
-    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(activeCustomerId))
+    ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(activeCustomerId))
     : customerAccounts
 
   const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>

@@ -6,12 +6,12 @@ export { default } from './client'
 
 export interface MultiSiteLoginResponse {
   access_token: string
-  token_type: string
+  token_type?: string
   expires_in_seconds: number
-  refresh_token?: string
-  refresh_expires_in_seconds?: number
+  refresh_token?: string | null
+  refresh_expires_in_seconds?: number | null
   active_site_tenant_id: string
-  available_sites: SiteOption[]
+  available_sites?: SiteOption[]
 }
 export const multiSiteLogin = (email: string, password: string) =>
   api.post<MultiSiteLoginResponse>('/auth/multi-site-login', { email, password })
@@ -82,12 +82,12 @@ export const updateTenantPlan = (plan_code: PlanCode) =>
   api.patch<AuthSession>('/auth/session/plan', { plan_code })
 export interface ActiveSiteSwitchResponse {
   access_token: string
-  token_type: string
+  token_type?: string
   expires_in_seconds: number
-  refresh_token?: string
-  refresh_expires_in_seconds?: number
+  refresh_token?: string | null
+  refresh_expires_in_seconds?: number | null
   active_site_tenant_id: string
-  available_sites: SiteOption[]
+  available_sites?: SiteOption[]
 }
 export const switchActiveSite = (tenant_id: string) =>
   api.patch<ActiveSiteSwitchResponse>('/auth/session/site', { tenant_id })
@@ -397,16 +397,16 @@ export interface ParentOperationsOverview {
   shops_without_recent_booking: number
   problem_bookings_7d: number
   operators_missing_dispatch_phone: number
-  bookings_7d: number
-  accepted_7d: number
-  declined_7d: number
-  bookings_30d: number
-  accepted_30d: number
-  stale_pending_count: number
-  acceptance_rate_7d: number | null
-  region_stats: ParentRegionDashboardStat[]
-  recent_bookings: ParentDashboardBookingSnippet[]
-  attention_items: ParentTroubleshootingItem[]
+  bookings_7d?: number
+  accepted_7d?: number
+  declined_7d?: number
+  bookings_30d?: number
+  accepted_30d?: number
+  stale_pending_count?: number
+  acceptance_rate_7d?: number | null
+  region_stats?: ParentRegionDashboardStat[]
+  recent_bookings?: ParentDashboardBookingSnippet[]
+  attention_items?: ParentTroubleshootingItem[]
 }
 
 export interface ParentShopBookingVolume {
@@ -425,8 +425,8 @@ export interface ParentShopBookingsReport {
   from_date?: string | null
   to_date?: string | null
   totals: ParentShopBookingVolume
-  by_shop: ParentShopBookingVolume[]
-  bookings: ShopMobileBooking[]
+  by_shop?: ParentShopBookingVolume[]
+  bookings?: ShopMobileBooking[]
 }
 
 export interface ParentMobileJobNetwork {
@@ -450,7 +450,7 @@ export interface ParentMobileJobsReport {
   to_date?: string | null
   active_count: number
   total_count: number
-  jobs: ParentMobileJobNetwork[]
+  jobs?: ParentMobileJobNetwork[]
 }
 
 export interface ParentTroubleshootingItem {
@@ -486,17 +486,17 @@ export const getParentMobileJobsReport = (params?: {
 export interface ShopEmailLeadBucket {
   operator_tenant_id?: string | null
   operator_name: string
-  total_count: number
-  new_count: number
-  processed_count: number
-  dismissed_count: number
+  total_count?: number
+  new_count?: number
+  processed_count?: number
+  dismissed_count?: number
   oldest_new_at?: string | null
 }
 export interface ParentEmailLeadsByShopReport {
   from_date?: string | null
   to_date?: string | null
   total_emails: number
-  shops: ShopEmailLeadBucket[]
+  shops?: ShopEmailLeadBucket[]
 }
 export const getParentEmailLeadsByShopReport = (params?: { from_date?: string; to_date?: string }) =>
   api.get<ParentEmailLeadsByShopReport>('/parent-accounts/me/operations/email-leads-by-shop', { params })
@@ -554,24 +554,24 @@ export interface ShopMobileBooking {
   schedule_conflict_warning?: string | null
   offer_expires_at?: string | null
   pool_intake_job_id?: string | null
-  created_at: string
+  created_at: string | null
 }
 
 export interface ShopMobileBookingCreate {
   suburb: string
   state_code: string
-  target_operator_tenant_id?: string
+  target_operator_tenant_id?: string | null
   customer_name: string
-  phone?: string
-  email?: string
-  vehicle_make?: string
-  vehicle_model?: string
-  registration_plate?: string
+  phone?: string | null
+  email?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  registration_plate?: string | null
   visit_location_type?: ShopMobileVisitLocationType
   job_address: string
-  preferred_scheduled_at?: string
-  job_type?: string
-  notes?: string
+  preferred_scheduled_at?: string | null
+  job_type?: string | null
+  notes?: string | null
 }
 
 export const listShopMobileOperators = () =>
@@ -598,54 +598,54 @@ export const declineShopMobileBooking = (id: string, decline_reason?: string) =>
 // ── Customers ─────────────────────────────────────────────────────────────────
 export interface Customer {
   id: string; tenant_id: string; full_name: string
-  email?: string; phone?: string; address?: string; notes?: string; created_at: string
+  email?: string; phone?: string; address?: string; notes?: string; created_at: string | null
 }
 
 // ── Customer Accounts (Fleet/B2B) ─────────────────────────────────────────────
-export type FleetAccountType = 'Dealership' | 'Rental Fleet' | 'Government Fleet' | 'Corporate Fleet' | 'Other'
+export type FleetAccountType = 'Dealership' | 'Rental Fleet' | 'Government Fleet' | 'Corporate Fleet' | 'Car Auctions' | 'Other'
 export type FleetBillingCycle = 'Monthly' | 'Fortnightly' | 'Weekly'
 
 export interface CustomerAccount {
   id: string
   tenant_id: string
   name: string
-  account_code?: string
-  contact_name?: string
-  contact_email?: string
-  contact_phone?: string
-  billing_address?: string
+  account_code?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  billing_address?: string | null
   payment_terms_days: number
-  notes?: string
+  notes?: string | null
   is_active: boolean
   created_at: string
-  customer_ids: string[]
+  customer_ids?: string[]
   // Fleet/Dealer fields
-  account_type?: FleetAccountType
-  fleet_size?: number
-  primary_contact_name?: string
-  primary_contact_phone?: string
-  billing_cycle?: FleetBillingCycle
-  credit_limit?: number
-  account_notes?: string
+  account_type?: FleetAccountType | null
+  fleet_size?: number | null
+  primary_contact_name?: string | null
+  primary_contact_phone?: string | null
+  billing_cycle?: FleetBillingCycle | null
+  credit_limit?: number | null
+  account_notes?: string | null
 }
 
 export interface CustomerAccountCreate {
   name: string
-  account_code?: string
-  contact_name?: string
-  contact_email?: string
-  contact_phone?: string
-  billing_address?: string
+  account_code?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  billing_address?: string | null
   payment_terms_days?: number
-  notes?: string
+  notes?: string | null
   // Fleet/Dealer fields
-  account_type?: FleetAccountType
-  fleet_size?: number
-  primary_contact_name?: string
-  primary_contact_phone?: string
-  billing_cycle?: FleetBillingCycle
-  credit_limit?: number
-  account_notes?: string
+  account_type?: FleetAccountType | null
+  fleet_size?: number | null
+  primary_contact_name?: string | null
+  primary_contact_phone?: string | null
+  billing_cycle?: FleetBillingCycle | null
+  credit_limit?: number | null
+  account_notes?: string | null
 }
 
 export const listCustomerAccounts = () => api.get<CustomerAccount[]>('/customer-accounts')
@@ -662,8 +662,8 @@ export const updateCustomer = (id: string, data: Partial<Omit<Customer, 'id' | '
 // ── Watches ───────────────────────────────────────────────────────────────────
 export interface Watch {
   id: string; tenant_id: string; customer_id: string
-  brand?: string; model?: string; serial_number?: string
-  movement_type?: string; condition_notes?: string; created_at: string
+  brand?: string; model?: string; serial_number?: string | null
+  movement_type?: string; condition_notes?: string; created_at: string | null
 }
 export const listWatches = (customerId?: string) =>
   api.get<Watch[]>('/watches', { params: customerId ? { customer_id: customerId } : {} })
@@ -698,7 +698,7 @@ export const getJob = (id: string) => api.get<RepairJob>(`/repair-jobs/${id}`)
 export const deleteJob = (id: string) => api.delete(`/repair-jobs/${id}`)
 export interface RepairJobCreatePayload {
   watch_id: string
-  assigned_user_id?: string
+  assigned_user_id?: string | null
   customer_account_id?: string
   title: string
   description?: string
@@ -888,32 +888,33 @@ export interface CustomerPortalPendingAction {
 
 export interface CustomerPortalJob {
   id: string
-  type: 'watch' | 'shoe' | 'auto_key'
+  /** Backend declares this `str`; these are the values it emits today. */
+  type: 'watch' | 'shoe' | 'auto_key' | (string & {})
   job_number: string
   title: string
   status: string
   created_at: string
   status_token: string
   status_url: string
-  detail: string | null
+  detail?: string | null
   pending_actions?: CustomerPortalPendingAction[]
 }
 
 export interface CustomerPortalShop {
   tenant_id: string
   shop_name: string
-  logo_url: string | null
-  brand_color: string | null
-  shop_phone: string | null
-  shop_email: string | null
-  jobs: CustomerPortalJob[]
+  logo_url?: string | null
+  brand_color?: string | null
+  shop_phone?: string | null
+  shop_email?: string | null
+  jobs?: CustomerPortalJob[]
 }
 
 export interface CustomerPortalLookupResponse {
-  email?: string
-  shops: CustomerPortalShop[]
-  status_notify_email?: boolean
-  status_notify_sms?: boolean
+  email?: string | null
+  shops?: CustomerPortalShop[]
+  status_notify_email?: boolean | null
+  status_notify_sms?: boolean | null
 }
 
 export const customerPortalLookup = (email: string, includeHistory = false) =>
@@ -929,13 +930,13 @@ export interface StockItem {
   tenant_id: string
   item_code: string
   group_code: string
-  group_name?: string
-  item_description?: string
-  description2?: string
-  description3?: string
-  full_description?: string
-  unit_description?: string
-  pack_description?: string
+  group_name?: string | null
+  item_description?: string | null
+  description2?: string | null
+  description3?: string | null
+  full_description?: string | null
+  unit_description?: string | null
+  pack_description?: string | null
   pack_qty: number
   cost_price_cents: number
   retail_price_cents: number
@@ -949,13 +950,13 @@ export interface StockImportSummaryResponse {
   imported: number
   created: number
   updated: number
-  sources: Record<string, number>
-  sheet_names: string[]
+  sources?: Record<string, number>
+  sheet_names?: string[]
 }
 
 export interface StocktakeProgress {
-  counted_items: number
-  total_items: number
+  counted_items?: number
+  total_items?: number
 }
 
 export type StocktakeStatus = 'draft' | 'in_progress' | 'completed' | 'approved'
@@ -965,15 +966,15 @@ export interface StocktakeSession {
   tenant_id: string
   name: string
   status: StocktakeStatus
-  created_by_user_id?: string
-  completed_by_user_id?: string
-  group_code_filter?: string
-  group_name_filter?: string
-  search_filter?: string
-  notes?: string
+  created_by_user_id?: string | null
+  completed_by_user_id?: string | null
+  group_code_filter?: string | null
+  group_name_filter?: string | null
+  search_filter?: string | null
+  notes?: string | null
   created_at: string
-  completed_at?: string
-  progress: StocktakeProgress
+  completed_at?: string | null
+  progress?: StocktakeProgress
 }
 
 export interface StocktakeLine {
@@ -984,41 +985,41 @@ export interface StocktakeLine {
   counted_qty?: number | null
   variance_qty?: number | null
   variance_value_cents?: number | null
-  counted_by_user_id?: string
-  counted_at?: string
-  notes?: string
+  counted_by_user_id?: string | null
+  counted_at?: string | null
+  notes?: string | null
   item_code: string
   group_code: string
-  group_name?: string
-  item_description?: string
-  full_description?: string
+  group_name?: string | null
+  item_description?: string | null
+  full_description?: string | null
   system_stock_qty: number
   cost_price_cents: number
   retail_price_cents: number
 }
 
 export interface StocktakeSessionDetail extends StocktakeSession {
-  lines: StocktakeLine[]
+  lines?: StocktakeLine[]
 }
 
 export interface StocktakeGroupSummary {
   group_code: string
-  group_name?: string
-  item_count: number
-  counted_count: number
-  variance_count: number
-  total_variance_qty: number
-  total_variance_value_cents: number
+  group_name?: string | null
+  item_count?: number
+  counted_count?: number
+  variance_count?: number
+  total_variance_qty?: number
+  total_variance_value_cents?: number
 }
 
 export interface StocktakeReport {
   session: StocktakeSession
-  matched_item_count: number
-  missing_item_count: number
-  over_count_item_count: number
-  total_variance_qty: number
-  total_variance_value_cents: number
-  groups: StocktakeGroupSummary[]
+  matched_item_count?: number
+  missing_item_count?: number
+  over_count_item_count?: number
+  total_variance_qty?: number
+  total_variance_value_cents?: number
+  groups?: StocktakeGroupSummary[]
 }
 
 export const importStockFile = (file: File) => {
@@ -1078,7 +1079,7 @@ export const getPublicShoeJobQrUrl = (token: string) =>
 // ── Work Logs ─────────────────────────────────────────────────────────────────
 export interface WorkLog {
   id: string; tenant_id: string; repair_job_id: string; user_id?: string
-  note?: string; minutes_spent: number; started_at?: string; ended_at?: string; created_at: string
+  note?: string; minutes_spent: number; started_at?: string; ended_at?: string; created_at: string | null
 }
 export const listWorkLogs = (repairJobId: string) =>
   api.get<WorkLog[]>('/work-logs', { params: { repair_job_id: repairJobId } })
@@ -1088,10 +1089,10 @@ export const createWorkLog = (data: { repair_job_id: string; note?: string; minu
 // ── Attachments ───────────────────────────────────────────────────────────────
 export interface Attachment {
   id: string; tenant_id: string; repair_job_id?: string; watch_id?: string
-  shoe_repair_job_id?: string
-  auto_key_job_id?: string
+  shoe_repair_job_id?: string | null
+  auto_key_job_id?: string | null
   storage_key: string; file_name?: string; content_type?: string; file_size_bytes?: number
-  label?: string; created_at: string
+  label?: string; created_at: string | null
 }
 export interface AttachmentDownloadLinkResponse {
   download_url: string
@@ -1470,7 +1471,7 @@ export interface PlatformTenant {
   plan_code: string
   is_active: boolean
   signup_payment_pending: boolean
-  billing_exempt: boolean
+  billing_exempt?: boolean
   subscription_status?: string | null
   user_count: number
   created_at: string
@@ -1626,10 +1627,10 @@ export interface Shoe {
   id: string
   tenant_id: string
   customer_id: string
-  shoe_type?: string
-  brand?: string
-  color?: string
-  description_notes?: string
+  shoe_type?: string | null
+  brand?: string | null
+  color?: string | null
+  description_notes?: string | null
   created_at: string
 }
 
@@ -1643,40 +1644,41 @@ export interface AutoKeyJob {
   id: string
   tenant_id: string
   customer_id: string
-  assigned_user_id?: string
-  customer_account_id?: string
+  assigned_user_id?: string | null
+  customer_account_id?: string | null
   job_number: string
   status_token: string
   title: string
-  description?: string
-  vehicle_make?: string
-  vehicle_model?: string
-  vehicle_year?: number
-  registration_plate?: string
-  vin?: string
-  key_type?: string
+  description?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: number | null
+  registration_plate?: string | null
+  vin?: string | null
+  key_type?: string | null
   key_quantity: number
   programming_status: AutoKeyProgrammingStatus
   priority: 'low' | 'normal' | 'high' | 'urgent'
   status: JobStatus
-  salesperson?: string
-  collection_date?: string
+  salesperson?: string | null
+  collection_date?: string | null
   deposit_cents: number
   cost_cents: number
-  created_at: string
-  blade_code?: string
-  chip_type?: string
-  tech_notes?: string
-  scheduled_at?: string
-  job_address?: string
-  job_type?: string
+  created_at: string | null
+  blade_code?: string | null
+  chip_type?: string | null
+  tech_notes?: string | null
+  scheduled_at?: string | null
+  job_address?: string | null
+  job_type?: string | null
   visit_order?: number | null
-  additional_services_json?: string
+  additional_services_json?: string | null
   commission_lead_source?: string
   customer_name?: string | null
   customer_phone?: string | null
   pricing_ref_id?: string | null
-  pricing_type?: 'oem_key' | 'service' | 'garage' | null
+  /** Backend declares this `str | null`; these are the values it writes today. */
+  pricing_type?: 'oem_key' | 'service' | 'garage' | (string & {}) | null
   quoted_price?: number | null
   callout_inclusive?: boolean | null
   custom_fields_json?: string | null
@@ -1788,7 +1790,7 @@ const AUTO_KEY_JOBS_MAX_PAGES = 40
 export type ListAutoKeyJobsParams = {
   customer_id?: string
   status?: string
-  assigned_user_id?: string
+  assigned_user_id?: string | null
   date_from?: string
   date_to?: string
   include_unscheduled?: boolean
@@ -1835,9 +1837,9 @@ export const updateAutoKeyJob = (id: string, data: AutoKeyJobUpdatePayload) =>
   api.patch<AutoKeyJob>(`/auto-key-jobs/${id}`, data)
 export interface AutoKeyJobStatusUpdateResult extends AutoKeyJob {
   /** True when this status change auto-created an invoice. */
-  invoice_created: boolean
+  invoice_created?: boolean
   /** Machine code for why no invoice was created (e.g. "already_invoiced"), or null. */
-  invoice_skip_reason: string | null
+  invoice_skip_reason?: string | null
 }
 export const updateAutoKeyJobStatus = (id: string, status: JobStatus, note?: string) =>
   api.post<AutoKeyJobStatusUpdateResult>(`/auto-key-jobs/${id}/status`, { status, note })
@@ -1863,12 +1865,12 @@ export interface AutoKeyQuote {
   gst_inclusive: boolean
   total_cents: number
   currency: string
-  sent_at?: string
+  sent_at?: string | null
   signed_at?: string | null
   signer_name?: string | null
-  has_signature: boolean
+  has_signature?: boolean
   created_at: string
-  line_items: AutoKeyQuoteLineItem[]
+  line_items?: AutoKeyQuoteLineItem[]
 }
 
 export async function resolveQuoteSignatureUrl(quoteId: string): Promise<string> {
@@ -1880,7 +1882,7 @@ export interface AutoKeyInvoice {
   id: string
   tenant_id: string
   auto_key_job_id: string
-  auto_key_quote_id?: string
+  auto_key_quote_id?: string | null
   invoice_number: string
   status: string
   subtotal_cents: number
@@ -1947,9 +1949,9 @@ export interface ShoeRepairJobItem {
   catalogue_group: string
   item_name: string
   pricing_type: ShoePricingType
-  unit_price_cents: number | null
+  unit_price_cents?: number | null
   quantity: number
-  notes?: string
+  notes?: string | null
   created_at: string
 }
 
@@ -1966,7 +1968,7 @@ export interface ShoeRepairJobItemInput {
 export interface ShoeRepairJobShoe {
   id: string
   shoe_id: string
-  shoe?: Shoe
+  shoe?: Shoe | null
   sort_order: number
 }
 
@@ -1974,20 +1976,20 @@ export interface ShoeRepairJob {
   id: string
   tenant_id: string
   shoe_id: string
-  customer_account_id?: string
+  customer_account_id?: string | null
   claimed_by_user_id?: string | null
   claimed_by_name?: string | null
-  shoe?: Shoe
-  extra_shoes: ShoeRepairJobShoe[]
-  assigned_user_id?: string
+  shoe?: Shoe | null
+  extra_shoes?: ShoeRepairJobShoe[]
+  assigned_user_id?: string | null
   job_number: string
   status_token: string
   title: string
-  description?: string
+  description?: string | null
   priority: string
   status: string
-  salesperson?: string
-  collection_date?: string
+  salesperson?: string | null
+  collection_date?: string | null
   deposit_cents: number
   cost_cents: number
   quote_approval_token: string
@@ -1998,7 +2000,7 @@ export interface ShoeRepairJob {
   complexity?: string | null
   estimated_days_min?: number | null
   estimated_days_max?: number | null
-  items: ShoeRepairJobItem[]
+  items?: ShoeRepairJobItem[]
   tracking_sms_sent?: boolean
   tracking_sms_skipped_reason?: 'no_phone' | 'sms_not_configured' | 'send_failed' | null
   custom_fields_json?: string | null
@@ -2163,7 +2165,7 @@ export interface CustomerAccountInvoice {
   total_cents: number
   currency: string
   created_at: string
-  lines: CustomerAccountStatementLine[]
+  lines?: CustomerAccountStatementLine[]
 }
 
 export interface CustomerAccountMonthlyInvoicePayload {
@@ -2345,12 +2347,13 @@ export const resendJobNotification = (jobId: string, eventType: 'job_live' | 'jo
 // ── Job message thread ────────────────────────────────────────────────────────
 export interface JobThreadMessage {
   id: string
-  direction: 'outbound' | 'inbound' | 'system'
+  /** Backend declares this `str`; these are the only values it writes today. */
+  direction: 'outbound' | 'inbound' | 'system' | (string & {})
   body: string
-  from_phone?: string
-  to_phone?: string
-  event?: string
-  status?: string
+  from_phone?: string | null
+  to_phone?: string | null
+  event?: string | null
+  status?: string | null
   created_at: string
 }
 export const getJobMessages = (jobId: string) =>
@@ -2473,7 +2476,8 @@ export interface InboundEmailListItem {
   id: string
   from_email?: string | null
   subject?: string | null
-  status: 'new' | 'processed' | 'dismissed'
+  /** Backend declares this `str`; these are the values it validates against today. */
+  status: 'new' | 'processed' | 'dismissed' | (string & {})
   auto_key_job_id?: string | null
   created_at: string
 }
@@ -2748,10 +2752,10 @@ export const deleteUser = (userId: string) => api.delete(`/users/${userId}`)
 export interface Prospect {
   name: string
   address: string
-  phone?: string
-  website?: string
-  rating?: number
-  review_count?: number
+  phone?: string | null
+  website?: string | null
+  rating?: number | null
+  review_count?: number | null
   category: string
   place_id: string
 }
@@ -2776,21 +2780,21 @@ export type ProspectLeadStatus = 'new' | 'contacted' | 'visited' | 'onboarded'
 export interface ProspectLead {
   id: string
   tenant_id: string
-  place_id?: string
+  place_id?: string | null
   name: string
-  address?: string
-  phone?: string
-  website?: string
-  rating?: number
-  review_count?: number
-  category?: string
-  state_code?: string
-  contact_name?: string
-  contact_email?: string
-  notes?: string
+  address?: string | null
+  phone?: string | null
+  website?: string | null
+  rating?: number | null
+  review_count?: number | null
+  category?: string | null
+  state_code?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  notes?: string | null
   status: ProspectLeadStatus
-  visit_scheduled_at?: string
-  customer_account_id?: string
+  visit_scheduled_at?: string | null
+  customer_account_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -3176,15 +3180,15 @@ export const setDispatchBaseLocation = (address: string, ring_radius_km = 10) =>
 
 export interface ShopIdentity {
   name: string
-  abn: string | null
-  shop_phone: string | null
-  shop_email: string | null
-  payment_instructions: string | null
-  business_address: string | null
-  logo_url: string | null
-  brand_color: string | null
+  abn?: string | null
+  shop_phone?: string | null
+  shop_email?: string | null
+  payment_instructions?: string | null
+  business_address?: string | null
+  logo_url?: string | null
+  brand_color?: string | null
   /** Minit shop number (e.g. "3269") — links this shop to Minit HQ regional data (VSWT rankings). */
-  shop_number: string | null
+  shop_number?: string | null
 }
 
 export const getShopIdentity = () =>

@@ -782,7 +782,7 @@ export default function AutoKeyJobDetailPage() {
   if (isLoading) return <Spinner />
   if (!job) return <EmptyState message='Mobile Services job not found.' />
 
-  const matchingAccounts = customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
+  const matchingAccounts = customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(job.customer_id))
 
   return (
     <div className='max-w-7xl mx-auto w-full'>

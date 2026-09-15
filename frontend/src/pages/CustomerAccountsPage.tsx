@@ -289,7 +289,7 @@ export default function CustomerAccountsPage() {
     const rows: string[] = [header.map(toCsvCell).join(',')]
 
     for (const invoice of invoices) {
-      if (invoice.lines.length === 0) {
+      if ((invoice.lines ?? []).length === 0) {
         rows.push([
           invoice.invoice_number,
           invoice.period_year,
@@ -307,7 +307,7 @@ export default function CustomerAccountsPage() {
         continue
       }
 
-      for (const line of invoice.lines) {
+      for (const line of (invoice.lines ?? [])) {
         rows.push([
           invoice.invoice_number,
           invoice.period_year,
@@ -401,7 +401,7 @@ export default function CustomerAccountsPage() {
             const statement = statementByAccount[account.id]
             const latestInvoice = latestInvoiceByAccount[account.id]
             const history = invoiceListByAccount[account.id] ?? []
-            const available = customers.filter(c => !account.customer_ids.includes(c.id))
+            const available = customers.filter(c => !(account.customer_ids ?? []).includes(c.id))
             return (
               <Card key={account.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -429,12 +429,12 @@ export default function CustomerAccountsPage() {
 
                 <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
-                    Linked customers ({account.customer_ids.length})
+                    Linked customers ({(account.customer_ids ?? []).length})
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {account.customer_ids.length === 0 ? (
+                    {(account.customer_ids ?? []).length === 0 ? (
                       <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No customers linked yet.</p>
-                    ) : account.customer_ids.map(customerId => (
+                    ) : (account.customer_ids ?? []).map(customerId => (
                       <span key={customerId} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs" style={{ backgroundColor: '#EFE9DF', color: '#5F4734' }}>
                         {customerName(customerId)}
                         <button
@@ -553,16 +553,16 @@ export default function CustomerAccountsPage() {
                                 style={{ color: 'var(--ms-accent)' }}
                                 onClick={() => setExpandedInvoiceById(prev => ({ ...prev, [inv.id]: !prev[inv.id] }))}
                               >
-                                {expandedInvoiceById[inv.id] ? 'Hide lines' : `View lines (${inv.lines.length})`}
+                                {expandedInvoiceById[inv.id] ? 'Hide lines' : `View lines (${(inv.lines ?? []).length})`}
                               </button>
                             </div>
 
                             {expandedInvoiceById[inv.id] && (
                               <div className="mt-2 rounded border" style={{ borderColor: 'var(--ms-border)', backgroundColor: '#FFFFFF' }}>
-                                {inv.lines.length === 0 ? (
+                                {(inv.lines ?? []).length === 0 ? (
                                   <p className="px-2 py-2 text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>No lines in this invoice.</p>
                                 ) : (
-                                  inv.lines.map((line) => (
+                                  (inv.lines ?? []).map((line) => (
                                     <div key={`${inv.id}-${line.source_job_id}`} className="px-2 py-1.5 flex items-start justify-between gap-2 text-[11px]" style={{ borderBottom: '1px solid var(--ms-border)' }}>
                                       <div>
                                         <Link

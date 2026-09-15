@@ -581,7 +581,7 @@ export default function JobDetailPage() {
     queryFn: () => listCustomerAccounts().then(r => r.data),
   })
   const matchingAccounts = watch?.customer_id
-    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(watch.customer_id))
+    ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(watch.customer_id))
     : customerAccounts
 
   async function applyMovementQuote(movementKey: string) {

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "generate:openapi-json": "python ../backend/scripts/export_openapi_json.py ./src/lib/generated/openapi.json",
-    "generate:api-types": "npm run generate:openapi-json && openapi-typescript src/lib/generated/openapi.json -o src/lib/generated/openapi.d.ts"
+    "generate:api-types": "npm run generate:openapi-json && openapi-typescript src/lib/generated/openapi.json -o src/lib/generated/openapi.d.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

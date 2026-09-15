@@ -56,7 +56,7 @@ type RecentItem = {
   id: string
   title: string
   to: string
-  created_at: string
+  created_at: string | null
   status: string
   typeLabel: string
   detail: string
@@ -114,7 +114,7 @@ function buildBalancedLiveQueue(
   }))
 
   const byDate = (a: RecentItem, b: RecentItem) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
 
   const w = hasWatch ? [...watchItems].sort(byDate) : []
   const s = hasShoe ? [...shoeItems].sort(byDate) : []

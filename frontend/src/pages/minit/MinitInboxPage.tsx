@@ -173,7 +173,9 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJo
   id: string
   subject?: string | null
   fromEmail?: string | null
-  status: 'new' | 'processed' | 'dismissed'
+  /** Open enum: the backend types this `str`, so an unrecognised value is possible
+   *  and is treated the same as any non-'new' status. */
+  status: 'new' | 'processed' | 'dismissed' | (string & {})
   createdAt: string
   autoKeyJobId?: string | null
 }) {
