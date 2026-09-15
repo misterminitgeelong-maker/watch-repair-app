@@ -7,6 +7,7 @@ workers to their own service; the retention matters continuously.
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+import pytest
 from sqlmodel import Session, select
 
 from app.advisory_lock import _lock_key, sweep_lock
@@ -36,12 +37,57 @@ def test_lock_key_stays_in_postgres_bigint_range():
     assert _lock_key("a") != _lock_key("b")
 
 
+_IS_POSTGRES = engine.dialect.name == "postgresql"
+
+
+@pytest.mark.skipif(_IS_POSTGRES, reason="SQLite behaviour; Postgres takes a real lock")
 def test_sweep_lock_is_a_no_op_off_postgres():
     """Tests and local dev run one process on SQLite; the lock must not block them."""
     with sweep_lock("test-sweep") as owned:
         assert owned is True
         with sweep_lock("test-sweep") as nested:
             assert nested is True
+
+
+@pytest.mark.skipif(not _IS_POSTGRES, reason="advisory locks are a Postgres feature")
+def test_sweep_lock_excludes_a_second_holder_on_postgres():
+    """The whole point of the lock: a second instance must be told to skip.
+
+    sweep_lock takes its own connection per call, so a second acquisition is a
+    genuine second session — the same situation as a second replica, which is
+    what batch 5 creates when the sweeps move out of the web process.
+    """
+    name = f"test-sweep-{uuid4().hex[:8]}"
+    with sweep_lock(name) as owned:
+        assert owned is True
+        with sweep_lock(name) as second:
+            assert second is False, "two instances both claimed the same sweep"
+
+    # Released on exit, so the next scheduled run can take it again.
+    with sweep_lock(name) as after:
+        assert after is True
+
+
+@pytest.mark.skipif(not _IS_POSTGRES, reason="advisory locks are a Postgres feature")
+def test_sweep_lock_is_released_when_the_block_raises():
+    """A sweep that throws must not wedge that sweep for the life of the process."""
+    name = f"test-sweep-raise-{uuid4().hex[:8]}"
+    with pytest.raises(RuntimeError):
+        with sweep_lock(name) as owned:
+            assert owned is True
+            raise RuntimeError("sweep blew up")
+
+    with sweep_lock(name) as after:
+        assert after is True, "the lock survived the exception and blocks every later run"
+
+
+@pytest.mark.skipif(not _IS_POSTGRES, reason="advisory locks are a Postgres feature")
+def test_different_sweeps_do_not_block_each_other():
+    """Six sweeps share this helper; one running must not stall the other five."""
+    with sweep_lock(f"sweep-a-{uuid4().hex[:8]}") as a:
+        assert a is True
+        with sweep_lock(f"sweep-b-{uuid4().hex[:8]}") as b:
+            assert b is True
 
 
 def test_completed_idempotency_keys_are_purged_past_the_window():
