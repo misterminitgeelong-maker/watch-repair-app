@@ -12,6 +12,9 @@ having even if the refactor never happens.
 Do the phases in order. Each is independently shippable; do not batch them into
 one pull request.
 
+**Status:** phases 1, 2 and 3 are done and merged. Phase 4 was investigated and
+**should not be done as written** — the measurement is in that section.
+
 ---
 
 ## Context you need
@@ -212,46 +215,69 @@ Each page has meaningful coverage of the eight areas above, `npm test` and
 
 ## Phase 4 — Collapse the three job-detail pages
 
-**Frontend. Do not start until Phase 3 is merged. The largest item here.**
+**Do not do this as written. The premise was measured and it is wrong.**
 
-### Why
+The plan said these were "three structurally identical screens" and that 4,067
+lines would become ~1,400. That was written from a distance, by reading the file
+sizes and the shared imports. Measured line-for-line, the three main components
+are **7–20% similar**:
 
-Three structurally identical screens, instantiated once per vertical: header,
-status rail, line items, attachments, message thread, quote and invoice
-actions. They differ in statuses, line-item shape and available actions.
+| pair | line-level similarity |
+|---|---|
+| watch vs shoe | 20% |
+| watch vs auto-key | 7% |
+| shoe vs auto-key | 7% |
 
-Every cross-cutting change is a three-file change with three chances to miss
-one. Expect roughly 4,067 lines to become ~1,400.
+| page | main component |
+|---|---|
+| `JobDetailPage` | 799 lines |
+| `ShoeJobDetailPage` | 485 lines |
+| `AutoKeyJobDetailPage` | 1,267 lines |
 
-They already share their building blocks — `@/components/WorkflowRail`,
-`JobMessageThread`, `JobCustomFields`, `SecureAttachment`, `@/components/ui` —
-so the duplication is in the orchestration, not the widgets.
+A shared shell over three things that differ across 80–93% of their lines is a
+config object large enough to reproduce the divergence inside itself. That is
+the classic over-unification failure, and it would be harder to change than the
+duplication it replaced.
 
-### The work
+### What the duplication actually is
 
-Extract a `JobDetailShell` taking a per-vertical config: statuses and
-transitions, line-item shape, available actions, and the API functions to call.
+The widget-level sharing is **already done**. All three pages import the same
+`JobCustomFields`, `JobMessageThread`, `SecureAttachment` and `ui`, and each has
+only one or two component imports the others lack.
 
-**Go one vertical at a time**, with the other two untouched and working. Watch,
-then shoe, then auto-key — auto-key is the largest (1,631 lines) and most
-divergent, so it benefits from the shell being proven on the other two first.
+Two components genuinely appear twice — watch and shoe each define their own:
 
-One vertical per pull request. A single PR rewriting all three is not reviewable
-and not safely revertible.
+| component | watch | shoe | similarity |
+|---|---|---|---|
+| `StatusModal` | 30 lines | 32 lines | 61% |
+| `EditTicketModal` | 113 lines | 130 lines | 72% |
 
-### Verification — this one cannot be done by tests alone
+But that similarity is **modal chrome and form scaffolding**. The payload is
+entirely different: the watch version edits brand, model, serial number,
+movement type and condition notes plus the customer; the shoe version edits the
+shoe. Unifying them means building a generic entity-form component parameterised
+by field list — a larger and more speculative abstraction than the ~250 lines of
+duplication costs.
 
-Phase 3's tests catch regressions in rendering and state. They will not catch a
-broken end-to-end workflow. **Click through all three verticals** before and
-after each vertical's PR:
+### What to do instead
 
-- intake → quote → send quote → approve → invoice → pay → collect
-- print an intake ticket and an invoice
-- upload a photo, add a note, send an SMS from the thread
-- the offline queue: go offline mid-edit, come back, confirm the replay
+Nothing, for now. This is duplication that is cheap to live with and expensive
+to remove, and the three pages are diverging because the three businesses
+genuinely differ — a shoe job has pairs and services, an auto-key job has a
+vehicle and dispatch, a watch job has a movement and parts ETA.
 
-If you cannot do this manually, do not merge it. This is user-facing surface on
-a system real shops run their day on.
+If these pages become painful again, the useful moves are narrow ones, done when
+a specific change hurts:
+
+* extract the modal and form **chrome** (not the fields) into a `FormModal` used
+  by all three, if a styling change ever has to be made in five places
+* extract the header and status rail if a workflow change ever has to be made
+  three times
+* leave the domain bodies alone
+
+The characterisation tests from Phase 3 stay valuable regardless. They were the
+prerequisite for a refactor that should not happen, but they also cover 4,064
+lines of the application's most-used screens that previously had none.
 
 ---
 
