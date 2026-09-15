@@ -145,7 +145,7 @@ function BookingRow({ booking }: { booking: ParentDashboardBookingSnippet }) {
 function needsAttentionCount(data: ParentOperationsOverview) {
   return (
     data.pending_bookings
-    + data.stale_pending_count
+    + (data.stale_pending_count ?? 0)
     + data.problem_bookings_7d
     + data.operators_missing_dispatch_phone
   )
@@ -225,7 +225,7 @@ export default function MinitOperationsPage() {
               </p>
               <p className="text-sm mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                 {data.pending_bookings > 0 && `${data.pending_bookings} pending`}
-                {data.stale_pending_count > 0 && ` · ${data.stale_pending_count} stale (>7d)`}
+                {(data.stale_pending_count ?? 0) > 0 && ` · ${(data.stale_pending_count ?? 0)} stale (>7d)`}
                 {data.problem_bookings_7d > 0 && ` · ${data.problem_bookings_7d} failed this week`}
                 {data.operators_missing_dispatch_phone > 0
                   && ` · ${data.operators_missing_dispatch_phone} operators missing SMS`}
@@ -247,13 +247,13 @@ export default function MinitOperationsPage() {
         <MetricCard
           label="Pending bookings"
           value={data.pending_bookings}
-          sub={data.stale_pending_count > 0 ? `${data.stale_pending_count} waiting over 7 days` : 'Awaiting operator response'}
+          sub={(data.stale_pending_count ?? 0) > 0 ? `${(data.stale_pending_count ?? 0)} waiting over 7 days` : 'Awaiting operator response'}
           accent={data.pending_bookings > 0}
           to="/minit/mobile-services"
         />
         <MetricCard
           label="Bookings this week"
-          value={data.bookings_7d}
+          value={data.bookings_7d ?? 0}
           sub={`${data.accepted_7d} accepted · ${data.declined_7d} declined`}
           to="/minit/reports"
         />
@@ -280,7 +280,7 @@ export default function MinitOperationsPage() {
         />
         <MetricCard
           label="Bookings (30d)"
-          value={data.bookings_30d}
+          value={data.bookings_30d ?? 0}
           sub={`${data.accepted_30d} accepted network-wide`}
           to="/minit/reports"
         />
@@ -309,7 +309,7 @@ export default function MinitOperationsPage() {
             </h2>
             <TrendingUp size={16} style={{ color: 'var(--ms-accent)' }} />
           </div>
-          {data.region_stats.length === 0 ? (
+          {(data.region_stats ?? []).length === 0 ? (
             <p className="p-5 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
               No regional data yet. Import shops with Region/Area columns or create bookings.
             </p>
@@ -326,7 +326,7 @@ export default function MinitOperationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.region_stats.map(row => (
+                  {(data.region_stats ?? []).map(row => (
                     <tr key={row.region} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                       <td className="px-4 py-2.5 font-medium" style={{ color: 'var(--ms-text)' }}>
                         {row.region}
@@ -367,17 +367,17 @@ export default function MinitOperationsPage() {
             </Link>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {data.attention_items.length === 0 ? (
+            {(data.attention_items ?? []).length === 0 ? (
               <div className="p-5 flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                 <CheckCircle2 size={18} style={{ color: '#2D7A52' }} />
                 Nothing urgent right now.
               </div>
             ) : (
-              data.attention_items.map((item, i) => (
+              (data.attention_items ?? []).map((item, i) => (
                 <AttentionRow key={`${item.kind}-${item.related_id ?? item.tenant_id ?? i}`} item={item} />
               ))
             )}
-            {data.shops_without_recent_booking > 0 && data.attention_items.every(i => i.kind !== 'shops_quiet_summary') && (
+            {data.shops_without_recent_booking > 0 && (data.attention_items ?? []).every(i => i.kind !== 'shops_quiet_summary') && (
               <div className="px-4 py-3 text-xs" style={{ color: 'var(--ms-text-muted)', borderTop: '1px solid var(--ms-border)' }}>
                 {data.shops_without_recent_booking} shops have not booked in 30 days — see{' '}
                 <Link to="/minit/reports/shops" className="underline" style={{ color: 'var(--ms-accent)' }}>
@@ -403,12 +403,12 @@ export default function MinitOperationsPage() {
             View all
           </Link>
         </div>
-        {data.recent_bookings.length === 0 ? (
+        {(data.recent_bookings ?? []).length === 0 ? (
           <p className="p-5 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             No booking requests yet. Shops submit mobile service requests from their booking screen.
           </p>
         ) : (
-          data.recent_bookings.map(b => <BookingRow key={b.id} booking={b} />)
+          (data.recent_bookings ?? []).map(b => <BookingRow key={b.id} booking={b} />)
         )}
       </Card>
     </div>

@@ -40,7 +40,7 @@ export default function PrintShoeIntakeTicketsPage() {
 
   const total = useMemo(() => {
     if (!job) return 0
-    return job.items.reduce((sum, item) => sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0), 0)
+    return (job.items ?? []).reduce((sum, item) => sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0), 0)
   }, [job])
 
   const balance = Math.max(total - (job?.deposit_cents || 0), 0)
@@ -57,8 +57,8 @@ export default function PrintShoeIntakeTicketsPage() {
   // Pre-render canvases when data is ready
   useEffect(() => {
     if (!job || !customer || !repairQr || !customerQr) return
-    const shoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
-    const shoeDescription = shoes.map(s => shoeLabel(s)).join(', ')
+    const shoes = [job.shoe, ...(job.extra_shoes ?? []).map(e => e.shoe)]
+    const shoeDescription = shoes.map(s => shoeLabel(s ?? undefined)).join(', ')
     const shared = {
       jobNumber: job.job_number,
       customerName: customer.full_name || '—',
@@ -112,7 +112,7 @@ export default function PrintShoeIntakeTicketsPage() {
   }
   if (!job) return <p className="p-8" style={{ color: 'var(--ms-text-muted)' }}>Job not found.</p>
 
-  const allShoes = [job.shoe, ...job.extra_shoes.map(e => e.shoe)]
+  const allShoes = [job.shoe, ...(job.extra_shoes ?? []).map(e => e.shoe)]
 
   return (
     <>
@@ -245,7 +245,7 @@ export default function PrintShoeIntakeTicketsPage() {
               <p className="font-semibold mb-1">Pairs in this ticket</p>
               <ul className="list-disc pl-5">
                 {allShoes.map((shoe, idx) => (
-                  <li key={idx}>{shoeLabel(shoe)}</li>
+                  <li key={idx}>{shoeLabel(shoe ?? undefined)}</li>
                 ))}
               </ul>
             </div>
@@ -257,11 +257,11 @@ export default function PrintShoeIntakeTicketsPage() {
 
             <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-2">Selected services</p>
-              {job.items.length === 0 ? (
+              {(job.items ?? []).length === 0 ? (
                 <p>—</p>
               ) : (
                 <ul className="space-y-1">
-                  {job.items.map((item: ShoeRepairJobItem) => (
+                  {(job.items ?? []).map((item: ShoeRepairJobItem) => (
                     <li key={item.id} className="text-sm">
                       {item.item_name}
                       {item.quantity > 1 ? ` x ${item.quantity}` : ''}
@@ -299,9 +299,9 @@ export default function PrintShoeIntakeTicketsPage() {
 
             <div className="rounded-lg p-3 mb-4" style={{ border: '1px solid var(--ms-border)' }}>
               <p className="font-semibold mb-2">Price Breakdown</p>
-              {job.items.length > 0 ? (
+              {(job.items ?? []).length > 0 ? (
                 <div className="space-y-1 text-sm">
-                  {job.items.map(item => {
+                  {(job.items ?? []).map(item => {
                     const lineTotal = item.unit_price_cents != null ? item.unit_price_cents * item.quantity : null
                     return (
                       <div key={item.id} className="flex justify-between gap-4">

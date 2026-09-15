@@ -13,9 +13,29 @@ export interface paths {
         };
         /**
          * Debug Demo Status
-         * @description Diagnostic: demo tenant state and B2B account count. No auth required.
+         * @description Diagnostic: demo tenant state and B2B account count. Disabled in production.
          */
         get: operations["debug_demo_status_v1_debug_demo_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/debug/sms-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Debug Sms Status
+         * @description Diagnostic: deployed commit, schema version, and inbound SMS routing stats. Disabled in production.
+         */
+        get: operations["debug_sms_status_v1_debug_sms_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -184,6 +204,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/ensure-minit-pilot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ensure Minit Pilot Endpoint
+         * @description Create or refresh Mister Minit HQ + pilot shops from MINIT_* env vars.
+         *
+         *     Use when Minit login returns 'Invalid credentials' because the pilot was never seeded on this database.
+         *     Enable with ALLOW_ENSURE_MINIT_PILOT=true (set false again after seeding).
+         */
+        post: operations["ensure_minit_pilot_endpoint_v1_auth_ensure_minit_pilot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/dev-auto-login": {
         parameters: {
             query?: never;
@@ -264,9 +307,12 @@ export interface paths {
         };
         /**
          * List known sessions for current user
-         * @description Return the currently authenticated session shape.
-         *     Until refresh-token persistence is introduced, we can only reliably surface
-         *     the active token context rather than a full device/session inventory.
+         * @description List the user's active (non-revoked, unexpired) persisted sessions.
+         *
+         *     Sessions are tracked from the moment the user signs in with per-session
+         *     tracking; tokens issued before that (or by endpoints that do not create a
+         *     session) won't appear here. The session matching the current access token's
+         *     ``sid`` is flagged ``is_current``.
          */
         get: operations["list_sessions_v1_auth_sessions_get"];
         put?: never;
@@ -288,8 +334,10 @@ export interface paths {
         put?: never;
         /**
          * Revoke all other sessions for current user
-         * @description Refresh tokens are not persisted yet, so there are currently no server-tracked
-         *     "other sessions" to revoke. Returning a deterministic result avoids a silent stub.
+         * @description Revoke every persisted session for the user except the current device.
+         *
+         *     Requires the current access token to be tracked (carry a ``sid``). Revoked
+         *     sessions can no longer be used to refresh access tokens.
          */
         post: operations["revoke_other_sessions_v1_auth_sessions_revoke_others_post"];
         delete?: never;
@@ -383,7 +431,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Customer */
+        patch: operations["update_customer_v1_customers__customer_id__patch"];
         trace?: never;
     };
     "/v1/watches": {
@@ -418,7 +467,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Watch */
+        patch: operations["update_watch_v1_watches__watch_id__patch"];
         trace?: never;
     };
     "/v1/watch-brands": {
@@ -660,6 +710,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/repair-jobs/{job_id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clone Repair Job
+         * @description Duplicate a watch repair job for the same customer/watch (fresh status and tokens).
+         */
+        post: operations["clone_repair_job_v1_repair_jobs__job_id__clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/repair-jobs/{job_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Messages
+         * @description Return the full message thread for a job: manual outbound/inbound plus automated system SMS, oldest first.
+         *
+         *     Includes every message exchanged with the customer's phone number, even when
+         *     it was logged against another of their jobs (or no job at all).
+         */
+        get: operations["get_job_messages_v1_repair_jobs__job_id__messages_get"];
+        put?: never;
+        /**
+         * Send Job Message
+         * @description Send a custom SMS to the customer and save it to the job's message thread.
+         */
+        post: operations["send_job_message_v1_repair_jobs__job_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/quotes": {
         parameters: {
             query?: never;
@@ -706,6 +803,46 @@ export interface paths {
         put?: never;
         /** Send Quote */
         post: operations["send_quote_v1_quotes__quote_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotes/send-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Quote Reminders
+         * @description Manually trigger reminder SMS for this tenant's undecided quotes (watch + mobile services).
+         *
+         *     The background scheduler does this automatically; this endpoint exists for
+         *     testing and external cron setups.
+         */
+        post: operations["send_quote_reminders_v1_quotes_send_reminders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotes/{quote_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Quote */
+        post: operations["resend_quote_v1_quotes__quote_id__resend_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -797,6 +934,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{invoice_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Invoice */
+        post: operations["send_invoice_v1_invoices__invoice_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/{invoice_id}/line-items": {
         parameters: {
             query?: never;
@@ -825,6 +979,23 @@ export interface paths {
         put?: never;
         /** Create Payment */
         post: operations["create_payment_v1_invoices__invoice_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{invoice_id}/xero/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Invoice Xero Sync */
+        post: operations["retry_invoice_xero_sync_v1_invoices__invoice_id__xero_retry_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1057,6 +1228,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/category-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sales-by-category summary for a date range (matches /export/sales rows) */
+        get: operations["get_category_summary_v1_reports_category_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/export/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export sales data as CSV, optionally scoped to one service line and date range */
+        get: operations["export_sales_csv_v1_reports_export_sales_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reports/auto-key": {
         parameters: {
             query?: never;
@@ -1091,6 +1296,291 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/gst-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GST collected on paid invoices for a date range (watch + mobile) */
+        get: operations["get_gst_summary_v1_reports_gst_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/period-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reports metrics for a calendar period */
+        get: operations["get_period_summary_v1_reports_period_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/export/period-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export period report metrics as CSV */
+        get: operations["export_period_summary_csv_v1_reports_export_period_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Vswt Files */
+        post: operations["upload_vswt_files_v1_reports_vswt_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit Vswt Batch */
+        post: operations["commit_vswt_batch_v1_reports_vswt_commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/weeks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Weeks */
+        get: operations["get_vswt_weeks_v1_reports_vswt_weeks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/weeks/{week_seq}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Vswt Week */
+        delete: operations["delete_vswt_week_v1_reports_vswt_weeks__week_seq__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Summary */
+        get: operations["get_vswt_summary_v1_reports_vswt_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Scorecard */
+        get: operations["get_vswt_scorecard_v1_reports_vswt_scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/rankings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Rankings */
+        get: operations["get_vswt_rankings_v1_reports_vswt_rankings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Vswt Directory
+         * @description Every shop in the region for one week, searchable — the entry point for browsing/looking
+         *     up any other Minit shop's numbers, not just your own. Gated the same as the rest of this
+         *     feature: you must be a Minit shop yourself to browse the network.
+         */
+        get: operations["get_vswt_directory_v1_reports_vswt_directory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/shop-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Vswt Shop Report
+         * @description One shop's Week / Month / Year numbers, each ranked against the rest of the region — the
+         *     Directory's per-shop drill-down. "Month" is a rolling trailing-4-week average; "Year" averages
+         *     every week on file (there's no calendar date on this data, only a sequence of weekly uploads,
+         *     so "Year" grows into a real year as more weeks accumulate). Averaging over many weeks — rather
+         *     than only ever showing the latest week — is what surfaces a shop that's consistently strong or
+         *     weak, instead of one that just had a single standout or disastrous week.
+         */
+        get: operations["get_vswt_shop_report_v1_reports_vswt_shop_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/leaderboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Leaderboards */
+        get: operations["get_vswt_leaderboards_v1_reports_vswt_leaderboards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Trends */
+        get: operations["get_vswt_trends_v1_reports_vswt_trends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/weekly-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Weekly Report */
+        get: operations["get_vswt_weekly_report_v1_reports_vswt_weekly_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/weekly-report/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Weekly Report Pdf */
+        get: operations["get_vswt_weekly_report_pdf_v1_reports_vswt_weekly_report_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/inbox/{event_id}": {
         parameters: {
             query?: never;
@@ -1106,6 +1596,26 @@ export interface paths {
          * @description Remove an inbox alert.
          */
         delete: operations["delete_inbox_event_v1_inbox__event_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inbox/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Inbox Count
+         * @description Lightweight badge count — avoids fetching full inbox rows on every screen.
+         */
+        get: operations["get_inbox_count_v1_inbox_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1129,6 +1639,247 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Global Search */
+        get: operations["global_search_v1_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification Preferences */
+        get: operations["get_notification_preferences_v1_me_notification_preferences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Notification Preferences */
+        patch: operations["patch_notification_preferences_v1_me_notification_preferences_patch"];
+        trace?: never;
+    };
+    "/v1/tenant/integration-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integration Health */
+        get: operations["integration_health_v1_tenant_integration_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merge Customers */
+        post: operations["merge_customers_v1_customers_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/bulk-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Auto Key Status */
+        post: operations["bulk_auto_key_status_v1_auto_key_jobs_bulk_status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/repair-jobs/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Repair Jobs Csv */
+        get: operations["export_repair_jobs_csv_v1_repair_jobs_export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Api Keys */
+        get: operations["list_api_keys_v1_tenant_api_keys_get"];
+        put?: never;
+        /** Create Api Key */
+        post: operations["create_api_key_v1_tenant_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/api-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Api Key */
+        delete: operations["revoke_api_key_v1_tenant_api_keys__key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Webhooks */
+        get: operations["list_webhooks_v1_tenant_webhooks_get"];
+        put?: never;
+        /** Create Webhook */
+        post: operations["create_webhook_v1_tenant_webhooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/webhooks/{hook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Webhook */
+        delete: operations["delete_webhook_v1_tenant_webhooks__hook_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/job-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Job Templates */
+        get: operations["list_job_templates_v1_job_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/repair-jobs/{job_id}/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Repair Job Custom Fields */
+        patch: operations["patch_repair_job_custom_fields_v1_repair_jobs__job_id__custom_fields_patch"];
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Auto Key Custom Fields */
+        patch: operations["patch_auto_key_custom_fields_v1_auto_key_jobs__job_id__custom_fields_patch"];
+        trace?: never;
+    };
+    "/v1/shoe-repair-jobs/{job_id}/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Shoe Custom Fields */
+        patch: operations["patch_shoe_custom_fields_v1_shoe_repair_jobs__job_id__custom_fields_patch"];
         trace?: never;
     };
     "/v1/public/jobs/{status_token}": {
@@ -1338,6 +2089,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/auto-key-jobs/{status_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Auto Key Job Status
+         * @description Public job summary for customer portal detail view (status_token is the opaque link id).
+         */
+        get: operations["get_public_auto_key_job_status_v1_public_auto_key_jobs__status_token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/customer-lookup": {
         parameters: {
             query?: never;
@@ -1349,7 +2120,7 @@ export interface paths {
         put?: never;
         /**
          * Customer Lookup
-         * @description Return all active jobs for a customer by email address (cross-tenant, public).
+         * @description Return all jobs for a customer by email address (cross-tenant, grouped by shop).
          */
         post: operations["customer_lookup_v1_public_customer_lookup_post"];
         delete?: never;
@@ -1398,6 +2169,157 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/portal/session/{token}/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Portal Preferences */
+        patch: operations["update_portal_preferences_v1_public_portal_session__token__preferences_patch"];
+        trace?: never;
+    };
+    "/v1/public/portal/session/{token}/message-to-shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Message To Shop
+         * @description Customer message from portal → shop inbox alert.
+         */
+        post: operations["portal_message_to_shop_v1_public_portal_session__token__message_to_shop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/auto-key-quote/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Auto Key Quote */
+        get: operations["get_public_auto_key_quote_v1_public_auto_key_quote__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/auto-key-quote/{token}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Public Auto Key Quote */
+        post: operations["decide_public_auto_key_quote_v1_public_auto_key_quote__token__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/auto-key-quote/{token}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Quote Signature
+         * @description Returns a short-lived redirect to the signature image in Supabase Storage.
+         */
+        get: operations["get_quote_signature_v1_public_auto_key_quote__token__signature_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/{slug}/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Lookup
+         * @description Find or create a customer by name+phone; return a portal session token.
+         */
+        post: operations["portal_lookup_v1_public_portal__slug__lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/{slug}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portal Profile
+         * @description Return the authenticated customer's profile, intake jobs, and loyalty.
+         */
+        get: operations["portal_profile_v1_public_portal__slug__profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/{slug}/book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Book
+         * @description Submit a mobile key job booking from the customer portal.
+         */
+        post: operations["portal_book_v1_public_portal__slug__book_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/mobile-key-leads/{ingest_public_id}": {
         parameters: {
             query?: never;
@@ -1414,6 +2336,320 @@ export interface paths {
          *     Header: ``X-Mobile-Lead-Secret``: shared secret (set in Parent account → Website lead feed).
          */
         post: operations["ingest_mobile_key_lead_v1_public_mobile_key_leads__ingest_public_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/inbound-email/{ingest_public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive Inbound Email
+         * @description Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.
+         *
+         *     Configure the parse webhook URL as
+         *     ``/v1/public/inbound-email/{ingest_public_id}?key=<shared secret>`` using the
+         *     same secret as the website lead feed (Parent account → Website lead feed).
+         */
+        post: operations["receive_inbound_email_v1_public_inbound_email__ingest_public_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/inbound-emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Inbound Emails
+         * @description Captured enquiry emails for triage (newest first).
+         */
+        get: operations["list_inbound_emails_v1_parent_accounts_me_inbound_emails_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/inbound-emails/{inbound_email_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Inbound Email */
+        get: operations["get_inbound_email_v1_parent_accounts_me_inbound_emails__inbound_email_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Inbound Email Status
+         * @description Mark a captured email processed (job created manually) or dismissed.
+         */
+        patch: operations["update_inbound_email_status_v1_parent_accounts_me_inbound_emails__inbound_email_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/inbound-emails/{inbound_email_id}/parsed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Inbound Email Parsed Preview
+         * @description Read-only preview of what the parser would extract from this email — creates nothing.
+         *
+         *     Used to pre-fill the staff review form; some emails (observed for NZ regions)
+         *     carry no field data at all, in which case ``fields_found`` is False and the
+         *     rest of the fields are empty — the form should fall back to blank inputs.
+         */
+        get: operations["get_inbound_email_parsed_preview_v1_parent_accounts_me_inbound_emails__inbound_email_id__parsed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/inbound-emails/{inbound_email_id}/create-job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Job From Inbound Email
+         * @description Create a job from staff-reviewed (and possibly hand-edited) email fields.
+         *
+         *     Always lands on the parent's HQ/escalation tenant unless ``target_tenant_id``
+         *     is explicitly given — this never auto-assigns the job to the matched
+         *     operator. No SMS or notification is sent to anyone; this only creates a job
+         *     record so HQ isn't retyping raw email text by hand.
+         */
+        post: operations["create_job_from_inbound_email_v1_parent_accounts_me_inbound_emails__inbound_email_id__create_job_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Operators */
+        get: operations["list_operators_v1_shop_mobile_bookings_operators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/suggest-operator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest Operator */
+        get: operations["suggest_operator_v1_shop_mobile_bookings_suggest_operator_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bookings */
+        get: operations["list_bookings_v1_shop_mobile_bookings_get"];
+        put?: never;
+        /** Create Booking */
+        post: operations["create_booking_v1_shop_mobile_bookings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/{booking_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Booking */
+        get: operations["get_booking_v1_shop_mobile_bookings__booking_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/{booking_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Booking */
+        post: operations["cancel_booking_v1_shop_mobile_bookings__booking_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/{booking_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Booking */
+        post: operations["decline_booking_v1_shop_mobile_bookings__booking_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop-mobile-bookings/{booking_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Booking */
+        post: operations["accept_booking_v1_shop_mobile_bookings__booking_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Public Intake
+         * @description Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.
+         */
+        post: operations["submit_public_intake_v1_public_intake_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pool
+         * @description Return unclaimed IntakeJobs visible to the authenticated operator, sorted by ring then created_at.
+         */
+        get: operations["list_pool_v1_pool_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pool/{job_id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim Pool Job
+         * @description Claim an unclaimed IntakeJob. Creates a Customer + AutoKeyJob in the operator's tenant.
+         */
+        post: operations["claim_pool_job_v1_pool__job_id__claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/dispatch-base-location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Base Location
+         * @description Geocode an address and save it as the operator's base location for ring-map routing.
+         */
+        post: operations["set_base_location_v1_settings_dispatch_base_location_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1543,6 +2779,73 @@ export interface paths {
         head?: never;
         /** Set Tenant Plan */
         patch: operations["set_tenant_plan_v1_platform_admin_tenants__tenant_id__plan_patch"];
+        trace?: never;
+    };
+    "/v1/platform-admin/tenants/{tenant_id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Tenant Paid
+         * @description Clear signup_payment_pending — use for testers/accounts paid outside Stripe.
+         */
+        post: operations["mark_tenant_paid_v1_platform_admin_tenants__tenant_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/tenants/{tenant_id}/billing-exempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Tenant Billing Exempt
+         * @description Comp a shop: stop billing it while keeping full access.
+         *
+         *     Unlike mark-paid (a one-time nudge past the signup gate), this is a durable
+         *     flag — it keeps working even after a Stripe webhook later re-flags
+         *     signup_payment_pending (e.g. once the subscription this clears is canceled).
+         *     Turning exemption on cancels any live Stripe subscription by default so the
+         *     shop actually stops being charged, not just stops being gated in-app.
+         */
+        post: operations["set_tenant_billing_exempt_v1_platform_admin_tenants__tenant_id__billing_exempt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Platform Tenant */
+        delete: operations["delete_platform_tenant_v1_platform_admin_tenants__tenant_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Tenant
+         * @description Edit shop name, slug, owner email, or reset owner password.
+         */
+        patch: operations["update_tenant_v1_platform_admin_tenants__tenant_id__patch"];
         trace?: never;
     };
     "/v1/platform-admin/tenants/{tenant_id}/force-logout": {
@@ -1836,6 +3139,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shoe-repair-jobs/shoes/{shoe_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Shoe */
+        patch: operations["update_shoe_v1_shoe_repair_jobs_shoes__shoe_id__patch"];
+        trace?: never;
+    };
     "/v1/shoe-repair-jobs": {
         parameters: {
             query?: never;
@@ -2049,6 +3369,41 @@ export interface paths {
          * @description Send a quote approval SMS to the customer with approve/decline link.
          */
         post: operations["send_shoe_quote_v1_shoe_repair_jobs__job_id__send_quote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shoe-repair-jobs/{job_id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone Shoe Repair Job */
+        post: operations["clone_shoe_repair_job_v1_shoe_repair_jobs__job_id__clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shoe-repair-jobs/{job_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shoe Job Messages */
+        get: operations["get_shoe_job_messages_v1_shoe_repair_jobs__job_id__messages_get"];
+        put?: never;
+        /** Send Shoe Job Message */
+        post: operations["send_shoe_job_message_v1_shoe_repair_jobs__job_id__messages_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2317,6 +3672,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auto-key-jobs/invoices/{invoice_id}/xero/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Auto Key Invoice Xero Sync */
+        post: operations["retry_auto_key_invoice_xero_sync_v1_auto_key_jobs_invoices__invoice_id__xero_retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/quotes/{quote_id}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Quote Signature Admin
+         * @description Returns a short-lived redirect to the signature image — authenticated staff only.
+         */
+        get: operations["get_quote_signature_admin_v1_auto_key_jobs_quotes__quote_id__signature_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone Auto Key Job */
+        post: operations["clone_auto_key_job_v1_auto_key_jobs__job_id__clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Auto Key Job Messages
+         * @description Return the full message thread: manual outbound/inbound plus automated system SMS.
+         *
+         *     Merges by job link AND by the customer's phone number, so automated mobile
+         *     services SMS saved without a job link (en route, arrival window, reminders)
+         *     and replies routed to the customer's other jobs all show up here.
+         */
+        get: operations["get_auto_key_job_messages_v1_auto_key_jobs__job_id__messages_get"];
+        put?: never;
+        /**
+         * Send Auto Key Job Message
+         * @description Send a custom SMS to the customer and save it to the job's message thread.
+         */
+        post: operations["send_auto_key_job_message_v1_auto_key_jobs__job_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customer-accounts": {
         parameters: {
             query?: never;
@@ -2438,6 +3875,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customer-accounts/{account_id}/invoices/{invoice_id}/sync-xero": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Customer Account Invoice
+         * @description Push the aggregated monthly B2B statement to Xero as ONE invoice (a line per job).
+         */
+        post: operations["sync_customer_account_invoice_v1_customer_accounts__account_id__invoices__invoice_id__sync_xero_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/mobile-lead-ingest/enable": {
         parameters: {
             query?: never;
@@ -2493,6 +3950,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/mobile-lead-ingest/escalation-tenant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Mobile Lead Escalation Tenant */
+        put: operations["set_mobile_lead_escalation_tenant_v1_parent_accounts_me_mobile_lead_ingest_escalation_tenant_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Mobile Lead Dispatch Settings */
+        put: operations["set_mobile_lead_dispatch_settings_v1_parent_accounts_me_mobile_lead_ingest_dispatch_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/mobile-lead-routes/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mobile Suburb Routes Summary
+         * @description Route counts by operator — avoids loading thousands of suburb rows in HQ UI.
+         */
+        get: operations["mobile_suburb_routes_summary_v1_parent_accounts_me_mobile_lead_routes_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/mobile-lead-routes": {
         parameters: {
             query?: never;
@@ -2505,6 +4016,26 @@ export interface paths {
         put?: never;
         /** Create Mobile Suburb Route */
         post: operations["create_mobile_suburb_route_v1_parent_accounts_me_mobile_lead_routes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/routing/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Test Mobile Operator Routing
+         * @description Preview which mobile operator would receive a lead for suburb + state.
+         */
+        get: operations["test_mobile_operator_routing_v1_parent_accounts_me_routing_test_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2528,6 +4059,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/shop-booking-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shop Booking Usage
+         * @description Per-shop booking counts for Minit-style billing (accepted + pending in month).
+         */
+        get: operations["get_shop_booking_usage_v1_parent_accounts_me_shop_booking_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me": {
         parameters: {
             query?: never;
@@ -2537,6 +4088,40 @@ export interface paths {
         };
         /** Get Parent Account Summary */
         get: operations["get_parent_account_summary_v1_parent_accounts_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/lead-ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Parent Lead Ingest Config */
+        get: operations["get_parent_lead_ingest_config_v1_parent_accounts_me_lead_ingest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Parent Account Sites */
+        get: operations["list_parent_account_sites_v1_parent_accounts_me_sites_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2579,6 +4164,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/sites/{tenant_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shop Owner Invite
+         * @description The most recent owner-login invite for a site, if any has ever been sent.
+         */
+        get: operations["get_shop_owner_invite_v1_parent_accounts_me_sites__tenant_id__invite_get"];
+        put?: never;
+        /**
+         * Create Shop Owner Invite
+         * @description Create (or reissue) a one-time invite letting a shop set its own login,
+         *     replacing the shared HQ owner credentials it was provisioned with.
+         *     Optionally sets the shop's plan/tier at the same time.
+         */
+        post: operations["create_shop_owner_invite_v1_parent_accounts_me_sites__tenant_id__invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/create-tenant": {
         parameters: {
             query?: never;
@@ -2590,6 +4201,110 @@ export interface paths {
         put?: never;
         /** Create Tenant From Parent Account */
         post: operations["create_tenant_from_parent_account_v1_parent_accounts_me_create_tenant_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/import-shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Shops From Xlsx
+         * @description Bulk create/update retail shops from a Minit shop-list Excel workbook (HQ only).
+         */
+        post: operations["import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/import-directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Directory Export
+         * @description Preview (default) or apply importing shops + real franchisee owners from
+         *     a Mister Minit "Organisation Graph" directory HTML export (HQ only).
+         *
+         *     Preview (apply=false, the default) makes no changes — call again with
+         *     apply=true, using the same file, once you're happy with the preview.
+         */
+        post: operations["import_directory_export_v1_parent_accounts_me_import_directory_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/import-operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Mobile Operators From Xlsx
+         * @description Bulk create/update mobile operators from bundled seed + TSS workbook (HQ only).
+         */
+        post: operations["import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/import-mobile-territory-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Mobile Territory Routes
+         * @description Import bundled AU territory suburb routes (HQ only). Dry-run by default.
+         */
+        post: operations["import_mobile_territory_routes_v1_parent_accounts_me_import_mobile_territory_routes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/provision-shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Provision Minit Retail Shop
+         * @description Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent.
+         */
+        post: operations["provision_minit_retail_shop_v1_parent_accounts_me_provision_shop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2608,6 +4323,199 @@ export interface paths {
         post?: never;
         /** Unlink Tenant From Parent Account */
         delete: operations["unlink_tenant_from_parent_account_v1_parent_accounts_me_sites__tenant_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/shop-invite/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shop Owner Invite Public */
+        get: operations["get_shop_owner_invite_public_v1_public_shop_invite__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/shop-invite/{token}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Shop Owner Invite */
+        post: operations["complete_shop_owner_invite_v1_public_shop_invite__token__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Overview */
+        get: operations["get_operations_overview_v1_parent_accounts_me_operations_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Bookings Report */
+        get: operations["get_operations_bookings_report_v1_parent_accounts_me_operations_bookings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Mobile Jobs Report */
+        get: operations["get_operations_mobile_jobs_report_v1_parent_accounts_me_operations_mobile_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/email-leads-by-shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Email Leads By Shop Report
+         * @description Email-lead volume grouped by the operator each email names as nearest provider.
+         *
+         *     Answers "which shops' enquiries are actually getting actioned" — buckets by
+         *     match confidence (matched / unmatched name / no fields extracted at all) so a
+         *     shop with a real backlog isn't hidden inside an "unmatched" catch-all. Parses
+         *     on the fly (nothing is persisted) — fine at current volume; revisit if the
+         *     inbox grows into the thousands.
+         */
+        get: operations["get_email_leads_by_shop_report_v1_parent_accounts_me_operations_email_leads_by_shop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-weekly-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mobile Weekly Report Preview
+         * @description Preview of the weekly Mobile Services scorecard for the most recently
+         *     completed week — the same data the opted-in weekly email would contain.
+         *     Read-only; does not send anything or change opt-in state.
+         */
+        get: operations["get_mobile_weekly_report_preview_v1_parent_accounts_me_operations_mobile_weekly_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-weekly-report/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Weekly Report Settings */
+        get: operations["get_mobile_weekly_report_settings_v1_parent_accounts_me_operations_mobile_weekly_report_settings_get"];
+        /**
+         * Update Mobile Weekly Report Settings
+         * @description Opt this parent account's owner_email in/out of the weekly Mobile Services report email.
+         */
+        put: operations["update_mobile_weekly_report_settings_v1_parent_accounts_me_operations_mobile_weekly_report_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-weekly-report/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Mobile Weekly Report Now
+         * @description Send this week's Mobile Services report email immediately, regardless of
+         *     opt-in state or whether one already went out this ISO week — for testing
+         *     or an ad-hoc resend. Does not change the opt-in setting.
+         */
+        post: operations["send_mobile_weekly_report_now_v1_parent_accounts_me_operations_mobile_weekly_report_send_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/troubleshooting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operations Troubleshooting */
+        get: operations["get_operations_troubleshooting_v1_parent_accounts_me_operations_troubleshooting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2732,6 +4640,57 @@ export interface paths {
         put?: never;
         /** Stripe Webhook */
         post: operations["stripe_webhook_v1_billing_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/xero/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Xero Connection Status */
+        get: operations["get_xero_connection_status_v1_billing_xero_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/xero/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Xero Connect Url */
+        get: operations["get_xero_connect_url_v1_billing_xero_connect_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/xero/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect Xero Connection */
+        post: operations["disconnect_xero_connection_v1_billing_xero_disconnect_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2984,6 +4943,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prospects/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Prospect Leads */
+        get: operations["list_prospect_leads_v1_prospects_leads_get"];
+        put?: never;
+        /** Create Prospect Lead */
+        post: operations["create_prospect_lead_v1_prospects_leads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prospects/leads/{lead_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Prospect Lead */
+        patch: operations["update_prospect_lead_v1_prospects_leads__lead_id__patch"];
+        trace?: never;
+    };
+    "/v1/prospects/leads/{lead_id}/convert-to-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert Prospect Lead To Account */
+        post: operations["convert_prospect_lead_to_account_v1_prospects_leads__lead_id__convert_to_account_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prospect-leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Leads */
+        get: operations["list_leads_v1_prospect_leads_get"];
+        put?: never;
+        /** Save Lead */
+        post: operations["save_lead_v1_prospect_leads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prospect-leads/{lead_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Lead */
+        delete: operations["delete_lead_v1_prospect_leads__lead_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Lead */
+        patch: operations["update_lead_v1_prospect_leads__lead_id__patch"];
+        trace?: never;
+    };
+    "/v1/prospect-leads/{lead_id}/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance Lead */
+        post: operations["advance_lead_v1_prospect_leads__lead_id__advance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/vehicle-lookup": {
         parameters: {
             query?: never;
@@ -3036,6 +5100,94 @@ export interface paths {
          * @description Return AKL complexity, known issues, tool recommendations, and cutting profiles for a vehicle.
          */
         get: operations["get_vehicle_job_context_v1_vehicle_key_specs_job_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mobile-services-pricing/oem-makes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Oem Makes */
+        get: operations["list_oem_makes_v1_mobile_services_pricing_oem_makes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mobile-services-pricing/oem-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Oem Keys By Make */
+        get: operations["list_oem_keys_by_make_v1_mobile_services_pricing_oem_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mobile-services-pricing/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Service Pricing */
+        get: operations["list_service_pricing_v1_mobile_services_pricing_services_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mobile-services-pricing/garage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Garage Pricing */
+        get: operations["list_garage_pricing_v1_mobile_services_pricing_garage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mobile-services-pricing/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pricing Catalogue Meta
+         * @description Row counts for empty-state diagnostics (same DB as DATABASE_URL).
+         */
+        get: operations["pricing_catalogue_meta_v1_mobile_services_pricing_meta_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3136,7 +5288,7 @@ export interface paths {
         head?: never;
         /**
          * Patch Mobile Notifications
-         * @description Enable or disable customer-facing SMS for mobile services (does not affect tech reminders).
+         * @description Enable or disable customer-facing SMS; optionally set dispatch phone for shop booking alerts.
          */
         patch: operations["patch_mobile_notifications_v1_toolkit_mobile_notifications_patch"];
         trace?: never;
@@ -3196,6 +5348,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/loyalty/customers/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Loyalty Profile */
+        get: operations["get_loyalty_profile_v1_loyalty_customers__customer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/loyalty/customers/{customer_id}/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjust Customer Points */
+        post: operations["adjust_customer_points_v1_loyalty_customers__customer_id__adjust_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customer-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Customer Orders */
+        get: operations["list_customer_orders_v1_customer_orders_get"];
+        put?: never;
+        /** Create Customer Order */
+        post: operations["create_customer_order_v1_customer_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customer-orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Customer Order */
+        delete: operations["delete_customer_order_v1_customer_orders__order_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Customer Order */
+        patch: operations["update_customer_order_v1_customer_orders__order_id__patch"];
+        trace?: never;
+    };
+    "/v1/customer-orders/import/sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List Import Sheets
+         * @description Return the sheet names from an uploaded Excel file (CSV returns an empty list).
+         */
+        post: operations["list_import_sheets_v1_customer_orders_import_sheets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customer-orders/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Customer Orders */
+        post: operations["import_customer_orders_v1_customer_orders_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/shop-identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shop Identity */
+        get: operations["get_shop_identity_v1_settings_shop_identity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Shop Identity */
+        patch: operations["update_shop_identity_v1_settings_shop_identity_patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3230,6 +5507,44 @@ export interface components {
             active_site_tenant_id: string;
             /** Available Sites */
             available_sites?: components["schemas"]["AuthSessionSiteOption"][];
+        };
+        /** ApiKeyCreateRequest */
+        ApiKeyCreateRequest: {
+            /** Name */
+            name: string;
+        };
+        /** ApiKeyCreateResponse */
+        ApiKeyCreateResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Api Key */
+            api_key: string;
+        };
+        /** ApiKeyRead */
+        ApiKeyRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** AttachmentRead */
         AttachmentRead: {
@@ -3278,10 +5593,20 @@ export interface components {
             /** Tenant Slug */
             tenant_slug: string;
             /**
+             * Product
+             * @default mainspring
+             */
+            product: string;
+            /**
+             * Is Minit Hq Ui
+             * @default false
+             */
+            is_minit_hq_ui: boolean;
+            /**
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
             /** Enabled Features */
             enabled_features: string[];
             /**
@@ -3309,6 +5634,8 @@ export interface components {
              * @default true
              */
             mobile_services_customer_sms_enabled: boolean;
+            /** Tenant Business Address */
+            tenant_business_address?: string | null;
         };
         /** AuthSessionSiteOption */
         AuthSessionSiteOption: {
@@ -3328,6 +5655,13 @@ export interface components {
             user_id: string;
             /** Role */
             role: string;
+        };
+        /** AutoKeyBookingConfirmBody */
+        AutoKeyBookingConfirmBody: {
+            /** Signature Data */
+            signature_data?: string | null;
+            /** Signer Name */
+            signer_name?: string | null;
         };
         /** AutoKeyInvoiceRead */
         AutoKeyInvoiceRead: {
@@ -3356,6 +5690,10 @@ export interface components {
             subtotal_cents: number;
             /** Tax Cents */
             tax_cents: number;
+            /** Gst Enabled */
+            gst_enabled: boolean;
+            /** Gst Inclusive */
+            gst_inclusive: boolean;
             /** Total Cents */
             total_cents: number;
             /** Currency */
@@ -3369,6 +5707,31 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Xero Invoice Id */
+            xero_invoice_id?: string | null;
+            /** Xero Sync Status */
+            xero_sync_status?: string | null;
+            /** Xero Sync Error */
+            xero_sync_error?: string | null;
+            /** Xero Synced At */
+            xero_synced_at?: string | null;
+        };
+        /** AutoKeyInvoiceSendResponse */
+        AutoKeyInvoiceSendResponse: {
+            invoice: components["schemas"]["AutoKeyInvoiceRead"];
+            /** Email Sent */
+            email_sent: boolean;
+            /** Email Skipped Reason */
+            email_skipped_reason?: string | null;
+            /** Email Error Detail */
+            email_error_detail?: string | null;
+            /**
+             * Sms Sent
+             * @default false
+             */
+            sms_sent: boolean;
+            /** Sms Skipped Reason */
+            sms_skipped_reason?: string | null;
         };
         /** AutoKeyJobCreate */
         AutoKeyJobCreate: {
@@ -3431,7 +5794,7 @@ export interface components {
              * @default awaiting_quote
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -3465,6 +5828,14 @@ export interface components {
              * @default shop_referred
              */
             commission_lead_source: string;
+            /** Pricing Ref Id */
+            pricing_ref_id?: string | null;
+            /** Pricing Type */
+            pricing_type?: ("oem_key" | "service" | "garage") | null;
+            /** Quoted Price */
+            quoted_price?: number | null;
+            /** Callout Inclusive */
+            callout_inclusive?: boolean | null;
         };
         /** AutoKeyJobFieldUpdate */
         AutoKeyJobFieldUpdate: {
@@ -3520,6 +5891,14 @@ export interface components {
             additional_services_json?: string | null;
             /** Commission Lead Source */
             commission_lead_source?: string | null;
+            /** Pricing Ref Id */
+            pricing_ref_id?: string | null;
+            /** Pricing Type */
+            pricing_type?: ("oem_key" | "service" | "garage") | null;
+            /** Quoted Price */
+            quoted_price?: number | null;
+            /** Callout Inclusive */
+            callout_inclusive?: boolean | null;
         };
         /** AutoKeyJobRead */
         AutoKeyJobRead: {
@@ -3584,7 +5963,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -3595,6 +5974,8 @@ export interface components {
             cost_cents: number;
             /** Created At */
             created_at: string | null;
+            /** Updated At */
+            updated_at?: string | null;
             /** Scheduled At */
             scheduled_at?: string | null;
             /** Job Address */
@@ -3610,10 +5991,22 @@ export interface components {
              * @default shop_referred
              */
             commission_lead_source: string;
+            /** Referring Shop Tenant Id */
+            referring_shop_tenant_id?: string | null;
+            /** Shop Mobile Booking Request Id */
+            shop_mobile_booking_request_id?: string | null;
             /** Customer Name */
             customer_name?: string | null;
             /** Customer Phone */
             customer_phone?: string | null;
+            /** Pricing Ref Id */
+            pricing_ref_id?: string | null;
+            /** Pricing Type */
+            pricing_type?: string | null;
+            /** Quoted Price */
+            quoted_price?: number | null;
+            /** Callout Inclusive */
+            callout_inclusive?: boolean | null;
         };
         /** AutoKeyJobStatusUpdate */
         AutoKeyJobStatusUpdate: {
@@ -3621,9 +6014,128 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Note */
             note?: string | null;
+        };
+        /**
+         * AutoKeyJobStatusUpdateResult
+         * @description Job after a status change, plus the auto-invoice outcome so the UI can
+         *     report it directly instead of inferring it by diffing invoice counts.
+         */
+        AutoKeyJobStatusUpdateResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Assigned User Id */
+            assigned_user_id?: string | null;
+            /** Customer Account Id */
+            customer_account_id?: string | null;
+            /** Job Number */
+            job_number: string;
+            /** Status Token */
+            status_token: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: number | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /** Vin */
+            vin?: string | null;
+            /** Key Type */
+            key_type?: string | null;
+            /** Blade Code */
+            blade_code?: string | null;
+            /** Chip Type */
+            chip_type?: string | null;
+            /** Tech Notes */
+            tech_notes?: string | null;
+            /** Key Quantity */
+            key_quantity: number;
+            /**
+             * Programming Status
+             * @enum {string}
+             */
+            programming_status: "pending" | "in_progress" | "programmed" | "failed" | "not_required";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "urgent";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
+            /** Salesperson */
+            salesperson?: string | null;
+            /** Collection Date */
+            collection_date?: string | null;
+            /** Deposit Cents */
+            deposit_cents: number;
+            /** Cost Cents */
+            cost_cents: number;
+            /** Created At */
+            created_at: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Scheduled At */
+            scheduled_at?: string | null;
+            /** Job Address */
+            job_address?: string | null;
+            /** Job Type */
+            job_type?: string | null;
+            /** Visit Order */
+            visit_order?: number | null;
+            /** Additional Services Json */
+            additional_services_json?: string | null;
+            /**
+             * Commission Lead Source
+             * @default shop_referred
+             */
+            commission_lead_source: string;
+            /** Referring Shop Tenant Id */
+            referring_shop_tenant_id?: string | null;
+            /** Shop Mobile Booking Request Id */
+            shop_mobile_booking_request_id?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Pricing Ref Id */
+            pricing_ref_id?: string | null;
+            /** Pricing Type */
+            pricing_type?: string | null;
+            /** Quoted Price */
+            quoted_price?: number | null;
+            /** Callout Inclusive */
+            callout_inclusive?: boolean | null;
+            /**
+             * Invoice Created
+             * @default false
+             */
+            invoice_created: boolean;
+            /** Invoice Skip Reason */
+            invoice_skip_reason?: string | null;
         };
         /** AutoKeyQuickIntakeCreate */
         AutoKeyQuickIntakeCreate: {
@@ -3637,10 +6149,24 @@ export interface components {
             /** Line Items */
             line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
             /**
-             * Tax Cents
-             * @default 0
+             * Gst Enabled
+             * @default true
              */
-            tax_cents: number;
+            gst_enabled: boolean;
+            /**
+             * Gst Inclusive
+             * @default false
+             */
+            gst_inclusive: boolean;
+        };
+        /** AutoKeyQuoteDecision */
+        AutoKeyQuoteDecision: {
+            /** Decision */
+            decision: string;
+            /** Signature Data */
+            signature_data?: string | null;
+            /** Signer Name */
+            signer_name?: string | null;
         };
         /** AutoKeyQuoteLineItemCreate */
         AutoKeyQuoteLineItemCreate: {
@@ -3698,12 +6224,25 @@ export interface components {
             subtotal_cents: number;
             /** Tax Cents */
             tax_cents: number;
+            /** Gst Enabled */
+            gst_enabled: boolean;
+            /** Gst Inclusive */
+            gst_inclusive: boolean;
             /** Total Cents */
             total_cents: number;
             /** Currency */
             currency: string;
             /** Sent At */
             sent_at?: string | null;
+            /** Signed At */
+            signed_at?: string | null;
+            /** Signer Name */
+            signer_name?: string | null;
+            /**
+             * Has Signature
+             * @default false
+             */
+            has_signature: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3715,13 +6254,23 @@ export interface components {
              */
             line_items: components["schemas"]["AutoKeyQuoteLineItemRead"][];
         };
+        /** AutoKeyQuoteSendResponse */
+        AutoKeyQuoteSendResponse: {
+            quote: components["schemas"]["AutoKeyQuoteRead"];
+            /** Email Sent */
+            email_sent: boolean;
+            /** Email Skipped Reason */
+            email_skipped_reason?: string | null;
+            /** Email Error Detail */
+            email_error_detail?: string | null;
+        };
         /** BillingCheckoutPlanRequest */
         BillingCheckoutPlanRequest: {
             /**
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
         };
         /** BillingCheckoutRequest */
         BillingCheckoutRequest: {
@@ -3760,6 +6309,18 @@ export interface components {
              * @default false
              */
             stripe_connect_details_submitted: boolean;
+            /**
+             * Xero Configured
+             * @default false
+             */
+            xero_configured: boolean;
+            /**
+             * Xero Connected
+             * @default false
+             */
+            xero_connected: boolean;
+            /** Xero Connection Status */
+            xero_connection_status?: string | null;
         };
         /** BillingLimitsUsage */
         BillingLimitsUsage: {
@@ -3785,12 +6346,58 @@ export interface components {
         };
         /** Body_import_csv_v1_import_csv_post */
         Body_import_csv_v1_import_csv_post: {
-            /** File */
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_import_customer_orders_v1_customer_orders_import_post */
+        Body_import_customer_orders_v1_customer_orders_import_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_import_directory_export_v1_parent_accounts_me_import_directory_post */
+        Body_import_directory_export_v1_parent_accounts_me_import_directory_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post */
+        Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post */
+        Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post: {
+            /**
+             * File
+             * Format: binary
+             */
             file: string;
         };
         /** Body_import_stock_master_v1_stock_import_post */
         Body_import_stock_master_v1_stock_import_post: {
-            /** File */
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_list_import_sheets_v1_customer_orders_import_sheets_post */
+        Body_list_import_sheets_v1_customer_orders_import_sheets_post: {
+            /**
+             * File
+             * Format: binary
+             */
             file: string;
         };
         /** Body_send_arrival_sms_v1_auto_key_jobs__job_id__arrival_sms_post */
@@ -3804,11 +6411,51 @@ export interface components {
             status?: string | null;
             /** Payment Method */
             payment_method?: string | null;
+            /** Subtotal Cents */
+            subtotal_cents?: number | null;
+            /** Tax Cents */
+            tax_cents?: number | null;
+            /** Total Cents */
+            total_cents?: number | null;
+            /** Currency */
+            currency?: string | null;
         };
         /** Body_upload_attachment_v1_attachments_post */
         Body_upload_attachment_v1_attachments_post: {
-            /** File */
+            /**
+             * File
+             * Format: binary
+             */
             file: string;
+        };
+        /** Body_upload_vswt_files_v1_reports_vswt_upload_post */
+        Body_upload_vswt_files_v1_reports_vswt_upload_post: {
+            /** Files */
+            files: string[];
+        };
+        /** BookBody */
+        BookBody: {
+            /** Job Address */
+            job_address: string;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: string | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Preferred Date */
+            preferred_date?: string | null;
+        };
+        /** BookResponse */
+        BookResponse: {
+            /** Intake Job Id */
+            intake_job_id: string;
+            /** Status */
+            status: string;
         };
         /** BootstrapResponse */
         BootstrapResponse: {
@@ -3818,6 +6465,20 @@ export interface components {
              */
             tenant_id: string;
             owner_user: components["schemas"]["PublicUser"];
+        };
+        /** BulkStatusRequest */
+        BulkStatusRequest: {
+            /** Job Ids */
+            job_ids: string[];
+            /** Status */
+            status: string;
+        };
+        /** CustomFieldsUpdate */
+        CustomFieldsUpdate: {
+            /** Fields */
+            fields?: {
+                [key: string]: string;
+            };
         };
         /** CustomServiceCreate */
         CustomServiceCreate: {
@@ -3945,6 +6606,14 @@ export interface components {
              * @default []
              */
             lines: components["schemas"]["CustomerAccountStatementLine"][];
+            /** Xero Invoice Id */
+            xero_invoice_id?: string | null;
+            /** Xero Sync Status */
+            xero_sync_status?: string | null;
+            /** Xero Sync Error */
+            xero_sync_error?: string | null;
+            /** Xero Synced At */
+            xero_synced_at?: string | null;
         };
         /** CustomerAccountMemberAdd */
         CustomerAccountMemberAdd: {
@@ -4126,6 +6795,200 @@ export interface components {
         CustomerLookupRequest: {
             /** Email */
             email: string;
+            /**
+             * Include History
+             * @default false
+             */
+            include_history: boolean;
+        };
+        /** CustomerLoyaltyRead */
+        CustomerLoyaltyRead: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Tier Id */
+            tier_id: number;
+            /** Tier Name */
+            tier_name: string;
+            /** Tier Label */
+            tier_label: string;
+            /** Points Balance */
+            points_balance: number;
+            /** Points Dollar Value */
+            points_dollar_value: number;
+            /** Rolling 12M Spend Cents */
+            rolling_12m_spend_cents: number;
+            /**
+             * Joined At
+             * Format: date-time
+             */
+            joined_at: string;
+        };
+        /** CustomerMergeRequest */
+        CustomerMergeRequest: {
+            /**
+             * Primary Customer Id
+             * Format: uuid
+             */
+            primary_customer_id: string;
+            /**
+             * Duplicate Customer Id
+             * Format: uuid
+             */
+            duplicate_customer_id: string;
+        };
+        /** CustomerOrderCreate */
+        CustomerOrderCreate: {
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Supplier */
+            supplier?: string | null;
+            /** Customer Id */
+            customer_id?: string | null;
+            /**
+             * Priority
+             * @default normal
+             */
+            priority: string;
+            /**
+             * Estimated Cost Cents
+             * @default 0
+             */
+            estimated_cost_cents: number;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** CustomerOrderImportResult */
+        CustomerOrderImportResult: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Total Rows */
+            total_rows: number;
+            /** Imported */
+            imported: number;
+            /** Skipped */
+            skipped: number;
+            /** Skipped Reasons */
+            skipped_reasons: {
+                [key: string]: number;
+            };
+        };
+        /** CustomerOrderRead */
+        CustomerOrderRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Customer Id */
+            customer_id: string | null;
+            /** Customer Name */
+            customer_name: string | null;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string | null;
+            /** Supplier */
+            supplier: string | null;
+            /** Status */
+            status: string;
+            /** Priority */
+            priority: string;
+            /** Estimated Cost Cents */
+            estimated_cost_cents: number;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CustomerOrderUpdate */
+        CustomerOrderUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Supplier */
+            supplier?: string | null;
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Priority */
+            priority?: string | null;
+            /** Estimated Cost Cents */
+            estimated_cost_cents?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** CustomerPortalJobRead */
+        CustomerPortalJobRead: {
+            /** Id */
+            id: string;
+            /** Type */
+            type: string;
+            /** Job Number */
+            job_number: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Created At */
+            created_at: string;
+            /** Status Token */
+            status_token: string;
+            /** Status Url */
+            status_url: string;
+            /** Detail */
+            detail?: string | null;
+            /** Pending Actions */
+            pending_actions?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** CustomerPortalLookupResponse */
+        CustomerPortalLookupResponse: {
+            /** Email */
+            email?: string | null;
+            /** Shops */
+            shops?: components["schemas"]["CustomerPortalShopRead"][];
+            /** Status Notify Email */
+            status_notify_email?: boolean | null;
+            /** Status Notify Sms */
+            status_notify_sms?: boolean | null;
+        };
+        /** CustomerPortalShopRead */
+        CustomerPortalShopRead: {
+            /** Tenant Id */
+            tenant_id: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Jobs */
+            jobs?: components["schemas"]["CustomerPortalJobRead"][];
         };
         /** CustomerRead */
         CustomerRead: {
@@ -4154,6 +7017,64 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** CustomerUpdate */
+        CustomerUpdate: {
+            /** Full Name */
+            full_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Address */
+            address?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** GarageServicingPricingRow */
+        GarageServicingPricingRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Service Name */
+            service_name: string;
+            /** Description */
+            description?: string | null;
+            /** Part Cost Notes */
+            part_cost_notes?: string | null;
+            /** Labour Time */
+            labour_time?: string | null;
+            /** Retail Price */
+            retail_price: number;
+            /** Callout Inclusive */
+            callout_inclusive: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** GlobalSearchHit */
+        GlobalSearchHit: {
+            /** Kind */
+            kind: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Href */
+            href: string;
+        };
+        /** GlobalSearchResponse */
+        GlobalSearchResponse: {
+            /** Hits */
+            hits: components["schemas"]["GlobalSearchHit"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4194,9 +7115,243 @@ export interface components {
             /** Import Target */
             import_target?: string | null;
         };
+        /** InboundEmailDetail */
+        InboundEmailDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** From Email */
+            from_email?: string | null;
+            /** Subject */
+            subject?: string | null;
+            /** Status */
+            status: string;
+            /** Auto Key Job Id */
+            auto_key_job_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** To Email */
+            to_email?: string | null;
+            /** Message Id */
+            message_id?: string | null;
+            /** Text Body */
+            text_body?: string | null;
+            /** Html Body */
+            html_body?: string | null;
+            /** Spf Result */
+            spf_result?: string | null;
+            /** Sender Ip */
+            sender_ip?: string | null;
+        };
+        /**
+         * InboundEmailJobCreateRequest
+         * @description Staff-reviewed (and possibly hand-edited) fields used to create the job.
+         */
+        InboundEmailJobCreateRequest: {
+            /** Customer Name */
+            customer_name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Suburb */
+            suburb?: string | null;
+            /** State Code */
+            state_code?: string | null;
+            /** Service Required */
+            service_required?: string | null;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: string | null;
+            /** Details */
+            details?: string | null;
+            /** Contact Preference */
+            contact_preference?: string | null;
+            /** Target Tenant Id */
+            target_tenant_id?: string | null;
+        };
+        /** InboundEmailJobCreateResult */
+        InboundEmailJobCreateResult: {
+            /**
+             * Inbound Email Id
+             * Format: uuid
+             */
+            inbound_email_id: string;
+            /**
+             * Auto Key Job Id
+             * Format: uuid
+             */
+            auto_key_job_id: string;
+            /** Job Number */
+            job_number: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+        };
+        /** InboundEmailListItem */
+        InboundEmailListItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** From Email */
+            from_email?: string | null;
+            /** Subject */
+            subject?: string | null;
+            /** Status */
+            status: string;
+            /** Auto Key Job Id */
+            auto_key_job_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * InboundEmailParsedRead
+         * @description Preview of what parsing this email would extract — read-only, nothing is created.
+         */
+        InboundEmailParsedRead: {
+            /** Fields Found */
+            fields_found: boolean;
+            /** Location State Raw */
+            location_state_raw?: string | null;
+            /** Nearest Provider Raw */
+            nearest_provider_raw?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Service Required */
+            service_required?: string | null;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: string | null;
+            /** Details */
+            details?: string | null;
+            /** Contact Preference */
+            contact_preference?: string | null;
+            /** Suggested Operator Tenant Id */
+            suggested_operator_tenant_id?: string | null;
+            /** Suggested Operator Name */
+            suggested_operator_name?: string | null;
+            /** Match Confidence */
+            match_confidence: string;
+        };
+        /** InboundEmailStatusUpdateRequest */
+        InboundEmailStatusUpdateRequest: {
+            /** Status */
+            status: string;
+        };
+        /** InboxCountRead */
+        InboxCountRead: {
+            /** Count */
+            count: number;
+        };
+        /** IntakeJobOut */
+        IntakeJobOut: {
+            /** Id */
+            id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Job Address */
+            job_address: string;
+            /** Vehicle Make */
+            vehicle_make: string | null;
+            /** Vehicle Model */
+            vehicle_model: string | null;
+            /** Vehicle Year */
+            vehicle_year: string | null;
+            /** Description */
+            description: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** IntakeSubmitBody */
+        IntakeSubmitBody: {
+            /** Customer Name */
+            customer_name: string;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /** Job Address */
+            job_address: string;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: string | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /** Description */
+            description?: string | null;
+        };
+        /** IntegrationHealthRead */
+        IntegrationHealthRead: {
+            /** Twilio Configured */
+            twilio_configured: boolean;
+            /** Last Sms Sent At */
+            last_sms_sent_at: string | null;
+            /** Last Sms Failed At */
+            last_sms_failed_at: string | null;
+            /** Stripe Configured */
+            stripe_configured: boolean;
+            /** Stripe Connect Ready */
+            stripe_connect_ready: boolean | null;
+            /** Sendgrid Configured */
+            sendgrid_configured: boolean;
+            /** Attachment Backend */
+            attachment_backend: string;
+        };
         /** InvoiceCreateFromQuoteResponse */
         InvoiceCreateFromQuoteResponse: {
             invoice: components["schemas"]["InvoiceRead"];
+        };
+        /** InvoicePageResponse */
+        InvoicePageResponse: {
+            /** Items */
+            items?: components["schemas"]["InvoiceRead"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
         };
         /** InvoiceRead */
         InvoiceRead: {
@@ -4228,6 +7383,10 @@ export interface components {
             subtotal_cents: number;
             /** Tax Cents */
             tax_cents: number;
+            /** Gst Enabled */
+            gst_enabled: boolean;
+            /** Gst Inclusive */
+            gst_inclusive: boolean;
             /** Total Cents */
             total_cents: number;
             /** Currency */
@@ -4237,12 +7396,57 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Xero Invoice Id */
+            xero_invoice_id?: string | null;
+            /** Xero Sync Status */
+            xero_sync_status?: string | null;
+            /** Xero Sync Error */
+            xero_sync_error?: string | null;
+            /** Xero Synced At */
+            xero_synced_at?: string | null;
+            /** Xero Online Invoice Url */
+            xero_online_invoice_url?: string | null;
+        };
+        /** InvoiceSendResponse */
+        InvoiceSendResponse: {
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Email Sent */
+            email_sent: boolean;
+            /** Email Skipped Reason */
+            email_skipped_reason?: string | null;
+            /** Email Error Detail */
+            email_error_detail?: string | null;
         };
         /** InvoiceWithPayments */
         InvoiceWithPayments: {
             invoice: components["schemas"]["InvoiceRead"];
             /** Payments */
             payments: components["schemas"]["PaymentRead"][];
+        };
+        /** JobMessageRead */
+        JobMessageRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Direction */
+            direction: string;
+            /** Body */
+            body: string;
+            /** From Phone */
+            from_phone?: string | null;
+            /** To Phone */
+            to_phone?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /**
          * JobNotePayload
@@ -4278,6 +7482,47 @@ export interface components {
              */
             created_at: string;
         };
+        /** JobTemplateRead */
+        JobTemplateRead: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Module */
+            module: string;
+            /** Title */
+            title: string;
+            /** Pre Quote Cents */
+            pre_quote_cents: number;
+        };
+        /**
+         * JobThreadMessage
+         * @description Unified view of a job's message thread: manual outbound, customer inbound, and automated system SMS.
+         */
+        JobThreadMessage: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Direction */
+            direction: string;
+            /** Body */
+            body: string;
+            /** From Phone */
+            from_phone?: string | null;
+            /** To Phone */
+            to_phone?: string | null;
+            /** Event */
+            event?: string | null;
+            /** Status */
+            status?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** LatLng */
         LatLng: {
             /** Lat */
@@ -4293,6 +7538,45 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** LookupBody */
+        LookupBody: {
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string;
+        };
+        /** LookupResponse */
+        LookupResponse: {
+            /** Token */
+            token: string;
+            /** Customer Id */
+            customer_id: string;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+        };
+        /** LoyaltyOut */
+        LoyaltyOut: {
+            /** Tier Name */
+            tier_name: string;
+            /** Tier Label */
+            tier_label: string;
+            /** Points Balance */
+            points_balance: number;
+            /** Points Dollar Value */
+            points_dollar_value: number;
+            /** Rolling 12M Spend Cents */
+            rolling_12m_spend_cents: number;
+        };
+        /** LoyaltyProfileResponse */
+        LoyaltyProfileResponse: {
+            loyalty: components["schemas"]["CustomerLoyaltyRead"];
+            /** Recent Ledger */
+            recent_ledger: components["schemas"]["PointsLedgerRead"][];
         };
         /** MobileKeyLeadIngestBody */
         MobileKeyLeadIngestBody: {
@@ -4322,12 +7606,27 @@ export interface components {
         /** MobileNotificationsPatch */
         MobileNotificationsPatch: {
             /** Customer Sms Enabled */
-            customer_sms_enabled: boolean;
+            customer_sms_enabled?: boolean | null;
+            /** Dispatch Phone */
+            dispatch_phone?: string | null;
         };
         /** MobileNotificationsRead */
         MobileNotificationsRead: {
             /** Customer Sms Enabled */
             customer_sms_enabled: boolean;
+            /** Dispatch Phone */
+            dispatch_phone?: string | null;
+        };
+        /** MobileServicesPricingMeta */
+        MobileServicesPricingMeta: {
+            /** Oem Row Count */
+            oem_row_count: number;
+            /** Oem Make Count */
+            oem_make_count: number;
+            /** Service Row Count */
+            service_row_count: number;
+            /** Garage Row Count */
+            garage_row_count: number;
         };
         /** MobileSuburbRouteCreateRequest */
         MobileSuburbRouteCreateRequest: {
@@ -4340,6 +7639,22 @@ export interface components {
              * Format: uuid
              */
             target_tenant_id: string;
+        };
+        /** MobileSuburbRouteOperatorSummary */
+        MobileSuburbRouteOperatorSummary: {
+            /**
+             * Target Tenant Id
+             * Format: uuid
+             */
+            target_tenant_id: string;
+            /** Operator Name */
+            operator_name: string;
+            /** Operator Slug */
+            operator_slug: string;
+            /** Operator Shop Number */
+            operator_shop_number?: string | null;
+            /** Route Count */
+            route_count: number;
         };
         /** MobileSuburbRouteRead */
         MobileSuburbRouteRead: {
@@ -4357,6 +7672,13 @@ export interface components {
              * Format: uuid
              */
             target_tenant_id: string;
+        };
+        /** MobileSuburbRoutesSummary */
+        MobileSuburbRoutesSummary: {
+            /** Total Routes */
+            total_routes: number;
+            /** Operators */
+            operators: components["schemas"]["MobileSuburbRouteOperatorSummary"][];
         };
         /** MultiSiteLoginRequest */
         MultiSiteLoginRequest: {
@@ -4388,6 +7710,90 @@ export interface components {
             /** Available Sites */
             available_sites?: components["schemas"]["AuthSessionSiteOption"][];
         };
+        /** NotificationPrefsRead */
+        NotificationPrefsRead: {
+            /** Email Quote Approved */
+            email_quote_approved: boolean;
+            /** Email Invoice Paid */
+            email_invoice_paid: boolean;
+            /** Email Sms Reply */
+            email_sms_reply: boolean;
+            /** Email Daily Digest */
+            email_daily_digest: boolean;
+            /** Email Weekly Sales Report */
+            email_weekly_sales_report: boolean;
+            /** Email Monthly Sales Report */
+            email_monthly_sales_report: boolean;
+            /** Last Weekly Sales Report Sent At */
+            last_weekly_sales_report_sent_at: string | null;
+            /** Last Monthly Sales Report Sent At */
+            last_monthly_sales_report_sent_at: string | null;
+        };
+        /** NotificationPrefsUpdate */
+        NotificationPrefsUpdate: {
+            /** Email Quote Approved */
+            email_quote_approved?: boolean | null;
+            /** Email Invoice Paid */
+            email_invoice_paid?: boolean | null;
+            /** Email Sms Reply */
+            email_sms_reply?: boolean | null;
+            /** Email Daily Digest */
+            email_daily_digest?: boolean | null;
+            /** Email Weekly Sales Report */
+            email_weekly_sales_report?: boolean | null;
+            /** Email Monthly Sales Report */
+            email_monthly_sales_report?: boolean | null;
+        };
+        /** OemKeyPricingRow */
+        OemKeyPricingRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Make */
+            make: string;
+            /** Model Variant */
+            model_variant?: string | null;
+            /** Job Type */
+            job_type: string;
+            /** Key Type */
+            key_type?: string | null;
+            /** Service Location */
+            service_location?: string | null;
+            /** Tool Required */
+            tool_required?: string | null;
+            /** Retail Price */
+            retail_price?: number | null;
+            /** Is Poa */
+            is_poa: boolean;
+            /** Callout Inclusive */
+            callout_inclusive: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** OperatorWeeklyStatsRead */
+        OperatorWeeklyStatsRead: {
+            /**
+             * Operator Tenant Id
+             * Format: uuid
+             */
+            operator_tenant_id: string;
+            /** Operator Name */
+            operator_name: string;
+            /** Customers Count */
+            customers_count: number;
+            /** Jobs Count */
+            jobs_count: number;
+            /** Sales Cents */
+            sales_cents: number;
+            /** Prior Week Sales Cents */
+            prior_week_sales_cents: number;
+            /** Prior Week Jobs Count */
+            prior_week_jobs_count: number;
+            /** Enquiries Not Actioned */
+            enquiries_not_actioned: number;
+        };
         /**
          * OptimizeDrivingRouteBody
          * @description Stops in appointment-time order. First and last stay fixed; middle stops are reordered for shorter driving.
@@ -4413,7 +7819,11 @@ export interface components {
             /** Tenant Slug */
             tenant_slug: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            /** Business Address */
+            business_address?: string | null;
+            /** Shop Number */
+            shop_number?: string | null;
         };
         /** ParentAccountEventLogRead */
         ParentAccountEventLogRead: {
@@ -4449,6 +7859,8 @@ export interface components {
             tenant_slug: string;
             /** Owner Email */
             owner_email: string;
+            /** Shop Number */
+            shop_number?: string | null;
         };
         /** ParentAccountSiteRead */
         ParentAccountSiteRead: {
@@ -4461,6 +7873,14 @@ export interface components {
             tenant_slug: string;
             /** Tenant Name */
             tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Area */
+            area?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Plan Code */
+            plan_code: string;
             /**
              * Owner User Id
              * Format: uuid
@@ -4470,6 +7890,26 @@ export interface components {
             owner_email: string;
             /** Owner Full Name */
             owner_full_name: string;
+        };
+        /** ParentAccountSitesPageResponse */
+        ParentAccountSitesPageResponse: {
+            /** Sites */
+            sites?: components["schemas"]["ParentAccountSiteRead"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
         };
         /** ParentAccountSummaryResponse */
         ParentAccountSummaryResponse: {
@@ -4482,6 +7922,11 @@ export interface components {
             parent_account_name: string;
             /** Owner Email */
             owner_email: string;
+            /**
+             * Site Count
+             * @default 0
+             */
+            site_count: number;
             /** Sites */
             sites?: components["schemas"]["ParentAccountSiteRead"][];
             /** Mobile Lead Ingest Public Id */
@@ -4494,8 +7939,227 @@ export interface components {
             /** Mobile Lead Default Tenant Id */
             mobile_lead_default_tenant_id?: string | null;
         };
+        /** ParentDashboardBookingSnippet */
+        ParentDashboardBookingSnippet: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Status */
+            status: string;
+            /** Requesting Shop Name */
+            requesting_shop_name: string;
+            /** Requesting Shop Number */
+            requesting_shop_number?: string | null;
+            /** Target Operator Name */
+            target_operator_name: string;
+            /** Region */
+            region?: string | null;
+            /** Area */
+            area?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ParentEmailLeadsByShopReport */
+        ParentEmailLeadsByShopReport: {
+            /** From Date */
+            from_date?: string | null;
+            /** To Date */
+            to_date?: string | null;
+            /** Total Emails */
+            total_emails: number;
+            /** Shops */
+            shops?: components["schemas"]["ShopEmailLeadBucket"][];
+        };
+        /** ParentImportShopsResponse */
+        ParentImportShopsResponse: {
+            /**
+             * Created Count
+             * @default 0
+             */
+            created_count: number;
+            /**
+             * Updated Count
+             * @default 0
+             */
+            updated_count: number;
+            /**
+             * Skipped Count
+             * @default 0
+             */
+            skipped_count: number;
+            /**
+             * Parsed Count
+             * @default 0
+             */
+            parsed_count: number;
+            /** Sheet Name */
+            sheet_name?: string | null;
+            /** Errors */
+            errors?: string[];
+        };
+        /** ParentImportTerritoryRoutesResponse */
+        ParentImportTerritoryRoutesResponse: {
+            /**
+             * Route Rows In File
+             * @default 0
+             */
+            route_rows_in_file: number;
+            /**
+             * Would Create Count
+             * @default 0
+             */
+            would_create_count: number;
+            /**
+             * Would Update Count
+             * @default 0
+             */
+            would_update_count: number;
+            /**
+             * Would Skip Count
+             * @default 0
+             */
+            would_skip_count: number;
+            /**
+             * Created Count
+             * @default 0
+             */
+            created_count: number;
+            /**
+             * Updated Count
+             * @default 0
+             */
+            updated_count: number;
+            /**
+             * Skipped Count
+             * @default 0
+             */
+            skipped_count: number;
+            /**
+             * Pending Apply Count
+             * @default 0
+             */
+            pending_apply_count: number;
+            /**
+             * Operator Coords Updated
+             * @default 0
+             */
+            operator_coords_updated: number;
+            /** Missing Operator Shop Numbers */
+            missing_operator_shop_numbers?: string[];
+            /**
+             * Applied
+             * @default false
+             */
+            applied: boolean;
+        };
+        /** ParentLeadIngestConfigResponse */
+        ParentLeadIngestConfigResponse: {
+            /**
+             * Parent Account Id
+             * Format: uuid
+             */
+            parent_account_id: string;
+            /** Mobile Lead Ingest Public Id */
+            mobile_lead_ingest_public_id?: string | null;
+            /**
+             * Mobile Lead Webhook Secret Configured
+             * @default false
+             */
+            mobile_lead_webhook_secret_configured: boolean;
+            /** Mobile Lead Default Tenant Id */
+            mobile_lead_default_tenant_id?: string | null;
+            /** Mobile Lead Escalation Tenant Id */
+            mobile_lead_escalation_tenant_id?: string | null;
+            /**
+             * Mobile Lead Offer Timeout Minutes
+             * @default 30
+             */
+            mobile_lead_offer_timeout_minutes: number;
+            /**
+             * Mobile Lead Max Operator Offers
+             * @default 3
+             */
+            mobile_lead_max_operator_offers: number;
+            /**
+             * Mobile Lead Force Hq Dispatch
+             * @default false
+             */
+            mobile_lead_force_hq_dispatch: boolean;
+        };
+        /** ParentMobileJobNetworkRead */
+        ParentMobileJobNetworkRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Number */
+            job_number: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /**
+             * Operator Tenant Id
+             * Format: uuid
+             */
+            operator_tenant_id: string;
+            /** Operator Name */
+            operator_name: string;
+            /** Operator Shop Number */
+            operator_shop_number?: string | null;
+            /** Referring Shop Tenant Id */
+            referring_shop_tenant_id?: string | null;
+            /** Referring Shop Name */
+            referring_shop_name?: string | null;
+            /** Referring Shop Number */
+            referring_shop_number?: string | null;
+            /** Shop Mobile Booking Request Id */
+            shop_mobile_booking_request_id?: string | null;
+            /** Scheduled At */
+            scheduled_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ParentMobileJobsReport */
+        ParentMobileJobsReport: {
+            /** From Date */
+            from_date?: string | null;
+            /** To Date */
+            to_date?: string | null;
+            /** Active Count */
+            active_count: number;
+            /** Total Count */
+            total_count: number;
+            /** Jobs */
+            jobs?: components["schemas"]["ParentMobileJobNetworkRead"][];
+        };
         /** ParentMobileLeadDefaultTenantBody */
         ParentMobileLeadDefaultTenantBody: {
+            /** Tenant Id */
+            tenant_id?: string | null;
+        };
+        /** ParentMobileLeadDispatchSettingsBody */
+        ParentMobileLeadDispatchSettingsBody: {
+            /** Offer Timeout Minutes */
+            offer_timeout_minutes?: number | null;
+            /** Max Operator Offers */
+            max_operator_offers?: number | null;
+            /** Force Hq Dispatch */
+            force_hq_dispatch?: boolean | null;
+        };
+        /** ParentMobileLeadEscalationTenantBody */
+        ParentMobileLeadEscalationTenantBody: {
             /** Tenant Id */
             tenant_id?: string | null;
         };
@@ -4503,6 +8167,195 @@ export interface components {
         ParentMobileLeadWebhookSecretBody: {
             /** Webhook Secret */
             webhook_secret: string;
+        };
+        /** ParentMobileWeeklyReportPreview */
+        ParentMobileWeeklyReportPreview: {
+            /**
+             * From Date
+             * Format: date-time
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date-time
+             */
+            to_date: string;
+            /** Rows */
+            rows?: components["schemas"]["OperatorWeeklyStatsRead"][];
+        };
+        /** ParentMobileWeeklyReportSettingsRead */
+        ParentMobileWeeklyReportSettingsRead: {
+            /** Opt In */
+            opt_in: boolean;
+            /** Last Sent At */
+            last_sent_at?: string | null;
+        };
+        /** ParentMobileWeeklyReportSettingsUpdateRequest */
+        ParentMobileWeeklyReportSettingsUpdateRequest: {
+            /** Opt In */
+            opt_in: boolean;
+        };
+        /** ParentOperationsOverview */
+        ParentOperationsOverview: {
+            /** Retail Shop Count */
+            retail_shop_count: number;
+            /** Operator Count */
+            operator_count: number;
+            /** Pending Bookings */
+            pending_bookings: number;
+            /** Active Mobile Jobs */
+            active_mobile_jobs: number;
+            /** Shops Without Recent Booking */
+            shops_without_recent_booking: number;
+            /** Problem Bookings 7D */
+            problem_bookings_7d: number;
+            /** Operators Missing Dispatch Phone */
+            operators_missing_dispatch_phone: number;
+            /**
+             * Bookings 7D
+             * @default 0
+             */
+            bookings_7d: number;
+            /**
+             * Accepted 7D
+             * @default 0
+             */
+            accepted_7d: number;
+            /**
+             * Declined 7D
+             * @default 0
+             */
+            declined_7d: number;
+            /**
+             * Bookings 30D
+             * @default 0
+             */
+            bookings_30d: number;
+            /**
+             * Accepted 30D
+             * @default 0
+             */
+            accepted_30d: number;
+            /**
+             * Stale Pending Count
+             * @default 0
+             */
+            stale_pending_count: number;
+            /** Acceptance Rate 7D */
+            acceptance_rate_7d?: number | null;
+            /** Region Stats */
+            region_stats?: components["schemas"]["ParentRegionDashboardStat"][];
+            /** Recent Bookings */
+            recent_bookings?: components["schemas"]["ParentDashboardBookingSnippet"][];
+            /** Attention Items */
+            attention_items?: components["schemas"]["ParentTroubleshootingItem"][];
+        };
+        /** ParentProvisionShopRequest */
+        ParentProvisionShopRequest: {
+            /** Shop Number */
+            shop_number: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Business Address */
+            business_address?: string | null;
+        };
+        /** ParentRegionDashboardStat */
+        ParentRegionDashboardStat: {
+            /** Region */
+            region: string;
+            /** Shop Count */
+            shop_count: number;
+            /** Bookings 30D */
+            bookings_30d: number;
+            /** Pending */
+            pending: number;
+            /** Active Shops 30D */
+            active_shops_30d: number;
+        };
+        /** ParentRoutingTestResponse */
+        ParentRoutingTestResponse: {
+            /** Suburb */
+            suburb: string;
+            /** State Code */
+            state_code: string;
+            /** Suburb Normalized */
+            suburb_normalized: string;
+            /** Routing Rule */
+            routing_rule: string;
+            /** Operator Tenant Id */
+            operator_tenant_id?: string | null;
+            /** Operator Slug */
+            operator_slug?: string | null;
+            /** Operator Name */
+            operator_name?: string | null;
+            /** Operator Shop Number */
+            operator_shop_number?: string | null;
+            /** Message */
+            message?: string | null;
+        };
+        /** ParentShopBookingVolume */
+        ParentShopBookingVolume: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Area */
+            area?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Total */
+            total: number;
+            /** Pending */
+            pending: number;
+            /** Accepted */
+            accepted: number;
+            /** Declined */
+            declined: number;
+            /** Cancelled */
+            cancelled: number;
+            /** Expired */
+            expired: number;
+        };
+        /** ParentShopBookingsReport */
+        ParentShopBookingsReport: {
+            /** From Date */
+            from_date?: string | null;
+            /** To Date */
+            to_date?: string | null;
+            totals: components["schemas"]["ParentShopBookingVolume"];
+            /** By Shop */
+            by_shop?: components["schemas"]["ParentShopBookingVolume"][];
+            /** Bookings */
+            bookings?: components["schemas"]["ShopMobileBookingRead"][];
+        };
+        /** ParentTroubleshootingItem */
+        ParentTroubleshootingItem: {
+            /** Kind */
+            kind: string;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /** Tenant Slug */
+            tenant_slug?: string | null;
+            /** Related Id */
+            related_id?: string | null;
+            /** Created At */
+            created_at?: string | null;
+        };
+        /** ParentTroubleshootingResponse */
+        ParentTroubleshootingResponse: {
+            /** Items */
+            items?: components["schemas"]["ParentTroubleshootingItem"][];
         };
         /** PaymentCreate */
         PaymentCreate: {
@@ -4560,6 +8413,18 @@ export interface components {
             /** Tenant Name */
             tenant_name: string;
         };
+        /** PlatformTenantBillingExemptRequest */
+        PlatformTenantBillingExemptRequest: {
+            /** Billing Exempt */
+            billing_exempt: boolean;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Cancel Stripe Subscription
+             * @default true
+             */
+            cancel_stripe_subscription: boolean;
+        };
         /** PlatformTenantForceLogoutRequest */
         PlatformTenantForceLogoutRequest: {
             /** Reason */
@@ -4587,6 +8452,15 @@ export interface components {
             plan_code: string;
             /** Is Active */
             is_active: boolean;
+            /** Signup Payment Pending */
+            signup_payment_pending: boolean;
+            /**
+             * Billing Exempt
+             * @default false
+             */
+            billing_exempt: boolean;
+            /** Subscription Status */
+            subscription_status?: string | null;
             /** User Count */
             user_count: number;
             /**
@@ -4601,6 +8475,17 @@ export interface components {
             is_active: boolean;
             /** Reason */
             reason?: string | null;
+        };
+        /** PlatformTenantUpdateRequest */
+        PlatformTenantUpdateRequest: {
+            /** Name */
+            name?: string | null;
+            /** Slug */
+            slug?: string | null;
+            /** Owner Email */
+            owner_email?: string | null;
+            /** New Password */
+            new_password?: string | null;
         };
         /** PlatformUserRead */
         PlatformUserRead: {
@@ -4627,10 +8512,71 @@ export interface components {
             /** Is Active */
             is_active: boolean;
         };
+        /** PointsAdjustRequest */
+        PointsAdjustRequest: {
+            /** Points Delta */
+            points_delta: number;
+            /** Note */
+            note: string;
+        };
+        /** PointsLedgerRead */
+        PointsLedgerRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Entry Type */
+            entry_type: string;
+            /** Points Delta */
+            points_delta: number;
+            /** Source Invoice Id */
+            source_invoice_id: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
+        /** PortalMessageToShopRequest */
+        PortalMessageToShopRequest: {
+            /** Job Type */
+            job_type: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Message */
+            message: string;
+        };
+        /** PortalNotificationPrefsUpdate */
+        PortalNotificationPrefsUpdate: {
+            /** Status Notify Email */
+            status_notify_email?: boolean | null;
+            /** Status Notify Sms */
+            status_notify_sms?: boolean | null;
+        };
         /** PortalSessionRequest */
         PortalSessionRequest: {
             /** Email */
             email: string;
+        };
+        /** ProfileResponse */
+        ProfileResponse: {
+            /** Customer Id */
+            customer_id: string;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Intake Jobs */
+            intake_jobs: components["schemas"]["IntakeJobOut"][];
+            loyalty: components["schemas"]["LoyaltyOut"] | null;
         };
         /** Prospect */
         Prospect: {
@@ -4650,6 +8596,174 @@ export interface components {
             category: string;
             /** Place Id */
             place_id: string;
+        };
+        /** ProspectLeadConvert */
+        ProspectLeadConvert: {
+            /** Account Name */
+            account_name: string;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+        };
+        /** ProspectLeadCreate */
+        ProspectLeadCreate: {
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id?: string | null;
+            /** Address */
+            address?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Website */
+            website?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Category */
+            category?: string | null;
+            /** State Code */
+            state_code?: string | null;
+            /** Suburb Name */
+            suburb_name?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** ProspectLeadOut */
+        ProspectLeadOut: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Place Id */
+            place_id: string | null;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Website */
+            website: string | null;
+            /** Rating */
+            rating: number | null;
+            /** Review Count */
+            review_count: number | null;
+            /** Category */
+            category: string | null;
+            /** State Code */
+            state_code: string | null;
+            /** Contact Name */
+            contact_name: string | null;
+            /** Contact Email */
+            contact_email: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Status */
+            status: string;
+            /** Visit Scheduled At */
+            visit_scheduled_at: string | null;
+            /** Customer Account Id */
+            customer_account_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ProspectLeadRead */
+        ProspectLeadRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Place Id */
+            place_id?: string | null;
+            /** Name */
+            name: string;
+            /** Address */
+            address?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Website */
+            website?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Category */
+            category?: string | null;
+            /** State Code */
+            state_code?: string | null;
+            /** Suburb Name */
+            suburb_name?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Source
+             * @default prospected
+             */
+            source: string;
+            /** Next Follow Up On */
+            next_follow_up_on?: string | null;
+            /** Visit Scheduled At */
+            visit_scheduled_at?: string | null;
+            /** Customer Account Id */
+            customer_account_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ProspectLeadUpdate */
+        ProspectLeadUpdate: {
+            /** Status */
+            status?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Next Follow Up On */
+            next_follow_up_on?: string | null;
+            /** Visit Scheduled At */
+            visit_scheduled_at?: string | null;
         };
         /** ProspectSearchResponse */
         ProspectSearchResponse: {
@@ -4733,10 +8847,15 @@ export interface components {
             /** Line Items */
             line_items: components["schemas"]["QuoteLineItemCreate"][];
             /**
-             * Tax Cents
-             * @default 0
+             * Gst Enabled
+             * @default true
              */
-            tax_cents: number;
+            gst_enabled: boolean;
+            /**
+             * Gst Inclusive
+             * @default false
+             */
+            gst_inclusive: boolean;
         };
         /** QuoteDecisionRequest */
         QuoteDecisionRequest: {
@@ -4806,6 +8925,10 @@ export interface components {
             subtotal_cents: number;
             /** Tax Cents */
             tax_cents: number;
+            /** Gst Enabled */
+            gst_enabled: boolean;
+            /** Gst Inclusive */
+            gst_inclusive: boolean;
             /** Total Cents */
             total_cents: number;
             /** Currency */
@@ -4890,10 +9013,93 @@ export interface components {
             /** Job Number Override */
             job_number_override?: string | null;
         };
+        /**
+         * RepairJobCreateResponse
+         * @description POST /repair-jobs — includes whether tracking SMS was sent.
+         */
+        RepairJobCreateResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Watch Id
+             * Format: uuid
+             */
+            watch_id: string;
+            /** Assigned User Id */
+            assigned_user_id?: string | null;
+            /** Customer Account Id */
+            customer_account_id?: string | null;
+            /** Job Number */
+            job_number: string;
+            /** Status Token */
+            status_token: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "urgent";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
+            /** Salesperson */
+            salesperson?: string | null;
+            /** Collection Date */
+            collection_date?: string | null;
+            /** Deposit Cents */
+            deposit_cents: number;
+            /** Pre Quote Cents */
+            pre_quote_cents: number;
+            /** Cost Cents */
+            cost_cents: number;
+            /** Internal Notes */
+            internal_notes?: string | null;
+            /** Parts Eta */
+            parts_eta?: string | null;
+            /** Status Changed At */
+            status_changed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Claimed By User Id */
+            claimed_by_user_id?: string | null;
+            /** Claimed By Name */
+            claimed_by_name?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /**
+             * Tracking Sms Sent
+             * @default false
+             */
+            tracking_sms_sent: boolean;
+            /** Tracking Sms Skipped Reason */
+            tracking_sms_skipped_reason?: string | null;
+        };
         /** RepairJobFieldUpdate */
         RepairJobFieldUpdate: {
             /** Customer Account Id */
             customer_account_id?: string | null;
+            /** Title */
+            title?: string | null;
             /** Cost Cents */
             cost_cents?: number | null;
             /** Pre Quote Cents */
@@ -4915,6 +9121,10 @@ export interface components {
              * @default false
              */
             clear_assigned_user: boolean;
+            /** Internal Notes */
+            internal_notes?: string | null;
+            /** Parts Eta */
+            parts_eta?: string | null;
         };
         /** RepairJobIntakeUpdate */
         RepairJobIntakeUpdate: {
@@ -4997,7 +9207,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -5008,6 +9218,12 @@ export interface components {
             pre_quote_cents: number;
             /** Cost Cents */
             cost_cents: number;
+            /** Internal Notes */
+            internal_notes?: string | null;
+            /** Parts Eta */
+            parts_eta?: string | null;
+            /** Status Changed At */
+            status_changed_at?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -5019,6 +9235,10 @@ export interface components {
             claimed_by_name?: string | null;
             /** Customer Name */
             customer_name?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
         };
         /** RepairJobStatusUpdate */
         RepairJobStatusUpdate: {
@@ -5026,7 +9246,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details";
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Note */
             note?: string | null;
         };
@@ -5038,6 +9258,8 @@ export interface components {
             mode: string;
             /** Done Ids */
             done_ids: string[];
+            /** Queue Order Ids */
+            queue_order_ids: string[];
             /** Stats */
             stats: {
                 [key: string]: number;
@@ -5070,12 +9292,72 @@ export interface components {
             mode: "watch" | "shoe";
             /** Done Ids */
             done_ids?: string[];
+            /** Queue Order Ids */
+            queue_order_ids?: string[];
             stats?: components["schemas"]["RepairQueueDayStats"];
         };
         /** ResendNotificationRequest */
         ResendNotificationRequest: {
             /** Event Type */
             event_type: string;
+        };
+        /** SaveLeadBody */
+        SaveLeadBody: {
+            /** Place Id */
+            place_id?: string | null;
+            /** Name */
+            name: string;
+            /** Address */
+            address?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Website */
+            website?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Category */
+            category?: string | null;
+            /** State Code */
+            state_code?: string | null;
+        };
+        /** SendMessagePayload */
+        SendMessagePayload: {
+            /** Body */
+            body: string;
+        };
+        /** ServicePricingRow */
+        ServicePricingRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Category */
+            category: string;
+            /** Service Name */
+            service_name: string;
+            /** Unit */
+            unit?: string | null;
+            /** Retail Price */
+            retail_price?: number | null;
+            /** Is Poa */
+            is_poa: boolean;
+            /** Callout Inclusive */
+            callout_inclusive: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** SetBaseLocationBody */
+        SetBaseLocationBody: {
+            /** Address */
+            address: string;
+            /**
+             * Ring Radius Km
+             * @default 10
+             */
+            ring_radius_km: number;
         };
         /** ShoeCreate */
         ShoeCreate: {
@@ -5199,6 +9481,92 @@ export interface components {
              * @default []
              */
             items: components["schemas"]["ShoeRepairJobItemCreate"][];
+        };
+        /**
+         * ShoeRepairJobCreateResponse
+         * @description POST /shoe-repair-jobs — includes whether tracking SMS was sent.
+         */
+        ShoeRepairJobCreateResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Shoe Id
+             * Format: uuid
+             */
+            shoe_id: string;
+            /** Assigned User Id */
+            assigned_user_id?: string | null;
+            /** Customer Account Id */
+            customer_account_id?: string | null;
+            /** Job Number */
+            job_number: string;
+            /** Status Token */
+            status_token: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Priority */
+            priority: string;
+            /** Status */
+            status: string;
+            /** Salesperson */
+            salesperson?: string | null;
+            /** Collection Date */
+            collection_date?: string | null;
+            /** Deposit Cents */
+            deposit_cents: number;
+            /** Cost Cents */
+            cost_cents: number;
+            /** Quote Approval Token */
+            quote_approval_token: string;
+            /** Quote Approval Token Expires At */
+            quote_approval_token_expires_at?: string | null;
+            /** Quote Status */
+            quote_status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["ShoeRepairJobItemRead"][];
+            shoe?: components["schemas"]["ShoeRead"] | null;
+            /**
+             * Extra Shoes
+             * @default []
+             */
+            extra_shoes: components["schemas"]["ShoeRepairJobShoeRead"][];
+            /** Complexity */
+            complexity?: string | null;
+            /** Estimated Days Min */
+            estimated_days_min?: number | null;
+            /** Estimated Days Max */
+            estimated_days_max?: number | null;
+            /** Estimated Ready By */
+            estimated_ready_by?: string | null;
+            /** Claimed By User Id */
+            claimed_by_user_id?: string | null;
+            /** Claimed By Name */
+            claimed_by_name?: string | null;
+            /**
+             * Tracking Sms Sent
+             * @default false
+             */
+            tracking_sms_sent: boolean;
+            /** Tracking Sms Skipped Reason */
+            tracking_sms_skipped_reason?: string | null;
         };
         /** ShoeRepairJobFieldUpdate */
         ShoeRepairJobFieldUpdate: {
@@ -5373,10 +9741,372 @@ export interface components {
         };
         /** ShoeRepairJobStatusUpdate */
         ShoeRepairJobStatusUpdate: {
-            /** Status */
-            status: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "completed" | "awaiting_collection" | "collected";
             /** Note */
             note?: string | null;
+        };
+        /** ShoeUpdate */
+        ShoeUpdate: {
+            /** Shoe Type */
+            shoe_type?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /** Color */
+            color?: string | null;
+            /** Description Notes */
+            description_notes?: string | null;
+        };
+        /** ShopBookingUsageResponse */
+        ShopBookingUsageResponse: {
+            /** Month */
+            month: string;
+            /** Booking Tenant Count */
+            booking_tenant_count: number;
+            /** Shops */
+            shops: components["schemas"]["ShopBookingUsageShopBreakdown"][];
+        };
+        /** ShopBookingUsageShopBreakdown */
+        ShopBookingUsageShopBreakdown: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Accepted Bookings Count */
+            accepted_bookings_count: number;
+            /** Pending Count */
+            pending_count: number;
+        };
+        /**
+         * ShopEmailLeadBucket
+         * @description Email-lead volume for one operator (or an unmatched/no-fields bucket).
+         */
+        ShopEmailLeadBucket: {
+            /** Operator Tenant Id */
+            operator_tenant_id?: string | null;
+            /** Operator Name */
+            operator_name: string;
+            /**
+             * Total Count
+             * @default 0
+             */
+            total_count: number;
+            /**
+             * New Count
+             * @default 0
+             */
+            new_count: number;
+            /**
+             * Processed Count
+             * @default 0
+             */
+            processed_count: number;
+            /**
+             * Dismissed Count
+             * @default 0
+             */
+            dismissed_count: number;
+            /** Oldest New At */
+            oldest_new_at?: string | null;
+        };
+        /** ShopIdentityRead */
+        ShopIdentityRead: {
+            /** Name */
+            name: string;
+            /** Abn */
+            abn?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Payment Instructions */
+            payment_instructions?: string | null;
+            /** Business Address */
+            business_address?: string | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /** Shop Number */
+            shop_number?: string | null;
+        };
+        /** ShopIdentityUpdate */
+        ShopIdentityUpdate: {
+            /** Abn */
+            abn?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Payment Instructions */
+            payment_instructions?: string | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /** Shop Number */
+            shop_number?: string | null;
+        };
+        /** ShopMobileBookingCreate */
+        ShopMobileBookingCreate: {
+            /** Suburb */
+            suburb: string;
+            /** State Code */
+            state_code: string;
+            /** Target Operator Tenant Id */
+            target_operator_tenant_id?: string | null;
+            /** Customer Name */
+            customer_name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /**
+             * Visit Location Type
+             * @default customer_site
+             * @enum {string}
+             */
+            visit_location_type: "customer_site" | "at_shop";
+            /** Job Address */
+            job_address: string;
+            /** Preferred Scheduled At */
+            preferred_scheduled_at?: string | null;
+            /** Job Type */
+            job_type?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** ShopMobileBookingDeclineBody */
+        ShopMobileBookingDeclineBody: {
+            /** Decline Reason */
+            decline_reason?: string | null;
+        };
+        /** ShopMobileBookingPageResponse */
+        ShopMobileBookingPageResponse: {
+            /** Items */
+            items?: components["schemas"]["ShopMobileBookingRead"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+        };
+        /** ShopMobileBookingRead */
+        ShopMobileBookingRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Parent Account Id
+             * Format: uuid
+             */
+            parent_account_id: string;
+            /**
+             * Requesting Tenant Id
+             * Format: uuid
+             */
+            requesting_tenant_id: string;
+            /** Requesting Shop Name */
+            requesting_shop_name: string;
+            /** Requesting Shop Number */
+            requesting_shop_number?: string | null;
+            /**
+             * Target Operator Tenant Id
+             * Format: uuid
+             */
+            target_operator_tenant_id: string;
+            /** Target Operator Name */
+            target_operator_name: string;
+            /** Target Operator Shop Number */
+            target_operator_shop_number?: string | null;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "accepted" | "declined" | "cancelled" | "expired" | "moved_to_pool";
+            /** Customer Name */
+            customer_name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Vehicle Make */
+            vehicle_make?: string | null;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /**
+             * Visit Location Type
+             * @enum {string}
+             */
+            visit_location_type: "customer_site" | "at_shop";
+            /** Job Address */
+            job_address: string;
+            /** Job Suburb */
+            job_suburb?: string | null;
+            /** Job State Code */
+            job_state_code?: string | null;
+            /** Operator Routing Rule */
+            operator_routing_rule?: string | null;
+            /** Preferred Scheduled At */
+            preferred_scheduled_at?: string | null;
+            /** Job Type */
+            job_type?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Operator Response At */
+            operator_response_at?: string | null;
+            /** Operator Response By User Id */
+            operator_response_by_user_id?: string | null;
+            /** Decline Reason */
+            decline_reason?: string | null;
+            /** Resulting Auto Key Job Id */
+            resulting_auto_key_job_id?: string | null;
+            /** Resulting Job Number */
+            resulting_job_number?: string | null;
+            /** Job Status */
+            job_status?: string | null;
+            /** Job Scheduled At */
+            job_scheduled_at?: string | null;
+            /** Schedule Conflict Warning */
+            schedule_conflict_warning?: string | null;
+            /** Offer Expires At */
+            offer_expires_at?: string | null;
+            /** Pool Intake Job Id */
+            pool_intake_job_id?: string | null;
+            /** Created At */
+            created_at: string | null;
+        };
+        /** ShopMobileOperatorOption */
+        ShopMobileOperatorOption: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /** Routing Rule */
+            routing_rule?: string | null;
+        };
+        /** ShopOwnerInviteCompleteRequest */
+        ShopOwnerInviteCompleteRequest: {
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /** ShopOwnerInviteCreateRequest */
+        ShopOwnerInviteCreateRequest: {
+            /** Plan Code */
+            plan_code?: string | null;
+        };
+        /** ShopOwnerInvitePublicRead */
+        ShopOwnerInvitePublicRead: {
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Masked Email */
+            masked_email: string;
+            /** Status */
+            status: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** ShopOwnerInviteRead */
+        ShopOwnerInviteRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Owner Email */
+            owner_email: string;
+            /** Owner Mobile */
+            owner_mobile?: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /** Status */
+            status: string;
+            /** Invite Url */
+            invite_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Email Sent
+             * @default false
+             */
+            email_sent: boolean;
+            /**
+             * Sms Sent
+             * @default false
+             */
+            sms_sent: boolean;
         };
         /** SmsLogRead */
         SmsLogRead: {
@@ -5413,6 +10143,26 @@ export interface components {
             };
             /** Sheet Names */
             sheet_names?: string[];
+        };
+        /** StockItemPageResponse */
+        StockItemPageResponse: {
+            /** Items */
+            items?: components["schemas"]["StockItemRead"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Limit
+             * @default 200
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
         };
         /** StockItemRead */
         StockItemRead: {
@@ -5736,7 +10486,7 @@ export interface components {
             /** Owner Password */
             owner_password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
         };
         /** TenantEventLogRead */
         TenantEventLogRead: {
@@ -5774,7 +10524,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
         };
         /** TenantSignupRequest */
         TenantSignupRequest: {
@@ -5789,7 +10539,7 @@ export interface components {
             /** Password */
             password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
         };
         /** TenantSignupResponse */
         TenantSignupResponse: {
@@ -5839,6 +10589,19 @@ export interface components {
             /** Tool Keys */
             tool_keys?: string[];
         };
+        /** UpdateLeadBody */
+        UpdateLeadBody: {
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Visit Scheduled At */
+            visit_scheduled_at?: string | null;
+        };
         /** UserCreateRequest */
         UserCreateRequest: {
             /** Email */
@@ -5876,10 +10639,22 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
+        };
+        /** VswtCommitFile */
+        VswtCommitFile: {
+            /** Filename */
+            filename: string;
+            /** Week Number */
+            week_number: number;
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** VswtCommitRequest */
+        VswtCommitRequest: {
+            /** Batch */
+            batch: components["schemas"]["VswtCommitFile"][];
         };
         /** WatchCreate */
         WatchCreate: {
@@ -5926,6 +10701,45 @@ export interface components {
             movement_type?: string | null;
             /** Condition Notes */
             condition_notes?: string | null;
+        };
+        /** WatchUpdate */
+        WatchUpdate: {
+            /** Brand */
+            brand?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Serial Number */
+            serial_number?: string | null;
+            /** Movement Type */
+            movement_type?: string | null;
+            /** Condition Notes */
+            condition_notes?: string | null;
+        };
+        /** WebhookCreateRequest */
+        WebhookCreateRequest: {
+            /** Url */
+            url: string;
+            /** Event Types */
+            event_types: string[];
+        };
+        /** WebhookRead */
+        WebhookRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Url */
+            url: string;
+            /** Event Types */
+            event_types: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** WorkLogCreate */
         WorkLogCreate: {
@@ -5979,6 +10793,21 @@ export interface components {
              */
             created_at: string;
         };
+        /** XeroConnectionStatusResponse */
+        XeroConnectionStatusResponse: {
+            /** Configured */
+            configured: boolean;
+            /** Connected */
+            connected: boolean;
+            /** Connection Status */
+            connection_status?: string | null;
+            /** Xero Tenant Id */
+            xero_tenant_id?: string | null;
+            /** Default Sales Account Code */
+            default_sales_account_code?: string | null;
+            /** Default Tax Type */
+            default_tax_type?: string | null;
+        };
         /** _AddShoeBody */
         _AddShoeBody: {
             /** Shoe Id */
@@ -5988,6 +10817,11 @@ export interface components {
         _ResendPayload: {
             /** Event */
             event: string;
+        };
+        /** _SendMessagePayload */
+        _SendMessagePayload: {
+            /** Body */
+            body: string;
         };
     };
     responses: never;
@@ -5999,6 +10833,26 @@ export interface components {
 export type $defs = Record<string, never>;
 export interface operations {
     debug_demo_status_v1_debug_demo_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    debug_sms_status_v1_debug_sms_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6231,6 +11085,26 @@ export interface operations {
         };
     };
     ensure_testing_tenant_endpoint_v1_auth_ensure_testing_tenant_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    ensure_minit_pilot_endpoint_v1_auth_ensure_minit_pilot_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -6641,6 +11515,41 @@ export interface operations {
             };
         };
     };
+    update_customer_v1_customers__customer_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_watches_v1_watches_get: {
         parameters: {
             query?: {
@@ -6720,6 +11629,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_watch_v1_watches__watch_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -6821,7 +11765,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RepairJobRead"];
+                    "application/json": components["schemas"]["RepairJobCreateResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7262,6 +12206,103 @@ export interface operations {
             };
         };
     };
+    clone_repair_job_v1_repair_jobs__job_id__clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairJobCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_messages_v1_repair_jobs__job_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobThreadMessage"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_job_message_v1_repair_jobs__job_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessagePayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobMessageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_quotes_v1_quotes_get: {
         parameters: {
             query?: {
@@ -7393,6 +12434,57 @@ export interface operations {
             };
         };
     };
+    send_quote_reminders_v1_quotes_send_reminders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    resend_quote_v1_quotes__quote_id__resend_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteSendResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     quote_decision_v1_public_quotes__token__decision_post: {
         parameters: {
             query?: never;
@@ -7461,7 +12553,10 @@ export interface operations {
     };
     list_invoices_v1_invoices_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7474,7 +12569,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceRead"][];
+                    "application/json": components["schemas"]["InvoicePageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7541,6 +12645,37 @@ export interface operations {
             };
         };
     };
+    send_invoice_v1_invoices__invoice_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSendResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_invoice_line_items_v1_invoices__invoice_id__line_items_get: {
         parameters: {
             query?: never;
@@ -7594,6 +12729,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_invoice_xero_sync_v1_invoices__invoice_id__xero_retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceRead"];
                 };
             };
             /** @description Validation Error */
@@ -8036,6 +13202,84 @@ export interface operations {
             };
         };
     };
+    get_category_summary_v1_reports_category_summary_get: {
+        parameters: {
+            query?: {
+                /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
+                period?: string | null;
+                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                reference_date?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_from?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_sales_csv_v1_reports_export_sales_get: {
+        parameters: {
+            query?: {
+                /** @description watch | shoe | mobile | all */
+                category?: string;
+                /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
+                period?: string | null;
+                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                reference_date?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_from?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_auto_key_reports_v1_reports_auto_key_get: {
         parameters: {
             query?: {
@@ -8073,6 +13317,525 @@ export interface operations {
             query?: {
                 date_from?: string | null;
                 date_to?: string | null;
+                referring_shop_tenant_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gst_summary_v1_reports_gst_summary_get: {
+        parameters: {
+            query?: {
+                /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
+                period?: string | null;
+                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                reference_date?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_from?: string | null;
+                /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_period_summary_v1_reports_period_summary_get: {
+        parameters: {
+            query: {
+                /** @description day | week | month | quarter */
+                period: string;
+                /** @description Civil date YYYY-MM-DD within the period (default: today UTC) */
+                reference_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_period_summary_csv_v1_reports_export_period_summary_get: {
+        parameters: {
+            query: {
+                /** @description day | week | month | quarter */
+                period: string;
+                /** @description Civil date YYYY-MM-DD within the period */
+                reference_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_vswt_files_v1_reports_vswt_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_vswt_files_v1_reports_vswt_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_vswt_batch_v1_reports_vswt_commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VswtCommitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_weeks_v1_reports_vswt_weeks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    delete_vswt_week_v1_reports_vswt_weeks__week_seq__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                week_seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_summary_v1_reports_vswt_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_vswt_scorecard_v1_reports_vswt_scorecard_get: {
+        parameters: {
+            query?: {
+                /** @description View another Minit shop's scorecard instead of your own (you must be a Minit shop yourself). */
+                shop_number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_rankings_v1_reports_vswt_rankings_get: {
+        parameters: {
+            query?: {
+                week?: number | null;
+                /** @description View another Minit shop's rankings instead of your own (you must be a Minit shop yourself). */
+                shop_number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_directory_v1_reports_vswt_directory_get: {
+        parameters: {
+            query?: {
+                week?: number | null;
+                /** @description Filter by shop name, shop number, or area (case-insensitive). */
+                search?: string | null;
+                /** @description KPI group to include as columns; defaults to Headline. */
+                group?: string | null;
+                /** @description Only franchise + comparable stores. */
+                peer_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_shop_report_v1_reports_vswt_shop_report_get: {
+        parameters: {
+            query?: {
+                /** @description View another Minit shop's report instead of your own (you must be a Minit shop yourself). */
+                shop_number?: string | null;
+                /** @description KPI group to include as rows; defaults to Headline. */
+                group?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_leaderboards_v1_reports_vswt_leaderboards_get: {
+        parameters: {
+            query?: {
+                week?: number | null;
+                group?: string | null;
+                /** @description 'latest' = this week's values; 'consistency' = average rank across every week on file. */
+                mode?: "latest" | "consistency";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_trends_v1_reports_vswt_trends_get: {
+        parameters: {
+            query?: {
+                weeks_back?: number;
+                /** @description View another Minit shop's trends instead of your own (you must be a Minit shop yourself). */
+                shop_number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_weekly_report_v1_reports_vswt_weekly_report_get: {
+        parameters: {
+            query: {
+                week?: number | null;
+                /** @description Comma-separated shop numbers to include, in the order picked. */
+                shop_numbers: string;
+                /** @description Rank shops only against each other instead of the whole region. */
+                compare_within_selection?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_weekly_report_pdf_v1_reports_vswt_weekly_report_pdf_get: {
+        parameters: {
+            query: {
+                week?: number | null;
+                /** @description Comma-separated shop numbers to include, in the order picked. */
+                shop_numbers: string;
+                /** @description Report title, e.g. your franchisee group's name. */
+                title?: string;
+                /** @description Rank shops only against each other instead of the whole region. */
+                compare_within_selection?: boolean;
             };
             header?: never;
             path?: never;
@@ -8129,6 +13892,38 @@ export interface operations {
             };
         };
     };
+    get_inbox_count_v1_inbox_count_get: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated event types to omit (e.g. inbound_email_received for HQ nav) */
+                exclude?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxCountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_inbox_v1_inbox_get: {
         parameters: {
             query?: {
@@ -8148,6 +13943,493 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantEventLogRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    global_search_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notification_preferences_v1_me_notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefsRead"];
+                };
+            };
+        };
+    };
+    patch_notification_preferences_v1_me_notification_preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPrefsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_health_v1_tenant_integration_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationHealthRead"];
+                };
+            };
+        };
+    };
+    merge_customers_v1_customers_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerMergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_auto_key_status_v1_auto_key_jobs_bulk_status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_repair_jobs_csv_v1_repair_jobs_export_csv_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_api_keys_v1_tenant_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyRead"][];
+                };
+            };
+        };
+    };
+    create_api_key_v1_tenant_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_key_v1_tenant_api_keys__key_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks_v1_tenant_webhooks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookRead"][];
+                };
+            };
+        };
+    };
+    create_webhook_v1_tenant_webhooks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_webhook_v1_tenant_webhooks__hook_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_job_templates_v1_job_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTemplateRead"][];
+                };
+            };
+        };
+    };
+    patch_repair_job_custom_fields_v1_repair_jobs__job_id__custom_fields_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_auto_key_custom_fields_v1_auto_key_jobs__job_id__custom_fields_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_shoe_custom_fields_v1_shoe_repair_jobs__job_id__custom_fields_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -8391,7 +14673,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AutoKeyBookingConfirmBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -8541,9 +14827,42 @@ export interface operations {
             };
         };
     };
-    customer_lookup_v1_public_customer_lookup_post: {
+    get_public_auto_key_job_status_v1_public_auto_key_jobs__status_token__get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                status_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    customer_lookup_v1_public_customer_lookup_post: {
+        parameters: {
+            query?: {
+                include_history?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8560,7 +14879,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CustomerPortalLookupResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8609,6 +14928,109 @@ export interface operations {
     };
     get_portal_session_jobs_v1_public_portal_session__token__get: {
         parameters: {
+            query?: {
+                include_history?: boolean;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPortalLookupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_portal_preferences_v1_public_portal_session__token__preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalNotificationPrefsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_message_to_shop_v1_public_portal_session__token__message_to_shop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalMessageToShopRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_auto_key_quote_v1_public_auto_key_quote__token__get: {
+        parameters: {
             query?: never;
             header?: never;
             path: {
@@ -8638,6 +15060,177 @@ export interface operations {
             };
         };
     };
+    decide_public_auto_key_quote_v1_public_auto_key_quote__token__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoKeyQuoteDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quote_signature_v1_public_auto_key_quote__token__signature_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_lookup_v1_public_portal__slug__lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_profile_v1_public_portal__slug__profile_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_book_v1_public_portal__slug__book_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ingest_mobile_key_lead_v1_public_mobile_key_leads__ingest_public_id__post: {
         parameters: {
             query?: never;
@@ -8652,6 +15245,578 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MobileKeyLeadIngestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_inbound_email_v1_public_inbound_email__ingest_public_id__post: {
+        parameters: {
+            query: {
+                key: string;
+            };
+            header?: never;
+            path: {
+                ingest_public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_inbound_emails_v1_parent_accounts_me_inbound_emails_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundEmailListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_inbound_email_v1_parent_accounts_me_inbound_emails__inbound_email_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inbound_email_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundEmailDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_inbound_email_status_v1_parent_accounts_me_inbound_emails__inbound_email_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inbound_email_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboundEmailStatusUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundEmailDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_inbound_email_parsed_preview_v1_parent_accounts_me_inbound_emails__inbound_email_id__parsed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inbound_email_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundEmailParsedRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_job_from_inbound_email_v1_parent_accounts_me_inbound_emails__inbound_email_id__create_job_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inbound_email_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboundEmailJobCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundEmailJobCreateResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_operators_v1_shop_mobile_bookings_operators_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileOperatorOption"][];
+                };
+            };
+        };
+    };
+    suggest_operator_v1_shop_mobile_bookings_suggest_operator_get: {
+        parameters: {
+            query: {
+                suburb: string;
+                state_code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileOperatorOption"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_bookings_v1_shop_mobile_bookings_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_booking_v1_shop_mobile_bookings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopMobileBookingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_booking_v1_shop_mobile_bookings__booking_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_booking_v1_shop_mobile_bookings__booking_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_booking_v1_shop_mobile_bookings__booking_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopMobileBookingDeclineBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_booking_v1_shop_mobile_bookings__booking_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileBookingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_public_intake_v1_public_intake_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeSubmitBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pool_v1_pool_get: {
+        parameters: {
+            query?: {
+                max_ring?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_pool_job_v1_pool__job_id__claim_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_base_location_v1_settings_dispatch_base_location_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBaseLocationBody"];
             };
         };
         responses: {
@@ -8910,6 +16075,136 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PlatformTenantPlanUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_tenant_paid_v1_platform_admin_tenants__tenant_id__mark_paid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tenant_billing_exempt_v1_platform_admin_tenants__tenant_id__billing_exempt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTenantBillingExemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_platform_tenant_v1_platform_admin_tenants__tenant_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_v1_platform_admin_tenants__tenant_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTenantUpdateRequest"];
             };
         };
         responses: {
@@ -9365,6 +16660,41 @@ export interface operations {
             };
         };
     };
+    update_shoe_v1_shoe_repair_jobs_shoes__shoe_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shoe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_shoe_repair_jobs_v1_shoe_repair_jobs_get: {
         parameters: {
             query?: {
@@ -9420,7 +16750,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShoeRepairJobRead"];
+                    "application/json": components["schemas"]["ShoeRepairJobCreateResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9855,6 +17185,103 @@ export interface operations {
             };
         };
     };
+    clone_shoe_repair_job_v1_shoe_repair_jobs__job_id__clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoeRepairJobCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shoe_job_messages_v1_shoe_repair_jobs__job_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobThreadMessage"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_shoe_job_message_v1_shoe_repair_jobs__job_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_SendMessagePayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobMessageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_shoe_job_sms_log_v1_shoe_repair_jobs__job_id__sms_log_get: {
         parameters: {
             query?: never;
@@ -10032,6 +17459,8 @@ export interface operations {
                 job_type?: string | null;
                 key_quantity?: number;
                 pricing_tier?: string;
+                /** @description Comma-separated list of additional job type presets */
+                additional_presets?: string | null;
             };
             header?: never;
             path?: never;
@@ -10265,7 +17694,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutoKeyJobRead"];
+                    "application/json": components["schemas"]["AutoKeyJobStatusUpdateResult"];
                 };
             };
             /** @description Validation Error */
@@ -10362,7 +17791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutoKeyQuoteRead"];
+                    "application/json": components["schemas"]["AutoKeyQuoteSendResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10378,7 +17807,9 @@ export interface operations {
     };
     send_auto_key_invoice_v1_auto_key_jobs_invoices__invoice_id__send_post: {
         parameters: {
-            query?: never;
+            query?: {
+                channel?: "sms" | "email" | "both";
+            };
             header?: never;
             path: {
                 invoice_id: string;
@@ -10393,7 +17824,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutoKeyInvoiceRead"];
+                    "application/json": components["schemas"]["AutoKeyInvoiceSendResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10457,6 +17888,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutoKeyInvoiceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_auto_key_invoice_xero_sync_v1_auto_key_jobs_invoices__invoice_id__xero_retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyInvoiceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quote_signature_admin_v1_auto_key_jobs_quotes__quote_id__signature_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clone_auto_key_job_v1_auto_key_jobs__job_id__clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyJobRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_auto_key_job_messages_v1_auto_key_jobs__job_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobThreadMessage"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_auto_key_job_message_v1_auto_key_jobs__job_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_SendMessagePayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobMessageRead"];
                 };
             };
             /** @description Validation Error */
@@ -10754,6 +18344,38 @@ export interface operations {
             };
         };
     };
+    sync_customer_account_invoice_v1_customer_accounts__account_id__invoices__invoice_id__sync_xero_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerAccountInvoiceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     enable_mobile_lead_ingest_v1_parent_accounts_me_mobile_lead_ingest_enable_post: {
         parameters: {
             query?: never;
@@ -10860,7 +18482,73 @@ export interface operations {
             };
         };
     };
-    list_mobile_suburb_routes_v1_parent_accounts_me_mobile_lead_routes_get: {
+    set_mobile_lead_escalation_tenant_v1_parent_accounts_me_mobile_lead_ingest_escalation_tenant_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentMobileLeadEscalationTenantBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLeadIngestConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_mobile_lead_dispatch_settings_v1_parent_accounts_me_mobile_lead_ingest_dispatch_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentMobileLeadDispatchSettingsBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLeadIngestConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mobile_suburb_routes_summary_v1_parent_accounts_me_mobile_lead_routes_summary_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10875,7 +18563,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["MobileSuburbRoutesSummary"];
+                };
+            };
+        };
+    };
+    list_mobile_suburb_routes_v1_parent_accounts_me_mobile_lead_routes_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by suburb name (case-insensitive) */
+                search?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["MobileSuburbRouteRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10900,6 +18621,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MobileSuburbRouteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_mobile_operator_routing_v1_parent_accounts_me_routing_test_get: {
+        parameters: {
+            query: {
+                suburb: string;
+                state_code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentRoutingTestResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10944,7 +18697,71 @@ export interface operations {
             };
         };
     };
+    get_shop_booking_usage_v1_parent_accounts_me_shop_booking_usage_get: {
+        parameters: {
+            query: {
+                /** @description Calendar month YYYY-MM */
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopBookingUsageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_parent_account_summary_v1_parent_accounts_me_get: {
+        parameters: {
+            query?: {
+                /** @description When false (default), omit the sites array for faster HQ loads. */
+                include_sites?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_parent_lead_ingest_config_v1_parent_accounts_me_lead_ingest_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10959,7 +18776,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParentAccountSummaryResponse"];
+                    "application/json": components["schemas"]["ParentLeadIngestConfigResponse"];
+                };
+            };
+        };
+    };
+    list_parent_account_sites_v1_parent_accounts_me_sites_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                search?: string | null;
+                region?: string | null;
+                /** @description Filter by retail, operator, or all (default). */
+                plan_kind?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountSitesPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11029,6 +18882,72 @@ export interface operations {
             };
         };
     };
+    get_shop_owner_invite_v1_parent_accounts_me_sites__tenant_id__invite_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOwnerInviteRead"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_shop_owner_invite_v1_parent_accounts_me_sites__tenant_id__invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ShopOwnerInviteCreateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOwnerInviteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_tenant_from_parent_account_v1_parent_accounts_me_create_tenant_post: {
         parameters: {
             query?: never;
@@ -11039,6 +18958,176 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ParentAccountCreateTenantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentImportShopsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_directory_export_v1_parent_accounts_me_import_directory_post: {
+        parameters: {
+            query?: {
+                apply?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_directory_export_v1_parent_accounts_me_import_directory_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentImportShopsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_mobile_territory_routes_v1_parent_accounts_me_import_mobile_territory_routes_post: {
+        parameters: {
+            query?: {
+                /** @description When true, write routes to the database. */
+                apply?: boolean;
+                /** @description Delete existing routes before import. */
+                replace_existing?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentImportTerritoryRoutesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provision_minit_retail_shop_v1_parent_accounts_me_provision_shop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentProvisionShopRequest"];
             };
         };
         responses: {
@@ -11080,6 +19169,320 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentAccountSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shop_owner_invite_public_v1_public_shop_invite__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOwnerInvitePublicRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_shop_owner_invite_v1_public_shop_invite__token__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopOwnerInviteCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operations_overview_v1_parent_accounts_me_operations_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentOperationsOverview"];
+                };
+            };
+        };
+    };
+    get_operations_bookings_report_v1_parent_accounts_me_operations_bookings_get: {
+        parameters: {
+            query?: {
+                /** @description ISO-8601 start (inclusive) */
+                from_date?: string | null;
+                /** @description ISO-8601 end (inclusive) */
+                to_date?: string | null;
+                status?: string | null;
+                shop_tenant_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentShopBookingsReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operations_mobile_jobs_report_v1_parent_accounts_me_operations_mobile_jobs_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+                status?: string | null;
+                operator_tenant_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentMobileJobsReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_email_leads_by_shop_report_v1_parent_accounts_me_operations_email_leads_by_shop_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentEmailLeadsByShopReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_weekly_report_preview_v1_parent_accounts_me_operations_mobile_weekly_report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentMobileWeeklyReportPreview"];
+                };
+            };
+        };
+    };
+    get_mobile_weekly_report_settings_v1_parent_accounts_me_operations_mobile_weekly_report_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+        };
+    };
+    update_mobile_weekly_report_settings_v1_parent_accounts_me_operations_mobile_weekly_report_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_mobile_weekly_report_now_v1_parent_accounts_me_operations_mobile_weekly_report_send_now_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+        };
+    };
+    get_operations_troubleshooting_v1_parent_accounts_me_operations_troubleshooting_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentTroubleshootingResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11270,6 +19673,66 @@ export interface operations {
             };
         };
     };
+    get_xero_connection_status_v1_billing_xero_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XeroConnectionStatusResponse"];
+                };
+            };
+        };
+    };
+    get_xero_connect_url_v1_billing_xero_connect_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    disconnect_xero_connection_v1_billing_xero_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XeroConnectionStatusResponse"];
+                };
+            };
+        };
+    };
     import_stock_master_v1_stock_import_post: {
         parameters: {
             query?: never;
@@ -11310,6 +19773,8 @@ export interface operations {
                 group_code?: string | null;
                 group_name?: string | null;
                 hide_zero_stock?: boolean;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -11323,7 +19788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StockItemRead"][];
+                    "application/json": components["schemas"]["StockItemPageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11762,6 +20227,291 @@ export interface operations {
             };
         };
     };
+    list_prospect_leads_v1_prospects_leads_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by pipeline status */
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_prospect_lead_v1_prospects_leads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProspectLeadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_prospect_lead_v1_prospects_leads__lead_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProspectLeadUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    convert_prospect_lead_to_account_v1_prospects_leads__lead_id__convert_to_account_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProspectLeadConvert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leads_v1_prospect_leads_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadOut"][];
+                };
+            };
+        };
+    };
+    save_lead_v1_prospect_leads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLeadBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lead_v1_prospect_leads__lead_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lead_v1_prospect_leads__lead_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeadBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    advance_lead_v1_prospect_leads__lead_id__advance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectLeadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     vehicle_lookup_v1_vehicle_lookup_get: {
         parameters: {
             query: {
@@ -11863,6 +20613,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_oem_makes_v1_mobile_services_pricing_oem_makes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    list_oem_keys_by_make_v1_mobile_services_pricing_oem_keys_get: {
+        parameters: {
+            query: {
+                make: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OemKeyPricingRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_service_pricing_v1_mobile_services_pricing_services_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePricingRow"][];
+                };
+            };
+        };
+    };
+    list_garage_pricing_v1_mobile_services_pricing_garage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GarageServicingPricingRow"][];
+                };
+            };
+        };
+    };
+    pricing_catalogue_meta_v1_mobile_services_pricing_meta_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileServicesPricingMeta"];
                 };
             };
         };
@@ -12214,6 +21075,322 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_loyalty_profile_v1_loyalty_customers__customer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoyaltyProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_customer_points_v1_loyalty_customers__customer_id__adjust_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PointsAdjustRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoyaltyProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_customer_orders_v1_customer_orders_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOrderRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_customer_order_v1_customer_orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_customer_order_v1_customer_orders__order_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_customer_order_v1_customer_orders__order_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_import_sheets_v1_customer_orders_import_sheets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_list_import_sheets_v1_customer_orders_import_sheets_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_customer_orders_v1_customer_orders_import_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+                sheet_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_customer_orders_v1_customer_orders_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOrderImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shop_identity_v1_settings_shop_identity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopIdentityRead"];
+                };
+            };
+        };
+    };
+    update_shop_identity_v1_settings_shop_identity_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopIdentityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopIdentityRead"];
                 };
             };
             /** @description Validation Error */

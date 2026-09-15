@@ -67,10 +67,10 @@ export default function MinitShopReportsPage() {
             <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
               By shop
             </div>
-            {data.by_shop.length === 0 ? (
+            {(data.by_shop ?? []).length === 0 ? (
               <p className="px-5 py-4 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No bookings in range.</p>
             ) : (
-              data.by_shop.map(row => (
+              (data.by_shop ?? []).map(row => (
                 <div
                   key={row.tenant_id}
                   className="px-5 py-3 flex justify-between gap-4 text-sm"
@@ -89,7 +89,7 @@ export default function MinitShopReportsPage() {
             <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
               Recent bookings
             </div>
-            {data.bookings.length === 0 ? (
+            {(data.bookings ?? []).length === 0 ? (
               <p className="px-5 py-4 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No rows.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -104,7 +104,7 @@ export default function MinitShopReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.bookings.map(b => (
+                    {(data.bookings ?? []).map(b => (
                       <tr key={b.id} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                         <td className="px-5 py-2 whitespace-nowrap">{formatDate(b.created_at)}</td>
                         <td className="px-5 py-2">{formatTenantLabel(b.requesting_shop_name, b.requesting_shop_number)}</td>

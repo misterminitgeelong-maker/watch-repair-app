@@ -22,7 +22,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, func, select
 
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dependencies import (
     PLAN_FEATURES,
     AuthContext,
@@ -114,7 +114,7 @@ async def receive_inbound_email(
     request: Request,
     ingest_public_id: UUID,
     key: str = Query(..., min_length=16, max_length=512),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.
 
@@ -221,7 +221,7 @@ def list_inbound_emails(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Captured enquiry emails for triage (newest first)."""
     current_user = session.get(User, auth.user_id)
@@ -241,7 +241,7 @@ def list_inbound_emails(
 def get_inbound_email(
     inbound_email_id: UUID,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     return _get_owned_inbound_email(session, auth, inbound_email_id)
 
@@ -251,7 +251,7 @@ def update_inbound_email_status(
     inbound_email_id: UUID,
     body: InboundEmailStatusUpdateRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Mark a captured email processed (job created manually) or dismissed."""
     status = body.status.strip().lower()
@@ -269,7 +269,7 @@ def update_inbound_email_status(
 def get_inbound_email_parsed_preview(
     inbound_email_id: UUID,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Read-only preview of what the parser would extract from this email — creates nothing.
 
@@ -360,7 +360,7 @@ def create_job_from_inbound_email(
     inbound_email_id: UUID,
     body: InboundEmailJobCreateRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Create a job from staff-reviewed (and possibly hand-edited) email fields.
 

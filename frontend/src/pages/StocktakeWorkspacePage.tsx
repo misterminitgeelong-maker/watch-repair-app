@@ -178,7 +178,7 @@ export default function StocktakeWorkspacePage() {
             <Link to={`/stocktakes/${stocktake.id}/summary`}>
               <Button variant="secondary">View summary</Button>
             </Link>
-            <Button onClick={() => completeMut.mutate()} disabled={completeMut.isPending || progress.total_items === 0}>
+            <Button onClick={() => completeMut.mutate()} disabled={completeMut.isPending || (progress.total_items ?? 0) === 0}>
               {completeMut.isPending ? 'Completing…' : 'Complete stocktake'}
             </Button>
           </div>
@@ -196,7 +196,7 @@ export default function StocktakeWorkspacePage() {
             >
               <option value="">All groups</option>
               {Array.from(new Set((stocktake.lines ?? []).map(line => line.group_code).filter(Boolean))).sort().map(code => (
-                <option key={code} value={code}>{code} / {stocktake.lines.find(line => line.group_code === code)?.group_name ?? code}</option>
+                <option key={code} value={code}>{code} / {(stocktake.lines ?? []).find(line => line.group_code === code)?.group_name ?? code}</option>
               ))}
             </Select>
             <Button variant="ghost" onClick={() => setGroupCode('')} disabled={!groupCode}>
@@ -247,13 +247,13 @@ export default function StocktakeWorkspacePage() {
         <Card className="p-4">
           <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Progress</div>
           <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--ms-text)' }}>
-            {progress.counted_items} / {progress.total_items}
+            {(progress.counted_items ?? 0)} / {(progress.total_items ?? 0)}
           </div>
           <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
             <div
               className="h-full rounded-full"
               style={{
-                width: progress.total_items === 0 ? '0%' : `${Math.round((progress.counted_items / progress.total_items) * 100)}%`,
+                width: (progress.total_items ?? 0) === 0 ? '0%' : `${Math.round(((progress.counted_items ?? 0) / (progress.total_items ?? 0)) * 100)}%`,
                 backgroundColor: 'var(--ms-accent)',
               }}
             />

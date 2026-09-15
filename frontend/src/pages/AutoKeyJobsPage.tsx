@@ -406,14 +406,14 @@ export default function AutoKeyJobsPage() {
   const autoKeyClosedStatuses = new Set(AUTO_KEY_CLOSED_STATUSES)
   const isClosed = (status: JobStatus) => autoKeyClosedStatuses.has(status as typeof AUTO_KEY_CLOSED_STATUSES[number])
   const unscheduledJobs = view === 'dispatch'
-    ? jobs.filter((j: { scheduled_at?: string; status: JobStatus; assigned_user_id?: string }) => {
+    ? jobs.filter((j: { scheduled_at?: string | null; status: JobStatus; assigned_user_id?: string | null }) => {
       if (j.scheduled_at) return false
       if (dispatchTechFilter && j.assigned_user_id !== dispatchTechFilter) return false
       return !isClosed(j.status)
     })
     : []
   const isSolo = users.length <= 1
-  const filteredJobs = jobs.filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string; vehicle_make?: string; vehicle_model?: string; registration_plate?: string; customer_name?: string | null }) => {
+  const filteredJobs = jobs.filter((j: { id: string; job_number: string; title: string; status: JobStatus; created_at: string | null; vehicle_make?: string | null; vehicle_model?: string | null; registration_plate?: string | null; customer_name?: string | null }) => {
     const q = search.trim().toLowerCase()
     const jn = String(j.job_number ?? '')
     const jt = String(j.title ?? '')
@@ -454,7 +454,7 @@ export default function AutoKeyJobsPage() {
       }
       if (ja.scheduled_at) return -1
       if (jb.scheduled_at) return 1
-      return new Date(jb.created_at).getTime() - new Date(ja.created_at).getTime()
+      return new Date(jb.created_at ?? 0).getTime() - new Date(ja.created_at ?? 0).getTime()
     })
   }, [view, filteredJobs])
 
@@ -1001,7 +1001,7 @@ export default function AutoKeyJobsPage() {
                   (() => {
                     const byTech = new Map<string, object[]>()
                     for (const j of sortedDispatchJobs) {
-                      const uid = (j as { assigned_user_id?: string }).assigned_user_id ?? null
+                      const uid = (j as { assigned_user_id?: string | null }).assigned_user_id ?? null
                       const key = uid ?? '__unassigned__'
                       if (!byTech.has(key)) byTech.set(key, [])
                       byTech.get(key)!.push(j)
@@ -1115,7 +1115,7 @@ export default function AutoKeyJobsPage() {
                 )
               })()}
               {(() => {
-                const unscheduled = weekJobs.filter((j: { scheduled_at?: string }) => !j.scheduled_at) as WeekSchedulerJob[]
+                const unscheduled = weekJobs.filter((j: { scheduled_at?: string | null }) => !j.scheduled_at) as WeekSchedulerJob[]
                 return (
                   <DndContext
                     sensors={weekDndSensors}
@@ -1236,7 +1236,7 @@ export default function AutoKeyJobsPage() {
                                     const dayStr = civilAddDays(weekStart, i)
                                     const slotStartMs = new Date(zonedWallTimeToUtcIso(dayStr, hour, 0, scheduleCalendarTimezone)).getTime()
                                     const slotEndMs = new Date(zonedWallTimeToUtcIso(dayStr, hour + 1, 0, scheduleCalendarTimezone)).getTime()
-                                    const inSlot = weekJobs.filter((j: { scheduled_at?: string }) => {
+                                    const inSlot = weekJobs.filter((j: { scheduled_at?: string | null }) => {
                                       if (!j.scheduled_at) return false
                                       const t = new Date(j.scheduled_at).getTime()
                                       return t >= slotStartMs && t < slotEndMs
@@ -1407,7 +1407,7 @@ export default function AutoKeyJobsPage() {
                   <div className="space-y-3">
                     {[...(dispatchJobs as AutoKeyJob[])]
                       .sort(compareByVisitThenTime)
-                      .map((job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; scheduled_at?: string; job_address?: string; vehicle_make?: string; vehicle_model?: string; visit_order?: number | null }) => {
+                      .map((job: { id: string; job_number: string; title: string; customer_id: string; customer_name?: string | null; customer_phone?: string | null; scheduled_at?: string | null; job_address?: string | null; vehicle_make?: string | null; vehicle_model?: string | null; visit_order?: number | null }) => {
                         const customer = customers.find((c: { id: string }) => c.id === job.customer_id)
                         const displayName = customer?.full_name ?? job.customer_name ?? '—'
                         const timeStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'

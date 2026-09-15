@@ -1,3 +1,11 @@
+"""
+Cross-tenant by design: platform administration across all tenants.
+
+Endpoints here take ``unscoped_session`` rather than ``get_session`` so the ORM
+tenant filter in app/tenant_scope.py does not apply. That is deliberate and is
+meant to be visible: an endpoint crossing the tenant boundary says so in its
+signature, and these modules are the complete list of places that do.
+"""
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -5,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlmodel import Session, func, select
 
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dependencies import AuthContext, invalidate_auth_cache, require_platform_admin
 from ..models import (
     AutoKeyJob,
@@ -49,7 +57,7 @@ def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
 @router.get("/users", response_model=list[PlatformUserRead])
 def list_all_users(
     _: object = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     rows = session.exec(
         select(User, Tenant)
@@ -75,7 +83,7 @@ def list_all_users(
 @router.get("/tenants", response_model=list[PlatformTenantRead])
 def list_all_tenants(
     _: object = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenants = session.exec(select(Tenant).order_by(Tenant.name)).all()
 
@@ -110,7 +118,7 @@ def list_all_tenants(
 def enter_shop(
     tenant_id: UUID,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Issue a platform_admin-scoped token for any tenant, allowing the admin to
     view and manage that shop's data as if they were the owner."""
@@ -163,7 +171,7 @@ def set_tenant_status(
     tenant_id: UUID,
     payload: PlatformTenantStatusUpdateRequest,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
@@ -198,7 +206,7 @@ def set_tenant_plan(
     tenant_id: UUID,
     payload: PlatformTenantPlanUpdateRequest,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
@@ -227,7 +235,7 @@ def set_tenant_plan(
 def mark_tenant_paid(
     tenant_id: UUID,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Clear signup_payment_pending — use for testers/accounts paid outside Stripe."""
     tenant = session.get(Tenant, tenant_id)
@@ -259,7 +267,7 @@ def set_tenant_billing_exempt(
     tenant_id: UUID,
     payload: PlatformTenantBillingExemptRequest,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Comp a shop: stop billing it while keeping full access.
 
@@ -327,7 +335,7 @@ def update_tenant(
     tenant_id: UUID,
     payload: PlatformTenantUpdateRequest,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Edit shop name, slug, owner email, or reset owner password."""
     tenant = session.get(Tenant, tenant_id)
@@ -406,7 +414,7 @@ def force_tenant_logout(
     tenant_id: UUID,
     payload: PlatformTenantForceLogoutRequest,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
@@ -437,7 +445,7 @@ def force_tenant_logout(
 def delete_platform_tenant(
     tenant_id: UUID,
     auth: AuthContext = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
@@ -531,7 +539,7 @@ def list_platform_activity(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     _: object = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     rows = session.exec(
         select(TenantEventLog)
@@ -710,6 +718,6 @@ def _build_platform_reports(session: Session) -> dict:
 @router.get("/reports")
 def get_platform_reports(
     _: object = Depends(require_platform_admin),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     return _build_platform_reports(session)

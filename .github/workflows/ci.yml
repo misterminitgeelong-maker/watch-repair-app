@@ -65,6 +65,20 @@ jobs:
           echo "DATABASE_URL (env) = $DATABASE_URL"
           python -m pytest tests/ -v --tb=short
 
+      # The checked-in OpenAPI document is generated from the app. It had gone
+      # stale — missing 121 of 297 endpoints — because nothing verified it.
+      - name: Check the generated OpenAPI document is up to date
+        run: |
+          cd frontend
+          python ../backend/scripts/export_openapi_json.py ./src/lib/generated/openapi.json
+          if ! git diff --quiet -- src/lib/generated/openapi.json; then
+            echo "::error::src/lib/generated/openapi.json is stale."
+            echo "Run 'npm run generate:api-types' in frontend/ and commit the result."
+            git diff --stat -- src/lib/generated/openapi.json
+            exit 1
+          fi
+          echo "OpenAPI document is current."
+
       - name: Check migrations match models (schema drift)
         run: |
           cd backend
@@ -125,6 +139,14 @@ jobs:
         run: |
           cd frontend
           npm run lint
+
+      # The hand-written API types in src/lib/api/index.ts mirror the backend's
+      # schemas. conformance.test-d.ts asserts the two agree; this is what fails
+      # the build when a backend shape changes and the mirror is not updated.
+      - name: Typecheck frontend (includes API conformance)
+        run: |
+          cd frontend
+          npm run typecheck
 
       - name: Test frontend
         run: |

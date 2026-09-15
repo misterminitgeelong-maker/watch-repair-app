@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..config import settings
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dispatch_utils import geocode_address
 from ..dependencies import (
     AuthContext,
@@ -427,7 +427,7 @@ def _assert_can_view(auth: AuthContext, row: ShopMobileBookingRequest) -> None:
 @router.get("/operators", response_model=list[ShopMobileOperatorOption])
 def list_operators(
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     parent_ids = _parent_account_ids_for_tenant(session, auth.tenant_id)
     if not parent_ids:
@@ -464,7 +464,7 @@ def suggest_operator(
     suburb: str = Query(..., min_length=1),
     state_code: str = Query(..., min_length=2, max_length=8),
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     try:
         operator_tid, _parent_id, routing_rule = _resolve_operator_for_booking(
@@ -481,7 +481,7 @@ def suggest_operator(
 async def create_booking(
     body: ShopMobileBookingCreate,
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     suburb = body.suburb.strip()
     state_code = body.state_code.strip().upper()
@@ -637,7 +637,7 @@ def list_bookings(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     if _tenant_has_auto_key(session, auth.tenant_id):
         q = select(ShopMobileBookingRequest).where(
@@ -674,7 +674,7 @@ def list_bookings(
 def get_booking(
     booking_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     row = _get_booking_or_404(session, booking_id)
     _assert_can_view(auth, row)
@@ -688,7 +688,7 @@ def get_booking(
 def cancel_booking(
     booking_id: UUID,
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     row = _get_booking_or_404(session, booking_id)
     if row.requesting_tenant_id != auth.tenant_id:
@@ -707,7 +707,7 @@ def decline_booking(
     booking_id: UUID,
     body: ShopMobileBookingDeclineBody,
     auth: AuthContext = Depends(require_feature("auto_key")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     row = _get_booking_or_404(session, booking_id)
     if row.target_operator_tenant_id != auth.tenant_id:
@@ -755,7 +755,7 @@ def decline_booking(
 def accept_booking(
     booking_id: UUID,
     auth: AuthContext = Depends(require_feature("auto_key")),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     row = _get_booking_or_404(session, booking_id)
     if row.target_operator_tenant_id != auth.tenant_id:

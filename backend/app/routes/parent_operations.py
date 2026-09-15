@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
 from sqlmodel import Session, col, func, select
 
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -524,7 +524,7 @@ def _recent_booking_snippets(
 @router.get("/me/operations/overview", response_model=ParentOperationsOverview)
 def get_operations_overview(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
     user = session.get(User, auth.user_id)
@@ -654,7 +654,7 @@ def get_operations_bookings_report(
     shop_tenant_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
     user = session.get(User, auth.user_id)
@@ -751,7 +751,7 @@ def get_operations_mobile_jobs_report(
     operator_tenant_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
     user = session.get(User, auth.user_id)
@@ -828,7 +828,7 @@ def get_email_leads_by_shop_report(
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Email-lead volume grouped by the operator each email names as nearest provider.
 
@@ -875,7 +875,7 @@ def get_email_leads_by_shop_report(
 @router.get("/me/operations/mobile-weekly-report", response_model=ParentMobileWeeklyReportPreview)
 def get_mobile_weekly_report_preview(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Preview of the weekly Mobile Services scorecard for the most recently
     completed week — the same data the opted-in weekly email would contain.
@@ -915,7 +915,7 @@ def get_mobile_weekly_report_preview(
 @router.get("/me/operations/mobile-weekly-report/settings", response_model=ParentMobileWeeklyReportSettingsRead)
 def get_mobile_weekly_report_settings(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
     user = session.get(User, auth.user_id)
@@ -932,7 +932,7 @@ def get_mobile_weekly_report_settings(
 def update_mobile_weekly_report_settings(
     body: ParentMobileWeeklyReportSettingsUpdateRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Opt this parent account's owner_email in/out of the weekly Mobile Services report email."""
     _require_minit_hq(auth, session)
@@ -953,7 +953,7 @@ def update_mobile_weekly_report_settings(
 @router.post("/me/operations/mobile-weekly-report/send-now", response_model=ParentMobileWeeklyReportSettingsRead)
 def send_mobile_weekly_report_now(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Send this week's Mobile Services report email immediately, regardless of
     opt-in state or whether one already went out this ISO week — for testing
@@ -979,7 +979,7 @@ def send_mobile_weekly_report_now(
 def get_operations_troubleshooting(
     limit: int = Query(default=50, ge=1, le=200),
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
     user = session.get(User, auth.user_id)
