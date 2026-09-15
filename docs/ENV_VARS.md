@@ -20,6 +20,8 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `TWILIO_ACCOUNT_SID` | (empty) | No | Twilio SID for SMS. Leave blank for dry-run. |
 | `TWILIO_AUTH_TOKEN` | (empty) | No | Twilio auth token. |
 | `TWILIO_FROM_NUMBER` | (empty) | No | E.164 number for sending SMS. |
+| `RUN_SWEEPS_IN_WEB_PROCESS` | `True` | No | Whether the web process runs the recurring background sweeps itself. Set `false` once a separate `python -m app.worker` service is deployed — see [BACKGROUND_WORKERS.md](BACKGROUND_WORKERS.md). Safe to have both running: the sweeps take an advisory lock, so work never happens twice. |
+| `WORKER_SHUTDOWN_GRACE_SECONDS` | `20` | No | How long a stopping worker waits for an in-flight sweep before exiting. |
 | `QUOTE_REMINDER_ENABLED` | `True` | No | Auto-send a reminder SMS for quotes (watch + mobile services) still awaiting a customer decision. |
 | `QUOTE_REMINDER_DAYS` | `7` | No | Days after a quote is sent before the reminder goes out. The reminder also refreshes the approval link for another `QUOTE_APPROVAL_TOKEN_TTL_HOURS`. One reminder per quote. |
 | `QUOTE_REMINDER_CHECK_INTERVAL_MINUTES` | `60` | No | How often the in-app scheduler checks for due reminders. `POST /v1/quotes/send-reminders` triggers a run manually. |

@@ -19,7 +19,7 @@ from sqlmodel import Session
 from .idempotency import MutationIdempotencyMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
 from .database import create_db_and_tables, engine
-from .advisory_lock import sweep_lock
+from .sweeps import enabled_sweeps, start_sweep_threads
 from .limiter import limiter
 from .routes.auth import router as auth_router
 from .routes.me import router as me_router
@@ -101,6 +101,22 @@ def _init_sentry() -> None:
 _init_sentry()
 
 
+def _should_run_sweeps_here() -> bool:
+    """Whether this web process owns the background sweeps.
+
+    True by default, which is how this has always run. Setting
+    RUN_SWEEPS_IN_WEB_PROCESS=false hands them to the `app.worker` service.
+    Tests never run sweeps: they would fire real SMS and email paths.
+    """
+    return settings.run_sweeps_in_web_process and settings.app_env != "test"
+
+
+# Never set in the web process: the sweeps live as long as it does, and the
+# platform stops the container. It exists so the sweep loops take the same
+# stoppable form here as they do in the worker.
+_sweep_stop = threading.Event()
+
+
 def _run_optional_startup_tasks() -> None:
     """Run demo/bootstrap maintenance without blocking container health checks."""
     startup_logger = logging.getLogger("mainspring.startup")
@@ -129,157 +145,6 @@ def _run_optional_startup_tasks() -> None:
         startup_logger.exception("Optional startup tasks failed.")
 
 
-def _quote_reminder_loop() -> None:
-    """Periodically send reminder SMS for quotes still waiting on a customer decision.
-
-    Runs in a daemon thread (this deployment is single-instance). Reminders are
-    idempotent — each quote records reminder_sent_at — so an extra run is safe.
-    """
-    reminder_logger = logging.getLogger("mainspring.quote_reminders")
-    interval_seconds = max(settings.quote_reminder_check_interval_minutes, 1) * 60
-    from .services.quote_reminders import send_due_quote_reminders
-
-    while True:
-        try:
-            with sweep_lock("quote_reminders") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = send_due_quote_reminders(session)
-            if summary.get("watch_sent") or summary.get("mobile_sent"):
-                reminder_logger.info("Quote reminders sent: %s", summary)
-        except Exception:
-            reminder_logger.exception("Quote reminder run failed.")
-        time.sleep(interval_seconds)
-
-
-def _shop_mobile_booking_pool_loop() -> None:
-    """Move overdue live shop booking offers into the shared Dispatch Pool."""
-    pool_logger = logging.getLogger("mainspring.shop_mobile_booking_pool")
-    interval_seconds = max(settings.shop_mobile_booking_check_interval_minutes, 1) * 60
-    from .routes.shop_mobile_bookings import process_due_shop_mobile_bookings
-
-    while True:
-        try:
-            with sweep_lock("shop_mobile_booking_pool") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = process_due_shop_mobile_bookings(session)
-            if summary.get("moved_to_pool") or summary.get("expired"):
-                pool_logger.info("Shop mobile booking pool sweep: %s", summary)
-        except Exception:
-            pool_logger.exception("Shop mobile booking pool sweep failed.")
-        time.sleep(interval_seconds)
-
-
-def _pool_alert_loop() -> None:
-    """Digest-alert nearby operators once Dispatch Pool jobs have sat unclaimed a while."""
-    pool_alert_logger = logging.getLogger("mainspring.pool_alerts")
-    interval_seconds = max(settings.pool_alert_check_interval_minutes, 1) * 60
-    from .services.pool_alerts import process_stale_pool_jobs
-
-    while True:
-        try:
-            with sweep_lock("pool_alerts") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = process_stale_pool_jobs(session)
-            if summary.get("stale_jobs"):
-                pool_alert_logger.info("Dispatch Pool alert sweep: %s", summary)
-        except Exception:
-            pool_alert_logger.exception("Dispatch Pool alert sweep failed.")
-        time.sleep(interval_seconds)
-
-
-def _sales_report_email_loop() -> None:
-    """Send opted-in weekly/monthly sales-by-category report emails once each period ends."""
-    report_logger = logging.getLogger("mainspring.sales_report_email")
-    interval_seconds = max(settings.sales_report_check_interval_minutes, 1) * 60
-    from .services.sales_report_email import send_due_sales_report_emails
-
-    while True:
-        try:
-            with sweep_lock("sales_report_email") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = send_due_sales_report_emails(session)
-            if summary.get("weekly_sent") or summary.get("monthly_sent"):
-                report_logger.info("Sales report emails sent: %s", summary)
-        except Exception:
-            report_logger.exception("Sales report email run failed.")
-        time.sleep(interval_seconds)
-
-
-def _mobile_weekly_report_loop() -> None:
-    """Send opted-in Minit HQ "mobile services network" scorecard emails weekly."""
-    report_logger = logging.getLogger("mainspring.mobile_weekly_report")
-    interval_seconds = max(settings.mobile_weekly_report_check_interval_minutes, 1) * 60
-    from .services.mobile_weekly_report import send_due_mobile_weekly_reports
-
-    while True:
-        try:
-            with sweep_lock("mobile_weekly_report") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = send_due_mobile_weekly_reports(session)
-            if summary.get("sent"):
-                report_logger.info("Mobile weekly report emails sent: %s", summary)
-        except Exception:
-            report_logger.exception("Mobile weekly report run failed.")
-        time.sleep(interval_seconds)
-
-
-def _notification_redelivery_loop() -> None:
-    """Sweep failed SMS/email rows and redeliver under the attempt cap."""
-    redelivery_logger = logging.getLogger("mainspring.notification_redelivery")
-    interval_seconds = max(settings.notification_redelivery_check_interval_minutes, 1) * 60
-    from .services.notification_redelivery import redeliver_failed_notifications
-
-    while True:
-        try:
-            with sweep_lock("notification_redelivery") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = redeliver_failed_notifications(session)
-            if summary.get("email_sent") or summary.get("sms_sent"):
-                redelivery_logger.info("Notification redelivery: %s", summary)
-        except Exception:
-            redelivery_logger.exception("Notification redelivery run failed.")
-        time.sleep(interval_seconds)
-
-
-def _retention_sweep_loop() -> None:
-    """Trim the two unbounded tables batch 3 added (idempotency keys, email payloads)."""
-    retention_logger = logging.getLogger("mainspring.retention")
-    interval_seconds = max(settings.retention_sweep_check_interval_minutes, 1) * 60
-    from .services.idempotency_retention import run_retention
-
-    while True:
-        try:
-            with sweep_lock("retention") as owned:
-                if not owned:
-                    time.sleep(interval_seconds)
-                    continue
-                with Session(engine) as session:
-                    summary = run_retention(session)
-            if summary.get("idempotency_keys_removed") or summary.get("email_payloads_cleared"):
-                retention_logger.info("Retention sweep: %s", summary)
-        except Exception:
-            retention_logger.exception("Retention sweep failed.")
-        time.sleep(interval_seconds)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast on unsafe production config before any startup side effects.
@@ -305,48 +170,18 @@ async def lifespan(app: FastAPI):
         name="mainspring-startup-seed",
         daemon=True,
     ).start()
-    if settings.quote_reminder_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_quote_reminder_loop,
-            name="mainspring-quote-reminders",
-            daemon=True,
-        ).start()
-    if settings.shop_mobile_booking_pool_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_shop_mobile_booking_pool_loop,
-            name="mainspring-shop-mobile-booking-pool",
-            daemon=True,
-        ).start()
-    if settings.pool_alert_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_pool_alert_loop,
-            name="mainspring-pool-alerts",
-            daemon=True,
-        ).start()
-    if settings.sales_report_email_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_sales_report_email_loop,
-            name="mainspring-sales-report-email",
-            daemon=True,
-        ).start()
-    if settings.retention_sweep_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_retention_sweep_loop,
-            name="mainspring-retention",
-            daemon=True,
-        ).start()
-    if settings.mobile_weekly_report_email_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_mobile_weekly_report_loop,
-            name="mainspring-mobile-weekly-report",
-            daemon=True,
-        ).start()
-    if settings.notification_redelivery_enabled and settings.app_env != "test":
-        threading.Thread(
-            target=_notification_redelivery_loop,
-            name="mainspring-notification-redelivery",
-            daemon=True,
-        ).start()
+    if _should_run_sweeps_here():
+        # Default: the sweeps run here, exactly as they always have. Setting
+        # RUN_SWEEPS_IN_WEB_PROCESS=false hands them to the `app.worker` service
+        # instead; the advisory locks make running both at once safe, so the two
+        # can overlap during a deploy.
+        sweeps = enabled_sweeps()
+        logging.getLogger("mainspring.startup").info(
+            "Starting %d background sweep(s) in the web process: %s",
+            len(sweeps),
+            ", ".join(sw.name for sw in sweeps),
+        )
+        start_sweep_threads(sweeps, _sweep_stop)
     yield
 
 
