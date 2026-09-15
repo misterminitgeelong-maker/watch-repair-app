@@ -175,7 +175,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   })
 
   const matchingAccounts = activeCustomerId
-    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(activeCustomerId))
+    ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(activeCustomerId))
     : customerAccounts
 
   const { data: watches } = useQuery({

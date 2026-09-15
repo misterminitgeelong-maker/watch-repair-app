@@ -26,7 +26,7 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
       </p>
       {isLoading || !data ? (
         <Spinner />
-      ) : data.shops.length === 0 ? (
+      ) : (data.shops ?? []).length === 0 ? (
         <Card className="p-4">
           <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No email enquiries in range.</p>
         </Card>
@@ -45,7 +45,7 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
                 </tr>
               </thead>
               <tbody>
-                {data.shops.map(shop => (
+                {(data.shops ?? []).map(shop => (
                   <tr
                     key={`${shop.operator_tenant_id ?? 'none'}-${shop.operator_name}`}
                     style={{ borderBottom: '1px solid var(--ms-border)' }}
@@ -54,9 +54,9 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
                     <td className="px-5 py-2 text-right tabular-nums">{shop.total_count}</td>
                     <td
                       className="px-5 py-2 text-right tabular-nums font-semibold"
-                      style={{ color: shop.new_count > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}
+                      style={{ color: (shop.new_count ?? 0) > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}
                     >
-                      {shop.new_count}
+                      {(shop.new_count ?? 0)}
                     </td>
                     <td className="px-5 py-2 text-right tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
                       {shop.processed_count}
@@ -119,7 +119,7 @@ export default function MinitMobileReportsPage() {
           </Card>
 
           <Card className="overflow-hidden">
-            {data.jobs.length === 0 ? (
+            {(data.jobs ?? []).length === 0 ? (
               <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No mobile jobs in range.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -134,7 +134,7 @@ export default function MinitMobileReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.jobs.map(job => (
+                    {(data.jobs ?? []).map(job => (
                       <tr key={job.id} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                         <td className="px-5 py-2">
                           <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.job_number}</span>

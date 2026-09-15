@@ -7,7 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export { formatCents, formatMoney } from './money'
 
-export function formatDate(iso: string) {
+export function formatDate(iso: string | null | undefined) {
+  // Several API fields are nullable (a booking's created_at among them). Passing
+  // null through produced the string "Invalid Date" in the UI.
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 

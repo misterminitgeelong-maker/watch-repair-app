@@ -256,7 +256,7 @@ function AddPairModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => voi
   // Filter out shoes already on this job
   const usedIds = new Set([
     job.shoe_id,
-    ...job.extra_shoes.map(e => e.shoe_id),
+    ...(job.extra_shoes ?? []).map(e => e.shoe_id),
   ])
   const availableShoes = existingShoes.filter(s => !usedIds.has(s.id))
 
@@ -387,7 +387,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
     },
   })
-  const total = job.items.reduce(
+  const total = (job.items ?? []).reduce(
     (sum, item) => sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0),
     0,
   )
@@ -401,9 +401,9 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
         <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>
           Services
         </h2>
-        {job.items.length > 0 && (
+        {(job.items ?? []).length > 0 && (
           <span className="text-xs font-mono" style={{ color: 'var(--ms-text-muted)' }}>
-            {job.items.length} item{job.items.length !== 1 ? 's' : ''}
+            {(job.items ?? []).length} item{(job.items ?? []).length !== 1 ? 's' : ''}
           </span>
         )}
         <button
@@ -415,7 +415,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
           <Plus size={13} /> Add service
         </button>
       </div>
-      {job.items.length === 0 ? (
+      {(job.items ?? []).length === 0 ? (
         <div
           className="flex flex-col items-center justify-center gap-2 py-8 cursor-pointer"
           style={{ color: 'var(--ms-text-muted)' }}
@@ -426,11 +426,11 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
         </div>
       ) : (
         <div>
-          {job.items.map((item, i) => (
+          {(job.items ?? []).map((item, i) => (
             <div
               key={item.id}
               className="flex items-center justify-between gap-3 px-5 py-3 text-sm"
-              style={{ borderBottom: i < job.items.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
+              style={{ borderBottom: i < (job.items ?? []).length - 1 ? '1px solid var(--ms-border)' : 'none' }}
             >
               <div className="flex-1 min-w-0">
                 <p className="font-medium" style={{ color: 'var(--ms-text)' }}>{item.item_name}</p>
@@ -677,7 +677,7 @@ export default function ShoeJobDetailPage() {
     queryFn: () => listCustomerAccounts().then(r => r.data),
   })
   const matchingAccounts = job?.shoe?.customer_id
-    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.shoe!.customer_id))
+    ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(job.shoe!.customer_id))
     : customerAccounts
 
   const updateAccountMutation = useMutation({
@@ -727,13 +727,13 @@ export default function ShoeJobDetailPage() {
 
   const allShoes = [
     { id: 'primary', shoe: job.shoe, isPrimary: true, entryId: null as string | null },
-    ...job.extra_shoes.map(e => ({ id: e.id, shoe: e.shoe, isPrimary: false, entryId: e.id })),
+    ...(job.extra_shoes ?? []).map(e => ({ id: e.id, shoe: e.shoe, isPrimary: false, entryId: e.id })),
   ]
   // Guard index
   const safeIdx = Math.min(activePairIdx, allShoes.length - 1)
   const activePair = allShoes[safeIdx]
 
-  const total = job.items.reduce(
+  const total = (job.items ?? []).reduce(
     (sum, item) => sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0),
     0,
   )
@@ -978,7 +978,7 @@ export default function ShoeJobDetailPage() {
                   </button>
                 )}
               </div>
-              <ShoeTab shoe={activePair.shoe} />
+              <ShoeTab shoe={activePair.shoe ?? undefined} />
             </div>
           </Card>
 

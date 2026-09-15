@@ -27,10 +27,10 @@ interface QueueJob {
   title: string
   priority: string
   status: string
-  created_at: string
-  collection_date?: string
+  created_at: string | null
+  collection_date?: string | null
   customer_name?: string | null
-  description?: string
+  description?: string | null
   items?: string[]
   quote_status?: string
   type: 'watch' | 'shoe'
@@ -115,7 +115,7 @@ const QUEUE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'work
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getCollectionUrgency(collectionDate?: string): number {
+function getCollectionUrgency(collectionDate?: string | null): number {
   if (!collectionDate) return 3
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
@@ -132,11 +132,13 @@ function sortQueue(jobs: QueueJob[]): QueueJob[] {
     if (cu !== 0) return cu
     const pu = (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
     if (pu !== 0) return pu
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
   })
 }
 
-function daysInShop(createdAt: string): number {
+function daysInShop(createdAt: string | null | undefined): number {
+  // created_at is nullable on several job types; an unknown age sorts as brand new.
+  if (!createdAt) return 0
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
@@ -685,11 +687,11 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
               </div>
 
               {/* Shoe items */}
-              {'items' in detail && (detail as ShoeRepairJob).items.length > 0 && (
+              {'items' in detail && ((detail as ShoeRepairJob).items ?? []).length > 0 && (
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
                   <div className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text-muted)' }}>Repair Items</div>
                   <div className="space-y-1">
-                    {(detail as ShoeRepairJob).items.map((item, i) => (
+                    {((detail as ShoeRepairJob).items ?? []).map((item, i) => (
                       <div key={i} className="flex justify-between text-sm" style={{ color: 'var(--ms-text)' }}>
                         <span>{item.item_name}</span>
                         {item.unit_price_cents != null && (
@@ -967,7 +969,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                           )}
                         </div>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                          {new Date(log.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {new Date(log.created_at ?? 0).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                         </p>
                       </div>
                     ))

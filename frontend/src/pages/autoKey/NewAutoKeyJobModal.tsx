@@ -183,7 +183,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   }
 
   const matchingAccounts = form.customer_id
-    ? customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(form.customer_id))
+    ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(form.customer_id))
     : customerAccounts
 
   const createMut = useMutation({

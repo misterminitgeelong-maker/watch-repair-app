@@ -530,7 +530,7 @@ export default function AppShell() {
     const autoKeyDetailPath = firstAutoKeyJob ? `/auto-key/${firstAutoKeyJob.id}` : '/auto-key'
     const invoiceDetailPath = firstInvoice ? `/invoices/${firstInvoice.id}` : '/invoices'
 
-    const shoeItemsPreview = firstShoeJob?.items.slice(0, 2).map((item) => item.item_name).join(' and ')
+    const shoeItemsPreview = (firstShoeJob?.items ?? []).slice(0, 2).map((item) => item.item_name).join(' and ')
     const watchJobLabel = firstWatchJob ? `Open watch job #${firstWatchJob.job_number}` : 'Open a watch repair'
     const shoeJobLabel = firstShoeJob ? `Open shoe job #${firstShoeJob.job_number}` : 'Open a shoe repair'
     const autoKeyLabel = firstAutoKeyJob ? `Open job #${firstAutoKeyJob.job_number}` : 'Open a Mobile Services job'

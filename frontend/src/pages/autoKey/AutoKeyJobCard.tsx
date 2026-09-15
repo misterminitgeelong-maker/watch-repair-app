@@ -49,7 +49,7 @@ export function AutoKeyJobCard({
     queryFn: () => listCustomerAccounts().then(r => r.data),
     enabled: !listMode,
   })
-  const matchingAccounts = listMode ? [] : customerAccounts.filter((a: CustomerAccount) => a.customer_ids.includes(job.customer_id))
+  const matchingAccounts = listMode ? [] : customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(job.customer_id))
 
   const { data: quotes = [] } = useQuery({
     queryKey: ['auto-key-quotes', job.id],
