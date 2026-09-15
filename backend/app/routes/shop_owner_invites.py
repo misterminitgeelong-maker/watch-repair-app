@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..models import (
     ShopOwnerInvite,
     ShopOwnerInviteCompleteRequest,
@@ -58,7 +58,7 @@ def _load_pending_invite(session: Session, token: str) -> ShopOwnerInvite:
 
 
 @router.get("/{token}", response_model=ShopOwnerInvitePublicRead)
-def get_shop_owner_invite_public(token: str, session: Session = Depends(get_session)):
+def get_shop_owner_invite_public(token: str, session: Session = Depends(unscoped_session)):
     invite = _load_pending_invite(session, token)
     tenant = session.get(Tenant, invite.tenant_id)
     owner = session.get(User, invite.owner_user_id)
@@ -78,7 +78,7 @@ def complete_shop_owner_invite(
     token: str,
     payload: ShopOwnerInviteCompleteRequest,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     invite = _load_pending_invite(session, token)
     tenant = session.get(Tenant, invite.tenant_id)

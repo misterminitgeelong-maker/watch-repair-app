@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlmodel import Session, col, select
 
 from .models import ParentAccountMembership, Tenant
+from .tenant_scope import without_scope
 
 _SHOP_NUMBER_RE = re.compile(r"^\d{1,10}$")
 
@@ -39,11 +40,22 @@ def format_tenant_label(name: str, shop_number: str | None) -> str:
 
 
 def linked_tenant_ids_for_parent(session: Session, parent_id: UUID) -> list[UUID]:
-    rows = session.exec(
-        select(ParentAccountMembership.tenant_id).where(
-            ParentAccountMembership.parent_account_id == parent_id
-        )
-    ).all()
+    """Every shop linked to this parent account — deliberately across tenants.
+
+    A parent account exists precisely to span its shops, so this lookup has to
+    see sibling tenants. The caller's session is restricted to the caller's own
+    tenant (app/tenant_scope.py), which would reduce this to "just me", so the
+    query runs on its own unscoped session.
+
+    The narrow scope of that session is the safeguard: it reads membership rows
+    for one named parent account and returns ids, nothing else.
+    """
+    with without_scope(session):
+        rows = session.exec(
+            select(ParentAccountMembership.tenant_id).where(
+                ParentAccountMembership.parent_account_id == parent_id
+            )
+        ).all()
     return list(dict.fromkeys(rows))
 
 
@@ -52,7 +64,9 @@ def linked_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]
     ids = linked_tenant_ids_for_parent(session, parent_id)
     if not ids:
         return []
-    tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all()
+    # Same reasoning: these tenants are by definition not the caller's own.
+    with without_scope(session):
+        tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all()
     by_id = {t.id: t for t in tenants}
     return [by_id[tid] for tid in ids if tid in by_id]
 

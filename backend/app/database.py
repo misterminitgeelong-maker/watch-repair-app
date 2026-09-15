@@ -43,5 +43,24 @@ def create_db_and_tables() -> None:
 
 
 def get_session():
+    """The default session. Authenticated requests get it restricted to the
+    caller's tenant — see app/tenant_scope.py and get_auth_context."""
+    with Session(engine) as session:
+        yield session
+
+
+def unscoped_session():
+    """A session deliberately NOT restricted to one tenant.
+
+    For the endpoints that genuinely span tenants: login (which looks a user up
+    before a tenant is known), platform admin, parent-account operations across
+    a franchise network, and billing webhooks that arrive with a tenant id from
+    Stripe rather than from a token.
+
+    FastAPI caches dependencies per function, so this yields a different session
+    object from ``get_session`` and is therefore never stamped by
+    ``get_auth_context``. Taking this dependency is the explicit, greppable way
+    to say "this endpoint crosses tenants on purpose".
+    """
     with Session(engine) as session:
         yield session

@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..config import settings
-from ..database import get_session
+from ..database import get_session, unscoped_session
 from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
 from ..models import (
     AutoKeyInvoice,
@@ -118,7 +118,7 @@ def _extract_plan_code_from_subscription(obj: dict) -> Optional[str]:
 @router.get("/limits", response_model=BillingLimitsResponse)
 def get_billing_limits(
     auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     plan_code = auth.plan_code
     limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS["pro"])
@@ -202,7 +202,7 @@ def _refresh_tenant_connect_status(session: Session, tenant: Tenant) -> None:
 @router.post("/connect/account-link")
 def create_stripe_connect_account_link(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Create or continue Express Connect onboarding; returns Stripe-hosted onboarding URL."""
     stripe = _get_stripe()
@@ -251,7 +251,7 @@ def create_stripe_connect_account_link(
 @router.post("/connect/refresh")
 def refresh_stripe_connect_status(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     """Pull latest Connect capability flags from Stripe (e.g. after returning from onboarding)."""
     tenant = session.get(Tenant, auth.tenant_id)
@@ -273,7 +273,7 @@ def refresh_stripe_connect_status(
 def create_checkout_session(
     payload: BillingCheckoutRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     stripe = _get_stripe()
     plan_code = _plan_code_from_price_id(payload.price_id)
@@ -322,7 +322,7 @@ def create_checkout_session(
 def create_checkout_session_for_plan(
     payload: BillingCheckoutPlanRequest,
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     stripe = _get_stripe()
     plan_code = normalize_plan_code(payload.plan_code, default_if_empty="")
@@ -372,7 +372,7 @@ def create_checkout_session_for_plan(
 @router.get("/portal-url")
 def get_portal_url(
     auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     stripe = _get_stripe()
     tenant = session.get(Tenant, auth.tenant_id)
@@ -394,7 +394,7 @@ def get_portal_url(
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(alias="stripe-signature", default=""),
-    session: Session = Depends(get_session),
+    session: Session = Depends(unscoped_session),
 ):
     if not _stripe_configured():
         raise HTTPException(status_code=400, detail="Stripe not configured")
