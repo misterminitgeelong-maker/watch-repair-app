@@ -208,6 +208,14 @@ class Settings(BaseSettings):
     # Object storage is the recommended default for multi-instance / production
     # deployments; local FS is only durable for a single instance with a mounted
     # volume. See docs/ATTACHMENT_STORAGE.md for the migration runbook.
+    # Retention for the two tables batch 3 added. Both hold customer data and
+    # neither is useful past its purpose: an idempotency key once the client has
+    # stopped replaying, an email payload once it can no longer be redelivered.
+    idempotency_key_retention_days: int = 7
+    email_payload_retention_days: int = 30
+    retention_sweep_enabled: bool = True
+    retention_sweep_check_interval_minutes: int = 360
+
     attachment_storage_backend: str = "auto"
 
     # Supabase Storage (set these to switch from local FS to Supabase)

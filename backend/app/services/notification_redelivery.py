@@ -19,7 +19,7 @@ from ..notification_retry import redelivery_max_attempts
 logger = logging.getLogger(__name__)
 
 
-def redeliver_failed_notifications(session: Session) -> dict[str, int]:
+def redeliver_failed_notifications(session: Session, batch_size: int = 200) -> dict[str, int]:
     """Resend failed notification rows whose attempt_count is still under the cap.
 
     4xx failures pin attempt_count to the cap at send time, so they are not
@@ -28,7 +28,14 @@ def redeliver_failed_notifications(session: Session) -> dict[str, int]:
     cap = redelivery_max_attempts()
     summary = {"email_sent": 0, "sms_sent": 0, "skipped": 0}
 
-    emails = session.exec(select(EmailLog).where(EmailLog.status == "failed")).all()
+    emails = session.exec(
+        select(EmailLog)
+        .where(EmailLog.status == "failed")
+        .where(EmailLog.attempt_count < cap)
+        .where(EmailLog.payload_json.is_not(None))  # type: ignore[union-attr]
+        .order_by(EmailLog.created_at)
+        .limit(batch_size)
+    ).all()
     for row in emails:
         if row.attempt_count >= cap or not (row.payload_json or "").strip():
             summary["skipped"] += 1
@@ -54,7 +61,13 @@ def redeliver_failed_notifications(session: Session) -> dict[str, int]:
         else:
             summary["skipped"] += 1
 
-    texts = session.exec(select(SmsLog).where(SmsLog.status == "failed")).all()
+    texts = session.exec(
+        select(SmsLog)
+        .where(SmsLog.status == "failed")
+        .where(SmsLog.attempt_count < cap)
+        .order_by(SmsLog.created_at)
+        .limit(batch_size)
+    ).all()
     for row in texts:
         if row.attempt_count >= cap or not (row.body or "").strip() or not (row.to_phone or "").strip():
             summary["skipped"] += 1
