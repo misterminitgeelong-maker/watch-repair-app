@@ -96,7 +96,7 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
     }
   }
 
-  const total = job.items.reduce((sum, item) =>
+  const total = (job.items ?? []).reduce((sum, item) =>
     sum + (item.unit_price_cents != null ? item.unit_price_cents * item.quantity : 0), 0)
 
   return (
@@ -186,7 +186,7 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
         </div>
 
         {/* Services toggle */}
-        {job.items.length > 0 && (
+        {(job.items ?? []).length > 0 && (
           <button
             type="button"
             onClick={e => { e.stopPropagation(); setShowItems(v => !v) }}
@@ -196,14 +196,14 @@ function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
           >
             <Tag size={12} />
-            {job.items.length} service{job.items.length !== 1 ? 's' : ''}
+            {(job.items ?? []).length} service{(job.items ?? []).length !== 1 ? 's' : ''}
             <ChevronDown size={12} className={`transition-transform ${showItems ? 'rotate-180' : ''}`} />
           </button>
         )}
 
         {showItems && (
           <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid var(--ms-border)' }}>
-            {job.items.map(item => (
+            {(job.items ?? []).map(item => (
               <div
                 key={item.id}
                 className="flex items-center justify-between gap-3 px-3 py-2.5 border-b last:border-b-0 text-sm"
@@ -545,7 +545,7 @@ export default function ShoeRepairsPage() {
         job.job_number.toLowerCase().includes(q) ||
         job.title.toLowerCase().includes(q) ||
         (job.description ?? '').toLowerCase().includes(q) ||
-        job.items.some(i => i.item_name.toLowerCase().includes(q))
+        (job.items ?? []).some(i => i.item_name.toLowerCase().includes(q))
       )
     }
     return true
@@ -697,7 +697,7 @@ export default function ShoeRepairsPage() {
           columns={SHOE_KANBAN_COLUMNS}
           onStatusChange={(jobId, nextStatus) => statusMut.mutate({ jobId, status: nextStatus })}
           renderCard={(job, column) => {
-            const total = job.items.reduce(
+            const total = (job.items ?? []).reduce(
               (s, it) => s + (it.unit_price_cents != null ? it.unit_price_cents * it.quantity : 0),
               0,
             )
@@ -712,7 +712,7 @@ export default function ShoeRepairsPage() {
               <KanbanJobCard
                 jobNumber={job.job_number}
                 title={job.title}
-                description={job.items.map(i => i.item_name).slice(0, 3).join(' · ')}
+                description={(job.items ?? []).map(i => i.item_name).slice(0, 3).join(' · ')}
                 customerName={null}
                 priority={job.priority}
                 daysInShop={Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86_400_000)}

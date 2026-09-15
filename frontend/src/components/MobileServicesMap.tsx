@@ -56,13 +56,13 @@ interface Job {
   id: string
   job_number: string
   title: string
-  job_address?: string
-  job_type?: string
-  scheduled_at?: string
-  vehicle_make?: string
-  vehicle_model?: string
-  vehicle_year?: number
-  registration_plate?: string
+  job_address?: string | null
+  job_type?: string | null
+  scheduled_at?: string | null
+  vehicle_make?: string | null
+  vehicle_model?: string | null
+  vehicle_year?: number | null
+  registration_plate?: string | null
   status: string
   customer_id: string
 }

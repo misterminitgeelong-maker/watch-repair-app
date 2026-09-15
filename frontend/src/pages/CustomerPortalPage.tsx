@@ -111,15 +111,15 @@ function ShopSection({
         <div className="min-w-0">
           <h2 className="text-base font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{shop.shop_name}</h2>
           <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-            {shop.jobs.length} repair{shop.jobs.length !== 1 ? 's' : ''}
+            {(shop.jobs ?? []).length} repair{(shop.jobs ?? []).length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
-      {shop.jobs.length === 0 ? (
+      {(shop.jobs ?? []).length === 0 ? (
         <PortalEmptyState shop={shop} />
       ) : (
         <div className="space-y-2">
-          {shop.jobs.map((job) => (
+          {(shop.jobs ?? []).map((job) => (
             <CustomerPortalJobCard
               key={`${job.type}-${job.job_number}`}
               job={job}
@@ -187,8 +187,8 @@ function PortalResults({
   onRefresh?: () => void
   loading?: boolean
 }) {
-  const totalJobs = data.shops.reduce((n, s) => n + s.jobs.length, 0)
-  const firstShop = data.shops[0] ?? null
+  const totalJobs = (data.shops ?? []).reduce((n, s) => n + (s.jobs ?? []).length, 0)
+  const firstShop = (data.shops ?? [])[0] ?? null
 
   return (
     <div className="space-y-5">
@@ -201,7 +201,7 @@ function PortalResults({
       {totalJobs === 0 ? (
         <PortalEmptyState shop={firstShop} />
       ) : (
-        data.shops.map((shop) => (
+        (data.shops ?? []).map((shop) => (
           <ShopSection key={shop.tenant_id} shop={shop} sessionToken={sessionToken} onRefresh={onRefresh} />
         ))
       )}
@@ -209,8 +209,8 @@ function PortalResults({
       {sessionToken && (
         <PortalNotifyPrefs
           sessionToken={sessionToken}
-          initialEmail={data.status_notify_email}
-          initialSms={data.status_notify_sms}
+          initialEmail={data.status_notify_email ?? undefined}
+          initialSms={data.status_notify_sms ?? undefined}
         />
       )}
       {sessionToken && viewMode === 'active' && totalJobs > 0 && (
@@ -276,7 +276,7 @@ function SessionView({ token }: { token: string }) {
   }
 
   return (
-    <PortalShell subtitle={data.email}>
+    <PortalShell subtitle={data.email ?? undefined}>
       <PortalResults
         data={data}
         email={data.email || ''}
@@ -315,7 +315,7 @@ function CustomerPortalLookupPage() {
     setLoading(true)
     try {
       const result = await fetchJobs(trimmed, viewMode === 'history')
-      if (viewMode === 'active' && result.shops.some((s) => s.jobs.length > 0)) {
+      if (viewMode === 'active' && (result.shops ?? []).some((s) => (s.jobs ?? []).length > 0)) {
         createPortalSession(trimmed)
           .then((r) => setSessionToken(r.data.session_token))
           .catch(() => { /* session optional */ })

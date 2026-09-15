@@ -151,7 +151,7 @@ export default function StocktakesPage() {
                 <div><span style={{ color: '#3A6B53' }}>Imported</span><br /><strong>{importResult.imported}</strong></div>
                 <div><span style={{ color: '#3A6B53' }}>Created</span><br /><strong>{importResult.created}</strong></div>
                 <div><span style={{ color: '#3A6B53' }}>Updated</span><br /><strong>{importResult.updated}</strong></div>
-                <div><span style={{ color: '#3A6B53' }}>Sheets</span><br /><strong>{importResult.sheet_names.join(', ') || 'DATA'}</strong></div>
+                <div><span style={{ color: '#3A6B53' }}>Sheets</span><br /><strong>{(importResult.sheet_names ?? []).join(', ') || 'DATA'}</strong></div>
               </div>
             </div>
           )}
@@ -234,7 +234,7 @@ export default function StocktakesPage() {
                 <div>
                   <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{session.name}</p>
                   <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-                    {session.group_code_filter ? `${session.group_code_filter} only` : 'All groups'} · {session.progress.counted_items} / {session.progress.total_items} counted · Created {formatDate(session.created_at)}
+                    {session.group_code_filter ? `${session.group_code_filter} only` : 'All groups'} · {session.progress?.counted_items ?? 0} / {session.progress?.total_items ?? 0} counted · Created {formatDate(session.created_at)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

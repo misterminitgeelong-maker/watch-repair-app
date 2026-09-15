@@ -26,7 +26,9 @@ import LogWorkModal from '@/components/LogWorkModal'
 import { KanbanBoard, JobCard, WATCH_KANBAN_COLUMNS } from '@/components/kanban'
 import { findKanbanOrphanJobs } from '@/components/kanban/columns'
 
-function daysInShop(createdAt: string): number {
+function daysInShop(createdAt: string | null | undefined): number {
+  // created_at is nullable on several job types; an unknown age sorts as brand new.
+  if (!createdAt) return 0
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 

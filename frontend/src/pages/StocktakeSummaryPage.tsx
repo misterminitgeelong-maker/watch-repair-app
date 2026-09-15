@@ -59,7 +59,7 @@ export default function StocktakeSummaryPage() {
         <Card className="p-4"><div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Missing</div><div className="mt-2 text-2xl font-semibold">{report.missing_item_count}</div></Card>
         <Card className="p-4"><div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Over</div><div className="mt-2 text-2xl font-semibold">{report.over_count_item_count}</div></Card>
         <Card className="p-4"><div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Variance qty</div><div className="mt-2 text-2xl font-semibold">{report.total_variance_qty}</div></Card>
-        <Card className="p-4"><div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Variance value</div><div className="mt-2 text-2xl font-semibold">{formatCents(report.total_variance_value_cents)}</div></Card>
+        <Card className="p-4"><div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Variance value</div><div className="mt-2 text-2xl font-semibold">{formatCents(report.total_variance_value_cents ?? 0)}</div></Card>
       </div>
 
       <Card className="p-5">
@@ -67,7 +67,7 @@ export default function StocktakeSummaryPage() {
           <div>Status: <strong style={{ color: 'var(--ms-text)' }}>{report.session.status.replace(/_/g, ' ')}</strong></div>
           <div>Created: <strong style={{ color: 'var(--ms-text)' }}>{formatDate(report.session.created_at)}</strong></div>
           <div>Completed: <strong style={{ color: 'var(--ms-text)' }}>{report.session.completed_at ? formatDate(report.session.completed_at) : 'Not completed'}</strong></div>
-          <div>Progress: <strong style={{ color: 'var(--ms-text)' }}>{report.session.progress.counted_items} / {report.session.progress.total_items}</strong></div>
+          <div>Progress: <strong style={{ color: 'var(--ms-text)' }}>{(report.session.progress ?? { counted_items: 0, total_items: 0 }).counted_items} / {(report.session.progress ?? { counted_items: 0, total_items: 0 }).total_items}</strong></div>
         </div>
       </Card>
 
@@ -78,7 +78,7 @@ export default function StocktakeSummaryPage() {
         </div>
 
         <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
-          {report.groups.map(group => (
+          {(report.groups ?? []).map(group => (
             <div key={group.group_code} className="px-5 py-4 grid grid-cols-1 md:grid-cols-[1.5fr,0.6fr,0.6fr,0.8fr] gap-4 items-center">
               <div>
                 <div className="font-semibold" style={{ color: 'var(--ms-text)' }}>{group.group_code} / {group.group_name || 'Unassigned'}</div>
@@ -94,7 +94,7 @@ export default function StocktakeSummaryPage() {
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Variance value</div>
-                <div className="mt-1 font-semibold">{formatCents(group.total_variance_value_cents)}</div>
+                <div className="mt-1 font-semibold">{formatCents(group.total_variance_value_cents ?? 0)}</div>
               </div>
             </div>
           ))}

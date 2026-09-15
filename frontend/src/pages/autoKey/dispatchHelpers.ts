@@ -45,7 +45,9 @@ export function isYmd(value: string | null | undefined): value is string {
   return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
-export function daysInShop(createdAt: string): number {
+export function daysInShop(createdAt: string | null | undefined): number {
+  // created_at is nullable on several job types; an unknown age sorts as brand new.
+  if (!createdAt) return 0
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
@@ -68,7 +70,7 @@ const SLA_UNSCHEDULED_AGING_HOURS = 24
 
 /** Derive an at-a-glance SLA chip for a job from existing fields (pure, no API). */
 export function computeSlaChip(
-  job: { scheduled_at?: string | null; status: string; created_at: string },
+  job: { scheduled_at?: string | null; status: string; created_at: string | null },
   now: number = Date.now(),
 ): SlaChip | null {
   if (SLA_STOP_CLOCK_STATUSES.has(job.status)) return null
@@ -83,7 +85,7 @@ export function computeSlaChip(
   }
 
   // Unscheduled active job that has been sitting too long.
-  const created = new Date(job.created_at).getTime()
+  const created = new Date(job.created_at ?? 0).getTime()
   if (Number.isFinite(created) && now - created >= SLA_UNSCHEDULED_AGING_HOURS * 3_600_000) {
     return { kind: 'aging', label: 'Unscheduled aging' }
   }
@@ -120,7 +122,7 @@ export function dateFromYmdLocal(ymd: string): Date {
 export function isoScheduledOnDayKeepingShopTime(
   jobId: string,
   targetDayYmd: string,
-  jobs: Array<{ id: string; scheduled_at?: string }>,
+  jobs: Array<{ id: string; scheduled_at?: string | null }>,
   shopTimeZone: string,
 ): string {
   const job = jobs.find((j) => j.id === jobId)
@@ -160,7 +162,7 @@ export interface WeekSchedulerJob {
   id: string
   job_number: string
   title: string
-  scheduled_at?: string
+  scheduled_at?: string | null
   customer_id?: string
   customer_name?: string | null
   customer_phone?: string | null
