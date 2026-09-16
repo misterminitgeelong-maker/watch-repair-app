@@ -19,7 +19,7 @@ import {
   type TenantUser,
 } from '@/lib/api'
 import { STATUS_LABELS } from '@/lib/utils'
-import { AUTO_KEY_CLOSED_STATUSES, computeSlaChip, formatCents, ymdLocal } from './dispatchHelpers'
+import { AUTO_KEY_CLOSED_STATUSES, canonicalAutoKeyStatus, computeSlaChip, formatCents, ymdLocal } from './dispatchHelpers'
 
 const CLOSED = new Set<string>(AUTO_KEY_CLOSED_STATUSES)
 const PRIORITY_WEIGHT: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 }
@@ -85,7 +85,7 @@ export default function MobileOperationsToday({
     const unscheduled = active.filter(j => !j.scheduled_at)
     const quoteBacklog = active.filter(j => ['awaiting_quote', 'quote_sent'].includes(j.status))
     const fieldNow = active.filter(j => ['en_route', 'on_site'].includes(j.status))
-    const awaitingMoney = jobs.filter(j => ['booking_completed', 'work_completed'].includes(j.status))
+    const awaitingMoney = jobs.filter(j => ['booking_completed', 'work_completed'].includes(canonicalAutoKeyStatus(j.status)))
     const urgent = active.filter(j => j.priority === 'urgent' || computeSlaChip(j)?.kind === 'late')
 
     const attention = active

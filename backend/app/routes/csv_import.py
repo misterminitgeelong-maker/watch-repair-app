@@ -19,6 +19,7 @@ import openpyxl
 import xlrd
 
 from ..database import get_session
+from ..auto_key_status import canonical_auto_key_status
 from ..dependencies import AuthContext, PLAN_FEATURES, enforce_plan_limit, get_auth_context
 from ..config import settings
 from ..limiter import limiter
@@ -523,7 +524,7 @@ def _infer_auto_key_status(status_raw: str, notes_raw: str) -> str:
         "booked",
         "awaiting_customer_details",
     }:
-        return base
+        return canonical_auto_key_status(base)
     return "awaiting_quote"
 
 
@@ -1137,6 +1138,7 @@ def _import_mobile_rows(
             job_type=job_type or None,
             tech_notes=notes_raw or None,
             status=ak_status,
+            work_completed_at=created_at if ak_status in {"work_completed", "invoice_paid"} else None,
             salesperson=team_member or None,
             deposit_cents=0,
             cost_cents=job_cost,
@@ -1146,7 +1148,7 @@ def _import_mobile_rows(
         session.flush()
 
         if quote_cents > 0:
-            q_status = "approved" if ak_status in {"completed", "collected", "awaiting_collection"} else "sent"
+            q_status = "approved" if ak_status in {"work_completed", "invoice_paid"} else "sent"
             quote = AutoKeyQuote(
                 tenant_id=tenant_id,
                 auto_key_job_id=job.id,

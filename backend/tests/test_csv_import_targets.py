@@ -493,7 +493,8 @@ def test_mobile_normal_run_creates_customer_job_and_quote(client: TestClient, te
 
         bob = jobs["IMP-M8000102"]
         assert bob.title == "Programmed fob"
-        assert bob.status == "collected"
+        assert bob.status == "invoice_paid"
+        assert bob.work_completed_at == bob.created_at
         assert bob.vehicle_year is None  # "abc" is not a year
         assert bob.cost_cents == 18000  # no cost column, falls back to the quote
         assert started.date() <= bob.created_at.date() <= datetime.now(timezone.utc).date()  # no date_in: now

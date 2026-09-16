@@ -535,9 +535,25 @@ def test_list_auto_key_jobs_active_only_filters_final_statuses():
     )
     assert final_res.status_code == 201
 
+    legacy_final_res = client.post(
+        "/v1/auto-key-jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "title": "Imported collected job",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "collected",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert legacy_final_res.status_code == 201
+
     all_jobs = client.get("/v1/auto-key-jobs", headers=headers)
     assert all_jobs.status_code == 200
-    assert len(all_jobs.json()) == 2
+    assert len(all_jobs.json()) == 3
 
     active_only = client.get("/v1/auto-key-jobs", headers=headers, params={"active_only": True})
     assert active_only.status_code == 200

@@ -11,6 +11,7 @@ from sqlalchemy import case
 from sqlmodel import Session, func, select, col
 
 from ..config import settings
+from ..auto_key_status import AUTO_KEY_FINAL_STATUSES
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
@@ -1499,9 +1500,9 @@ def get_auto_key_reports(
             "approved_quote_value_cents": sum(q.total_cents for q in approved_quotes),
         },
         "operations": {
-            "unassigned_active": sum(1 for j in jobs if not j.assigned_user_id and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
-            "unscheduled_active": sum(1 for j in jobs if not j.scheduled_at and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
-            "urgent_active": sum(1 for j in jobs if j.priority == "urgent" and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
+            "unassigned_active": sum(1 for j in jobs if not j.assigned_user_id and j.status not in AUTO_KEY_FINAL_STATUSES),
+            "unscheduled_active": sum(1 for j in jobs if not j.scheduled_at and j.status not in AUTO_KEY_FINAL_STATUSES),
+            "urgent_active": sum(1 for j in jobs if j.priority == "urgent" and j.status not in AUTO_KEY_FINAL_STATUSES),
         },
         "previous_period": previous_period,
         "kpis": kpis,

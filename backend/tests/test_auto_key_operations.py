@@ -74,6 +74,7 @@ def test_paginated_directory_search_and_closed_no_go():
         json={"status": "no_go", "note": "Customer cancelled"},
     )
     assert closed.status_code == 200, closed.text
+    legacy_closed = _job(headers, customer_id, "Imported completed job", status="completed")
 
     active = client.get("/v1/auto-key-jobs/page", headers=headers, params={"directory": "active", "limit": 1})
     assert active.status_code == 200, active.text
@@ -82,12 +83,13 @@ def test_paginated_directory_search_and_closed_no_go():
 
     completed = client.get("/v1/auto-key-jobs/page", headers=headers, params={"directory": "completed"})
     assert completed.status_code == 200, completed.text
-    assert completed.json()["total"] == 1
-    assert completed.json()["items"][0]["status"] == "no_go"
+    assert completed.json()["total"] == 2
+    assert {item["status"] for item in completed.json()["items"]} == {"no_go", "completed"}
 
     searched = client.get("/v1/auto-key-jobs/page", headers=headers, params={"directory": "all", "q": "Paged Customer"})
     assert searched.status_code == 200, searched.text
-    assert searched.json()["total"] == 2
+    assert searched.json()["total"] == 3
+    assert legacy_closed["status"] == "completed"
 
 
 def test_job_activity_records_creation_updates_and_status():

@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
+from ..auto_key_status import AUTO_KEY_FINAL_STATUSES
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -68,7 +69,6 @@ router = APIRouter(
 )
 
 
-_AUTO_KEY_FINAL_STATUSES = {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}
 logger = logging.getLogger(__name__)
 
 
@@ -678,7 +678,7 @@ def list_auto_key_jobs(
     if assigned_user_id:
         query = query.where(AutoKeyJob.assigned_user_id == assigned_user_id)
     if active_only:
-        query = query.where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+        query = query.where(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
     set_total_count(response, query_total(session, query))
     jobs = session.exec(query.order_by(AutoKeyJob.created_at.desc()).offset(skip).limit(limit)).all()
 
@@ -715,9 +715,9 @@ def page_auto_key_jobs(
     """
     filters = [AutoKeyJob.tenant_id == auth.tenant_id]
     if directory == "active":
-        filters.append(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+        filters.append(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
     elif directory == "completed":
-        filters.append(AutoKeyJob.status.in_(_AUTO_KEY_FINAL_STATUSES))
+        filters.append(AutoKeyJob.status.in_(AUTO_KEY_FINAL_STATUSES))
     if status:
         filters.append(AutoKeyJob.status == status)
     if assigned_user_id:
@@ -842,7 +842,7 @@ def send_day_before_reminders(
         .where(AutoKeyJob.scheduled_at.is_not(None))
         .where(AutoKeyJob.scheduled_at >= start)
         .where(AutoKeyJob.scheduled_at < end)
-        .where(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+        .where(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
     ).all()
     sent = 0
     for job in jobs:

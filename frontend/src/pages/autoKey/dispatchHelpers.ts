@@ -18,11 +18,41 @@ export const STATUSES: JobStatus[] = [
   'failed_job',
 ]
 
-// Kept in sync with AUTO_KEY_KANBAN_COLUMNS (components/kanban/columns.ts), which groups
-// booking_completed/work_completed/invoice_paid under its one "Booking Completed" column. Active
-// is every in-progress status — anything still waiting on a quote, booking, or the job itself;
-// Closed is anything the physical work is done on, whether or not it's been invoiced yet.
-export const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'work_completed', 'invoice_paid', 'failed_job', 'no_go'] as const
+// CSV imports historically reused watch-repair statuses for Mobile Services.
+// Keep these aliases until every deployment has run the canonicalising migration.
+export const AUTO_KEY_LEGACY_STATUS_MAP = {
+  awaiting_go_ahead: 'quote_sent',
+  go_ahead: 'awaiting_booking_confirmation',
+  working_on: 'on_site',
+  service: 'on_site',
+  awaiting_parts: 'booking_on_hold',
+  parts_to_order: 'booking_on_hold',
+  sent_to_labanda: 'booking_on_hold',
+  quoted_by_labanda: 'booking_on_hold',
+  at_third_party_for_quoting: 'booking_on_hold',
+  third_party_quote_approved: 'booking_on_hold',
+  at_third_party_repairer: 'booking_on_hold',
+  completed: 'work_completed',
+  awaiting_collection: 'work_completed',
+  collected: 'invoice_paid',
+} as const satisfies Partial<Record<JobStatus, JobStatus>>
+
+export function canonicalAutoKeyStatus(status: string): string {
+  return AUTO_KEY_LEGACY_STATUS_MAP[status as keyof typeof AUTO_KEY_LEGACY_STATUS_MAP] ?? status
+}
+
+// Kept in sync with AUTO_KEY_KANBAN_COLUMNS. Closed means the physical work is
+// done, even when the commercial follow-through is still open.
+export const AUTO_KEY_CLOSED_STATUSES = [
+  'booking_completed',
+  'work_completed',
+  'invoice_paid',
+  'failed_job',
+  'no_go',
+  'completed',
+  'awaiting_collection',
+  'collected',
+] as const
 export const AUTO_KEY_ACTIVE_STATUSES = [
   'awaiting_quote',
   'awaiting_customer_details',
@@ -32,6 +62,17 @@ export const AUTO_KEY_ACTIVE_STATUSES = [
   'en_route',
   'on_site',
   'booking_on_hold',
+  'awaiting_go_ahead',
+  'go_ahead',
+  'working_on',
+  'service',
+  'awaiting_parts',
+  'parts_to_order',
+  'sent_to_labanda',
+  'quoted_by_labanda',
+  'at_third_party_for_quoting',
+  'third_party_quote_approved',
+  'at_third_party_repairer',
 ] as const
 
 export { formatCents } from '@/lib/money'
@@ -60,6 +101,10 @@ const SLA_STOP_CLOCK_STATUSES = new Set<string>([
   'invoice_paid',
   'booking_completed',
   'failed_job',
+  'no_go',
+  'completed',
+  'awaiting_collection',
+  'collected',
 ])
 
 export type SlaChipKind = 'late' | 'at_risk' | 'aging'
