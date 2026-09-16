@@ -15,6 +15,23 @@ export function fmtVswtVal(value: number | null | undefined, type: VswtKpiType):
   return Math.round(value).toLocaleString()
 }
 
+/** Formats movement without turning a change between two percentage rates into a misleading
+ * percentage-of-a-percentage. For example, -20.5% to -5.4% is +15.1 percentage points. */
+export function fmtVswtDelta(
+  value: number | null | undefined,
+  relativeChange: number | null | undefined,
+  type: VswtKpiType,
+): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—'
+  if (type === 'percent') {
+    const points = value * 100
+    return `${points > 0 ? '+' : ''}${points.toFixed(1)} pp`
+  }
+  const absolute = `${value > 0 ? '+' : ''}${fmtVswtVal(value, type)}`
+  if (relativeChange === null || relativeChange === undefined || Number.isNaN(relativeChange)) return absolute
+  return `${absolute} (${relativeChange > 0 ? '+' : ''}${(relativeChange * 100).toFixed(1)}%)`
+}
+
 export type RankTone = 'good' | 'warn' | 'bad' | 'neutral'
 
 /** Buckets a rank (1 = best) into a good/warn/bad tone given the field size — top third good,

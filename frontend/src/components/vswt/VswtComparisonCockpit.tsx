@@ -14,7 +14,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { Button, Card, EmptyState, Spinner } from '@/components/ui'
-import { fmtVswtVal, VSWT_KPI_GROUPS } from './format'
+import { fmtVswtDelta, fmtVswtVal, VSWT_KPI_GROUPS } from './format'
 import type { ViewingShop } from './VswtViewingBanner'
 import { VswtViewingBanner } from './VswtViewingBanner'
 
@@ -155,7 +155,7 @@ export function VswtComparisonCockpit({
         {isFetching && <span className="text-xs pb-2" style={{ color: 'var(--ms-text-muted)' }}>Updating…</span>}
         <div className="ml-auto text-right text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>
           <div>{data.source.filename ?? 'Regional source file'}</div>
-          <div>{data.source.uploaded_at ? `Uploaded ${new Date(data.source.uploaded_at).toLocaleDateString()}` : 'Upload date unavailable'} · {data.source.shops_in_upload} shops</div>
+          <div>{data.source.uploaded_at ? `Uploaded ${new Date(data.source.uploaded_at).toLocaleDateString('en-AU')}` : 'Upload date unavailable'} · {data.source.shops_in_upload} shops</div>
         </div>
       </div>
 
@@ -217,7 +217,7 @@ export function VswtComparisonCockpit({
               <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 600, color: 'var(--ms-text)' }}>{row.label}</td>
               <td style={tdStyle}>{fmtVswtVal(row.current, row.type)}</td>
               <td style={tdStyle}>{fmtVswtVal(row.comparison, row.type)}</td>
-              <td style={{ ...tdStyle, color: deltaTone(row.delta) }}>{row.delta != null && row.delta > 0 ? '+' : ''}{fmtVswtVal(row.delta, row.type)}{row.delta_pct != null ? ` (${row.delta_pct >= 0 ? '+' : ''}${(row.delta_pct * 100).toFixed(1)}%)` : ''}</td>
+              <td style={{ ...tdStyle, color: deltaTone(row.delta) }}>{fmtVswtDelta(row.delta, row.delta_pct, row.type)}</td>
               <td style={tdStyle}>{fmtVswtVal(row.rolling_4, row.type)}</td>
               <td style={tdStyle}>{fmtVswtVal(row.rolling_13, row.type)}</td>
               <td style={tdStyle}>{fmtVswtVal(row.rolling_52, row.type)}</td>
