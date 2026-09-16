@@ -13861,6 +13861,63 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Update Linked Site",
+        "description": "Change what a site *is* in the network without touching its plan.",
+        "operationId": "update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentAccountSiteUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAccountSiteRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/public/shop-invite/{token}": {
@@ -14446,6 +14503,371 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParentTroubleshootingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/sites/{tenant_id}/enter": {
+      "post": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Enter Linked Shop",
+        "description": "Open a short support session inside one of the network's own shops.\n\nProvisioned shops start out sharing HQ's login, and the moment a shop\ntakes its own credentials that shared login stops working \u2014 which used to\nmean HQ lost the ability to get into the shops it had most successfully\nonboarded. This is the front door instead: any HQ admin can enter any\nlinked site, authorised by the site table rather than by whose email\nhappens to be on the shop's owner row.\n\nThe token is anchored on the shop's first active owner login and carries\nthat login's own role, so the auth layer treats it like any other session\nfor that user. It lasts HQ_ENTER_SHOP_MINUTES and has no refresh token.\nBoth the shop's audit log and the network's activity feed record who\nentered.",
+        "operationId": "enter_linked_shop_v1_parent_accounts_me_sites__tenant_id__enter_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentEnterShopResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/users": {
+      "get": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "List Parent Account Users",
+        "description": "Everyone with explicit network-level access.",
+        "operationId": "list_parent_account_users_v1_parent_accounts_me_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParentAccountUserRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Parent Account Users V1 Parent Accounts Me Users Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Grant Parent Account Role",
+        "description": "Give a user in one of the network's sites an HQ role, or change it.\n\nSeveral people can now be HQ \u2014 an operations manager and a finance\ncontroller with different access \u2014 without anyone sharing an email.",
+        "operationId": "grant_parent_account_role_v1_parent_accounts_me_users_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentAccountUserGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParentAccountUserRead"
+                  },
+                  "type": "array",
+                  "title": "Response Grant Parent Account Role V1 Parent Accounts Me Users Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/users/{user_id}": {
+      "delete": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Revoke Parent Account Role",
+        "description": "Remove an explicit grant. Their shop login is untouched.\n\nAccess implied by being in the HQ tenant is not a grant and cannot be\nrevoked here \u2014 deactivate the user in the HQ tenant instead, or set them\nto hq_viewer explicitly.",
+        "operationId": "revoke_parent_account_role_v1_parent_accounts_me_users__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ParentAccountUserRead"
+                  },
+                  "title": "Response Revoke Parent Account Role V1 Parent Accounts Me Users  User Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions": {
+      "get": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "List Regions",
+        "operationId": "list_regions_v1_parent_accounts_me_regions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RegionRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Regions V1 Parent Accounts Me Regions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Create Region",
+        "operationId": "create_region_v1_parent_accounts_me_regions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}": {
+      "patch": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Update Region",
+        "operationId": "update_region_v1_parent_accounts_me_regions__region_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "parent-network"
+        ],
+        "summary": "Delete Region",
+        "description": "Delete a region; its sites become unassigned.",
+        "operationId": "delete_region_v1_parent_accounts_me_regions__region_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegionRead"
+                  },
+                  "title": "Response Delete Region V1 Parent Accounts Me Regions  Region Id  Delete"
                 }
               }
             }
@@ -25268,9 +25690,37 @@
             ],
             "title": "Region"
           },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
           "plan_code": {
             "type": "string",
             "title": "Plan Code"
+          },
+          "network_role": {
+            "type": "string",
+            "title": "Network Role",
+            "default": "retail"
           },
           "owner_user_id": {
             "type": "string",
@@ -25297,6 +25747,40 @@
           "owner_full_name"
         ],
         "title": "ParentAccountSiteRead"
+      },
+      "ParentAccountSiteUpdateRequest": {
+        "properties": {
+          "network_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Role"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "clear_region": {
+            "type": "boolean",
+            "title": "Clear Region",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ParentAccountSiteUpdateRequest"
       },
       "ParentAccountSitesPageResponse": {
         "properties": {
@@ -25340,6 +25824,17 @@
           "owner_email": {
             "type": "string",
             "title": "Owner Email"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
           },
           "site_count": {
             "type": "integer",
@@ -25390,6 +25885,103 @@
           "owner_email"
         ],
         "title": "ParentAccountSummaryResponse"
+      },
+      "ParentAccountUserGrantRequest": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "ParentAccountUserGrantRequest"
+      },
+      "ParentAccountUserRead": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "tenant_role": {
+            "type": "string",
+            "title": "Tenant Role"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "explicit"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "tenant_id",
+          "tenant_slug",
+          "email",
+          "full_name",
+          "tenant_role",
+          "role",
+          "is_active",
+          "created_at"
+        ],
+        "title": "ParentAccountUserRead"
       },
       "ParentDashboardBookingSnippet": {
         "properties": {
@@ -25507,6 +26099,51 @@
           "total_emails"
         ],
         "title": "ParentEmailLeadsByShopReport"
+      },
+      "ParentEnterShopResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "title": "Expires In Seconds"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "acting_as_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Acting As User Id"
+          },
+          "acting_as_email": {
+            "type": "string",
+            "title": "Acting As Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in_seconds",
+          "tenant_id",
+          "tenant_slug",
+          "tenant_name",
+          "acting_as_user_id",
+          "acting_as_email"
+        ],
+        "title": "ParentEnterShopResponse"
       },
       "ParentImportShopsResponse": {
         "properties": {
@@ -26152,6 +26789,29 @@
           "region": {
             "type": "string",
             "title": "Region"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
           },
           "shop_count": {
             "type": "integer",
@@ -28375,6 +29035,260 @@
           "refresh_token"
         ],
         "title": "RefreshRequest"
+      },
+      "RegionCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Name"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
+          },
+          "manager_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Email"
+          },
+          "manager_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Phone"
+          },
+          "escalation_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Email"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RegionCreateRequest"
+      },
+      "RegionRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
+          },
+          "manager_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Email"
+          },
+          "manager_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Phone"
+          },
+          "escalation_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Email"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "site_count": {
+            "type": "integer",
+            "title": "Site Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "created_at"
+        ],
+        "title": "RegionRead"
+      },
+      "RegionUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
+          },
+          "manager_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Email"
+          },
+          "manager_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Phone"
+          },
+          "escalation_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Email"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "RegionUpdateRequest"
       },
       "RepairJobCreate": {
         "properties": {

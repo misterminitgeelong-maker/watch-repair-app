@@ -327,9 +327,14 @@ export default function MinitOperationsPage() {
                 </thead>
                 <tbody>
                   {(data.region_stats ?? []).map(row => (
-                    <tr key={row.region} style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                    <tr key={row.region_id ?? row.region} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                       <td className="px-4 py-2.5 font-medium" style={{ color: 'var(--ms-text)' }}>
                         {row.region}
+                        {row.manager_name && (
+                          <span className="block text-xs font-normal" style={{ color: 'var(--ms-text-muted)' }}>
+                            {row.manager_name}
+                          </span>
+                        )}
                       </td>
                       <td className="text-right px-3 py-2.5 tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
                         {row.shop_count}

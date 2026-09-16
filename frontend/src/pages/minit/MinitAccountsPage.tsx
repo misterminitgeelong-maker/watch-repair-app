@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, KeyRound } from 'lucide-react'
+import { Copy, KeyRound, LogIn } from 'lucide-react'
 import {
   createShopOwnerInvite,
   formatTenantLabel,
@@ -9,13 +9,16 @@ import {
   MINIT_INVITE_PLAN_OPTIONS,
   provisionMinitShop,
   unlinkTenantFromParentAccount,
+  updateLinkedSite,
   type ParentAccountSite,
   type PlanCode,
   type ShopOwnerInvite,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { useHqEnterShop } from '@/lib/hqEnterShop'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
+import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 function formatAreaRegion(area?: string | null, region?: string | null) {
@@ -24,8 +27,10 @@ function formatAreaRegion(area?: string | null, region?: string | null) {
 }
 
 export default function MinitAccountsPage() {
-  const { refreshSession } = useAuth()
+  const { refreshSession, sessionUserId } = useAuth()
   const qc = useQueryClient()
+  const { enterShop, entering, error: enterError } = useHqEnterShop()
+  const { data: regions = [] } = useRegions()
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [shopNumber, setShopNumber] = useState('')
@@ -66,6 +71,38 @@ export default function MinitAccountsPage() {
   const retailTotal = retailPage?.total ?? summary?.site_count ?? 0
   const operators = operatorsPage?.sites ?? []
   const isLoading = summaryLoading && !summary
+  // Only HQ admins restructure the network or walk into its shops.
+  const canEdit = summary?.my_role === 'hq_admin'
+
+  const regionMut = useMutation({
+    mutationFn: ({ tenantId, regionId }: { tenantId: string; regionId: string }) =>
+      updateLinkedSite(tenantId, regionId ? { region_id: regionId } : { clear_region: true }).then(r => r.data),
+    onSuccess: () => {
+      setError('')
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: REGIONS_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: ['minit-operations-overview'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not change that shop\'s region.')),
+  })
+
+  function openShopButton(site: ParentAccountSite) {
+    if (!canEdit) return null
+    return (
+      <Button
+        variant="ghost"
+        className="text-xs px-3 py-1.5"
+        onClick={() => void enterShop(site.tenant_id)}
+        disabled={entering === site.tenant_id}
+        title="Open a 30-minute support session inside this shop, as its owner"
+      >
+        <span className="inline-flex items-center gap-1">
+          <LogIn size={13} />
+          {entering === site.tenant_id ? 'Opening…' : 'Open shop'}
+        </span>
+      </Button>
+    )
+  }
 
   const provisionMut = useMutation({
     mutationFn: () =>
@@ -168,16 +205,16 @@ export default function MinitAccountsPage() {
       <PageHeader
         title="Manage shops"
         action={
-          <Button onClick={() => { setError(''); setShowAdd(true) }}>+ Add shop</Button>
+          canEdit ? <Button onClick={() => { setError(''); setShowAdd(true) }}>+ Add shop</Button> : undefined
         }
       />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
         Add, link, or remove shops on the network. Use Shops to browse by region.
       </p>
 
-      {error && (
+      {(error || enterError) && (
         <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
-          {error}
+          {error || enterError}
         </div>
       )}
 
@@ -225,7 +262,23 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {canEdit && regions.length > 0 && (
+                  <Select
+                    value={site.region_id ?? ''}
+                    onChange={e => regionMut.mutate({ tenantId: site.tenant_id, regionId: e.target.value })}
+                    aria-label={`Region for ${site.tenant_name}`}
+                    disabled={regionMut.isPending}
+                    className="text-xs"
+                  >
+                    <option value="">No region</option>
+                    {regions.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </Select>
+                )}
+                {openShopButton(site)}
+                {canEdit && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
@@ -237,6 +290,8 @@ export default function MinitAccountsPage() {
                     Invite owner
                   </span>
                 </Button>
+                )}
+                {canEdit && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
@@ -245,6 +300,7 @@ export default function MinitAccountsPage() {
                 >
                   {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
                 </Button>
+                )}
               </div>
             </div>
             )
@@ -285,7 +341,9 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {openShopButton(site)}
+                {canEdit && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
@@ -297,6 +355,8 @@ export default function MinitAccountsPage() {
                     Invite owner
                   </span>
                 </Button>
+                )}
+                {canEdit && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
@@ -305,12 +365,18 @@ export default function MinitAccountsPage() {
                 >
                   {removingId === site.tenant_id ? 'Removing…' : 'Remove'}
                 </Button>
+                )}
               </div>
             </div>
             )
           })}
         </Card>
       )}
+
+      <div className="mt-6">
+        <RegionsCard canEdit={canEdit} />
+        <HqStaffCard canEdit={canEdit} currentUserId={sessionUserId ?? undefined} />
+      </div>
 
       {showAdd && (
         <Modal title="Add shop" onClose={() => setShowAdd(false)}>

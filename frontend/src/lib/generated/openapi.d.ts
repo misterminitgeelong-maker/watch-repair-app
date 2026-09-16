@@ -4325,7 +4325,11 @@ export interface paths {
         delete: operations["unlink_tenant_from_parent_account_v1_parent_accounts_me_sites__tenant_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Linked Site
+         * @description Change what a site *is* in the network without touching its plan.
+         */
+        patch: operations["update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch"];
         trace?: never;
     };
     "/v1/public/shop-invite/{token}": {
@@ -4519,6 +4523,129 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites/{tenant_id}/enter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enter Linked Shop
+         * @description Open a short support session inside one of the network's own shops.
+         *
+         *     Provisioned shops start out sharing HQ's login, and the moment a shop
+         *     takes its own credentials that shared login stops working — which used to
+         *     mean HQ lost the ability to get into the shops it had most successfully
+         *     onboarded. This is the front door instead: any HQ admin can enter any
+         *     linked site, authorised by the site table rather than by whose email
+         *     happens to be on the shop's owner row.
+         *
+         *     The token is anchored on the shop's first active owner login and carries
+         *     that login's own role, so the auth layer treats it like any other session
+         *     for that user. It lasts HQ_ENTER_SHOP_MINUTES and has no refresh token.
+         *     Both the shop's audit log and the network's activity feed record who
+         *     entered.
+         */
+        post: operations["enter_linked_shop_v1_parent_accounts_me_sites__tenant_id__enter_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Parent Account Users
+         * @description Everyone with explicit network-level access.
+         */
+        get: operations["list_parent_account_users_v1_parent_accounts_me_users_get"];
+        /**
+         * Grant Parent Account Role
+         * @description Give a user in one of the network's sites an HQ role, or change it.
+         *
+         *     Several people can now be HQ — an operations manager and a finance
+         *     controller with different access — without anyone sharing an email.
+         */
+        put: operations["grant_parent_account_role_v1_parent_accounts_me_users_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Parent Account Role
+         * @description Remove an explicit grant. Their shop login is untouched.
+         *
+         *     Access implied by being in the HQ tenant is not a grant and cannot be
+         *     revoked here — deactivate the user in the HQ tenant instead, or set them
+         *     to hq_viewer explicitly.
+         */
+        delete: operations["revoke_parent_account_role_v1_parent_accounts_me_users__user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Regions */
+        get: operations["list_regions_v1_parent_accounts_me_regions_get"];
+        put?: never;
+        /** Create Region */
+        post: operations["create_region_v1_parent_accounts_me_regions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Region
+         * @description Delete a region; its sites become unassigned.
+         */
+        delete: operations["delete_region_v1_parent_accounts_me_regions__region_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Region */
+        patch: operations["update_region_v1_parent_accounts_me_regions__region_id__patch"];
         trace?: never;
     };
     "/v1/billing/limits": {
@@ -7879,8 +8006,17 @@ export interface components {
             area?: string | null;
             /** Region */
             region?: string | null;
+            /** Region Id */
+            region_id?: string | null;
+            /** Region Code */
+            region_code?: string | null;
             /** Plan Code */
             plan_code: string;
+            /**
+             * Network Role
+             * @default retail
+             */
+            network_role: string;
             /**
              * Owner User Id
              * Format: uuid
@@ -7890,6 +8026,18 @@ export interface components {
             owner_email: string;
             /** Owner Full Name */
             owner_full_name: string;
+        };
+        /** ParentAccountSiteUpdateRequest */
+        ParentAccountSiteUpdateRequest: {
+            /** Network Role */
+            network_role?: string | null;
+            /** Region Id */
+            region_id?: string | null;
+            /**
+             * Clear Region
+             * @default false
+             */
+            clear_region: boolean;
         };
         /** ParentAccountSitesPageResponse */
         ParentAccountSitesPageResponse: {
@@ -7922,6 +8070,8 @@ export interface components {
             parent_account_name: string;
             /** Owner Email */
             owner_email: string;
+            /** My Role */
+            my_role?: string | null;
             /**
              * Site Count
              * @default 0
@@ -7938,6 +8088,50 @@ export interface components {
             mobile_lead_webhook_secret_configured: boolean;
             /** Mobile Lead Default Tenant Id */
             mobile_lead_default_tenant_id?: string | null;
+        };
+        /** ParentAccountUserGrantRequest */
+        ParentAccountUserGrantRequest: {
+            /** User Id */
+            user_id?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Role */
+            role: string;
+        };
+        /** ParentAccountUserRead */
+        ParentAccountUserRead: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /** Tenant Role */
+            tenant_role: string;
+            /** Role */
+            role: string;
+            /**
+             * Source
+             * @default explicit
+             */
+            source: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ParentDashboardBookingSnippet */
         ParentDashboardBookingSnippet: {
@@ -7976,6 +8170,29 @@ export interface components {
             total_emails: number;
             /** Shops */
             shops?: components["schemas"]["ShopEmailLeadBucket"][];
+        };
+        /** ParentEnterShopResponse */
+        ParentEnterShopResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In Seconds */
+            expires_in_seconds: number;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /**
+             * Acting As User Id
+             * Format: uuid
+             */
+            acting_as_user_id: string;
+            /** Acting As Email */
+            acting_as_email: string;
         };
         /** ParentImportShopsResponse */
         ParentImportShopsResponse: {
@@ -8263,6 +8480,10 @@ export interface components {
         ParentRegionDashboardStat: {
             /** Region */
             region: string;
+            /** Region Id */
+            region_id?: string | null;
+            /** Manager Name */
+            manager_name?: string | null;
             /** Shop Count */
             shop_count: number;
             /** Bookings 30D */
@@ -8967,6 +9188,70 @@ export interface components {
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /** RegionCreateRequest */
+        RegionCreateRequest: {
+            /** Name */
+            name: string;
+            /** Code */
+            code?: string | null;
+            /** Manager Name */
+            manager_name?: string | null;
+            /** Manager Email */
+            manager_email?: string | null;
+            /** Manager Phone */
+            manager_phone?: string | null;
+            /** Escalation Email */
+            escalation_email?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** RegionRead */
+        RegionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Manager Name */
+            manager_name?: string | null;
+            /** Manager Email */
+            manager_email?: string | null;
+            /** Manager Phone */
+            manager_phone?: string | null;
+            /** Escalation Email */
+            escalation_email?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Site Count
+             * @default 0
+             */
+            site_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** RegionUpdateRequest */
+        RegionUpdateRequest: {
+            /** Name */
+            name?: string | null;
+            /** Manager Name */
+            manager_name?: string | null;
+            /** Manager Email */
+            manager_email?: string | null;
+            /** Manager Phone */
+            manager_phone?: string | null;
+            /** Escalation Email */
+            escalation_email?: string | null;
+            /** Notes */
+            notes?: string | null;
         };
         /** RepairJobCreate */
         RepairJobCreate: {
@@ -19182,6 +19467,41 @@ export interface operations {
             };
         };
     };
+    update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentAccountSiteUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountSiteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_shop_owner_invite_public_v1_public_shop_invite__token__get: {
         parameters: {
             query?: never;
@@ -19483,6 +19803,240 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentTroubleshootingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enter_linked_shop_v1_parent_accounts_me_sites__tenant_id__enter_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentEnterShopResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_parent_account_users_v1_parent_accounts_me_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountUserRead"][];
+                };
+            };
+        };
+    };
+    grant_parent_account_role_v1_parent_accounts_me_users_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentAccountUserGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountUserRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_parent_account_role_v1_parent_accounts_me_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentAccountUserRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_regions_v1_parent_accounts_me_regions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionRead"][];
+                };
+            };
+        };
+    };
+    create_region_v1_parent_accounts_me_regions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_region_v1_parent_accounts_me_regions__region_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_region_v1_parent_accounts_me_regions__region_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionRead"];
                 };
             };
             /** @description Validation Error */

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatTenantLabel, type ParentAccountSite } from '@/lib/api'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { useParentAccountSites } from '@/hooks/useParentAccountSites'
+import { useRegions } from '@/components/minit/MinitNetworkPanels'
 import { MinitShopImport } from '@/components/MinitShopImport'
 import { MinitDirectoryImport } from '@/components/MinitDirectoryImport'
 import { Button, Card, Input, PageHeader, Select } from '@/components/ui'
@@ -207,14 +208,19 @@ export default function MinitShopsPage() {
   const retailSites = retailPage?.sites ?? []
   const operators = operatorsPage?.sites ?? []
   const retailTotal = retailPage?.total ?? summary?.site_count ?? retailSites.length
+  const { data: regions = [] } = useRegions()
+  // Region rows are the filter options; shops on a raw TSS string with no row yet fall back to it.
   const regionOptions = useMemo(() => {
-    const values = new Set<string>()
+    const byName = new Map<string, string>()
+    for (const r of regions) byName.set(r.name, r.code)
     for (const site of retailCatalog?.sites ?? []) {
-      const r = site.region?.trim()
-      if (r) values.add(r)
+      const name = site.region?.trim()
+      if (name && !byName.has(name)) byName.set(name, name)
     }
-    return Array.from(values).sort((a, b) => regionSortIndex(a) - regionSortIndex(b) || a.localeCompare(b))
-  }, [retailCatalog?.sites])
+    return Array.from(byName.entries())
+      .map(([name, code]) => ({ name, code }))
+      .sort((a, b) => regionSortIndex(a.code) - regionSortIndex(b.code) || a.name.localeCompare(b.name))
+  }, [regions, retailCatalog?.sites])
 
   const regionGroups = useMemo(() => groupRetailByRegion(retailSites), [retailSites])
   const isLoading = retailLoading && retailSites.length === 0
@@ -255,7 +261,7 @@ export default function MinitShopsPage() {
           >
             <option value="">All regions</option>
             {regionOptions.map(region => (
-              <option key={region} value={region}>{region}</option>
+              <option key={region.code} value={region.code}>{region.name}</option>
             ))}
             {(retailCatalog?.sites ?? []).some(s => !s.region?.trim()) && (
               <option value={UNASSIGNED_REGION}>{UNASSIGNED_REGION}</option>

@@ -41,6 +41,7 @@ import {
 } from '@/lib/onboarding'
 import { isAutoKeyJobDetailPath } from '@/components/MobileServicesSubNav'
 import { AdminReturnBanner } from '@/lib/adminImpersonation'
+import { HqReturnBanner } from '@/lib/hqEnterShop'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 import OfflineQueueBanner from './OfflineQueueBanner'
@@ -1209,6 +1210,7 @@ export default function AppShell() {
         </div>
       )}
       <AdminReturnBanner />
+      <HqReturnBanner />
       </div>
     </>
   )

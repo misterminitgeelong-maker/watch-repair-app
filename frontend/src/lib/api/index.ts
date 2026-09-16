@@ -120,17 +120,72 @@ export const signup = (data: {
 export const bootstrap = (data: { tenant_name: string; tenant_slug: string; owner_email: string; owner_password: string; owner_full_name?: string }) =>
   api.post('/auth/bootstrap', data)
 
+export type NetworkRole = 'hq' | 'retail' | 'operator'
+export type ParentRole = 'hq_admin' | 'hq_viewer'
+
 export interface ParentAccountSite {
   tenant_id: string
   tenant_slug: string
   tenant_name: string
   shop_number?: string | null
   area?: string | null
+  /** Display name of the site's Region (falls back to the raw TSS string). */
   region?: string | null
+  region_id?: string | null
+  region_code?: string | null
   plan_code: string
+  /** The site's place in the network — independent of what it is billed for. */
+  network_role: NetworkRole
   owner_user_id: string
   owner_email: string
   owner_full_name: string
+}
+
+export interface ParentAccountUser {
+  user_id: string
+  tenant_id: string
+  tenant_slug: string
+  email: string
+  full_name: string
+  tenant_role: string
+  role: ParentRole
+  /** explicit (granted) | hq_site (implied by being in the HQ tenant) | owner_email */
+  source: 'explicit' | 'hq_site' | 'owner_email'
+  is_active: boolean
+  created_at: string
+}
+
+export interface ParentEnterShopResponse {
+  access_token: string
+  expires_in_seconds: number
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  acting_as_user_id: string
+  acting_as_email: string
+}
+
+export interface Region {
+  id: string
+  code: string
+  name: string
+  manager_name?: string | null
+  manager_email?: string | null
+  manager_phone?: string | null
+  escalation_email?: string | null
+  notes?: string | null
+  site_count: number
+  created_at: string
+}
+
+export type RegionInput = {
+  name: string
+  code?: string
+  manager_name?: string | null
+  manager_email?: string | null
+  manager_phone?: string | null
+  escalation_email?: string | null
+  notes?: string | null
 }
 
 export function formatTenantLabel(name: string, shopNumber?: string | null): string {
@@ -143,6 +198,8 @@ export interface ParentAccountSummary {
   parent_account_id: string
   parent_account_name: string
   owner_email: string
+  /** The caller's own network role. */
+  my_role?: ParentRole | null
   site_count: number
   sites: ParentAccountSite[]
   mobile_lead_ingest_public_id?: string | null
@@ -204,6 +261,25 @@ export const createTenantFromParentAccount = (payload: {
 }) => api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
+export const enterLinkedShop = (tenantId: string) =>
+  api.post<ParentEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`)
+export const updateLinkedSite = (
+  tenantId: string,
+  payload: { network_role?: NetworkRole; region_id?: string | null; clear_region?: boolean },
+) => api.patch<ParentAccountSite>(`/parent-accounts/me/sites/${tenantId}`, payload)
+
+export const listParentAccountUsers = () =>
+  api.get<ParentAccountUser[]>('/parent-accounts/me/users')
+export const grantParentAccountRole = (payload: { user_id?: string; email?: string; role: ParentRole }) =>
+  api.put<ParentAccountUser[]>('/parent-accounts/me/users', payload)
+export const revokeParentAccountRole = (userId: string) =>
+  api.delete<ParentAccountUser[]>(`/parent-accounts/me/users/${userId}`)
+
+export const listRegions = () => api.get<Region[]>('/parent-accounts/me/regions')
+export const createRegion = (payload: RegionInput) => api.post<Region>('/parent-accounts/me/regions', payload)
+export const updateRegion = (regionId: string, payload: Partial<RegionInput>) =>
+  api.patch<Region>(`/parent-accounts/me/regions/${regionId}`, payload)
+export const deleteRegion = (regionId: string) => api.delete<Region[]>(`/parent-accounts/me/regions/${regionId}`)
 
 export interface ShopOwnerInvite {
   id: string
@@ -383,6 +459,8 @@ export interface ParentDashboardBookingSnippet {
 
 export interface ParentRegionDashboardStat {
   region: string
+  region_id?: string | null
+  manager_name?: string | null
   shop_count: number
   bookings_30d: number
   pending: number
