@@ -1185,8 +1185,10 @@ class UserNotificationPreference(SQLModel, table=True):
     #: last_*_sent_at tracks the period already sent so the scheduler stays idempotent.
     email_weekly_sales_report: bool = False
     email_monthly_sales_report: bool = False
+    email_weekly_regional_report: bool = False
     last_weekly_sales_report_sent_at: Optional[datetime] = None
     last_monthly_sales_report_sent_at: Optional[datetime] = None
+    last_weekly_regional_report_sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1338,3 +1340,42 @@ class VswtWeeklyShopMetric(SQLModel, table=True):
     uploaded_by_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
     uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class VswtReportTarget(SQLModel, table=True):
+    """A tenant-owned target for one VSWT metric.
+
+    Targets used to live in browser localStorage. Persisting them here makes them available to
+    every device and every manager in the shop, and lets scheduled reports use the same goals.
+    """
+    __tablename__ = "vswt_report_target"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "shop_number", "metric_key", name="uq_vswt_target_tenant_shop_metric"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shop_number: str = Field(index=True, max_length=10)
+    metric_key: str = Field(max_length=64)
+    target_value: float
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class VswtWeekAnnotation(SQLModel, table=True):
+    """Tenant-private context for an unusual reporting week."""
+    __tablename__ = "vswt_week_annotation"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "shop_number", "week_seq", name="uq_vswt_annotation_tenant_shop_week"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    shop_number: str = Field(index=True, max_length=10)
+    week_seq: int = Field(index=True)
+    event_type: str = Field(default="other", max_length=32)
+    note: str = Field(max_length=500)
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

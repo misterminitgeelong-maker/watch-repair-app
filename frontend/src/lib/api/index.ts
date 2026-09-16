@@ -3447,6 +3447,84 @@ export interface VswtSummary {
 }
 export const getVswtSummary = () => api.get<VswtSummary | VswtUnavailable>('/reports/vswt/summary')
 
+export type VswtComparison = 'previous' | '4w' | '13w' | '52w' | 'last_year'
+export interface VswtCockpitRow extends VswtKpiDef {
+  current: number | null
+  previous: number | null
+  rolling_4: number | null
+  rolling_13: number | null
+  rolling_52: number | null
+  rolling_counts: Record<string, number>
+  last_year: number | null
+  comparison: number | null
+  delta: number | null
+  delta_pct: number | null
+  region_avg: number | null
+  peer_avg: number | null
+  rank: number | null
+  previous_rank: number | null
+  rank_change: number | null
+  target: number | null
+  target_variance: number | null
+}
+export interface VswtAnnotation {
+  id: string
+  week: number
+  event_type: string
+  note: string
+  created_at: string
+  updated_at: string
+}
+export interface VswtAlert { severity: 'positive' | 'info' | 'warning' | 'critical'; title: string; message: string }
+export interface VswtCockpit {
+  available: true
+  shop_number: string
+  shop_name: string | null
+  area_name: string | null
+  viewing_own_shop: boolean
+  week: number
+  previous_week: number | null
+  weeks: number[]
+  comparison: VswtComparison
+  region_size: number
+  peer_size: number
+  source: { filename: string | null; uploaded_at: string | null; shops_in_upload: number }
+  rows: VswtCockpitRow[]
+  drivers: {
+    category_sales: { key: string; label: string; current: number | null; previous: number | null; delta: number | null; share_of_sales: number | null }[]
+    sales_bridge: { total_change: number | null; customer_volume_effect: number | null; average_sale_effect: number | null }
+  }
+  alerts: VswtAlert[]
+  annotations: VswtAnnotation[]
+  targets: Record<string, number>
+  email_weekly_report: boolean
+  last_weekly_report_sent_at: string | null
+}
+export const getVswtCockpit = (params: { week?: number; comparison?: VswtComparison; shopNumber?: string } = {}) =>
+  api.get<VswtCockpit | VswtUnavailable>('/reports/vswt/cockpit', {
+    params: {
+      ...(params.week ? { week: params.week } : {}),
+      ...(params.comparison ? { comparison: params.comparison } : {}),
+      ...(params.shopNumber ? { shop_number: params.shopNumber } : {}),
+    },
+  })
+
+export interface VswtTargets { available: true; shop_number: string; targets: Record<string, number> }
+export const getVswtTargets = () => api.get<VswtTargets | VswtUnavailable>('/reports/vswt/targets')
+export const putVswtTargets = (targets: Record<string, number | null>) =>
+  api.put<VswtTargets>('/reports/vswt/targets', { targets })
+
+export interface VswtAnnotations { available: true; shop_number: string; annotations: VswtAnnotation[] }
+export const getVswtAnnotations = () => api.get<VswtAnnotations | VswtUnavailable>('/reports/vswt/annotations')
+export const putVswtAnnotation = (payload: { week: number; event_type: string; note: string }) =>
+  api.put<VswtAnnotation>('/reports/vswt/annotations', payload)
+export const deleteVswtAnnotation = (id: string) => api.delete<{ deleted: string }>(`/reports/vswt/annotations/${id}`)
+
+export interface VswtEmailPreference { enabled: boolean; last_sent_at: string | null }
+export const getVswtEmailPreference = () => api.get<VswtEmailPreference>('/reports/vswt/email-preference')
+export const putVswtEmailPreference = (enabled: boolean) => api.put<VswtEmailPreference>('/reports/vswt/email-preference', { enabled })
+export const sendVswtEmailNow = () => api.post<{ sent: boolean }>('/reports/vswt/email-preference/send-now')
+
 export interface VswtScorecardCell { value: number | null; rank: number | null }
 export interface VswtScorecardWeekRow { week: number; region_size: number; cells: Record<string, VswtScorecardCell> }
 export interface VswtScorecard {
@@ -3562,6 +3640,7 @@ export interface VswtTrends {
   rank_series: { week: number; rank: number | null }[]
   category_series: { name: string; shop: number | null; region_avg: number | null }[]
   region_size: number
+  annotations: VswtAnnotation[]
 }
 export const getVswtTrends = (weeksBack = 8, shopNumber?: string) =>
   api.get<VswtTrends | VswtUnavailable>('/reports/vswt/trends', {

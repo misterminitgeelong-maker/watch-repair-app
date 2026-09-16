@@ -34,17 +34,19 @@ function Legend({ items }: { items: { label: string; color: string }[] }) {
 /** Grouped bars (2-3 series per category), CSS-only — matches the app's existing bar-chart style
  * (no charting library). */
 function GroupedBars({
-  categories, series, format,
+  categories, series, format, notes,
 }: {
   categories: string[]
   series: { label: string; color: string; values: (number | null)[] }[]
   format: (v: number) => string
+  notes?: Record<string, string>
 }) {
   const max = Math.max(1, ...series.flatMap(s => s.values.map(v => v ?? 0)))
   return (
     <div className="flex items-end gap-4" style={{ height: 180 }}>
       {categories.map((cat, i) => (
         <div key={cat} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+          {notes?.[cat] && <span title={notes[cat]} className="w-2 h-2 rounded-full" style={{ background: '#9A5A00' }} />}
           <div className="flex items-end gap-1" style={{ height: 140 }}>
             {series.map(s => {
               const v = s.values[i]
@@ -82,6 +84,7 @@ export function VswtTrends({
   const weekLabels = data.sales_series.map(s => String(s.week))
   const maxRank = data.region_size
   const shopLabel = data.viewing_own_shop ? 'Your Shop' : (data.shop_name ?? 'Shop')
+  const notes = Object.fromEntries(data.annotations.map(annotation => [String(annotation.week), annotation.note]))
 
   return (
     <div className="flex flex-col gap-5">
@@ -108,6 +111,7 @@ export function VswtTrends({
             { label: 'Peer Avg', color: PEER_COLOR, values: data.sales_series.map(s => s.peer_avg) },
           ]}
           format={v => fmtVswtVal(v, 'currency')}
+          notes={notes}
         />
       </ChartPanel>
 
@@ -151,6 +155,20 @@ export function VswtTrends({
           format={v => fmtVswtVal(v, 'currency')}
         />
       </ChartPanel>
+
+      {data.annotations.length > 0 && (
+        <ChartPanel title="Week notes">
+          <div className="space-y-2">
+            {data.annotations.filter(annotation => data.weeks.includes(annotation.week)).map(annotation => (
+              <div key={annotation.id} className="grid grid-cols-[80px_120px_1fr] gap-3 text-xs rounded-md p-2" style={{ background: 'var(--ms-bg)' }}>
+                <strong style={{ color: 'var(--ms-text)' }}>Week {annotation.week}</strong>
+                <span className="capitalize" style={{ color: 'var(--ms-accent)' }}>{annotation.event_type.replaceAll('_', ' ')}</span>
+                <span style={{ color: 'var(--ms-text-mid)' }}>{annotation.note}</span>
+              </div>
+            ))}
+          </div>
+        </ChartPanel>
+      )}
     </div>
   )
 }

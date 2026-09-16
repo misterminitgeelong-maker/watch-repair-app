@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowDownRight, ArrowUpRight, Gauge, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText, ClipboardList } from 'lucide-react'
-import { getVswtExportCsv, getVswtSummary, getVswtWeeks, type VswtSummary, type VswtUnavailable } from '@/lib/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowDownRight, ArrowUpRight, Gauge, GitCompareArrows, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText, ClipboardList } from 'lucide-react'
+import { getVswtExportCsv, getVswtSummary, getVswtTargets, getVswtWeeks, putVswtTargets, type VswtKpiGroup, type VswtSummary, type VswtUnavailable } from '@/lib/api'
 import { Button, Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { VswtRankGauge } from './VswtRankGauge'
@@ -14,10 +14,11 @@ import { VswtShopReport } from './VswtShopReport'
 import { VswtUploadPanel } from './VswtUploadPanel'
 import { VswtShopDirectory } from './VswtShopDirectory'
 import { VswtWeeklyReportBuilder } from './VswtWeeklyReportBuilder'
+import { VswtComparisonCockpit } from './VswtComparisonCockpit'
 import type { ViewingShop } from './VswtViewingBanner'
 
 type SubTab =
-  | 'overview' | 'directory' | 'shop-report' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends'
+  | 'comparison' | 'overview' | 'directory' | 'shop-report' | 'scorecard' | 'rankings' | 'leaderboards' | 'trends'
   | 'weekly-report' | 'upload'
 
 const MANAGER_ROLES = new Set(['owner', 'manager', 'platform_admin'])
@@ -52,12 +53,14 @@ export function PillToggle<T extends string>({
 export function VswtRegionalReportSection() {
   const { role } = useAuth()
   const canUpload = role != null && MANAGER_ROLES.has(role)
-  const [subTab, setSubTab] = useState<SubTab>('overview')
+  const [subTab, setSubTab] = useState<SubTab>('comparison')
+  const [shopReportGroup, setShopReportGroup] = useState<VswtKpiGroup>('Headline')
   // Set by picking a shop in the Directory; carries across Scorecard/Rankings/Trends until the
   // user explicitly goes "back to my shop" — switching those tabs while browsing keeps browsing.
   const [viewingShop, setViewingShop] = useState<ViewingShop | null>(null)
 
   const subTabs: { key: SubTab; label: string; icon: React.ElementType }[] = [
+    { key: 'comparison', label: 'Comparison', icon: GitCompareArrows },
     { key: 'overview', label: 'Overview', icon: Gauge },
     { key: 'directory', label: 'Shop Directory', icon: Search },
     { key: 'shop-report', label: 'Shop Report', icon: FileText },
@@ -74,6 +77,11 @@ export function VswtRegionalReportSection() {
     setSubTab('shop-report')
   }
 
+  function openDetails(group: VswtKpiGroup) {
+    setShopReportGroup(group)
+    setSubTab('shop-report')
+  }
+
   return (
     <div>
       <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
@@ -84,10 +92,13 @@ export function VswtRegionalReportSection() {
         <PillToggle value={subTab} onChange={setSubTab} options={subTabs.map(t => ({ key: t.key, label: t.label }))} />
       </div>
 
+      {subTab === 'comparison' && (
+        <VswtComparisonCockpit viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} onOpenDetails={openDetails} />
+      )}
       {subTab === 'overview' && <VswtOverview canUpload={canUpload} onGoToUpload={() => setSubTab('upload')} />}
       {subTab === 'directory' && <VswtShopDirectory onSelectShop={viewShop} />}
       {subTab === 'shop-report' && (
-        <VswtShopReport viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
+        <VswtShopReport viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} initialGroup={shopReportGroup} />
       )}
       {subTab === 'scorecard' && (
         <VswtScorecard viewingShop={viewingShop} onBackToMyShop={() => setViewingShop(null)} />
@@ -117,12 +128,26 @@ function unavailableMessage(reason: VswtUnavailable['reason']): string {
 }
 
 function VswtOverview({ canUpload, onGoToUpload }: { canUpload: boolean; onGoToUpload: () => void }) {
-  const { tenantId } = useAuth()
+  const { role } = useAuth()
+  const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['vswt-summary'], queryFn: () => getVswtSummary().then(r => r.data) })
   const { data: weekData } = useQuery({ queryKey: ['vswt-weeks'], queryFn: () => getVswtWeeks().then(r => r.data.weeks) })
-  const [targets, setTargets] = useState(() => loadTargets(tenantId))
-
-  useEffect(() => { saveTargets(tenantId, targets) }, [tenantId, targets])
+  const { data: targetData } = useQuery({ queryKey: ['vswt-targets'], queryFn: () => getVswtTargets().then(r => r.data) })
+  const [targets, setTargets] = useState<Targets>({ sales: null, customers: null, jobs: null })
+  useEffect(() => {
+    if (targetData?.available) setTargets({
+      sales: targetData.targets.sales_ty ?? null,
+      customers: targetData.targets.customer_ty ?? null,
+      jobs: targetData.targets.jobs_ty ?? null,
+    })
+  }, [targetData])
+  const targetMutation = useMutation({
+    mutationFn: () => putVswtTargets({ sales_ty: targets.sales, customer_ty: targets.customers, jobs_ty: targets.jobs }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vswt-targets'] })
+      void queryClient.invalidateQueries({ queryKey: ['vswt-cockpit'] })
+    },
+  })
 
   if (isLoading) return <Spinner />
   if (!data) return <EmptyState message="Couldn't load regional data." />
@@ -180,7 +205,7 @@ function VswtOverview({ canUpload, onGoToUpload }: { canUpload: boolean; onGoToU
         Week {summary.latest_week} · {summary.weeks_tracked} week{summary.weeks_tracked !== 1 ? 's' : ''} tracked · {summary.region_size} shops in region
       </p>
       <div className="grid gap-4 lg:grid-cols-2 mt-5">
-        <TargetPanel summary={summary} targets={targets} onChange={setTargets} />
+        <TargetPanel summary={summary} targets={targets} onChange={setTargets} canEdit={role != null && MANAGER_ROLES.has(role)} saving={targetMutation.isPending} onSave={() => targetMutation.mutate()} />
         <InsightsPanel summary={summary} weeks={weekData ?? []} onExport={() => downloadRegionalCsv()} />
       </div>
     </div>
@@ -188,17 +213,7 @@ function VswtOverview({ canUpload, onGoToUpload }: { canUpload: boolean; onGoToU
 }
 
 type Targets = { sales: number | null; customers: number | null; jobs: number | null }
-function loadTargets(tenantId: string | null): Targets {
-  try {
-    const raw = localStorage.getItem(`vswt-targets:${tenantId ?? 'anon'}`)
-    const parsed = raw ? JSON.parse(raw) : {}
-    return { sales: Number.isFinite(parsed.sales) ? parsed.sales : null, customers: Number.isFinite(parsed.customers) ? parsed.customers : null, jobs: Number.isFinite(parsed.jobs) ? parsed.jobs : null }
-  } catch { return { sales: null, customers: null, jobs: null } }
-}
-function saveTargets(tenantId: string | null, targets: Targets) {
-  try { localStorage.setItem(`vswt-targets:${tenantId ?? 'anon'}`, JSON.stringify(targets)) } catch { /* private mode */ }
-}
-function TargetPanel({ summary, targets, onChange }: { summary: VswtSummary; targets: Targets; onChange: (v: Targets) => void }) {
+function TargetPanel({ summary, targets, onChange, canEdit, saving, onSave }: { summary: VswtSummary; targets: Targets; onChange: (v: Targets) => void; canEdit: boolean; saving: boolean; onSave: () => void }) {
   const items = [
     { key: 'sales' as const, label: 'Sales target', current: summary.sales.value, type: 'currency' as const },
     { key: 'customers' as const, label: 'Customer target', current: summary.customers.value, type: 'count' as const },
@@ -212,11 +227,12 @@ function TargetPanel({ summary, targets, onChange }: { summary: VswtSummary; tar
         const variance = target != null && item.current != null ? item.current - target : null
         return <div key={item.key}>
           <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--ms-text-muted)' }}>{item.label}</label>
-          <input type="number" min="0" value={target ?? ''} placeholder="Set target" onChange={e => onChange({ ...targets, [item.key]: e.target.value === '' ? null : Number(e.target.value) })} className="w-full rounded-md px-2 py-1.5 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} />
+          <input type="number" min="0" disabled={!canEdit} value={target ?? ''} placeholder="Set target" onChange={e => onChange({ ...targets, [item.key]: e.target.value === '' ? null : Number(e.target.value) })} className="w-full rounded-md px-2 py-1.5 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} />
           {variance != null && <p className="text-[11px] mt-1" style={{ color: variance >= 0 ? '#1A6A3A' : '#A33838' }}>{variance >= 0 ? '+' : ''}{fmtVswtVal(variance, item.type)} vs target</p>}
         </div>
       })}
     </div>
+    {canEdit && <Button className="w-full mt-3" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save shared targets'}</Button>}
   </Card>
 }
 function InsightsPanel({ summary, weeks, onExport }: { summary: VswtSummary; weeks: { week: number; uploaded_at: string | null }[]; onExport: () => void }) {

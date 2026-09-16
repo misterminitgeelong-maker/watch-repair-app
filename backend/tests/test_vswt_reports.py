@@ -824,3 +824,89 @@ def test_weekly_report_pdf_compare_within_selection_downloads_fine(vswt_client):
     )
     assert res.status_code == 200, res.text
     assert res.content[:4] == b"%PDF"
+
+
+# ── Comparison cockpit, shared targets, annotations, and delivery preference ────────────
+
+def test_comparison_cockpit_explains_change_and_uses_one_baseline(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-cockpit", "owner-cockpit@test.com")
+    _set_shop_number(tenant_id, "3269")
+
+    def rows(week):
+        current = week == 990002
+        return [
+            _shop_row(
+                3269, "Chadstone", 11000 if current else 10000,
+                customer_ty=100 if current else 100,
+                jobs_ty=145 if current else 130,
+                shoe_sales_ty=2500 if current else 2000,
+                key_sales_ty=3000 if current else 3200,
+                watch_sales_ty=4000 if current else 3500,
+                merch_sales_ty=500 if current else 600,
+                engrave_sales_ty=1000 if current else 700,
+                sales_ly=9000 if current else 8500,
+            ),
+            _shop_row(3904, "Doncaster", 12000, customer_ty=110, jobs_ty=150),
+        ]
+
+    _seed_weeks(vswt_client, headers, [990001, 990002], rows)
+    res = vswt_client.get(
+        "/v1/reports/vswt/cockpit",
+        headers=headers,
+        params={"week": 990002, "comparison": "previous"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["available"] is True
+    assert body["previous_week"] == 990001
+    sales = next(row for row in body["rows"] if row["key"] == "sales_ty")
+    assert sales["current"] == 11000
+    assert sales["comparison"] == 10000
+    assert sales["delta"] == 1000
+    assert sales["delta_pct"] == pytest.approx(0.10)
+    avg_sale = next(row for row in body["rows"] if row["key"] == "avg_sale")
+    assert avg_sale["current"] == 110
+    assert body["drivers"]["sales_bridge"]["average_sale_effect"] == pytest.approx(1000)
+    assert any(driver["label"] == "Watch" and driver["delta"] == 500 for driver in body["drivers"]["category_sales"])
+
+
+def test_targets_and_week_annotations_persist_for_the_shop(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-cockpit-persist", "owner-cockpit-persist@test.com")
+    _set_shop_number(tenant_id, "3269")
+    _seed_weeks(vswt_client, headers, [990011], lambda _week: [_shop_row(3269, "Chadstone", 15000)])
+
+    targets = vswt_client.put(
+        "/v1/reports/vswt/targets",
+        headers=headers,
+        json={"targets": {"sales_ty": 16000, "customer_ty": 120, "jobs_ty": None}},
+    )
+    assert targets.status_code == 200, targets.text
+    assert targets.json()["targets"] == {"sales_ty": 16000, "customer_ty": 120}
+
+    annotation = vswt_client.put(
+        "/v1/reports/vswt/annotations",
+        headers=headers,
+        json={"week": 990011, "event_type": "public holiday", "note": "Monday trade was reduced."},
+    )
+    assert annotation.status_code == 200, annotation.text
+    assert annotation.json()["event_type"] == "public_holiday"
+
+    cockpit = vswt_client.get(
+        "/v1/reports/vswt/cockpit", headers=headers, params={"week": 990011}
+    ).json()
+    sales = next(row for row in cockpit["rows"] if row["key"] == "sales_ty")
+    assert sales["target"] == 16000
+    assert sales["target_variance"] == -1000
+    assert cockpit["annotations"][0]["note"] == "Monday trade was reduced."
+
+
+def test_weekly_regional_email_preference_round_trips(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-cockpit-email", "owner-cockpit-email@test.com")
+    _set_shop_number(tenant_id, "3269")
+    initial = vswt_client.get("/v1/reports/vswt/email-preference", headers=headers)
+    assert initial.status_code == 200
+    assert initial.json()["enabled"] is False
+    updated = vswt_client.put("/v1/reports/vswt/email-preference", headers=headers, json={"enabled": True})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["enabled"] is True
+    assert vswt_client.get("/v1/reports/vswt/email-preference", headers=headers).json()["enabled"] is True

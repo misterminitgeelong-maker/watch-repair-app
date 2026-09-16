@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getVswtShopReport, type VswtKpiGroup, type VswtShopReportRow } from '@/lib/api'
 import { Badge, EmptyState, Spinner } from '@/components/ui'
@@ -14,10 +14,11 @@ const WINDOWS: { key: Window; label: string }[] = [
 ]
 
 export function VswtShopReport({
-  viewingShop, onBackToMyShop,
-}: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void } = {}) {
-  const [group, setGroup] = useState<VswtKpiGroup>('Headline')
+  viewingShop, onBackToMyShop, initialGroup = 'Headline',
+}: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void; initialGroup?: VswtKpiGroup } = {}) {
+  const [group, setGroup] = useState<VswtKpiGroup>(initialGroup)
   const [timeWindow, setTimeWindow] = useState<Window>('week')
+  useEffect(() => setGroup(initialGroup), [initialGroup])
 
   const { data, isLoading } = useQuery({
     queryKey: ['vswt-shop-report', viewingShop?.shopNumber ?? null, group],

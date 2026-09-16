@@ -85,6 +85,11 @@ def all_sweeps() -> list[Sweep]:
 
         return send_due_sales_report_emails
 
+    def _regional_report_email() -> SweepFn:
+        from .services.regional_report_email import send_due_regional_report_emails
+
+        return send_due_regional_report_emails
+
     def _mobile_weekly_report() -> SweepFn:
         from .services.mobile_weekly_report import send_due_mobile_weekly_reports
 
@@ -128,6 +133,13 @@ def all_sweeps() -> list[Sweep]:
             interval_minutes=settings.sales_report_check_interval_minutes,
             load=_sales_report_email,
             notable_keys=("weekly_sent", "monthly_sent"),
+        ),
+        Sweep(
+            name="regional_report_email",
+            enabled=settings.sales_report_email_enabled,
+            interval_minutes=settings.sales_report_check_interval_minutes,
+            load=_regional_report_email,
+            notable_keys=("sent",),
         ),
         Sweep(
             name="mobile_weekly_report",

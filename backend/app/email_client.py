@@ -941,6 +941,78 @@ def send_email_from_payload(
     )
 
 
+def send_vswt_management_report_email(
+    *,
+    to_email: str,
+    shop_name: str,
+    week: int,
+    sales: float | None,
+    sales_delta_pct: float | None,
+    customers: float | None,
+    jobs: float | None,
+    sales_rank: int | None,
+    region_size: int,
+    alerts: list[dict],
+    csv_bytes: bytes,
+    csv_filename: str,
+) -> tuple[bool, str | None]:
+    """Send the Regional Reports comparison cockpit as a weekly management email."""
+    if not (to_email or "").strip():
+        return False, None
+    sales_text = f"${sales:,.2f}" if sales is not None else "Unavailable"
+    movement = (
+        f" ({sales_delta_pct * 100:+.1f}% vs previous week)"
+        if sales_delta_pct is not None
+        else ""
+    )
+    rank_text = f"#{sales_rank} of {region_size}" if sales_rank is not None else "Unavailable"
+    alert_lines = "\n".join(f"  • {a.get('title')}: {a.get('message')}" for a in alerts[:5]) or "  No material exceptions."
+    body_plain = (
+        f"Hi,\n\nRegional performance report for {shop_name}, week {week}.\n\n"
+        f"Sales: {sales_text}{movement}\nCustomers: {customers if customers is not None else 'Unavailable'}\n"
+        f"Jobs: {jobs if jobs is not None else 'Unavailable'}\nRegional sales rank: {rank_text}\n\n"
+        f"Performance signals:\n{alert_lines}\n\nThe full comparison table is attached as a CSV.\n\n— Mainspring"
+    )
+    note_html = "<br>".join(
+        f"<strong>{_html.escape(str(a.get('title', 'Signal')))}</strong>: {_html.escape(str(a.get('message', '')))}"
+        for a in alerts[:5]
+    ) or "No material exceptions were detected."
+    line_items = [
+        {
+            "description": f"Week {week} sales",
+            "quantity": 1,
+            "total_price_cents": round((sales or 0) * 100),
+        }
+    ]
+    body_html = render_transactional_email(
+        title="Weekly regional performance report",
+        preheader=f"Week {week} · {sales_text} sales · rank {rank_text}",
+        greeting="Hi,",
+        intro_html=(
+            f"Here's the regional performance summary for <strong>{_html.escape(shop_name)}</strong>. "
+            f"Customers: <strong>{customers if customers is not None else '—'}</strong>. "
+            f"Jobs: <strong>{jobs if jobs is not None else '—'}</strong>. "
+            f"Sales rank: <strong>{_html.escape(rank_text)}</strong>."
+        ),
+        shop=ShopInfo(name=shop_name),
+        line_items=line_items,
+        total_cents=round((sales or 0) * 100),
+        currency="AUD",
+        note_html=note_html + "<br><br>Full KPI comparison detail is attached as a CSV.",
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=f"Regional performance report – Week {week}",
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="vswt_weekly_report",
+        attachment_bytes=csv_bytes,
+        attachment_filename=csv_filename,
+        attachment_mime_type="text/csv",
+    )
+
+
 def _send_email(
     *,
     to_email: str,

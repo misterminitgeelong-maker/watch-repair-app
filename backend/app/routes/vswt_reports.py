@@ -23,6 +23,7 @@ import csv
 import statistics
 from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
+from uuid import UUID
 
 import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -32,11 +33,18 @@ from sqlmodel import Session, delete as sa_delete, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
-from ..models import Tenant, VswtWeeklyShopMetric
+from ..models import (
+    Tenant,
+    UserNotificationPreference,
+    VswtReportTarget,
+    VswtWeekAnnotation,
+    VswtWeeklyShopMetric,
+)
 from ..pdf_vswt_report import build_weekly_report_pdf
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
     COLUMN_MAP,
+    KPI_BY_KEY,
     KPI_DEFS,
     KPI_GROUPS,
     KpiDef,
@@ -186,6 +194,257 @@ def _shop_number_for(auth: AuthContext, session: Session) -> Optional[str]:
     if not tenant or not tenant.shop_number:
         return None
     return tenant.shop_number
+
+
+def _pct_delta(current: Optional[float], baseline: Optional[float]) -> Optional[float]:
+    if current is None or baseline in (None, 0):
+        return None
+    return (current - baseline) / abs(baseline)
+
+
+def _target_value_map(session: Session, tenant_id: UUID, shop_number: str) -> dict[str, float]:
+    rows = session.exec(
+        select(VswtReportTarget)
+        .where(VswtReportTarget.tenant_id == tenant_id)
+        .where(VswtReportTarget.shop_number == shop_number)
+    ).all()
+    return {row.metric_key: row.target_value for row in rows}
+
+
+def _annotation_rows(session: Session, tenant_id: UUID, shop_number: str) -> list[VswtWeekAnnotation]:
+    return list(
+        session.exec(
+            select(VswtWeekAnnotation)
+            .where(VswtWeekAnnotation.tenant_id == tenant_id)
+            .where(VswtWeekAnnotation.shop_number == shop_number)
+            .order_by(VswtWeekAnnotation.week_seq.desc())
+        ).all()
+    )
+
+
+def _annotation_dict(row: VswtWeekAnnotation) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "week": row.week_seq,
+        "event_type": row.event_type,
+        "note": row.note,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
+_LAST_YEAR_KEYS = {
+    "sales_ty": "sales_ly",
+    "customer_ty": "customer_ly",
+    "jobs_ty": "jobs_ly",
+}
+
+
+def _derived_value(row: Optional[VswtWeeklyShopMetric], key: str) -> Optional[float]:
+    if row is None:
+        return None
+    if key == "avg_sale":
+        return row.sales_ty / row.customer_ty if row.sales_ty is not None and row.customer_ty else None
+    if key == "jobs_per_customer":
+        return row.jobs_ty / row.customer_ty if row.jobs_ty is not None and row.customer_ty else None
+    return getattr(row, key, None)
+
+
+def _build_cockpit_data(
+    session: Session,
+    *,
+    auth: AuthContext,
+    target_shop_number: str,
+    selected_week: Optional[int] = None,
+    comparison: str = "previous",
+) -> dict[str, Any]:
+    all_weeks = _all_weeks(session)
+    if not all_weeks:
+        return {"available": False, "reason": "no_data"}
+    week = selected_week if selected_week in all_weeks else all_weeks[-1]
+    week_index = all_weeks.index(week)
+    visible_weeks = all_weeks[: week_index + 1]
+    rows_by_week = {w: _week_rows(session, w) for w in visible_weeks}
+    current_rows = rows_by_week[week]
+    current = _find_shop(current_rows, target_shop_number)
+    if current is None:
+        return {"available": False, "reason": "shop_not_found"}
+
+    previous_week = visible_weeks[-2] if len(visible_weeks) > 1 else None
+    previous_rows = rows_by_week.get(previous_week, []) if previous_week is not None else []
+    previous = _find_shop(previous_rows, target_shop_number) if previous_week is not None else None
+    peers = _peer_rows(current_rows)
+    targets = _target_value_map(session, auth.tenant_id, target_shop_number)
+    own_shop = _shop_number_for(auth, session)
+
+    metric_defs: list[dict[str, str]] = [
+        {"key": k.key, "label": k.label, "group": k.group, "type": k.type}
+        for k in KPI_DEFS
+    ] + [
+        {"key": "avg_sale", "label": "Average sale", "group": "Headline", "type": "currency"},
+        {"key": "jobs_per_customer", "label": "Jobs per customer", "group": "Conversion", "type": "ratio"},
+    ]
+
+    rows: list[dict[str, Any]] = []
+    for definition in metric_defs:
+        key = definition["key"]
+        current_value = _derived_value(current, key)
+        previous_value = _derived_value(previous, key)
+
+        rolling: dict[int, Optional[float]] = {}
+        rolling_counts: dict[int, int] = {}
+        # Rolling baselines exclude the selected week, so they answer whether the current result
+        # improved on the established run-rate rather than blending the current result into it.
+        prior_weeks = visible_weeks[:-1]
+        for window in (4, 13, 52):
+            values = [
+                _derived_value(_find_shop(rows_by_week[w], target_shop_number), key)
+                for w in prior_weeks[-window:]
+            ]
+            present = [v for v in values if v is not None]
+            rolling[window] = _average(present)
+            rolling_counts[window] = len(present)
+
+        ly_key = _LAST_YEAR_KEYS.get(key)
+        last_year = getattr(current, ly_key) if ly_key else None
+        comparison_value = {
+            "previous": previous_value,
+            "4w": rolling[4],
+            "13w": rolling[13],
+            "52w": rolling[52],
+            "last_year": last_year,
+        }.get(comparison, previous_value)
+        rank = _rank_of(current_rows, key, current_value) if key in KPI_BY_KEY else None
+        previous_rank = (
+            _rank_of(previous_rows, key, previous_value)
+            if previous_rows and key in KPI_BY_KEY
+            else None
+        )
+        region_values = [_derived_value(r, key) for r in current_rows]
+        peer_values = [_derived_value(r, key) for r in peers]
+        rows.append(
+            {
+                **definition,
+                "current": current_value,
+                "previous": previous_value,
+                "rolling_4": rolling[4],
+                "rolling_13": rolling[13],
+                "rolling_52": rolling[52],
+                "rolling_counts": {str(k): v for k, v in rolling_counts.items()},
+                "last_year": last_year,
+                "comparison": comparison_value,
+                "delta": current_value - comparison_value if current_value is not None and comparison_value is not None else None,
+                "delta_pct": _pct_delta(current_value, comparison_value),
+                "region_avg": _average(region_values),
+                "peer_avg": _average(peer_values),
+                "rank": rank,
+                "previous_rank": previous_rank,
+                "rank_change": previous_rank - rank if rank is not None and previous_rank is not None else None,
+                "target": targets.get(key),
+                "target_variance": current_value - targets[key] if current_value is not None and key in targets else None,
+            }
+        )
+
+    category_drivers = []
+    for key, label in CATEGORY_SALES_KEYS:
+        current_value = _derived_value(current, key)
+        previous_value = _derived_value(previous, key)
+        category_drivers.append(
+            {
+                "key": key,
+                "label": label,
+                "current": current_value,
+                "previous": previous_value,
+                "delta": current_value - previous_value if current_value is not None and previous_value is not None else None,
+                "share_of_sales": current_value / current.sales_ty if current_value is not None and current.sales_ty else None,
+            }
+        )
+    category_drivers.sort(key=lambda row: abs(row["delta"] or 0), reverse=True)
+
+    current_avg_sale = _derived_value(current, "avg_sale")
+    previous_avg_sale = _derived_value(previous, "avg_sale")
+    volume_effect = (
+        (current.customer_ty - previous.customer_ty) * previous_avg_sale
+        if current.customer_ty is not None and previous and previous.customer_ty is not None and previous_avg_sale is not None
+        else None
+    )
+    value_effect = (
+        (current_avg_sale - previous_avg_sale) * current.customer_ty
+        if current_avg_sale is not None and previous_avg_sale is not None and current.customer_ty is not None
+        else None
+    )
+
+    by_key = {row["key"]: row for row in rows}
+    alerts: list[dict[str, str]] = []
+    sales = by_key["sales_ty"]
+    if sales["delta_pct"] is not None and sales["delta_pct"] <= -0.10:
+        alerts.append({"severity": "critical", "title": "Sales below comparison", "message": f"Sales are {abs(sales['delta_pct']) * 100:.1f}% below the selected baseline."})
+    elif sales["delta_pct"] is not None and sales["delta_pct"] < 0:
+        alerts.append({"severity": "warning", "title": "Sales softened", "message": f"Sales are {abs(sales['delta_pct']) * 100:.1f}% below the selected baseline."})
+    if sales["rank_change"] is not None and sales["rank_change"] <= -10:
+        alerts.append({"severity": "warning", "title": "Regional rank fell", "message": f"Sales rank dropped {abs(sales['rank_change'])} places from the previous week."})
+    if sales["target_variance"] is not None and sales["target_variance"] < 0:
+        alerts.append({"severity": "warning", "title": "Sales target at risk", "message": f"The shop is ${abs(sales['target_variance']):,.0f} below its weekly sales target."})
+
+    sales_history = [
+        _derived_value(_find_shop(rows_by_week[w], target_shop_number), "sales_ty")
+        for w in visible_weeks[-4:]
+    ]
+    present_sales = [v for v in sales_history if v is not None]
+    if len(present_sales) >= 3 and all(present_sales[i] < present_sales[i - 1] for i in range(1, len(present_sales))):
+        alerts.append({"severity": "critical", "title": "Three-week sales decline", "message": "Sales have fallen in each of the last three reported weeks."})
+    weakest_category = min((d for d in category_drivers if d["delta"] is not None), key=lambda d: d["delta"], default=None)
+    strongest_category = max((d for d in category_drivers if d["delta"] is not None), key=lambda d: d["delta"], default=None)
+    if weakest_category and weakest_category["delta"] < 0:
+        alerts.append({"severity": "info", "title": f"{weakest_category['label']} is the largest drag", "message": f"Category sales fell ${abs(weakest_category['delta']):,.0f} from the previous week."})
+    if strongest_category and strongest_category["delta"] > 0:
+        alerts.append({"severity": "positive", "title": f"{strongest_category['label']} led growth", "message": f"Category sales increased ${strongest_category['delta']:,.0f} from the previous week."})
+    if not alerts:
+        alerts.append({"severity": "positive", "title": "No material exceptions", "message": "No major negative movements were detected for the selected comparison."})
+
+    annotations = (
+        [_annotation_dict(row) for row in _annotation_rows(session, auth.tenant_id, target_shop_number)]
+        if target_shop_number == own_shop
+        else []
+    )
+    latest_pref = session.exec(
+        select(UserNotificationPreference)
+        .where(UserNotificationPreference.tenant_id == auth.tenant_id)
+        .where(UserNotificationPreference.user_id == auth.user_id)
+    ).first()
+
+    return {
+        "available": True,
+        "shop_number": target_shop_number,
+        "shop_name": current.shop_name,
+        "area_name": current.area_name,
+        "viewing_own_shop": target_shop_number == own_shop,
+        "week": week,
+        "previous_week": previous_week,
+        "weeks": all_weeks,
+        "comparison": comparison,
+        "region_size": len(current_rows),
+        "peer_size": len(peers),
+        "source": {
+            "filename": current.source_filename,
+            "uploaded_at": current.uploaded_at,
+            "shops_in_upload": len(current_rows),
+        },
+        "rows": rows,
+        "drivers": {
+            "category_sales": category_drivers,
+            "sales_bridge": {
+                "total_change": current.sales_ty - previous.sales_ty if current.sales_ty is not None and previous and previous.sales_ty is not None else None,
+                "customer_volume_effect": volume_effect,
+                "average_sale_effect": value_effect,
+            },
+        },
+        "alerts": alerts,
+        "annotations": annotations,
+        "targets": targets,
+        "email_weekly_report": bool(latest_pref and latest_pref.email_weekly_regional_report),
+        "last_weekly_report_sent_at": latest_pref.last_weekly_regional_report_sent_at if latest_pref else None,
+    }
 
 
 # ── Upload / commit ──────────────────────────────────────────────────────────────────────
@@ -433,6 +692,230 @@ def get_vswt_summary(
             "prev_region_rank": _rank_of(prev_rows, "jobs_ty", prev_row.jobs_ty) if prev_row else None,
         },
     }
+
+
+@router.get("/cockpit")
+def get_vswt_cockpit(
+    week: Optional[int] = Query(None),
+    comparison: Literal["previous", "4w", "13w", "52w", "last_year"] = Query("previous"),
+    shop_number: Optional[str] = Query(None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """A single comparison contract used by the management cockpit.
+
+    It deliberately returns every KPI with the same current/baseline/rolling/rank shape so the
+    UI cannot drift into using different period definitions in different sections.
+    """
+    own_shop_number = _shop_number_for(auth, session)
+    if own_shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    return _build_cockpit_data(
+        session,
+        auth=auth,
+        target_shop_number=shop_number or own_shop_number,
+        selected_week=week,
+        comparison=comparison,
+    )
+
+
+class VswtTargetsUpdate(SQLModel):
+    targets: dict[str, Optional[float]]
+
+
+@router.get("/targets")
+def get_vswt_targets(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    shop_number = _shop_number_for(auth, session)
+    if shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    return {"available": True, "shop_number": shop_number, "targets": _target_value_map(session, auth.tenant_id, shop_number)}
+
+
+@router.put("/targets")
+def put_vswt_targets(
+    payload: VswtTargetsUpdate,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    shop_number = _shop_number_for(auth, session)
+    if shop_number is None:
+        raise HTTPException(status_code=400, detail="A linked Minit shop is required.")
+    allowed_keys = set(KPI_BY_KEY) | {"avg_sale", "jobs_per_customer"}
+    invalid = [key for key in payload.targets if key not in allowed_keys]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Unknown target metric: {invalid[0]}")
+    now = datetime.now(timezone.utc)
+    for metric_key, target_value in payload.targets.items():
+        existing = session.exec(
+            select(VswtReportTarget)
+            .where(VswtReportTarget.tenant_id == auth.tenant_id)
+            .where(VswtReportTarget.shop_number == shop_number)
+            .where(VswtReportTarget.metric_key == metric_key)
+        ).first()
+        if target_value is None:
+            if existing:
+                session.delete(existing)
+            continue
+        if target_value < 0:
+            raise HTTPException(status_code=400, detail="Targets cannot be negative.")
+        if existing:
+            existing.target_value = target_value
+            existing.updated_at = now
+            session.add(existing)
+        else:
+            session.add(
+                VswtReportTarget(
+                    tenant_id=auth.tenant_id,
+                    shop_number=shop_number,
+                    metric_key=metric_key,
+                    target_value=target_value,
+                    created_by_user_id=auth.user_id,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+    session.commit()
+    return {"available": True, "shop_number": shop_number, "targets": _target_value_map(session, auth.tenant_id, shop_number)}
+
+
+class VswtAnnotationUpdate(SQLModel):
+    week: int
+    event_type: str = "other"
+    note: str
+
+
+@router.get("/annotations")
+def get_vswt_annotations(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    shop_number = _shop_number_for(auth, session)
+    if shop_number is None:
+        return {"available": False, "reason": "no_shop_number"}
+    return {
+        "available": True,
+        "shop_number": shop_number,
+        "annotations": [_annotation_dict(row) for row in _annotation_rows(session, auth.tenant_id, shop_number)],
+    }
+
+
+@router.put("/annotations")
+def put_vswt_annotation(
+    payload: VswtAnnotationUpdate,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    shop_number = _shop_number_for(auth, session)
+    if shop_number is None:
+        raise HTTPException(status_code=400, detail="A linked Minit shop is required.")
+    if payload.week not in _all_weeks(session):
+        raise HTTPException(status_code=400, detail="That reporting week is not available.")
+    note = payload.note.strip()
+    if not note or len(note) > 500:
+        raise HTTPException(status_code=400, detail="Week note must be between 1 and 500 characters.")
+    event_type = payload.event_type.strip().lower().replace(" ", "_")[:32] or "other"
+    now = datetime.now(timezone.utc)
+    row = session.exec(
+        select(VswtWeekAnnotation)
+        .where(VswtWeekAnnotation.tenant_id == auth.tenant_id)
+        .where(VswtWeekAnnotation.shop_number == shop_number)
+        .where(VswtWeekAnnotation.week_seq == payload.week)
+    ).first()
+    if row:
+        row.note = note
+        row.event_type = event_type
+        row.updated_at = now
+    else:
+        row = VswtWeekAnnotation(
+            tenant_id=auth.tenant_id,
+            shop_number=shop_number,
+            week_seq=payload.week,
+            event_type=event_type,
+            note=note,
+            created_by_user_id=auth.user_id,
+            created_at=now,
+            updated_at=now,
+        )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _annotation_dict(row)
+
+
+@router.delete("/annotations/{annotation_id}")
+def delete_vswt_annotation(
+    annotation_id: UUID,
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    row = session.get(VswtWeekAnnotation, annotation_id)
+    if not row or row.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Week note not found.")
+    session.delete(row)
+    session.commit()
+    return {"deleted": str(annotation_id)}
+
+
+class VswtEmailPreferenceUpdate(SQLModel):
+    enabled: bool
+
+
+def _get_or_create_notification_pref(session: Session, auth: AuthContext) -> UserNotificationPreference:
+    row = session.exec(
+        select(UserNotificationPreference)
+        .where(UserNotificationPreference.tenant_id == auth.tenant_id)
+        .where(UserNotificationPreference.user_id == auth.user_id)
+    ).first()
+    if row:
+        return row
+    row = UserNotificationPreference(tenant_id=auth.tenant_id, user_id=auth.user_id)
+    session.add(row)
+    session.flush()
+    return row
+
+
+@router.get("/email-preference")
+def get_vswt_email_preference(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    pref = _get_or_create_notification_pref(session, auth)
+    session.commit()
+    return {
+        "enabled": pref.email_weekly_regional_report,
+        "last_sent_at": pref.last_weekly_regional_report_sent_at,
+    }
+
+
+@router.put("/email-preference")
+def put_vswt_email_preference(
+    payload: VswtEmailPreferenceUpdate,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    if _shop_number_for(auth, session) is None:
+        raise HTTPException(status_code=400, detail="A linked Minit shop is required.")
+    pref = _get_or_create_notification_pref(session, auth)
+    pref.email_weekly_regional_report = payload.enabled
+    pref.updated_at = datetime.now(timezone.utc)
+    session.add(pref)
+    session.commit()
+    session.refresh(pref)
+    return {"enabled": pref.email_weekly_regional_report, "last_sent_at": pref.last_weekly_regional_report_sent_at}
+
+
+@router.post("/email-preference/send-now")
+def send_vswt_email_now(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    from ..services.regional_report_email import send_regional_report_for_user
+
+    sent = send_regional_report_for_user(session, tenant_id=auth.tenant_id, user_id=auth.user_id)
+    return {"sent": sent}
 
 
 @router.get("/scorecard")
@@ -944,6 +1427,11 @@ def get_vswt_trends(
         }
         for key, label in CATEGORY_SALES_KEYS
     ]
+    annotations = (
+        [_annotation_dict(row) for row in _annotation_rows(session, auth.tenant_id, target_shop_number)]
+        if target_shop_number == my_shop_number
+        else []
+    )
 
     return {
         "available": True,
@@ -959,6 +1447,7 @@ def get_vswt_trends(
         "rank_series": rank_series,
         "category_series": category_series,
         "region_size": len(latest_rows),
+        "annotations": annotations,
     }
 
 
