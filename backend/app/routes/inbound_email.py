@@ -50,7 +50,7 @@ from ..models import (
 )
 from ..security import verify_password
 from ..services.mobile_lead_dispatch import _escalation_tenant_id, _next_auto_key_job_number
-from .parent_accounts import _get_parent_account_for_user
+from .parent_accounts import _parent_for_read, _parent_for_write
 
 public_router = APIRouter(prefix="/v1/public", tags=["inbound-email"])
 
@@ -205,10 +205,7 @@ async def receive_inbound_email(
 
 
 def _get_owned_inbound_email(session: Session, auth: AuthContext, inbound_email_id: UUID) -> InboundEmail:
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     row = session.get(InboundEmail, inbound_email_id)
     if not row or row.parent_account_id != parent.id:
         raise HTTPException(status_code=404, detail="Not found")
@@ -224,10 +221,7 @@ def list_inbound_emails(
     session: Session = Depends(unscoped_session),
 ):
     """Captured enquiry emails for triage (newest first)."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     query = select(InboundEmail).where(InboundEmail.parent_account_id == parent.id)
     if status:
         if status not in INBOUND_EMAIL_STATUSES:
@@ -257,6 +251,7 @@ def update_inbound_email_status(
     status = body.status.strip().lower()
     if status not in INBOUND_EMAIL_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status; use one of: {', '.join(sorted(INBOUND_EMAIL_STATUSES))}")
+    _parent_for_write(session, auth)
     row = _get_owned_inbound_email(session, auth, inbound_email_id)
     row.status = status
     session.add(row)
@@ -277,10 +272,7 @@ def get_inbound_email_parsed_preview(
     carry no field data at all, in which case ``fields_found`` is False and the
     rest of the fields are empty — the form should fall back to blank inputs.
     """
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     row = _get_owned_inbound_email(session, auth, inbound_email_id)
 
     parsed = parse_powerfulform_body(row.text_body)
@@ -369,10 +361,7 @@ def create_job_from_inbound_email(
     operator. No SMS or notification is sent to anyone; this only creates a job
     record so HQ isn't retyping raw email text by hand.
     """
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     row = _get_owned_inbound_email(session, auth, inbound_email_id)
     if row.auto_key_job_id:
         raise HTTPException(status_code=409, detail="A job has already been created from this email")

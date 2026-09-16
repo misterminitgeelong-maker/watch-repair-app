@@ -20,7 +20,7 @@ from app.minit_directory_parser import (
     build_directory,
     extract_org_graph,
 )
-from app.models import ParentAccount, ParentAccountMembership, Tenant, User
+from app.models import NETWORK_ROLE_HQ, ParentAccount, ParentAccountSite, Tenant, User
 from app.security import hash_password, verify_password
 
 create_db_and_tables()
@@ -50,7 +50,7 @@ def _fresh_hq():
         parent = ParentAccount(name=PARENT_NAME, owner_email=hq_email)
         session.add(parent)
         session.flush()
-        session.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=hq_tenant.id, user_id=hq_owner.id))
+        session.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=hq_tenant.id, network_role=NETWORK_ROLE_HQ))
         session.commit()
     return hq_email
 
@@ -187,7 +187,7 @@ def test_apply_creates_single_site_owner_with_real_identity():
         assert not verify_password("password", owner.password_hash)
 
         membership = session.exec(
-            select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant.id)
+            select(ParentAccountSite).where(ParentAccountSite.tenant_id == tenant.id)
         ).all()
         assert len(membership) == 1  # HQ only — no separate parent account for a single-site owner
 
@@ -213,7 +213,7 @@ def test_apply_creates_multi_site_franchisee_own_parent_account():
         assert len(tenants) == 2
         for tenant in tenants:
             memberships = session.exec(
-                select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant.id)
+                select(ParentAccountSite).where(ParentAccountSite.tenant_id == tenant.id)
             ).all()
             parent_ids = {m.parent_account_id for m in memberships}
             assert own_parent.id in parent_ids
@@ -279,7 +279,7 @@ def test_apply_never_touches_an_existing_owners_credentials():
         )
         session.add(real_owner)
         session.flush()
-        session.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=tenant.id, user_id=real_owner.id))
+        session.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id))
         session.commit()
         real_owner_hash = real_owner.password_hash
 
@@ -366,7 +366,7 @@ def test_apply_recognizes_existing_tenant_by_slug_when_shop_number_is_missing():
         )
         session.add(real_owner)
         session.flush()
-        session.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=tenant.id, user_id=real_owner.id))
+        session.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id))
         session.commit()
         real_owner_hash = real_owner.password_hash
 
@@ -426,9 +426,9 @@ def test_apply_links_a_matching_tenant_found_only_by_slug():
         parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).first()
         tenant = session.exec(select(Tenant).where(Tenant.slug == "minit-2902")).first()
         membership = session.exec(
-            select(ParentAccountMembership)
-            .where(ParentAccountMembership.parent_account_id == parent.id)
-            .where(ParentAccountMembership.tenant_id == tenant.id)
+            select(ParentAccountSite)
+            .where(ParentAccountSite.parent_account_id == parent.id)
+            .where(ParentAccountSite.tenant_id == tenant.id)
         ).first()
         assert membership is not None
         assert tenant.shop_number == "2902"

@@ -23,7 +23,7 @@ from app.models import (
     JobMessage,
     MobileLeadDispatch,
     ParentAccount,
-    ParentAccountMembership,
+    ParentAccountSite,
     PortalSession,
     ProspectLead,
     RefreshSession,
@@ -289,7 +289,7 @@ def test_delete_tenant_clears_new_fk_tables():
         parent = ParentAccount(name="Delete parent", owner_email=f"parent-{suffix}@test.com")
         db.add(parent)
         db.flush()
-        db.add(ParentAccountMembership(parent_account_id=parent.id, tenant_id=tenant_id, user_id=user.id))
+        db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant_id))
         db.add(
             JobMessage(
                 tenant_id=tenant_id,
@@ -403,7 +403,7 @@ def test_delete_tenant_clears_new_fk_tables():
         assert db.exec(select(TenantWebhookSubscription).where(TenantWebhookSubscription.tenant_id == tenant_id)).first() is None
         assert db.exec(select(RefreshSession).where(RefreshSession.tenant_id == tenant_id)).first() is None
         assert db.exec(select(ProspectLead).where(ProspectLead.tenant_id == tenant_id)).first() is None
-        assert db.exec(select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant_id)).first() is None
+        assert db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == tenant_id)).first() is None
         assert db.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)).first() is None
         assert db.exec(select(User).where(User.tenant_id == tenant_id)).first() is None
 

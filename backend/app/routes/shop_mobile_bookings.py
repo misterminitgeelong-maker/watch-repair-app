@@ -8,6 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, func, select
 
 from ..config import settings
+from ..parent_network import (
+    operator_tenants_for_parent,
+    parent_ids_for_tenant,
+    resolve_common_parent_id,
+    tenant_is_operator,
+)
 from ..database import get_session, unscoped_session
 from ..dispatch_utils import geocode_address
 from ..dependencies import (
@@ -29,7 +35,6 @@ from ..models import (
     MobileSuburbRoute,
     ParentAccount,
     ParentAccountEventLog,
-    ParentAccountMembership,
     ShopMobileBookingCreate,
     ShopMobileBookingDeclineBody,
     ShopMobileBookingPageResponse,
@@ -62,21 +67,18 @@ def _digits_phone(p: str | None) -> str | None:
     return d or None
 
 
-def _parent_account_ids_for_tenant(session: Session, tenant_id: UUID) -> set[UUID]:
-    rows = session.exec(
-        select(ParentAccountMembership.parent_account_id)
-        .where(ParentAccountMembership.tenant_id == tenant_id)
-    ).all()
-    return set(rows)
+def _parent_account_ids_for_tenant(session: Session, tenant_id: UUID) -> list[UUID]:
+    return parent_ids_for_tenant(session, tenant_id)
 
 
 def _assert_parent_account_link(session: Session, shop_tid: UUID, operator_tid: UUID) -> UUID:
-    shop_parents = _parent_account_ids_for_tenant(session, shop_tid)
-    op_parents = _parent_account_ids_for_tenant(session, operator_tid)
-    common = shop_parents & op_parents
-    if not common:
+    """The network a booking between these two belongs to. When they share
+    more than one, the HQ-anchored network wins (see resolve_common_parent_id)
+    so HQ's dashboard sees every booking."""
+    parent_id = resolve_common_parent_id(session, shop_tid, operator_tid)
+    if parent_id is None:
         raise HTTPException(status_code=403, detail="Shop and operator are not under the same parent account")
-    return next(iter(common))
+    return parent_id
 
 
 def _operator_option(session: Session, tenant_id: UUID, *, routing_rule: str | None = None) -> ShopMobileOperatorOption:
@@ -208,17 +210,6 @@ def _notify_shop_booking_outcome(
         )
 
 
-BOOKABLE_OPERATOR_PLAN_CODES = frozenset(
-    {
-        "basic_auto_key",
-        "basic_shoe_auto_key",
-        "basic_watch_auto_key",
-        "basic_all_tabs",
-        "auto_key",
-    }
-)
-
-
 def _tenant_has_auto_key(session: Session, tenant_id: UUID) -> bool:
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
@@ -228,11 +219,8 @@ def _tenant_has_auto_key(session: Session, tenant_id: UUID) -> bool:
 
 
 def _tenant_is_bookable_operator(session: Session, tenant_id: UUID) -> bool:
-    tenant = session.get(Tenant, tenant_id)
-    if not tenant:
-        return False
-    plan = normalize_plan_code(tenant.plan_code)
-    return plan in BOOKABLE_OPERATOR_PLAN_CODES
+    """An operator is whatever its network says it is, not whatever it is billed for."""
+    return tenant_is_operator(session, tenant_id)
 
 
 def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
@@ -433,29 +421,22 @@ def list_operators(
     if not parent_ids:
         raise HTTPException(status_code=403, detail="Tenant is not linked to a parent account")
 
-    memberships = session.exec(
-        select(ParentAccountMembership).where(ParentAccountMembership.parent_account_id.in_(parent_ids))  # type: ignore[attr-defined]
-    ).all()
     options: list[ShopMobileOperatorOption] = []
     seen: set[UUID] = set()
-    for m in memberships:
-        if m.tenant_id == auth.tenant_id or m.tenant_id in seen:
-            continue
-        if not _tenant_is_bookable_operator(session, m.tenant_id):
-            continue
-        tenant = session.get(Tenant, m.tenant_id)
-        if not tenant:
-            continue
-        seen.add(m.tenant_id)
-        options.append(
-            ShopMobileOperatorOption(
-                tenant_id=tenant.id,
-                tenant_slug=tenant.slug,
-                tenant_name=tenant.name,
-                shop_number=tenant.shop_number,
-                plan_code=normalize_plan_code(tenant.plan_code),
+    for parent_id in parent_ids:
+        for tenant in operator_tenants_for_parent(session, parent_id):
+            if tenant.id == auth.tenant_id or tenant.id in seen:
+                continue
+            seen.add(tenant.id)
+            options.append(
+                ShopMobileOperatorOption(
+                    tenant_id=tenant.id,
+                    tenant_slug=tenant.slug,
+                    tenant_name=tenant.name,
+                    shop_number=tenant.shop_number,
+                    plan_code=normalize_plan_code(tenant.plan_code),
+                )
             )
-        )
     return sorted(options, key=lambda o: o.tenant_name.lower())
 
 

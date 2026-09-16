@@ -17,10 +17,8 @@ from sqlmodel import Session, col, select
 from .. import email_client
 from .. import sms as sms_service
 from ..config import settings
-from ..dependencies import normalize_plan_code
 from ..dispatch_utils import operator_ring_for_job
-from ..models import IntakeJob, Tenant
-from ..routes.shop_mobile_bookings import BOOKABLE_OPERATOR_PLAN_CODES
+from ..models import NETWORK_ROLE_OPERATOR, IntakeJob, ParentAccountSite, Tenant
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +28,22 @@ MAX_ALERT_RING = 2
 
 
 def _eligible_operators(session: Session) -> list[Tenant]:
+    """Every tenant any network treats as an operator, with a base location set."""
+    operator_ids = set(
+        session.exec(
+            select(ParentAccountSite.tenant_id).where(ParentAccountSite.network_role == NETWORK_ROLE_OPERATOR)
+        ).all()
+    )
+    if not operator_ids:
+        return []
     rows = session.exec(
         select(Tenant)
+        .where(col(Tenant.id).in_(list(operator_ids)))
         .where(col(Tenant.base_lat).is_not(None))
         .where(col(Tenant.base_lng).is_not(None))
         .where(Tenant.is_active == True)  # noqa: E712
     ).all()
-    return [t for t in rows if normalize_plan_code(t.plan_code) in BOOKABLE_OPERATOR_PLAN_CODES]
+    return list(rows)
 
 
 def process_stale_pool_jobs(session: Session) -> dict[str, int]:

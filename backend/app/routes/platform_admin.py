@@ -473,6 +473,8 @@ def delete_platform_tenant(
         session.execute(text("DELETE FROM shopmobilebookingrequest WHERE requesting_tenant_id = :tid OR target_operator_tenant_id = :tid"), {"tid": tid})
         session.execute(text("DELETE FROM mobileleaddispatch WHERE current_operator_tenant_id = :tid OR auto_key_job_id IN (SELECT id FROM autokeyjob WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("DELETE FROM portalsession WHERE lower(email) IN (SELECT lower(email) FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM parentaccountuser WHERE user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
+        session.execute(text("DELETE FROM shopownerinvite WHERE tenant_id = :tid OR owner_user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid) OR created_by_user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
 
         # Delete tenant-owned tables in reverse FK dependency order
         for tbl in [
@@ -517,7 +519,7 @@ def delete_platform_tenant(
             "importlog",
             "customservice",
             "tenanteventlog",
-            "parentaccountmembership",
+            "parentaccountsite",
             "customer",
             "user",
         ]:

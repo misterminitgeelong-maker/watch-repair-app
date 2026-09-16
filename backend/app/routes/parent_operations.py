@@ -13,7 +13,6 @@ from sqlmodel import Session, col, func, select
 from ..database import get_session, unscoped_session
 from ..dependencies import (
     AuthContext,
-    PLAN_FEATURES,
     get_auth_context,
     normalize_plan_code,
     require_feature,
@@ -23,11 +22,14 @@ from ..minit_branding import MINIT_HQ_PLAN, tenant_product
 from ..minit_email_lead_parser import bucket_email_leads_by_operator
 from ..minit_shops import tenant_slug_for_shop
 from ..models import (
+    NETWORK_ROLE_OPERATOR,
+    NETWORK_ROLE_RETAIL,
     AutoKeyJob,
     EmailLog,
     InboundEmail,
     OperatorWeeklyStatsRead,
     ParentAccount,
+    ParentAccountSite,
     ParentDashboardBookingSnippet,
     ParentEmailLeadsByShopReport,
     ParentMobileJobNetworkRead,
@@ -38,6 +40,7 @@ from ..models import (
     ParentOperationsOverview,
     ParentRegionDashboardStat,
     ParentShopBookingVolume,
+    Region,
     ParentShopBookingsReport,
     ParentTroubleshootingItem,
     ParentTroubleshootingResponse,
@@ -46,13 +49,16 @@ from ..models import (
     ShopMobileBookingRequest,
     SmsLog,
     Tenant,
-    User,
 )
 from .. import sms as sms_service
-from ..shop_number import format_tenant_label, linked_tenant_ids_for_parent, linked_tenants_for_parent
-from .parent_accounts import _get_parent_account_for_user, _record_event
+from ..parent_network import (
+    linked_tenants_for_parent,
+    regions_for_parent,
+    sites_for_parent,
+)
+from ..shop_number import format_tenant_label
+from .parent_accounts import _parent_for_read, _parent_for_write, _record_event
 from .shop_mobile_bookings import (
-    BOOKABLE_OPERATOR_PLAN_CODES,
     _maybe_move_pending_to_pool,
     _to_read,
 )
@@ -91,23 +97,16 @@ def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
     return tenant
 
 
-def _resolve_parent(session: Session, user: User) -> ParentAccount:
-    return _get_parent_account_for_user(session, user)
-
-
-def _linked_tenants(session: Session, parent_id: UUID) -> list[Tenant]:
-    return linked_tenants_for_parent(session, parent_id)
-
-
-def _is_retail_shop(plan_code: str) -> bool:
-    plan = normalize_plan_code(plan_code)
-    if plan == "booking_only":
-        return True
-    return "shop_mobile_booking" in PLAN_FEATURES.get(plan, set()) and plan not in BOOKABLE_OPERATOR_PLAN_CODES
-
-
-def _is_operator(plan_code: str) -> bool:
-    return normalize_plan_code(plan_code) in BOOKABLE_OPERATOR_PLAN_CODES
+def _retail_and_operator_tenants(session: Session, parent_id: UUID) -> tuple[list[Tenant], list[Tenant]]:
+    """Split the network by what each site *is* (its network_role), not by
+    what it is billed for — a plan change no longer moves a shop between
+    counts or drops it out of region stats."""
+    sites = sites_for_parent(session, parent_id)
+    role_by_tenant = {site.tenant_id: site.network_role for site in sites}
+    tenants = linked_tenants_for_parent(session, parent_id)
+    retail = [t for t in tenants if role_by_tenant.get(t.id) == NETWORK_ROLE_RETAIL]
+    operators = [t for t in tenants if role_by_tenant.get(t.id) == NETWORK_ROLE_OPERATOR]
+    return retail, operators
 
 
 def _parse_date_range(
@@ -135,9 +134,11 @@ def _parse_date_range(
 
 def _region_sort_key(region: str) -> tuple[int, str]:
     try:
-        idx = _REGION_ORDER.index(region)
+        idx = _REGION_ORDER.index(region.upper())
     except ValueError:
         idx = len(_REGION_ORDER)
+    if region == _UNASSIGNED_REGION:
+        idx = len(_REGION_ORDER) + 1
     return (idx, region)
 
 
@@ -390,89 +391,96 @@ def _collect_troubleshooting_items(
 def _classify_linked_tenants(
     session: Session,
     parent_id: UUID,
-) -> tuple[list[UUID], list[UUID], dict[str, int], int]:
-    """Lightweight plan/region scan — avoids loading full Tenant ORM rows for every shop."""
-    ids = linked_tenant_ids_for_parent(session, parent_id)
-    if not ids:
+) -> tuple[list[UUID], list[UUID], dict[UUID | None, int], int]:
+    """Lightweight role/region scan — avoids loading full Tenant ORM rows for every shop."""
+    sites = sites_for_parent(session, parent_id)
+    if not sites:
         return [], [], {}, 0
-    rows = session.exec(
-        select(
-            Tenant.id,
-            Tenant.plan_code,
-            Tenant.minit_region,
-            Tenant.mobile_dispatch_phone,
-        ).where(col(Tenant.id).in_(ids))  # type: ignore[attr-defined]
-    ).all()
     retail_ids: list[UUID] = []
     operator_ids: list[UUID] = []
-    region_shops: dict[str, int] = defaultdict(int)
+    region_shops: dict[UUID | None, int] = defaultdict(int)
+    for site in sites:
+        if site.network_role == NETWORK_ROLE_RETAIL:
+            retail_ids.append(site.tenant_id)
+            region_shops[site.region_id] += 1
+        elif site.network_role == NETWORK_ROLE_OPERATOR:
+            operator_ids.append(site.tenant_id)
     missing_dispatch = 0
-    for tid, plan_code, region, phone in rows:
-        if _is_retail_shop(plan_code):
-            retail_ids.append(tid)
-            reg = (region or "").strip() or _UNASSIGNED_REGION
-            region_shops[reg] += 1
-        elif _is_operator(plan_code):
-            operator_ids.append(tid)
-            if not (phone or "").strip():
-                missing_dispatch += 1
+    if operator_ids:
+        phones = session.exec(
+            select(Tenant.mobile_dispatch_phone).where(col(Tenant.id).in_(operator_ids))
+        ).all()
+        missing_dispatch = sum(1 for phone in phones if not (phone or "").strip())
     return retail_ids, operator_ids, dict(region_shops), missing_dispatch
 
 
 def _region_dashboard_stats(
     session: Session,
     parent_id: UUID,
-    region_shops: dict[str, int],
+    region_shops: dict[UUID | None, int],
     since_30d: datetime,
 ) -> list[ParentRegionDashboardStat]:
+    """Bookings and active shops per Region row — so "VIC SOUTH" and
+    "Vic South" are one region, and each carries its manager."""
     booking_rows = session.exec(
         select(
-            Tenant.minit_region,
+            ParentAccountSite.region_id,
             ShopMobileBookingRequest.status,
             func.count(),
         )
-        .join(Tenant, ShopMobileBookingRequest.requesting_tenant_id == Tenant.id)
+        .join(
+            ParentAccountSite,
+            (ParentAccountSite.tenant_id == ShopMobileBookingRequest.requesting_tenant_id)
+            & (ParentAccountSite.parent_account_id == ShopMobileBookingRequest.parent_account_id),
+        )
         .where(ShopMobileBookingRequest.parent_account_id == parent_id)
         .where(col(ShopMobileBookingRequest.created_at) >= since_30d)
-        .group_by(Tenant.minit_region, ShopMobileBookingRequest.status)
+        .group_by(ParentAccountSite.region_id, ShopMobileBookingRequest.status)
     ).all()
 
     active_rows = session.exec(
         select(
-            Tenant.minit_region,
+            ParentAccountSite.region_id,
             func.count(func.distinct(ShopMobileBookingRequest.requesting_tenant_id)),
         )
-        .join(Tenant, ShopMobileBookingRequest.requesting_tenant_id == Tenant.id)
+        .join(
+            ParentAccountSite,
+            (ParentAccountSite.tenant_id == ShopMobileBookingRequest.requesting_tenant_id)
+            & (ParentAccountSite.parent_account_id == ShopMobileBookingRequest.parent_account_id),
+        )
         .where(ShopMobileBookingRequest.parent_account_id == parent_id)
         .where(col(ShopMobileBookingRequest.created_at) >= since_30d)
-        .group_by(Tenant.minit_region)
+        .group_by(ParentAccountSite.region_id)
     ).all()
 
-    bookings_30d: dict[str, int] = defaultdict(int)
-    pending: dict[str, int] = defaultdict(int)
-    active_shops: dict[str, int] = defaultdict(int)
+    bookings_30d: dict[UUID | None, int] = defaultdict(int)
+    pending: dict[UUID | None, int] = defaultdict(int)
+    active_shops: dict[UUID | None, int] = defaultdict(int)
 
-    for region_raw, status, count in booking_rows:
-        region = (region_raw or "").strip() or _UNASSIGNED_REGION
-        bookings_30d[region] += int(count)
+    for region_id, status, count in booking_rows:
+        bookings_30d[region_id] += int(count)
         if status == "pending":
-            pending[region] += int(count)
+            pending[region_id] += int(count)
 
-    for region_raw, count in active_rows:
-        region = (region_raw or "").strip() or _UNASSIGNED_REGION
-        active_shops[region] = int(count)
+    for region_id, count in active_rows:
+        active_shops[region_id] = int(count)
 
-    regions = set(region_shops) | set(bookings_30d) | set(active_shops)
-    stats = [
-        ParentRegionDashboardStat(
-            region=region,
-            shop_count=region_shops.get(region, 0),
-            bookings_30d=bookings_30d.get(region, 0),
-            pending=pending.get(region, 0),
-            active_shops_30d=active_shops.get(region, 0),
+    regions_by_id: dict[UUID, Region] = {r.id: r for r in regions_for_parent(session, parent_id)}
+    region_ids = set(region_shops) | set(bookings_30d) | set(active_shops)
+    stats = []
+    for region_id in region_ids:
+        region = regions_by_id.get(region_id) if region_id else None
+        stats.append(
+            ParentRegionDashboardStat(
+                region=region.name if region else _UNASSIGNED_REGION,
+                region_id=region.id if region else None,
+                manager_name=region.manager_name if region else None,
+                shop_count=region_shops.get(region_id, 0),
+                bookings_30d=bookings_30d.get(region_id, 0),
+                pending=pending.get(region_id, 0),
+                active_shops_30d=active_shops.get(region_id, 0),
+            )
         )
-        for region in regions
-    ]
     stats.sort(key=lambda s: _region_sort_key(s.region))
     return stats
 
@@ -527,10 +535,7 @@ def get_operations_overview(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent, _ = _parent_for_read(session, auth)
     retail_ids, operator_ids, region_shop_counts, missing_dispatch = _classify_linked_tenants(
         session, parent.id
     )
@@ -657,10 +662,7 @@ def get_operations_bookings_report(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent, _ = _parent_for_read(session, auth)
     start, end = _parse_date_range(from_date, to_date)
 
     stmt = (
@@ -754,13 +756,10 @@ def get_operations_mobile_jobs_report(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
-    tenants = _linked_tenants(session, parent.id)
-    retail_ids = [t.id for t in tenants if _is_retail_shop(t.plan_code)]
-    operator_ids = [t.id for t in tenants if _is_operator(t.plan_code)]
+    user, parent, _ = _parent_for_read(session, auth)
+    retail, operators = _retail_and_operator_tenants(session, parent.id)
+    retail_ids = [t.id for t in retail]
+    operator_ids = [t.id for t in operators]
     if not operator_ids:
         return ParentMobileJobsReport(from_date=None, to_date=None, active_count=0, total_count=0, jobs=[])
 
@@ -839,10 +838,7 @@ def get_email_leads_by_shop_report(
     inbox grows into the thousands.
     """
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent, _ = _parent_for_read(session, auth)
     start, end = _parse_date_range(from_date, to_date)
 
     query = select(InboundEmail).where(InboundEmail.parent_account_id == parent.id)
@@ -882,10 +878,7 @@ def get_mobile_weekly_report_preview(
     Read-only; does not send anything or change opt-in state.
     """
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent, _ = _parent_for_read(session, auth)
 
     from ..services.mobile_weekly_report import _previous_week_bounds, build_mobile_weekly_report
 
@@ -918,10 +911,7 @@ def get_mobile_weekly_report_settings(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent, _ = _parent_for_read(session, auth)
     return ParentMobileWeeklyReportSettingsRead(
         opt_in=parent.mobile_weekly_report_opt_in,
         last_sent_at=parent.last_mobile_weekly_report_sent_at,
@@ -936,10 +926,7 @@ def update_mobile_weekly_report_settings(
 ):
     """Opt this parent account's owner_email in/out of the weekly Mobile Services report email."""
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent = _parent_for_write(session, auth)
     parent.mobile_weekly_report_opt_in = body.opt_in
     session.add(parent)
     session.commit()
@@ -960,10 +947,7 @@ def send_mobile_weekly_report_now(
     or an ad-hoc resend. Does not change the opt-in setting.
     """
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
+    user, parent = _parent_for_write(session, auth)
 
     from ..services.mobile_weekly_report import send_weekly_report_for_parent
 
@@ -982,12 +966,7 @@ def get_operations_troubleshooting(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _resolve_parent(session, user)
-    tenants = _linked_tenants(session, parent.id)
-    retail = [t for t in tenants if _is_retail_shop(t.plan_code)]
-    operators = [t for t in tenants if _is_operator(t.plan_code)]
+    user, parent, _ = _parent_for_read(session, auth)
+    retail, operators = _retail_and_operator_tenants(session, parent.id)
     items = _collect_troubleshooting_items(session, parent, retail, operators, limit=limit)
     return ParentTroubleshootingResponse(items=items)

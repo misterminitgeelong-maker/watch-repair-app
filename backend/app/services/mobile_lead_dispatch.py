@@ -14,8 +14,8 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..minit_mobile_routing import rank_mobile_operator_candidates, suburb_in_operator_territory
-from ..minit_provision import _is_operator_plan
 from ..models import AutoKeyJob, ParentAccount, ParentAccountEventLog, ProspectLead, Tenant
+from ..parent_network import tenant_is_operator
 from .. import email_client
 from .. import sms as sms_service
 
@@ -42,7 +42,7 @@ def _escalation_tenant_id(session: Session, parent: ParentAccount) -> UUID | Non
     if not fallback:
         return None
     tenant = session.get(Tenant, fallback)
-    if tenant and not _is_operator_plan(tenant.plan_code):
+    if tenant and not tenant_is_operator(session, tenant.id):
         return fallback
     return None
 

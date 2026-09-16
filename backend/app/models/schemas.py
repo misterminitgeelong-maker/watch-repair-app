@@ -203,11 +203,91 @@ class ParentAccountSiteRead(SQLModel):
     tenant_name: str
     shop_number: Optional[str] = None
     area: Optional[str] = None
+    #: Display name of the site's Region (falls back to the raw TSS string).
     region: Optional[str] = None
+    region_id: Optional[UUID] = None
+    region_code: Optional[str] = None
     plan_code: str
+    #: hq | retail | operator — the site's place in the network, not its plan.
+    network_role: str = "retail"
     owner_user_id: UUID
     owner_email: str
     owner_full_name: str
+
+
+class ParentAccountSiteUpdateRequest(SQLModel):
+    network_role: Optional[str] = None
+    #: Set to a Region id to assign; explicit null clears. Omit to leave unchanged.
+    region_id: Optional[UUID] = None
+    clear_region: bool = False
+
+
+class ParentAccountUserRead(SQLModel):
+    user_id: UUID
+    tenant_id: UUID
+    tenant_slug: str
+    email: str
+    full_name: str
+    #: The user's role inside their own tenant (owner / manager / …).
+    tenant_role: str
+    #: hq_admin | hq_viewer — what they may do across the network.
+    role: str
+    #: explicit (a granted row) | hq_site (implied by being in the HQ tenant)
+    #: | owner_email (implied by being the account owner's login).
+    source: str = "explicit"
+    is_active: bool
+    created_at: datetime
+
+
+class ParentAccountUserGrantRequest(SQLModel):
+    #: Either an existing user id, or an email of a user in one of the network's sites.
+    user_id: Optional[UUID] = None
+    email: Optional[str] = None
+    role: str
+
+
+class ParentEnterShopResponse(SQLModel):
+    access_token: str
+    expires_in_seconds: int
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    #: Which shop login the support session is anchored on.
+    acting_as_user_id: UUID
+    acting_as_email: str
+
+
+class RegionRead(SQLModel):
+    id: UUID
+    code: str
+    name: str
+    manager_name: Optional[str] = None
+    manager_email: Optional[str] = None
+    manager_phone: Optional[str] = None
+    escalation_email: Optional[str] = None
+    notes: Optional[str] = None
+    site_count: int = 0
+    created_at: datetime
+
+
+class RegionCreateRequest(SQLModel):
+    name: str = Field(max_length=120)
+    #: Defaults to the normalised name.
+    code: Optional[str] = Field(default=None, max_length=40)
+    manager_name: Optional[str] = Field(default=None, max_length=200)
+    manager_email: Optional[str] = Field(default=None, max_length=320)
+    manager_phone: Optional[str] = Field(default=None, max_length=80)
+    escalation_email: Optional[str] = Field(default=None, max_length=320)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+
+class RegionUpdateRequest(SQLModel):
+    name: Optional[str] = Field(default=None, max_length=120)
+    manager_name: Optional[str] = Field(default=None, max_length=200)
+    manager_email: Optional[str] = Field(default=None, max_length=320)
+    manager_phone: Optional[str] = Field(default=None, max_length=80)
+    escalation_email: Optional[str] = Field(default=None, max_length=320)
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
 class ParentLeadIngestConfigResponse(SQLModel):
     parent_account_id: UUID
@@ -231,6 +311,8 @@ class ParentAccountSummaryResponse(SQLModel):
     parent_account_id: UUID
     parent_account_name: str
     owner_email: str
+    #: The caller's own network role (hq_admin | hq_viewer).
+    my_role: Optional[str] = None
     site_count: int = 0
     sites: list[ParentAccountSiteRead] = Field(default_factory=list)
     mobile_lead_ingest_public_id: Optional[UUID] = None
@@ -392,6 +474,8 @@ class ParentDashboardBookingSnippet(SQLModel):
 
 class ParentRegionDashboardStat(SQLModel):
     region: str
+    region_id: Optional[UUID] = None
+    manager_name: Optional[str] = None
     shop_count: int
     bookings_30d: int
     pending: int

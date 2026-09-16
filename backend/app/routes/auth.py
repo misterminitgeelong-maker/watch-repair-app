@@ -44,7 +44,6 @@ from ..models import (
     RefreshRequest,
     RefreshSession,
     ParentAccountEventLog,
-    ParentAccountMembership,
     PublicUser,
     RepairJob,
     Shoe,
@@ -58,6 +57,15 @@ from ..models import (
     TokenResponse,
     User,
     Watch,
+)
+from ..parent_network import (
+    PARENT_ROLE_HQ_ADMIN,
+    grant_parent_role,
+    is_hq_viewer_or_admin,
+    link_site,
+    parent_role_for_user,
+    parents_for_user,
+    sites_for_parent,
 )
 from ..security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
 
@@ -114,7 +122,9 @@ def _build_public_user(user: User) -> PublicUser:
 
 def _get_or_create_parent_account(session: Session, owner_email: str, owner_name: str) -> ParentAccount:
     parent = session.exec(
-        select(ParentAccount).where(ParentAccount.owner_email == owner_email)
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == owner_email)
+        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
     ).first()
     if parent:
         return parent
@@ -125,57 +135,80 @@ def _get_or_create_parent_account(session: Session, owner_email: str, owner_name
 
 
 def _ensure_parent_membership(session: Session, parent: ParentAccount, user: User) -> None:
-    existing = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
-        .where(ParentAccountMembership.user_id == user.id)
-    ).first()
-    if existing:
-        return
-    session.add(
-        ParentAccountMembership(
-            parent_account_id=parent.id,
-            tenant_id=user.tenant_id,
-            user_id=user.id,
-        )
-    )
+    """Put the user's tenant in the network and make the user an HQ admin of it.
+
+    Called for every fresh signup/bootstrap: a single-shop owner is the admin
+    of their own one-site network, which is what lets them add a second shop
+    later without any migration of access.
+    """
+    tenant = session.get(Tenant, user.tenant_id)
+    if tenant is not None:
+        link_site(session, parent_id=parent.id, tenant=tenant)
+    grant_parent_role(session, parent_id=parent.id, user_id=user.id, role=PARENT_ROLE_HQ_ADMIN)
+
+
+def _hq_parents_for_email(session: Session, email: str) -> list[ParentAccount]:
+    """Networks any login with this email may switch sites within.
+
+    A person with the same email in several tenants is one human; the site
+    switcher is theirs if any of those logins holds an HQ role on the network
+    (explicitly, or as the account owner).
+    """
+    users = session.exec(
+        select(User)
+        .where(User.email == email)
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(col(User.created_at).asc(), col(User.id).asc())
+    ).all()
+    ordered: list[ParentAccount] = []
+    seen: set[UUID] = set()
+    for user in users:
+        for parent in parents_for_user(session, user):
+            if parent.id in seen:
+                continue
+            if not is_hq_viewer_or_admin(parent_role_for_user(session, parent, user)):
+                continue
+            seen.add(parent.id)
+            ordered.append(parent)
+    return ordered
 
 
 def _build_available_sites_for_email(session: Session, email: str) -> list[AuthSessionSiteOption]:
-    parents = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).all()
+    """Sites this email can switch into: every tenant in a network it holds an
+    HQ role on, where a login with the same email exists."""
+    parents = _hq_parents_for_email(session, email)
     if not parents:
         return []
 
-    parent_ids = [p.id for p in parents]
-    memberships = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id.in_(parent_ids))
-        .order_by(ParentAccountMembership.created_at)
-    ).all()
+    tenant_ids: list[UUID] = []
+    for parent in parents:
+        for site in sites_for_parent(session, parent.id):
+            if site.tenant_id not in tenant_ids:
+                tenant_ids.append(site.tenant_id)
+    if not tenant_ids:
+        return []
 
-    user_ids = list(dict.fromkeys(m.user_id for m in memberships))
-    tenant_ids = list(dict.fromkeys(m.tenant_id for m in memberships))
-    users_by_id = {
-        u.id: u
-        for u in session.exec(select(User).where(col(User.id).in_(user_ids))).all()
-    } if user_ids else {}
+    users_by_tenant = {
+        u.tenant_id: u
+        for u in session.exec(
+            select(User)
+            .where(col(User.tenant_id).in_(tenant_ids))
+            .where(User.email == email)
+            .where(User.is_active == True)  # noqa: E712
+            .order_by(col(User.created_at).desc())
+        ).all()
+    }
     tenants_by_id = {
         t.id: t
         for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
-    } if tenant_ids else {}
+    }
 
     sites: list[AuthSessionSiteOption] = []
-    seen: set[UUID] = set()
-    for membership in memberships:
-        user = users_by_id.get(membership.user_id)
-        if not user or not user.is_active or user.email != email:
+    for tenant_id in tenant_ids:
+        tenant = tenants_by_id.get(tenant_id)
+        user = users_by_tenant.get(tenant_id)
+        if not tenant or not user:
             continue
-        tenant = tenants_by_id.get(membership.tenant_id)
-        if not tenant:
-            continue
-        if tenant.id in seen:
-            continue
-        seen.add(tenant.id)
         sites.append(
             AuthSessionSiteOption(
                 tenant_id=tenant.id,
@@ -216,22 +249,10 @@ def _get_site_option_for_email_tenant(
     email: str,
     tenant_id: UUID,
 ) -> AuthSessionSiteOption | None:
-    parents = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).all()
-    if not parents:
-        return None
-    parent_ids = [p.id for p in parents]
-    membership = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id.in_(parent_ids))
-        .where(ParentAccountMembership.tenant_id == tenant_id)
-    ).first()
-    if not membership:
-        return None
-    user = session.get(User, membership.user_id)
-    tenant = session.get(Tenant, membership.tenant_id)
-    if not user or not tenant or not user.is_active or user.email != email:
-        return None
-    return _site_option_for_tenant_user(tenant, user)
+    for site in _build_available_sites_for_email(session, email):
+        if site.tenant_id == tenant_id:
+            return site
+    return None
 
 
 def _create_default_owner(session: Session, tenant: Tenant) -> User:
@@ -1013,7 +1034,8 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         if tenant and is_minit_hq_ui(tenant):
             selected = site
             break
-    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    hq_parents = _hq_parents_for_email(session, email)
+    parent = hq_parents[0] if hq_parents else None
     if parent:
         session.add(
             ParentAccountEventLog(
@@ -1392,9 +1414,8 @@ def switch_active_site(
     if not target:
         raise HTTPException(status_code=403, detail="Target site is not available for this login")
 
-    parent = session.exec(
-        select(ParentAccount).where(ParentAccount.owner_email == current_user.email)
-    ).first()
+    hq_parents = _hq_parents_for_email(session, current_user.email)
+    parent = hq_parents[0] if hq_parents else None
     if parent:
         source_tenant = session.get(Tenant, auth.tenant_id)
         target_tenant = session.get(Tenant, target.tenant_id)

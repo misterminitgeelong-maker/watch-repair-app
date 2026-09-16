@@ -28,9 +28,8 @@ from uuid import UUID
 
 from sqlmodel import Session
 
-from .minit_provision import _is_operator_plan
 from .models import Tenant
-from .shop_number import linked_tenants_for_parent
+from .parent_network import operator_tenants_for_parent
 
 # Order matters: matched top-to-bottom against each stripped line.
 _FIELD_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
@@ -151,7 +150,7 @@ class OperatorMatch:
 
 def bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
     """Operator-plan tenants linked to the parent — the same pool website leads dispatch to."""
-    return [t for t in linked_tenants_for_parent(session, parent_id) if _is_operator_plan(t.plan_code)]
+    return operator_tenants_for_parent(session, parent_id)
 
 
 def match_operator_for_lead(

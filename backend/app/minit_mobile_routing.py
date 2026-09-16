@@ -11,9 +11,12 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from .dispatch_utils import haversine_km
-from .minit_provision import _is_operator_plan
-from .shop_number import linked_tenants_for_parent
-from .models import MobileSuburbRoute, ParentAccount, ParentAccountMembership, Tenant
+from .models import MobileSuburbRoute, ParentAccount, Tenant
+from .parent_network import (
+    operator_tenants_for_parent,
+    site_for_tenant_in_parent,
+    tenant_is_operator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +40,8 @@ class MobileRoutingResolution:
     message: str | None = None
 
 
-def _tenant_is_bookable_operator(tenant: Tenant) -> bool:
-    return _is_operator_plan(tenant.plan_code)
+def _tenant_is_bookable_operator(session: Session, tenant: Tenant) -> bool:
+    return tenant_is_operator(session, tenant.id)
 
 
 def lookup_mobile_suburb_route(
@@ -181,7 +184,7 @@ def resolve_mobile_operator_route(
     )
     if route:
         tenant = session.get(Tenant, route.target_tenant_id)
-        if tenant and _tenant_is_bookable_operator(tenant):
+        if tenant and _tenant_is_bookable_operator(session, tenant):
             return MobileRoutingResolution(
                 suburb=suburb.strip(),
                 state_code=st,
@@ -203,20 +206,11 @@ def resolve_mobile_operator_route(
 
 
 def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID) -> bool:
-    row = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent_id)
-        .where(ParentAccountMembership.tenant_id == tenant_id)
-    ).first()
-    return row is not None
+    return site_for_tenant_in_parent(session, parent_id, tenant_id) is not None
 
 
 def _bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    return [
-        t
-        for t in linked_tenants_for_parent(session, parent_id)
-        if _tenant_is_bookable_operator(t)
-    ]
+    return operator_tenants_for_parent(session, parent_id)
 
 
 @lru_cache(maxsize=1)
@@ -279,7 +273,7 @@ def rank_mobile_operator_candidates(
     seen: set[UUID] = set()
 
     tenant = session.get(Tenant, primary_id)
-    if tenant and _tenant_is_bookable_operator(tenant) and _tenant_linked_to_parent(session, parent_id, primary_id):
+    if tenant and _tenant_is_bookable_operator(session, tenant) and _tenant_linked_to_parent(session, parent_id, primary_id):
         ordered.append(primary_id)
         seen.add(primary_id)
 

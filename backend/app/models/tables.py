@@ -215,11 +215,80 @@ class IntakeJob(SQLModel, table=True):
     alerted_at: Optional[datetime] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class ParentAccountMembership(SQLModel, table=True):
+#: What a site *is* inside its network, independent of what it is billed for.
+NETWORK_ROLE_HQ = "hq"
+NETWORK_ROLE_RETAIL = "retail"
+NETWORK_ROLE_OPERATOR = "operator"
+NETWORK_ROLES: frozenset[str] = frozenset({NETWORK_ROLE_HQ, NETWORK_ROLE_RETAIL, NETWORK_ROLE_OPERATOR})
+
+#: What a user may do across the network. Shop-level users have no row here —
+#: their access is implied by their tenant being a site.
+PARENT_ROLE_HQ_ADMIN = "hq_admin"
+PARENT_ROLE_HQ_VIEWER = "hq_viewer"
+PARENT_ROLES: frozenset[str] = frozenset({PARENT_ROLE_HQ_ADMIN, PARENT_ROLE_HQ_VIEWER})
+
+
+class Region(SQLModel, table=True):
+    """A named region inside one parent account's network (VIC, QLD WEST, …).
+
+    ``code`` is the normalised key sites reference and imports resolve TSS
+    region strings against; ``name`` is what HQ sees. Everything else is the
+    stuff a franchise network wants to hang off a region and previously had
+    nowhere to put: who runs it and who gets escalations.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "code", name="uq_region_parent_code"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    code: str = Field(max_length=40)
+    name: str = Field(max_length=120)
+    manager_name: Optional[str] = Field(default=None, max_length=200)
+    manager_email: Optional[str] = Field(default=None, max_length=320)
+    manager_phone: Optional[str] = Field(default=None, max_length=80)
+    escalation_email: Optional[str] = Field(default=None, max_length=320)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ParentAccountSite(SQLModel, table=True):
+    """The org chart: which tenants make up this network, and what each one is.
+
+    A tenant may sit in more than one network on purpose — the directory import
+    links a multi-site franchisee's shops to both the franchisee's own parent
+    account and HQ's — so uniqueness is per (parent, tenant), not per tenant.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "tenant_id", name="uq_parentaccountsite_parent_tenant"),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    network_role: str = Field(default=NETWORK_ROLE_RETAIL, max_length=16, index=True)
+    region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ParentAccountUser(SQLModel, table=True):
+    """The access list: which users can act on this network, and how far.
+
+    Kept separate from ParentAccountSite so "who is in the network" and "who
+    can reach it" are two questions with two tables, each unique on its own
+    natural key, instead of one table that had to be deduped on every read.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "user_id", name="uq_parentaccountuser_parent_user"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     user_id: UUID = Field(index=True, foreign_key="user.id")
+    role: str = Field(default=PARENT_ROLE_HQ_VIEWER, max_length=16, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShopOwnerInvite(SQLModel, table=True):

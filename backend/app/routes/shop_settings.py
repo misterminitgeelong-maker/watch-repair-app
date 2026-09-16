@@ -9,7 +9,8 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, require_manager_or_above
-from ..models import ParentAccountMembership, Tenant
+from ..models import Tenant
+from ..parent_network import parent_ids_for_tenant
 from ..shop_number import assert_shop_number_unique_in_parent, validate_shop_number_format
 
 router = APIRouter(prefix="/v1/settings/shop-identity", tags=["shop-settings"])
@@ -102,13 +103,10 @@ def update_shop_identity(
     if payload.shop_number is not None:
         shop_number = validate_shop_number_format(payload.shop_number)  # raises 400 if malformed
         if shop_number:
-            membership = session.exec(
-                select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == tenant.id)
-            ).first()
-            if membership:
+            for parent_id in parent_ids_for_tenant(session, tenant.id):
                 assert_shop_number_unique_in_parent(  # raises 409 if another of your sites has it
                     session,
-                    parent_id=membership.parent_account_id,
+                    parent_id=parent_id,
                     shop_number=shop_number,
                     exclude_tenant_id=tenant.id,
                 )

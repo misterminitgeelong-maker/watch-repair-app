@@ -33,13 +33,14 @@ from sqlmodel import Session, col, select
 from .minit_directory_parser import DirectoryData, DirectoryFranchisee, DirectoryShop
 from .minit_provision import (
     _get_or_create_parent,
+    _grant_hq_admin,
     _link_tenant_to_parent,
     existing_shop_numbers_in_parent,
     tenants_by_shop_number_in_parent,
 )
-from .models import ParentAccount, Tenant, User
+from .models import ParentAccount, Region, Tenant, User
+from .parent_network import linked_tenant_ids_for_parent
 from .security import hash_password
-from .shop_number import linked_tenant_ids_for_parent
 
 _PREVIEW_LIMIT = 25
 # Commit progress every N shops during apply, rather than one giant
@@ -126,7 +127,11 @@ def plan_directory_import(
     running scripts/import_minit_directory.py directly (no HTTP timeout)
     over the HQ upload endpoint."""
     hq_email = hq_owner_email.strip().lower()
-    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).first()
+    parent = session.exec(
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == hq_email)
+        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
+    ).first()
     if not parent:
         return {
             "hq_parent_found": False,
@@ -276,6 +281,8 @@ def plan_directory_import(
     # tenant_ids already linked to each ParentAccount we touch, keyed by parent
     # id — lets _link_tenant_to_parent skip its existence-check query.
     linked_ids_by_parent: dict[object, set] = {parent.id: set(linked_tenant_ids_for_parent(session, parent.id))}
+    # Region rows per parent, keyed by normalised code — one query per new region, not per shop.
+    region_cache_by_parent: dict[object, dict[str, Region]] = {parent.id: {}}
     # Emails that already had a ParentAccount before this run — used to tell a
     # genuinely-new franchisee ParentAccount apart from one _get_or_create_parent
     # merely reused, so the summary count is accurate rather than always "created".
@@ -340,7 +347,11 @@ def plan_directory_import(
             created_owner_count += 1
             existing_owner_by_tenant_id[tenant.id] = owner
             _link_tenant_to_parent(
-                session, parent=parent, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[parent.id]
+                session,
+                parent=parent,
+                tenant=tenant,
+                linked_tenant_ids=linked_ids_by_parent[parent.id],
+                region_cache=region_cache_by_parent[parent.id],
             )
             since_commit += 1
         else:
@@ -381,7 +392,11 @@ def plan_directory_import(
 
             # A slug-only match might not be linked to HQ's parent yet.
             _link_tenant_to_parent(
-                session, parent=parent, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[parent.id]
+                session,
+                parent=parent,
+                tenant=tenant,
+                linked_tenant_ids=linked_ids_by_parent[parent.id],
+                region_cache=region_cache_by_parent[parent.id],
             )
 
             # Mobile is contact metadata, not a credential — safe to fill in
@@ -409,9 +424,18 @@ def plan_directory_import(
                     seen_existing_parent_emails.add(franchisee.email)
                 franchisee_parents[franchisee.email] = fp
                 linked_ids_by_parent[fp.id] = set(linked_tenant_ids_for_parent(session, fp.id))
+                region_cache_by_parent[fp.id] = {}
             _link_tenant_to_parent(
-                session, parent=fp, tenant=tenant, owner=owner, linked_tenant_ids=linked_ids_by_parent[fp.id]
+                session,
+                parent=fp,
+                tenant=tenant,
+                linked_tenant_ids=linked_ids_by_parent[fp.id],
+                region_cache=region_cache_by_parent[fp.id],
             )
+            # The franchisee runs their own group: their login in each of
+            # their shops is an admin of it (HQ's network is unaffected).
+            if owner.email == fp.owner_email:
+                _grant_hq_admin(session, parent=fp, user=owner)
             since_commit += 1
 
         if since_commit >= _APPLY_FLUSH_EVERY:

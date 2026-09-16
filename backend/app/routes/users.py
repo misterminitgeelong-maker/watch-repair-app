@@ -15,7 +15,7 @@ from ..models import (
     ImportLog,
     JobStatusHistory,
     ParentAccountEventLog,
-    ParentAccountMembership,
+    ParentAccountUser,
     PublicUser,
     RepairJob,
     ShoeRepairJob,
@@ -156,7 +156,8 @@ def _detach_user_references(session: Session, tenant_id: UUID, user_id: UUID) ->
         .where(StocktakeLine.counted_by_user_id == user_id)
         .values(counted_by_user_id=None)
     )
-    session.exec(delete(ParentAccountMembership).where(ParentAccountMembership.user_id == user_id))
+    # Network-level access goes with the user; the shop stays in its network.
+    session.exec(delete(ParentAccountUser).where(ParentAccountUser.user_id == user_id))
 
 
 @router.get("", response_model=list[PublicUser])

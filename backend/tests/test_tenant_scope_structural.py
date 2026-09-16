@@ -234,6 +234,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         "billing",               # Stripe webhooks carry a tenant id, not a token
         "inbound_email",         # routes mail to whichever shop in the network owns it
         "parent_accounts",       # parent-account membership across its shops
+        "parent_network_admin",  # HQ support sessions into sibling shops; network org chart, roles, regions
         "parent_operations",     # franchise-network reporting across shops
         "platform_admin",        # administration across all tenants
         "shop_mobile_bookings",  # dispatch between a requesting and an operator shop

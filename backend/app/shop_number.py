@@ -4,10 +4,18 @@ import re
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlmodel import Session, col, select
+from sqlmodel import Session
 
-from .models import ParentAccountMembership, Tenant
-from .tenant_scope import without_scope
+from .parent_network import linked_tenant_ids_for_parent, linked_tenants_for_parent
+
+__all__ = [
+    "assert_shop_number_unique_in_parent",
+    "format_tenant_label",
+    "linked_tenant_ids_for_parent",
+    "linked_tenants_for_parent",
+    "normalize_shop_number",
+    "validate_shop_number_format",
+]
 
 _SHOP_NUMBER_RE = re.compile(r"^\d{1,10}$")
 
@@ -37,38 +45,6 @@ def format_tenant_label(name: str, shop_number: str | None) -> str:
     if shop_number:
         return f"{base} (#{shop_number})"
     return base
-
-
-def linked_tenant_ids_for_parent(session: Session, parent_id: UUID) -> list[UUID]:
-    """Every shop linked to this parent account — deliberately across tenants.
-
-    A parent account exists precisely to span its shops, so this lookup has to
-    see sibling tenants. The caller's session is restricted to the caller's own
-    tenant (app/tenant_scope.py), which would reduce this to "just me", so the
-    query runs on its own unscoped session.
-
-    The narrow scope of that session is the safeguard: it reads membership rows
-    for one named parent account and returns ids, nothing else.
-    """
-    with without_scope(session):
-        rows = session.exec(
-            select(ParentAccountMembership.tenant_id).where(
-                ParentAccountMembership.parent_account_id == parent_id
-            )
-        ).all()
-    return list(dict.fromkeys(rows))
-
-
-def linked_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    """Load all linked tenants in one query (avoids N+1 session.get loops)."""
-    ids = linked_tenant_ids_for_parent(session, parent_id)
-    if not ids:
-        return []
-    # Same reasoning: these tenants are by definition not the caller's own.
-    with without_scope(session):
-        tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all()
-    by_id = {t.id: t for t in tenants}
-    return [by_id[tid] for tid in ids if tid in by_id]
 
 
 def assert_shop_number_unique_in_parent(

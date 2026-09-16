@@ -12,37 +12,44 @@ from sqlmodel import Session, col, select
 from .dependencies import normalize_plan_code
 from .minit_mobile_operators import ResolvedMobileOperator, to_minit_shop_row
 from .minit_shops import MinitShopRow, tenant_slug_for_shop
-from .models import ParentAccount, ParentAccountMembership, Tenant, User
+from .models import (
+    NETWORK_ROLE_HQ,
+    NETWORK_ROLE_OPERATOR,
+    NETWORK_ROLE_RETAIL,
+    PARENT_ROLE_HQ_ADMIN,
+    ParentAccount,
+    Region,
+    Tenant,
+    User,
+)
+from .parent_network import (
+    OPERATOR_PLAN_CODES as _OPERATOR_PLAN_CODES,
+    grant_parent_role,
+    link_site,
+    linked_tenant_ids_for_parent,
+    linked_tenants_for_parent,
+    sync_site_region_from_tenant,
+)
 from .security import hash_password
-from .shop_number import linked_tenant_ids_for_parent, linked_tenants_for_parent, normalize_shop_number
+from .shop_number import normalize_shop_number
 
 # Flush every N shops during bulk import (fewer round-trips to Postgres).
 _BULK_IMPORT_FLUSH_EVERY = 50
 
-_OPERATOR_PLAN_CODES = frozenset(
-    {
-        "basic_auto_key",
-        "basic_watch_auto_key",
-        "basic_shoe_auto_key",
-        "basic_all_tabs",
-    }
-)
-
 SiteKind = Literal["all", "retail", "operator"]
+
+_SITE_KIND_TO_ROLE: dict[str, str | None] = {
+    "all": None,
+    "retail": NETWORK_ROLE_RETAIL,
+    "operator": NETWORK_ROLE_OPERATOR,
+}
 
 
 def _is_operator_plan(plan_code: str) -> bool:
+    """Plan-based *default* only, for when a site is first created. After that
+    ParentAccountSite.network_role says whether a tenant is an operator (see
+    parent_network.tenant_is_operator)."""
     return normalize_plan_code(plan_code) in _OPERATOR_PLAN_CODES
-
-
-def _tenant_matches_site_kind(tenant: Tenant, site_kind: SiteKind) -> bool:
-    if site_kind == "all":
-        return True
-    is_operator = _is_operator_plan(tenant.plan_code)
-    if site_kind == "operator":
-        return is_operator
-    # retail: exclude HQ and operator tenants
-    return not is_operator and normalize_plan_code(tenant.plan_code) != "minit_hq"
 
 
 @dataclass
@@ -63,8 +70,7 @@ def existing_shop_numbers_in_parent(
 ) -> set[str]:
     return {
         num
-        for tenant in linked_tenants_for_parent(session, parent_id)
-        if _tenant_matches_site_kind(tenant, site_kind)
+        for tenant in linked_tenants_for_parent(session, parent_id, network_role=_SITE_KIND_TO_ROLE[site_kind])
         if (num := tenant.shop_number)
     }
 
@@ -80,8 +86,8 @@ def tenant_for_shop_number_in_parent(
     *,
     site_kind: SiteKind = "all",
 ) -> Tenant | None:
-    for tenant in linked_tenants_for_parent(session, parent_id):
-        if tenant.shop_number == shop_number and _tenant_matches_site_kind(tenant, site_kind):
+    for tenant in linked_tenants_for_parent(session, parent_id, network_role=_SITE_KIND_TO_ROLE[site_kind]):
+        if tenant.shop_number == shop_number:
             return tenant
     return None
 
@@ -93,8 +99,8 @@ def tenants_by_shop_number_in_parent(
     site_kind: SiteKind = "all",
 ) -> dict[str, Tenant]:
     result: dict[str, Tenant] = {}
-    for tenant in linked_tenants_for_parent(session, parent_id):
-        if not tenant.shop_number or not _tenant_matches_site_kind(tenant, site_kind):
+    for tenant in linked_tenants_for_parent(session, parent_id, network_role=_SITE_KIND_TO_ROLE[site_kind]):
+        if not tenant.shop_number:
             continue
         result[tenant.shop_number] = tenant
     return result
@@ -163,7 +169,11 @@ def _get_or_create_parent(
     owner_email: str,
 ) -> ParentAccount:
     email = owner_email.strip().lower()
-    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    parent = session.exec(
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == email)
+        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
+    ).first()
     if parent:
         if parent.name != name:
             parent.name = name
@@ -223,34 +233,28 @@ def _link_tenant_to_parent(
     *,
     parent: ParentAccount,
     tenant: Tenant,
-    owner: User,
+    owner: User | None = None,
     linked_tenant_ids: set[UUID] | None = None,
+    network_role: str | None = None,
+    region_cache: dict[str, Region] | None = None,
 ) -> None:
-    if linked_tenant_ids is not None:
-        if tenant.id in linked_tenant_ids:
-            return
-        session.add(
-            ParentAccountMembership(
-                parent_account_id=parent.id,
-                tenant_id=tenant.id,
-                user_id=owner.id,
-            )
-        )
-        linked_tenant_ids.add(tenant.id)
-        return
-    existing = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
-        .where(ParentAccountMembership.tenant_id == tenant.id)
-    ).first()
-    if not existing:
-        session.add(
-            ParentAccountMembership(
-                parent_account_id=parent.id,
-                tenant_id=tenant.id,
-                user_id=owner.id,
-            )
-        )
+    """Put ``tenant`` in the network (no-op if already there).
+
+    ``owner`` is accepted for call-site compatibility but no longer recorded:
+    the site table is the org chart; who can act on the network lives in
+    ParentAccountUser (see _grant_hq_admin)."""
+    link_site(
+        session,
+        parent_id=parent.id,
+        tenant=tenant,
+        network_role=network_role,
+        known_tenant_ids=linked_tenant_ids,
+        region_cache=region_cache,
+    )
+
+
+def _grant_hq_admin(session: Session, *, parent: ParentAccount, user: User) -> None:
+    grant_parent_role(session, parent_id=parent.id, user_id=user.id, role=PARENT_ROLE_HQ_ADMIN)
 
 
 def _create_child_tenant(
@@ -266,6 +270,7 @@ def _create_child_tenant(
     hq_users_by_tenant_id: dict[UUID, User] | None = None,
     linked_tenant_ids: set[UUID] | None = None,
     flush: bool = True,
+    region_cache: dict[str, Region] | None = None,
 ) -> Tenant | None:
     """Create a site tenant owned by HQ credentials. Returns None if slug exists elsewhere."""
     slug = (tenant_slug or tenant_slug_for_shop(shop)).strip().lower()
@@ -280,6 +285,7 @@ def _create_child_tenant(
     if existing:
         if sync_tenant_from_minit_shop(existing, shop):
             session.add(existing)
+            sync_site_region_from_tenant(session, parent_id=parent.id, tenant=existing, cache=region_cache)
         if mobile_dispatch_phone and existing.mobile_dispatch_phone != mobile_dispatch_phone:
             existing.mobile_dispatch_phone = mobile_dispatch_phone
             session.add(existing)
@@ -325,8 +331,8 @@ def _create_child_tenant(
         session,
         parent=parent,
         tenant=tenant,
-        owner=site_owner,
         linked_tenant_ids=linked_tenant_ids,
+        region_cache=region_cache,
     )
     return tenant
 
@@ -379,7 +385,8 @@ def ensure_minit_pilot_account(
         owner_password=hq_owner_password,
     )
     parent = _get_or_create_parent(session, name=parent_name, owner_email=hq_owner_email)
-    _link_tenant_to_parent(session, parent=parent, tenant=hq_tenant, owner=hq_owner)
+    _link_tenant_to_parent(session, parent=parent, tenant=hq_tenant, network_role=NETWORK_ROLE_HQ)
+    _grant_hq_admin(session, parent=parent, user=hq_owner)
 
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id)
     created: list[str] = []
@@ -473,7 +480,11 @@ def import_minit_shops(
 ) -> dict[str, object]:
     """Dry-run or apply bulk retail shop creation under the Minit parent account."""
     email = hq_owner_email.strip().lower()
-    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+    parent = session.exec(
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == email)
+        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
+    ).first()
     if not parent:
         preview = [_shop_entry(s) for s in shops]
         return {
@@ -548,6 +559,7 @@ def import_minit_shops(
         for user in session.exec(select(User).where(User.email == hq_owner.email)).all()
     }
     linked_tenant_ids = set(linked_tenant_ids_for_parent(session, parent.id))
+    region_cache: dict[str, Region] = {}
 
     created_slugs: list[str] = []
     updated_count = 0
@@ -559,6 +571,7 @@ def import_minit_shops(
             tenant = tenants_by_number.get(shop.shop_number)
             if tenant and sync_tenant_from_minit_shop(tenant, shop):
                 session.add(tenant)
+                sync_site_region_from_tenant(session, parent_id=parent.id, tenant=tenant, cache=region_cache)
                 updated_count += 1
                 pending_flush += 1
                 if on_progress and (index % 25 == 0 or index == total):
@@ -584,6 +597,7 @@ def import_minit_shops(
             hq_users_by_tenant_id=hq_users_by_tenant_id,
             linked_tenant_ids=linked_tenant_ids,
             flush=False,
+            region_cache=region_cache,
         )
         if tenant:
             created_slugs.append(tenant.slug)
@@ -644,7 +658,11 @@ def import_minit_mobile_operators(
         parent = session.get(ParentAccount, parent_id)
     if parent is None and hq_owner_email:
         email = hq_owner_email.strip().lower()
-        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == email)).first()
+        parent = session.exec(
+            select(ParentAccount)
+            .where(ParentAccount.owner_email == email)
+            .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
+        ).first()
     if not parent:
         preview = [_operator_entry(op) for op in operators]
         return {
@@ -737,6 +755,7 @@ def import_minit_mobile_operators(
             ).all()
         }
 
+    region_cache: dict[str, Region] = {}
     created_slugs: list[str] = []
     updated_count = 0
     skipped_apply = 0
@@ -749,6 +768,7 @@ def import_minit_mobile_operators(
             tenant = tenants_by_number.get(operator.shop_number)
             if tenant and sync_tenant_from_mobile_operator(tenant, operator):
                 session.add(tenant)
+                sync_site_region_from_tenant(session, parent_id=parent.id, tenant=tenant, cache=region_cache)
                 updated_count += 1
                 pending_flush += 1
                 if on_progress and (index % 10 == 0 or index == total):
@@ -775,6 +795,7 @@ def import_minit_mobile_operators(
             hq_users_by_tenant_id=hq_users_by_tenant_id,
             linked_tenant_ids=linked_tenant_ids,
             flush=False,
+            region_cache=region_cache,
         )
         if tenant:
             created_slugs.append(tenant.slug)

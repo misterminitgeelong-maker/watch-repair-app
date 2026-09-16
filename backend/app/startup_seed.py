@@ -8,10 +8,11 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import httpx
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 
 from .config import settings
-from .models import AutoKeyJob, Customer, CustomerAccount, MobileSuburbRoute, ParentAccount, ParentAccountMembership, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
+from .models import PARENT_ROLE_HQ_ADMIN, AutoKeyJob, Customer, CustomerAccount, MobileSuburbRoute, ParentAccount, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
+from .parent_network import grant_parent_role, link_site
 from .minit_provision import ensure_minit_pilot_account
 from .security import hash_password
 
@@ -632,31 +633,24 @@ def ensure_demo_parent_account(session: Session, demo_tenant: Tenant) -> None:
 
     # Create (or find) parent account for the demo owner
     parent = session.exec(
-        select(ParentAccount).where(ParentAccount.owner_email == owner_email)
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == owner_email)
+        .order_by(col(ParentAccount.created_at).asc())
     ).first()
     if not parent:
         parent = ParentAccount(name="Mainspring Group", owner_email=owner_email)
         session.add(parent)
         session.flush()
 
-    # Link all three tenants via memberships
+    # Link all three tenants as sites; the demo owner's logins run the network.
     for tenant in [demo_tenant] + extra_tenants:
         owner = session.exec(
             select(User).where(User.tenant_id == tenant.id).where(User.email == owner_email)
         ).first()
         if not owner:
             continue
-        existing = session.exec(
-            select(ParentAccountMembership)
-            .where(ParentAccountMembership.parent_account_id == parent.id)
-            .where(ParentAccountMembership.tenant_id == tenant.id)
-        ).first()
-        if not existing:
-            session.add(ParentAccountMembership(
-                parent_account_id=parent.id,
-                tenant_id=tenant.id,
-                user_id=owner.id,
-            ))
+        link_site(session, parent_id=parent.id, tenant=tenant)
+        grant_parent_role(session, parent_id=parent.id, user_id=owner.id, role=PARENT_ROLE_HQ_ADMIN)
 
     session.flush()
 

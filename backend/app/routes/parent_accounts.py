@@ -44,6 +44,9 @@ from ..minit_directory_parser import DirectoryParseError, build_directory, extra
 from ..minit_provision import import_minit_mobile_operators, import_minit_shops
 from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
+    NETWORK_ROLE_HQ,
+    NETWORK_ROLE_OPERATOR,
+    NETWORK_ROLE_RETAIL,
     MobileSuburbRoute,
     MobileSuburbRouteCreateRequest,
     MobileSuburbRouteOperatorSummary,
@@ -58,7 +61,7 @@ from ..models import (
     ParentAccountEventLog,
     ParentAccountEventLogRead,
     ParentAccountLinkTenantRequest,
-    ParentAccountMembership,
+    ParentAccountSite,
     ParentAccountSiteRead,
     ParentAccountSitesPageResponse,
     ParentAccountSummaryResponse,
@@ -67,6 +70,7 @@ from ..models import (
     ParentMobileLeadDispatchSettingsBody,
     ParentMobileLeadEscalationTenantBody,
     ParentMobileLeadWebhookSecretBody,
+    Region,
     ShopBookingUsageResponse,
     ShopBookingUsageShopBreakdown,
     ShopMobileBookingRequest,
@@ -77,12 +81,20 @@ from ..models import (
     User,
 )
 from ..config import settings
+from ..parent_network import (
+    link_site,
+    normalize_region_code,
+    parents_for_user,
+    regions_for_parent,
+    require_parent_role,
+    site_for_tenant_in_parent,
+    sites_for_parent,
+)
 from ..security import hash_password
 from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
     assert_shop_number_unique_in_parent,
     format_tenant_label,
-    linked_tenant_ids_for_parent,
     normalize_shop_number,
     validate_shop_number_format,
 )
@@ -96,69 +108,75 @@ router = APIRouter(
 AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
 MAX_IMPORT_SHOPS_XLSX_BYTES = 5 * 1024 * 1024
 _ALLOWED_XLSX_SUFFIXES = frozenset({".xlsx", ".xlsm"})
-_OPERATOR_PLAN_CODES = frozenset(
-    {
-        "basic_auto_key",
-        "basic_shoe_auto_key",
-        "basic_watch_auto_key",
-        "basic_all_tabs",
-        "auto_key",
-    }
-)
+_PLAN_KIND_TO_ROLE: dict[str, str | None] = {
+    "all": None,
+    "retail": NETWORK_ROLE_RETAIL,
+    "operator": NETWORK_ROLE_OPERATOR,
+}
 
 
-def _is_operator_plan(plan_code: str) -> bool:
-    return normalize_plan_code(plan_code) in _OPERATOR_PLAN_CODES
+def _owner_users_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUID, User]:
+    """First active owner login per tenant — the person a site "belongs" to."""
+    if not tenant_ids:
+        return {}
+    owners: dict[UUID, User] = {}
+    for user in session.exec(
+        select(User)
+        .where(col(User.tenant_id).in_(tenant_ids))
+        .where(User.role == "owner")
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(col(User.created_at).asc(), col(User.id).asc())
+    ).all():
+        owners.setdefault(user.tenant_id, user)
+    return owners
 
 
-def _memberships_for_parent(session: Session, parent_id: UUID) -> list[ParentAccountMembership]:
-    return session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent_id)
-        .order_by(ParentAccountMembership.created_at)
-    ).all()
+def _regions_by_id(session: Session, parent_id: UUID) -> dict[UUID, Region]:
+    return {r.id: r for r in regions_for_parent(session, parent_id)}
 
 
-def _site_reads_for_memberships(
+def _site_reads_for_sites(
     session: Session,
-    memberships: list[ParentAccountMembership],
+    sites: list[ParentAccountSite],
+    *,
+    regions_by_id: dict[UUID, Region] | None = None,
 ) -> list[ParentAccountSiteRead]:
-    tenant_ids = list(dict.fromkeys(m.tenant_id for m in memberships))
-    user_ids = list(dict.fromkeys(m.user_id for m in memberships))
+    tenant_ids = [site.tenant_id for site in sites]
+    if not tenant_ids:
+        return []
     tenants_by_id = {
         t.id: t
         for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
-    } if tenant_ids else {}
-    users_by_id = {
-        u.id: u
-        for u in session.exec(select(User).where(col(User.id).in_(user_ids))).all()
-    } if user_ids else {}
+    }
+    owners = _owner_users_by_tenant(session, tenant_ids)
+    if regions_by_id is None:
+        regions_by_id = _regions_by_id(session, sites[0].parent_account_id)
 
-    sites: list[ParentAccountSiteRead] = []
-    seen_tenants: set[str] = set()
-    for membership in memberships:
-        tenant = tenants_by_id.get(membership.tenant_id)
-        user = users_by_id.get(membership.user_id)
+    reads: list[ParentAccountSiteRead] = []
+    for site in sites:
+        tenant = tenants_by_id.get(site.tenant_id)
+        user = owners.get(site.tenant_id)
         if not tenant or not user:
             continue
-        if str(tenant.id) in seen_tenants:
-            continue
-        seen_tenants.add(str(tenant.id))
-        sites.append(
+        region = regions_by_id.get(site.region_id) if site.region_id else None
+        reads.append(
             ParentAccountSiteRead(
                 tenant_id=tenant.id,
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
                 shop_number=tenant.shop_number,
                 area=tenant.minit_area,
-                region=tenant.minit_region,
+                region=region.name if region else tenant.minit_region,
+                region_id=region.id if region else None,
+                region_code=region.code if region else None,
                 plan_code=normalize_plan_code(tenant.plan_code),
+                network_role=site.network_role,
                 owner_user_id=user.id,
                 owner_email=user.email,
                 owner_full_name=user.full_name,
             )
         )
-    return sorted(sites, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
+    return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
 
 
 def _to_summary(
@@ -166,17 +184,19 @@ def _to_summary(
     parent: ParentAccount,
     *,
     include_sites: bool = False,
+    my_role: str | None = None,
 ) -> ParentAccountSummaryResponse:
-    site_count = len(linked_tenant_ids_for_parent(session, parent.id))
+    all_sites = sites_for_parent(session, parent.id)
     sites: list[ParentAccountSiteRead] = []
     if include_sites:
-        sites = _site_reads_for_memberships(session, _memberships_for_parent(session, parent.id))
+        sites = _site_reads_for_sites(session, all_sites)
 
     return ParentAccountSummaryResponse(
         parent_account_id=parent.id,
         parent_account_name=parent.name,
         owner_email=parent.owner_email,
-        site_count=site_count,
+        my_role=my_role,
+        site_count=len(all_sites),
         sites=sites,
         mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
         mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
@@ -207,23 +227,32 @@ def _filtered_parent_sites(
     region: str | None,
     plan_kind: str | None,
 ) -> ParentAccountSitesPageResponse:
-    tenant_ids = linked_tenant_ids_for_parent(session, parent_id)
-    if not tenant_ids:
+    kind = (plan_kind or "all").strip().lower()
+    role_filter = _PLAN_KIND_TO_ROLE.get(kind)
+    all_sites = sites_for_parent(session, parent_id, network_role=role_filter)
+    if not all_sites:
         return ParentAccountSitesPageResponse(sites=[], total=0, limit=limit, offset=offset)
 
-    stmt = select(Tenant).where(col(Tenant.id).in_(tenant_ids))
-    kind = (plan_kind or "all").strip().lower()
-    if kind == "operator":
-        stmt = stmt.where(col(Tenant.plan_code).in_(list(_OPERATOR_PLAN_CODES)))
-    elif kind == "retail":
-        stmt = stmt.where(col(Tenant.plan_code).not_in(list(_OPERATOR_PLAN_CODES)))
-
+    regions_by_id = _regions_by_id(session, parent_id)
     region_filter = (region or "").strip()
     if region_filter:
         if region_filter.lower() == "unassigned":
-            stmt = stmt.where(or_(Tenant.minit_region.is_(None), col(Tenant.minit_region) == ""))
+            all_sites = [site for site in all_sites if site.region_id is None]
         else:
-            stmt = stmt.where(Tenant.minit_region == region_filter)
+            # Accept a Region id, its code, or its display name.
+            wanted = {
+                r.id
+                for r in regions_by_id.values()
+                if str(r.id) == region_filter
+                or r.code == normalize_region_code(region_filter)
+                or r.name.lower() == region_filter.lower()
+            }
+            all_sites = [site for site in all_sites if site.region_id in wanted]
+        if not all_sites:
+            return ParentAccountSitesPageResponse(sites=[], total=0, limit=limit, offset=offset)
+
+    site_by_tenant = {site.tenant_id: site for site in all_sites}
+    stmt = select(Tenant).where(col(Tenant.id).in_(list(site_by_tenant)))
 
     search_term = (search or "").strip()
     if search_term:
@@ -245,18 +274,8 @@ def _filtered_parent_sites(
     if not tenants:
         return ParentAccountSitesPageResponse(sites=[], total=total, limit=limit, offset=offset)
 
-    page_tenant_ids = [t.id for t in tenants]
-    memberships = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent_id)
-        .where(col(ParentAccountMembership.tenant_id).in_(page_tenant_ids))
-        .order_by(ParentAccountMembership.created_at)
-    ).all()
-    membership_by_tenant = {m.tenant_id: m for m in memberships}
-    ordered_memberships = [
-        membership_by_tenant[tid] for tid in page_tenant_ids if tid in membership_by_tenant
-    ]
-    sites = _site_reads_for_memberships(session, ordered_memberships)
+    ordered_sites = [site_by_tenant[t.id] for t in tenants if t.id in site_by_tenant]
+    sites = _site_reads_for_sites(session, ordered_sites, regions_by_id=regions_by_id)
     return ParentAccountSitesPageResponse(sites=sites, total=total, limit=limit, offset=offset)
 
 
@@ -276,29 +295,35 @@ def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
 
 
 def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
-    parent = session.exec(
-        select(ParentAccount).where(ParentAccount.owner_email == user.email)
-    ).first()
-    if parent:
-        return parent
-
-    membership = session.exec(
-        select(ParentAccountMembership).where(ParentAccountMembership.user_id == user.id)
-    ).first()
-    if membership:
-        parent = session.get(ParentAccount, membership.parent_account_id)
-        if parent:
-            return parent
-
-    membership = session.exec(
-        select(ParentAccountMembership).where(ParentAccountMembership.tenant_id == user.tenant_id)
-    ).first()
-    if membership:
-        parent = session.get(ParentAccount, membership.parent_account_id)
-        if parent:
-            return parent
-
+    """The network this login acts on — by access row, then by account
+    owner email, always in a fixed order (see parent_network.parents_for_user)."""
+    parents = parents_for_user(session, user)
+    if parents:
+        return parents[0]
     raise HTTPException(status_code=404, detail="Parent account not found")
+
+
+def _current_user(session: Session, auth: AuthContext) -> User:
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user
+
+
+def _parent_for_read(session: Session, auth: AuthContext) -> tuple[User, ParentAccount, str]:
+    """Any HQ role may read the network."""
+    user = _current_user(session, auth)
+    parent = _get_parent_account_for_user(session, user)
+    role = require_parent_role(session, parent, user, write=False)
+    return user, parent, role
+
+
+def _parent_for_write(session: Session, auth: AuthContext) -> tuple[User, ParentAccount]:
+    """Only hq_admin may change the network."""
+    user = _current_user(session, auth)
+    parent = _get_parent_account_for_user(session, user)
+    require_parent_role(session, parent, user, write=True)
+    return user, parent
 
 
 def _normalize_plan_code(value: str | None) -> str:
@@ -333,14 +358,7 @@ def _record_event(
 
 
 def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID) -> bool:
-    return (
-        session.exec(
-            select(ParentAccountMembership)
-            .where(ParentAccountMembership.parent_account_id == parent_id)
-            .where(ParentAccountMembership.tenant_id == tenant_id)
-        ).first()
-        is not None
-    )
+    return site_for_tenant_in_parent(session, parent_id, tenant_id) is not None
 
 
 @router.post("/me/mobile-lead-ingest/enable", response_model=ParentAccountSummaryResponse)
@@ -349,10 +367,7 @@ def enable_mobile_lead_ingest(
     session: Session = Depends(unscoped_session),
 ):
     """Assign a public ingest id for website POSTs (if not already set)."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     if parent.mobile_lead_ingest_public_id is None:
         parent.mobile_lead_ingest_public_id = uuid4()
         _record_event(
@@ -376,10 +391,7 @@ def set_mobile_lead_webhook_secret(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     if parent.mobile_lead_ingest_public_id is None:
         parent.mobile_lead_ingest_public_id = uuid4()
     parent.mobile_lead_webhook_secret_hash = hash_password(body.webhook_secret.strip())
@@ -403,10 +415,7 @@ def clear_mobile_lead_webhook_secret(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     parent.mobile_lead_webhook_secret_hash = None
     _record_event(
         session,
@@ -429,10 +438,7 @@ def set_mobile_lead_default_tenant(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     if body.tenant_id is None:
         parent.mobile_lead_default_tenant_id = None
         summary = "Cleared default site for unmatched suburbs"
@@ -462,10 +468,7 @@ def set_mobile_lead_escalation_tenant(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     if body.tenant_id is None:
         parent.mobile_lead_escalation_tenant_id = None
         summary = "Cleared HQ escalation site for website leads"
@@ -495,10 +498,7 @@ def set_mobile_lead_dispatch_settings(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     changes: list[str] = []
     if body.offer_timeout_minutes is not None:
         parent.mobile_lead_offer_timeout_minutes = body.offer_timeout_minutes
@@ -532,10 +532,7 @@ def mobile_suburb_routes_summary(
     session: Session = Depends(unscoped_session),
 ):
     """Route counts by operator — avoids loading thousands of suburb rows in HQ UI."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     total = session.exec(
         select(func.count())
         .select_from(MobileSuburbRoute)
@@ -577,10 +574,7 @@ def list_mobile_suburb_routes(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     stmt = (
         select(MobileSuburbRoute)
         .where(MobileSuburbRoute.parent_account_id == parent.id)
@@ -608,10 +602,7 @@ def create_mobile_suburb_route(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     st = payload.state_code.strip().upper()
     if st not in AU_STATES:
         raise HTTPException(status_code=400, detail=f"Invalid state_code; use one of: {', '.join(sorted(AU_STATES))}")
@@ -663,10 +654,7 @@ def test_mobile_operator_routing(
 ):
     """Preview which mobile operator would receive a lead for suburb + state."""
     _require_minit_hq(auth, session)
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent, _ = _parent_for_read(session, auth)
     resolution = resolve_mobile_operator_route(
         session,
         parent_id=parent.id,
@@ -692,10 +680,7 @@ def delete_mobile_suburb_route(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, current_user)
+    current_user, parent = _parent_for_write(session, auth)
     row = session.get(MobileSuburbRoute, route_id)
     if not row or row.parent_account_id != parent.id:
         raise HTTPException(status_code=404, detail="Route not found")
@@ -725,9 +710,7 @@ def get_shop_booking_usage(
     session: Session = Depends(unscoped_session),
 ):
     """Per-shop booking counts for Minit-style billing (accepted + pending in month)."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent, _ = _parent_for_read(session, auth)
 
     try:
         year_s, mon_s = month.split("-", 1)
@@ -740,26 +723,20 @@ def get_shop_booking_usage(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="month must be YYYY-MM") from exc
 
-    parent = _get_parent_account_for_user(session, current_user)
-    memberships = session.exec(
-        select(ParentAccountMembership).where(ParentAccountMembership.parent_account_id == parent.id)
-    ).all()
-
-    member_tenant_ids = list({m.tenant_id for m in memberships})
+    retail_sites = sites_for_parent(session, parent.id, network_role=NETWORK_ROLE_RETAIL)
+    member_tenant_ids = [site.tenant_id for site in retail_sites]
     tenants = (
         session.exec(select(Tenant).where(col(Tenant.id).in_(member_tenant_ids))).all()
         if member_tenant_ids
         else []
     )
 
-    booking_tenant_count = 0
-    shop_tenants: dict[UUID, Tenant] = {}
-    for tenant in tenants:
-        plan = normalize_plan_code(tenant.plan_code)
-        if plan == "booking_only" or _tenant_has_shop_mobile_booking(plan):
-            booking_tenant_count += 1
-            if _tenant_has_shop_mobile_booking(plan):
-                shop_tenants[tenant.id] = tenant
+    # Every retail site is a booking tenant; the breakdown lists those whose
+    # plan can actually raise a booking (the rest are counted but have no rows).
+    booking_tenant_count = len(tenants)
+    shop_tenants: dict[UUID, Tenant] = {
+        tenant.id: tenant for tenant in tenants if _tenant_has_shop_mobile_booking(tenant.plan_code)
+    }
 
     counts: dict[tuple[UUID, str], int] = {}
     if shop_tenants:
@@ -808,12 +785,8 @@ def get_parent_account_summary(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    parent = _get_parent_account_for_user(session, user)
-    return _to_summary(session, parent, include_sites=include_sites)
+    user, parent, my_role = _parent_for_read(session, auth)
+    return _to_summary(session, parent, include_sites=include_sites, my_role=my_role)
 
 
 @router.get("/me/lead-ingest", response_model=ParentLeadIngestConfigResponse)
@@ -821,10 +794,7 @@ def get_parent_lead_ingest_config(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    parent = _get_parent_account_for_user(session, user)
+    user, parent, my_role = _parent_for_read(session, auth)
     return _lead_ingest_config(parent)
 
 
@@ -841,13 +811,10 @@ def list_parent_account_sites(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    user, parent, _ = _parent_for_read(session, auth)
     if plan_kind and plan_kind.strip().lower() not in {"retail", "operator", "all"}:
         raise HTTPException(status_code=400, detail="plan_kind must be retail, operator, or all")
 
-    parent = _get_parent_account_for_user(session, user)
     return _filtered_parent_sites(
         session,
         parent.id,
@@ -866,11 +833,8 @@ def list_parent_account_activity(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user = session.get(User, auth.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    user, parent, my_role = _parent_for_read(session, auth)
 
-    parent = _get_parent_account_for_user(session, user)
     safe_limit = max(1, min(limit, 200))
     rows = session.exec(
         select(ParentAccountEventLog)
@@ -901,11 +865,8 @@ def link_tenant_to_parent_account(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
 
     tenant_slug = payload.tenant_slug.strip().lower()
     owner_email = payload.owner_email.strip().lower()
@@ -939,20 +900,9 @@ def link_tenant_to_parent_account(
         tenant.shop_number = shop_number
         session.add(tenant)
 
-    existing = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
-        .where(ParentAccountMembership.tenant_id == tenant.id)
-    ).first()
+    created = link_site(session, parent_id=parent.id, tenant=tenant)
 
-    if not existing:
-        session.add(
-            ParentAccountMembership(
-                parent_account_id=parent.id,
-                tenant_id=tenant.id,
-                user_id=owner_user.id,
-            )
-        )
+    if created is not None:
         _record_event(
             session,
             parent_account_id=parent.id,
@@ -1061,22 +1011,14 @@ def create_shop_owner_invite(
     """Create (or reissue) a one-time invite letting a shop set its own login,
     replacing the shared HQ owner credentials it was provisioned with.
     Optionally sets the shop's plan/tier at the same time."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
 
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    membership = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
-        .where(ParentAccountMembership.tenant_id == tenant.id)
-    ).first()
-    if not membership:
+    if not _tenant_linked_to_parent(session, parent.id, tenant.id):
         raise HTTPException(status_code=404, detail="Site is not linked to your account")
 
     owner_user = session.exec(
@@ -1156,18 +1098,10 @@ def get_shop_owner_invite(
     session: Session = Depends(unscoped_session),
 ):
     """The most recent owner-login invite for a site, if any has ever been sent."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent, _ = _parent_for_read(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
 
-    membership = session.exec(
-        select(ParentAccountMembership)
-        .where(ParentAccountMembership.parent_account_id == parent.id)
-        .where(ParentAccountMembership.tenant_id == tenant_id)
-    ).first()
-    if not membership:
+    if not _tenant_linked_to_parent(session, parent.id, tenant_id):
         raise HTTPException(status_code=404, detail="Site is not linked to your account")
 
     invite = session.exec(
@@ -1186,11 +1120,8 @@ def create_tenant_from_parent_account(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
 
     tenant_name = payload.tenant_name.strip()
     tenant_slug = payload.tenant_slug.strip().lower()
@@ -1229,13 +1160,7 @@ def create_tenant_from_parent_account(
     session.add(new_owner)
     session.flush()
 
-    session.add(
-        ParentAccountMembership(
-            parent_account_id=parent.id,
-            tenant_id=tenant.id,
-            user_id=new_owner.id,
-        )
-    )
+    link_site(session, parent_id=parent.id, tenant=tenant)
     _record_event(
         session,
         parent_account_id=parent.id,
@@ -1259,11 +1184,8 @@ async def import_shops_from_xlsx(
 ):
     """Bulk create/update retail shops from a Minit shop-list Excel workbook (HQ only)."""
     _require_minit_hq(auth, session)
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
     filename = (file.filename or "").strip()
     if not filename:
         raise HTTPException(status_code=400, detail="File name is required")
@@ -1370,11 +1292,8 @@ async def import_directory_export(
     Preview (apply=false, the default) makes no changes — call again with
     apply=true, using the same file, once you're happy with the preview."""
     _require_minit_hq(auth, session)
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
     filename = (file.filename or "").strip()
     if not filename:
         raise HTTPException(status_code=400, detail="File name is required")
@@ -1430,11 +1349,8 @@ async def import_mobile_operators_from_xlsx(
 ):
     """Bulk create/update mobile operators from bundled seed + TSS workbook (HQ only)."""
     _require_minit_hq(auth, session)
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
     filename = (file.filename or "").strip()
     if not filename:
         raise HTTPException(status_code=400, detail="File name is required")
@@ -1536,11 +1452,8 @@ def import_mobile_territory_routes(
 ):
     """Import bundled AU territory suburb routes (HQ only). Dry-run by default."""
     _require_minit_hq(auth, session)
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
     try:
         routes, operators = load_territory_routes_seed()
     except (OSError, json.JSONDecodeError, ValueError) as exc:
@@ -1597,11 +1510,8 @@ def provision_minit_retail_shop(
     session: Session = Depends(unscoped_session),
 ):
     """Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent."""
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
     shop_number = validate_shop_number_format(payload.shop_number)
     if not shop_number:
         raise HTTPException(status_code=400, detail="shop_number is required")
@@ -1640,13 +1550,7 @@ def provision_minit_retail_shop(
     session.add(new_owner)
     session.flush()
 
-    session.add(
-        ParentAccountMembership(
-            parent_account_id=parent.id,
-            tenant_id=tenant.id,
-            user_id=new_owner.id,
-        )
-    )
+    link_site(session, parent_id=parent.id, tenant=tenant)
     _record_event(
         session,
         parent_account_id=parent.id,
@@ -1667,11 +1571,8 @@ def unlink_tenant_from_parent_account(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user = session.get(User, auth.user_id)
-    if not current_user or not current_user.is_active:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_user, parent = _parent_for_write(session, auth)
 
-    parent = _get_parent_account_for_user(session, current_user)
 
     if tenant_id == auth.tenant_id:
         raise HTTPException(
@@ -1679,18 +1580,16 @@ def unlink_tenant_from_parent_account(
             detail="Cannot unlink the currently active site. Switch to another site first.",
         )
 
-    memberships = session.exec(
-        select(ParentAccountMembership).where(
-            ParentAccountMembership.parent_account_id == parent.id
-        )
-    ).all()
+    sites = sites_for_parent(session, parent.id)
 
-    if len(memberships) <= 1:
+    if len(sites) <= 1:
         raise HTTPException(status_code=400, detail="Cannot unlink the last remaining site")
 
-    membership = next((m for m in memberships if m.tenant_id == tenant_id), None)
+    membership = next((site for site in sites if site.tenant_id == tenant_id), None)
     if not membership:
         raise HTTPException(status_code=404, detail="Site is not linked to this parent account")
+    if membership.network_role == NETWORK_ROLE_HQ:
+        raise HTTPException(status_code=400, detail="Cannot unlink the HQ site")
 
     tenant = session.get(Tenant, membership.tenant_id)
     tenant_name = tenant.name if tenant else str(membership.tenant_id)
