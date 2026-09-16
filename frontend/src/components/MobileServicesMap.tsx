@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import {
   APIProvider,
   APILoadingStatus,
+  AdvancedMarker,
   Map as GoogleMap,
-  Marker,
   InfoWindow,
   useApiLoadingStatus,
   useMap as useGoogleMap,
   useMapsLibrary,
-  useMarkerRef,
+  useAdvancedMarkerRef,
 } from '@vis.gl/react-google-maps'
 import L from 'leaflet'
 import { MapContainer, TileLayer, CircleMarker, Marker as LeafletMarker, Popup, Polyline, useMap as useLeafletMap } from 'react-leaflet'
@@ -30,12 +30,6 @@ import { STATUS_LABELS } from '@/lib/utils'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
 const GEOCODE_CONCURRENCY = 5
-
-const APPROX_PIN_ICON =
-  'data:image/svg+xml;charset=UTF-8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#F4E6C3" stroke="#6A4A10" stroke-width="2" stroke-dasharray="3 2"/><text x="16" y="21" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#6A4A10">?</text></svg>',
-  )
 
 function approxLeafletIcon(): L.DivIcon {
   return L.divIcon({
@@ -285,7 +279,7 @@ function MarkerWithInfoWindow({
   stopNumber: number
   approximated: boolean
 }) {
-  const [markerRef, marker] = useMarkerRef()
+  const [markerRef, marker] = useAdvancedMarkerRef()
   const [infoWindowShown, setInfoWindowShown] = useState(false)
   const handleMarkerClick = useCallback(() => setInfoWindowShown((s) => !s), [])
   const handleClose = useCallback(() => setInfoWindowShown(false), [])
@@ -293,23 +287,21 @@ function MarkerWithInfoWindow({
   const labelText = `${stopNumber}. ${job.job_number || job.title || '?'}`
   return (
     <>
-      <Marker
+      <AdvancedMarker
         ref={markerRef}
         position={position}
-        icon={approximated ? APPROX_PIN_ICON : undefined}
-        label={
-          approximated
-            ? undefined
-            : {
-                text: labelText,
-                color: '#2C1810',
-                fontSize: '13px',
-                fontWeight: 'bold',
-              }
-        }
         title={approximated ? `Approximate position · #${job.job_number}` : labelText}
         onClick={handleMarkerClick}
-      />
+      >
+        <div
+          className="rounded-full px-2.5 py-1 text-xs font-bold shadow-md"
+          style={approximated
+            ? { backgroundColor: '#F4E6C3', color: '#6A4A10', border: '2px dashed #6A4A10' }
+            : { backgroundColor: 'var(--ms-accent)', color: '#2C1810', border: '2px solid #fff' }}
+        >
+          {approximated ? `? · ${labelText}` : labelText}
+        </div>
+      </AdvancedMarker>
       {infoWindowShown && marker && (
         <InfoWindow anchor={marker} onClose={handleClose} disableAutoPan shouldFocus={false}>
           <div className="min-w-[200px] text-sm" style={{ color: 'var(--ms-text)' }}>
@@ -958,6 +950,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
             <GoogleMap
               defaultCenter={MELBOURNE_CENTRE}
               defaultZoom={11}
+              mapId="DEMO_MAP_ID"
               gestureHandling="greedy"
               style={{ width: '100%', height: '100%' }}
             >

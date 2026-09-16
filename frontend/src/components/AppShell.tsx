@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -1023,7 +1023,17 @@ export default function AppShell() {
               hasAutoKey={hasFeature('auto_key')}
             />
           </div>
-          <Outlet />
+          <Suspense fallback={(
+            <div className="space-y-4 animate-pulse" aria-label="Loading page">
+              <div className="h-8 w-52 rounded-lg" style={{ backgroundColor: 'var(--ms-border)' }} />
+              <div className="h-4 w-80 max-w-full rounded" style={{ backgroundColor: 'var(--ms-border)' }} />
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-2">
+                {[0, 1, 2, 3].map(i => <div key={i} className="h-28 rounded-xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }} />)}
+              </div>
+            </div>
+          )}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

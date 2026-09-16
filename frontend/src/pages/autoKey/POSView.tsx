@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShoppingCart, Minus, X, CreditCard } from 'lucide-react'
@@ -7,6 +7,7 @@ import {
   createAutoKeyJob,
   createAutoKeyQuote,
   createCustomer,
+  getAutoKeyJob,
   getApiErrorMessage,
   listAutoKeyJobs,
   updateAutoKeyJobStatus,
@@ -55,7 +56,7 @@ interface CartLine {
   unit_price_cents: number
 }
 
-export function POSView({ customers, customerAccounts, onComplete }: { customers: Customer[]; customerAccounts: CustomerAccount[]; onComplete: () => void }) {
+export function POSView({ customers, customerAccounts, onComplete, initialJobId }: { customers: Customer[]; customerAccounts: CustomerAccount[]; onComplete: () => void; initialJobId?: string | null }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [customerId, setCustomerId] = useState('')
@@ -65,12 +66,27 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
   const [showPricingSelector, setShowPricingSelector] = useState(false)
+  const { data: initialJob } = useQuery({
+    queryKey: ['auto-key-job', initialJobId],
+    queryFn: () => getAutoKeyJob(initialJobId!).then(r => r.data),
+    enabled: !!initialJobId,
+  })
+
+  useEffect(() => {
+    if (!initialJob) return
+    setCustomerMode('existing')
+    setCustomerId(initialJob.customer_id)
+    setLinkToJobId(initialJob.id)
+  }, [initialJob])
 
   const { data: activeJobsForCustomer = [] } = useQuery({
     queryKey: ['auto-key-jobs', 'active', customerId],
     queryFn: () => listAutoKeyJobs({ customer_id: customerId, active_only: true }).then(r => r.data),
     enabled: !!customerId && customerMode === 'existing',
   })
+  const linkableJobs = initialJob && initialJob.customer_id === customerId && !activeJobsForCustomer.some(job => job.id === initialJob.id)
+    ? [initialJob, ...activeJobsForCustomer]
+    : activeJobsForCustomer
   const [customDesc, setCustomDesc] = useState('')
   const [customPrice, setCustomPrice] = useState('')
   const [error, setError] = useState('')
@@ -122,7 +138,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           gst_inclusive: gstInclusive,
         }).then(r => r.data)
         await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id)
-        await updateAutoKeyJobStatus(linkToJobId, 'completed')
+        await updateAutoKeyJobStatus(linkToJobId, 'work_completed')
       } else {
         job = await createAutoKeyJob({
           customer_id: cid,
@@ -141,7 +157,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
           gst_inclusive: gstInclusive,
         }).then(r => r.data)
         await createAutoKeyInvoiceFromQuote(job.id, quote.id)
-        await updateAutoKeyJobStatus(job.id, 'collected')
+        await updateAutoKeyJobStatus(job.id, 'work_completed')
       }
 
       return { job }
@@ -185,6 +201,13 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
   return (
     <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
+        {initialJob && (
+          <Card className="p-4" style={{ borderColor: 'var(--ms-accent)' }}>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ms-accent)' }}>Linked job</p>
+            <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>#{initialJob.job_number} · {initialJob.title}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>Customer and job are preselected. Add the final work performed, then complete the sale.</p>
+          </Card>
+        )}
         <Card className="p-5">
           <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Customer</h3>
           <div className="flex gap-2 mb-3">
@@ -224,7 +247,7 @@ export function POSView({ customers, customerAccounts, onComplete }: { customers
                     onChange={e => setLinkToJobId(e.target.value)}
                   >
                     <option value="">Create new job</option>
-                    {(activeJobsForCustomer ?? []).map((j: { id: string; job_number: string; vehicle_make?: string | null; vehicle_model?: string | null }) => (
+                    {linkableJobs.map((j: { id: string; job_number: string; vehicle_make?: string | null; vehicle_model?: string | null }) => (
                       <option key={j.id} value={j.id}>
                         {j.job_number} · {[j.vehicle_make, j.vehicle_model].filter(Boolean).join(' ') || 'No vehicle'}
                       </option>

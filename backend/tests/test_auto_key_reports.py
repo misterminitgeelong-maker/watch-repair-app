@@ -133,10 +133,20 @@ def test_auto_key_reports_kpi_cockpit():
     sched = datetime(today.year, today.month, today.day, 9, 0, 0, tzinfo=timezone.utc).isoformat()
 
     # Two completed+quoted+invoiced jobs (one scheduled for today → on-time).
-    _job_done(headers, cust, title="Scheduled job", scheduled_at=sched)
+    paid_job_id = _job_done(headers, cust, title="Scheduled job", scheduled_at=sched)
     _job_done(headers, cust, title="Walk-up job")
     # One raw lead with no quote/completion → drags lead→quote conversion below 100%.
     _job_intake_only(headers, cust, title="Cold lead")
+
+    invoices = client.get(f"/v1/auto-key-jobs/{paid_job_id}/invoices", headers=headers)
+    assert invoices.status_code == 200, invoices.text
+    paid_invoice = invoices.json()[0]
+    paid = client.patch(
+        f"/v1/auto-key-jobs/invoices/{paid_invoice['id']}",
+        headers=headers,
+        json={"status": "paid", "payment_method": "eftpos"},
+    )
+    assert paid.status_code == 200, paid.text
 
     today_iso = today.isoformat()
     rep = client.get(
@@ -164,6 +174,11 @@ def test_auto_key_reports_kpi_cockpit():
     assert kpis["scheduled_completed_count"] == 1
     assert kpis["on_time_count"] == 1
     assert kpis["schedule_adherence_pct"] == 100.0
+    assert rep.json()["financials"]["invoice_count"] == 2
+    assert rep.json()["financials"]["invoiced_cents"] > 0
+    assert rep.json()["financials"]["paid_cents"] == paid_invoice["total_cents"]
+    assert rep.json()["financials"]["outstanding_invoice_count"] == 1
+    assert rep.json()["previous_period"] is not None
 
 
 def test_auto_key_reports_mobile_shop_revenue_and_tech_share():
@@ -216,3 +231,5 @@ def test_auto_key_reports_mobile_shop_revenue_and_tech_share():
     assert by_tech[tid_mobile]["revenue_cents"] == 22000
     assert by_tech[tid_shop]["revenue_cents"] == 5500
     assert abs(by_tech[tid_mobile]["revenue_share_pct"] + by_tech[tid_shop]["revenue_share_pct"] - 100.0) < 0.1
+    assert data["financials"]["invoiced_cents"] == 22000 + 5500
+    assert data["pipeline"]["quote_count"] == 2

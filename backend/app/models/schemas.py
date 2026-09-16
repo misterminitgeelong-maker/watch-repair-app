@@ -391,6 +391,10 @@ class TenantEventLogRead(SQLModel):
     event_summary: str
     created_at: datetime
 
+    @field_serializer("created_at")
+    def _serialize_created_at_as_utc(self, value: datetime) -> datetime:
+        return as_utc_for_json(value)
+
 class BillingPlanLimits(SQLModel):
     max_users: int
     max_repair_jobs: int

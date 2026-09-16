@@ -3,12 +3,14 @@ import io
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import case
 from sqlmodel import Session, func, select, col
 
+from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
@@ -25,6 +27,24 @@ _SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
 # Void/refunded invoices were never (or no longer are) real sales and must not
 # inflate "billed"/outstanding totals or show up in sales exports.
 _EXCLUDED_INVOICE_STATUSES = ("void", "refunded")
+
+
+def _shop_calendar_bounds(date_from: str | None, date_to: str | None) -> tuple[datetime | None, datetime | None]:
+    """Convert shop-local civil dates to inclusive UTC report bounds."""
+    try:
+        shop_tz = ZoneInfo(settings.schedule_calendar_timezone)
+    except Exception:
+        shop_tz = timezone.utc
+
+    start_dt: datetime | None = None
+    end_dt: datetime | None = None
+    if date_from:
+        parsed = datetime.strptime(date_from, "%Y-%m-%d")
+        start_dt = parsed.replace(tzinfo=shop_tz).astimezone(timezone.utc)
+    if date_to:
+        parsed = datetime.strptime(date_to, "%Y-%m-%d")
+        end_dt = parsed.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=shop_tz).astimezone(timezone.utc)
+    return start_dt, end_dt
 
 
 def _compute_period_summary(
@@ -1218,20 +1238,18 @@ def get_auto_key_reports(
     session: Session = Depends(get_session),
 ):
     tenant_id = auth.tenant_id
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
     stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
-    if date_from:
-        try:
-            df = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            stmt = stmt.where(AutoKeyJob.created_at >= df)
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-            stmt = stmt.where(AutoKeyJob.created_at <= dt)
-        except ValueError:
-            pass
+    try:
+        period_start, period_end = _shop_calendar_bounds(date_from, date_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD") from exc
+    if period_start:
+        stmt = stmt.where(AutoKeyJob.created_at >= period_start)
+    if period_end:
+        stmt = stmt.where(AutoKeyJob.created_at <= period_end)
 
     jobs = session.exec(stmt).all()
     job_ids = [j.id for j in jobs]
@@ -1245,6 +1263,34 @@ def get_auto_key_reports(
             )
         ).all()
         invoices_map = {inv.auto_key_job_id: inv for inv in invs}
+
+    # Financial reporting is activity-based, not job-cohort-based. A job may be
+    # created in one period, invoiced in another, and paid in a third; keeping
+    # those clocks separate prevents "revenue" moving between periods.
+    period_invoice_stmt = select(AutoKeyInvoice).where(AutoKeyInvoice.tenant_id == tenant_id)
+    if period_start:
+        period_invoice_stmt = period_invoice_stmt.where(AutoKeyInvoice.created_at >= period_start)
+    if period_end:
+        period_invoice_stmt = period_invoice_stmt.where(AutoKeyInvoice.created_at <= period_end)
+    period_invoices = session.exec(period_invoice_stmt).all()
+
+    period_paid_stmt = select(AutoKeyInvoice).where(
+        AutoKeyInvoice.tenant_id == tenant_id,
+        AutoKeyInvoice.status == "paid",
+        AutoKeyInvoice.paid_at.is_not(None),
+    )
+    if period_start:
+        period_paid_stmt = period_paid_stmt.where(AutoKeyInvoice.paid_at >= period_start)
+    if period_end:
+        period_paid_stmt = period_paid_stmt.where(AutoKeyInvoice.paid_at <= period_end)
+    period_paid_invoices = session.exec(period_paid_stmt).all()
+
+    period_quote_stmt = select(AutoKeyQuote).where(AutoKeyQuote.tenant_id == tenant_id)
+    if period_start:
+        period_quote_stmt = period_quote_stmt.where(AutoKeyQuote.created_at >= period_start)
+    if period_end:
+        period_quote_stmt = period_quote_stmt.where(AutoKeyQuote.created_at <= period_end)
+    period_quotes = session.exec(period_quote_stmt).all()
 
     def job_revenue(job: AutoKeyJob) -> int:
         inv = invoices_map.get(job.id)
@@ -1262,6 +1308,59 @@ def get_auto_key_reports(
     shop_jobs = [j for j in jobs if not is_mobile(j)]
     mobile_revenue = sum(job_revenue(j) for j in mobile_jobs)
     shop_revenue = sum(job_revenue(j) for j in shop_jobs)
+
+    invoiced_cents = sum(inv.total_cents for inv in period_invoices)
+    paid_cents = sum(inv.total_cents for inv in period_paid_invoices)
+    outstanding_invoices = [inv for inv in period_invoices if inv.status != "paid"]
+    outstanding_cents = sum(inv.total_cents for inv in outstanding_invoices)
+    quote_value_cents = sum(q.total_cents for q in period_quotes)
+    approved_quotes = [q for q in period_quotes if q.status == "approved"]
+
+    previous_period = None
+    if period_start and period_end and period_end >= period_start:
+        period_span = period_end - period_start
+        previous_end = period_start - timedelta(microseconds=1)
+        previous_start = previous_end - period_span
+
+        prev_jobs = int(session.exec(
+            select(func.count()).select_from(AutoKeyJob).where(
+                AutoKeyJob.tenant_id == tenant_id,
+                AutoKeyJob.created_at >= previous_start,
+                AutoKeyJob.created_at <= previous_end,
+            )
+        ).one())
+        prev_invoices = session.exec(
+            select(AutoKeyInvoice).where(
+                AutoKeyInvoice.tenant_id == tenant_id,
+                AutoKeyInvoice.created_at >= previous_start,
+                AutoKeyInvoice.created_at <= previous_end,
+            )
+        ).all()
+        prev_paid = session.exec(
+            select(AutoKeyInvoice).where(
+                AutoKeyInvoice.tenant_id == tenant_id,
+                AutoKeyInvoice.status == "paid",
+                AutoKeyInvoice.paid_at.is_not(None),
+                AutoKeyInvoice.paid_at >= previous_start,
+                AutoKeyInvoice.paid_at <= previous_end,
+            )
+        ).all()
+        prev_quotes = session.exec(
+            select(AutoKeyQuote).where(
+                AutoKeyQuote.tenant_id == tenant_id,
+                AutoKeyQuote.created_at >= previous_start,
+                AutoKeyQuote.created_at <= previous_end,
+            )
+        ).all()
+        previous_period = {
+            "date_from": previous_start.date().isoformat(),
+            "date_to": previous_end.date().isoformat(),
+            "jobs": prev_jobs,
+            "invoiced_cents": sum(inv.total_cents for inv in prev_invoices),
+            "paid_cents": sum(inv.total_cents for inv in prev_paid),
+            "quotes": len(prev_quotes),
+            "quote_value_cents": sum(q.total_cents for q in prev_quotes),
+        }
 
     type_map: dict[str, dict] = {}
     for j in jobs:
@@ -1384,6 +1483,27 @@ def get_auto_key_reports(
             "shop_revenue_cents": shop_revenue,
             "shop_revenue_pct": pct(shop_revenue, total_revenue),
         },
+        "financials": {
+            "invoiced_cents": invoiced_cents,
+            "paid_cents": paid_cents,
+            "outstanding_cents": outstanding_cents,
+            "invoice_count": len(period_invoices),
+            "paid_invoice_count": len(period_paid_invoices),
+            "outstanding_invoice_count": len(outstanding_invoices),
+            "deposits_cents": sum(max(0, j.deposit_cents) for j in jobs),
+        },
+        "pipeline": {
+            "quote_count": len(period_quotes),
+            "quote_value_cents": quote_value_cents,
+            "approved_quote_count": len(approved_quotes),
+            "approved_quote_value_cents": sum(q.total_cents for q in approved_quotes),
+        },
+        "operations": {
+            "unassigned_active": sum(1 for j in jobs if not j.assigned_user_id and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
+            "unscheduled_active": sum(1 for j in jobs if not j.scheduled_at and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
+            "urgent_active": sum(1 for j in jobs if j.priority == "urgent" and j.status not in {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}),
+        },
+        "previous_period": previous_period,
         "kpis": kpis,
         "jobs_by_type": sorted(type_map.values(), key=lambda x: -x["revenue_cents"]),
         "jobs_by_tech": sorted(tech_map.values(), key=lambda x: -x["revenue_cents"]),
@@ -1412,18 +1532,14 @@ def get_auto_key_commission_report(
     stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
     if referring_shop_tenant_id is not None:
         stmt = stmt.where(AutoKeyJob.referring_shop_tenant_id == referring_shop_tenant_id)
-    if date_from:
-        try:
-            df = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            stmt = stmt.where(AutoKeyJob.created_at >= df)
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-            stmt = stmt.where(AutoKeyJob.created_at <= dt)
-        except ValueError:
-            pass
+    try:
+        period_start, period_end = _shop_calendar_bounds(date_from, date_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD") from exc
+    if period_start:
+        stmt = stmt.where(AutoKeyJob.created_at >= period_start)
+    if period_end:
+        stmt = stmt.where(AutoKeyJob.created_at <= period_end)
 
     all_jobs = session.exec(stmt).all()
     job_ids = [j.id for j in all_jobs]

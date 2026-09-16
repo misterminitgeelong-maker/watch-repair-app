@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Radio } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { MapPin, Radio, RefreshCw, Settings2 } from 'lucide-react'
 import { claimPoolJob, getApiErrorMessage, listJobPool, type IntakePoolJob } from '@/lib/api'
 import { Card, PageHeader, Button, Spinner, EmptyState } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
@@ -98,10 +99,17 @@ export default function JobPoolPage() {
 
   return (
     <div>
-      <PageHeader title="Dispatch Pool" />
+      <PageHeader
+        title="Dispatch Pool"
+        action={(
+          <Button variant="secondary" type="button" onClick={() => poolQuery.refetch()} disabled={poolQuery.isFetching}>
+            <RefreshCw size={14} className={poolQuery.isFetching ? 'animate-spin' : ''} /> Refresh
+          </Button>
+        )}
+      />
 
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)' }}>
-        Unclaimed jobs near your base location. Ring 1 is closest — claim a job to create it in your job board.
+        Unclaimed jobs near your base location. Ring 1 is closest — claim a job to create it in your job board. The pool refreshes every 30 seconds.
       </p>
 
       {poolQuery.error && (
@@ -112,7 +120,17 @@ export default function JobPoolPage() {
       )}
 
       {poolQuery.isLoading ? <Spinner /> : jobs.length === 0 ? (
-        <Card><EmptyState message="No unclaimed jobs in your service area." /></Card>
+        <Card className="p-6">
+          <EmptyState message="No unclaimed jobs in your service area." />
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <Link to="/accounts" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold" style={{ border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
+              <Settings2 size={14} /> Check service area
+            </Link>
+            <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              Last checked {poolQuery.dataUpdatedAt ? new Date(poolQuery.dataUpdatedAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'just now'}
+            </span>
+          </div>
+        </Card>
       ) : (
         <div className="space-y-6">
           {ring1.length > 0 && (

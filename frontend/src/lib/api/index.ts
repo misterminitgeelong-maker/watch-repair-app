@@ -2028,7 +2028,24 @@ export async function listAutoKeyJobs(params?: ListAutoKeyJobsParams) {
   last.data = all
   return last
 }
+
+export interface AutoKeyJobPage {
+  items: AutoKeyJob[]
+  total: number
+  limit: number
+  offset: number
+}
+export const pageAutoKeyJobs = (params: {
+  q?: string
+  directory?: 'active' | 'completed' | 'all'
+  status?: string
+  assigned_user_id?: string
+  limit?: number
+  offset?: number
+}) => api.get<AutoKeyJobPage>('/auto-key-jobs/page', { params })
 export const getAutoKeyJob = (id: string) => api.get<AutoKeyJob>(`/auto-key-jobs/${id}`)
+export const listAutoKeyJobActivity = (id: string, limit = 100) =>
+  api.get<TenantActivityEvent[]>(`/auto-key-jobs/${id}/activity`, { params: { limit } })
 export const createAutoKeyJob = (data: AutoKeyJobCreatePayload) => api.post<AutoKeyJob>('/auto-key-jobs', data)
 export interface AutoKeyJobUpdatePayload extends Omit<Partial<AutoKeyJobCreatePayload>, 'customer_account_id'> {
   customer_account_id?: string | null
@@ -2808,6 +2825,35 @@ export interface AutoKeyReportKpis {
 
 export interface AutoKeyReports {
   summary: AutoKeyReportSummary
+  financials?: {
+    invoiced_cents: number
+    paid_cents: number
+    outstanding_cents: number
+    invoice_count: number
+    paid_invoice_count: number
+    outstanding_invoice_count: number
+    deposits_cents: number
+  }
+  pipeline?: {
+    quote_count: number
+    quote_value_cents: number
+    approved_quote_count: number
+    approved_quote_value_cents: number
+  }
+  operations?: {
+    unassigned_active: number
+    unscheduled_active: number
+    urgent_active: number
+  }
+  previous_period?: {
+    date_from: string
+    date_to: string
+    jobs: number
+    invoiced_cents: number
+    paid_cents: number
+    quotes: number
+    quote_value_cents: number
+  } | null
   kpis?: AutoKeyReportKpis
   jobs_by_type: Array<{ job_type: string; jobs: number; revenue_cents: number; avg_value_cents: number }>
   jobs_by_tech: Array<{ tech_id: string; tech_name: string; job_count: number; revenue_cents: number; revenue_share_pct?: number }>

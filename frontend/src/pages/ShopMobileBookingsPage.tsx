@@ -16,6 +16,7 @@ import { parseAuAddressFromFormatted, type ResolvedAuAddress } from '@/lib/auAdd
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate } from '@/lib/utils'
+import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 
 const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'] as const
 
@@ -206,7 +207,10 @@ export default function ShopMobileBookingsPage() {
             <option value="customer_site">Customer site (mobile)</option>
             <option value="at_shop">At our shop</option>
           </Select>
-          <Input label="Job type" value={jobType} onChange={e => setJobType(e.target.value)} placeholder="Lockout – Car" />
+          <Select label="Job type" value={jobType} onChange={e => setJobType(e.target.value)}>
+            <option value="">Select service…</option>
+            {AUTO_KEY_JOB_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+          </Select>
           <div className="md:col-span-2">
             <AddressAutocompleteInput
               label="Address"

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, Copy, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
+import { Camera, CheckCircle, ChevronLeft, Clock3, Copy, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
 import {
   getAutoKeyJob,
   getAutoKeyMessages,
@@ -11,6 +11,7 @@ import {
   getCustomer,
   getVehicleJobContext,
   listAutoKeyAttachments,
+  listAutoKeyJobActivity,
   listAutoKeyInvoices,
   listAutoKeyQuotes,
   listCustomerAccounts,
@@ -390,8 +391,8 @@ export default function AutoKeyJobDetailPage() {
   const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
   const toast = useToast()
-  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages'>(
-    searchParams.get('tab') === 'messages' ? 'messages' : 'info',
+  const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages' | 'activity'>(
+    searchParams.get('tab') === 'messages' ? 'messages' : searchParams.get('tab') === 'activity' ? 'activity' : 'info',
   )
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
@@ -401,6 +402,11 @@ export default function AutoKeyJobDetailPage() {
     queryKey: ['auto-key-job', id],
     queryFn: () => getAutoKeyJob(id!).then(r => r.data),
     enabled: !!id,
+  })
+  const { data: activity = [], isLoading: activityLoading } = useQuery({
+    queryKey: ['auto-key-job-activity', id],
+    queryFn: () => listAutoKeyJobActivity(id!).then(r => r.data),
+    enabled: !!id && detailTab === 'activity',
   })
 
   useEffect(() => {
@@ -460,6 +466,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setKeyTypeEdit(null)
       setBladeCodeEdit(null)
       setChipTypeEdit(null)
@@ -532,6 +539,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update status.')),
@@ -613,6 +621,7 @@ export default function AutoKeyJobDetailPage() {
       qc.invalidateQueries({ queryKey: ['auto-key-quotes', id] })
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setStatusFeedback(mobileNotifyFeedback(res.data ?? {}, 'quote'))
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to send quote.')),
@@ -639,6 +648,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to assign tech.')),
@@ -649,6 +659,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update commission source.')),
@@ -682,6 +693,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update customer account.')),
@@ -693,6 +705,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update schedule.')),
@@ -704,6 +717,7 @@ export default function AutoKeyJobDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
       setError('')
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to update key details.')),
@@ -863,6 +877,7 @@ export default function AutoKeyJobDetailPage() {
             { key: 'financial', label: 'Financial' },
             { key: 'photos', label: 'Photos' },
             { key: 'messages', label: 'Messages' },
+            { key: 'activity', label: 'Activity' },
           ] as const).map(tab => (
             <button
               key={tab.key}
@@ -876,13 +891,14 @@ export default function AutoKeyJobDetailPage() {
               }}
             >
               {tab.key === 'messages' && <MessageSquare size={14} />}
+              {tab.key === 'activity' && <Clock3 size={14} />}
               {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      {detailTab !== 'messages' && (
+      {detailTab !== 'messages' && detailTab !== 'activity' && (
       <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
         <Card className='p-5 space-y-4 xl:col-span-4'>
           {/* Info tab: customer, job info, status, assign, schedule */}
@@ -1362,11 +1378,16 @@ export default function AutoKeyJobDetailPage() {
           )}
 
           <Card>
-            <div className='px-5 py-3.5 flex items-center justify-between' style={{ borderBottom: '1px solid var(--ms-border)' }}>
+            <div className='px-5 py-3.5 flex flex-wrap items-center justify-between gap-2' style={{ borderBottom: '1px solid var(--ms-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Quotes</h2>
-              <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => setShowQuoteModal(true)}>
-                <Plus size={13} /> New Quote
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => navigate(`/auto-key?view=pos&job_id=${id}`)}>
+                  Open in POS
+                </Button>
+                <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => setShowQuoteModal(true)}>
+                  <Plus size={13} /> New Quote
+                </Button>
+              </div>
             </div>
             {(quotes ?? []).length === 0 ? (
               <p className='px-5 py-4 text-sm' style={{ color: 'var(--ms-text-muted)' }}>No quotes yet.</p>
@@ -1527,6 +1548,33 @@ export default function AutoKeyJobDetailPage() {
             postMessage={sendAutoKeyMessage}
           />
         </div>
+      )}
+
+      {detailTab === 'activity' && (
+        <Card className="mt-4 overflow-hidden">
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+            <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>Job activity</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>A chronological audit of operational changes to this job.</p>
+          </div>
+          {activityLoading ? <div className="p-6"><Spinner /></div> : activity.length === 0 ? (
+            <EmptyState message="No recorded activity yet. New changes will appear here." />
+          ) : (
+            <ol className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
+              {activity.map(event => (
+                <li key={event.id} className="flex gap-3 px-5 py-4">
+                  <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: 'var(--ms-accent)' }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{event.event_summary}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+                      {new Date(event.created_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {event.actor_email ? ` · ${event.actor_email}` : ''}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
       )}
 
       {invoiceToEdit && (

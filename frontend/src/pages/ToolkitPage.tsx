@@ -121,7 +121,7 @@ export default function ToolkitPage() {
       .catch((e) => setRecErr(getApiErrorMessage(e, 'Could not load recommendation')))
   }
 
-  if (catLoading || selLoading || mobLoading) return <Spinner />
+  if (catLoading) return <Spinner />
   if (catErr) {
     return (
       <div>
@@ -150,7 +150,7 @@ export default function ToolkitPage() {
             type="checkbox"
             className="mt-1"
             checked={mobileNotif?.customer_sms_enabled !== false}
-            disabled={!canEditMobileCustomerSms || smsMut.isPending}
+            disabled={mobLoading || !canEditMobileCustomerSms || smsMut.isPending}
             onChange={(e) => {
               if (!canEditMobileCustomerSms) return
               smsMut.mutate(e.target.checked)
@@ -178,7 +178,7 @@ export default function ToolkitPage() {
               type="tel"
               placeholder="e.g. 0412 345 678"
               value={dispatchPhone}
-              disabled={!canEditMobileCustomerSms || dispatchMut.isPending}
+              disabled={mobLoading || !canEditMobileCustomerSms || dispatchMut.isPending}
               onChange={(e) => {
                 setDispatchPhone(e.target.value)
                 setDispatchDirty(true)
@@ -186,7 +186,7 @@ export default function ToolkitPage() {
             />
             <Button
               type="button"
-              disabled={!canEditMobileCustomerSms || !dispatchDirty || dispatchMut.isPending}
+              disabled={mobLoading || !canEditMobileCustomerSms || !dispatchDirty || dispatchMut.isPending}
               onClick={() => dispatchMut.mutate(dispatchPhone.trim() || null)}
             >
               {dispatchMut.isPending ? 'Saving…' : 'Save number'}
@@ -202,13 +202,13 @@ export default function ToolkitPage() {
             Tick the tools you keep on the van. Pick a scenario to see what you are missing before you roll.
           </p>
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-end">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:sticky lg:top-4 lg:z-10 lg:flex-col lg:items-end">
           {dirty && (
             <span className="text-xs font-medium text-center sm:text-right" style={{ color: 'var(--ms-accent)' }}>
               Unsaved changes
             </span>
           )}
-          <Button type="button" onClick={() => saveMut.mutate()} disabled={!dirty || saveMut.isPending} className="min-h-11">
+          <Button type="button" onClick={() => saveMut.mutate()} disabled={selLoading || !dirty || saveMut.isPending} className="min-h-11">
             {saveMut.isPending ? 'Saving…' : 'Save my tools'}
           </Button>
         </div>

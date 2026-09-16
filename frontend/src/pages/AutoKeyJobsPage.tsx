@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -9,12 +9,13 @@ import {
 } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, CreditCard, LayoutGrid, List, Map as MapIcon, MapPin, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Plus, BarChart3, Calendar, CalendarDays, ChevronLeft, ChevronRight, CreditCard, LayoutDashboard, LayoutGrid, List, Map as MapIcon, MapPin, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import {
   deleteAutoKeyJob,
   getApiErrorMessage,
   listCustomerAccounts,
   listAutoKeyJobs,
+  pageAutoKeyJobs,
   listCustomers,
   listUsers,
   updateAutoKeyJob,
@@ -24,7 +25,6 @@ import {
   type JobStatus,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import MobileServicesMap from '@/components/MobileServicesMap'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import ShopBookingInbox from '@/components/ShopBookingInbox'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
@@ -80,10 +80,13 @@ import {
   WeekHourDropCell,
 } from '@/pages/autoKey/WeekGridCells'
 import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
-import { POSView } from '@/pages/autoKey/POSView'
-import { NewAutoKeyJobModal } from '@/pages/autoKey/NewAutoKeyJobModal'
-import { PlannerJobDetailModal } from '@/pages/autoKey/PlannerJobDetailModal'
 import { AutoKeyJobCard } from '@/pages/autoKey/AutoKeyJobCard'
+import MobileOperationsToday from '@/pages/autoKey/MobileOperationsToday'
+
+const MobileServicesMap = lazy(() => import('@/components/MobileServicesMap'))
+const POSView = lazy(() => import('@/pages/autoKey/POSView').then(module => ({ default: module.POSView })))
+const NewAutoKeyJobModal = lazy(() => import('@/pages/autoKey/NewAutoKeyJobModal').then(module => ({ default: module.NewAutoKeyJobModal })))
+const PlannerJobDetailModal = lazy(() => import('@/pages/autoKey/PlannerJobDetailModal').then(module => ({ default: module.PlannerJobDetailModal })))
 
 // PlannerJobDetailModal lives in ./autoKey/PlannerJobDetailModal (imported above).
 // NewAutoKeyJobModal lives in ./autoKey/NewAutoKeyJobModal (imported above).
@@ -98,6 +101,7 @@ export default function AutoKeyJobsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedView = searchParams.get('view')
+  const posJobId = searchParams.get('job_id')
   const initialView: 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports' =
     requestedView === 'jobs' ||
     requestedView === 'pos' ||
@@ -108,12 +112,12 @@ export default function AutoKeyJobsPage() {
     requestedView === 'reports'
       ? requestedView
       : 'jobs'
-  const initialJobsLayout: 'board' | 'list' =
+  const initialJobsLayout: 'today' | 'board' | 'list' =
     searchParams.get('jobs_layout') === 'list'
       ? 'list'
-      : requestedView === 'dashboard' || !requestedView || requestedView === 'jobs'
-        ? (searchParams.get('jobs_layout') === 'board' ? 'board' : 'board')
-        : 'board'
+      : searchParams.get('jobs_layout') === 'board'
+        ? 'board'
+        : 'today'
   const initialStatus = searchParams.get('status')
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialDispatchDate = isYmd(searchParams.get('dispatch_date')) ? (searchParams.get('dispatch_date') as string) : ymdLocal(new Date())
@@ -184,10 +188,21 @@ export default function AutoKeyJobsPage() {
   })
   const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [listOffset, setListOffset] = useState(0)
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
-  const [jobsLayout, setJobsLayout] = useState<'board' | 'list'>(initialJobsLayout)
+  const [jobsLayout, setJobsLayout] = useState<'today' | 'board' | 'list'>(initialJobsLayout)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    setListOffset(0)
+  }, [debouncedSearch, jobDirectoryView, statusFilter])
 
   useEffect(() => {
     if (searchParams.toString()) return
@@ -195,7 +210,7 @@ export default function AutoKeyJobsPage() {
     if (saved.view) setView(saved.view as typeof view)
     if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView as typeof jobDirectoryView)
     if (saved.statusFilter) setStatusFilter(saved.statusFilter)
-    if (saved.jobsLayout) setJobsLayout(saved.jobsLayout as typeof jobsLayout)
+    if (saved.jobsLayout === 'today' || saved.jobsLayout === 'board' || saved.jobsLayout === 'list') setJobsLayout(saved.jobsLayout)
     if (saved.mapRangeMode) setMapRangeMode(saved.mapRangeMode as typeof mapRangeMode)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -218,7 +233,7 @@ export default function AutoKeyJobsPage() {
   )
   const [reportDateFrom] = useState('')
   const [reportDateTo] = useState('')
-  const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'>('month')
+  const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'last_90' | 'all' | 'custom'>('month')
 
   useEffect(() => {
     const handler = () => setIsMobileWidth(window.innerWidth < 640)
@@ -264,6 +279,25 @@ export default function AutoKeyJobsPage() {
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
   })
+  const listPageSize = 50
+  const {
+    data: jobsPage,
+    isLoading: jobsPageLoading,
+    isError: jobsPageError,
+    error: jobsPageQueryError,
+  } = useQuery({
+    queryKey: ['auto-key-jobs', 'page', jobDirectoryView, statusFilter, debouncedSearch, listOffset],
+    queryFn: () => pageAutoKeyJobs({
+      q: debouncedSearch || undefined,
+      directory: jobDirectoryView,
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      limit: listPageSize,
+      offset: listOffset,
+    }).then(r => r.data),
+    enabled: view === 'jobs' && jobsLayout === 'list',
+    placeholderData: previous => previous,
+  })
+  const pagedJobs = jobsPage?.items ?? []
 
   const dispatchViews = view === 'dispatch' || view === 'map' || view === 'planner'
   const dispatchParams = useMemo(() => {
@@ -473,8 +507,11 @@ export default function AutoKeyJobsPage() {
     if (view === 'week') {
       next.set('week_start', weekStart)
     }
-    if (view === 'jobs' && jobsLayout === 'board') {
-      next.set('jobs_layout', 'board')
+    if (view === 'pos' && posJobId) {
+      next.set('job_id', posJobId)
+    }
+    if (view === 'jobs' && jobsLayout !== 'today') {
+      next.set('jobs_layout', jobsLayout)
     }
     setSearchParams(next, { replace: true })
   }, [
@@ -483,6 +520,7 @@ export default function AutoKeyJobsPage() {
     dispatchTechFilter,
     mapRangeMode,
     olderThanDays,
+    posJobId,
     setSearchParams,
     statusFilter,
     view,
@@ -556,6 +594,7 @@ export default function AutoKeyJobsPage() {
           style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
         >
           {([
+            { key: 'today', label: 'Today', icon: <LayoutDashboard size={15} /> },
             { key: 'list', label: 'List', icon: <List size={15} /> },
             { key: 'kanban', label: 'Kanban', icon: <LayoutGrid size={15} /> },
             { key: 'map', label: 'Map', icon: <MapIcon size={15} /> },
@@ -564,6 +603,7 @@ export default function AutoKeyJobsPage() {
             { key: 'reports', label: 'Reports', icon: <BarChart3 size={15} /> },
           ] as const).map(tab => {
             const active =
+              (tab.key === 'today' && view === 'jobs' && jobsLayout === 'today') ||
               (tab.key === 'list' && view === 'jobs' && jobsLayout === 'list') ||
               (tab.key === 'kanban' && view === 'jobs' && jobsLayout === 'board') ||
               (tab.key === 'planner' && (view === 'planner' || view === 'dispatch' || view === 'week')) ||
@@ -575,9 +615,10 @@ export default function AutoKeyJobsPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => {
-                  if (tab.key === 'list') { setView('jobs'); setJobsLayout('list') }
+                  if (tab.key === 'today') { setView('jobs'); setJobsLayout('today') }
+                  else if (tab.key === 'list') { setView('jobs'); setJobsLayout('list') }
                   else if (tab.key === 'kanban') { setView('jobs'); setJobsLayout('board') }
-                  else if (tab.key === 'planner') { setView('week') }
+                  else if (tab.key === 'planner') { setView('planner') }
                   else setView(tab.key as typeof view)
                 }}
                 className="flex items-center gap-1.5 rounded-md whitespace-nowrap transition-colors"
@@ -607,7 +648,7 @@ export default function AutoKeyJobsPage() {
         </div>
       )}
 
-      {showCreate && <NewAutoKeyJobModal onClose={() => setShowCreate(false)} />}
+      {showCreate && <Suspense fallback={<Spinner />}><NewAutoKeyJobModal onClose={() => setShowCreate(false)} /></Suspense>}
       {showBookingRequest && <SendBookingRequestModal onClose={() => setShowBookingRequest(false)} />}
       {deleteJob && (
         <Modal
@@ -639,12 +680,22 @@ export default function AutoKeyJobsPage() {
         <MobileCommissionRulesModal onClose={() => setShowCommissionRules(false)} />
       )}
       {plannerDetailJobId && (
-        <PlannerJobDetailModal
-          jobId={plannerDetailJobId}
-          onClose={() => setPlannerDetailJobId(null)}
-          customers={customers}
-          users={users}
-        />
+        <Suspense fallback={<Spinner />}>
+          <PlannerJobDetailModal
+            jobId={plannerDetailJobId}
+            onClose={() => setPlannerDetailJobId(null)}
+            customers={customers}
+            users={users}
+          />
+        </Suspense>
+      )}
+
+      {view === 'jobs' && jobsLayout === 'today' && (
+        isLoading ? <Spinner /> : isError ? (
+          <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
+            {getApiErrorMessage(jobsQueryError, 'Could not load today’s operation.')}
+          </p>
+        ) : <MobileOperationsToday jobs={jobs as AutoKeyJob[]} users={users} />
       )}
 
       {view === 'jobs' && jobsLayout === 'board' && (
@@ -778,14 +829,14 @@ export default function AutoKeyJobsPage() {
               />
             </div>
           </div>
-          {isLoading ? (
+          {jobsPageLoading ? (
             <Spinner />
-          ) : isError ? (
+          ) : jobsPageError ? (
             <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
-              {getApiErrorMessage(jobsQueryError, 'Could not load jobs.')}
+              {getApiErrorMessage(jobsPageQueryError, 'Could not load jobs.')}
             </p>
-          ) : filteredJobs.length === 0 ? (
-            <EmptyState message={jobs.length === 0 ? 'No Mobile Services jobs yet.' : 'No jobs match your filters.'} />
+          ) : pagedJobs.length === 0 ? (
+            <EmptyState message={!jobsPage?.total && !debouncedSearch && statusFilter === 'all' ? 'No Mobile Services jobs in this view.' : 'No jobs match your filters.'} />
           ) : (
             <Card className="overflow-hidden">
               {bulkSelected.size > 0 && (
@@ -824,7 +875,7 @@ export default function AutoKeyJobsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedJobsDirectory.map((job, i) => {
+                    {pagedJobs.map((job, i) => {
                       const tech = users.find((u: { id: string; full_name: string }) => u.id === job.assigned_user_id)?.full_name
                       const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
                       const sched = job.scheduled_at
@@ -835,7 +886,7 @@ export default function AutoKeyJobsPage() {
                         <tr
                           key={job.id}
                           className="group cursor-pointer"
-                          style={{ borderBottom: i < sortedJobsDirectory.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
+                          style={{ borderBottom: i < pagedJobs.length - 1 ? '1px solid var(--ms-border)' : 'none' }}
                           onClick={() => navigate(`/auto-key/${job.id}`)}
                           onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')}
                           onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
@@ -906,17 +957,31 @@ export default function AutoKeyJobsPage() {
                   </tbody>
                 </table>
               </div>
+              {(jobsPage?.total ?? 0) > listPageSize && (
+                <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderTop: '1px solid var(--ms-border)' }}>
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                    {listOffset + 1}–{Math.min(listOffset + listPageSize, jobsPage?.total ?? 0)} of {jobsPage?.total ?? 0}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" type="button" disabled={listOffset === 0} onClick={() => setListOffset(Math.max(0, listOffset - listPageSize))}>Previous</Button>
+                    <Button variant="secondary" type="button" disabled={listOffset + listPageSize >= (jobsPage?.total ?? 0)} onClick={() => setListOffset(listOffset + listPageSize)}>Next</Button>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </>
       )}
 
       {view === 'pos' && (
-        <POSView
-          customers={customers}
-          customerAccounts={customerAccounts}
-          onComplete={() => invalidateAutoKeyJobCollections(qc)}
-        />
+        <Suspense fallback={<Spinner />}>
+          <POSView
+            customers={customers}
+            customerAccounts={customerAccounts}
+            initialJobId={posJobId}
+            onComplete={() => invalidateAutoKeyJobCollections(qc)}
+          />
+        </Suspense>
       )}
 
       {view === 'dispatch' && (
@@ -1063,6 +1128,10 @@ export default function AutoKeyJobsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-lg p-0.5 mr-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                <button type="button" onClick={() => setView('planner')} className="rounded-md px-3 py-1.5 text-xs font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Day resources</button>
+                <button type="button" className="rounded-md px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>Week calendar</button>
+              </div>
               <Button variant="secondary" onClick={() => {
                 setWeekStart(civilAddDays(weekStart, -7))
               }}><ChevronLeft size={16} /></Button>
@@ -1344,7 +1413,9 @@ export default function AutoKeyJobsPage() {
             )}
           </div>
           {dispatchLoading ? <Spinner /> : (
-            <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} rangeLabel={mapRangeLabel} />
+            <Suspense fallback={<Spinner />}>
+              <MobileServicesMap jobs={dispatchJobs} date={dispatchDate} customers={customers} rangeLabel={mapRangeLabel} />
+            </Suspense>
           )}
         </div>
       )}
@@ -1352,6 +1423,10 @@ export default function AutoKeyJobsPage() {
       {view === 'planner' && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-4">
+            <div className="inline-flex rounded-lg p-0.5" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+              <button type="button" className="rounded-md px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>Day resources</button>
+              <button type="button" onClick={() => setView('week')} className="rounded-md px-3 py-1.5 text-xs font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Week calendar</button>
+            </div>
             <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Date</label>
             <input
               type="date"
@@ -1377,6 +1452,46 @@ export default function AutoKeyJobsPage() {
               </>
             )}
           </div>
+          {!dispatchLoading && !dispatchTechFilter && users.length > 0 && (
+            <Card className="p-4 overflow-x-auto">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Technician load</h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>Compare assigned work before placing the next booking.</p>
+                </div>
+                <Link to="/auto-key/team" className="text-xs font-semibold" style={{ color: 'var(--ms-accent)' }}>Manage team →</Link>
+              </div>
+              <div className="grid min-w-[620px] gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(1, users.filter((u: { role?: string; is_active?: boolean }) => u.role === 'tech' && u.is_active !== false).length + 1)}, minmax(180px, 1fr))` }}>
+                {[
+                  { id: '', full_name: 'Unassigned' },
+                  ...users.filter((u: { role?: string; is_active?: boolean }) => u.role === 'tech' && u.is_active !== false),
+                ].map((tech: { id: string; full_name: string }) => {
+                  const laneJobs = (dispatchJobs as AutoKeyJob[]).filter(job => (job.assigned_user_id ?? '') === tech.id).sort(compareByVisitThenTime)
+                  const hourKeys = laneJobs.map(job => job.scheduled_at ? new Date(job.scheduled_at).toISOString().slice(0, 13) : '').filter(Boolean)
+                  const hasConflict = new Set(hourKeys).size < hourKeys.length
+                  return (
+                    <div key={tech.id || 'unassigned'} className="rounded-xl p-3" style={{ backgroundColor: 'var(--ms-bg)', border: `1px solid ${hasConflict ? 'var(--ms-error)' : 'var(--ms-border)'}` }}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-xs font-bold truncate" style={{ color: 'var(--ms-text)' }}>{tech.full_name}</span>
+                        <span className="text-[11px] font-semibold" style={{ color: laneJobs.length >= 6 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>{laneJobs.length} job{laneJobs.length === 1 ? '' : 's'}</span>
+                      </div>
+                      {hasConflict && <p className="text-[11px] font-semibold mb-2" style={{ color: 'var(--ms-error)' }}>Possible time conflict</p>}
+                      {laneJobs.length === 0 ? <p className="text-xs py-3" style={{ color: 'var(--ms-text-muted)' }}>Available</p> : (
+                        <div className="space-y-1.5">
+                          {laneJobs.map(job => (
+                            <button key={job.id} type="button" onClick={() => setPlannerDetailJobId(job.id)} className="w-full rounded-lg px-2.5 py-2 text-left" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+                              <span className="block text-xs font-bold" style={{ color: 'var(--ms-accent)' }}>{job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : 'No time'}</span>
+                              <span className="block text-xs truncate mt-0.5" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.customer_name ?? job.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
           {dispatchLoading ? (
             <Spinner />
           ) : (
@@ -1472,13 +1587,15 @@ export default function AutoKeyJobsPage() {
               </Card>
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Map — where to go</h3>
-                <MobileServicesMap
-                  jobs={dispatchJobs}
-                  date={dispatchDate}
-                  customers={customers}
-                  onApplyVisitOrder={(ids) => applyVisitOrderMut.mutate(ids)}
-                  applyVisitOrderPending={applyVisitOrderMut.isPending}
-                />
+                <Suspense fallback={<Spinner />}>
+                  <MobileServicesMap
+                    jobs={dispatchJobs}
+                    date={dispatchDate}
+                    customers={customers}
+                    onApplyVisitOrder={(ids) => applyVisitOrderMut.mutate(ids)}
+                    applyVisitOrderPending={applyVisitOrderMut.isPending}
+                  />
+                </Suspense>
               </div>
             </>
           )}
@@ -1497,7 +1614,7 @@ export default function AutoKeyJobsPage() {
               {([
                 { key: 'week' as const, label: 'This week' },
                 { key: 'month' as const, label: 'This month' },
-                { key: 'all' as const, label: 'Last 90 days' },
+                { key: 'last_90' as const, label: 'Last 90 days' },
               ]).map(p => (
                 <button
                   key={p.key}
@@ -1524,41 +1641,67 @@ export default function AutoKeyJobsPage() {
             <>
               {/* Metric cards */}
               {(() => {
-                const topTech = autoKeyReports.jobs_by_tech[0]
+                const financials = autoKeyReports.financials
+                const previous = autoKeyReports.previous_period
+                const periodLabel = reportPreset === 'week' ? 'THIS WEEK' : reportPreset === 'month' ? 'THIS MONTH' : reportPreset === 'last_90' ? 'LAST 90 DAYS' : 'SELECTED PERIOD'
+                const delta = (current: number, prior: number | undefined) => {
+                  if (prior == null) return 'No prior-period comparison'
+                  if (prior === 0) return current === 0 ? 'No change vs prior period' : 'New vs prior period'
+                  const change = Math.round(((current - prior) / prior) * 1000) / 10
+                  return `${change >= 0 ? '+' : ''}${change}% vs prior period`
+                }
+                const paid = financials?.paid_cents ?? autoKeyReports.summary.total_revenue_cents
+                const invoiced = financials?.invoiced_cents ?? autoKeyReports.summary.total_revenue_cents
                 return (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                       {
-                        label: 'REVENUE MTD',
-                        value: formatCents(autoKeyReports.summary.total_revenue_cents),
-                        sub: `${autoKeyReports.summary.mobile_pct ?? 0}% mobile`,
+                        label: `CASH COLLECTED · ${periodLabel}`,
+                        value: formatCents(paid),
+                        sub: delta(paid, previous?.paid_cents),
                       },
                       {
-                        label: 'JOBS MTD',
+                        label: `INVOICED · ${periodLabel}`,
+                        value: formatCents(invoiced),
+                        sub: delta(invoiced, previous?.invoiced_cents),
+                      },
+                      {
+                        label: 'OUTSTANDING',
+                        value: formatCents(financials?.outstanding_cents ?? 0),
+                        sub: `${financials?.outstanding_invoice_count ?? 0} unpaid invoice${financials?.outstanding_invoice_count === 1 ? '' : 's'}`,
+                      },
+                      {
+                        label: `JOBS CREATED · ${periodLabel}`,
                         value: String(autoKeyReports.summary.total_jobs),
-                        sub: `${autoKeyReports.summary.mobile_count ?? 0} mobile · ${autoKeyReports.summary.shop_count ?? 0} shop`,
-                      },
-                      {
-                        label: 'AVG PER JOB',
-                        value: formatCents(autoKeyReports.summary.avg_job_value_cents),
-                        sub: null,
-                      },
-                      {
-                        label: 'TOP TECH',
-                        value: topTech?.tech_name ?? '—',
-                        sub: topTech ? `${topTech.job_count} jobs · ${formatCents(topTech.revenue_cents)}` : null,
-                        large: false,
+                        sub: delta(autoKeyReports.summary.total_jobs, previous?.jobs),
                       },
                     ].map(card => (
                       <Card key={card.label} className="p-5">
                         <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.08em' }}>{card.label}</p>
-                        <p className={card.label === 'TOP TECH' ? 'text-xl font-bold leading-snug' : 'text-2xl font-extrabold'} style={{ color: 'var(--ms-text)' }}>{card.value}</p>
+                        <p className="text-2xl font-extrabold" style={{ color: 'var(--ms-text)' }}>{card.value}</p>
                         {card.sub && <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{card.sub}</p>}
                       </Card>
                     ))}
                   </div>
                 )
               })()}
+
+              {autoKeyReports.pipeline && (
+                <Card className="p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ms-text-muted)' }}>Commercial pipeline</p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>Quote value is separated from invoiced sales and collected cash.</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-3 min-w-full sm:min-w-0">
+                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Quotes</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.pipeline.quote_count}</p></div>
+                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Quoted value</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.pipeline.quote_value_cents)}</p></div>
+                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Approved</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.pipeline.approved_quote_count}</p></div>
+                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Approved value</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.pipeline.approved_quote_value_cents)}</p></div>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {/* Mobile KPI cockpit */}
               {autoKeyReports.kpis && (() => {
@@ -1613,7 +1756,8 @@ export default function AutoKeyJobsPage() {
               {/* Weekly Revenue bar chart + Jobs by Type horizontal bars */}
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">
-                  <h3 className="text-sm font-semibold mb-5" style={{ color: 'var(--ms-text)' }}>Weekly Revenue</h3>
+                  <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Weekly invoiced value by job cohort</h3>
+                  <p className="text-xs mb-5" style={{ color: 'var(--ms-text-muted)' }}>Groups invoices by the week the underlying job was created.</p>
                   {autoKeyReports.week_on_week.length === 0 ? (
                     <p className="text-sm py-4" style={{ color: 'var(--ms-text-muted)' }}>No weekly data.</p>
                   ) : (() => {

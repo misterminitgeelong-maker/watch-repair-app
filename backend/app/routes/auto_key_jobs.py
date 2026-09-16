@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
@@ -45,6 +46,9 @@ from ..models import (
     ShopMobileBookingRequest,
     SmsLog,
     Tenant,
+    TenantEventLog,
+    TenantEventLogRead,
+    User,
 )
 from .. import sms
 from ..sms import (
@@ -64,8 +68,42 @@ router = APIRouter(
 )
 
 
-_AUTO_KEY_FINAL_STATUSES = {"booking_completed", "work_completed", "invoice_paid", "failed_job"}
+_AUTO_KEY_FINAL_STATUSES = {"booking_completed", "work_completed", "invoice_paid", "failed_job", "no_go"}
 logger = logging.getLogger(__name__)
+
+
+class AutoKeyJobPage(BaseModel):
+    items: list[AutoKeyJobRead]
+    total: int
+    limit: int
+    offset: int
+
+
+def _log_job_event(
+    session: Session,
+    *,
+    auth: AuthContext,
+    job: AutoKeyJob,
+    event_type: str,
+    summary: str,
+) -> None:
+    """Record the operational history of a Mobile Services job.
+
+    TenantEventLog already powers the product audit feed. Reusing it keeps the
+    job timeline tenant-scoped and avoids a second competing history model.
+    """
+    actor = session.get(User, auth.user_id)
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=actor.email if actor else None,
+            entity_type="auto_key_job",
+            entity_id=job.id,
+            event_type=event_type,
+            event_summary=summary,
+        )
+    )
 
 
 def _next_prefixed_number(
@@ -477,6 +515,13 @@ def create_auto_key_job(
         **data,
     )
     session.add(job)
+    _log_job_event(
+        session,
+        auth=auth,
+        job=job,
+        event_type="auto_key_job_created",
+        summary=f"Job #{job.job_number} created for {customer.full_name}",
+    )
     session.commit()
     session.refresh(job)
     logger.info("auto_key_job.created tenant=%s job=%s customer=%s", auth.tenant_id, job.id, job.customer_id)
@@ -651,6 +696,79 @@ def list_auto_key_jobs(
     ]
 
 
+@router.get("/page", response_model=AutoKeyJobPage)
+def page_auto_key_jobs(
+    q: str | None = Query(default=None, max_length=200),
+    directory: Literal["active", "completed", "all"] = Query(default="active"),
+    status: str | None = Query(default=None),
+    assigned_user_id: UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Paginated Mobile Services directory used by the operational list.
+
+    The legacy list endpoint remains available to dispatch/calendar consumers,
+    while this endpoint avoids downloading and rendering hundreds of records for
+    ordinary directory work.
+    """
+    filters = [AutoKeyJob.tenant_id == auth.tenant_id]
+    if directory == "active":
+        filters.append(AutoKeyJob.status.notin_(_AUTO_KEY_FINAL_STATUSES))
+    elif directory == "completed":
+        filters.append(AutoKeyJob.status.in_(_AUTO_KEY_FINAL_STATUSES))
+    if status:
+        filters.append(AutoKeyJob.status == status)
+    if assigned_user_id:
+        filters.append(AutoKeyJob.assigned_user_id == assigned_user_id)
+
+    search = (q or "").strip()
+    needs_customer_join = bool(search)
+    if search:
+        pattern = f"%{search}%"
+        filters.append(
+            or_(
+                AutoKeyJob.job_number.ilike(pattern),
+                AutoKeyJob.title.ilike(pattern),
+                AutoKeyJob.vehicle_make.ilike(pattern),
+                AutoKeyJob.vehicle_model.ilike(pattern),
+                AutoKeyJob.registration_plate.ilike(pattern),
+                Customer.full_name.ilike(pattern),
+                Customer.phone.ilike(pattern),
+            )
+        )
+
+    stmt = select(AutoKeyJob)
+    count_stmt = select(func.count()).select_from(AutoKeyJob)
+    if needs_customer_join:
+        stmt = stmt.join(Customer, Customer.id == AutoKeyJob.customer_id)
+        count_stmt = count_stmt.join(Customer, Customer.id == AutoKeyJob.customer_id)
+    stmt = stmt.where(*filters)
+    count_stmt = count_stmt.where(*filters)
+
+    total = int(session.exec(count_stmt).one())
+    jobs = session.exec(
+        stmt.order_by(AutoKeyJob.scheduled_at.is_(None), AutoKeyJob.scheduled_at, AutoKeyJob.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    customer_ids = list({j.customer_id for j in jobs})
+    customers = session.exec(select(Customer).where(Customer.id.in_(customer_ids))).all() if customer_ids else []
+    cname_map = {c.id: c.full_name for c in customers}
+    cphone_map = {c.id: c.phone for c in customers}
+    items = [
+        AutoKeyJobRead(
+            **j.model_dump(),
+            customer_name=cname_map.get(j.customer_id),
+            customer_phone=cphone_map.get(j.customer_id),
+        )
+        for j in jobs
+    ]
+    return AutoKeyJobPage(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.get("/quote-suggestions")
 def get_quote_suggestions(
     job_type: str | None = Query(default=None, max_length=120),
@@ -779,10 +897,41 @@ def update_auto_key_invoice(
     if currency is not None:
         invoice.currency = currency.strip().upper()[:3]
     session.add(invoice)
+    invoice_job = session.get(AutoKeyJob, invoice.auto_key_job_id)
+    if invoice_job:
+        payment_text = f" via {invoice.payment_method}" if invoice.status == "paid" and invoice.payment_method else ""
+        _log_job_event(
+            session,
+            auth=auth,
+            job=invoice_job,
+            event_type="auto_key_invoice_updated",
+            summary=f"Invoice #{invoice.invoice_number} marked {invoice.status}{payment_text}",
+        )
     session.commit()
     session.refresh(invoice)
     logger.info("auto_key_invoice.updated tenant=%s invoice=%s status=%s", auth.tenant_id, invoice_id, invoice.status)
     return _to_invoice_read(invoice)
+
+
+@router.get("/{job_id}/activity", response_model=list[TenantEventLogRead])
+def list_auto_key_job_activity(
+    job_id: UUID,
+    limit: int = Query(default=100, ge=1, le=250),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    job = session.get(AutoKeyJob, job_id)
+    if not job or job.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Auto key job not found")
+    rows = session.exec(
+        select(TenantEventLog)
+        .where(TenantEventLog.tenant_id == auth.tenant_id)
+        .where(TenantEventLog.entity_type == "auto_key_job")
+        .where(TenantEventLog.entity_id == job_id)
+        .order_by(TenantEventLog.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [TenantEventLogRead.model_validate(row, from_attributes=True) for row in rows]
 
 
 @router.get("/{job_id}", response_model=AutoKeyJobRead)
@@ -814,6 +963,16 @@ def update_auto_key_job_status(
     job.status = payload.status
     job.updated_at = datetime.now(timezone.utc)
     session.add(job)
+    status_label = payload.status.replace("_", " ").title()
+    previous_label = (previous_status or "Not set").replace("_", " ").title()
+    note_suffix = f" — {payload.note.strip()}" if payload.note and payload.note.strip() else ""
+    _log_job_event(
+        session,
+        auth=auth,
+        job=job,
+        event_type="auto_key_status_changed",
+        summary=f"Status changed from {previous_label} to {status_label}{note_suffix}",
+    )
 
     # Auto-create invoice on work_completed when no invoice is present yet.
     moved_to_completed = previous_status != "work_completed" and job.status == "work_completed"
@@ -979,6 +1138,15 @@ def update_auto_key_job_fields(
 
     job.updated_at = datetime.now(timezone.utc)
     session.add(job)
+    if update_data:
+        friendly_fields = ", ".join(sorted(field.replace("_", " ") for field in update_data))
+        _log_job_event(
+            session,
+            auth=auth,
+            job=job,
+            event_type="auto_key_job_updated",
+            summary=f"Updated {friendly_fields}",
+        )
     session.commit()
     session.refresh(job)
     return job
@@ -1108,6 +1276,13 @@ def create_auto_key_quote(
         entered, payload.gst_enabled, payload.gst_inclusive
     )
     session.add(quote)
+    _log_job_event(
+        session,
+        auth=auth,
+        job=job,
+        event_type="auto_key_quote_created",
+        summary=f"Quote created for ${quote.total_cents / 100:,.2f}",
+    )
     session.commit()
     session.refresh(quote)
     return _to_quote_read(session, quote)
@@ -1134,6 +1309,14 @@ def send_auto_key_quote(
     if job and job.tenant_id == auth.tenant_id and job.status in _QUOTE_ADVANCE_FROM:
         job.status = "quote_sent"
         session.add(job)
+    if job and job.tenant_id == auth.tenant_id:
+        _log_job_event(
+            session,
+            auth=auth,
+            job=job,
+            event_type="auto_key_quote_sent",
+            summary=f"Quote for ${quote.total_cents / 100:,.2f} sent to customer",
+        )
 
     session.commit()
     session.refresh(quote)
@@ -1301,6 +1484,13 @@ def create_auto_key_invoice_from_quote(
         customer_view_token=uuid4().hex,
     )
     session.add(invoice)
+    _log_job_event(
+        session,
+        auth=auth,
+        job=job,
+        event_type="auto_key_invoice_created",
+        summary=f"Invoice #{invoice.invoice_number} created for ${invoice.total_cents / 100:,.2f}",
+    )
     try:
         session.commit()
     except IntegrityError:

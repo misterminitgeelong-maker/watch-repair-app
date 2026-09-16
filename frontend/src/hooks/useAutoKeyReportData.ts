@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAutoKeyCommissionReport, getAutoKeyReports } from '@/lib/api'
 
-export type AutoKeyReportPreset = 'today' | 'week' | 'month' | 'last_month' | 'all' | 'custom'
+export type AutoKeyReportPreset = 'today' | 'week' | 'month' | 'last_month' | 'last_90' | 'all' | 'custom'
 
 type ReportParams = { date_from: string; date_to: string }
 
@@ -36,6 +36,12 @@ function buildReportDateParams(preset: AutoKeyReportPreset, dateFrom?: string, d
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const start = new Date(prev.getFullYear(), prev.getMonth(), 1)
     const end = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
+    return { date_from: ymd(start), date_to: ymd(end) }
+  }
+  if (preset === 'last_90') {
+    const end = new Date(now)
+    const start = new Date(now)
+    start.setDate(start.getDate() - 89)
     return { date_from: ymd(start), date_to: ymd(end) }
   }
   if (preset === 'all') return { date_from: '2000-01-01', date_to: '2099-12-31' }

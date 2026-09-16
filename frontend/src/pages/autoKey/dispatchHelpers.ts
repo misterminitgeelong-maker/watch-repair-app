@@ -22,7 +22,7 @@ export const STATUSES: JobStatus[] = [
 // booking_completed/work_completed/invoice_paid under its one "Booking Completed" column. Active
 // is every in-progress status — anything still waiting on a quote, booking, or the job itself;
 // Closed is anything the physical work is done on, whether or not it's been invoiced yet.
-export const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'work_completed', 'invoice_paid', 'failed_job'] as const
+export const AUTO_KEY_CLOSED_STATUSES = ['booking_completed', 'work_completed', 'invoice_paid', 'failed_job', 'no_go'] as const
 export const AUTO_KEY_ACTIVE_STATUSES = [
   'awaiting_quote',
   'awaiting_customer_details',
