@@ -191,6 +191,9 @@ class Settings(BaseSettings):
     # Scheduled weekly/monthly sales-by-category report emails (opt-in per user).
     sales_report_email_enabled: bool = True
     sales_report_check_interval_minutes: int = 60
+    # Weekly VSWT regional cockpit email — switchable independently of sales reports.
+    regional_report_email_enabled: bool = True
+    regional_report_check_interval_minutes: int = 60
 
     # Weekly Minit HQ "mobile services network" scorecard email (opt-in per parent account).
     mobile_weekly_report_email_enabled: bool = True

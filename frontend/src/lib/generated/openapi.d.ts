@@ -1398,6 +1398,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/vswt/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Vswt Csv
+         * @description Export the regional KPI history for analysis outside the app.
+         */
+        get: operations["export_vswt_csv_v1_reports_vswt_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reports/vswt/weeks/{week_seq}": {
         parameters: {
             query?: never;
@@ -1426,6 +1446,117 @@ export interface paths {
         get: operations["get_vswt_summary_v1_reports_vswt_summary_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/cockpit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Vswt Cockpit
+         * @description A single comparison contract used by the management cockpit.
+         *
+         *     It deliberately returns every KPI with the same current/baseline/rolling/rank shape so the
+         *     UI cannot drift into using different period definitions in different sections.
+         */
+        get: operations["get_vswt_cockpit_v1_reports_vswt_cockpit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Targets */
+        get: operations["get_vswt_targets_v1_reports_vswt_targets_get"];
+        /** Put Vswt Targets */
+        put: operations["put_vswt_targets_v1_reports_vswt_targets_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Annotations */
+        get: operations["get_vswt_annotations_v1_reports_vswt_annotations_get"];
+        /** Put Vswt Annotation */
+        put: operations["put_vswt_annotation_v1_reports_vswt_annotations_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/annotations/{annotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Vswt Annotation */
+        delete: operations["delete_vswt_annotation_v1_reports_vswt_annotations__annotation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/email-preference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vswt Email Preference */
+        get: operations["get_vswt_email_preference_v1_reports_vswt_email_preference_get"];
+        /** Put Vswt Email Preference */
+        put: operations["put_vswt_email_preference_v1_reports_vswt_email_preference_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/vswt/email-preference/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Vswt Email Now */
+        post: operations["send_vswt_email_now_v1_reports_vswt_email_preference_send_now_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10925,6 +11056,18 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VswtAnnotationUpdate */
+        VswtAnnotationUpdate: {
+            /** Week */
+            week: number;
+            /**
+             * Event Type
+             * @default other
+             */
+            event_type: string;
+            /** Note */
+            note: string;
+        };
         /** VswtCommitFile */
         VswtCommitFile: {
             /** Filename */
@@ -10940,6 +11083,18 @@ export interface components {
         VswtCommitRequest: {
             /** Batch */
             batch: components["schemas"]["VswtCommitFile"][];
+        };
+        /** VswtEmailPreferenceUpdate */
+        VswtEmailPreferenceUpdate: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** VswtTargetsUpdate */
+        VswtTargetsUpdate: {
+            /** Targets */
+            targets: {
+                [key: string]: number | null;
+            };
         };
         /** WatchCreate */
         WatchCreate: {
@@ -13822,6 +13977,40 @@ export interface operations {
             };
         };
     };
+    export_vswt_csv_v1_reports_vswt_export_get: {
+        parameters: {
+            query?: {
+                /** @description Export one week; omit to export every uploaded week. */
+                week?: number | null;
+                /** @description Limit export to one shop. */
+                shop_number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_vswt_week_v1_reports_vswt_weeks__week_seq__delete: {
         parameters: {
             query?: never;
@@ -13854,6 +14043,249 @@ export interface operations {
         };
     };
     get_vswt_summary_v1_reports_vswt_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_vswt_cockpit_v1_reports_vswt_cockpit_get: {
+        parameters: {
+            query?: {
+                week?: number | null;
+                comparison?: "previous" | "4w" | "13w" | "52w" | "last_year";
+                shop_number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_targets_v1_reports_vswt_targets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    put_vswt_targets_v1_reports_vswt_targets_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VswtTargetsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_annotations_v1_reports_vswt_annotations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    put_vswt_annotation_v1_reports_vswt_annotations_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VswtAnnotationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_vswt_annotation_v1_reports_vswt_annotations__annotation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vswt_email_preference_v1_reports_vswt_email_preference_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    put_vswt_email_preference_v1_reports_vswt_email_preference_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VswtEmailPreferenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_vswt_email_now_v1_reports_vswt_email_preference_send_now_post: {
         parameters: {
             query?: never;
             header?: never;

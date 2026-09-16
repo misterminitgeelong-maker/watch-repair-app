@@ -189,6 +189,23 @@ def _week_rows(session: Session, week: int) -> list[VswtWeeklyShopMetric]:
     )
 
 
+def _shop_history(session: Session, shop_number: str, weeks: list[int]) -> dict[int, VswtWeeklyShopMetric]:
+    """One shop's rows for the given weeks, in a single query.
+
+    The cockpit needs the whole network only for the selected and previous
+    weeks (ranks, averages); every other week it only needs the one shop, so
+    loading all shops for all weeks was ~400x more rows than it used.
+    """
+    if not weeks:
+        return {}
+    rows = session.exec(
+        select(VswtWeeklyShopMetric)
+        .where(VswtWeeklyShopMetric.shop_number == shop_number)
+        .where(VswtWeeklyShopMetric.week_seq.in_(weeks))  # type: ignore[attr-defined]
+    ).all()
+    return {r.week_seq: r for r in rows}
+
+
 def _shop_number_for(auth: AuthContext, session: Session) -> Optional[str]:
     tenant = session.get(Tenant, auth.tenant_id)
     if not tenant or not tenant.shop_number:
@@ -264,15 +281,16 @@ def _build_cockpit_data(
     week = selected_week if selected_week in all_weeks else all_weeks[-1]
     week_index = all_weeks.index(week)
     visible_weeks = all_weeks[: week_index + 1]
-    rows_by_week = {w: _week_rows(session, w) for w in visible_weeks}
-    current_rows = rows_by_week[week]
+    current_rows = _week_rows(session, week)
     current = _find_shop(current_rows, target_shop_number)
     if current is None:
         return {"available": False, "reason": "shop_not_found"}
 
     previous_week = visible_weeks[-2] if len(visible_weeks) > 1 else None
-    previous_rows = rows_by_week.get(previous_week, []) if previous_week is not None else []
+    previous_rows = _week_rows(session, previous_week) if previous_week is not None else []
     previous = _find_shop(previous_rows, target_shop_number) if previous_week is not None else None
+    # Rolling baselines look back at most 52 weeks; the sales-decline check at 4.
+    history = _shop_history(session, target_shop_number, visible_weeks[-53:])
     peers = _peer_rows(current_rows)
     targets = _target_value_map(session, auth.tenant_id, target_shop_number)
     own_shop = _shop_number_for(auth, session)
@@ -297,10 +315,7 @@ def _build_cockpit_data(
         # improved on the established run-rate rather than blending the current result into it.
         prior_weeks = visible_weeks[:-1]
         for window in (4, 13, 52):
-            values = [
-                _derived_value(_find_shop(rows_by_week[w], target_shop_number), key)
-                for w in prior_weeks[-window:]
-            ]
+            values = [_derived_value(history.get(w), key) for w in prior_weeks[-window:]]
             present = [v for v in values if v is not None]
             rolling[window] = _average(present)
             rolling_counts[window] = len(present)
@@ -386,10 +401,7 @@ def _build_cockpit_data(
     if sales["target_variance"] is not None and sales["target_variance"] < 0:
         alerts.append({"severity": "warning", "title": "Sales target at risk", "message": f"The shop is ${abs(sales['target_variance']):,.0f} below its weekly sales target."})
 
-    sales_history = [
-        _derived_value(_find_shop(rows_by_week[w], target_shop_number), "sales_ty")
-        for w in visible_weeks[-4:]
-    ]
+    sales_history = [_derived_value(history.get(w), "sales_ty") for w in visible_weeks[-4:]]
     present_sales = [v for v in sales_history if v is not None]
     if len(present_sales) >= 3 and all(present_sales[i] < present_sales[i - 1] for i in range(1, len(present_sales))):
         alerts.append({"severity": "critical", "title": "Three-week sales decline", "message": "Sales have fallen in each of the last three reported weeks."})

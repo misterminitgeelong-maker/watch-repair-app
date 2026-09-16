@@ -4688,6 +4688,79 @@
         ]
       }
     },
+    "/v1/reports/vswt/export": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Export Vswt Csv",
+        "description": "Export the regional KPI history for analysis outside the app.",
+        "operationId": "export_vswt_csv_v1_reports_vswt_export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Export one week; omit to export every uploaded week.",
+              "title": "Week"
+            },
+            "description": "Export one week; omit to export every uploaded week."
+          },
+          {
+            "name": "shop_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit export to one shop.",
+              "title": "Shop Number"
+            },
+            "description": "Limit export to one shop."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/reports/vswt/weeks/{week_seq}": {
       "delete": {
         "tags": [
@@ -4740,6 +4813,360 @@
         ],
         "summary": "Get Vswt Summary",
         "operationId": "get_vswt_summary_v1_reports_vswt_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/vswt/cockpit": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Get Vswt Cockpit",
+        "description": "A single comparison contract used by the management cockpit.\n\nIt deliberately returns every KPI with the same current/baseline/rolling/rank shape so the\nUI cannot drift into using different period definitions in different sections.",
+        "operationId": "get_vswt_cockpit_v1_reports_vswt_cockpit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Week"
+            }
+          },
+          {
+            "name": "comparison",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "previous",
+                "4w",
+                "13w",
+                "52w",
+                "last_year"
+              ],
+              "type": "string",
+              "default": "previous",
+              "title": "Comparison"
+            }
+          },
+          {
+            "name": "shop_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Shop Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/vswt/targets": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Get Vswt Targets",
+        "operationId": "get_vswt_targets_v1_reports_vswt_targets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Put Vswt Targets",
+        "operationId": "put_vswt_targets_v1_reports_vswt_targets_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VswtTargetsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/vswt/annotations": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Get Vswt Annotations",
+        "operationId": "get_vswt_annotations_v1_reports_vswt_annotations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Put Vswt Annotation",
+        "operationId": "put_vswt_annotation_v1_reports_vswt_annotations_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VswtAnnotationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/vswt/annotations/{annotation_id}": {
+      "delete": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Delete Vswt Annotation",
+        "operationId": "delete_vswt_annotation_v1_reports_vswt_annotations__annotation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Annotation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/vswt/email-preference": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Get Vswt Email Preference",
+        "operationId": "get_vswt_email_preference_v1_reports_vswt_email_preference_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Put Vswt Email Preference",
+        "operationId": "put_vswt_email_preference_v1_reports_vswt_email_preference_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VswtEmailPreferenceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/vswt/email-preference/send-now": {
+      "post": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Send Vswt Email Now",
+        "operationId": "send_vswt_email_now_v1_reports_vswt_email_preference_send_now_post",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -34275,6 +34702,29 @@
         ],
         "title": "ValidationError"
       },
+      "VswtAnnotationUpdate": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "default": "other"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "week",
+          "note"
+        ],
+        "title": "VswtAnnotationUpdate"
+      },
       "VswtCommitFile": {
         "properties": {
           "filename": {
@@ -34317,6 +34767,42 @@
           "batch"
         ],
         "title": "VswtCommitRequest"
+      },
+      "VswtEmailPreferenceUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "VswtEmailPreferenceUpdate"
+      },
+      "VswtTargetsUpdate": {
+        "properties": {
+          "targets": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Targets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "targets"
+        ],
+        "title": "VswtTargetsUpdate"
       },
       "WatchCreate": {
         "properties": {

@@ -136,8 +136,8 @@ def all_sweeps() -> list[Sweep]:
         ),
         Sweep(
             name="regional_report_email",
-            enabled=settings.sales_report_email_enabled,
-            interval_minutes=settings.sales_report_check_interval_minutes,
+            enabled=settings.regional_report_email_enabled,
+            interval_minutes=settings.regional_report_check_interval_minutes,
             load=_regional_report_email,
             notable_keys=("sent",),
         ),
