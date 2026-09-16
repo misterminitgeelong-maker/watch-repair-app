@@ -1,4 +1,4 @@
-"""The sweep registry replaced seven hand-written loops in main.py.
+"""The sweep registry replaced the hand-written loops in main.py.
 
 The failure mode of that refactor is not a crash — it is a sweep quietly going
 missing, or a deferred import being wrong, and nobody noticing until customers
@@ -28,6 +28,7 @@ EXPECTED_SWEEPS = {
     "shop_mobile_booking_pool",
     "pool_alerts",
     "sales_report_email",
+    "regional_report_email",
     "mobile_weekly_report",
     "notification_redelivery",
     "retention",
