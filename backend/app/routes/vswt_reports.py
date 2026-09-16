@@ -34,12 +34,16 @@ from sqlmodel import Session, delete as sa_delete, select
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import (
+    Region,
     Tenant,
     UserNotificationPreference,
+    VswtRegionWeekAnnotation,
     VswtReportTarget,
     VswtWeekAnnotation,
     VswtWeeklyShopMetric,
 )
+from ..parent_network import site_for_tenant_preferring_hq
+from ..vswt_insights import baseline_for, build_shop_narrative, shop_alerts
 from ..pdf_vswt_report import build_weekly_report_pdf
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
@@ -245,6 +249,38 @@ def _annotation_dict(row: VswtWeekAnnotation) -> dict[str, Any]:
         "week": row.week_seq,
         "event_type": row.event_type,
         "note": row.note,
+        "exclude_from_baselines": bool(row.exclude_from_baselines),
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
+def _region_annotations_for_tenant(session: Session, tenant_id: UUID) -> tuple[Optional[Region], list[VswtRegionWeekAnnotation]]:
+    """The region this shop sits in (via its HQ-anchored network) and every
+    note HQ or the regional manager has written on that region's weeks."""
+    site = site_for_tenant_preferring_hq(session, tenant_id)
+    if site is None or site.region_id is None:
+        return None, []
+    region = session.get(Region, site.region_id)
+    rows = list(
+        session.exec(
+            select(VswtRegionWeekAnnotation)
+            .where(VswtRegionWeekAnnotation.region_id == site.region_id)
+            .order_by(VswtRegionWeekAnnotation.week_seq.desc())
+        ).all()
+    )
+    return region, rows
+
+
+def _region_annotation_dict(row: VswtRegionWeekAnnotation, region: Optional[Region]) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "region_id": str(row.region_id),
+        "region_name": region.name if region else None,
+        "week": row.week_seq,
+        "event_type": row.event_type,
+        "note": row.note,
+        "exclude_from_baselines": bool(row.exclude_from_baselines),
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
@@ -295,6 +331,16 @@ def _build_cockpit_data(
     targets = _target_value_map(session, auth.tenant_id, target_shop_number)
     own_shop = _shop_number_for(auth, session)
 
+    # Weeks flagged as not representative — by the shop itself or by HQ for its
+    # whole region — stay visible but drop out of every baseline below.
+    own_annotations = _annotation_rows(session, auth.tenant_id, target_shop_number) if target_shop_number == own_shop else []
+    region, region_notes = _region_annotations_for_tenant(session, auth.tenant_id) if target_shop_number == own_shop else (None, [])
+    excluded_weeks: set[int] = {a.week_seq for a in own_annotations if a.exclude_from_baselines} | {
+        a.week_seq for a in region_notes if a.exclude_from_baselines
+    }
+    prior_weeks_all = visible_weeks[:-1]
+    prior_weeks = [w for w in prior_weeks_all if w not in excluded_weeks]
+
     metric_defs: list[dict[str, str]] = [
         {"key": k.key, "label": k.label, "group": k.group, "type": k.type}
         for k in KPI_DEFS
@@ -313,12 +359,13 @@ def _build_cockpit_data(
         rolling_counts: dict[int, int] = {}
         # Rolling baselines exclude the selected week, so they answer whether the current result
         # improved on the established run-rate rather than blending the current result into it.
-        prior_weeks = visible_weeks[:-1]
         for window in (4, 13, 52):
             values = [_derived_value(history.get(w), key) for w in prior_weeks[-window:]]
             present = [v for v in values if v is not None]
             rolling[window] = _average(present)
             rolling_counts[window] = len(present)
+        # How unusual is this week for *this* shop? Judged against its own prior 13 weeks.
+        baseline = baseline_for(current_value, [_derived_value(history.get(w), key) for w in prior_weeks[-13:]])
 
         ly_key = _LAST_YEAR_KEYS.get(key)
         last_year = getattr(current, ly_key) if ly_key else None
@@ -357,6 +404,10 @@ def _build_cockpit_data(
                 "rank_change": previous_rank - rank if rank is not None and previous_rank is not None else None,
                 "target": targets.get(key),
                 "target_variance": current_value - targets[key] if current_value is not None and key in targets else None,
+                "zscore": baseline.zscore,
+                "anomaly": baseline.anomaly,
+                "watch": baseline.watch,
+                "baseline_weeks": baseline.count,
             }
         )
 
@@ -390,35 +441,63 @@ def _build_cockpit_data(
     )
 
     by_key = {row["key"]: row for row in rows}
-    alerts: list[dict[str, str]] = []
     sales = by_key["sales_ty"]
-    if sales["delta_pct"] is not None and sales["delta_pct"] <= -0.10:
-        alerts.append({"severity": "critical", "title": "Sales below comparison", "message": f"Sales are {abs(sales['delta_pct']) * 100:.1f}% below the selected baseline."})
-    elif sales["delta_pct"] is not None and sales["delta_pct"] < 0:
-        alerts.append({"severity": "warning", "title": "Sales softened", "message": f"Sales are {abs(sales['delta_pct']) * 100:.1f}% below the selected baseline."})
-    if sales["rank_change"] is not None and sales["rank_change"] <= -10:
-        alerts.append({"severity": "warning", "title": "Regional rank fell", "message": f"Sales rank dropped {abs(sales['rank_change'])} places from the previous week."})
-    if sales["target_variance"] is not None and sales["target_variance"] < 0:
-        alerts.append({"severity": "warning", "title": "Sales target at risk", "message": f"The shop is ${abs(sales['target_variance']):,.0f} below its weekly sales target."})
-
     sales_history = [_derived_value(history.get(w), "sales_ty") for w in visible_weeks[-4:]]
-    present_sales = [v for v in sales_history if v is not None]
-    if len(present_sales) >= 3 and all(present_sales[i] < present_sales[i - 1] for i in range(1, len(present_sales))):
-        alerts.append({"severity": "critical", "title": "Three-week sales decline", "message": "Sales have fallen in each of the last three reported weeks."})
-    weakest_category = min((d for d in category_drivers if d["delta"] is not None), key=lambda d: d["delta"], default=None)
-    strongest_category = max((d for d in category_drivers if d["delta"] is not None), key=lambda d: d["delta"], default=None)
-    if weakest_category and weakest_category["delta"] < 0:
-        alerts.append({"severity": "info", "title": f"{weakest_category['label']} is the largest drag", "message": f"Category sales fell ${abs(weakest_category['delta']):,.0f} from the previous week."})
-    if strongest_category and strongest_category["delta"] > 0:
-        alerts.append({"severity": "positive", "title": f"{strongest_category['label']} led growth", "message": f"Category sales increased ${strongest_category['delta']:,.0f} from the previous week."})
-    if not alerts:
-        alerts.append({"severity": "positive", "title": "No material exceptions", "message": "No major negative movements were detected for the selected comparison."})
-
-    annotations = (
-        [_annotation_dict(row) for row in _annotation_rows(session, auth.tenant_id, target_shop_number)]
-        if target_shop_number == own_shop
-        else []
+    anomalies = sorted(
+        (
+            {
+                "key": row["key"],
+                "label": row["label"],
+                "direction": row["anomaly"],
+                "z": row["zscore"],
+                "weeks": row["baseline_weeks"],
+                "current": row["current"],
+                "mean": None,
+            }
+            for row in rows
+            if row["anomaly"] and row["key"] in KPI_BY_KEY and row["type"] != "percent"
+        ),
+        key=lambda a: -abs(a["z"] or 0),
     )
+    sales_baseline = baseline_for(
+        sales["current"], [_derived_value(history.get(w), "sales_ty") for w in prior_weeks[-13:]]
+    )
+    alerts = shop_alerts(
+        sales=sales,
+        sales_baseline=sales_baseline,
+        sales_history=sales_history,
+        anomalies=anomalies,
+        category_drivers=category_drivers,
+    )
+
+    comparison_label = {
+        "previous": "previous week",
+        "4w": "prior 4-week average",
+        "13w": "prior 13-week average",
+        "52w": "prior 52-week average",
+        "last_year": "same week last year",
+    }.get(comparison, "previous week")
+    excluded_in_window = sorted(w for w in prior_weeks_all[-13:] if w in excluded_weeks)
+    narrative = build_shop_narrative(
+        shop_name=current.shop_name or f"Shop {target_shop_number}",
+        week=week,
+        comparison_label=comparison_label,
+        sales=sales,
+        customers=by_key["customer_ty"],
+        avg_sale=by_key["avg_sale"],
+        bridge={"customer_volume_effect": volume_effect, "average_sale_effect": value_effect},
+        category_drivers=category_drivers,
+        anomalies=anomalies,
+        target_variance=sales.get("target_variance"),
+        excluded_note=(
+            f"Week{'s' if len(excluded_in_window) != 1 else ''} {', '.join(str(w) for w in excluded_in_window)} "
+            f"{'are' if len(excluded_in_window) != 1 else 'is'} excluded from the baselines."
+            if excluded_in_window
+            else None
+        ),
+    )
+
+    annotations = [_annotation_dict(row) for row in own_annotations]
     latest_pref = session.exec(
         select(UserNotificationPreference)
         .where(UserNotificationPreference.tenant_id == auth.tenant_id)
@@ -452,7 +531,12 @@ def _build_cockpit_data(
             },
         },
         "alerts": alerts,
+        "anomalies": anomalies,
+        "narrative": narrative,
         "annotations": annotations,
+        "region": {"id": str(region.id), "name": region.name, "manager_name": region.manager_name} if region else None,
+        "region_annotations": [_region_annotation_dict(row, region) for row in region_notes],
+        "excluded_weeks": sorted(excluded_weeks),
         "targets": targets,
         "email_weekly_report": bool(latest_pref and latest_pref.email_weekly_regional_report),
         "last_weekly_report_sent_at": latest_pref.last_weekly_regional_report_sent_at if latest_pref else None,
@@ -797,6 +881,7 @@ class VswtAnnotationUpdate(SQLModel):
     week: int
     event_type: str = "other"
     note: str
+    exclude_from_baselines: bool = False
 
 
 @router.get("/annotations")
@@ -839,6 +924,7 @@ def put_vswt_annotation(
     if row:
         row.note = note
         row.event_type = event_type
+        row.exclude_from_baselines = payload.exclude_from_baselines
         row.updated_at = now
     else:
         row = VswtWeekAnnotation(
@@ -847,6 +933,7 @@ def put_vswt_annotation(
             week_seq=payload.week,
             event_type=event_type,
             note=note,
+            exclude_from_baselines=payload.exclude_from_baselines,
             created_by_user_id=auth.user_id,
             created_at=now,
             updated_at=now,

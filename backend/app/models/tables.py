@@ -250,6 +250,9 @@ class Region(SQLModel, table=True):
     manager_phone: Optional[str] = Field(default=None, max_length=80)
     escalation_email: Optional[str] = Field(default=None, max_length=320)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    #: Monday email to manager_email: the region's week, its movers, and its exceptions.
+    weekly_report_opt_in: bool = Field(default=False)
+    last_weekly_report_sent_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -289,6 +292,9 @@ class ParentAccountUser(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     user_id: UUID = Field(index=True, foreign_key="user.id")
     role: str = Field(default=PARENT_ROLE_HQ_VIEWER, max_length=16, index=True)
+    #: When set, the grant is a regional manager's: they see this region's
+    #: sites and cockpit and nothing else on the network.
+    region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShopOwnerInvite(SQLModel, table=True):
@@ -1376,6 +1382,31 @@ class VswtWeekAnnotation(SQLModel, table=True):
     week_seq: int = Field(index=True)
     event_type: str = Field(default="other", max_length=32)
     note: str = Field(max_length=500)
+    #: A week that should not count towards this shop's rolling baselines
+    #: (flooding, refit, centre closure) — so one bad week doesn't poison the
+    #: next quarter's comparisons.
+    exclude_from_baselines: bool = Field(default=False)
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class VswtRegionWeekAnnotation(SQLModel, table=True):
+    """A note on a whole region's week, written once by HQ or the regional
+    manager and shown on every shop in the region — because "centre closed
+    Tuesday" almost never applies to one shop alone."""
+    __tablename__ = "vswt_region_week_annotation"
+    __table_args__ = (
+        UniqueConstraint("region_id", "week_seq", name="uq_vswt_region_annotation_region_week"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    region_id: UUID = Field(index=True, foreign_key="region.id")
+    week_seq: int = Field(index=True)
+    event_type: str = Field(default="other", max_length=32)
+    note: str = Field(max_length=500)
+    exclude_from_baselines: bool = Field(default=False)
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

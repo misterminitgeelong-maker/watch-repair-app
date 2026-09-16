@@ -29,6 +29,7 @@ EXPECTED_SWEEPS = {
     "pool_alerts",
     "sales_report_email",
     "regional_report_email",
+    "regional_manager_report",
     "mobile_weekly_report",
     "notification_redelivery",
     "retention",

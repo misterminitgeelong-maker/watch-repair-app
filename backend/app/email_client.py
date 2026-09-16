@@ -1013,6 +1013,101 @@ def send_vswt_management_report_email(
     )
 
 
+def send_region_manager_report_email(
+    *,
+    to_email: str,
+    manager_name: str | None,
+    region_name: str,
+    week: int,
+    sales: float | None,
+    sales_delta_pct: float | None,
+    customers: float | None,
+    region_rank: int | None,
+    region_count: int,
+    shops_reported: int,
+    shop_count: int,
+    narrative: str,
+    movers_up: list[dict],
+    movers_down: list[dict],
+    alerts: list[dict],
+    attainment: dict,
+    csv_bytes: bytes,
+    csv_filename: str,
+) -> tuple[bool, str | None]:
+    """The regional manager's Monday email: the region's week, who moved, what needs a call."""
+    if not (to_email or "").strip():
+        return False, None
+    sales_text = f"${sales:,.0f}" if sales is not None else "Unavailable"
+    movement = f" ({sales_delta_pct * 100:+.1f}% vs previous week)" if sales_delta_pct is not None else ""
+    rank_text = f"#{region_rank} of {region_count} regions" if region_rank is not None else "Unranked"
+    greeting = f"Hi {manager_name.split()[0]}," if (manager_name or "").strip() else "Hi,"
+
+    def _mover_line(r: dict) -> str:
+        pct = f"{r['delta_pct'] * 100:+.1f}%" if r.get("delta_pct") is not None else "—"
+        delta = f" (${r['delta']:+,.0f})" if r.get("delta") is not None else ""
+        return f"{r['shop_name']} (#{r['shop_number']}): {pct}{delta}"
+
+    up_lines = "\n".join(f"  ↑ {_mover_line(r)}" for r in movers_up[:5]) or "  none"
+    down_lines = "\n".join(f"  ↓ {_mover_line(r)}" for r in movers_down[:5]) or "  none"
+    alert_lines = "\n".join(f"  • {a.get('title')}: {a.get('message')}" for a in alerts[:6]) or "  No material exceptions."
+    attain_text = (
+        f"{attainment.get('shops_met', 0)} of {attainment.get('shops_with_target', 0)} shops with a sales target met it"
+        if attainment.get("shops_with_target")
+        else "No sales targets set for this region yet"
+    )
+    body_plain = (
+        f"{greeting}\n\n{region_name} — week {week}.\n\n{narrative}\n\n"
+        f"Sales: {sales_text}{movement}\nCustomers: {f'{customers:,.0f}' if customers is not None else 'Unavailable'}\n"
+        f"Rank: {rank_text}\nShops reported: {shops_reported} of {shop_count}\nTargets: {attain_text}\n\n"
+        f"Moved up most:\n{up_lines}\n\nMoved down most:\n{down_lines}\n\n"
+        f"Needs a call:\n{alert_lines}\n\nEvery shop's week is attached as a CSV.\n\n— Mainspring"
+    )
+
+    def _mover_html(r: dict, arrow: str) -> str:
+        pct = f"{r['delta_pct'] * 100:+.1f}%" if r.get("delta_pct") is not None else "—"
+        delta = f" (${r['delta']:+,.0f})" if r.get("delta") is not None else ""
+        return f"{arrow} <strong>{_html.escape(str(r['shop_name']))}</strong> {_html.escape(pct)}{_html.escape(delta)}"
+
+    note_html = (
+        f"<p>{_html.escape(narrative)}</p>"
+        f"<p><strong>Moved up most</strong><br>{'<br>'.join(_mover_html(r, '↑') for r in movers_up[:5]) or 'none'}</p>"
+        f"<p><strong>Moved down most</strong><br>{'<br>'.join(_mover_html(r, '↓') for r in movers_down[:5]) or 'none'}</p>"
+        f"<p><strong>Needs a call</strong><br>"
+        + ("<br>".join(
+            f"<strong>{_html.escape(str(a.get('title', 'Signal')))}</strong>: {_html.escape(str(a.get('message', '')))}"
+            for a in alerts[:6]
+        ) or "No material exceptions.")
+        + f"</p><p>{_html.escape(attain_text)}.</p>"
+    )
+    body_html = render_transactional_email(
+        title=f"{region_name}: week {week}",
+        preheader=f"{sales_text} sales{movement} · {rank_text}",
+        greeting=greeting,
+        intro_html=(
+            f"Here is <strong>{_html.escape(region_name)}</strong>'s week. "
+            f"Sales <strong>{_html.escape(sales_text)}</strong>{_html.escape(movement)}. "
+            f"Rank <strong>{_html.escape(rank_text)}</strong>. "
+            f"{shops_reported} of {shop_count} shops reported."
+        ),
+        shop=ShopInfo(name=region_name),
+        line_items=[{"description": f"Week {week} region sales", "quantity": 1, "total_price_cents": round((sales or 0) * 100)}],
+        total_cents=round((sales or 0) * 100),
+        currency="AUD",
+        note_html=note_html + "<br>Every shop's week is attached as a CSV.",
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=f"{region_name} — week {week} regional report",
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=region_name,
+        event="region_manager_weekly_report",
+        attachment_bytes=csv_bytes,
+        attachment_filename=csv_filename,
+        attachment_mime_type="text/csv",
+    )
+
+
 def _send_email(
     *,
     to_email: str,

@@ -232,6 +232,9 @@ class ParentAccountUserRead(SQLModel):
     tenant_role: str
     #: hq_admin | hq_viewer — what they may do across the network.
     role: str
+    #: Set for a regional manager: access is limited to this region.
+    region_id: Optional[UUID] = None
+    region_name: Optional[str] = None
     #: explicit (a granted row) | hq_site (implied by being in the HQ tenant)
     #: | owner_email (implied by being the account owner's login).
     source: str = "explicit"
@@ -244,6 +247,13 @@ class ParentAccountUserGrantRequest(SQLModel):
     user_id: Optional[UUID] = None
     email: Optional[str] = None
     role: str
+    #: Scope an hq_viewer to one region (a regional manager). Ignored for hq_admin.
+    region_id: Optional[UUID] = None
+
+
+class ParentEnterShopRequest(SQLModel):
+    #: Why HQ is going in — lands in the shop's own log and inbox, and HQ's activity feed.
+    reason: Optional[str] = Field(default=None, max_length=300)
 
 
 class ParentEnterShopResponse(SQLModel):
@@ -266,6 +276,8 @@ class RegionRead(SQLModel):
     manager_phone: Optional[str] = None
     escalation_email: Optional[str] = None
     notes: Optional[str] = None
+    weekly_report_opt_in: bool = False
+    last_weekly_report_sent_at: Optional[datetime] = None
     site_count: int = 0
     created_at: datetime
 
@@ -288,6 +300,43 @@ class RegionUpdateRequest(SQLModel):
     manager_phone: Optional[str] = Field(default=None, max_length=80)
     escalation_email: Optional[str] = Field(default=None, max_length=320)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    weekly_report_opt_in: Optional[bool] = None
+
+
+class RegionWeekAnnotationRead(SQLModel):
+    id: UUID
+    region_id: UUID
+    week: int
+    event_type: str
+    note: str
+    exclude_from_baselines: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class RegionWeekAnnotationUpdateRequest(SQLModel):
+    week: int
+    event_type: str = "other"
+    note: str = Field(max_length=500)
+    exclude_from_baselines: bool = False
+
+
+class RegionTargetFillRequest(SQLModel):
+    #: last_year_plus_pct | region_median | previous_week
+    strategy: str
+    #: Uplift applied by last_year_plus_pct (5 = +5%).
+    pct: float = 5.0
+    metric_keys: list[str] = Field(default_factory=lambda: ["sales_ty", "customer_ty", "jobs_ty"])
+    #: Reporting week the strategy reads from; defaults to the latest on file.
+    week: Optional[int] = None
+
+
+class RegionTargetFillResponse(SQLModel):
+    strategy: str
+    week: int
+    shops_updated: int
+    targets_written: int
+    shops_skipped_no_data: int
 
 class ParentLeadIngestConfigResponse(SQLModel):
     parent_account_id: UUID
@@ -313,6 +362,8 @@ class ParentAccountSummaryResponse(SQLModel):
     owner_email: str
     #: The caller's own network role (hq_admin | hq_viewer).
     my_role: Optional[str] = None
+    #: Set when the caller is a regional manager: the one region they can see.
+    my_region_id: Optional[UUID] = None
     site_count: int = 0
     sites: list[ParentAccountSiteRead] = Field(default_factory=list)
     mobile_lead_ingest_public_id: Optional[UUID] = None

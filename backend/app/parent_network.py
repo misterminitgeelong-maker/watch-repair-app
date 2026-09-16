@@ -287,14 +287,20 @@ def grant_parent_role(
     parent_id: UUID,
     user_id: UUID,
     role: str,
+    region_id: UUID | None = None,
 ) -> ParentAccountUser:
+    """Grant or change a network role. ``region_id`` pins an hq_viewer to one
+    region (a regional manager); admins are never region-scoped."""
+    if role == PARENT_ROLE_HQ_ADMIN:
+        region_id = None
     row = parent_user_row(session, parent_id, user_id)
     if row:
-        if row.role != role:
+        if row.role != role or row.region_id != region_id:
             row.role = role
+            row.region_id = region_id
             session.add(row)
         return row
-    row = ParentAccountUser(parent_account_id=parent_id, user_id=user_id, role=role)
+    row = ParentAccountUser(parent_account_id=parent_id, user_id=user_id, role=role, region_id=region_id)
     session.add(row)
     return row
 
@@ -381,19 +387,57 @@ def parent_role_for_user(session: Session, parent: ParentAccount, user: User) ->
     return None
 
 
+def parent_region_scope(session: Session, parent: ParentAccount, user: User) -> UUID | None:
+    """The one region this login is confined to, or None for network-wide access.
+
+    Only an explicit grant can be region-scoped; implicit HQ-tenant and
+    owner-email access is always network-wide.
+    """
+    row = parent_user_row(session, parent.id, user.id)
+    if row is None or row.role == PARENT_ROLE_HQ_ADMIN:
+        return None
+    return row.region_id
+
+
 def require_parent_role(
     session: Session,
     parent: ParentAccount,
     user: User,
     *,
     write: bool,
+    allow_region_scoped: bool = False,
 ) -> str:
+    """Gate an endpoint on the caller's network role.
+
+    Region-scoped viewers (regional managers) are refused by default so a
+    network-wide read does not leak the other regions; endpoints that know
+    how to confine themselves to one region pass ``allow_region_scoped``.
+    """
     role = parent_role_for_user(session, parent, user)
     if role is None:
         raise HTTPException(status_code=403, detail="No access to this parent account")
     if write and role != PARENT_ROLE_HQ_ADMIN:
         raise HTTPException(status_code=403, detail="HQ admin role required")
+    if not allow_region_scoped and parent_region_scope(session, parent, user) is not None:
+        raise HTTPException(status_code=403, detail="Access is limited to your region")
     return role
+
+
+def require_region_access(session: Session, parent: ParentAccount, user: User, region_id: UUID) -> str:
+    """Any HQ role may read any region; a regional manager only their own."""
+    role = require_parent_role(session, parent, user, write=False, allow_region_scoped=True)
+    scope = parent_region_scope(session, parent, user)
+    if scope is not None and scope != region_id:
+        raise HTTPException(status_code=403, detail="Access is limited to your region")
+    return role
+
+
+def can_write_region(session: Session, parent: ParentAccount, user: User, region_id: UUID) -> bool:
+    """HQ admins, and the regional manager of *this* region, may annotate it."""
+    role = parent_role_for_user(session, parent, user)
+    if role == PARENT_ROLE_HQ_ADMIN:
+        return True
+    return parent_region_scope(session, parent, user) == region_id
 
 
 def is_hq_viewer_or_admin(role: str | None) -> bool:
@@ -464,6 +508,56 @@ def resolve_region_id_for_tenant(
     if not code:
         return None
     return get_or_create_region(session, parent_id=parent_id, code=code, cache=cache).id
+
+
+def site_for_tenant_preferring_hq(session: Session, tenant_id: UUID) -> ParentAccountSite | None:
+    """The site row that decides a tenant's region: its HQ-anchored network
+    first, then the oldest link."""
+    sites = sites_for_tenant(session, tenant_id)
+    if not sites:
+        return None
+    hq_parents = _parents_with_hq_site(session, [s.parent_account_id for s in sites])
+    for site in sites:
+        if site.parent_account_id in hq_parents:
+            return site
+    return sites[0]
+
+
+def shop_numbers_for_region(
+    session: Session, parent_id: UUID, region_id: UUID, *, network_role: str | None = NETWORK_ROLE_RETAIL
+) -> dict[str, UUID]:
+    """``{shop_number: tenant_id}`` for the region's sites that have a shop number.
+
+    Retail only by default: the weekly VSWT export is a retail report, and a
+    mobile operator in the region would otherwise show as a shop that never
+    reports."""
+    site_tenant_ids = [
+        s.tenant_id
+        for s in sites_for_parent(session, parent_id)
+        if s.region_id == region_id and (network_role is None or s.network_role == network_role)
+    ]
+    if not site_tenant_ids:
+        return {}
+    with without_scope(session):
+        tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(site_tenant_ids))).all()
+    return {t.shop_number: t.id for t in tenants if t.shop_number}
+
+
+def region_by_shop_number(
+    session: Session, parent_id: UUID, *, network_role: str | None = NETWORK_ROLE_RETAIL
+) -> dict[str, UUID]:
+    """``{shop_number: region_id}`` across the whole network (unassigned shops omitted; retail only by default)."""
+    sites = [
+        s
+        for s in sites_for_parent(session, parent_id)
+        if s.region_id is not None and (network_role is None or s.network_role == network_role)
+    ]
+    if not sites:
+        return {}
+    region_by_tenant = {s.tenant_id: s.region_id for s in sites}
+    with without_scope(session):
+        tenants = session.exec(select(Tenant).where(col(Tenant.id).in_(list(region_by_tenant)))).all()
+    return {t.shop_number: region_by_tenant[t.id] for t in tenants if t.shop_number}
 
 
 def sync_site_region_from_tenant(

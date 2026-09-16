@@ -47,6 +47,7 @@ from .routes.parent_accounts import router as parent_accounts_router
 from .routes.shop_owner_invites import router as shop_owner_invites_router
 from .routes.parent_operations import router as parent_operations_router
 from .routes.parent_network_admin import router as parent_network_admin_router
+from .routes.parent_regions import router as parent_regions_router
 from .routes.billing import router as billing_router
 from .routes.xero_billing import router as xero_billing_router
 from .routes.xero_webhook import router as xero_webhook_router
@@ -482,6 +483,7 @@ app.include_router(parent_accounts_router)
 app.include_router(shop_owner_invites_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)
+app.include_router(parent_regions_router)
 app.include_router(billing_router)
 app.include_router(xero_billing_router)
 app.include_router(xero_webhook_router)

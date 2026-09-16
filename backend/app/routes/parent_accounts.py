@@ -84,6 +84,7 @@ from ..config import settings
 from ..parent_network import (
     link_site,
     normalize_region_code,
+    parent_region_scope,
     parents_for_user,
     regions_for_parent,
     require_parent_role,
@@ -185,8 +186,11 @@ def _to_summary(
     *,
     include_sites: bool = False,
     my_role: str | None = None,
+    my_region_id: UUID | None = None,
 ) -> ParentAccountSummaryResponse:
     all_sites = sites_for_parent(session, parent.id)
+    if my_region_id is not None:
+        all_sites = [site for site in all_sites if site.region_id == my_region_id]
     sites: list[ParentAccountSiteRead] = []
     if include_sites:
         sites = _site_reads_for_sites(session, all_sites)
@@ -196,6 +200,7 @@ def _to_summary(
         parent_account_name=parent.name,
         owner_email=parent.owner_email,
         my_role=my_role,
+        my_region_id=my_region_id,
         site_count=len(all_sites),
         sites=sites,
         mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
@@ -311,11 +316,24 @@ def _current_user(session: Session, auth: AuthContext) -> User:
 
 
 def _parent_for_read(session: Session, auth: AuthContext) -> tuple[User, ParentAccount, str]:
-    """Any HQ role may read the network."""
+    """Any network-wide HQ role may read the network. Regional managers are
+    refused here; endpoints that can confine themselves to one region use
+    _parent_for_scoped_read instead."""
     user = _current_user(session, auth)
     parent = _get_parent_account_for_user(session, user)
     role = require_parent_role(session, parent, user, write=False)
     return user, parent, role
+
+
+def _parent_for_scoped_read(
+    session: Session, auth: AuthContext
+) -> tuple[User, ParentAccount, str, UUID | None]:
+    """Like _parent_for_read, but admits regional managers and returns the
+    region they are confined to (None for network-wide access)."""
+    user = _current_user(session, auth)
+    parent = _get_parent_account_for_user(session, user)
+    role = require_parent_role(session, parent, user, write=False, allow_region_scoped=True)
+    return user, parent, role, parent_region_scope(session, parent, user)
 
 
 def _parent_for_write(session: Session, auth: AuthContext) -> tuple[User, ParentAccount]:
@@ -785,8 +803,8 @@ def get_parent_account_summary(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user, parent, my_role = _parent_for_read(session, auth)
-    return _to_summary(session, parent, include_sites=include_sites, my_role=my_role)
+    user, parent, my_role, my_region_id = _parent_for_scoped_read(session, auth)
+    return _to_summary(session, parent, include_sites=include_sites, my_role=my_role, my_region_id=my_region_id)
 
 
 @router.get("/me/lead-ingest", response_model=ParentLeadIngestConfigResponse)
@@ -811,9 +829,12 @@ def list_parent_account_sites(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    user, parent, _ = _parent_for_read(session, auth)
+    user, parent, _, my_region_id = _parent_for_scoped_read(session, auth)
     if plan_kind and plan_kind.strip().lower() not in {"retail", "operator", "all"}:
         raise HTTPException(status_code=400, detail="plan_kind must be retail, operator, or all")
+    if my_region_id is not None:
+        # A regional manager only ever sees their own region, whatever they ask for.
+        region = str(my_region_id)
 
     return _filtered_parent_sites(
         session,

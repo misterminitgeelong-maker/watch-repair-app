@@ -24,6 +24,7 @@ from ..models import (
     ParentAccountSiteUpdateRequest,
     ParentAccountUserGrantRequest,
     ParentAccountUserRead,
+    ParentEnterShopRequest,
     ParentEnterShopResponse,
     Region,
     RegionCreateRequest,
@@ -51,6 +52,7 @@ from ..security import create_access_token
 from .parent_accounts import (
     _owner_users_by_tenant,
     _parent_for_read,
+    _parent_for_scoped_read,
     _parent_for_write,
     _record_event,
     _site_reads_for_sites,
@@ -72,6 +74,7 @@ HQ_ENTER_SHOP_MINUTES = 30
 @router.post("/me/sites/{tenant_id}/enter", response_model=ParentEnterShopResponse)
 def enter_linked_shop(
     tenant_id: UUID,
+    payload: ParentEnterShopRequest | None = None,
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
@@ -107,6 +110,11 @@ def enter_linked_shop(
     if owner is None:
         raise HTTPException(status_code=400, detail="This shop has no active owner account")
 
+    # The reason is what makes this accountable rather than merely audited:
+    # it lands in the shop's own inbox, so the shop sees HQ was in and why.
+    reason = (payload.reason if payload else None) or ""
+    reason = " ".join(reason.split())[:300]
+    reason_suffix = f" — {reason}" if reason else ""
     session.add(
         TenantEventLog(
             tenant_id=tenant.id,
@@ -116,8 +124,8 @@ def enter_linked_shop(
             entity_id=owner.id,
             event_type="hq_enter_shop",
             event_summary=(
-                f"{current_user.email} (HQ, {parent.name}) entered shop '{tenant.slug}' "
-                f"as {owner.email} for {HQ_ENTER_SHOP_MINUTES} min"
+                f"HQ ({current_user.full_name or current_user.email}, {parent.name}) opened this shop "
+                f"for up to {HQ_ENTER_SHOP_MINUTES} min{reason_suffix}"
             ),
         )
     )
@@ -128,7 +136,7 @@ def enter_linked_shop(
         actor_user_id=current_user.id,
         actor_email=current_user.email,
         event_type="enter_shop",
-        event_summary=f"Entered '{tenant.name}' ({tenant.slug}) as {owner.email}",
+        event_summary=f"Entered '{tenant.name}' ({tenant.slug}) as {owner.email}{reason_suffix}",
     )
     session.commit()
 
@@ -256,10 +264,12 @@ def _parent_user_reads(session: Session, parent: ParentAccount) -> list[ParentAc
     tenants_by_id = {
         t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
     } if tenant_ids else {}
+    regions_by_id = {r.id: r for r in regions_for_parent(session, parent.id)}
 
     reads: list[ParentAccountUserRead] = []
     for user in candidates:
         row = explicit_by_user.get(user.id)
+        region_id = row.region_id if row is not None else None
         if row is not None:
             role, source, since = row.role, "explicit", row.created_at
         elif user.tenant_id in hq_tenant_ids:
@@ -267,6 +277,7 @@ def _parent_user_reads(session: Session, parent: ParentAccount) -> list[ParentAc
         else:
             role, source, since = PARENT_ROLE_HQ_ADMIN, "owner_email", user.created_at
         tenant = tenants_by_id.get(user.tenant_id)
+        region = regions_by_id.get(region_id) if region_id else None
         reads.append(
             ParentAccountUserRead(
                 user_id=user.id,
@@ -276,6 +287,8 @@ def _parent_user_reads(session: Session, parent: ParentAccount) -> list[ParentAc
                 full_name=user.full_name,
                 tenant_role=user.role,
                 role=role,
+                region_id=region.id if region else None,
+                region_name=region.name if region else None,
                 source=source,
                 is_active=user.is_active,
                 created_at=since,
@@ -336,7 +349,15 @@ def grant_parent_account_role(
     previous = parent_role_for_user(session, parent, target)
     if previous == PARENT_ROLE_HQ_ADMIN and role != PARENT_ROLE_HQ_ADMIN and _admin_count(session, parent) <= 1:
         raise HTTPException(status_code=400, detail="Cannot demote the last HQ admin")
-    grant_parent_role(session, parent_id=parent.id, user_id=target.id, role=role)
+    region: Region | None = None
+    if payload.region_id is not None and role != PARENT_ROLE_HQ_ADMIN:
+        region = session.get(Region, payload.region_id)
+        if region is None or region.parent_account_id != parent.id:
+            raise HTTPException(status_code=404, detail="Region not found")
+    grant_parent_role(
+        session, parent_id=parent.id, user_id=target.id, role=role, region_id=region.id if region else None
+    )
+    scope_text = f" for {region.name} only" if region else ""
     _record_event(
         session,
         parent_account_id=parent.id,
@@ -345,9 +366,9 @@ def grant_parent_account_role(
         actor_email=current_user.email,
         event_type="parent_role_granted",
         event_summary=(
-            f"Set {target.email} to {role}"
+            f"Set {target.email} to {role}{scope_text}"
             if previous is None
-            else f"Changed {target.email} from {previous} to {role}"
+            else f"Changed {target.email} from {previous} to {role}{scope_text}"
         ),
     )
     session.commit()
@@ -413,6 +434,8 @@ def _region_reads(session: Session, parent: ParentAccount) -> list[RegionRead]:
             manager_phone=r.manager_phone,
             escalation_email=r.escalation_email,
             notes=r.notes,
+            weekly_report_opt_in=bool(r.weekly_report_opt_in),
+            last_weekly_report_sent_at=r.last_weekly_report_sent_at,
             site_count=counts.get(r.id, 0),
             created_at=r.created_at,
         )
@@ -432,8 +455,12 @@ def list_regions(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _user, parent, _ = _parent_for_read(session, auth)
-    return _region_reads(session, parent)
+    """All regions for HQ; a regional manager sees only their own."""
+    _user, parent, _, scope = _parent_for_scoped_read(session, auth)
+    reads = _region_reads(session, parent)
+    if scope is not None:
+        reads = [r for r in reads if r.id == scope]
+    return reads
 
 
 @router.post("/me/regions", response_model=RegionRead)
@@ -509,6 +536,11 @@ def update_region(
         if cleaned != getattr(region, field):
             changes.append(field.replace("_", " "))
             setattr(region, field, cleaned)
+    if payload.weekly_report_opt_in is not None and payload.weekly_report_opt_in != bool(region.weekly_report_opt_in):
+        if payload.weekly_report_opt_in and not (region.manager_email or "").strip():
+            raise HTTPException(status_code=400, detail="Set a manager email before turning on the weekly report")
+        region.weekly_report_opt_in = payload.weekly_report_opt_in
+        changes.append("weekly report " + ("on" if payload.weekly_report_opt_in else "off"))
 
     if changes:
         session.add(region)

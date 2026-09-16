@@ -19,6 +19,8 @@ INBOX_EVENT_TYPES = [
     "invoice_paid",
     "customer_sms_reply",
     "portal_customer_message",
+    # HQ opened a support session in this shop (see parent_network_admin.enter_linked_shop).
+    "hq_enter_shop",
 ]
 
 
