@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, KeyRound, Store, Wrench } from 'lucide-react'
+import { BarChart3, KeyRound, ShieldCheck, Store, Wrench } from 'lucide-react'
 import { Card, PageHeader } from '@/components/ui'
 
 function ReportLink({
@@ -42,7 +42,7 @@ export default function MinitReportsHubPage() {
     <div>
       <PageHeader title="Reports" />
       <p className="text-sm mb-6" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Cross-shop reporting and network diagnostics.
+        Cross-shop reporting, network diagnostics, and administration of the linked Minit shops.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -63,6 +63,12 @@ export default function MinitReportsHubPage() {
           icon={Wrench}
           title="Troubleshooting"
           description="Failed bookings, stale pending requests, missing operator SMS, and other actionable issues."
+        />
+        <ReportLink
+          to="/minit/administration"
+          icon={ShieldCheck}
+          title="Administration"
+          description="Who can get into each shop: own logins, shops still on HQ's credential, outstanding invites, and recent support sessions."
         />
         <ReportLink
           to="/minit/accounts"

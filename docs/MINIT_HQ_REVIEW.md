@@ -60,9 +60,15 @@ is minit-7003 still in HQ's site list?  False
 ```
 
 So the invite flow — whose whole purpose is to hand a shop its own login — is
-also what removes HQ's visibility into that shop. And there is no other way in:
+also what removes HQ's *way in* to that shop. And there was no other:
 `enter_shop` is gated on `require_platform_admin`, which HQ users are not (they
 are `role="owner"` of the HQ tenant).
+
+To be precise about what is lost, because the two are easy to confuse: the shop
+stays in `/me/sites` and on the Shops page, which resolve through the membership
+table. What disappears is the entry in the **site switcher** —
+`_build_available_sites_for_email` matches on email — so HQ can still see the
+shop listed and can no longer get into it.
 
 **The net effect: the more successfully you onboard shops, the less of the
 network HQ can actually see.** For "the full functioning parent account", that
@@ -73,6 +79,11 @@ an HQ equivalent of `enter_shop`, scoped to tenants linked to that parent, and
 written to the tenant event log the way `platform_admin_enter_shop` already is.
 The authorisation question is already answered by the membership table; it just
 is not used for this.
+
+**Done.** `POST /v1/parent-accounts/me/sites/{tenant_id}/enter` — 30 minutes, no
+refresh token, membership-checked, restricted to Minit shops, and written to both
+the shop's own event log and the parent account's activity log. The front end
+reuses the platform-admin return-banner machinery rather than copying it.
 
 ### 2. A tenant can belong to more than one parent account, and resolution picks one arbitrarily
 
@@ -160,6 +171,26 @@ leads.
 **Fix:** put `network_role` on the site record and let billing be billing. The
 plan can still *default* it at provisioning time.
 
+### 5b. HQ counts itself as one of its own retail shops
+
+Found while building the administration report, and a direct consequence of
+finding 5. `_is_retail_shop` asks whether a plan carries `shop_mobile_booking`;
+the `minit_hq` plan does. The HQ tenant is linked to its own parent account like
+any site, so it was classified as a retail shop:
+
+```
+LINKED:                  mmsupport (minit_hq), minit-3269, minit-4278, minit-mobile-3904
+_is_retail_shop(minit_hq):  True
+dashboard retail count:     3  ->  ['mmsupport', 'minit-3269', 'minit-4278']
+```
+
+Every network shop count was one too high, and HQ appeared in its own region
+breakdown as a shop in whichever region it sits.
+
+**Fixed**, by excluding the HQ plan explicitly in `_is_retail_shop`. That is a
+patch over the real cause rather than a cure: a shop's role is still derived from
+what it is billed for. Finding 5 stands.
+
 ### 6. Region and area are free text with no lookup
 
 `Tenant.minit_area` (120 chars) and `Tenant.minit_region` (40 chars) are plain
@@ -192,9 +223,10 @@ Recorded so nobody re-investigates them.
 
 ## What I would do, in order
 
-1. **HQ support access into linked shops** (finding 1). Without it, HQ's
-   usefulness decays as onboarding succeeds. Everything else is tidying by
-   comparison.
+1. ~~**HQ support access into linked shops** (finding 1).~~ **Done**, along with
+   a network administration report — which shops have their own login, which are
+   still on HQ's shared credential, outstanding invites, and who has opened what.
+   Building it surfaced finding 5b.
 2. **Unique constraint + ordered resolution** (finding 2). Small, and it closes
    a correctness hole that is already live in the data.
 3. **Roles on membership** (findings 3 and 4). This is the change that makes HQ

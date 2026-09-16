@@ -25,7 +25,7 @@ export const MINIT_HQ_NAV = [
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
   { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, title: 'Website ingest, dispatch, and territory map' },
   { to: '/minit/mobile-services', label: 'Mobile jobs', icon: KeyRound, title: 'Network mobile job report' },
-  { to: '/minit/reports', label: 'Reports', icon: BarChart3, title: 'Shop analytics and troubleshooting' },
+  { to: '/minit/reports', label: 'Reports', icon: BarChart3, title: 'Shop analytics, troubleshooting, and network administration' },
 ] as const
 
 export interface MinitHqSidebarProps {

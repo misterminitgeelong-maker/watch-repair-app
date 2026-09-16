@@ -27,7 +27,10 @@ from ..models import (
     AutoKeyJob,
     EmailLog,
     InboundEmail,
+    MinitAdministrationReport,
     MinitHqEnterShopResponse,
+    MinitShopAccessRow,
+    MinitSupportSessionRow,
     OperatorWeeklyStatsRead,
     ParentAccount,
     ParentDashboardBookingSnippet,
@@ -44,6 +47,7 @@ from ..models import (
     ParentTroubleshootingItem,
     ParentTroubleshootingResponse,
     ShopEmailLeadBucket,
+    ShopOwnerInvite,
     ShopMobileBookingRead,
     ShopMobileBookingRequest,
     SmsLog,
@@ -104,6 +108,12 @@ def _linked_tenants(session: Session, parent_id: UUID) -> list[Tenant]:
 
 def _is_retail_shop(plan_code: str) -> bool:
     plan = normalize_plan_code(plan_code)
+    # HQ is not one of its own shops. Its plan carries "shop_mobile_booking", so
+    # a purely feature-derived answer counted the HQ tenant as a retail shop --
+    # inflating every shop count and adding HQ to its own region stats. Roles are
+    # inferred from billing plans here, and this is where that bites.
+    if plan == MINIT_HQ_PLAN:
+        return False
     if plan == "booking_only":
         return True
     return "shop_mobile_booking" in PLAN_FEATURES.get(plan, set()) and plan not in BOOKABLE_OPERATOR_PLAN_CODES
@@ -1102,4 +1112,164 @@ def minit_hq_enter_shop(
         tenant_name=tenant.name,
         tenant_slug=tenant.slug,
         shop_number=tenant.shop_number,
+    )
+
+
+def _shop_number_sort_key(shop_number: str | None) -> tuple[int, int, str]:
+    """Order shops the way their numbers read: 8, 9, 10 rather than 10, 8, 9.
+
+    Unnumbered shops sort last rather than colliding at zero.
+    """
+    raw = (shop_number or "").strip()
+    if not raw:
+        return (1, 0, "")
+    try:
+        return (0, int(raw), "")
+    except ValueError:
+        return (0, 0, raw.lower())
+
+
+#: How many recent support sessions the administration report carries. Enough to
+#: answer "who has been in this shop lately" without turning the report into an
+#: audit-log browser.
+ADMINISTRATION_RECENT_SUPPORT_LIMIT = 50
+
+
+@router.get("/me/operations/administration", response_model=MinitAdministrationReport)
+def get_network_administration(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Who can get into each shop in the network, and whether HQ still holds the keys.
+
+    The rest of the HQ reporting answers commercial questions — bookings, leads,
+    jobs. This answers the administrative ones, which had no home at all:
+
+    * which shops have taken their own login, and which are still signing in with
+      HQ's shared credential (a credential that unlocks every shop still on it)
+    * where an invite is sitting pending or has expired unused
+    * which shops are deactivated
+    * which shops an HQ administrator has opened, and when
+
+    Query count is flat in the number of shops -- the membership, tenant, owner,
+    invite and event lookups are one query each whether the network has three
+    shops or three hundred. That property is measured in the tests, not assumed;
+    it is the one the rest of this dashboard already has and is worth keeping.
+    """
+    _require_minit_hq(auth, session)
+    user = session.get(User, auth.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, user)
+
+    tenants = [
+        t
+        for t in _linked_tenants(session, parent.id)
+        if is_minit_tenant_slug(t.slug) and normalize_plan_code(t.plan_code) != MINIT_HQ_PLAN
+    ]
+    tenant_ids = [t.id for t in tenants]
+    if not tenant_ids:
+        return MinitAdministrationReport()
+
+    # Owners, one query. A tenant can in principle have several users; the owner
+    # row is the one an invite hands over, so that is the one reported.
+    owners: dict[UUID, User] = {}
+    for u in session.exec(
+        select(User)
+        .where(col(User.tenant_id).in_(tenant_ids))
+        .where(User.role == "owner")
+        .order_by(col(User.created_at))
+    ).all():
+        owners.setdefault(u.tenant_id, u)
+
+    # Latest invite per tenant, one query, newest first so the first wins.
+    latest_invite: dict[UUID, ShopOwnerInvite] = {}
+    for inv in session.exec(
+        select(ShopOwnerInvite)
+        .where(col(ShopOwnerInvite.tenant_id).in_(tenant_ids))
+        .order_by(col(ShopOwnerInvite.created_at).desc())
+    ).all():
+        latest_invite.setdefault(inv.tenant_id, inv)
+
+    # Support entries, one query, newest first.
+    support_events = session.exec(
+        select(TenantEventLog)
+        .where(col(TenantEventLog.tenant_id).in_(tenant_ids))
+        .where(TenantEventLog.event_type == "minit_hq_enter_shop")
+        .order_by(col(TenantEventLog.created_at).desc())
+    ).all()
+    last_entry: dict[UUID, datetime] = {}
+    for ev in support_events:
+        last_entry.setdefault(ev.tenant_id, ev.created_at)
+
+    hq_email = (parent.owner_email or "").strip().lower()
+    now = datetime.now(timezone.utc)
+
+    rows: list[MinitShopAccessRow] = []
+    for tenant in tenants:
+        owner = owners.get(tenant.id)
+        owner_email = (owner.email if owner else None) or None
+        invite = latest_invite.get(tenant.id)
+
+        # "Has its own login" is about the credential, not about the invite: an
+        # invite can be completed and the email later changed back, and a shop
+        # can be handed over by other means. The email is the thing that decides
+        # whether HQ's credential still opens this shop.
+        has_own_login = bool(owner_email) and owner_email.strip().lower() != hq_email
+
+        status = invite.status if invite else None
+        # An invite past its expiry is still stored as "pending" until something
+        # loads it (see ``_load_pending_invite``); report what it actually is, so
+        # an administrator is not left waiting on a dead link. This is a report,
+        # so it reads rather than writing the status back.
+        if status == "pending" and invite is not None:
+            expires_at = invite.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < now:
+                status = "expired"
+
+        rows.append(
+            MinitShopAccessRow(
+                tenant_id=tenant.id,
+                tenant_name=tenant.name,
+                tenant_slug=tenant.slug,
+                shop_number=tenant.shop_number,
+                area=tenant.minit_area,
+                region=tenant.minit_region,
+                plan_code=tenant.plan_code,
+                is_active=tenant.is_active,
+                owner_email=owner_email,
+                owner_full_name=owner.full_name if owner else None,
+                has_own_login=has_own_login,
+                invite_status=status,
+                invite_expires_at=invite.expires_at if invite else None,
+                invite_completed_at=invite.completed_at if invite else None,
+                last_support_entry_at=last_entry.get(tenant.id),
+            )
+        )
+
+    rows.sort(key=lambda r: (_shop_number_sort_key(r.shop_number), r.tenant_name.lower()))
+
+    tenant_names = {t.id: (t.name, t.shop_number) for t in tenants}
+    recent = [
+        MinitSupportSessionRow(
+            tenant_id=ev.tenant_id,
+            tenant_name=tenant_names.get(ev.tenant_id, ("", None))[0],
+            shop_number=tenant_names.get(ev.tenant_id, ("", None))[1],
+            actor_email=ev.actor_email,
+            created_at=ev.created_at,
+        )
+        for ev in support_events[:ADMINISTRATION_RECENT_SUPPORT_LIMIT]
+    ]
+
+    return MinitAdministrationReport(
+        shop_total=len(rows),
+        own_login_count=sum(1 for r in rows if r.has_own_login),
+        shared_credential_count=sum(1 for r in rows if not r.has_own_login),
+        invite_pending_count=sum(1 for r in rows if r.invite_status == "pending"),
+        invite_expired_count=sum(1 for r in rows if r.invite_status == "expired"),
+        inactive_count=sum(1 for r in rows if not r.is_active),
+        shops=rows,
+        recent_support_sessions=recent,
     )

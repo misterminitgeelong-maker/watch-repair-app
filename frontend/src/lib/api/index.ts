@@ -224,6 +224,44 @@ export interface MinitHqEnterShopResponse {
 export const minitHqEnterShop = (tenantId: string) =>
   api.post<MinitHqEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`)
 
+/** One shop's administrative state — who can get into it, not how it is trading. */
+export interface MinitShopAccessRow {
+  tenant_id: string
+  tenant_name: string
+  tenant_slug: string
+  shop_number?: string | null
+  area?: string | null
+  region?: string | null
+  plan_code: string
+  is_active: boolean
+  owner_email?: string | null
+  owner_full_name?: string | null
+  has_own_login: boolean
+  invite_status?: 'pending' | 'completed' | 'revoked' | 'expired' | (string & {}) | null
+  invite_expires_at?: string | null
+  invite_completed_at?: string | null
+  last_support_entry_at?: string | null
+}
+export interface MinitSupportSessionRow {
+  tenant_id: string
+  tenant_name: string
+  shop_number?: string | null
+  actor_email?: string | null
+  created_at: string
+}
+export interface MinitAdministrationReport {
+  shop_total: number
+  own_login_count: number
+  shared_credential_count: number
+  invite_pending_count: number
+  invite_expired_count: number
+  inactive_count: number
+  shops: MinitShopAccessRow[]
+  recent_support_sessions: MinitSupportSessionRow[]
+}
+export const getMinitAdministrationReport = () =>
+  api.get<MinitAdministrationReport>('/parent-accounts/me/operations/administration')
+
 export interface ShopOwnerInvite {
   id: string
   tenant_id: string

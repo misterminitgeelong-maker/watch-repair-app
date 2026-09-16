@@ -14512,6 +14512,33 @@
         }
       }
     },
+    "/v1/parent-accounts/me/operations/administration": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Network Administration",
+        "description": "Who can get into each shop in the network, and whether HQ still holds the keys.\n\nThe rest of the HQ reporting answers commercial questions \u2014 bookings, leads,\njobs. This answers the administrative ones, which had no home at all:\n\n* which shops have taken their own login, and which are still signing in with\n  HQ's shared credential (a credential that unlocks every shop still on it)\n* where an invite is sitting pending or has expired unused\n* which shops are deactivated\n* which shops an HQ administrator has opened, and when\n\nQuery count is flat in the number of shops -- four queries regardless -- to\nkeep the property the rest of this dashboard already has.",
+        "operationId": "get_network_administration_v1_parent_accounts_me_operations_administration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinitAdministrationReport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/billing/limits": {
       "get": {
         "tags": [
@@ -24370,6 +24397,57 @@
         ],
         "title": "LoyaltyProfileResponse"
       },
+      "MinitAdministrationReport": {
+        "properties": {
+          "shop_total": {
+            "type": "integer",
+            "title": "Shop Total",
+            "default": 0
+          },
+          "own_login_count": {
+            "type": "integer",
+            "title": "Own Login Count",
+            "default": 0
+          },
+          "shared_credential_count": {
+            "type": "integer",
+            "title": "Shared Credential Count",
+            "default": 0
+          },
+          "invite_pending_count": {
+            "type": "integer",
+            "title": "Invite Pending Count",
+            "default": 0
+          },
+          "invite_expired_count": {
+            "type": "integer",
+            "title": "Invite Expired Count",
+            "default": 0
+          },
+          "inactive_count": {
+            "type": "integer",
+            "title": "Inactive Count",
+            "default": 0
+          },
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/MinitShopAccessRow"
+            },
+            "type": "array",
+            "title": "Shops"
+          },
+          "recent_support_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/MinitSupportSessionRow"
+            },
+            "type": "array",
+            "title": "Recent Support Sessions"
+          }
+        },
+        "type": "object",
+        "title": "MinitAdministrationReport",
+        "description": "Network administration report for a Minit administrator."
+      },
       "MinitHqEnterShopResponse": {
         "properties": {
           "access_token": {
@@ -24425,6 +24503,196 @@
         ],
         "title": "MinitHqEnterShopResponse",
         "description": "Short-lived, audited access for an HQ administrator into one linked shop."
+      },
+      "MinitShopAccessRow": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "plan_code": {
+            "type": "string",
+            "title": "Plan Code"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "owner_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Email"
+          },
+          "owner_full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Full Name"
+          },
+          "has_own_login": {
+            "type": "boolean",
+            "title": "Has Own Login",
+            "default": false
+          },
+          "invite_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Status"
+          },
+          "invite_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Expires At"
+          },
+          "invite_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Completed At"
+          },
+          "last_support_entry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Support Entry At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "tenant_slug",
+          "plan_code"
+        ],
+        "title": "MinitShopAccessRow",
+        "description": "One shop's administrative state, as distinct from its trading state.\n\nThe commercial reports answer \"how is this shop doing\". This answers \"who can\nget into it, and does HQ still hold the keys\" \u2014 the questions a Minit\nadministrator has to answer and previously could not."
+      },
+      "MinitSupportSessionRow": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "actor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "created_at"
+        ],
+        "title": "MinitSupportSessionRow",
+        "description": "One HQ administrator's entry into one shop."
       },
       "MobileKeyLeadIngestBody": {
         "properties": {

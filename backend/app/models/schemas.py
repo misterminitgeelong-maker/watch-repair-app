@@ -663,6 +663,58 @@ class MinitHqEnterShopResponse(SQLModel):
     tenant_slug: str
     shop_number: Optional[str] = None
 
+class MinitShopAccessRow(SQLModel):
+    """One shop's administrative state, as distinct from its trading state.
+
+    The commercial reports answer "how is this shop doing". This answers "who can
+    get into it, and does HQ still hold the keys" — the questions a Minit
+    administrator has to answer and previously could not.
+    """
+    tenant_id: UUID
+    tenant_name: str
+    tenant_slug: str
+    shop_number: Optional[str] = None
+    area: Optional[str] = None
+    region: Optional[str] = None
+    plan_code: str
+    is_active: bool = True
+    owner_email: Optional[str] = None
+    owner_full_name: Optional[str] = None
+    #: False while the shop is still signing in with HQ's shared credential.
+    has_own_login: bool = False
+    #: Latest invite for this shop: pending | completed | revoked | expired, or
+    #: None when one has never been sent.
+    invite_status: Optional[str] = None
+    invite_expires_at: Optional[datetime] = None
+    invite_completed_at: Optional[datetime] = None
+    #: Most recent time an HQ administrator opened this shop.
+    last_support_entry_at: Optional[datetime] = None
+
+
+class MinitSupportSessionRow(SQLModel):
+    """One HQ administrator's entry into one shop."""
+    tenant_id: UUID
+    tenant_name: str
+    shop_number: Optional[str] = None
+    actor_email: Optional[str] = None
+    created_at: datetime
+
+
+class MinitAdministrationReport(SQLModel):
+    """Network administration report for a Minit administrator."""
+    shop_total: int = 0
+    #: Shops that have taken their own login via an invite.
+    own_login_count: int = 0
+    #: Shops still sharing HQ's credential — every one of these is a shop HQ
+    #: cannot hand over and a credential that unlocks more than one site.
+    shared_credential_count: int = 0
+    invite_pending_count: int = 0
+    invite_expired_count: int = 0
+    inactive_count: int = 0
+    shops: list[MinitShopAccessRow] = Field(default_factory=list)
+    recent_support_sessions: list[MinitSupportSessionRow] = Field(default_factory=list)
+
+
 class PlatformTenantStatusUpdateRequest(SQLModel):
     is_active: bool
     reason: Optional[str] = None

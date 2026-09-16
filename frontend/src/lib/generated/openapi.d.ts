@@ -4561,6 +4561,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/administration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Network Administration
+         * @description Who can get into each shop in the network, and whether HQ still holds the keys.
+         *
+         *     The rest of the HQ reporting answers commercial questions — bookings, leads,
+         *     jobs. This answers the administrative ones, which had no home at all:
+         *
+         *     * which shops have taken their own login, and which are still signing in with
+         *       HQ's shared credential (a credential that unlocks every shop still on it)
+         *     * where an invite is sitting pending or has expired unused
+         *     * which shops are deactivated
+         *     * which shops an HQ administrator has opened, and when
+         *
+         *     Query count is flat in the number of shops -- four queries regardless -- to
+         *     keep the property the rest of this dashboard already has.
+         */
+        get: operations["get_network_administration_v1_parent_accounts_me_operations_administration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/limits": {
         parameters: {
             query?: never;
@@ -7619,6 +7651,46 @@ export interface components {
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
         };
         /**
+         * MinitAdministrationReport
+         * @description Network administration report for a Minit administrator.
+         */
+        MinitAdministrationReport: {
+            /**
+             * Shop Total
+             * @default 0
+             */
+            shop_total: number;
+            /**
+             * Own Login Count
+             * @default 0
+             */
+            own_login_count: number;
+            /**
+             * Shared Credential Count
+             * @default 0
+             */
+            shared_credential_count: number;
+            /**
+             * Invite Pending Count
+             * @default 0
+             */
+            invite_pending_count: number;
+            /**
+             * Invite Expired Count
+             * @default 0
+             */
+            invite_expired_count: number;
+            /**
+             * Inactive Count
+             * @default 0
+             */
+            inactive_count: number;
+            /** Shops */
+            shops?: components["schemas"]["MinitShopAccessRow"][];
+            /** Recent Support Sessions */
+            recent_support_sessions?: components["schemas"]["MinitSupportSessionRow"][];
+        };
+        /**
          * MinitHqEnterShopResponse
          * @description Short-lived, audited access for an HQ administrator into one linked shop.
          */
@@ -7642,6 +7714,77 @@ export interface components {
             tenant_slug: string;
             /** Shop Number */
             shop_number?: string | null;
+        };
+        /**
+         * MinitShopAccessRow
+         * @description One shop's administrative state, as distinct from its trading state.
+         *
+         *     The commercial reports answer "how is this shop doing". This answers "who can
+         *     get into it, and does HQ still hold the keys" — the questions a Minit
+         *     administrator has to answer and previously could not.
+         */
+        MinitShopAccessRow: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Area */
+            area?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Owner Email */
+            owner_email?: string | null;
+            /** Owner Full Name */
+            owner_full_name?: string | null;
+            /**
+             * Has Own Login
+             * @default false
+             */
+            has_own_login: boolean;
+            /** Invite Status */
+            invite_status?: string | null;
+            /** Invite Expires At */
+            invite_expires_at?: string | null;
+            /** Invite Completed At */
+            invite_completed_at?: string | null;
+            /** Last Support Entry At */
+            last_support_entry_at?: string | null;
+        };
+        /**
+         * MinitSupportSessionRow
+         * @description One HQ administrator's entry into one shop.
+         */
+        MinitSupportSessionRow: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Actor Email */
+            actor_email?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MobileKeyLeadIngestBody */
         MobileKeyLeadIngestBody: {
@@ -19588,6 +19731,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_network_administration_v1_parent_accounts_me_operations_administration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinitAdministrationReport"];
                 };
             };
         };

@@ -159,7 +159,28 @@ Sign in as **mmsupport** (`minit_hq`):
 - **Shops** — retail list shows shop #, name, area, region; **Import shops** for bulk Excel upload; search by name/shop #/area/region; filter by region dropdown.
 - **Accounts** — same sites with area/region; add/remove individual shops still works.
 - **Dashboard / Reports / Inbox** — aggregate across the full linked network.
-- Site switcher — jump into any retail shop context.
+- Site switcher — jump into any retail shop context, *while that shop is still on
+  HQ's credential*. Once a shop completes its invite the switcher loses it, because
+  the switcher matches on owner email. Use **Open** instead (below).
+- **Administration** (under Reports) — the access side of the network: which shops
+  have their own login, which are still on HQ's shared credential, outstanding and
+  expired invites, deactivated shops, and recent support sessions. Each row has an
+  **Open** button.
+
+## Supporting a shop that has its own login
+
+Once a shop completes its invite it has its own email and password, and HQ can no
+longer reach it through the site switcher. An HQ administrator opens it instead,
+from **Shops** or **Administration**:
+
+- The session lasts **30 minutes** and has no refresh token — when it lapses, the
+  banner hands HQ's own session back automatically.
+- It is limited to Minit shops linked to this parent account. A shop in another
+  network returns 404 rather than 403, so HQ cannot use it to probe for tenants.
+- Every entry is written to **that shop's own activity log** as well as HQ's, so
+  the shop can see when HQ has been in. Support access the supported party cannot
+  see is surveillance, not support.
+- A deactivated shop cannot be opened.
 
 Pilot mobile operator `minit-mobile-3904` stays on `basic_auto_key` and appears under **Mobile operators**, not retail shops.
 
