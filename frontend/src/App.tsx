@@ -91,6 +91,7 @@ const MinitInboxPage = lazy(() => import('@/pages/minit/MinitInboxPage'))
 const MinitLeadRoutingPage = lazy(() => import('@/pages/minit/MinitLeadRoutingPage'))
 const MinitAccountsPage = lazy(() => import('@/pages/minit/MinitAccountsPage'))
 const MinitReportsHubPage = lazy(() => import('@/pages/minit/MinitReportsHubPage'))
+const MinitRegionCockpitPage = lazy(() => import('@/pages/minit/MinitRegionCockpitPage'))
 
 /** Minit HQ pages — allow when server/session says HQ, not only when multi_site is in enabled_features. */
 function MinitHqGate({ children }: { children: React.ReactNode }) {
@@ -218,6 +219,7 @@ export default function App() {
               <Route path="minit/mobile-services" element={<MinitHqGate><MinitMobileReportsPage /></MinitHqGate>} />
               <Route path="minit/accounts" element={<MinitHqGate><MinitAccountsPage /></MinitHqGate>} />
               <Route path="minit/reports" element={<MinitHqGate><MinitReportsHubPage /></MinitHqGate>} />
+              <Route path="minit/regions/:regionId" element={<MinitHqGate><MinitRegionCockpitPage /></MinitHqGate>} />
               <Route path="minit/reports/shops" element={<MinitHqGate><MinitShopReportsPage /></MinitHqGate>} />
               <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
               <Route path="minit/troubleshooting" element={<MinitHqGate><MinitTroubleshootingPage /></MinitHqGate>} />

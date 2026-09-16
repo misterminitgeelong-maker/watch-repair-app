@@ -14972,6 +14972,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ParentEnterShopRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -15135,6 +15152,7 @@
           "parent-network"
         ],
         "summary": "List Regions",
+        "description": "All regions for HQ; a regional manager sees only their own.",
         "operationId": "list_regions_v1_parent_accounts_me_regions_get",
         "responses": {
           "200": {
@@ -15296,6 +15314,356 @@
                   },
                   "title": "Response Delete Region V1 Parent Accounts Me Regions  Region Id  Delete"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}/cockpit": {
+      "get": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "Get Region Cockpit",
+        "operationId": "get_region_cockpit_v1_parent_accounts_me_regions__region_id__cockpit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Week"
+            }
+          },
+          {
+            "name": "comparison",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "previous",
+                "4w",
+                "13w",
+                "52w",
+                "last_year"
+              ],
+              "type": "string",
+              "default": "previous",
+              "title": "Comparison"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}/annotations": {
+      "get": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "List Region Annotations",
+        "operationId": "list_region_annotations_v1_parent_accounts_me_regions__region_id__annotations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegionWeekAnnotationRead"
+                  },
+                  "title": "Response List Region Annotations V1 Parent Accounts Me Regions  Region Id  Annotations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "Put Region Annotation",
+        "description": "One note for the whole region's week. It shows on every shop in the\nregion, and with ``exclude_from_baselines`` it drops that week out of\nevery one of their rolling comparisons.",
+        "operationId": "put_region_annotation_v1_parent_accounts_me_regions__region_id__annotations_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionWeekAnnotationUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionWeekAnnotationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}/annotations/{annotation_id}": {
+      "delete": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "Delete Region Annotation",
+        "operationId": "delete_region_annotation_v1_parent_accounts_me_regions__region_id__annotations__annotation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Annotation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}/targets/fill": {
+      "post": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "Fill Region Targets",
+        "description": "Set every shop in the region's targets from one rule.\n\n``last_year_plus_pct`` reads each shop's same-week-last-year figure and\nuplifts it; ``region_median`` gives every shop the region's median for\nthe week; ``previous_week`` carries last week's actual forward. Shops with\nno figure for the rule are skipped, never zeroed.",
+        "operationId": "fill_region_targets_v1_parent_accounts_me_regions__region_id__targets_fill_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionTargetFillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionTargetFillResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/regions/{region_id}/report/send-now": {
+      "post": {
+        "tags": [
+          "parent-regions"
+        ],
+        "summary": "Send Region Report Now",
+        "description": "Email the region's week to its manager right now, regardless of opt-in.",
+        "operationId": "send_region_report_now_v1_parent_accounts_me_regions__region_id__report_send_now_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -26263,6 +26631,18 @@
             ],
             "title": "My Role"
           },
+          "my_region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Region Id"
+          },
           "site_count": {
             "type": "integer",
             "title": "Site Count",
@@ -26341,6 +26721,18 @@
           "role": {
             "type": "string",
             "title": "Role"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
           }
         },
         "type": "object",
@@ -26380,6 +26772,29 @@
           "role": {
             "type": "string",
             "title": "Role"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
           },
           "source": {
             "type": "string",
@@ -26526,6 +26941,24 @@
           "total_emails"
         ],
         "title": "ParentEmailLeadsByShopReport"
+      },
+      "ParentEnterShopRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "ParentEnterShopRequest"
       },
       "ParentEnterShopResponse": {
         "properties": {
@@ -29619,6 +30052,23 @@
             ],
             "title": "Notes"
           },
+          "weekly_report_opt_in": {
+            "type": "boolean",
+            "title": "Weekly Report Opt In",
+            "default": false
+          },
+          "last_weekly_report_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Weekly Report Sent At"
+          },
           "site_count": {
             "type": "integer",
             "title": "Site Count",
@@ -29638,6 +30088,75 @@
           "created_at"
         ],
         "title": "RegionRead"
+      },
+      "RegionTargetFillRequest": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "pct": {
+            "type": "number",
+            "title": "Pct",
+            "default": 5.0
+          },
+          "metric_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metric Keys"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy"
+        ],
+        "title": "RegionTargetFillRequest"
+      },
+      "RegionTargetFillResponse": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "shops_updated": {
+            "type": "integer",
+            "title": "Shops Updated"
+          },
+          "targets_written": {
+            "type": "integer",
+            "title": "Targets Written"
+          },
+          "shops_skipped_no_data": {
+            "type": "integer",
+            "title": "Shops Skipped No Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy",
+          "week",
+          "shops_updated",
+          "targets_written",
+          "shops_skipped_no_data"
+        ],
+        "title": "RegionTargetFillResponse"
       },
       "RegionUpdateRequest": {
         "properties": {
@@ -29712,10 +30231,102 @@
               }
             ],
             "title": "Notes"
+          },
+          "weekly_report_opt_in": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Report Opt In"
           }
         },
         "type": "object",
         "title": "RegionUpdateRequest"
+      },
+      "RegionWeekAnnotationRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "region_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Region Id"
+          },
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "exclude_from_baselines": {
+            "type": "boolean",
+            "title": "Exclude From Baselines",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "region_id",
+          "week",
+          "event_type",
+          "note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RegionWeekAnnotationRead"
+      },
+      "RegionWeekAnnotationUpdateRequest": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "default": "other"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note"
+          },
+          "exclude_from_baselines": {
+            "type": "boolean",
+            "title": "Exclude From Baselines",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "week",
+          "note"
+        ],
+        "title": "RegionWeekAnnotationUpdateRequest"
       },
       "RepairJobCreate": {
         "properties": {
@@ -34716,6 +35327,11 @@
           "note": {
             "type": "string",
             "title": "Note"
+          },
+          "exclude_from_baselines": {
+            "type": "boolean",
+            "title": "Exclude From Baselines",
+            "default": false
           }
         },
         "type": "object",

@@ -10,5 +10,6 @@ describe('fmtVswtDelta', () => {
 
   it('shows absolute and relative movement for financial values', () => {
     expect(fmtVswtDelta(1947, 0.141, 'currency')).toBe('+$1,947 (+14.1%)')
+    expect(fmtVswtDelta(-4069, -0.127, 'currency')).toBe('-$4,069 (-12.7%)')
   })
 })

@@ -38,7 +38,8 @@ const config: UserConfigExport & { test?: { environment: string; include: string
   },
   server: {
     proxy: {
-      '/v1': 'http://127.0.0.1:8000',
+      // Override when the API is on another port (e.g. a second checkout's backend).
+      '/v1': process.env.VITE_DEV_API_TARGET?.trim() || 'http://127.0.0.1:8000',
     },
   },
 }

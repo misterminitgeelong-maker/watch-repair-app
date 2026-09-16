@@ -47,6 +47,8 @@ export default function MinitAccountsPage() {
   const [invitePlanCode, setInvitePlanCode] = useState<PlanCode | string>('')
   const [inviteResult, setInviteResult] = useState<ShopOwnerInvite | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [openTarget, setOpenTarget] = useState<ParentAccountSite | null>(null)
+  const [openReason, setOpenReason] = useState('')
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -92,7 +94,7 @@ export default function MinitAccountsPage() {
       <Button
         variant="ghost"
         className="text-xs px-3 py-1.5"
-        onClick={() => void enterShop(site.tenant_id)}
+        onClick={() => { setOpenReason(''); setOpenTarget(site) }}
         disabled={entering === site.tenant_id}
         title="Open a 30-minute support session inside this shop, as its owner"
       >
@@ -406,6 +408,37 @@ export default function MinitAccountsPage() {
                 disabled={provisionMut.isPending || linkMut.isPending}
               >
                 {provisionMut.isPending || linkMut.isPending ? 'Saving…' : 'Add shop'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {openTarget && (
+        <Modal title={`Open ${formatTenantLabel(openTarget.tenant_name, openTarget.shop_number)}`} onClose={() => setOpenTarget(null)}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              You'll work inside this shop as its owner for up to 30 minutes. The shop sees the visit in its inbox — say why.
+            </p>
+            <Input
+              label="Reason (shown to the shop)"
+              value={openReason}
+              onChange={e => setOpenReason(e.target.value)}
+              placeholder="e.g. Checking the booking screen config"
+              maxLength={300}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpenTarget(null)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  const target = openTarget
+                  setOpenTarget(null)
+                  void enterShop(target.tenant_id, '/minit/accounts', openReason.trim() || undefined)
+                }}
+                disabled={entering === openTarget.tenant_id}
+              >
+                Open shop
               </Button>
             </div>
           </div>

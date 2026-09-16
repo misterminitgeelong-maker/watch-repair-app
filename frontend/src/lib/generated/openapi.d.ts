@@ -4747,7 +4747,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Regions */
+        /**
+         * List Regions
+         * @description All regions for HQ; a regional manager sees only their own.
+         */
         get: operations["list_regions_v1_parent_accounts_me_regions_get"];
         put?: never;
         /** Create Region */
@@ -4777,6 +4780,108 @@ export interface paths {
         head?: never;
         /** Update Region */
         patch: operations["update_region_v1_parent_accounts_me_regions__region_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}/cockpit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Region Cockpit */
+        get: operations["get_region_cockpit_v1_parent_accounts_me_regions__region_id__cockpit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Region Annotations */
+        get: operations["list_region_annotations_v1_parent_accounts_me_regions__region_id__annotations_get"];
+        /**
+         * Put Region Annotation
+         * @description One note for the whole region's week. It shows on every shop in the
+         *     region, and with ``exclude_from_baselines`` it drops that week out of
+         *     every one of their rolling comparisons.
+         */
+        put: operations["put_region_annotation_v1_parent_accounts_me_regions__region_id__annotations_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}/annotations/{annotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Region Annotation */
+        delete: operations["delete_region_annotation_v1_parent_accounts_me_regions__region_id__annotations__annotation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}/targets/fill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fill Region Targets
+         * @description Set every shop in the region's targets from one rule.
+         *
+         *     ``last_year_plus_pct`` reads each shop's same-week-last-year figure and
+         *     uplifts it; ``region_median`` gives every shop the region's median for
+         *     the week; ``previous_week`` carries last week's actual forward. Shops with
+         *     no figure for the rule are skipped, never zeroed.
+         */
+        post: operations["fill_region_targets_v1_parent_accounts_me_regions__region_id__targets_fill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/regions/{region_id}/report/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Region Report Now
+         * @description Email the region's week to its manager right now, regardless of opt-in.
+         */
+        post: operations["send_region_report_now_v1_parent_accounts_me_regions__region_id__report_send_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/billing/limits": {
@@ -8203,6 +8308,8 @@ export interface components {
             owner_email: string;
             /** My Role */
             my_role?: string | null;
+            /** My Region Id */
+            my_region_id?: string | null;
             /**
              * Site Count
              * @default 0
@@ -8228,6 +8335,8 @@ export interface components {
             email?: string | null;
             /** Role */
             role: string;
+            /** Region Id */
+            region_id?: string | null;
         };
         /** ParentAccountUserRead */
         ParentAccountUserRead: {
@@ -8251,6 +8360,10 @@ export interface components {
             tenant_role: string;
             /** Role */
             role: string;
+            /** Region Id */
+            region_id?: string | null;
+            /** Region Name */
+            region_name?: string | null;
             /**
              * Source
              * @default explicit
@@ -8301,6 +8414,11 @@ export interface components {
             total_emails: number;
             /** Shops */
             shops?: components["schemas"]["ShopEmailLeadBucket"][];
+        };
+        /** ParentEnterShopRequest */
+        ParentEnterShopRequest: {
+            /** Reason */
+            reason?: string | null;
         };
         /** ParentEnterShopResponse */
         ParentEnterShopResponse: {
@@ -9359,6 +9477,13 @@ export interface components {
             /** Notes */
             notes?: string | null;
             /**
+             * Weekly Report Opt In
+             * @default false
+             */
+            weekly_report_opt_in: boolean;
+            /** Last Weekly Report Sent At */
+            last_weekly_report_sent_at?: string | null;
+            /**
              * Site Count
              * @default 0
              */
@@ -9368,6 +9493,33 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** RegionTargetFillRequest */
+        RegionTargetFillRequest: {
+            /** Strategy */
+            strategy: string;
+            /**
+             * Pct
+             * @default 5
+             */
+            pct: number;
+            /** Metric Keys */
+            metric_keys?: string[];
+            /** Week */
+            week?: number | null;
+        };
+        /** RegionTargetFillResponse */
+        RegionTargetFillResponse: {
+            /** Strategy */
+            strategy: string;
+            /** Week */
+            week: number;
+            /** Shops Updated */
+            shops_updated: number;
+            /** Targets Written */
+            targets_written: number;
+            /** Shops Skipped No Data */
+            shops_skipped_no_data: number;
         };
         /** RegionUpdateRequest */
         RegionUpdateRequest: {
@@ -9383,6 +9535,59 @@ export interface components {
             escalation_email?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Weekly Report Opt In */
+            weekly_report_opt_in?: boolean | null;
+        };
+        /** RegionWeekAnnotationRead */
+        RegionWeekAnnotationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Region Id
+             * Format: uuid
+             */
+            region_id: string;
+            /** Week */
+            week: number;
+            /** Event Type */
+            event_type: string;
+            /** Note */
+            note: string;
+            /**
+             * Exclude From Baselines
+             * @default false
+             */
+            exclude_from_baselines: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** RegionWeekAnnotationUpdateRequest */
+        RegionWeekAnnotationUpdateRequest: {
+            /** Week */
+            week: number;
+            /**
+             * Event Type
+             * @default other
+             */
+            event_type: string;
+            /** Note */
+            note: string;
+            /**
+             * Exclude From Baselines
+             * @default false
+             */
+            exclude_from_baselines: boolean;
         };
         /** RepairJobCreate */
         RepairJobCreate: {
@@ -11067,6 +11272,11 @@ export interface components {
             event_type: string;
             /** Note */
             note: string;
+            /**
+             * Exclude From Baselines
+             * @default false
+             */
+            exclude_from_baselines: boolean;
         };
         /** VswtCommitFile */
         VswtCommitFile: {
@@ -20257,7 +20467,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ParentEnterShopRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -20469,6 +20683,204 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_region_cockpit_v1_parent_accounts_me_regions__region_id__cockpit_get: {
+        parameters: {
+            query?: {
+                week?: number | null;
+                comparison?: "previous" | "4w" | "13w" | "52w" | "last_year";
+            };
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_region_annotations_v1_parent_accounts_me_regions__region_id__annotations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionWeekAnnotationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_region_annotation_v1_parent_accounts_me_regions__region_id__annotations_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionWeekAnnotationUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionWeekAnnotationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_region_annotation_v1_parent_accounts_me_regions__region_id__annotations__annotation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+                annotation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fill_region_targets_v1_parent_accounts_me_regions__region_id__targets_fill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionTargetFillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionTargetFillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_region_report_now_v1_parent_accounts_me_regions__region_id__report_send_now_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -9,7 +9,7 @@ export const VSWT_KPI_GROUPS: VswtKpiGroup[] = [
 /** Formats one VSWT KPI value per its type — mirrors the reference app's fmtVal(). */
 export function fmtVswtVal(value: number | null | undefined, type: VswtKpiType): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
-  if (type === 'currency') return '$' + Math.round(value).toLocaleString()
+  if (type === 'currency') return (value < 0 ? '-$' : '$') + Math.abs(Math.round(value)).toLocaleString()
   if (type === 'percent') return (value >= 0 ? '+' : '') + (value * 100).toFixed(1) + '%'
   if (type === 'ratio') return value.toFixed(1)
   return Math.round(value).toLocaleString()

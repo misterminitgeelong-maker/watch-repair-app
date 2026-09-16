@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, ChevronRight, Mail, Save, Target } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, ChevronRight, Mail, MapPin, Save, Target, TrendingDown, TrendingUp } from 'lucide-react'
 import {
   deleteVswtAnnotation,
   getVswtCockpit,
@@ -38,10 +38,35 @@ function deltaTone(value: number | null) {
   return value > 0 ? '#1A6A3A' : '#A33838'
 }
 
+/** How unusual this week is for *this shop*, against its own prior 13 weeks — so a steady shop's
+ * small dip can flag while a volatile shop's bigger swing does not. */
+export function AnomalyBadge({ anomaly, watch, z }: { anomaly: 'high' | 'low' | null; watch: 'high' | 'low' | null; z: number | null }) {
+  const level = anomaly ?? watch
+  if (!level || z == null) return null
+  const low = level === 'low'
+  const strong = anomaly != null
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+      style={{
+        backgroundColor: low ? (strong ? 'rgba(163,56,56,0.14)' : 'rgba(154,90,0,0.14)') : 'rgba(26,106,58,0.14)',
+        color: low ? (strong ? '#A33838' : '#9A5A00') : '#1A6A3A',
+      }}
+      title={`${z > 0 ? '+' : ''}${z.toFixed(1)} standard deviations from this shop's own 13-week norm`}
+    >
+      {low ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
+      {z > 0 ? '+' : ''}{z.toFixed(1)}σ
+    </span>
+  )
+}
+
 function MetricCard({ row, comparisonLabel }: { row: VswtCockpitRow; comparisonLabel: string }) {
   return (
     <Card className="p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{row.label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{row.label}</p>
+        <AnomalyBadge anomaly={row.anomaly} watch={row.watch} z={row.zscore} />
+      </div>
       <p className="text-2xl font-bold mt-1" style={{ color: 'var(--ms-text)' }}>{fmtVswtVal(row.current, row.type)}</p>
       <div className="flex flex-wrap items-center gap-x-2 mt-1 text-xs">
         <span style={{ color: 'var(--ms-text-muted)' }}>{comparisonLabel}: {fmtVswtVal(row.comparison, row.type)}</span>
@@ -86,6 +111,7 @@ export function VswtComparisonCockpit({
   const [targetDraft, setTargetDraft] = useState<Record<string, string>>({})
   const [eventType, setEventType] = useState('other')
   const [note, setNote] = useState('')
+  const [excludeWeek, setExcludeWeek] = useState(false)
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['vswt-cockpit', week ?? null, comparison, viewingShop?.shopNumber ?? null],
@@ -114,8 +140,8 @@ export function VswtComparisonCockpit({
     onSuccess: invalidate,
   })
   const annotationMutation = useMutation({
-    mutationFn: () => putVswtAnnotation({ week: data?.available ? data.week : 0, event_type: eventType, note }),
-    onSuccess: () => { setNote(''); invalidate() },
+    mutationFn: () => putVswtAnnotation({ week: data?.available ? data.week : 0, event_type: eventType, note, exclude_from_baselines: excludeWeek }),
+    onSuccess: () => { setNote(''); setExcludeWeek(false); invalidate() },
   })
   const deleteAnnotationMutation = useMutation({ mutationFn: deleteVswtAnnotation, onSuccess: invalidate })
   const emailMutation = useMutation({
@@ -134,6 +160,7 @@ export function VswtComparisonCockpit({
   const tableRows = data.rows.filter(row => row.group === group)
   const selectedAnnotation = data.annotations.find(annotation => annotation.week === data.week)
   const annotationByWeek = new Map(data.annotations.map(annotation => [annotation.week, annotation]))
+  const regionNote = data.region_annotations.find(annotation => annotation.week === data.week)
 
   return (
     <div className="space-y-5">
@@ -162,6 +189,24 @@ export function VswtComparisonCockpit({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {headlineRows.map(row => <MetricCard key={row.key} row={row} comparisonLabel={comparisonLabel} />)}
       </div>
+
+      <Card className="p-4" style={{ borderLeft: '4px solid var(--ms-accent)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>This week, in one paragraph</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--ms-text)' }}>{data.narrative}</p>
+        {(regionNote || data.excluded_weeks.length > 0) && (
+          <div className="mt-3 pt-3 space-y-1.5 text-xs" style={{ borderTop: '1px dashed var(--ms-border)', color: 'var(--ms-text-mid)' }}>
+            {regionNote && (
+              <p className="inline-flex items-start gap-1.5">
+                <MapPin size={13} style={{ color: 'var(--ms-accent)', marginTop: 1 }} />
+                <span><strong style={{ color: 'var(--ms-text)' }}>{regionNote.region_name ?? data.region?.name ?? 'Region'} — {regionNote.event_type.replaceAll('_', ' ')}:</strong> {regionNote.note}{regionNote.exclude_from_baselines ? ' (this week is excluded from baselines)' : ''}</span>
+              </p>
+            )}
+            {data.excluded_weeks.length > 0 && !regionNote?.exclude_from_baselines && (
+              <p style={{ color: 'var(--ms-text-muted)' }}>Baselines exclude week{data.excluded_weeks.length === 1 ? '' : 's'} {data.excluded_weeks.join(', ')}.</p>
+            )}
+          </div>
+        )}
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="p-4">
@@ -211,7 +256,7 @@ export function VswtComparisonCockpit({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead><tr style={{ background: 'var(--ms-bg)' }}>
-              {['Metric', 'Current', comparisonLabel, 'Change', '4 wk', '13 wk', '52 wk', 'Region', 'Peer', 'Rank', ''].map(label => <th key={label} style={thStyle}>{label}</th>)}
+              {['Metric', 'Current', comparisonLabel, 'Change', '4 wk', '13 wk', '52 wk', 'Region', 'Peer', 'Rank', 'σ', ''].map(label => <th key={label} style={thStyle}>{label}</th>)}
             </tr></thead>
             <tbody>{tableRows.map(row => <tr key={row.key}>
               <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 600, color: 'var(--ms-text)' }}>{row.label}</td>
@@ -224,6 +269,7 @@ export function VswtComparisonCockpit({
               <td style={tdStyle}>{fmtVswtVal(row.region_avg, row.type)}</td>
               <td style={tdStyle}>{fmtVswtVal(row.peer_avg, row.type)}</td>
               <td style={tdStyle}>{row.rank != null ? `#${row.rank}` : '—'}</td>
+              <td style={tdStyle}><AnomalyBadge anomaly={row.anomaly} watch={row.watch} z={row.zscore} /></td>
               <td style={tdStyle}><button type="button" className="inline-flex items-center font-semibold" style={{ color: 'var(--ms-accent)' }} onClick={() => onOpenDetails(row.group)} aria-label={`Open ${row.group} detail`}>Details <ChevronRight size={13} /></button></td>
             </tr>)}</tbody>
           </table>
@@ -247,10 +293,13 @@ export function VswtComparisonCockpit({
           <Card className="p-4">
             <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Week {data.week} context</h3>
             <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>Explain promotions, staffing, holidays, stock issues, or unusual jobs.</p>
-            {selectedAnnotation && <div className="rounded-md p-2.5 mb-3 text-xs" style={{ background: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}><strong style={{ color: 'var(--ms-text)' }}>{selectedAnnotation.event_type.replaceAll('_', ' ')}</strong><p className="mt-1">{selectedAnnotation.note}</p>{canManage && <button className="mt-2 font-semibold" style={{ color: '#A33838' }} onClick={() => deleteAnnotationMutation.mutate(selectedAnnotation.id)}>Delete note</button>}</div>}
+            {selectedAnnotation && <div className="rounded-md p-2.5 mb-3 text-xs" style={{ background: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}><strong style={{ color: 'var(--ms-text)' }}>{selectedAnnotation.event_type.replaceAll('_', ' ')}</strong>{selectedAnnotation.exclude_from_baselines && <span className="ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(154,90,0,0.14)', color: '#9A5A00' }}>excluded from baselines</span>}<p className="mt-1">{selectedAnnotation.note}</p>{canManage && <button className="mt-2 font-semibold" style={{ color: '#A33838' }} onClick={() => deleteAnnotationMutation.mutate(selectedAnnotation.id)}>Delete note</button>}</div>}
             {canManage && <>
               <select value={eventType} onChange={event => setEventType(event.target.value)} className="w-full rounded-md px-2 py-1.5 text-xs mb-2" style={controlStyle}>{EVENT_TYPES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
               <textarea value={note} onChange={event => setNote(event.target.value)} maxLength={500} rows={3} placeholder={selectedAnnotation ? 'Replace this week note…' : 'Add context for this week…'} className="w-full rounded-md px-2 py-2 text-xs" style={controlStyle} />
+              <label className="flex items-center gap-2 mt-2 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                <input type="checkbox" checked={excludeWeek} onChange={event => setExcludeWeek(event.target.checked)} /> Not a normal week — leave it out of my baselines
+              </label>
               <Button className="mt-2 w-full" disabled={!note.trim() || annotationMutation.isPending} onClick={() => annotationMutation.mutate()}>Save week note</Button>
             </>}
             {annotationByWeek.size > 0 && <p className="text-[10px] mt-2" style={{ color: 'var(--ms-text-muted)' }}>{annotationByWeek.size} annotated week{annotationByWeek.size === 1 ? '' : 's'} on file.</p>}

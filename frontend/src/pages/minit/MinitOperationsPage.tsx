@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
+import { useParentAccount } from '@/hooks/useParentAccount'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -168,12 +169,17 @@ function DashboardSkeleton() {
 }
 
 export default function MinitOperationsPage() {
+  const { data: summary } = useParentAccount()
+  // A regional manager's home is their region, not the network dashboard (which refuses them).
+  const myRegionId = summary?.my_region_id ?? null
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ['minit-operations-overview'],
     queryFn: () => getParentOperationsOverview().then(r => r.data),
     staleTime: 120_000,
     refetchInterval: 60_000,
+    enabled: !myRegionId,
   })
+  if (myRegionId) return <Navigate to={`/minit/regions/${myRegionId}`} replace />
 
   if (isError || (!isLoading && !data)) {
     return (
@@ -329,7 +335,9 @@ export default function MinitOperationsPage() {
                   {(data.region_stats ?? []).map(row => (
                     <tr key={row.region_id ?? row.region} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                       <td className="px-4 py-2.5 font-medium" style={{ color: 'var(--ms-text)' }}>
-                        {row.region}
+                        {row.region_id ? (
+                          <Link to={`/minit/regions/${row.region_id}`} style={{ color: 'var(--ms-accent)' }}>{row.region}</Link>
+                        ) : row.region}
                         {row.manager_name && (
                           <span className="block text-xs font-normal" style={{ color: 'var(--ms-text-muted)' }}>
                             {row.manager_name}

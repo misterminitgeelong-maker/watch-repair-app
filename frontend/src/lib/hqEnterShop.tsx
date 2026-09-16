@@ -36,7 +36,7 @@ export function useHqEnterShop() {
   const [entering, setEntering] = useState('')
   const [error, setError] = useState('')
 
-  async function enterShop(tenantId: string, returnPath = '/minit/accounts') {
+  async function enterShop(tenantId: string, returnPath = '/minit/accounts', reason?: string) {
     setEntering(tenantId)
     setError('')
     try {
@@ -46,7 +46,7 @@ export function useHqEnterShop() {
       if (prevRefresh) sessionStorage.setItem(HQ_PREV_REFRESH_KEY, prevRefresh)
       sessionStorage.setItem(HQ_RETURN_PATH_KEY, returnPath)
 
-      const { data } = await enterLinkedShop(tenantId)
+      const { data } = await enterLinkedShop(tenantId, reason)
       const windowMs = Math.max(1, data.expires_in_seconds) * 1000
       sessionStorage.setItem(HQ_SESSION_EXPIRES_KEY, String(Date.now() + windowMs))
       sessionStorage.setItem(HQ_SESSION_SHOP_KEY, data.tenant_name)

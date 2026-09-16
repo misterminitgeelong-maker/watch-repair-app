@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createRegion,
@@ -152,11 +153,16 @@ export function RegionsCard({ canEdit }: { canEdit: boolean }) {
                 {region.escalation_email ? ` · escalations → ${region.escalation_email}` : ''}
               </p>
             </div>
-            {canEdit && (
-              <Button variant="ghost" className="text-xs px-3 py-1.5" onClick={() => openEdit(region)}>
-                Edit
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <Link to={`/minit/regions/${region.id}`}>
+                <Button variant="ghost" className="text-xs px-3 py-1.5">Cockpit</Button>
+              </Link>
+              {canEdit && (
+                <Button variant="ghost" className="text-xs px-3 py-1.5" onClick={() => openEdit(region)}>
+                  Edit
+                </Button>
+              )}
+            </div>
           </div>
         ))
       )}
@@ -226,16 +232,18 @@ export function HqStaffCard({ canEdit, currentUserId }: { canEdit: boolean; curr
   const [granting, setGranting] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<ParentRole>('hq_viewer')
+  const [regionId, setRegionId] = useState('')
   const [error, setError] = useState('')
+  const { data: regions = [] } = useRegions()
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: PARENT_USERS_QUERY_KEY })
     qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
   }
   const grantMut = useMutation({
-    mutationFn: (payload: { user_id?: string; email?: string; role: ParentRole }) =>
+    mutationFn: (payload: { user_id?: string; email?: string; role: ParentRole; region_id?: string | null }) =>
       grantParentAccountRole(payload).then(r => r.data),
-    onSuccess: () => { setGranting(false); setEmail(''); setError(''); invalidate() },
+    onSuccess: () => { setGranting(false); setEmail(''); setRegionId(''); setError(''); invalidate() },
     onError: err => setError(getApiErrorMessage(err, 'Could not change that role.')),
   })
   const revokeMut = useMutation({
@@ -282,19 +290,27 @@ export function HqStaffCard({ canEdit, currentUserId }: { canEdit: boolean; curr
                 <span className="ml-2 text-xs font-normal" style={{ color: 'var(--ms-text-muted)' }}>{u.email}</span>
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                {ROLE_LABEL[u.role]} · {SOURCE_LABEL[u.source]} · {u.tenant_slug} ({u.tenant_role})
+                {ROLE_LABEL[u.role]}{u.region_name ? ` · ${u.region_name} only` : ''} · {SOURCE_LABEL[u.source]} · {u.tenant_slug} ({u.tenant_role})
               </p>
             </div>
             {canEdit && u.user_id !== currentUserId && (
               <div className="flex items-center gap-2">
                 <Select
-                  value={u.role}
-                  onChange={e => grantMut.mutate({ user_id: u.user_id, role: e.target.value as ParentRole })}
+                  value={u.region_id ? `region:${u.region_id}` : u.role}
+                  onChange={e => {
+                    const value = e.target.value
+                    if (value.startsWith('region:')) {
+                      grantMut.mutate({ user_id: u.user_id, role: 'hq_viewer', region_id: value.slice('region:'.length) })
+                    } else {
+                      grantMut.mutate({ user_id: u.user_id, role: value as ParentRole, region_id: null })
+                    }
+                  }}
                   aria-label={`Role for ${u.email}`}
                   disabled={grantMut.isPending}
                 >
                   <option value="hq_admin">HQ admin</option>
                   <option value="hq_viewer">HQ viewer</option>
+                  {regions.map(r => <option key={r.id} value={`region:${r.id}`}>Regional manager — {r.name}</option>)}
                 </Select>
                 {u.source === 'explicit' && (
                   <Button
@@ -324,10 +340,16 @@ export function HqStaffCard({ canEdit, currentUserId }: { canEdit: boolean; curr
               <option value="hq_viewer">HQ viewer — read dashboards and reports</option>
               <option value="hq_admin">HQ admin — manage shops, staff, regions; open shops</option>
             </Select>
+            {role === 'hq_viewer' && regions.length > 0 && (
+              <Select label="Limit to one region (regional manager)" value={regionId} onChange={e => setRegionId(e.target.value)}>
+                <option value="">Whole network</option>
+                {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </Select>
+            )}
             {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setGranting(false)}>Cancel</Button>
-              <Button onClick={() => grantMut.mutate({ email: email.trim(), role })} disabled={grantMut.isPending || !email.trim()}>
+              <Button onClick={() => grantMut.mutate({ email: email.trim(), role, region_id: role === 'hq_viewer' && regionId ? regionId : null })} disabled={grantMut.isPending || !email.trim()}>
                 {grantMut.isPending ? 'Saving…' : 'Grant'}
               </Button>
             </div>

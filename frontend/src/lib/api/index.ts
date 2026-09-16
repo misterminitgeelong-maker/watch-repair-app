@@ -149,6 +149,9 @@ export interface ParentAccountUser {
   full_name: string
   tenant_role: string
   role: ParentRole
+  /** Set for a regional manager: access is limited to this region. */
+  region_id?: string | null
+  region_name?: string | null
   /** explicit (granted) | hq_site (implied by being in the HQ tenant) | owner_email */
   source: 'explicit' | 'hq_site' | 'owner_email'
   is_active: boolean
@@ -174,6 +177,8 @@ export interface Region {
   manager_phone?: string | null
   escalation_email?: string | null
   notes?: string | null
+  weekly_report_opt_in: boolean
+  last_weekly_report_sent_at?: string | null
   site_count: number
   created_at: string
 }
@@ -186,7 +191,123 @@ export type RegionInput = {
   manager_phone?: string | null
   escalation_email?: string | null
   notes?: string | null
+  weekly_report_opt_in?: boolean
 }
+
+export interface RegionWeekAnnotation {
+  id: string
+  region_id: string
+  region_name?: string | null
+  week: number
+  event_type: string
+  note: string
+  exclude_from_baselines: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface RegionShopRow {
+  shop_number: string
+  tenant_id: string | null
+  shop_name: string
+  area_name: string | null
+  reported: boolean
+  sales: number | null
+  previous_sales: number | null
+  delta: number | null
+  delta_pct: number | null
+  customers: number | null
+  jobs: number | null
+  avg_sale: number | null
+  rank_in_region: number | null
+  rank_in_network: number | null
+  zscore: number | null
+  anomaly: 'high' | 'low' | null
+  watch: 'high' | 'low' | null
+  baseline_weeks: number
+  target: number | null
+  target_variance: number | null
+  target_met: boolean | null
+}
+
+export interface RegionCockpitRow extends VswtKpiDef {
+  current: number | null
+  previous: number | null
+  rolling_4: number | null
+  rolling_13: number | null
+  rolling_52: number | null
+  rolling_counts: Record<string, number>
+  last_year: number | null
+  comparison: number | null
+  delta: number | null
+  delta_pct: number | null
+  network_avg: number | null
+  rank: number | null
+  previous_rank: number | null
+  rank_change: number | null
+  zscore: number | null
+  anomaly: 'high' | 'low' | null
+  watch: 'high' | 'low' | null
+  baseline_weeks: number
+}
+
+export interface RegionCockpit {
+  available: true
+  region: {
+    id: string
+    code: string
+    name: string
+    manager_name: string | null
+    manager_email: string | null
+    weekly_report_opt_in: boolean
+    last_weekly_report_sent_at: string | null
+  }
+  week: number
+  previous_week: number | null
+  weeks: number[]
+  comparison: VswtComparison
+  shop_count: number
+  shops_reported: number
+  region_count: number
+  rows: RegionCockpitRow[]
+  headline: RegionCockpitRow[]
+  drivers: { category_sales: { key: string; label: string; current: number | null; previous: number | null; delta: number | null; share_of_sales: number | null }[] }
+  shops: RegionShopRow[]
+  movers: { up: RegionShopRow[]; down: RegionShopRow[] }
+  anomalies: RegionShopRow[]
+  alerts: VswtAlert[]
+  narrative: string
+  target_attainment: { shops_with_target: number; shops_met: number; total_target: number | null; total_current: number | null; attainment_pct: number | null }
+  leaderboard: { region_id: string; region_name: string; sales: number | null; customers: number | null; shops: number; rank: number | null; is_me: boolean; delta_pct: number | null }[]
+  annotations: RegionWeekAnnotation[]
+  excluded_weeks: number[]
+}
+export type RegionCockpitUnavailable = { available: false; reason: 'no_data' | 'no_shops' }
+
+export const getRegionCockpit = (regionId: string, params: { week?: number; comparison?: VswtComparison } = {}) =>
+  api.get<RegionCockpit | RegionCockpitUnavailable>(`/parent-accounts/me/regions/${regionId}/cockpit`, {
+    params: {
+      ...(params.week ? { week: params.week } : {}),
+      ...(params.comparison ? { comparison: params.comparison } : {}),
+    },
+  })
+export const listRegionAnnotations = (regionId: string) =>
+  api.get<RegionWeekAnnotation[]>(`/parent-accounts/me/regions/${regionId}/annotations`)
+export const putRegionAnnotation = (
+  regionId: string,
+  payload: { week: number; event_type: string; note: string; exclude_from_baselines: boolean },
+) => api.put<RegionWeekAnnotation>(`/parent-accounts/me/regions/${regionId}/annotations`, payload)
+export const deleteRegionAnnotation = (regionId: string, annotationId: string) =>
+  api.delete<{ deleted: string }>(`/parent-accounts/me/regions/${regionId}/annotations/${annotationId}`)
+export type RegionTargetStrategy = 'last_year_plus_pct' | 'region_median' | 'previous_week'
+export const fillRegionTargets = (
+  regionId: string,
+  payload: { strategy: RegionTargetStrategy; pct?: number; metric_keys?: string[]; week?: number },
+) => api.post<{ strategy: string; week: number; shops_updated: number; targets_written: number; shops_skipped_no_data: number }>(
+  `/parent-accounts/me/regions/${regionId}/targets/fill`, payload,
+)
+export const sendRegionReportNow = (regionId: string) =>
+  api.post<{ sent: boolean; to: string }>(`/parent-accounts/me/regions/${regionId}/report/send-now`)
 
 export function formatTenantLabel(name: string, shopNumber?: string | null): string {
   const base = name.trim() || 'Unknown'
@@ -200,6 +321,8 @@ export interface ParentAccountSummary {
   owner_email: string
   /** The caller's own network role. */
   my_role?: ParentRole | null
+  /** Set when the caller is a regional manager: the one region they can see. */
+  my_region_id?: string | null
   site_count: number
   sites: ParentAccountSite[]
   mobile_lead_ingest_public_id?: string | null
@@ -261,8 +384,8 @@ export const createTenantFromParentAccount = (payload: {
 }) => api.post<ParentAccountSummary>('/parent-accounts/me/create-tenant', payload)
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
-export const enterLinkedShop = (tenantId: string) =>
-  api.post<ParentEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`)
+export const enterLinkedShop = (tenantId: string, reason?: string) =>
+  api.post<ParentEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`, reason ? { reason } : {})
 export const updateLinkedSite = (
   tenantId: string,
   payload: { network_role?: NetworkRole; region_id?: string | null; clear_region?: boolean },
@@ -270,7 +393,7 @@ export const updateLinkedSite = (
 
 export const listParentAccountUsers = () =>
   api.get<ParentAccountUser[]>('/parent-accounts/me/users')
-export const grantParentAccountRole = (payload: { user_id?: string; email?: string; role: ParentRole }) =>
+export const grantParentAccountRole = (payload: { user_id?: string; email?: string; role: ParentRole; region_id?: string | null }) =>
   api.put<ParentAccountUser[]>('/parent-accounts/me/users', payload)
 export const revokeParentAccountRole = (userId: string) =>
   api.delete<ParentAccountUser[]>(`/parent-accounts/me/users/${userId}`)
@@ -3466,15 +3589,21 @@ export interface VswtCockpitRow extends VswtKpiDef {
   rank_change: number | null
   target: number | null
   target_variance: number | null
+  zscore: number | null
+  anomaly: 'high' | 'low' | null
+  watch: 'high' | 'low' | null
+  baseline_weeks: number
 }
 export interface VswtAnnotation {
   id: string
   week: number
   event_type: string
   note: string
+  exclude_from_baselines: boolean
   created_at: string
   updated_at: string
 }
+export interface VswtAnomaly { key: string; label: string; direction: 'high' | 'low'; z: number; weeks: number; current: number | null }
 export interface VswtAlert { severity: 'positive' | 'info' | 'warning' | 'critical'; title: string; message: string }
 export interface VswtCockpit {
   available: true
@@ -3495,7 +3624,12 @@ export interface VswtCockpit {
     sales_bridge: { total_change: number | null; customer_volume_effect: number | null; average_sale_effect: number | null }
   }
   alerts: VswtAlert[]
+  anomalies: VswtAnomaly[]
+  narrative: string
   annotations: VswtAnnotation[]
+  region: { id: string; name: string; manager_name: string | null } | null
+  region_annotations: RegionWeekAnnotation[]
+  excluded_weeks: number[]
   targets: Record<string, number>
   email_weekly_report: boolean
   last_weekly_report_sent_at: string | null
@@ -3516,7 +3650,7 @@ export const putVswtTargets = (targets: Record<string, number | null>) =>
 
 export interface VswtAnnotations { available: true; shop_number: string; annotations: VswtAnnotation[] }
 export const getVswtAnnotations = () => api.get<VswtAnnotations | VswtUnavailable>('/reports/vswt/annotations')
-export const putVswtAnnotation = (payload: { week: number; event_type: string; note: string }) =>
+export const putVswtAnnotation = (payload: { week: number; event_type: string; note: string; exclude_from_baselines?: boolean }) =>
   api.put<VswtAnnotation>('/reports/vswt/annotations', payload)
 export const deleteVswtAnnotation = (id: string) => api.delete<{ deleted: string }>(`/reports/vswt/annotations/${id}`)
 
