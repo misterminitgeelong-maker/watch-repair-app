@@ -15,6 +15,7 @@ export function VswtShopDirectory({ onSelectShop }: { onSelectShop: (shopNumber:
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [group, setGroup] = useState<VswtKpiGroup>('Headline')
   const [peerOnly, setPeerOnly] = useState(false)
+  const [week, setWeek] = useState<number | undefined>(undefined)
   const [sort, setSort] = useState<SortState>({ key: 'shop_name', dir: 'asc' })
 
   // Wait for a short pause in typing before refetching, so each keystroke doesn't
@@ -25,8 +26,8 @@ export function VswtShopDirectory({ onSelectShop }: { onSelectShop: (shopNumber:
   }, [search])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-directory', debouncedSearch, group, peerOnly],
-    queryFn: () => getVswtDirectory({ search: debouncedSearch || undefined, group, peerOnly }).then(r => r.data),
+    queryKey: ['vswt-directory', debouncedSearch, group, peerOnly, week],
+    queryFn: () => getVswtDirectory({ search: debouncedSearch || undefined, group, peerOnly, week }).then(r => r.data),
     // Keep showing the previous rows while a new search/filter is in flight instead of
     // blanking the table out to a spinner between every debounced fetch.
     placeholderData: keepPreviousData,
@@ -79,6 +80,9 @@ export function VswtShopDirectory({ onSelectShop }: { onSelectShop: (shopNumber:
           />
         </div>
         <PillToggle value={group} onChange={setGroup} options={GROUPS.map(g => ({ key: g, label: g }))} />
+        {data?.available && <select value={week ?? data.week} onChange={e => setWeek(Number(e.target.value))} className="rounded-md px-2 py-1 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} aria-label="Report week">
+          {data.weeks.map(w => <option key={w} value={w}>Week {w}</option>)}
+        </select>}
         <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
           <input type="checkbox" checked={peerOnly} onChange={e => setPeerOnly(e.target.checked)} />
           Franchise + Comparable only

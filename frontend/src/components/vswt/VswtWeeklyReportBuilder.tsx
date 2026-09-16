@@ -245,7 +245,7 @@ export function VswtWeeklyReportBuilder() {
             checked={compareWithinSelection}
             onChange={e => setCompareWithinSelection(e.target.checked)}
           />
-          Compare ranks within these shops only, not the whole region
+          Rank selected shops against each other
         </label>
         <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
           {compareWithinSelection

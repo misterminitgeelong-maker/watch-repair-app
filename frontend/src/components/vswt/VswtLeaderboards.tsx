@@ -14,9 +14,10 @@ const MODES: { key: VswtLeaderboardMode; label: string }[] = [
 export function VswtLeaderboards() {
   const [group, setGroup] = useState<string>('All')
   const [mode, setMode] = useState<VswtLeaderboardMode>('latest')
+  const [week, setWeek] = useState<number | undefined>(undefined)
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-leaderboards', group, mode],
-    queryFn: () => getVswtLeaderboards(undefined, group === 'All' ? undefined : group, mode).then(r => r.data),
+    queryKey: ['vswt-leaderboards', group, mode, week],
+    queryFn: () => getVswtLeaderboards(mode === 'latest' ? week : undefined, group === 'All' ? undefined : group, mode).then(r => r.data),
   })
 
   if (isLoading) return <Spinner />
@@ -34,6 +35,9 @@ export function VswtLeaderboards() {
         <div className="flex items-center gap-2 flex-wrap">
           <PillToggle value={mode} onChange={setMode} options={MODES} />
           <PillToggle value={group} onChange={setGroup} options={GROUPS.map(g => ({ key: g, label: g }))} />
+          {mode === 'latest' && <select value={week ?? data.week} onChange={e => setWeek(Number(e.target.value))} className="rounded-md px-2 py-1 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} aria-label="Leaderboard week">
+            {data.weeks.map(w => <option key={w} value={w}>Week {w}</option>)}
+          </select>}
         </div>
       </div>
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>

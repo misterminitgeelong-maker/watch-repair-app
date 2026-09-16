@@ -19,6 +19,7 @@ from — keep field names in sync with that module rather than re-deriving them 
 from __future__ import annotations
 
 import io
+import csv
 import statistics
 from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
@@ -328,6 +329,41 @@ def get_vswt_weeks(
     return {"weeks": out}
 
 
+@router.get("/export")
+def export_vswt_csv(
+    week: Optional[int] = Query(None, description="Export one week; omit to export every uploaded week."),
+    shop_number: Optional[str] = Query(None, description="Limit export to one shop."),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Export the regional KPI history for analysis outside the app."""
+    if _shop_number_for(auth, session) is None:
+        raise HTTPException(status_code=403, detail="A linked Minit shop is required for regional exports.")
+    weeks = _all_weeks(session)
+    if week is not None:
+        weeks = [w for w in weeks if w == week]
+    if not weeks:
+        raise HTTPException(status_code=404, detail="No regional data is available for export.")
+
+    output = io.StringIO()
+    fieldnames = ["week", "shop_number", "shop_name", "area_name", "store_format", "comp_status"] + [k.key for k in KPI_DEFS]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for current_week in weeks:
+        for row in _week_rows(session, current_week):
+            if shop_number and row.shop_number != shop_number:
+                continue
+            record = {"week": current_week, "shop_number": row.shop_number, "shop_name": row.shop_name,
+                      "area_name": row.area_name, "store_format": row.store_format, "comp_status": row.comp_status}
+            record.update({k.key: getattr(row, k.key) for k in KPI_DEFS})
+            writer.writerow(record)
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=regional-report.csv"},
+    )
+
+
 @router.delete("/weeks/{week_seq}")
 def delete_vswt_week(
     week_seq: int,
@@ -362,6 +398,7 @@ def get_vswt_summary(
         return {"available": False, "reason": "shop_not_found", "latest_week": latest}
 
     prev_row = _find_shop(_week_rows(session, prev), shop_number) if prev is not None else None
+    prev_rows = _week_rows(session, prev) if prev is not None else []
     peers = _peer_rows(latest_rows)
     area_rows = [r for r in latest_rows if my_row.area_name and r.area_name == my_row.area_name]
 
@@ -379,6 +416,7 @@ def get_vswt_summary(
             "value": my_row.sales_ty,
             "prev_value": prev_row.sales_ty if prev_row else None,
             "region_rank": _rank_of(latest_rows, "sales_ty", my_row.sales_ty),
+            "prev_region_rank": _rank_of(prev_rows, "sales_ty", prev_row.sales_ty) if prev_row else None,
             "peer_rank": _rank_of(peers, "sales_ty", my_row.sales_ty),
             "area_rank": _rank_of(area_rows, "sales_ty", my_row.sales_ty) if area_rows else None,
         },
@@ -386,11 +424,13 @@ def get_vswt_summary(
             "value": my_row.customer_ty,
             "prev_value": prev_row.customer_ty if prev_row else None,
             "region_rank": _rank_of(latest_rows, "customer_ty", my_row.customer_ty),
+            "prev_region_rank": _rank_of(prev_rows, "customer_ty", prev_row.customer_ty) if prev_row else None,
         },
         "jobs": {
             "value": my_row.jobs_ty,
             "prev_value": prev_row.jobs_ty if prev_row else None,
             "region_rank": _rank_of(latest_rows, "jobs_ty", my_row.jobs_ty),
+            "prev_region_rank": _rank_of(prev_rows, "jobs_ty", prev_row.jobs_ty) if prev_row else None,
         },
     }
 
@@ -848,6 +888,8 @@ def get_vswt_trends(
     weeks = all_weeks[-weeks_back:]
 
     sales_series = []
+    customers_series = []
+    jobs_series = []
     rank_series = []
     found_any = False
     target_name = None
@@ -866,6 +908,22 @@ def get_vswt_trends(
                 "shop": target_row.sales_ty if target_row else None,
                 "region_avg": _average([r.sales_ty for r in week_rows]),
                 "peer_avg": _average([r.sales_ty for r in peers]),
+            }
+        )
+        customers_series.append(
+            {
+                "week": w,
+                "shop": target_row.customer_ty if target_row else None,
+                "region_avg": _average([r.customer_ty for r in week_rows]),
+                "peer_avg": _average([r.customer_ty for r in peers]),
+            }
+        )
+        jobs_series.append(
+            {
+                "week": w,
+                "shop": target_row.jobs_ty if target_row else None,
+                "region_avg": _average([r.jobs_ty for r in week_rows]),
+                "peer_avg": _average([r.jobs_ty for r in peers]),
             }
         )
         rank_series.append(
@@ -896,6 +954,8 @@ def get_vswt_trends(
         "weeks": weeks,
         "latest_week": latest,
         "sales_series": sales_series,
+        "customers_series": customers_series,
+        "jobs_series": jobs_series,
         "rank_series": rank_series,
         "category_series": category_series,
         "region_size": len(latest_rows),

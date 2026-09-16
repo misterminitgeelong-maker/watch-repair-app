@@ -230,6 +230,7 @@ def test_upload_then_commit_then_read_flow(vswt_client):
     assert body["sales"]["value"] == 50000
     # Doncaster (70000) is the only shop ahead of Chadstone on sales.
     assert body["sales"]["region_rank"] == 2
+    assert body["sales"]["prev_region_rank"] is None
 
     rankings = vswt_client.get("/v1/reports/vswt/rankings", headers=headers, params={"week": 41})
     assert rankings.status_code == 200
@@ -249,6 +250,8 @@ def test_upload_then_commit_then_read_flow(vswt_client):
     trends = vswt_client.get("/v1/reports/vswt/trends", headers=headers)
     assert trends.status_code == 200
     assert trends.json()["sales_series"][-1]["shop"] == 50000
+    assert trends.json()["customers_series"][-1]["shop"] is not None
+    assert trends.json()["jobs_series"][-1]["shop"] is not None
 
 
 def test_leaderboards_names_every_shop_top_and_bottom(vswt_client):
@@ -521,6 +524,8 @@ def test_can_browse_another_shops_rankings_scorecard_and_trends(vswt_client):
     assert tb["shop_number"] == "3904"
     assert tb["viewing_own_shop"] is False
     assert tb["sales_series"][-1]["shop"] == 81000
+    assert len(tb["customers_series"]) == len(tb["sales_series"])
+    assert len(tb["jobs_series"]) == len(tb["sales_series"])
 
     # Omitting shop_number still defaults to your own shop.
     own = vswt_client.get("/v1/reports/vswt/rankings", headers=headers, params={"week": 73})

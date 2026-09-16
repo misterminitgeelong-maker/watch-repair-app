@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getVswtTrends } from '@/lib/api'
 import { Card, EmptyState, Spinner } from '@/components/ui'
@@ -68,9 +69,10 @@ function GroupedBars({
 export function VswtTrends({
   viewingShop, onBackToMyShop,
 }: { viewingShop?: ViewingShop | null; onBackToMyShop?: () => void } = {}) {
+  const [weeksBack, setWeeksBack] = useState(8)
   const { data, isLoading } = useQuery({
-    queryKey: ['vswt-trends', viewingShop?.shopNumber ?? null],
-    queryFn: () => getVswtTrends(8, viewingShop?.shopNumber).then(r => r.data),
+    queryKey: ['vswt-trends', weeksBack, viewingShop?.shopNumber ?? null],
+    queryFn: () => getVswtTrends(weeksBack, viewingShop?.shopNumber).then(r => r.data),
   })
 
   if (isLoading) return <Spinner />
@@ -84,6 +86,13 @@ export function VswtTrends({
   return (
     <div className="flex flex-col gap-5">
       {viewingShop && onBackToMyShop && <VswtViewingBanner viewing={viewingShop} onBack={onBackToMyShop} />}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Compare</span>
+        <select value={weeksBack} onChange={e => setWeeksBack(Number(e.target.value))} className="rounded-md px-2 py-1 text-sm" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
+          {[4, 8, 13, 26, 52, 104].map(w => <option key={w} value={w}>{w === 104 ? 'All available weeks' : `Last ${w} weeks`}</option>)}
+        </select>
+        <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Week-over-week values and rank movement are shown in the scorecard.</span>
+      </div>
       <ChartPanel title={`Sales — ${data.viewing_own_shop ? 'your shop' : shopLabel} vs region vs peer average`}>
         <Legend items={[
           { label: shopLabel, color: SHOP_COLOR },
@@ -100,6 +109,20 @@ export function VswtTrends({
           ]}
           format={v => fmtVswtVal(v, 'currency')}
         />
+      </ChartPanel>
+
+      <ChartPanel title={`Customers and jobs — ${data.viewing_own_shop ? 'your shop' : shopLabel} vs region vs peer average`}>
+        <Legend items={[{ label: shopLabel, color: SHOP_COLOR }, { label: 'Region Avg', color: REGION_COLOR }, { label: 'Peer Avg', color: PEER_COLOR }]} />
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <p className="text-xs mb-2" style={{ color: 'var(--ms-text-muted)' }}>Customers</p>
+            <GroupedBars categories={data.customers_series.map(s => String(s.week))} series={[{ label: shopLabel, color: SHOP_COLOR, values: data.customers_series.map(s => s.shop) }, { label: 'Region Avg', color: REGION_COLOR, values: data.customers_series.map(s => s.region_avg) }, { label: 'Peer Avg', color: PEER_COLOR, values: data.customers_series.map(s => s.peer_avg) }]} format={v => fmtVswtVal(v, 'count')} />
+          </div>
+          <div>
+            <p className="text-xs mb-2" style={{ color: 'var(--ms-text-muted)' }}>Jobs</p>
+            <GroupedBars categories={data.jobs_series.map(s => String(s.week))} series={[{ label: shopLabel, color: SHOP_COLOR, values: data.jobs_series.map(s => s.shop) }, { label: 'Region Avg', color: REGION_COLOR, values: data.jobs_series.map(s => s.region_avg) }, { label: 'Peer Avg', color: PEER_COLOR, values: data.jobs_series.map(s => s.peer_avg) }]} format={v => fmtVswtVal(v, 'count')} />
+          </div>
+        </div>
       </ChartPanel>
 
       <ChartPanel title="Sales rank trend — taller is better">

@@ -3441,9 +3441,9 @@ export interface VswtSummary {
   region_size: number
   peer_size: number
   area_size: number
-  sales: { value: number | null; prev_value: number | null; region_rank: number | null; peer_rank: number | null; area_rank: number | null }
-  customers: { value: number | null; prev_value: number | null; region_rank: number | null }
-  jobs: { value: number | null; prev_value: number | null; region_rank: number | null }
+  sales: { value: number | null; prev_value: number | null; region_rank: number | null; prev_region_rank: number | null; peer_rank: number | null; area_rank: number | null }
+  customers: { value: number | null; prev_value: number | null; region_rank: number | null; prev_region_rank: number | null }
+  jobs: { value: number | null; prev_value: number | null; region_rank: number | null; prev_region_rank: number | null }
 }
 export const getVswtSummary = () => api.get<VswtSummary | VswtUnavailable>('/reports/vswt/summary')
 
@@ -3557,6 +3557,8 @@ export interface VswtTrends {
   weeks: number[]
   latest_week: number
   sales_series: { week: number; shop: number | null; region_avg: number | null; peer_avg: number | null }[]
+  customers_series: { week: number; shop: number | null; region_avg: number | null; peer_avg: number | null }[]
+  jobs_series: { week: number; shop: number | null; region_avg: number | null; peer_avg: number | null }[]
   rank_series: { week: number; rank: number | null }[]
   category_series: { name: string; shop: number | null; region_avg: number | null }[]
   region_size: number
@@ -3605,6 +3607,8 @@ export interface VswtWeekSummary {
   uploaded_at: string | null
 }
 export const getVswtWeeks = () => api.get<{ weeks: VswtWeekSummary[] }>('/reports/vswt/weeks')
+export const getVswtExportCsv = (params: { week?: number; shop_number?: string } = {}) =>
+  api.get<Blob>('/reports/vswt/export', { params, responseType: 'blob' })
 export const deleteVswtWeek = (week: number) => api.delete<{ deleted_week: number }>(`/reports/vswt/weeks/${week}`)
 
 export interface VswtUploadBatchItem {

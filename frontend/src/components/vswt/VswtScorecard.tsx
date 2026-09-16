@@ -41,11 +41,13 @@ export function VswtScorecard({
             </tr>
           </thead>
           <tbody>
-            {data.matrix.map(row => (
+            {data.matrix.map((row, rowIndex) => (
               <tr key={row.week}>
                 <td style={weekCellStyle}>{row.week}</td>
                 {data.kpis.map(k => {
                   const cell = row.cells[k.key]
+                  const previousCell = rowIndex > 0 ? data.matrix[rowIndex - 1].cells[k.key] : undefined
+                  const delta = cell?.value != null && previousCell?.value != null ? cell.value - previousCell.value : null
                   const tone = rankTone(cell?.rank ?? null, row.region_size)
                   const colors = rankToneColors(tone)
                   return (
@@ -54,7 +56,9 @@ export function VswtScorecard({
                       title={cell && cell.value != null ? `${k.label}: ${fmtVswtVal(cell.value, k.type)}` : undefined}
                       style={{ ...rankCellStyle, backgroundColor: colors.bg, color: colors.fg }}
                     >
-                      {cell?.rank ?? '—'}
+                      <div>{cell?.value != null ? fmtVswtVal(cell.value, k.type) : '—'}</div>
+                      <div style={{ fontSize: 10, opacity: 0.8 }}>#{cell?.rank ?? '—'}</div>
+                      {delta != null && delta !== 0 && <div style={{ fontSize: 10, color: delta > 0 ? '#1A6A3A' : '#A33838' }}>{delta > 0 ? '+' : ''}{fmtVswtVal(delta, k.type)}</div>}
                     </td>
                   )
                 })}
