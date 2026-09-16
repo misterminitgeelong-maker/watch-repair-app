@@ -14463,6 +14463,55 @@
         }
       }
     },
+    "/v1/parent-accounts/me/sites/{tenant_id}/enter": {
+      "post": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Minit Hq Enter Shop",
+        "description": "Let a Minit HQ administrator open one of their own shops for support.\n\nWhy this exists: provisioned shops start out sharing the HQ owner's login, and\n``complete_shop_owner_invite`` rewrites that user row when the shop takes over\nits own credentials. From that moment HQ drops out of the shop's site list \u2014\nso the better the onboarding went, the less of the network HQ could actually\nsee. The only way in was ``platform_admin``, which HQ staff are not.\n\nThree things are checked, and all three matter:\n\n* the caller is Minit HQ (plan and product), via the same gate as the rest of\n  this module;\n* the target is linked to *this* HQ's parent account \u2014 HQ cannot reach a shop\n  in someone else's network;\n* the target is a Minit tenant. This capability is deliberately limited to the\n  Minit network rather than being a general parent-account power.\n\nThe session is short-lived and carries no refresh token, so it cannot be\nextended via ``/auth/refresh``, and it is written to the shop's own event log\nwhere the shop owner can see it. Support access that the supported party\ncannot audit is surveillance.",
+        "operationId": "minit_hq_enter_shop_v1_parent_accounts_me_sites__tenant_id__enter_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinitHqEnterShopResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/billing/limits": {
       "get": {
         "tags": [
@@ -24320,6 +24369,62 @@
           "recent_ledger"
         ],
         "title": "LoyaltyProfileResponse"
+      },
+      "MinitHqEnterShopResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "title": "Expires In Seconds"
+          },
+          "refresh_expires_in_seconds": {
+            "type": "integer",
+            "title": "Refresh Expires In Seconds"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in_seconds",
+          "refresh_expires_in_seconds",
+          "tenant_id",
+          "tenant_name",
+          "tenant_slug"
+        ],
+        "title": "MinitHqEnterShopResponse",
+        "description": "Short-lived, audited access for an HQ administrator into one linked shop."
       },
       "MobileKeyLeadIngestBody": {
         "properties": {

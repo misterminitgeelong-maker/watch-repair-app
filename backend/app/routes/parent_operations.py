@@ -19,13 +19,15 @@ from ..dependencies import (
     require_feature,
     require_owner,
 )
-from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..minit_branding import MINIT_HQ_PLAN, is_minit_tenant_slug, tenant_product
 from ..minit_email_lead_parser import bucket_email_leads_by_operator
 from ..minit_shops import tenant_slug_for_shop
+from ..security import create_access_token
 from ..models import (
     AutoKeyJob,
     EmailLog,
     InboundEmail,
+    MinitHqEnterShopResponse,
     OperatorWeeklyStatsRead,
     ParentAccount,
     ParentDashboardBookingSnippet,
@@ -46,6 +48,7 @@ from ..models import (
     ShopMobileBookingRequest,
     SmsLog,
     Tenant,
+    TenantEventLog,
     User,
 )
 from .. import sms as sms_service
@@ -991,3 +994,112 @@ def get_operations_troubleshooting(
     operators = [t for t in tenants if _is_operator(t.plan_code)]
     items = _collect_troubleshooting_items(session, parent, retail, operators, limit=limit)
     return ParentTroubleshootingResponse(items=items)
+
+
+#: How long an HQ administrator's support session into a shop lasts. Short on
+#: purpose: this is for looking at a problem, not for working out of the shop.
+HQ_ENTER_SHOP_MINUTES = 30
+
+
+@router.post("/me/sites/{tenant_id}/enter", response_model=MinitHqEnterShopResponse)
+def minit_hq_enter_shop(
+    tenant_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Let a Minit HQ administrator open one of their own shops for support.
+
+    Why this exists: provisioned shops start out sharing the HQ owner's login, and
+    ``complete_shop_owner_invite`` rewrites that user row when the shop takes over
+    its own credentials. From that moment HQ drops out of the shop's site list —
+    so the better the onboarding went, the less of the network HQ could actually
+    see. The only way in was ``platform_admin``, which HQ staff are not.
+
+    Three things are checked, and all three matter:
+
+    * the caller is Minit HQ (plan and product), via the same gate as the rest of
+      this module;
+    * the target is linked to *this* HQ's parent account — HQ cannot reach a shop
+      in someone else's network;
+    * the target is a Minit tenant. This capability is deliberately limited to the
+      Minit network rather than being a general parent-account power.
+
+    The session is short-lived and carries no refresh token, so it cannot be
+    extended via ``/auth/refresh``, and it is written to the shop's own event log
+    where the shop owner can see it. Support access that the supported party
+    cannot audit is surveillance.
+    """
+    _require_minit_hq(auth, session)
+    hq_user = session.get(User, auth.user_id)
+    if not hq_user or not hq_user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    parent = _resolve_parent(session, hq_user)
+
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+
+    # Linked to this HQ's network, not merely linked to some network.
+    if tenant_id not in set(linked_tenant_ids_for_parent(session, parent.id)):
+        raise HTTPException(status_code=404, detail="Shop not found.")
+
+    if not is_minit_tenant_slug(tenant.slug):
+        raise HTTPException(
+            status_code=403,
+            detail="HQ support access is limited to Minit shops.",
+        )
+
+    if not tenant.is_active:
+        raise HTTPException(status_code=400, detail="This shop is deactivated.")
+
+    owner = session.exec(
+        select(User)
+        .where(User.tenant_id == tenant_id)
+        .where(User.role == "owner")
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(User.created_at)
+    ).first()
+    if not owner:
+        raise HTTPException(status_code=400, detail="This shop has no active owner account.")
+
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=hq_user.email,
+            entity_type="session",
+            entity_id=owner.id,
+            event_type="minit_hq_enter_shop",
+            event_summary=(
+                f"Minit HQ administrator {hq_user.email} opened a support session "
+                f"for '{tenant.slug}'"
+            ),
+        )
+    )
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=tenant_id,
+        actor_user_id=auth.user_id,
+        actor_email=hq_user.email,
+        event_type="minit_hq_enter_shop",
+        event_summary=(
+            "Opened a support session for "
+            f"{format_tenant_label(tenant.name, tenant.shop_number)}"
+        ),
+    )
+    session.commit()
+
+    access_token, expires = create_access_token(
+        tenant_id, owner.id, owner.role, expires_minutes=HQ_ENTER_SHOP_MINUTES
+    )
+    return MinitHqEnterShopResponse(
+        access_token=access_token,
+        refresh_token="",
+        expires_in_seconds=expires,
+        refresh_expires_in_seconds=0,
+        tenant_id=tenant_id,
+        tenant_name=tenant.name,
+        tenant_slug=tenant.slug,
+        shop_number=tenant.shop_number,
+    )

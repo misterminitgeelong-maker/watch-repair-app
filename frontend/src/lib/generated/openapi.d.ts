@@ -4521,6 +4521,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/sites/{tenant_id}/enter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Minit Hq Enter Shop
+         * @description Let a Minit HQ administrator open one of their own shops for support.
+         *
+         *     Why this exists: provisioned shops start out sharing the HQ owner's login, and
+         *     ``complete_shop_owner_invite`` rewrites that user row when the shop takes over
+         *     its own credentials. From that moment HQ drops out of the shop's site list —
+         *     so the better the onboarding went, the less of the network HQ could actually
+         *     see. The only way in was ``platform_admin``, which HQ staff are not.
+         *
+         *     Three things are checked, and all three matter:
+         *
+         *     * the caller is Minit HQ (plan and product), via the same gate as the rest of
+         *       this module;
+         *     * the target is linked to *this* HQ's parent account — HQ cannot reach a shop
+         *       in someone else's network;
+         *     * the target is a Minit tenant. This capability is deliberately limited to the
+         *       Minit network rather than being a general parent-account power.
+         *
+         *     The session is short-lived and carries no refresh token, so it cannot be
+         *     extended via ``/auth/refresh``, and it is written to the shop's own event log
+         *     where the shop owner can see it. Support access that the supported party
+         *     cannot audit is surveillance.
+         */
+        post: operations["minit_hq_enter_shop_v1_parent_accounts_me_sites__tenant_id__enter_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/limits": {
         parameters: {
             query?: never;
@@ -7577,6 +7617,31 @@ export interface components {
             loyalty: components["schemas"]["CustomerLoyaltyRead"];
             /** Recent Ledger */
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
+        };
+        /**
+         * MinitHqEnterShopResponse
+         * @description Short-lived, audited access for an HQ administrator into one linked shop.
+         */
+        MinitHqEnterShopResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Refresh Token */
+            refresh_token: string;
+            /** Expires In Seconds */
+            expires_in_seconds: number;
+            /** Refresh Expires In Seconds */
+            refresh_expires_in_seconds: number;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Shop Number */
+            shop_number?: string | null;
         };
         /** MobileKeyLeadIngestBody */
         MobileKeyLeadIngestBody: {
@@ -19483,6 +19548,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentTroubleshootingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    minit_hq_enter_shop_v1_parent_accounts_me_sites__tenant_id__enter_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinitHqEnterShopResponse"];
                 };
             };
             /** @description Validation Error */

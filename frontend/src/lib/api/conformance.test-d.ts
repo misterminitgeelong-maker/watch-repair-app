@@ -69,6 +69,7 @@ export type Conformance = [
   AcceptsBackend<Api.JobThreadMessage, Schema<'JobThreadMessage'>>,
   AcceptsBackend<Api.LatLng, Schema<'LatLng'>>,
   AcceptsBackend<Api.LoyaltyProfileResponse, Schema<'LoyaltyProfileResponse'>>,
+  AcceptsBackend<Api.MinitHqEnterShopResponse, Schema<'MinitHqEnterShopResponse'>>,
   AcceptsBackend<Api.MobileSuburbRouteOperatorSummary, Schema<'MobileSuburbRouteOperatorSummary'>>,
   AcceptsBackend<Api.MobileSuburbRoutesSummary, Schema<'MobileSuburbRoutesSummary'>>,
   AcceptsBackend<Api.MultiSiteLoginResponse, Schema<'MultiSiteLoginResponse'>>,

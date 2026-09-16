@@ -205,6 +205,25 @@ export const createTenantFromParentAccount = (payload: {
 export const unlinkTenantFromParentAccount = (tenant_id: string) =>
   api.delete<ParentAccountSummary>(`/parent-accounts/me/sites/${tenant_id}`)
 
+/** Short-lived, audited support access into one linked Minit shop.
+ *
+ * Distinct from platform-admin impersonation: authorisation comes from the
+ * parent-account membership table rather than a platform role, and it is
+ * limited to Minit shops. There is deliberately no refresh token — the window
+ * is the whole window. */
+export interface MinitHqEnterShopResponse {
+  access_token: string
+  refresh_token: string
+  expires_in_seconds: number
+  refresh_expires_in_seconds: number
+  tenant_id: string
+  tenant_name: string
+  tenant_slug: string
+  shop_number?: string | null
+}
+export const minitHqEnterShop = (tenantId: string) =>
+  api.post<MinitHqEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`)
+
 export interface ShopOwnerInvite {
   id: string
   tenant_id: string

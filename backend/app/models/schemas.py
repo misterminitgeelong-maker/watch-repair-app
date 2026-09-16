@@ -652,6 +652,17 @@ class PlatformEnterShopResponse(SQLModel):
     tenant_id: UUID
     tenant_name: str
 
+class MinitHqEnterShopResponse(SQLModel):
+    """Short-lived, audited access for an HQ administrator into one linked shop."""
+    access_token: str
+    refresh_token: str
+    expires_in_seconds: int
+    refresh_expires_in_seconds: int
+    tenant_id: UUID
+    tenant_name: str
+    tenant_slug: str
+    shop_number: Optional[str] = None
+
 class PlatformTenantStatusUpdateRequest(SQLModel):
     is_active: bool
     reason: Optional[str] = None

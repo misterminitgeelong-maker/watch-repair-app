@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatTenantLabel, type ParentAccountSite } from '@/lib/api'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { useParentAccountSites } from '@/hooks/useParentAccountSites'
+import { useMinitHqEnterShop } from '@/lib/adminImpersonation'
 import { MinitShopImport } from '@/components/MinitShopImport'
 import { MinitDirectoryImport } from '@/components/MinitDirectoryImport'
 import { Button, Card, Input, PageHeader, Select } from '@/components/ui'
@@ -58,7 +59,15 @@ function groupByArea(shops: ParentAccountSite[]): { area: string; shops: ParentA
     })
 }
 
-function ShopRow({ site }: { site: ParentAccountSite }) {
+function ShopRow({
+  site,
+  onOpen,
+  opening,
+}: {
+  site: ParentAccountSite
+  onOpen: (tenantId: string) => void
+  opening: boolean
+}) {
   return (
     <div
       className="px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md"
@@ -75,6 +84,17 @@ function ShopRow({ site }: { site: ParentAccountSite }) {
           {site.area?.trim() ? `${site.area} · ` : ''}{site.region?.trim() ? `${site.region} · ` : ''}{site.tenant_slug}
         </p>
       </div>
+      {/* Support access into a shop that has taken its own login. Time-boxed and
+          written to that shop's own event log, so it is visible to them too. */}
+      <Button
+        variant="secondary"
+        className="shrink-0 text-xs px-2.5 py-1.5"
+        disabled={opening}
+        onClick={() => onOpen(site.tenant_id)}
+        aria-label={`Open ${formatTenantLabel(site.tenant_name, site.shop_number)}`}
+      >
+        {opening ? 'Opening…' : 'Open'}
+      </Button>
     </div>
   )
 }
@@ -95,9 +115,13 @@ function RegionSkeleton() {
 function RegionShopsCard({
   region,
   shops,
+  onOpen,
+  openingTenantId,
 }: {
   region: string
   shops: ParentAccountSite[]
+  onOpen: (tenantId: string) => void
+  openingTenantId: string
 }) {
   const areaGroups = useMemo(() => groupByArea(shops), [shops])
   const [activeArea, setActiveArea] = useState(() => areaGroups[0]?.area ?? UNASSIGNED_AREA)
@@ -168,7 +192,12 @@ function RegionShopsCard({
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2" role="tabpanel" aria-label={safeActiveArea}>
         {visibleShops.map(site => (
-          <ShopRow key={site.tenant_id} site={site} />
+          <ShopRow
+            key={site.tenant_id}
+            site={site}
+            onOpen={onOpen}
+            opening={openingTenantId === site.tenant_id}
+          />
         ))}
       </div>
     </Card>
@@ -216,6 +245,8 @@ export default function MinitShopsPage() {
     return Array.from(values).sort((a, b) => regionSortIndex(a) - regionSortIndex(b) || a.localeCompare(b))
   }, [retailCatalog?.sites])
 
+  const { enterShop, entering, error: enterError } = useMinitHqEnterShop()
+
   const regionGroups = useMemo(() => groupRetailByRegion(retailSites), [retailSites])
   const isLoading = retailLoading && retailSites.length === 0
   const isFetching = summaryFetching || retailFetching
@@ -235,11 +266,19 @@ export default function MinitShopsPage() {
         }
       />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Browse the retail network by region and area. To add, remove, or import shops, use Manage shops.
+        Browse the retail network by region and area. Open a shop to work inside it as a Minit
+        administrator — a time-boxed session, recorded in that shop's own activity log. To add,
+        remove, or import shops, use Manage shops.
         {isFetching && !isLoading && (
           <span className="ml-2 opacity-70">Refreshing…</span>
         )}
       </p>
+
+      {enterError && (
+        <p className="text-sm mb-4" style={{ color: 'var(--ms-danger, #b91c1c)' }} role="alert">
+          {enterError}
+        </p>
+      )}
 
       <div
         className="mb-4 flex flex-wrap items-end gap-3"
@@ -299,7 +338,13 @@ export default function MinitShopsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {regionGroups.map(({ region, shops }) => (
-            <RegionShopsCard key={region} region={region} shops={shops} />
+            <RegionShopsCard
+              key={region}
+              region={region}
+              shops={shops}
+              onOpen={tenantId => void enterShop(tenantId)}
+              openingTenantId={entering}
+            />
           ))}
         </div>
       )}
