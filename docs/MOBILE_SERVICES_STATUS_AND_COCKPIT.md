@@ -1,4 +1,4 @@
-# Mobile Services — status vocabulary, catalogue categories, operations cockpit
+# Mobile Services — status vocabulary, catalogue categories, operations cockpit, finance report
 
 ## 1. Status vocabulary (one label, one category, everywhere)
 
@@ -142,8 +142,26 @@ recorded; no travel time or clustering, because job locations are not geocoded.
 durations, jobs booked today with no address, scheduled jobs with no price (Booked
 understated), no target set, no technicians, no geocoding.
 
+## 4. Finance report (`GET /v1/reports/auto-key/finance`)
+
+Reports tab. One period drives everything: `period=week|last_week|month|last_month|quarter|last_4_weeks|last_13_weeks|custom` (+ `date_from`/`date_to`), resolved to shop-local civil dates; the comparison is the same number of days immediately before. `backend/app/mobile_finance.py` holds the arithmetic (pure, unit-tested); the route only fetches rows.
+
+| Section | What it is |
+|---|---|
+| Money | Booked, Completed, Invoiced, Cash collected (period based) and Outstanding at period end (raised by then, unpaid by then). Each tile drills into the list via `?date_field=scheduled|completed|invoiced|paid&date_from&date_to` — the list applies the same filter (`mobile_finance.list_date_filter`). |
+| Target | Weekly cash target pro-rated to the elapsed days of the period; attainment and variance. |
+| After commission | Technician commission on cash collected (each technician's rules) and cash minus commission. **This is not a gross margin** — no parts / cost of goods are recorded on mobile jobs, so margin is deliberately not shown. Hidden when no technician has commission rules. |
+| Conversion | Quote → approved (quotes sent in the period), Lead → booking (jobs created in the period that reached a confirmed booking or later), Booking → completed (jobs scheduled in the period that are done). |
+| Activity | Jobs created / completed, jobs per working day (Mon–Sat, to date), quotes sent. |
+| Receivables | Ageing 0–7 / 8–30 / 31–60 / 61+ days as of now, oldest open invoices. |
+| Trend | 13 Monday-weeks ending in the period for booked/completed/invoiced/collected/jobs, with 4- and 13-week averages. |
+| Technicians | Per technician for the period: booked, completed, invoiced, collected, per-job, commission, utilisation (60 min per booking against 8h × working days), average on-site minutes with sample size. |
+| Durations | Estimated = an assumed 60 min (no per-job estimate exists yet). Actual on-site = On Site → Work Completed and travel = En Route → On Site, both read from `auto_key_status_changed` event-log rows, reported with `count` / median / p90 and by job type. Transitions longer than 12h (on site) or 4h (travel) are treated as forgotten statuses and skipped. |
+| CSV | `/finance/export?kind=summary` (the metrics, conversion, ageing, trend and technician tables as shown) and `?kind=invoices` (invoices raised or paid in the period). Owner/manager only; same period parameters as the screen. |
+
+`data_quality[]` names what limits the numbers: no cost data, no commission rules, unpriced bookings, paid invoices without a paid date, duration sample size, no target, no geocoding.
+
 ### Not in this phase
 
-Estimated vs actual durations, travel-time/clustering, gross margin, 13-week
-trends, CSV export of the visible filters and quote→booking→completion conversion
-remain on the list (see `REMAINING_WORK.md`).
+Per-job estimated durations (a field on the job), route/cluster estimates (needs
+geocoded job locations), and cost-of-goods capture for a real gross margin.

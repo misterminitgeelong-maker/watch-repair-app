@@ -1313,6 +1313,40 @@ export interface paths {
         patch: operations["set_auto_key_weekly_target_v1_reports_auto_key_cockpit_target_patch"];
         trace?: never;
     };
+    "/v1/reports/auto-key/finance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mobile Services finance report for a period (shop timezone) */
+        get: operations["get_auto_key_finance_v1_reports_auto_key_finance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/auto-key/finance/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CSV of the finance report (summary) or its invoices, for the same period */
+        get: operations["export_auto_key_finance_v1_reports_auto_key_finance_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reports/auto-key/commission": {
         parameters: {
             query?: never;
@@ -14170,6 +14204,75 @@ export interface operations {
             };
         };
     };
+    get_auto_key_finance_v1_reports_auto_key_finance_get: {
+        parameters: {
+            query?: {
+                /** @description week|last_week|month|last_month|quarter|last_4_weeks|last_13_weeks|custom */
+                period?: string;
+                date_from?: string | null;
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_auto_key_finance_v1_reports_auto_key_finance_export_get: {
+        parameters: {
+            query?: {
+                period?: string;
+                date_from?: string | null;
+                date_to?: string | null;
+                /** @description summary | invoices */
+                kind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_auto_key_commission_report_v1_reports_auto_key_commission_get: {
         parameters: {
             query?: {
@@ -18598,6 +18701,10 @@ export interface operations {
                 category?: string | null;
                 /** @description Cockpit focus (late, unscheduled, …); overrides directory */
                 focus?: string | null;
+                /** @description created|scheduled|completed|invoiced|paid — with date_from/date_to (shop-local) */
+                date_field?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
                 assigned_user_id?: string | null;
                 limit?: number;
                 offset?: number;

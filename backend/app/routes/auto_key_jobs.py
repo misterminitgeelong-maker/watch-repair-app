@@ -14,6 +14,7 @@ from sqlmodel import Session, delete, func, select, update
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
 from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label, statuses_in_category
 from ..mobile_cockpit import FOCUS_BY_KEY, focus_filter, tenant_timezone
+from ..mobile_finance import DATE_FIELDS, list_date_filter
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -705,6 +706,9 @@ def page_auto_key_jobs(
     status: str | None = Query(default=None),
     category: str | None = Query(default=None, description="Reporting category: pipeline|booking|field|completed|paid|lost"),
     focus: str | None = Query(default=None, description="Cockpit focus (late, unscheduled, …); overrides directory"),
+    date_field: str | None = Query(default=None, description="created|scheduled|completed|invoiced|paid — with date_from/date_to (shop-local)"),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
     assigned_user_id: UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -732,6 +736,16 @@ def page_auto_key_jobs(
         filters.append(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
     elif directory == "completed":
         filters.append(AutoKeyJob.status.in_(AUTO_KEY_FINAL_STATUSES))
+    if date_field or date_from or date_to:
+        if date_field not in DATE_FIELDS:
+            raise HTTPException(status_code=422, detail=f"date_field must be one of {', '.join(DATE_FIELDS)}")
+        if not date_from or not date_to:
+            raise HTTPException(status_code=422, detail="date_from and date_to are required with date_field")
+        tenant = session.get(Tenant, auth.tenant_id)
+        try:
+            filters.append(list_date_filter(date_field, date_from, date_to, tenant_id=auth.tenant_id, tz=tenant_timezone(tenant)))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     if category:
         if category not in ("pipeline", "booking", "field", "completed", "paid", "lost"):
             raise HTTPException(status_code=422, detail=f"Unknown category: {category}")

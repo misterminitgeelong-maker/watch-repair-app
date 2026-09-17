@@ -2046,6 +2046,10 @@ export const pageAutoKeyJobs = (params: {
   category?: MobileStatusCategoryKey
   /** Cockpit focus (late, unscheduled, …) — applies the exact filter the cockpit tile counted. */
   focus?: MobileCockpitFocusKey
+  /** Finance drill-down: rows whose `date_field` falls in the shop-local date range. */
+  date_field?: MobileFinanceDateField
+  date_from?: string
+  date_to?: string
   assigned_user_id?: string
   limit?: number
   offset?: number
@@ -3045,6 +3049,121 @@ export interface MobileCockpit {
   weekly_target_cents: number | null
   data_quality: Array<{ code: string; message: string; count: number | null }>
 }
+
+// ── Mobile Services finance report ─────────────────────────────────────────
+export type MobileFinancePreset = 'week' | 'last_week' | 'month' | 'last_month' | 'quarter' | 'last_4_weeks' | 'last_13_weeks' | 'custom'
+export type MobileFinanceDateField = 'created' | 'scheduled' | 'completed' | 'invoiced' | 'paid'
+
+export interface MobileFinanceDrill {
+  date_field?: MobileFinanceDateField
+  date_from?: string
+  date_to?: string
+  directory?: 'active' | 'completed' | 'all'
+  focus?: MobileCockpitFocusKey
+}
+
+export interface MobileFinanceMetric {
+  key: 'booked' | 'completed' | 'invoiced' | 'collected' | 'outstanding' | 'commission' | 'contribution' | 'aov' | 'jobs_completed' | 'jobs_per_working_day' | 'jobs_created' | 'quotes_sent'
+  label: string
+  unit: 'cents' | 'count' | 'pct' | 'minutes'
+  definition: string
+  direction: MobileCockpitDirection
+  /** null = not available (e.g. no commission rules, no paid invoices). */
+  current: number | null
+  previous: number | null
+  vs_previous: MobileCockpitDelta | null
+  vs_previous_tone: MobileCockpitTone
+  drill: MobileFinanceDrill | null
+  sample: number | null
+}
+
+export interface MobileFinanceDurationStats {
+  count: number
+  avg_minutes: number | null
+  median_minutes: number | null
+  p90_minutes: number | null
+}
+
+export interface MobileFinanceTechnician {
+  user_id: string
+  name: string
+  jobs_scheduled: number
+  jobs_completed: number
+  invoiced_cents: number
+  collected_cents: number
+  commission_cents: number
+  booked_minutes: number
+  capacity_minutes: number
+  utilisation_pct: number | null
+  revenue_per_job_cents: number | null
+  on_site: MobileFinanceDurationStats
+}
+
+export interface MobileFinanceReport {
+  preset: MobileFinancePreset
+  timezone: string
+  generated_at: string
+  period: {
+    label: string
+    start: string
+    end: string
+    days: number
+    elapsed_days: number
+    working_days: number
+    complete: boolean
+    previous_start: string
+    previous_end: string
+  }
+  metrics: MobileFinanceMetric[]
+  target: {
+    weekly_cents: number
+    period_cents: number
+    to_date_cents: number
+    collected_cents: number
+    variance_cents: number
+    attainment_pct: number | null
+    tone: MobileCockpitTone
+  } | null
+  conversion: Array<{
+    key: 'quote_to_approved' | 'lead_to_booking' | 'booking_to_completion'
+    label: string
+    numerator: number
+    denominator: number
+    pct: number | null
+    previous_pct: number | null
+    definition: string
+    vs_previous_tone: MobileCockpitTone
+  }>
+  ar_ageing: {
+    total_cents: number
+    overdue_cents: number
+    overdue_pct: number | null
+    buckets: Array<{ key: string; label: string; cents: number; count: number }>
+    open_invoices: Array<{ invoice_id: string; invoice_number: string; job_id: string; job_number: string; customer_name: string | null; total_cents: number; age_days: number; raised_on: string | null }>
+  }
+  trend: {
+    weeks: Array<{ week_start: string; booked_cents: number; completed_cents: number; invoiced_cents: number; collected_cents: number; jobs_completed: number; jobs_created: number }>
+    averages: Record<'booked_cents' | 'completed_cents' | 'invoiced_cents' | 'collected_cents' | 'jobs_completed' | 'jobs_created', { last_4_avg: number | null; last_13_avg: number | null; latest: number | null }>
+  }
+  technicians: MobileFinanceTechnician[]
+  durations: {
+    estimated_minutes: number
+    estimate_source: 'assumed'
+    on_site: MobileFinanceDurationStats
+    travel: MobileFinanceDurationStats
+    by_job_type: Array<{ job_type: string } & MobileFinanceDurationStats>
+  }
+  definitions: Record<string, string>
+  data_quality: Array<{ code: string; message: string; count: number | null }>
+}
+
+export type MobileFinanceParams = { period: MobileFinancePreset; date_from?: string; date_to?: string }
+export const getAutoKeyFinance = (params: MobileFinanceParams) =>
+  api.get<MobileFinanceReport>('/reports/auto-key/finance', { params })
+export const autoKeyFinanceExportUrl = (params: MobileFinanceParams & { kind: 'summary' | 'invoices' }) =>
+  withApiOrigin(`/v1/reports/auto-key/finance/export?${new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]).toString()}`)
+export const downloadAutoKeyFinanceExport = (params: MobileFinanceParams & { kind: 'summary' | 'invoices' }) =>
+  api.get<Blob>('/reports/auto-key/finance/export', { params, responseType: 'blob' })
 
 export const getAutoKeyCockpit = (params?: { as_of?: string; items?: number }) =>
   api.get<MobileCockpit>('/reports/auto-key/cockpit', { params })

@@ -22,7 +22,8 @@ from ..auto_key_status import (
 )
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above, require_owner
-from .. import mobile_cockpit
+from .. import mobile_cockpit, mobile_finance
+from ..mobile_finance import DATE_FIELDS, FINANCE_PRESETS, Period, list_date_filter
 from ..mobile_cockpit import (
     FOCUS_DEFINITIONS,
     WeeklySeries,
@@ -1866,6 +1867,159 @@ def set_auto_key_weekly_target(
     session.add(tenant)
     session.commit()
     return {"weekly_target_cents": tenant.mobile_weekly_target_cents}
+
+
+
+# ── Mobile Services finance report ───────────────────────────────────────────
+def _finance_period(session: Session, auth: AuthContext, preset: str, date_from: str | None, date_to: str | None):
+    tenant = session.get(Tenant, auth.tenant_id)
+    tz = tenant_timezone(tenant)
+    now = datetime.now(timezone.utc)
+    if preset not in FINANCE_PRESETS:
+        raise HTTPException(status_code=422, detail=f"Unknown period preset: {preset}")
+    try:
+        period = mobile_finance.resolve_period(preset, now.astimezone(tz).date(), date_from, date_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return tenant, tz, now, period
+
+
+def _finance_rows(session: Session, tenant_id: UUID, tz, period: Period):
+    """Every row the report can need: the period, its previous period and 13 trend weeks."""
+    earliest = min(period.previous().start, mobile_cockpit.week_start(period.end) - timedelta(days=13 * 7))
+    start_utc = naive_utc(datetime(earliest.year, earliest.month, earliest.day, tzinfo=tz))
+    jobs = list(
+        session.exec(
+            select(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant_id)
+            .where(
+                or_(
+                    AutoKeyJob.created_at >= start_utc,
+                    AutoKeyJob.scheduled_at >= start_utc,
+                    AutoKeyJob.work_completed_at >= start_utc,
+                    AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES),
+                )
+            )
+        ).all()
+    )
+    job_ids = {j.id for j in jobs}
+    invoices = list(
+        session.exec(
+            select(AutoKeyInvoice)
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(
+                or_(
+                    AutoKeyInvoice.status.notin_(("paid", *_EXCLUDED_INVOICE_STATUSES)),
+                    AutoKeyInvoice.created_at >= start_utc,
+                    AutoKeyInvoice.paid_at >= start_utc,
+                )
+            )
+        ).all()
+    )
+    # Invoices reference jobs the date window may have skipped (old job, recent payment).
+    missing = {inv.auto_key_job_id for inv in invoices} - job_ids
+    if missing:
+        jobs.extend(session.exec(select(AutoKeyJob).where(col(AutoKeyJob.id).in_(missing))).all())
+        job_ids |= missing
+    quotes = list(
+        session.exec(
+            select(AutoKeyQuote)
+            .where(AutoKeyQuote.tenant_id == tenant_id)
+            .where(or_(AutoKeyQuote.created_at >= start_utc, AutoKeyQuote.sent_at >= start_utc))
+        ).all()
+    )
+    users = list(session.exec(select(User).where(User.tenant_id == tenant_id)).all())
+    completed_ids = [j.id for j in jobs if j.work_completed_at]
+    events: list[TenantEventLog] = []
+    if completed_ids:
+        events = list(
+            session.exec(
+                select(TenantEventLog)
+                .where(TenantEventLog.tenant_id == tenant_id)
+                .where(TenantEventLog.entity_type == "auto_key_job")
+                .where(TenantEventLog.event_type == "auto_key_status_changed")
+                .where(col(TenantEventLog.entity_id).in_(completed_ids))
+            ).all()
+        )
+    customer_ids = {j.customer_id for j in jobs}
+    customer_names = (
+        {c.id: c.full_name for c in session.exec(select(Customer).where(col(Customer.id).in_(customer_ids))).all()}
+        if customer_ids
+        else {}
+    )
+    return jobs, invoices, quotes, users, events, customer_names
+
+
+@router.get("/auto-key/finance", summary="Mobile Services finance report for a period (shop timezone)")
+def get_auto_key_finance(
+    period: str = Query(default="month", description="week|last_week|month|last_month|quarter|last_4_weeks|last_13_weeks|custom"),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant, tz, now, resolved = _finance_period(session, auth, period, date_from, date_to)
+    jobs, invoices, quotes, users, events, customer_names = _finance_rows(session, auth.tenant_id, tz, resolved)
+    return mobile_finance.build_finance_report(
+        tenant=tenant, tz=tz, now=now, period=resolved, preset=period, jobs=jobs, invoices=invoices,
+        quotes=quotes, users=users, events=events, customer_names=customer_names,
+    )
+
+
+@router.get("/auto-key/finance/export", summary="CSV of the finance report (summary) or its invoices, for the same period")
+def export_auto_key_finance(
+    period: str = Query(default="month"),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    kind: str = Query(default="summary", description="summary | invoices"),
+    auth: AuthContext = Depends(require_manager_or_above),
+    session: Session = Depends(get_session),
+):
+    if kind not in ("summary", "invoices"):
+        raise HTTPException(status_code=422, detail="kind must be summary or invoices")
+    tenant, tz, now, resolved = _finance_period(session, auth, period, date_from, date_to)
+    jobs, invoices, quotes, users, events, customer_names = _finance_rows(session, auth.tenant_id, tz, resolved)
+    filename = f"mobile-finance-{kind}-{resolved.start.isoformat()}-to-{resolved.end.isoformat()}.csv"
+    if kind == "summary":
+        report = mobile_finance.build_finance_report(
+            tenant=tenant, tz=tz, now=now, period=resolved, preset=period, jobs=jobs, invoices=invoices,
+            quotes=quotes, users=users, events=events, customer_names=customer_names,
+        )
+        body = mobile_finance.summary_csv(report)
+    else:
+        job_by_id = {j.id: j for j in jobs}
+        user_names = {u.id: u.full_name for u in users}
+        rows = []
+        for inv in invoices:
+            job = job_by_id.get(inv.auto_key_job_id)
+            if not job or inv.status in _EXCLUDED_INVOICE_STATUSES:
+                continue
+            raised = resolved.contains(inv.created_at, tz)
+            paid = inv.status == "paid" and resolved.contains(inv.paid_at, tz)
+            if not (raised or paid):
+                continue
+            rows.append(
+                {
+                    "invoice_number": inv.invoice_number,
+                    "job_number": job.job_number,
+                    "customer_name": customer_names.get(job.customer_id),
+                    "technician": user_names.get(job.assigned_user_id) if job.assigned_user_id else None,
+                    "job_status": mobile_status_label(job.status),
+                    "invoice_status": inv.status,
+                    "raised_on": as_utc(inv.created_at).astimezone(tz).date().isoformat() if inv.created_at else "",
+                    "paid_on": as_utc(inv.paid_at).astimezone(tz).date().isoformat() if inv.paid_at else None,
+                    "age_days": (now - as_utc(inv.created_at)).days if inv.created_at else 0,
+                    "total_cents": inv.total_cents,
+                    "payment_method": inv.payment_method,
+                }
+            )
+        rows.sort(key=lambda r: (r["raised_on"], r["invoice_number"]))
+        body = mobile_finance.invoices_csv(rows)
+    return StreamingResponse(
+        io.BytesIO(body.encode("utf-8-sig")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/auto-key/commission")

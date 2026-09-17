@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -24,6 +24,8 @@ import {
   type AutoKeyJob,
   type JobStatus,
   type MobileCockpitFocusKey,
+  type MobileFinanceDateField,
+  type MobileFinanceParams,
   type MobileStatusCategoryKey,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -49,7 +51,7 @@ import {
 } from '@/lib/shopCalendarTime'
 import { formatDate } from '@/lib/utils'
 import { MOBILE_STATUS_CATEGORY_LABELS, mobileStatusLabel } from '@/lib/mobileStatus'
-import { COCKPIT_FOCUS_KEYS, COCKPIT_FOCUS_LABELS, MOBILE_CATEGORY_KEYS } from '@/lib/cockpitFocus'
+import { COCKPIT_FOCUS_KEYS, COCKPIT_FOCUS_LABELS, FINANCE_DATE_FIELDS, FINANCE_DATE_FIELD_LABELS, MOBILE_CATEGORY_KEYS } from '@/lib/cockpitFocus'
 import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
 import {
@@ -87,6 +89,7 @@ import {
 import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
 import { AutoKeyJobCard } from '@/pages/autoKey/AutoKeyJobCard'
 import MobileOperationsCockpit from '@/pages/autoKey/MobileOperationsCockpit'
+import MobileFinanceReport from '@/pages/autoKey/MobileFinanceReport'
 
 const MobileServicesMap = lazy(() => import('@/components/MobileServicesMap'))
 const POSView = lazy(() => import('@/pages/autoKey/POSView').then(module => ({ default: module.POSView })))
@@ -130,6 +133,11 @@ export default function AutoKeyJobsPage() {
   const requestedCategory = searchParams.get('category')
   const initialCategory: MobileStatusCategoryKey | null = requestedCategory && MOBILE_CATEGORY_KEYS.includes(requestedCategory as MobileStatusCategoryKey) ? (requestedCategory as MobileStatusCategoryKey) : null
   const initialTech = searchParams.get('tech')
+  const requestedDateField = searchParams.get('date_field')
+  const initialDateDrill: { date_field: MobileFinanceDateField; date_from: string; date_to: string } | null =
+    requestedDateField && FINANCE_DATE_FIELDS.includes(requestedDateField as MobileFinanceDateField) && isYmd(searchParams.get('date_from')) && isYmd(searchParams.get('date_to'))
+      ? { date_field: requestedDateField as MobileFinanceDateField, date_from: searchParams.get('date_from') as string, date_to: searchParams.get('date_to') as string }
+      : null
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialDispatchDate = isYmd(searchParams.get('dispatch_date')) ? (searchParams.get('dispatch_date') as string) : ymdLocal(new Date())
   const initialDispatchTechFilter = searchParams.get('dispatch_tech') ?? ''
@@ -206,6 +214,7 @@ export default function AutoKeyJobsPage() {
   const [focusFilter, setFocusFilter] = useState<MobileCockpitFocusKey | null>(initialFocus)
   const [categoryFilter, setCategoryFilter] = useState<MobileStatusCategoryKey | null>(initialCategory)
   const [techFilter, setTechFilter] = useState<string | null>(initialTech)
+  const [dateDrill, setDateDrill] = useState(initialDateDrill)
   const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'today' | 'board' | 'list'>(initialJobsLayout)
 
@@ -216,7 +225,7 @@ export default function AutoKeyJobsPage() {
 
   useEffect(() => {
     setListOffset(0)
-  }, [debouncedSearch, jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter])
+  }, [debouncedSearch, jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter, dateDrill])
 
   useEffect(() => {
     if (searchParams.toString()) return
@@ -245,9 +254,12 @@ export default function AutoKeyJobsPage() {
       activationConstraint: { distance: 8 },
     }),
   )
-  const [reportDateFrom] = useState('')
-  const [reportDateTo] = useState('')
-  const [reportPreset, setReportPreset] = useState<'today' | 'week' | 'month' | 'last_month' | 'last_90' | 'all' | 'custom'>('month')
+  // Reports tab: one period drives the finance report and the older sections below it.
+  const [financeParams, setFinanceParams] = useState<MobileFinanceParams>({ period: 'month' })
+  const [resolvedReportPeriod, setResolvedReportPeriod] = useState<{ start: string; end: string } | null>(null)
+  const onReportPeriodResolved = useCallback((period: { start: string; end: string }) => {
+    setResolvedReportPeriod(prev => (prev && prev.start === period.start && prev.end === period.end ? prev : period))
+  }, [])
 
   useEffect(() => {
     const handler = () => setIsMobileWidth(window.innerWidth < 640)
@@ -300,10 +312,12 @@ export default function AutoKeyJobsPage() {
     isError: jobsPageError,
     error: jobsPageQueryError,
   } = useQuery({
-    queryKey: ['auto-key-jobs', 'page', jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter, debouncedSearch, listOffset],
+    queryKey: ['auto-key-jobs', 'page', jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter, dateDrill, debouncedSearch, listOffset],
     queryFn: () => pageAutoKeyJobs({
       q: debouncedSearch || undefined,
-      directory: jobDirectoryView,
+      // A date drill-down spans every stage, so it always lists the whole directory.
+      directory: dateDrill ? 'all' : jobDirectoryView,
+      ...(dateDrill ?? {}),
       status: statusFilter === 'all' ? undefined : statusFilter,
       focus: focusFilter ?? undefined,
       category: categoryFilter ?? undefined,
@@ -374,9 +388,9 @@ export default function AutoKeyJobsPage() {
   } = useAutoKeyReportData({
     view,
     role,
-    preset: reportPreset,
-    customDateFrom: reportDateFrom,
-    customDateTo: reportDateTo,
+    preset: 'custom',
+    customDateFrom: resolvedReportPeriod?.start,
+    customDateTo: resolvedReportPeriod?.end,
   })
   const { tomorrowJobs, sendRemindersMut } = useAutoKeyDayBeforeReminders()
   const [visitOrderErr, setVisitOrderErr] = useState('')
@@ -516,6 +530,11 @@ export default function AutoKeyJobsPage() {
     if (focusFilter) next.set('focus', focusFilter)
     if (categoryFilter) next.set('category', categoryFilter)
     if (techFilter) next.set('tech', techFilter)
+    if (dateDrill) {
+      next.set('date_field', dateDrill.date_field)
+      next.set('date_from', dateDrill.date_from)
+      next.set('date_to', dateDrill.date_to)
+    }
     if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
     if (view === 'dispatch' || view === 'map' || view === 'planner') {
       next.set('dispatch_date', dispatchDate)
@@ -546,6 +565,7 @@ export default function AutoKeyJobsPage() {
     focusFilter,
     categoryFilter,
     techFilter,
+    dateDrill,
     view,
     weekStart,
   ])
@@ -817,12 +837,12 @@ export default function AutoKeyJobsPage() {
                 { label: mobileStatusLabel('work_completed'), dir: 'completed' as const, status: 'work_completed' },
                 { label: mobileStatusLabel('invoice_paid'), dir: 'completed' as const, status: 'invoice_paid' },
               ]).map(chip => {
-                const isActive = !focusFilter && !categoryFilter && !techFilter && jobDirectoryView === chip.dir && statusFilter === chip.status
+                const isActive = !focusFilter && !categoryFilter && !techFilter && !dateDrill && jobDirectoryView === chip.dir && statusFilter === chip.status
                 return (
                   <button
                     key={chip.label}
                     type="button"
-                    onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status); setFocusFilter(null); setCategoryFilter(null); setTechFilter(null) }}
+                    onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status); setFocusFilter(null); setCategoryFilter(null); setTechFilter(null); setDateDrill(null) }}
                     className="rounded-full text-xs font-semibold transition-colors"
                     style={{
                       padding: '5px 13px',
@@ -848,14 +868,15 @@ export default function AutoKeyJobsPage() {
               />
             </div>
           </div>
-          {(focusFilter || categoryFilter || techFilter) && (
+          {(focusFilter || categoryFilter || techFilter || dateDrill) && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--ms-accent-light)', border: '1px solid var(--ms-accent)', color: 'var(--ms-text)' }}>
               <span className="font-semibold">Showing:</span>
               {focusFilter && <span>{COCKPIT_FOCUS_LABELS[focusFilter]}</span>}
               {categoryFilter && <span>{MOBILE_STATUS_CATEGORY_LABELS[categoryFilter]}</span>}
               {techFilter && <span>Technician: {users.find(u => u.id === techFilter)?.full_name ?? 'selected'}</span>}
-              <span style={{ color: 'var(--ms-text-muted)' }}>· {jobsPage?.total ?? 0} job{jobsPage?.total === 1 ? '' : 's'}, same filter as the cockpit tile</span>
-              <button type="button" className="ml-auto font-semibold" style={{ color: 'var(--ms-accent)' }} onClick={() => { setFocusFilter(null); setCategoryFilter(null); setTechFilter(null) }}>Clear</button>
+              {dateDrill && <span>{FINANCE_DATE_FIELD_LABELS[dateDrill.date_field]} {dateDrill.date_from} → {dateDrill.date_to}</span>}
+              <span style={{ color: 'var(--ms-text-muted)' }}>· {jobsPage?.total ?? 0} job{jobsPage?.total === 1 ? '' : 's'}, same filter as the report figure</span>
+              <button type="button" className="ml-auto font-semibold" style={{ color: 'var(--ms-accent)' }} onClick={() => { setFocusFilter(null); setCategoryFilter(null); setTechFilter(null); setDateDrill(null) }}>Clear</button>
             </div>
           )}
           {jobsPageLoading ? (
@@ -1633,32 +1654,12 @@ export default function AutoKeyJobsPage() {
 
       {view === 'reports' && (
         <div className="space-y-6">
-          {/* Header row */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services Reports</h2>
-            <div
-              className="inline-flex rounded-lg p-0.5"
-              style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-            >
-              {([
-                { key: 'week' as const, label: 'This week' },
-                { key: 'month' as const, label: 'This month' },
-                { key: 'last_90' as const, label: 'Last 90 days' },
-              ]).map(p => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => setReportPreset(p.key)}
-                  className="rounded-md px-4 py-1.5 text-xs font-semibold transition-colors"
-                  style={reportPreset === p.key
-                    ? { backgroundColor: 'var(--ms-accent)', color: '#fff', border: '1px solid var(--ms-accent)' }
-                    : { backgroundColor: 'transparent', color: 'var(--ms-text-muted)', border: '1px solid transparent' }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <MobileFinanceReport
+            params={financeParams}
+            onParamsChange={setFinanceParams}
+            onPeriodResolved={onReportPeriodResolved}
+            canExport={role === 'owner' || role === 'manager' || role === 'platform_admin'}
+          />
 
           {reportsError && !reportsLoading && (
             <Card className="p-4">
@@ -1668,70 +1669,6 @@ export default function AutoKeyJobsPage() {
 
           {reportsLoading ? <Spinner /> : reportsError ? null : autoKeyReports ? (
             <>
-              {/* Metric cards */}
-              {(() => {
-                const financials = autoKeyReports.financials
-                const previous = autoKeyReports.previous_period
-                const periodLabel = reportPreset === 'week' ? 'THIS WEEK' : reportPreset === 'month' ? 'THIS MONTH' : reportPreset === 'last_90' ? 'LAST 90 DAYS' : 'SELECTED PERIOD'
-                const delta = (current: number, prior: number | undefined) => {
-                  if (prior == null) return 'No prior-period comparison'
-                  if (prior === 0) return current === 0 ? 'No change vs prior period' : 'New vs prior period'
-                  const change = Math.round(((current - prior) / prior) * 1000) / 10
-                  return `${change >= 0 ? '+' : ''}${change}% vs prior period`
-                }
-                const paid = financials?.paid_cents ?? autoKeyReports.summary.total_revenue_cents
-                const invoiced = financials?.invoiced_cents ?? autoKeyReports.summary.total_revenue_cents
-                return (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                      {
-                        label: `CASH COLLECTED · ${periodLabel}`,
-                        value: formatCents(paid),
-                        sub: delta(paid, previous?.paid_cents),
-                      },
-                      {
-                        label: `INVOICED · ${periodLabel}`,
-                        value: formatCents(invoiced),
-                        sub: delta(invoiced, previous?.invoiced_cents),
-                      },
-                      {
-                        label: 'OUTSTANDING',
-                        value: formatCents(financials?.outstanding_cents ?? 0),
-                        sub: `${financials?.outstanding_invoice_count ?? 0} unpaid invoice${financials?.outstanding_invoice_count === 1 ? '' : 's'}`,
-                      },
-                      {
-                        label: `JOBS CREATED · ${periodLabel}`,
-                        value: String(autoKeyReports.summary.total_jobs),
-                        sub: delta(autoKeyReports.summary.total_jobs, previous?.jobs),
-                      },
-                    ].map(card => (
-                      <Card key={card.label} className="p-5">
-                        <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.08em' }}>{card.label}</p>
-                        <p className="text-2xl font-extrabold" style={{ color: 'var(--ms-text)' }}>{card.value}</p>
-                        {card.sub && <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>{card.sub}</p>}
-                      </Card>
-                    ))}
-                  </div>
-                )
-              })()}
-
-              {autoKeyReports.pipeline && (
-                <Card className="p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ms-text-muted)' }}>Commercial pipeline</p>
-                      <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>Quote value is separated from invoiced sales and collected cash.</p>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-3 min-w-full sm:min-w-0">
-                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Quotes</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.pipeline.quote_count}</p></div>
-                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Quoted value</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.pipeline.quote_value_cents)}</p></div>
-                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Approved</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{autoKeyReports.pipeline.approved_quote_count}</p></div>
-                      <div><p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Approved value</p><p className="font-extrabold" style={{ color: 'var(--ms-text)' }}>{formatCents(autoKeyReports.pipeline.approved_quote_value_cents)}</p></div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
               {/* Mobile KPI cockpit */}
               {autoKeyReports.kpis && (() => {
                 const k = autoKeyReports.kpis
