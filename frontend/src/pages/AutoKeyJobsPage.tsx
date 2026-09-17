@@ -1129,7 +1129,7 @@ export default function AutoKeyJobsPage() {
 
       {view === 'dispatch' && (
         <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Date</label>
               <input
@@ -1535,7 +1535,7 @@ export default function AutoKeyJobsPage() {
               type="date"
               value={dispatchDate}
               onChange={e => setDispatchDate(e.target.value)}
-              className="rounded-lg border px-3 py-2 text-sm"
+              className="h-11 w-full rounded-lg border px-3 text-base sm:h-auto sm:w-auto sm:py-2 sm:text-sm"
               style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             />
             {users.length > 1 && (
@@ -1544,7 +1544,7 @@ export default function AutoKeyJobsPage() {
                 <Select
                   value={dispatchTechFilter}
                   onChange={e => setDispatchTechFilter(e.target.value)}
-                  className="min-w-[160px]"
+                  className="w-full sm:min-w-[160px]"
                   style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                 >
                   <option value="">All techs</option>
@@ -1565,7 +1565,7 @@ export default function AutoKeyJobsPage() {
 
       {view === 'planner' && (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
             <div className="inline-flex rounded-lg p-0.5" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
               <button type="button" className="rounded-md px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}>Day resources</button>
               <button type="button" onClick={() => setView('week')} className="rounded-md px-3 py-1.5 text-xs font-semibold" style={{ color: 'var(--ms-text-muted)' }}>Week calendar</button>
@@ -1575,7 +1575,7 @@ export default function AutoKeyJobsPage() {
               type="date"
               value={dispatchDate}
               onChange={e => setDispatchDate(e.target.value)}
-              className="rounded-lg border px-3 py-2 text-sm"
+              className="h-11 w-full rounded-lg border px-3 text-base sm:h-auto sm:w-auto sm:py-2 sm:text-sm"
               style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
             />
             {users.length > 1 && (
@@ -1584,7 +1584,7 @@ export default function AutoKeyJobsPage() {
                 <Select
                   value={dispatchTechFilter}
                   onChange={e => setDispatchTechFilter(e.target.value)}
-                  className="min-w-[160px]"
+                  className="w-full sm:min-w-[160px]"
                   style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
                 >
                   <option value="">All techs</option>
@@ -1596,7 +1596,7 @@ export default function AutoKeyJobsPage() {
             )}
           </div>
           {!dispatchLoading && !dispatchTechFilter && users.length > 0 && (
-            <Card className="p-4 overflow-x-auto">
+            <Card className="p-4 md:overflow-x-auto">
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div>
                   <h3 className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Technician load</h3>
@@ -1604,7 +1604,10 @@ export default function AutoKeyJobsPage() {
                 </div>
                 <Link to="/auto-key/team" className="text-xs font-semibold" style={{ color: 'var(--ms-accent)' }}>Manage team →</Link>
               </div>
-              <div className="grid min-w-[620px] gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(1, users.filter((u: { role?: string; is_active?: boolean }) => u.role === 'tech' && u.is_active !== false).length + 1)}, minmax(180px, 1fr))` }}>
+              <div
+                className="grid grid-cols-1 gap-3 md:min-w-[620px] md:[grid-template-columns:repeat(var(--planner-column-count),minmax(180px,1fr))]"
+                style={{ '--planner-column-count': Math.max(1, users.filter((u: { role?: string; is_active?: boolean }) => u.role === 'tech' && u.is_active !== false).length + 1) } as React.CSSProperties}
+              >
                 {[
                   { id: '', full_name: 'Unassigned' },
                   ...users.filter((u: { role?: string; is_active?: boolean }) => u.role === 'tech' && u.is_active !== false),

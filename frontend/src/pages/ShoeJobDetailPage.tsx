@@ -17,7 +17,7 @@ import {
 import { dollarsToCents } from '@/lib/money'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
-import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, Input, Textarea } from '@/components/ui'
+import { Card, PageHeader, Badge, Button, MobileActionMenu, Modal, Select, Spinner, Input, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
@@ -632,6 +632,8 @@ export default function ShoeJobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const qc = useQueryClient()
+  const navigate = useNavigate()
+  const toast = useToast()
 
   useEffect(() => {
     if (searchParams.get('tab') === 'messages') {
@@ -757,6 +759,7 @@ export default function ShoeJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
+            <div className="hidden gap-2 sm:flex">
             <Button variant="secondary" onClick={() => setShowEdit(true)}>
               <Pencil size={15} /><span className="hidden sm:inline">Edit</span>
             </Button>
@@ -772,10 +775,30 @@ export default function ShoeJobDetailPage() {
               {sendQuoteMut.isPending ? 'Sending…' : job.quote_status === 'sent' ? 'Resend Quote' : job.quote_status === 'approved' ? 'Approved ✓' : 'Send Quote'}
             </Button>
             <Button variant="ghost" onClick={() => setShowStatus(true)}>
-              <span className="hidden sm:inline">Change Status</span>
-              <span className="sm:hidden">Status</span>
+              Change Status
             </Button>
             <DuplicateShoeJobButton jobId={job.id} />
+            </div>
+            {job.quote_status !== 'approved' && (
+              <Button className="sm:hidden" onClick={() => sendQuoteMut.mutate()} disabled={sendQuoteMut.isPending}>
+                {sendQuoteMut.isPending ? 'Sending…' : job.quote_status === 'sent' ? 'Resend Quote' : 'Send Quote'}
+              </Button>
+            )}
+            <MobileActionMenu actions={[
+              { label: 'Edit job', icon: <Pencil size={16} />, onClick: () => setShowEdit(true) },
+              { label: 'Print intake tickets', icon: <Printer size={16} />, onClick: () => window.open(`/shoe-repairs/${job.id}/intake-print?autoprint=1`, '_blank', 'noopener,noreferrer') },
+              { label: 'Change status', icon: <RefreshCw size={16} />, onClick: () => setShowStatus(true) },
+              {
+                label: 'Duplicate job',
+                icon: <Copy size={16} />,
+                onClick: () => {
+                  void cloneShoeRepairJob(job.id).then(response => {
+                    toast.success('Job duplicated')
+                    navigate(`/shoe-repairs/${response.data.id}`)
+                  }).catch((error: unknown) => toast.error(getApiErrorMessage(error, 'Duplicate failed')))
+                },
+              },
+            ]} />
           </div>
         }
       />

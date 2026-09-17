@@ -20,7 +20,7 @@ import {
 } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import JobCustomFields from '@/components/JobCustomFields'
-import { Card, PageHeader, Badge, Button, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
+import { Card, PageHeader, Badge, Button, MobileActionMenu, Modal, Select, Spinner, EmptyState, Input, Textarea } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
@@ -745,10 +745,10 @@ export default function JobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={
           <div className="flex gap-2">
-            {/* Desktop: all buttons */}
+            <div className="hidden gap-2 sm:flex">
             <Button
               variant="ghost"
-              className="hidden sm:inline-flex text-sm"
+              className="text-sm"
               onClick={() => {
                 const url = `${window.location.origin}/status/${job.status_token}`
                 void navigator.clipboard.writeText(url).then(() => { /* optional toast */ })
@@ -779,6 +779,35 @@ export default function JobDetailPage() {
             >
               <Copy size={15} /><span className="hidden sm:inline">Duplicate</span>
             </Button>
+            </div>
+            {nextStatus && (
+              <Button className="sm:hidden" variant="secondary" onClick={() => setShowStatus(true)}>
+                <ArrowRight size={15} />{STATUS_LABELS[nextStatus]}
+              </Button>
+            )}
+            <MobileActionMenu actions={[
+              {
+                label: 'Copy status link',
+                icon: <Copy size={16} />,
+                onClick: () => {
+                  const url = `${window.location.origin}/status/${job.status_token}`
+                  void navigator.clipboard.writeText(url)
+                },
+              },
+              { label: 'Edit job', icon: <Pencil size={16} />, onClick: () => setShowEdit(true) },
+              { label: 'Print intake tickets', icon: <Printer size={16} />, onClick: () => navigate(`/jobs/${job.id}/intake-print?autoprint=1`) },
+              { label: 'Change status', icon: <ArrowRight size={16} />, onClick: () => setShowStatus(true) },
+              {
+                label: 'Duplicate job',
+                icon: <Copy size={16} />,
+                onClick: () => {
+                  void cloneRepairJob(id!).then(response => {
+                    toast.success('Job duplicated')
+                    navigate(`/jobs/${response.data.id}`)
+                  }).catch((error: unknown) => toast.error(getApiErrorMessage(error, 'Duplicate failed')))
+                },
+              },
+            ]} />
           </div>
         }
       />

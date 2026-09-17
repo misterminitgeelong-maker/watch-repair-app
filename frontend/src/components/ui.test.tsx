@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Button, Modal } from './ui'
+import { Button, MobileActionMenu, Modal } from './ui'
 
 describe('Modal', () => {
   it('exposes dialog semantics and labels from the title', () => {
@@ -79,5 +79,23 @@ describe('Button', () => {
     expect(ref.current).toBe(btn)
     await user.click(btn)
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MobileActionMenu', () => {
+  it('opens secondary actions and closes after choosing one', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    render(
+      <MobileActionMenu actions={[{ label: 'Edit job', onClick: onEdit }]} />,
+    )
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: 'Edit job' }))
+    expect(onEdit).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useMapsLibrary } from '@vis.gl/react-google-maps'
+import { APIProvider, useMapsLibrary } from '@vis.gl/react-google-maps'
 import {
   parseAuAddressFromComponents,
   parseAuAddressFromFormatted,
@@ -9,12 +9,10 @@ import {
 const labelClass = 'text-[10px] font-bold uppercase'
 const labelStyle: React.CSSProperties = { color: 'var(--ms-text-muted)', letterSpacing: '0.10em', marginBottom: 5 }
 const inputStyle: React.CSSProperties = {
-  height: 36,
   border: '1px solid var(--ms-border)',
   backgroundColor: 'var(--ms-surface)',
   color: 'var(--ms-text)',
   borderRadius: 'var(--ms-radius-sm)',
-  fontSize: 13,
   padding: '0 12px',
   outline: 'none',
   transition: 'box-shadow 0.15s',
@@ -85,7 +83,7 @@ function AutocompleteInner({ label, value, onChange, onPlaceResolved, placeholde
         placeholder={placeholder}
         required={required}
         autoComplete="off"
-        className="w-full border outline-none transition focus:ring-2"
+        className="h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]"
         style={inputStyle}
       />
     </div>
@@ -108,11 +106,15 @@ export function AddressAutocompleteInput(props: AddressAutocompleteInputProps) {
           }}
           placeholder={props.placeholder}
           required={props.required}
-          className="w-full border outline-none transition focus:ring-2"
+          className="h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]"
           style={inputStyle}
         />
       </div>
     )
   }
-  return <AutocompleteInner {...props} />
+  return (
+    <APIProvider apiKey={apiKey}>
+      <AutocompleteInner {...props} />
+    </APIProvider>
+  )
 }

@@ -170,6 +170,69 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   )
 })
 
+export type MobileActionMenuItem = {
+  label: string
+  icon?: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  danger?: boolean
+}
+
+export function MobileActionMenu({ actions, label = 'More actions' }: { actions: MobileActionMenuItem[]; label?: string }) {
+  const [open, setOpen] = React.useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function closeOnOutsidePress(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress)
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative sm:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(value => !value)}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex min-h-11 items-center justify-center rounded-[var(--ms-radius-sm)] border px-4 text-lg font-bold"
+        style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text-mid)' }}
+      >
+        ···
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-[var(--ms-radius)] border p-1"
+          style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', boxShadow: 'var(--ms-shadow-overlay)' }}
+        >
+          {actions.map(action => (
+            <button
+              key={action.label}
+              type="button"
+              role="menuitem"
+              disabled={action.disabled}
+              onClick={() => {
+                setOpen(false)
+                action.onClick()
+              }}
+              className="flex min-h-11 w-full items-center gap-3 rounded-[var(--ms-radius-sm)] px-3 text-left text-sm font-medium disabled:opacity-50"
+              style={{ color: action.danger ? 'var(--ms-error)' : 'var(--ms-text)' }}
+            >
+              {action.icon}
+              <span>{action.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const inputBase: React.CSSProperties = {
   backgroundColor: 'var(--ms-surface)',
   color: 'var(--ms-text)',

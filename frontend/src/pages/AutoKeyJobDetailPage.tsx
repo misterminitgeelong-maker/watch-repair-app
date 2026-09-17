@@ -44,7 +44,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS, QUOTE_BUNDLES, quoteBundleTotal, bundleToDraftItems, type QuoteBundle } from '@/lib/autoKeyJobTypes'
-import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Input, MobileActionMenu, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
 import { useToast } from '@/lib/toast'
@@ -806,6 +806,7 @@ export default function AutoKeyJobDetailPage() {
         title={`#${job.job_number} · ${job.title}`}
         action={(
           <div className="flex gap-2">
+            <div className="hidden gap-2 sm:flex">
             <Button
               variant="secondary"
               type="button"
@@ -821,6 +822,20 @@ export default function AutoKeyJobDetailPage() {
             <Button variant="secondary" type="button" onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
               <Trash2 size={15} />Delete job
             </Button>
+            </div>
+            <MobileActionMenu actions={[
+              {
+                label: 'Duplicate job',
+                icon: <Copy size={16} />,
+                onClick: () => {
+                  void cloneAutoKeyJob(id!).then(response => {
+                    toast.success('Job duplicated')
+                    navigate(`/auto-key/${response.data.id}`)
+                  }).catch((error: unknown) => toast.error(getApiErrorMessage(error, 'Duplicate failed')))
+                },
+              },
+              { label: 'Delete job', icon: <Trash2 size={16} />, danger: true, onClick: () => { setDeleteError(''); setShowDeleteConfirm(true) } },
+            ]} />
           </div>
         )}
       />
