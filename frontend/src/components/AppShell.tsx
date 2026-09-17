@@ -132,17 +132,17 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
 
   return (
     <div
-      className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+      className="mb-4 flex flex-col items-stretch gap-2 rounded-xl px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
       style={{ backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent-light)' }}
     >
-      <span style={{ color: 'var(--ms-text)' }}>
+      <span className="min-w-0 leading-relaxed" style={{ color: 'var(--ms-text)' }}>
         <strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.
       </span>
       <button
         type="button"
         onClick={() => connectMut.mutate()}
         disabled={connectMut.isPending}
-        className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+        className="w-full shrink-0 rounded-lg px-3 py-2 text-xs font-semibold sm:w-auto sm:py-1.5"
         style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
       >
         {connectMut.isPending ? 'Opening Stripe…' : 'Set up payouts'}
