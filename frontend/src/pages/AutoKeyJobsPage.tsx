@@ -32,7 +32,7 @@ import { useAuth } from '@/context/AuthContext'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import ShopBookingInbox from '@/components/ShopBookingInbox'
 import { AddTechnicianModal, MobileCommissionRulesModal } from '@/components/MobileServicesTechnicianModals'
-import { Button, Card, EmptyState, Modal, PageHeader, Select, Spinner } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import {
   KanbanBoard,
   JobCard as KanbanJobCard,
@@ -248,7 +248,7 @@ export default function AutoKeyJobsPage() {
   /** Week grid: tap Move then tap a day/slot if you do not want to drag. */
   /** Mobile: which day index (0-6) starts the 3-day window */
   const [mobileDayStart, setMobileDayStart] = useState(0)
-  const [isMobileWidth, setIsMobileWidth] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  const [isMobileWidth, setIsMobileWidth] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const weekDndSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -262,10 +262,14 @@ export default function AutoKeyJobsPage() {
   }, [])
 
   useEffect(() => {
-    const handler = () => setIsMobileWidth(window.innerWidth < 640)
+    const handler = () => setIsMobileWidth(window.innerWidth < 768)
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
+
+  useEffect(() => {
+    if (isMobileWidth && view === 'week') setView('dispatch')
+  }, [isMobileWidth, view])
 
   useEffect(() => {
     if (!shopCalendarTodayYmd || !weekStart) return
@@ -624,14 +628,45 @@ export default function AutoKeyJobsPage() {
           )}
         />
       </div>
-      <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
+      <p className="mb-4 hidden text-sm md:block" style={{ color: 'var(--ms-text-muted)' }}>
         Mobile and in-shop key cutting, programming, and replacement. Plan your day, track mobile vs shop work.{' '}
         <Link to="/auto-key/team" className="font-semibold whitespace-nowrap" style={{ color: 'var(--ms-accent)' }}>
           Team roster →
         </Link>
       </p>
       <MobileServicesSubNav className="mb-5" />
-      <div className="mb-5 -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0">
+      <div className="mb-5">
+        <label className="block md:hidden">
+          <span className="sr-only">Mobile Services view</span>
+          <select
+            value={
+              view === 'jobs' && jobsLayout === 'today' ? 'today'
+                : view === 'jobs' && jobsLayout === 'list' ? 'list'
+                  : view === 'jobs' && jobsLayout === 'board' ? 'kanban'
+                    : view === 'planner' || view === 'dispatch' || view === 'week' ? 'planner'
+                      : view
+            }
+            onChange={(event) => {
+              const next = event.target.value
+              if (next === 'today') { setView('jobs'); setJobsLayout('today') }
+              else if (next === 'list') { setView('jobs'); setJobsLayout('list') }
+              else if (next === 'kanban') { setView('jobs'); setJobsLayout('board') }
+              else if (next === 'planner') setView('dispatch')
+              else setView(next as typeof view)
+            }}
+            className="h-11 w-full rounded-lg px-3 text-base"
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+          >
+            <option value="today">Today</option>
+            <option value="list">List</option>
+            <option value="kanban">Kanban</option>
+            <option value="map">Map</option>
+            <option value="planner">Planner</option>
+            <option value="pos">POS</option>
+            <option value="reports">Reports</option>
+          </select>
+        </label>
+        <div className="hidden overflow-x-auto md:block">
         <div
           className="inline-flex items-center gap-1 rounded-lg p-1"
           style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
@@ -679,6 +714,7 @@ export default function AutoKeyJobsPage() {
               </button>
             )
           })}
+        </div>
         </div>
       </div>
 
@@ -825,8 +861,8 @@ export default function AutoKeyJobsPage() {
       {view === 'jobs' && jobsLayout === 'list' && (
         <>
           {/* Filter chips + search */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-1.5">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="-mx-1 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 md:flex-wrap">
               {([
                 { label: 'Active', dir: 'active' as const, status: 'all' },
                 { label: 'All', dir: 'all' as const, status: 'all' },
@@ -843,7 +879,7 @@ export default function AutoKeyJobsPage() {
                     key={chip.label}
                     type="button"
                     onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status); setFocusFilter(null); setCategoryFilter(null); setTechFilter(null); setDateDrill(null) }}
-                    className="rounded-full text-xs font-semibold transition-colors"
+                    className="shrink-0 rounded-full text-xs font-semibold transition-colors"
                     style={{
                       padding: '5px 13px',
                       backgroundColor: isActive ? 'var(--ms-accent)' : 'var(--ms-surface)',
@@ -856,14 +892,14 @@ export default function AutoKeyJobsPage() {
                 )
               })}
             </div>
-            <div className="relative">
+            <div className="relative w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5" style={{ color: 'var(--ms-text-muted)' }} />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search jobs…"
-                className="pl-8 pr-3 py-1.5 rounded-lg border text-sm w-48"
+                className="h-11 w-full rounded-lg border pl-8 pr-3 text-base md:h-auto md:w-48 md:py-1.5 md:text-sm"
                 style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
               />
             </div>
@@ -888,9 +924,9 @@ export default function AutoKeyJobsPage() {
           ) : pagedJobs.length === 0 ? (
             <EmptyState message={!jobsPage?.total && !debouncedSearch && statusFilter === 'all' ? 'No Mobile Services jobs in this view.' : 'No jobs match your filters.'} />
           ) : (
-            <Card className="overflow-hidden">
+            <>
               {bulkSelected.size > 0 && (
-                <div className="flex flex-wrap items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
                   <span className="text-xs font-semibold" style={{ color: 'var(--ms-text)' }}>{bulkSelected.size} selected</span>
                   <select
                     className="text-xs rounded-lg border px-2 py-1"
@@ -908,6 +944,62 @@ export default function AutoKeyJobsPage() {
                   <Button variant="ghost" onClick={() => setBulkSelected(new Set())}>Clear</Button>
                 </div>
               )}
+              <div className="space-y-3 md:hidden">
+                {pagedJobs.map(job => {
+                  const tech = users.find((user: { id: string; full_name: string }) => user.id === job.assigned_user_id)?.full_name
+                  const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
+                  const scheduled = job.scheduled_at
+                    ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                    : null
+                  return (
+                    <Card key={job.id} hoverable className="p-4" onClick={() => navigate(`/auto-key/${job.id}`)} style={{ cursor: 'pointer' }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>
+                            #{job.job_number}{job.customer_name ? ` · ${job.customer_name}` : ''}
+                          </p>
+                          <p className="mt-1 truncate text-sm" style={{ color: 'var(--ms-text)' }}>
+                            {vehicle || job.title}{job.registration_plate ? ` · ${job.registration_plate}` : ''}
+                          </p>
+                          <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                            {tech ?? 'Unassigned'}{scheduled ? ` · ${scheduled}` : ''}{job.cost_cents > 0 ? ` · ${formatCents(job.cost_cents)}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <Badge status={job.status} />
+                          <input
+                            type="checkbox"
+                            aria-label={`Select job ${job.job_number}`}
+                            checked={bulkSelected.has(job.id)}
+                            onClick={event => event.stopPropagation()}
+                            onChange={event => {
+                              setBulkSelected(previous => {
+                                const next = new Set(previous)
+                                if (event.target.checked) next.add(job.id)
+                                else next.delete(job.id)
+                                return next
+                              })
+                            }}
+                            className="h-5 w-5"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+                {(jobsPage?.total ?? 0) > listPageSize && (
+                  <div className="flex items-center justify-between gap-3 py-2">
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                      {listOffset + 1}–{Math.min(listOffset + listPageSize, jobsPage?.total ?? 0)} of {jobsPage?.total ?? 0}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="secondary" disabled={listOffset === 0} onClick={() => setListOffset(Math.max(0, listOffset - listPageSize))}>Previous</Button>
+                      <Button size="sm" variant="secondary" disabled={listOffset + listPageSize >= (jobsPage?.total ?? 0)} onClick={() => setListOffset(listOffset + listPageSize)}>Next</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Card className="hidden overflow-hidden md:block">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -1018,7 +1110,8 @@ export default function AutoKeyJobsPage() {
                   </div>
                 </div>
               )}
-            </Card>
+              </Card>
+            </>
           )}
         </>
       )}

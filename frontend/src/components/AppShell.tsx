@@ -108,8 +108,17 @@ function SubscriptionBanner({
   return null
 }
 
+const PAYOUT_NUDGE_DISMISS_KEY = 'mainspring.payoutNudgeDismissed.v1'
+
 function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAutoKey: boolean }) {
   const qc = useQueryClient()
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(PAYOUT_NUDGE_DISMISS_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const { data: billing } = useQuery({
     queryKey: ['billing-limits'],
     queryFn: () => getBillingLimits().then(r => r.data),
@@ -125,29 +134,39 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
     onSettled: () => qc.invalidateQueries({ queryKey: ['billing-limits'] }),
   })
 
-  if (!billing?.stripe_configured) return null
+  if (dismissed || !billing?.stripe_configured) return null
   if (!hasAutoKey) return null
   if (role !== 'owner') return null
   if (billing.stripe_connect_charges_enabled) return null
 
+  function dismiss() {
+    try {
+      localStorage.setItem(PAYOUT_NUDGE_DISMISS_KEY, '1')
+    } catch {
+      /* Private browsing or storage quotas should not block dismissal. */
+    }
+    setDismissed(true)
+  }
+
   return (
-    <div
-      className="mb-4 flex flex-col items-stretch gap-2 rounded-xl px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-      style={{ backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent-light)' }}
-    >
-      <span className="min-w-0 leading-relaxed" style={{ color: 'var(--ms-text)' }}>
-        <strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.
-      </span>
-      <button
-        type="button"
-        onClick={() => connectMut.mutate()}
-        disabled={connectMut.isPending}
-        className="w-full shrink-0 rounded-lg px-3 py-2 text-xs font-semibold sm:w-auto sm:py-1.5"
-        style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
-      >
-        {connectMut.isPending ? 'Opening Stripe…' : 'Set up payouts'}
-      </button>
-    </div>
+    <>
+      <div className="mb-4 hidden items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm md:flex" style={{ backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent-light)' }}>
+        <span style={{ color: 'var(--ms-text)' }}><strong>Action needed:</strong> Connect your bank account so customer invoice payments deposit directly to you.</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => connectMut.mutate()} disabled={connectMut.isPending} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}>
+            {connectMut.isPending ? 'Opening Stripe…' : 'Set up payouts'}
+          </button>
+          <button type="button" onClick={dismiss} className="rounded-lg px-2 py-1.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>Dismiss</button>
+        </div>
+      </div>
+      <div className="mb-3 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs md:hidden" style={{ backgroundColor: 'var(--ms-accent-pop)', border: '1px solid var(--ms-accent-light)' }}>
+        <span className="min-w-0 truncate" style={{ color: 'var(--ms-text)' }}>Connect payouts to receive invoice deposits.</span>
+        <button type="button" onClick={() => connectMut.mutate()} disabled={connectMut.isPending} className="min-h-9 shrink-0 rounded-full px-2.5 text-[11px] font-semibold" style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}>
+          {connectMut.isPending ? '…' : 'Set up'}
+        </button>
+        <button type="button" onClick={dismiss} className="flex h-9 w-9 shrink-0 items-center justify-center" style={{ color: 'var(--ms-text-muted)' }} aria-label="Dismiss payout reminder">×</button>
+      </div>
+    </>
   )
 }
 
@@ -945,23 +964,23 @@ export default function AppShell() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="print-hide"><OfflineQueueBanner /></div>
-        {/* Mobile top bar — brand only, no hamburger (bottom tabs handle nav) */}
+        {/* Mobile top bar — compact logo and search; navigation lives below. */}
         <header
-          className="md:hidden print-hide sticky top-0 z-20 flex items-center justify-between px-4 pb-3"
+          className="md:hidden print-hide sticky top-0 z-20 flex items-center justify-between gap-3 px-3 py-1.5"
           style={{
             backgroundColor: 'var(--ms-surface)',
             borderBottom: '1px solid var(--ms-border)',
-            paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+            paddingTop: 'max(0.35rem, env(safe-area-inset-top, 0px))',
+            minHeight: 44,
           }}
         >
-          <div style={{ width: 34 }} />
           <img
             src={theme === 'minit' ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
             alt={theme === 'minit' ? 'Mister Minit' : 'Mainspring'}
             style={{
-              width: 'clamp(116px, 38vw, 172px)',
-              maxWidth: '100%',
-              height: 'auto',
+              height: 28,
+              width: 'auto',
+              maxWidth: 140,
               display: 'block',
               objectFit: 'contain',
             }}
@@ -981,7 +1000,7 @@ export default function AppShell() {
             underneath it. Desktop has no tab bar, so pb-7 is enough there. */}
         <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-[calc(var(--ms-mobile-bar-h)+1rem)] md:pb-7${tourMode === 'guided' ? ' pb-[calc(var(--ms-mobile-bar-h)+5rem)]' : ''}`}>
           {availableSites.length > 1 && (
-            <div className="print-hide mb-4 flex items-center justify-end gap-2">
+            <div className="print-hide mb-4 hidden items-center justify-end gap-2 md:flex">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Active site
               </span>

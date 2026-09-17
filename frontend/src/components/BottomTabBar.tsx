@@ -29,34 +29,46 @@ import { useInboxCount } from '@/hooks/useInboxCount'
  * Mobile bottom tab bar — only shown on screens < md (768px).
  * Tabs are driven by feature flags so subscribers only see what they pay for.
  */
+type TabItem = { to: string; label: string; icon: typeof Wrench }
+
+function pickServiceTabs(hasWatch: boolean, hasShoe: boolean, hasMobile: boolean): {
+  primary: TabItem[]
+  overflow: TabItem[]
+} {
+  const watchTab: TabItem = { to: '/jobs', label: 'Watch', icon: Wrench }
+  const shoeTab: TabItem = { to: '/shoe-repairs', label: 'Shoe', icon: Scissors }
+  const mobileTab: TabItem = { to: '/auto-key', label: 'Mobile', icon: KeyRound }
+
+  if (hasMobile) {
+    if (hasWatch && hasShoe) return { primary: [watchTab, mobileTab], overflow: [shoeTab] }
+    if (hasWatch) return { primary: [watchTab, mobileTab], overflow: [] }
+    if (hasShoe) return { primary: [shoeTab, mobileTab], overflow: [] }
+    return { primary: [mobileTab], overflow: [] }
+  }
+
+  const others = [hasWatch && watchTab, hasShoe && shoeTab].filter(Boolean) as TabItem[]
+  if (others.length === 0) {
+    return { primary: [{ to: '/customers', label: 'Customers', icon: Users }], overflow: [] }
+  }
+  return { primary: others.slice(0, 2), overflow: others.slice(2) }
+}
+
 export default function BottomTabBar() {
-  const { hasFeature, logout } = useAuth()
+  const { hasFeature, logout, availableSites, activeSiteTenantId, switchSite } = useAuth()
   const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
+  const [switchingSite, setSwitchingSite] = useState(false)
   const inboxCount = useInboxCount()
 
   const hasWatch = hasFeature('watch')
   const hasShoe = hasFeature('shoe')
   const hasMobile = hasFeature('auto_key')
 
-  // Build the primary tabs dynamically based on features
-  // Always: Dashboard, Inbox
-  // Then up to 2 service tabs based on subscription
-  // Always ends with: More
-  const serviceTabs = [
-    hasWatch && { to: '/jobs', label: 'Watch', icon: Wrench },
-    hasShoe && { to: '/shoe-repairs', label: 'Shoe', icon: Scissors },
-    hasMobile && { to: '/auto-key', label: 'Mobile', icon: KeyRound },
-    // If none of the above, show Customers as a fallback service tab
-    (!hasWatch && !hasShoe && !hasMobile) && { to: '/customers', label: 'Customers', icon: Users },
-  ].filter(Boolean) as Array<{ to: string; label: string; icon: typeof Wrench }>
-
-  // If there are more than 2 service tabs, keep only the first 2 and push the rest into More
-  const primaryServiceTabs = serviceTabs.slice(0, 2)
+  const { primary: primaryServiceTabs, overflow: overflowServiceTabs } = pickServiceTabs(hasWatch, hasShoe, hasMobile)
 
   const moreMenuItems = [
-    serviceTabs.length > 2 && serviceTabs[2],
+    ...overflowServiceTabs,
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/invoices', label: 'Invoices', icon: Receipt },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
@@ -65,7 +77,7 @@ export default function BottomTabBar() {
     hasFeature('multi_site') && { to: '/parent-account', label: 'Parent', icon: Building2 },
     { to: '/database', label: 'Database', icon: Database },
     { to: '/accounts', label: 'Settings', icon: UserCog },
-  ].filter(Boolean) as Array<{ to: string; label: string; icon: typeof Wrench }>
+  ].filter(Boolean) as TabItem[]
 
   const tabStyle = (isActive: boolean) => ({
     color: isActive ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
@@ -82,6 +94,35 @@ export default function BottomTabBar() {
             style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
+            {availableSites.length > 1 && (
+              <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }} htmlFor="mobile-active-site">
+                  Active site
+                </label>
+                <select
+                  id="mobile-active-site"
+                  value={activeSiteTenantId ?? ''}
+                  disabled={switchingSite}
+                  onChange={async (e) => {
+                    const nextTenantId = e.target.value
+                    if (!nextTenantId || nextTenantId === activeSiteTenantId) return
+                    setSwitchingSite(true)
+                    try {
+                      await switchSite(nextTenantId)
+                      setShowMore(false)
+                    } finally {
+                      setSwitchingSite(false)
+                    }
+                  }}
+                  className="h-11 w-full rounded-lg px-2.5 text-base"
+                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}
+                >
+                  {availableSites.map(site => (
+                    <option key={site.tenant_id} value={site.tenant_id}>{site.tenant_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-4 gap-0">
               {moreMenuItems.map((item) => (
                 <button
