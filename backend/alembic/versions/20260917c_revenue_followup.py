@@ -3,7 +3,9 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "20260917c_revenue_followup"
-down_revision = "20260917b_mobile_statuses"
+# Continue from the latest Mobile Services migration on main. This keeps the
+# Alembic graph linear after the operations cockpit landed in parallel.
+down_revision = "20260918a_mobile_ops_cockpit"
 branch_labels = None
 depends_on = None
 
