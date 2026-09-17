@@ -41,6 +41,7 @@ import { COCKPIT_QUERY_KEY, focusHref } from '@/lib/cockpitFocus'
 import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { formatCents } from '@/lib/money'
 import { dollarsToCents } from '@/lib/money'
+import { MobileTodayWorkspace } from './MobileTodayWorkspace'
 
 function toneStyle(tone: MobileCockpitTone) {
   return { color: TONE_COLORS[tone], backgroundColor: TONE_BACKGROUNDS[tone] }
@@ -323,6 +324,8 @@ export default function MobileOperationsCockpit() {
 
   return (
     <div className="space-y-5">
+      <MobileTodayWorkspace data={data} poolCount={poolJobs.length} isFetching={cockpitQuery.isFetching} />
+      <div className="hidden space-y-5 md:block">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--ms-accent)' }}>Operations cockpit</p>
@@ -502,6 +505,7 @@ export default function MobileOperationsCockpit() {
             <li className="flex gap-2"><span className="shrink-0" style={{ color: 'var(--ms-text-muted)' }}>•</span><span>Quote follow-up after {data.assumptions.quote_follow_up_days} days; booking confirmation follow-up after {data.assumptions.confirmation_follow_up_hours} hours; invoices overdue after {data.assumptions.invoice_overdue_days} days.</span></li>
           </ul>
         </Card>
+      </div>
       </div>
     </div>
   )

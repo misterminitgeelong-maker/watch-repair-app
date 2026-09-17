@@ -1640,14 +1640,18 @@ def get_auto_key_cockpit(
     user_names = {u.id: u.full_name for u in users}
     customer_ids = {j.customer_id for j in jobs}
     customer_names: dict[UUID, str] = {}
+    customer_phones: dict[UUID, str | None] = {}
     if customer_ids:
-        customer_names = {
-            c.id: c.full_name for c in session.exec(select(Customer).where(col(Customer.id).in_(customer_ids))).all()
-        }
+        cockpit_customers = list(session.exec(select(Customer).where(col(Customer.id).in_(customer_ids))).all())
+        customer_names = {c.id: c.full_name for c in cockpit_customers}
+        customer_phones = {c.id: c.phone for c in cockpit_customers}
 
     def summary(job: AutoKeyJob) -> dict:
         return mobile_cockpit.job_summary(
-            job, customer_names.get(job.customer_id), user_names.get(job.assigned_user_id) if job.assigned_user_id else None
+            job,
+            customer_names.get(job.customer_id),
+            customer_phones.get(job.customer_id),
+            user_names.get(job.assigned_user_id) if job.assigned_user_id else None,
         )
 
     # ── Attention + follow-up queues (same SQL the list endpoint applies) ──

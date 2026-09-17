@@ -2925,6 +2925,7 @@ export interface MobileCockpitJobSummary {
   job_number: string
   title: string
   customer_name: string | null
+  customer_phone: string | null
   status: JobStatus
   canonical_status: JobStatus
   category: MobileStatusCategoryKey | null

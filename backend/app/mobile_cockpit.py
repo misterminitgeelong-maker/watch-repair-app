@@ -331,12 +331,18 @@ def compare_metric(
 
 
 # ── Row-level helpers ────────────────────────────────────────────────────────
-def job_summary(job: AutoKeyJob, customer_name: str | None, tech_name: str | None) -> dict[str, Any]:
+def job_summary(
+    job: AutoKeyJob,
+    customer_name: str | None,
+    customer_phone: str | None,
+    tech_name: str | None,
+) -> dict[str, Any]:
     return {
         "id": str(job.id),
         "job_number": job.job_number,
         "title": job.title,
         "customer_name": customer_name,
+        "customer_phone": customer_phone,
         "status": job.status,
         "canonical_status": canonical_auto_key_status(job.status),
         "category": mobile_status_category(job.status),

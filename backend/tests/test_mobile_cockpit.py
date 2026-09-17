@@ -319,6 +319,7 @@ def test_cockpit_counts_match_the_list_drill_down_for_every_focus():
     assert legacy["status"] == "pending_booking"
     assert legacy["canonical_status"] == "awaiting_booking_confirmation"
     assert legacy["category"] == "booking"
+    assert legacy["customer_phone"] == "0400000000"
 
 
 def test_cockpit_money_ladder_and_capacity():
