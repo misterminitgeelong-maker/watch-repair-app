@@ -38,11 +38,6 @@ import { Link, useNavigate } from 'react-router-dom'
 
 const CLOSED_JOB_STATUSES = ['completed', 'awaiting_collection', 'collected']
 
-const DASHBOARD_CSS = `
-.dashboard-panel { transition: border-color 0.15s ease; }
-.dashboard-panel:hover { border-color: var(--ms-border-strong); }
-`
-
 type DashboardStatProps = {
   label: string
   mobileLabel?: string
@@ -162,21 +157,24 @@ function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefin
 function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon }: DashboardStatProps) {
   return (
     <Link to={to} className="block">
-      <Card className="dashboard-panel h-full p-4">
+      <Card hoverable className="h-full p-4">
         <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
             <p className="ms-caps-label whitespace-nowrap overflow-hidden text-ellipsis">
               <span className="sm:hidden">{mobileLabel ?? label}</span>
               <span className="hidden sm:inline">{label}</span>
             </p>
-            <p className="ms-stat-value mt-2 leading-none">
+            <p
+              className="mt-2 font-bold leading-none"
+              style={{ fontFamily: 'var(--ms-font-heading)', color: 'var(--ms-text)', fontSize: 28, letterSpacing: '-0.03em' }}
+            >
               {value}
             </p>
             <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm truncate" style={{ color: 'var(--ms-text-mid)' }}>
               {helper}
             </p>
           </div>
-          <Icon size={16} strokeWidth={1.75} className="mt-0.5 shrink-0" style={{ color: 'var(--ms-text-muted)' }} aria-hidden />
+          <Icon size={16} strokeWidth={1.75} className="shrink-0 mt-0.5" style={{ color: 'var(--ms-text-muted)' }} aria-hidden />
         </div>
       </Card>
     </Link>
@@ -443,10 +441,8 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div>
-      <style>{DASHBOARD_CSS}</style>
-
-      <div>
+    <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', zIndex: 1 }}>
         <PageHeader title="Operations Dashboard" />
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
@@ -500,13 +496,13 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <Card className="dashboard-panel mb-6 overflow-hidden">
+        <Card className="mb-6 overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
             <div className="p-6 sm:p-7" style={{ backgroundColor: 'var(--ms-sidebar)' }}>
-              <p className="ms-caps-label tracking-[0.18em]" style={{ color: 'var(--ms-sidebar-text)' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: 'var(--ms-sidebar-text)' }}>
                 Shop-wide overview
               </p>
-              <h2 className="ms-display mt-3 text-3xl leading-tight" style={{ color: 'var(--ms-sidebar-act-text)' }}>
+              <h2 className="ms-page-title mt-3 text-3xl leading-tight" style={{ color: 'var(--ms-sidebar-act-text)' }}>
                 All your repairs, one place.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: 'var(--ms-sidebar-text)' }}>
@@ -530,18 +526,18 @@ export default function DashboardPage() {
                   {formatCents(reports?.financials.revenue_cents ?? 0)}
                 </p>
               </div>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface-alt)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Gross Profit</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {formatCents(reports?.financials.gross_profit_cents ?? 0)}
                 </p>
                 {(reports?.financials.cost_outlier_jobs ?? 0) > 0 && (
-                  <p className="mt-1 text-[10px] sm:text-xs" style={{ color: '#8B3A3A' }}>
+                  <p className="mt-1 text-[10px] sm:text-xs" style={{ color: 'var(--ms-error)' }}>
                     Ignoring {(reports?.financials.cost_outlier_jobs ?? 0)} cost outlier job(s)
                   </p>
                 )}
               </div>
-              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface-alt)' }}>
+              <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Approval Rate</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {reports?.sales_funnel.approval_rate_percent ?? 0}%
@@ -667,7 +663,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-          <Card className="dashboard-panel overflow-hidden">
+          <Card className="overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
               <div>
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
@@ -717,7 +713,7 @@ export default function DashboardPage() {
           </Card>
 
           <div className="space-y-6">
-            <Card className="dashboard-panel p-5">
+            <Card className="p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: '#E8F0E4', color: '#3B6B42' }}>
                   <DollarSign size={18} />
@@ -752,7 +748,7 @@ export default function DashboardPage() {
               </div>
             </Card>
 
-            <Card className="dashboard-panel p-5">
+            <Card className="p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: '#E6EDF8', color: '#345B9C' }}>
                   <Clock3 size={18} />
@@ -789,7 +785,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </Card>
-            <Card className="dashboard-panel p-5">
+            <Card className="p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: '#FDE9E1', color: '#A2502E' }}>
                   <DollarSign size={18} />

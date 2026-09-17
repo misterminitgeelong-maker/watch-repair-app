@@ -52,10 +52,10 @@ function buildShoeContextLabel(shoe: IntakeShoe, idx: number) {
 function Steps({ current }: { current: number }) {
   const steps = ['Customer', 'Shoe', 'Job & Services']
   return (
-    <div className="flex items-center gap-1 mb-5">
+    <div className="mb-5 flex items-center gap-1" aria-label={`Step ${current} of ${steps.length}: ${steps[current - 1]}`}>
       {steps.map((s, i) => (
-        <div key={s} className="flex items-center gap-1">
-          <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${
+        <div key={s} className="flex shrink-0 items-center gap-1">
+          <div className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
             i + 1 === current ? 'bg-[#A07028] text-white' :
             i + 1 < current ? 'bg-green-100 text-green-700' :
             'bg-[#F0EBE0] text-[#9B7860]'
@@ -63,9 +63,9 @@ function Steps({ current }: { current: number }) {
             <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border border-current">
               {i + 1 < current ? '✓' : i + 1}
             </span>
-            {s}
+            <span className={i + 1 === current ? 'inline' : 'hidden sm:inline'}>{s}</span>
           </div>
-          {i < steps.length - 1 && <ChevronRight size={12} className="text-[#D5C4A8]" />}
+          {i < steps.length - 1 && <ChevronRight size={12} className="hidden text-[#D5C4A8] sm:block" />}
         </div>
       ))}
     </div>
@@ -340,11 +340,11 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   }
 
   return (
-    <Modal title="New Shoe Repair Job" onClose={requestClose} closeDisabled={busy}>
+    <Modal title="New Shoe Repair Job" onClose={requestClose} closeDisabled={busy} mobileFullScreen>
       <Steps current={step} />
 
       {error && (
-        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgba(201,106,90,0.1)', color: 'var(--ms-error)' }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 10%, transparent)', color: 'var(--ms-error)' }}>
           {error}
         </p>
       )}
@@ -358,7 +358,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 key={mode}
                 type="button"
                 onClick={() => setCustomerMode(mode)}
-                className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors border"
+                className="min-h-11 flex-1 rounded-lg border py-2 text-sm font-medium transition-colors"
                 style={{
                   backgroundColor: customerMode === mode ? 'var(--ms-accent)' : 'var(--ms-surface)',
                   color: customerMode === mode ? '#fff' : 'var(--ms-text-mid)',
@@ -517,7 +517,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             placeholder="Any extra instructions or customer requests…"
             rows={2}
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select label="Priority" value={job.priority} onChange={setJ('priority')}>
               <option value="normal">Normal</option>
               <option value="urgent">Urgent</option>
@@ -529,7 +529,7 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
               ))}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>

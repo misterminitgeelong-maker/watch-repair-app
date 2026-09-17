@@ -45,7 +45,7 @@ function PoaBadge() {
   return (
     <span
       className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-      style={{ backgroundColor: 'rgba(201,106,90,0.15)', color: 'var(--ms-error)' }}
+      style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 15%, transparent)', color: 'var(--ms-error)' }}
     >
       POA
     </span>
@@ -443,7 +443,7 @@ export default function PricingSelector({
           {catalogueEmpty && (
             <div
               className="rounded-lg px-3 py-3 mb-3 text-xs leading-relaxed"
-              style={{ backgroundColor: 'rgba(201,106,90,0.1)', color: 'var(--ms-text-mid)', border: '1px solid rgba(201,106,90,0.25)' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 10%, transparent)', color: 'var(--ms-text-mid)', border: '1px solid color-mix(in srgb, var(--ms-error) 25%, transparent)' }}
             >
               No pricing rows found in this app database. The catalogue reads from the same Postgres as{' '}
               <code className="text-[10px]">DATABASE_URL</code> — confirm your Supabase pricing tables are in that

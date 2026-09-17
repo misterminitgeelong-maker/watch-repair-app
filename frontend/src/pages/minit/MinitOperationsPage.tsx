@@ -34,7 +34,7 @@ function statusStyle(status: string): { bg: string; color: string; label: string
     case 'accepted':
       return { bg: 'rgba(40,120,80,0.12)', color: '#2D7A52', label: 'Accepted' }
     case 'declined':
-      return { bg: 'rgba(201,106,90,0.12)', color: 'var(--ms-error)', label: 'Declined' }
+      return { bg: 'color-mix(in srgb, var(--ms-error) 12%, transparent)', color: 'var(--ms-error)', label: 'Declined' }
     case 'cancelled':
       return { bg: 'var(--ms-border)', color: 'var(--ms-text-muted)', label: 'Cancelled' }
     case 'expired':
@@ -221,7 +221,7 @@ export default function MinitOperationsPage() {
       {attentionCount > 0 && (
         <Card
           className="mb-6 p-4 flex flex-wrap items-center justify-between gap-3"
-          style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.06)' }}
+          style={{ borderColor: 'var(--ms-error)', backgroundColor: 'color-mix(in srgb, var(--ms-error) 6%, transparent)' }}
         >
           <div className="flex items-start gap-3">
             <AlertTriangle size={22} style={{ color: 'var(--ms-error)', flexShrink: 0 }} />

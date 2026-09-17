@@ -232,7 +232,7 @@ export default function MobileQuotePage() {
           </div>
         )}
         {isDeclined && (
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: 'rgba(201,106,90,0.1)', border: '1px solid rgba(201,106,90,0.3)' }}>
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--ms-error) 30%, transparent)' }}>
             <XCircle size={20} style={{ color: 'var(--ms-error)', flexShrink: 0 }} />
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--ms-error)' }}>Quote declined</p>
@@ -316,7 +316,7 @@ export default function MobileQuotePage() {
                   <Button variant="secondary" className="flex-1" onClick={() => setStep('view')}>Go back</Button>
                   <Button
                     className="flex-1"
-                    style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}
                     onClick={() => decideMut.mutate({ decision: 'declined' })}
                     disabled={decideMut.isPending}
                   >

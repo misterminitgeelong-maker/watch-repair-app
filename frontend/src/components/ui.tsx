@@ -59,14 +59,17 @@ export function Badge({
 export function Card({
   className, children, style, hoverable, ...props
 }: React.HTMLAttributes<HTMLDivElement> & { hoverable?: boolean }) {
+  // Inline surface: no shadow. A hairline rule and the --ms-bg/--ms-surface
+  // step do the separating. Hover is a CSS class (see index.css) so it also
+  // answers keyboard focus, and it only firms the rule — no lift.
   return (
     <div
       {...props}
-      className={cn('border border-[var(--ms-border)]', hoverable && 'ms-card-hoverable', className)}
+      className={cn('border', hoverable && 'ms-card-hoverable', className)}
       style={{
         backgroundColor: 'var(--ms-surface)',
+        borderColor: 'var(--ms-card-border, var(--ms-border))',
         borderRadius: 'var(--ms-radius)',
-        boxShadow: 'var(--ms-shadow)',
         ...style,
       }}
     >
@@ -79,10 +82,7 @@ export function PageHeader({ title, action }: { title: string; action?: React.Re
   return (
     <div className="mb-6 flex flex-col gap-3 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1
-          className="ms-display text-[26px] leading-none sm:text-[30px]"
-          style={{ color: 'var(--ms-text)' }}
-        >
+        <h1 className="ms-page-title text-[26px] leading-none sm:text-[30px]">
           {title}
         </h1>
         <div
@@ -119,7 +119,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 ) {
   const isSmall = size === 'sm'
   const base =
-    'inline-flex items-center justify-center gap-2 border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none'
+    'inline-flex min-h-11 items-center justify-center gap-2 border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none sm:min-h-0'
 
   const sizing: React.CSSProperties = isSmall
     ? { padding: '5px 11px', fontSize: 11 }
@@ -171,11 +171,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 })
 
 const inputBase: React.CSSProperties = {
-  height: 36,
   backgroundColor: 'var(--ms-surface)',
   color: 'var(--ms-text)',
   borderRadius: 'var(--ms-radius-sm)',
-  fontSize: 13,
   padding: '0 12px',
 }
 
@@ -190,7 +188,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
         <input
           ref={ref}
           {...props}
-          className={cn('w-full border outline-none transition focus:ring-2', props.className)}
+          className={cn('h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]', props.className)}
           style={{
             ...inputBase,
             borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
@@ -217,7 +215,7 @@ export function Select({ label, error, children, ...props }: React.SelectHTMLAtt
       {label && <label className={labelClass} style={labelStyle}>{label}</label>}
       <select
         {...props}
-        className={cn('w-full border outline-none transition focus:ring-2', props.className)}
+        className={cn('h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]', props.className)}
         style={{
           ...inputBase,
           borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
@@ -237,14 +235,13 @@ export function Textarea({ label, error, ...props }: React.TextareaHTMLAttribute
       {label && <label className={labelClass} style={labelStyle}>{label}</label>}
       <textarea
         {...props}
-        className={cn('w-full resize-none border outline-none transition focus:ring-2', props.className)}
+        className={cn('w-full resize-none border text-base outline-none transition focus:ring-2 sm:text-[13px]', props.className)}
         style={{
           backgroundColor: 'var(--ms-surface)',
           color: 'var(--ms-text)',
           borderColor: error ? 'var(--ms-error)' : 'var(--ms-border)',
           borderRadius: 'var(--ms-radius-sm)',
           padding: '8px 12px',
-          fontSize: 13,
           '--tw-ring-color': 'var(--ms-accent-pop)',
         } as React.CSSProperties}
       />
@@ -278,6 +275,8 @@ interface ModalProps {
   children: React.ReactNode
   onClose: () => void
   size?: 'default' | 'wide'
+  /** Use the whole phone viewport for longer, task-focused flows. */
+  mobileFullScreen?: boolean
   /** When true, the close button is disabled (e.g. during submit). */
   closeDisabled?: boolean
 }
@@ -291,8 +290,14 @@ function focusableIn(root: HTMLElement): HTMLElement[] {
   )
 }
 
-export function Modal({ title, children, onClose, size = 'default', closeDisabled = false }: ModalProps) {
+export function Modal({ title, children, onClose, size = 'default', mobileFullScreen = false, closeDisabled = false }: ModalProps) {
   const maxWidth = size === 'wide' ? 'sm:max-w-[780px]' : 'sm:max-w-[480px]'
+  const mobilePanel = mobileFullScreen
+    ? 'h-[100dvh] max-h-[100dvh] rounded-none'
+    : 'mx-2 max-h-[calc(100dvh-8px)] rounded-t-[var(--ms-radius)]'
+  const mobileBody = mobileFullScreen
+    ? 'max-h-[calc(100dvh-56px)]'
+    : 'max-h-[calc(100dvh-64px)]'
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -350,19 +355,17 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('mx-2 max-h-[90vh] w-full overflow-hidden sm:mx-4', maxWidth)}
+        className={cn('w-full overflow-hidden sm:mx-4 sm:h-auto sm:max-h-[90vh] sm:rounded-[var(--ms-radius)]', mobilePanel, maxWidth)}
         style={{
           backgroundColor: 'var(--ms-surface)',
           border: '1px solid var(--ms-border)',
-          borderRadius: 'var(--ms-radius)',
           boxShadow: 'var(--ms-shadow-overlay)',
         }}
       >
         <div
-          className="flex items-center justify-between"
+          className="flex min-h-14 items-center justify-between px-4 py-3 sm:min-h-0 sm:px-[22px] sm:py-[14px]"
           style={{
             backgroundColor: 'var(--ms-bg)',
-            padding: '14px 22px',
             borderBottom: '1px solid var(--ms-border)',
           }}
         >
@@ -375,7 +378,7 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
             disabled={closeDisabled}
             aria-label="Close"
             aria-disabled={closeDisabled}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:w-7"
             style={{ color: 'var(--ms-text-muted)' }}
             onMouseEnter={e => { if (!closeDisabled) e.currentTarget.style.color = 'var(--ms-text)' }}
             onMouseLeave={e => { if (!closeDisabled) e.currentTarget.style.color = 'var(--ms-text-muted)' }}
@@ -384,8 +387,7 @@ export function Modal({ title, children, onClose, size = 'default', closeDisable
           </button>
         </div>
         <div
-          className="overflow-y-auto"
-          style={{ padding: '20px 24px', maxHeight: 'calc(90vh - 52px)' }}
+          className={cn(mobileBody, 'overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-h-[calc(90vh-52px)] sm:px-6 sm:py-5')}
         >
           {children}
         </div>
@@ -428,7 +430,7 @@ export function ViewToggle<T extends string>({
               color: active ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
               backgroundColor: active ? 'var(--ms-surface)' : 'transparent',
               borderRadius: 'var(--ms-radius-sm)',
-              boxShadow: active ? 'inset 0 0 0 1px var(--ms-border)' : 'none',
+              boxShadow: active ? '0 0 0 1px var(--ms-border)' : 'none',
               border: 'none',
               cursor: 'pointer',
             }}

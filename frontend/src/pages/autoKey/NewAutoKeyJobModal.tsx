@@ -265,7 +265,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   })
 
   return (
-    <Modal title="New Mobile Services Job" onClose={onClose} size="wide">
+    <Modal title="New Mobile Services Job" onClose={onClose} size="wide" mobileFullScreen>
       <div className="relative">
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-4">
@@ -301,12 +301,12 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <div className="flex gap-2 mb-1">
               <button
                 onClick={() => setCustomerMode('existing')}
-                className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
                 style={customerMode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}
               >Existing Customer</button>
               <button
                 onClick={() => setCustomerMode('new')}
-                className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
                 style={customerMode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}
               >New Customer</button>
             </div>
@@ -447,8 +447,8 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                         <div className="flex flex-wrap gap-1 mt-1">
                           {m.akl_complexity && <AklComplexityPill complexity={m.akl_complexity} />}
                           {m.bsu_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,162,72,0.15)', color: '#9A7220' }}>BSU required</span>}
-                          {m.pin_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.12)', color: 'var(--ms-error)' }}>PIN required</span>}
-                          {m.dealer_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(201,106,90,0.2)', color: 'var(--ms-error)' }}>Dealer only</span>}
+                          {m.pin_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 12%, transparent)', color: 'var(--ms-error)' }}>PIN required</span>}
+                          {m.dealer_required && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--ms-error) 20%, transparent)', color: 'var(--ms-error)' }}>Dealer only</span>}
                           {m.eeprom_required && !m.obd_programmable && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(120,100,180,0.15)', color: '#7060B0' }}>EEPROM</span>}
                         </div>
                       </button>

@@ -44,7 +44,7 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
     <input type="number" min="0" step="1" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.unit_price_cents} placeholder="5000" onChange={e => { const n = Number.parseInt(e.target.value, 10); onChange(index, 'unit_price_cents', Number.isFinite(n) ? n : 0) }} />
   )
   const deleteBtn = (
-    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: 'var(--ms-error)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-danger)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-error)')}>
+    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: 'var(--ms-error)' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-error)')}>
       <Trash2 size={14} />
     </button>
   )

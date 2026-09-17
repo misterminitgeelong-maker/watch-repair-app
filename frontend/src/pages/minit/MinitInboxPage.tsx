@@ -417,7 +417,7 @@ export default function MinitInboxPage() {
           {newEmailCount > 0 && (
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: 'var(--ms-error)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}
             >
               {newEmailCount} new
             </span>

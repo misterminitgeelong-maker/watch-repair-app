@@ -64,10 +64,10 @@ function calculateRepairsTotal(
 function Steps({ current }: { current: number }) {
   const steps = ['Customer', 'Watches', 'Job Details', 'Photos']
   return (
-    <div className="flex items-center gap-1 mb-5">
+    <div className="mb-5 flex items-center gap-1" aria-label={`Step ${current} of ${steps.length}: ${steps[current - 1]}`}>
       {steps.map((s, i) => (
-        <div key={s} className="flex items-center gap-1">
-          <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${
+        <div key={s} className="flex shrink-0 items-center gap-1">
+          <div className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
             i + 1 === current ? 'bg-[#A07028] text-white' :
             i + 1 < current ? 'bg-green-100 text-green-700' :
             'bg-[#F0EBE0] text-[#9B7860]'
@@ -75,9 +75,9 @@ function Steps({ current }: { current: number }) {
             <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border border-current">
               {i + 1 < current ? '✓' : i + 1}
             </span>
-            {s}
+            <span className={i + 1 === current ? 'inline' : 'hidden sm:inline'}>{s}</span>
           </div>
-          {i < steps.length - 1 && <ChevronRight size={12} className="text-[#D5C4A8]" />}
+          {i < steps.length - 1 && <ChevronRight size={12} className="hidden text-[#D5C4A8] sm:block" />}
         </div>
       ))}
     </div>
@@ -450,7 +450,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   }
 
   return (
-    <Modal title="New Job Ticket" onClose={requestClose} closeDisabled={busy}>
+    <Modal title="New Job Ticket" onClose={requestClose} closeDisabled={busy} mobileFullScreen>
       <Steps current={step} />
 
       {preselectedCustomer && (
@@ -464,11 +464,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {step === 1 && (
         <div className="space-y-3">
           <div className="flex gap-2 mb-1">
-            <button onClick={() => setCustomerMode('existing')} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+            <button onClick={() => setCustomerMode('existing')} className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
               style={customerMode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
               Existing Customer
             </button>
-            <button onClick={() => setCustomerMode('new')} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+            <button onClick={() => setCustomerMode('new')} className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
               style={customerMode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
               New Customer
             </button>
@@ -478,7 +478,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           ) : (
             <>
               <Input label="Full Name *" value={newCustomer.full_name} onChange={setC('full_name')} placeholder="Jane Smith" autoFocus />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Input label="Phone" value={newCustomer.phone} onChange={setC('phone')} placeholder="0412 345 678" />
                 <Input label="Email" type="email" value={newCustomer.email} onChange={setC('email')} placeholder="jane@example.com" />
               </div>
@@ -551,12 +551,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             <div key={idx} className={idx === activeWatchTab ? 'space-y-3' : 'hidden'}>
               <div className="flex gap-2 mb-1">
                 {activeCustomerId && (
-                <button onClick={() => updateWatchForm(idx, { mode: 'existing' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                <button onClick={() => updateWatchForm(idx, { mode: 'existing' })} className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
                   style={watchForms[idx].mode === 'existing' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
                   Existing Watch
                 </button>
                 )}
-                <button onClick={() => updateWatchForm(idx, { mode: 'new' })} className="flex-1 py-1.5 rounded text-sm font-medium border transition-colors"
+                <button onClick={() => updateWatchForm(idx, { mode: 'new' })} className="min-h-11 flex-1 rounded border py-1.5 text-sm font-medium transition-colors"
                   style={watchForms[idx].mode === 'new' ? { backgroundColor: 'var(--ms-accent)', color: '#fff', borderColor: 'var(--ms-accent)' } : { borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text-mid)', backgroundColor: 'transparent' }}>
                   Add New Watch
                 </button>
@@ -570,7 +570,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                 </Select>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <BrandAutocomplete label="Brand" value={watchForms[idx].brand} onChange={v => updateWatchForm(idx, { brand: v })} placeholder="Rolex" autoFocus={idx === 0} />
                     <Input label="Model" value={watchForms[idx].model} onChange={e => updateWatchForm(idx, { model: e.target.value })} placeholder="Submariner" />
                   </div>
@@ -628,7 +628,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           </div>
           <Input label="Job Title *" value={job.title} onChange={setJ('title')} placeholder="e.g. Battery replacement, Band (Orange) — or type custom" autoFocus />
           <Textarea label="Instructions / Fault Description" value={job.description} onChange={setJ('description')} rows={3} placeholder="Quick service / overhaul. Watch losing 5 min per day, crown feels loose…" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select label="Priority" value={job.priority} onChange={setJ('priority')}>
               <option value="low">Low</option>
               <option value="normal">Normal</option>
@@ -646,7 +646,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               Quoted service selected → job will go to Awaiting quote for workshop review
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label="Salesperson" value={job.salesperson} onChange={setJ('salesperson')} placeholder="Your initials or name" />
             <Input label="Collection Date" type="date" value={job.collection_date} onChange={setJ('collection_date')} />
           </div>
@@ -697,7 +697,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           )}
 
           {Array.from({ length: watchCount }, (_, idx) => idx).map(idx => (
-            <div key={idx} className={idx === activeWatchTab ? 'grid grid-cols-2 gap-4' : 'hidden'}>
+            <div key={idx} className={idx === activeWatchTab ? 'grid grid-cols-1 gap-4 sm:grid-cols-2' : 'hidden'}>
               {/* Front photo */}
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>

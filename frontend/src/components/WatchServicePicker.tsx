@@ -99,7 +99,7 @@ export default function WatchServicePicker({
 
   return (
     <div>
-      <div className="flex gap-2 mb-3">
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--ms-text-muted)' }} />
           <input
@@ -107,7 +107,7 @@ export default function WatchServicePicker({
             placeholder="Search repairs…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full h-9 rounded-lg border pl-8 pr-3 text-sm outline-none focus:ring-2"
+            className="h-11 w-full rounded-lg border pl-8 pr-3 text-base outline-none focus:ring-2 sm:h-9 sm:text-sm"
             style={{
               backgroundColor: 'var(--ms-surface)',
               borderColor: 'var(--ms-border-strong)',
@@ -118,7 +118,7 @@ export default function WatchServicePicker({
         <select
           value={groupFilter}
           onChange={e => setGroupFilter(e.target.value)}
-          className="h-9 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+          className="h-11 w-full rounded-lg border px-2 text-base outline-none focus:ring-2 sm:h-9 sm:w-auto sm:text-sm"
           style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
         >
           <option value="">All categories</option>

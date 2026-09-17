@@ -225,7 +225,7 @@ export default function LeadInboxPage() {
       {adding && <div className="mb-5"><AddLeadForm onDone={() => setAdding(false)} /></div>}
 
       {followUpsDue.length > 0 && (
-        <div className="mb-5 rounded-lg border p-3" style={{ borderColor: 'var(--ms-error)', backgroundColor: 'rgba(201,106,90,0.08)' }}>
+        <div className="mb-5 rounded-lg border p-3" style={{ borderColor: 'var(--ms-error)', backgroundColor: 'color-mix(in srgb, var(--ms-error) 8%, transparent)' }}>
           <p className="text-sm font-semibold" style={{ color: '#A4392B' }}>
             {followUpsDue.length} follow-up{followUpsDue.length !== 1 ? 's' : ''} overdue
           </p>
