@@ -1,19 +1,25 @@
 """Mobile Services / Auto Key reports — Phase 8 summary fields."""
 import os
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 _TEST_DB = Path(__file__).with_name(f"test_akr_{uuid4().hex}.db")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.database import create_db_and_tables
 from app.main import app
 
 create_db_and_tables()
 client = TestClient(app)
+
+
+def _shop_today():
+    return datetime.now(ZoneInfo(settings.schedule_calendar_timezone)).date()
 
 
 def _bootstrap(headers_plan: str = "enterprise") -> tuple[str, str]:
@@ -123,13 +129,13 @@ def _job_intake_only(headers: dict, customer_id: str, **kwargs) -> str:
 
 
 def test_auto_key_reports_kpi_cockpit():
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     token, _slug = _bootstrap()
     headers = {"Authorization": f"Bearer {token}"}
     cust = _customer(headers)
 
-    today = date.today()
+    today = _shop_today()
     sched = datetime(today.year, today.month, today.day, 9, 0, 0, tzinfo=timezone.utc).isoformat()
 
     # Two completed+quoted+invoiced jobs (one scheduled for today → on-time).
@@ -208,7 +214,7 @@ def test_auto_key_reports_mobile_shop_revenue_and_tech_share():
         _tax_cents=500,
     )
 
-    today = date.today().isoformat()
+    today = _shop_today().isoformat()
     rep = client.get(
         "/v1/reports/auto-key",
         headers=headers,

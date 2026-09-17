@@ -1,20 +1,26 @@
 """Mobile Services technician commission report and rules."""
 import json
 import os
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 _TEST_DB = Path(__file__).with_name(f"test_mc_{uuid4().hex}.db")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
 
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.database import create_db_and_tables
 from app.main import app
 
 create_db_and_tables()
 client = TestClient(app)
+
+
+def _shop_today():
+    return datetime.now(ZoneInfo(settings.schedule_calendar_timezone)).date()
 
 
 def _bootstrap() -> tuple[str, str]:
@@ -100,7 +106,7 @@ def test_commission_report_retainer_and_rates():
     h = {"Authorization": f"Bearer {token}"}
     tid = _tech_with_commission(h, "a", retainer=36000)
     cid = _customer(h)
-    today = date.today().isoformat()
+    today = _shop_today().isoformat()
 
     # $1000 + GST invoice total = unit + tax = 1000 + 100 = 1100 ??? 
     # quote: unit 100000 cents = $1000, tax gst ~ 10000 -> total 110000
