@@ -1,5 +1,13 @@
 import type { JobStatus } from '@/lib/api'
 import { hourMinuteInTimeZone, zonedWallTimeToUtcIso } from '@/lib/shopCalendarTime'
+import {
+  MOBILE_ACTIVE_STATUSES,
+  MOBILE_CLOSED_STATUSES,
+  MOBILE_STATUS_ALIASES,
+  MOBILE_STATUS_OPTIONS,
+  canonicalMobileStatus,
+  isMobileStatusClosed,
+} from '@/lib/mobileStatus'
 
 /**
  * Pure helpers, constants, types, and the SLA chip badge extracted from
@@ -8,72 +16,17 @@ import { hourMinuteInTimeZone, zonedWallTimeToUtcIso } from '@/lib/shopCalendarT
  * that page (and its sub-components) share.
  */
 
-export const STATUSES: JobStatus[] = [
-  'awaiting_quote',
-  'quote_sent',
-  'booking_confirmed',
-  'en_route',
-  'booking_on_hold',
-  'booking_completed',
-  'failed_job',
-]
-
-// CSV imports historically reused watch-repair statuses for Mobile Services.
-// Keep these aliases until every deployment has run the canonicalising migration.
-export const AUTO_KEY_LEGACY_STATUS_MAP = {
-  awaiting_go_ahead: 'quote_sent',
-  go_ahead: 'awaiting_booking_confirmation',
-  working_on: 'on_site',
-  service: 'on_site',
-  awaiting_parts: 'booking_on_hold',
-  parts_to_order: 'booking_on_hold',
-  sent_to_labanda: 'booking_on_hold',
-  quoted_by_labanda: 'booking_on_hold',
-  at_third_party_for_quoting: 'booking_on_hold',
-  third_party_quote_approved: 'booking_on_hold',
-  at_third_party_repairer: 'booking_on_hold',
-  completed: 'work_completed',
-  awaiting_collection: 'work_completed',
-  collected: 'invoice_paid',
-} as const satisfies Partial<Record<JobStatus, JobStatus>>
-
-export function canonicalAutoKeyStatus(status: string): string {
-  return AUTO_KEY_LEGACY_STATUS_MAP[status as keyof typeof AUTO_KEY_LEGACY_STATUS_MAP] ?? status
-}
-
-// Kept in sync with AUTO_KEY_KANBAN_COLUMNS. Closed means the physical work is
-// done, even when the commercial follow-through is still open.
-export const AUTO_KEY_CLOSED_STATUSES = [
-  'booking_completed',
-  'work_completed',
-  'invoice_paid',
-  'failed_job',
-  'no_go',
-  'completed',
-  'awaiting_collection',
-  'collected',
-] as const
-export const AUTO_KEY_ACTIVE_STATUSES = [
-  'awaiting_quote',
-  'awaiting_customer_details',
-  'quote_sent',
-  'awaiting_booking_confirmation',
-  'booking_confirmed',
-  'en_route',
-  'on_site',
-  'booking_on_hold',
-  'awaiting_go_ahead',
-  'go_ahead',
-  'working_on',
-  'service',
-  'awaiting_parts',
-  'parts_to_order',
-  'sent_to_labanda',
-  'quoted_by_labanda',
-  'at_third_party_for_quoting',
-  'third_party_quote_approved',
-  'at_third_party_repairer',
-] as const
+/**
+ * Status vocabulary lives in `@/lib/mobileStatus` (mirrors the backend). These
+ * re-exports keep the dispatch/scheduling call sites on one import.
+ */
+export const STATUSES: readonly JobStatus[] = MOBILE_STATUS_OPTIONS
+export const AUTO_KEY_LEGACY_STATUS_MAP = MOBILE_STATUS_ALIASES
+export const canonicalAutoKeyStatus = canonicalMobileStatus
+// Closed means the physical work is done (or abandoned), even when the
+// commercial follow-through is still open.
+export const AUTO_KEY_CLOSED_STATUSES = MOBILE_CLOSED_STATUSES
+export const AUTO_KEY_ACTIVE_STATUSES = MOBILE_ACTIVE_STATUSES
 
 export { formatCents } from '@/lib/money'
 
@@ -94,18 +47,7 @@ export function daysInShop(createdAt: string | null | undefined): number {
 
 // ── Dispatch SLA chips ────────────────────────────────────────────────────────
 /** Statuses where the SLA clock stops (the tech is en route / on site / done). */
-const SLA_STOP_CLOCK_STATUSES = new Set<string>([
-  'en_route',
-  'on_site',
-  'work_completed',
-  'invoice_paid',
-  'booking_completed',
-  'failed_job',
-  'no_go',
-  'completed',
-  'awaiting_collection',
-  'collected',
-])
+const SLA_STOP_CLOCK_FIELD_STATUSES = new Set<string>(['en_route', 'on_site', 'working_on', 'service'])
 
 export type SlaChipKind = 'late' | 'at_risk' | 'aging'
 export interface SlaChip { kind: SlaChipKind; label: string }
@@ -118,7 +60,7 @@ export function computeSlaChip(
   job: { scheduled_at?: string | null; status: string; created_at: string | null },
   now: number = Date.now(),
 ): SlaChip | null {
-  if (SLA_STOP_CLOCK_STATUSES.has(job.status)) return null
+  if (SLA_STOP_CLOCK_FIELD_STATUSES.has(job.status) || isMobileStatusClosed(job.status)) return null
 
   if (job.scheduled_at) {
     const scheduled = new Date(job.scheduled_at).getTime()

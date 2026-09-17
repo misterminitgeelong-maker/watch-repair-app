@@ -10,7 +10,13 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_feature, require_tech_or_above
+from ..dependencies import AuthContext, get_auth_context, require_feature, require_owner, require_tech_or_above
+from ..mobile_catalogue import (
+    MOBILE_CATALOGUE_CATEGORIES,
+    enabled_catalogue_categories,
+    normalise_catalogue_categories,
+    serialise_catalogue_categories,
+)
 from ..models import Tenant
 
 router = APIRouter(prefix="/v1/toolkit", tags=["toolkit"])
@@ -103,6 +109,66 @@ def patch_mobile_notifications(
         customer_sms_enabled=bool(tenant.mobile_services_customer_sms_enabled),
         dispatch_phone=getattr(tenant, "mobile_dispatch_phone", None),
     )
+
+
+class MobileCatalogueCategoryRead(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class MobileCatalogueRead(BaseModel):
+    enabled_categories: list[str]
+    available_categories: list[MobileCatalogueCategoryRead]
+
+
+class MobileCataloguePatch(BaseModel):
+    enabled_categories: list[str] = Field(min_length=1, max_length=10)
+
+
+def _catalogue_read(tenant: Tenant) -> MobileCatalogueRead:
+    return MobileCatalogueRead(
+        enabled_categories=enabled_catalogue_categories(tenant),
+        available_categories=[
+            MobileCatalogueCategoryRead(key=c.key, label=c.label, description=c.description)
+            for c in MOBILE_CATALOGUE_CATEGORIES
+        ],
+    )
+
+
+@router.get("/mobile-catalogue", response_model=MobileCatalogueRead)
+def get_mobile_catalogue(
+    auth: AuthContext = Depends(get_auth_context),
+    _f=Depends(require_feature("auto_key")),
+    session: Session = Depends(get_session),
+):
+    """Which POS catalogue categories this shop sells (vehicle keys by default)."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return _catalogue_read(tenant)
+
+
+@router.patch("/mobile-catalogue", response_model=MobileCatalogueRead)
+def patch_mobile_catalogue(
+    body: MobileCataloguePatch,
+    auth: AuthContext = Depends(require_owner),
+    _f=Depends(require_feature("auto_key")),
+    session: Session = Depends(get_session),
+):
+    """Owner-only: enable or disable catalogue categories. Catalogue rows are never deleted."""
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        selection = normalise_catalogue_categories(body.enabled_categories)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    tenant.mobile_catalogue_categories_json = serialise_catalogue_categories(selection)
+    session.add(tenant)
+    session.commit()
+    session.refresh(tenant)
+    return _catalogue_read(tenant)
 
 
 @router.get("/catalog")

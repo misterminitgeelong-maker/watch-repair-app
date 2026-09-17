@@ -24,7 +24,7 @@ import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { Button, Input, Modal, Select, Textarea } from '@/components/ui'
 import { AUTO_KEY_JOB_TYPES, MOBILE_JOB_TYPES } from '@/lib/autoKeyJobTypes'
 import { dollarsToCents } from '@/lib/money'
-import { STATUS_LABELS } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, formatCents } from './dispatchHelpers'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
@@ -572,7 +572,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 <option value="urgent">Urgent</option>
               </Select>
               <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))} disabled={sendBookingSms}>
-                {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
+                {STATUSES.map(s => <option key={s} value={s}>{mobileStatusLabel(s)}</option>)}
               </Select>
             </div>
             {sendBookingSms && (

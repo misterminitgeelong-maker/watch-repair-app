@@ -105,6 +105,13 @@ export default function PricingSelector({
     staleTime: 60_000,
   })
 
+  // Only the categories this shop sells (owner setting). Until meta loads, show the default pair.
+  const enabledCategories: readonly TabId[] = catalogueMeta?.enabled_categories ?? ['vehicle_key', 'general_service']
+  const visibleTabs = TABS.filter(t => enabledCategories.includes(t.id))
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.some(t => t.id === tab)) setTab(visibleTabs[0].id)
+  }, [tab, visibleTabs])
+
   const catalogueEmpty =
     catalogueMeta != null &&
     catalogueMeta.oem_row_count === 0 &&
@@ -416,7 +423,7 @@ export default function PricingSelector({
         </div>
 
         <div className="flex border-b" style={{ borderColor: 'var(--ms-border-strong)' }}>
-          {TABS.map(t => (
+          {visibleTabs.map(t => (
             <button
               key={t.id}
               type="button"

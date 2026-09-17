@@ -1,3 +1,5 @@
+import { mobileStatusDefinition } from '@/lib/mobileStatus'
+
 export interface KanbanColumnDef<S extends string = string> {
   key: string
   label: string
@@ -144,60 +146,35 @@ export const SHOE_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   },
 ] as const
 
+// Mobile Services columns follow the shared vocabulary (`@/lib/mobileStatus`):
+// one column per lifecycle stage, aliases folded into their canonical stage, so
+// a job is never under a different heading here than on the list or detail page.
+// Dropping onto a column writes the canonical status (statuses[0]).
+function mobileColumn(key: string, label: string, keys: readonly string[], color: string, bg: string): KanbanColumnDef {
+  return { key, label, statuses: keys.flatMap(k => [k, ...mobileStatusDefinition(k)!.aliases]), color, bg }
+}
+
+/** Active lifecycle: what the board shows by default. */
 export const AUTO_KEY_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
-  {
-    key: 'awaiting_quote',
-    label: 'Awaiting Quote',
-    statuses: ['awaiting_quote', 'awaiting_customer_details'],
-    color: '#C07820',
-    bg: '#FAEEDB',
-  },
-  {
-    key: 'quote_sent',
-    label: 'Quote Sent',
-    statuses: ['quote_sent', 'awaiting_booking_confirmation', 'awaiting_go_ahead', 'go_ahead'],
-    color: '#2A5FA0',
-    bg: '#EDF3FA',
-  },
-  {
-    key: 'booking_confirmed',
-    label: 'Booking Confirmed',
-    statuses: ['booking_confirmed', 'booked', 'pending_booking'],
-    color: '#B06010',
-    bg: '#FFF0E0',
-  },
-  {
-    key: 'en_route',
-    label: 'En Route',
-    statuses: ['en_route', 'on_site', 'working_on', 'service'],
-    color: '#6A3FC9',
-    bg: '#EDE5F5',
-  },
-  {
-    key: 'booking_on_hold',
-    label: 'Booking on Hold',
-    statuses: [
-      'booking_on_hold',
-      'job_delayed',
-      'awaiting_parts',
-      'parts_to_order',
-      'sent_to_labanda',
-      'quoted_by_labanda',
-      'at_third_party_for_quoting',
-      'third_party_quote_approved',
-      'at_third_party_repairer',
-    ],
-    color: '#A84F1A',
-    bg: '#FDE8D8',
-  },
-  {
-    key: 'booking_completed',
-    label: 'Booking Completed',
-    statuses: ['booking_completed', 'work_completed', 'invoice_paid', 'completed', 'awaiting_collection', 'collected'],
-    color: '#1E7040',
-    bg: '#E8F5ED',
-  },
+  mobileColumn('awaiting_quote', 'Awaiting Quote', ['awaiting_quote', 'awaiting_customer_details'], '#C07820', '#FAEEDB'),
+  mobileColumn('quote_sent', 'Quote Sent', ['quote_sent'], '#2A5FA0', '#EDF3FA'),
+  mobileColumn('awaiting_booking_confirmation', 'Awaiting Booking Confirmation', ['awaiting_booking_confirmation'], '#3E6FB0', '#E7F0FA'),
+  mobileColumn('booking_confirmed', 'Booking Confirmed', ['booking_confirmed'], '#B06010', '#FFF0E0'),
+  mobileColumn('booking_on_hold', 'Booking on Hold', ['booking_on_hold'], '#A84F1A', '#FDE8D8'),
+  mobileColumn('in_field', 'In the Field', ['en_route', 'on_site'], '#6A3FC9', '#EDE5F5'),
+  mobileColumn('work_completed', 'Work Completed', ['work_completed'], '#1E7040', '#E8F5ED'),
 ] as const
+
+/** Closed stages, appended when the directory shows completed / all jobs. */
+export const AUTO_KEY_KANBAN_CLOSED_COLUMNS: readonly KanbanColumnDef[] = [
+  mobileColumn('invoice_paid', 'Invoice Paid', ['invoice_paid'], '#1A6A3A', '#EBF8EF'),
+  mobileColumn('lost', 'Failed / No Go', ['failed_job', 'no_go'], '#B03A2A', '#FBE7E3'),
+] as const
+
+export const AUTO_KEY_KANBAN_ALL_COLUMNS: readonly KanbanColumnDef[] = [
+  ...AUTO_KEY_KANBAN_COLUMNS,
+  ...AUTO_KEY_KANBAN_CLOSED_COLUMNS,
+]
 
 export const CUSTOMER_ORDER_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
   {

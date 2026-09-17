@@ -11,7 +11,12 @@ from sqlalchemy import case
 from sqlmodel import Session, func, select, col
 
 from ..config import settings
-from ..auto_key_status import AUTO_KEY_FINAL_STATUSES
+from ..auto_key_status import (
+    AUTO_KEY_FINAL_STATUSES,
+    canonical_auto_key_status,
+    mobile_status_category,
+    mobile_status_label,
+)
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
@@ -1508,7 +1513,16 @@ def get_auto_key_reports(
         "kpis": kpis,
         "jobs_by_type": sorted(type_map.values(), key=lambda x: -x["revenue_cents"]),
         "jobs_by_tech": sorted(tech_map.values(), key=lambda x: -x["revenue_cents"]),
-        "jobs_by_status": [{"status": s, "count": c} for s, c in status_map.items()],
+        "jobs_by_status": [
+            {
+                "status": s,
+                "canonical_status": canonical_auto_key_status(s),
+                "label": mobile_status_label(s),
+                "category": mobile_status_category(s),
+                "count": c,
+            }
+            for s, c in status_map.items()
+        ],
         "week_on_week": sorted(week_map.values(), key=lambda x: x["week_start"]),
     }
 

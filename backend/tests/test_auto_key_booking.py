@@ -64,7 +64,7 @@ def test_create_job_with_booking_sms_creates_quote_and_pending_status():
     )
     assert r.status_code == 201
     job = r.json()
-    assert job["status"] == "pending_booking"
+    assert job["status"] == "awaiting_booking_confirmation"
     jid = job["id"]
     quotes = client.get(f"/v1/auto-key-jobs/{jid}/quotes", headers=h)
     assert quotes.status_code == 200
@@ -111,7 +111,49 @@ def test_public_confirm_booking():
 
     conf = client.post(f"/v1/public/auto-key-booking/{token}/confirm")
     assert conf.status_code == 200
-    assert conf.json()["status"] == "booked"
+    assert conf.json()["status"] == "booking_confirmed"
 
     job2 = client.get(f"/v1/auto-key-jobs/{jid}", headers=h)
-    assert job2.json()["status"] == "booked"
+    assert job2.json()["status"] == "booking_confirmed"
+
+
+def test_public_confirm_accepts_legacy_pending_booking_rows():
+    """Rows written before the vocabulary tidy-up (pending_booking) still confirm."""
+    h, cid = _auth_and_customer()
+    r = client.post(
+        "/v1/auto-key-jobs",
+        headers=h,
+        json={
+            "customer_id": cid,
+            "title": "Legacy pending",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "awaiting_quote",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+            "send_booking_sms": True,
+        },
+    )
+    assert r.status_code == 201, r.text
+    from app.database import engine
+    from sqlmodel import Session, select
+    from app.models import AutoKeyJob
+
+    with Session(engine) as s:
+        j = s.exec(select(AutoKeyJob).where(AutoKeyJob.id == UUID(r.json()["id"]))).one()
+        j.status = "pending_booking"  # what an un-migrated deployment would have stored
+        s.add(j)
+        s.commit()
+        token = j.booking_confirmation_token
+
+    pub = client.get(f"/v1/public/auto-key-booking/{token}")
+    assert pub.status_code == 200
+    assert pub.json()["awaiting_confirmation"] is True
+    assert pub.json()["already_confirmed"] is False
+
+    conf = client.post(f"/v1/public/auto-key-booking/{token}/confirm")
+    assert conf.status_code == 200, conf.text
+    assert conf.json()["status"] == "booking_confirmed"
+    again = client.get(f"/v1/public/auto-key-booking/{token}")
+    assert again.json()["already_confirmed"] is True

@@ -53,7 +53,8 @@ import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
+import { MOBILE_STATUS_OPTIONS, mobileStatusLabel } from '@/lib/mobileStatus'
 import { preparePhotoFile } from '@/lib/photoUpload'
 
 interface LineItemDraft { description: string; quantity: string; unitPrice: string }
@@ -319,18 +320,8 @@ function SeverityBadge({ severity }: { severity: string }) {
   )
 }
 
-const STATUSES: JobStatus[] = [
-  'awaiting_quote',
-  'quote_sent',
-  'awaiting_booking_confirmation',
-  'booking_confirmed',
-  'job_delayed',
-  'en_route',
-  'on_site',
-  'work_completed',
-  'invoice_paid',
-  'failed_job',
-]
+// One picker list for every Mobile Services surface (see @/lib/mobileStatus).
+const STATUSES: readonly JobStatus[] = MOBILE_STATUS_OPTIONS
 
 function QuoteSignatureImage({ quoteId, signedAt, signerName }: { quoteId: string; signedAt?: string | null; signerName?: string | null }) {
   const [url, setUrl] = useState<string | null>(null)
@@ -847,7 +838,7 @@ export default function AutoKeyJobDetailPage() {
           onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
         >
           {STATUSES.map(s => (
-            <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+            <option key={s} value={s}>{mobileStatusLabel(s)}</option>
           ))}
         </select>
         {job.job_address && (
@@ -1263,7 +1254,7 @@ export default function AutoKeyJobDetailPage() {
             disabled={statusMut.isPending}
           >
             {STATUSES.map(s => (
-              <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>
+              <option key={s} value={s}>{mobileStatusLabel(s)}</option>
             ))}
           </Select>
           {statusFeedback && (

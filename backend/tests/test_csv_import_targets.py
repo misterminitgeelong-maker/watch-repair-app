@@ -480,7 +480,7 @@ def test_mobile_normal_run_creates_customer_job_and_quote(client: TestClient, te
         alice = jobs["IMP-M8000101"]
         assert alice.customer_id == customers["Alice Key"].id
         assert alice.title == "Mobile service"  # no title and no work line
-        assert alice.status == "booked"
+        assert alice.status == "booking_confirmed"
         assert alice.description == "lost key"
         assert alice.tech_notes == "lost key"
         assert alice.job_address == "1 Main St"

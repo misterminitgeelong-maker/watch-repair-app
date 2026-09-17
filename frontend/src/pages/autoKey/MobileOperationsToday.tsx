@@ -18,7 +18,7 @@ import {
   type AutoKeyJob,
   type TenantUser,
 } from '@/lib/api'
-import { STATUS_LABELS } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { AUTO_KEY_CLOSED_STATUSES, canonicalAutoKeyStatus, computeSlaChip, formatCents, ymdLocal } from './dispatchHelpers'
 
 const CLOSED = new Set<string>(AUTO_KEY_CLOSED_STATUSES)
@@ -49,7 +49,7 @@ function AttentionRow({ job, reason }: { job: AutoKeyJob; reason: string }) {
           <span className="text-sm font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{job.customer_name ?? job.title}</span>
         </div>
         <p className="mt-0.5 text-xs truncate" style={{ color: 'var(--ms-text-muted)' }}>
-          {reason} · {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+          {reason} · {mobileStatusLabel(job.status)}
         </p>
       </div>
       <ChevronRight size={16} className="shrink-0" style={{ color: 'var(--ms-text-muted)' }} />

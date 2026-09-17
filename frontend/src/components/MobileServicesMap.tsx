@@ -26,7 +26,7 @@ import {
   type MapPinCoords,
 } from '@/lib/geocodeCache'
 import { nearestNeighborOrder } from '@/lib/mobileRouteUtils'
-import { STATUS_LABELS } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 
 const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
 const GEOCODE_CONCURRENCY = 5
@@ -314,7 +314,7 @@ function MarkerWithInfoWindow({
             </p>
             <p className="mt-0.5">
               <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: 'var(--ms-text-mid)' }}>
-                {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                {mobileStatusLabel(job.status)}
               </span>
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
@@ -517,7 +517,7 @@ function LeafletDispatchMap({
                 </p>
                 <p className="mt-0.5">
                   <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: '#EEE8E3', color: '#4a3d32' }}>
-                    {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                    {mobileStatusLabel(job.status)}
                   </span>
                 </p>
                 <p className="mt-1 text-xs" style={{ color: '#6b5b4a' }}>

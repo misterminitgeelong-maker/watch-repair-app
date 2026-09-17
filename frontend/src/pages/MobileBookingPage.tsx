@@ -192,8 +192,8 @@ export default function MobileBookingPage() {
   }
 
   const job = data as PublicAutoKeyBooking
-  const confirmed = job.already_confirmed || job.status === 'booked'
-  const canConfirm = job.status === 'pending_booking' && !confirmed
+  const confirmed = job.already_confirmed || job.status === 'booking_confirmed' || job.status === 'booked'
+  const canConfirm = (job.awaiting_confirmation ?? (job.status === 'awaiting_booking_confirmation' || job.status === 'pending_booking')) && !confirmed
 
   const scheduled =
     job.scheduled_at != null && job.scheduled_at !== ''

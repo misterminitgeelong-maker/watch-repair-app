@@ -76,6 +76,11 @@ class Tenant(SQLModel, table=True):
     logo_url: Optional[str] = Field(default=None, max_length=1000)
     #: Hex brand colour used to tint email/PDF accents (e.g. "#1F6FEB").
     brand_color: Optional[str] = Field(default=None, max_length=9)
+    #: JSON list of Mobile Services POS catalogue categories this shop sells
+    #: (vehicle_key, general_service, garage_door). NULL = the default set.
+    mobile_catalogue_categories_json: Optional[str] = None
+    #: Weekly collected-cash target for the Mobile Services operations cockpit.
+    mobile_weekly_target_cents: Optional[int] = None
 
 class User(SQLModel, table=True):
     __table_args__ = (

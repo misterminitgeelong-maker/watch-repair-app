@@ -32,6 +32,7 @@ import { Button, Card, EmptyState, Modal, PageHeader, Select, Spinner } from '@/
 import {
   KanbanBoard,
   JobCard as KanbanJobCard,
+  AUTO_KEY_KANBAN_ALL_COLUMNS,
   AUTO_KEY_KANBAN_COLUMNS,
   findColumnForStatus,
 } from '@/components/kanban'
@@ -44,7 +45,8 @@ import {
   civilMondayOfWeekContaining,
   zonedWallTimeToUtcIso,
 } from '@/lib/shopCalendarTime'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
 import {
@@ -704,7 +706,7 @@ export default function AutoKeyJobsPage() {
             <div>
               <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services — Kanban</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                {filteredJobs.length} {jobDirectoryView === 'completed' ? 'completed' : jobDirectoryView === 'all' ? '' : 'active'} job{filteredJobs.length !== 1 ? 's' : ''} across {AUTO_KEY_KANBAN_COLUMNS.length} stages
+                {filteredJobs.length} {jobDirectoryView === 'completed' ? 'completed' : jobDirectoryView === 'all' ? '' : 'active'} job{filteredJobs.length !== 1 ? 's' : ''} across {(jobDirectoryView === 'active' ? AUTO_KEY_KANBAN_COLUMNS : AUTO_KEY_KANBAN_ALL_COLUMNS).length} stages
               </p>
             </div>
             {jobDirectoryView !== 'active' && (
@@ -719,7 +721,7 @@ export default function AutoKeyJobsPage() {
                   border: '1px solid var(--ms-accent)',
                 }}
               >
-                Showing {jobDirectoryView === 'completed' ? `Completed${statusFilter !== 'all' ? ` · ${STATUS_LABELS[statusFilter] ?? statusFilter}` : ''}` : 'All'} jobs — click to show Active
+                Showing {jobDirectoryView === 'completed' ? `Completed${statusFilter !== 'all' ? ` · ${mobileStatusLabel(statusFilter)}` : ''}` : 'All'} jobs — click to show Active
               </button>
             )}
           </div>
@@ -732,7 +734,7 @@ export default function AutoKeyJobsPage() {
           ) : (
             <KanbanBoard
               jobs={sortedJobsDirectory as AutoKeyJob[]}
-              columns={AUTO_KEY_KANBAN_COLUMNS}
+              columns={jobDirectoryView === 'active' ? AUTO_KEY_KANBAN_COLUMNS : AUTO_KEY_KANBAN_ALL_COLUMNS}
               onStatusChange={(jobId, nextStatus) =>
                 statusMut.mutate({ jobId, status: nextStatus as JobStatus })
               }
@@ -793,10 +795,12 @@ export default function AutoKeyJobsPage() {
               {([
                 { label: 'Active', dir: 'active' as const, status: 'all' },
                 { label: 'All', dir: 'all' as const, status: 'all' },
-                { label: 'Awaiting Quote', dir: 'active' as const, status: 'awaiting_quote' },
-                { label: 'Booking Confirmed', dir: 'active' as const, status: 'booking_confirmed' },
-                { label: 'Work Completed', dir: 'completed' as const, status: 'work_completed' },
-                { label: 'Invoice Paid', dir: 'completed' as const, status: 'invoice_paid' },
+                { label: mobileStatusLabel('awaiting_quote'), dir: 'active' as const, status: 'awaiting_quote' },
+                { label: mobileStatusLabel('quote_sent'), dir: 'active' as const, status: 'quote_sent' },
+                { label: mobileStatusLabel('awaiting_booking_confirmation'), dir: 'active' as const, status: 'awaiting_booking_confirmation' },
+                { label: mobileStatusLabel('booking_confirmed'), dir: 'active' as const, status: 'booking_confirmed' },
+                { label: mobileStatusLabel('work_completed'), dir: 'completed' as const, status: 'work_completed' },
+                { label: mobileStatusLabel('invoice_paid'), dir: 'completed' as const, status: 'invoice_paid' },
               ]).map(chip => {
                 const isActive = jobDirectoryView === chip.dir && statusFilter === chip.status
                 return (
@@ -849,7 +853,7 @@ export default function AutoKeyJobsPage() {
                     style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
                   >
                     {STATUSES.map(s => (
-                      <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+                      <option key={s} value={s}>{mobileStatusLabel(s)}</option>
                     ))}
                   </select>
                   <Button onClick={() => bulkStatusMut.mutate()} disabled={bulkStatusMut.isPending}>
@@ -881,7 +885,7 @@ export default function AutoKeyJobsPage() {
                       const sched = job.scheduled_at
                         ? new Date(job.scheduled_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                         : null
-                      const col = findColumnForStatus(AUTO_KEY_KANBAN_COLUMNS, job.status)
+                      const col = findColumnForStatus(AUTO_KEY_KANBAN_ALL_COLUMNS, job.status)
                       return (
                         <tr
                           key={job.id}
@@ -928,7 +932,7 @@ export default function AutoKeyJobsPage() {
                               }}
                             >
                               <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: col?.color ?? 'var(--ms-text-muted)', flexShrink: 0 }} />
-                              {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                              {mobileStatusLabel(job.status)}
                             </span>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--ms-text-mid)' }}>

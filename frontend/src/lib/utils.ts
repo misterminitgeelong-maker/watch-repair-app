@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { MOBILE_STATUS_LABELS } from './mobileStatus'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -90,7 +91,10 @@ export function previewWatchQueueSwipe(
   return WATCH_QUEUE_SWIPE_SEQUENCE[idx - 1]
 }
 
-export const STATUS_LABELS: Record<string, string> = {
+// Watch / shoe repair labels. Keys that Mobile Services lists as legacy aliases
+// (completed, collected, go_ahead, …) keep their watch labels here; Mobile
+// Services surfaces call `mobileStatusLabel()` so an alias reads as its stage.
+const WATCH_STATUS_LABELS: Record<string, string> = {
   awaiting_quote:      'Awaiting Quote',
   awaiting_customer_details: 'Awaiting customer details',
   awaiting_go_ahead:   'Awaiting Go Ahead',
@@ -108,19 +112,12 @@ export const STATUS_LABELS: Record<string, string> = {
   completed:           'Work Completed',
   awaiting_collection: 'Ready for Collection',
   collected:           'Collected',
-  en_route:            'En Route',
-  on_site:             'On Site',
-  pending_booking:     'Awaiting booking confirm',
-  booked:              'Confirmed booking',
-  quote_sent:                    'Quote Sent',
-  awaiting_booking_confirmation: 'Awaiting Booking Confirmation',
-  booking_confirmed:             'Booking Confirmed',
-  booking_on_hold:               'Booking on Hold',
-  booking_completed:             'Booking Completed',
-  job_delayed:                   'Job Delayed',
-  work_completed:                'Work Completed',
-  invoice_paid:                  'Invoice Paid',
-  failed_job:                    'Failed Job',
+}
+
+export const STATUS_LABELS: Record<string, string> = {
+  // Mobile Services statuses come from the shared vocabulary (aliases included).
+  ...MOBILE_STATUS_LABELS,
+  ...WATCH_STATUS_LABELS,
   draft:               'Draft',
   sent:                'Sent',
   approved:            'Approved',

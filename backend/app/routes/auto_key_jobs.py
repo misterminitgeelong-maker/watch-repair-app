@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
-from ..auto_key_status import AUTO_KEY_FINAL_STATUSES
+from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -535,9 +535,10 @@ def create_auto_key_job(
         )
 
     # Texting the customer to confirm a booking moves the job into the
-    # booking-pending stage (it is awaiting their confirmation).
+    # awaiting-confirmation stage (the canonical value; the public confirm
+    # endpoint also still accepts the older "pending_booking" spelling).
     if send_booking_sms:
-        job.status = "pending_booking"
+        job.status = "awaiting_booking_confirmation"
         session.add(job)
         session.commit()
         session.refresh(job)
@@ -963,8 +964,8 @@ def update_auto_key_job_status(
     job.status = payload.status
     job.updated_at = datetime.now(timezone.utc)
     session.add(job)
-    status_label = payload.status.replace("_", " ").title()
-    previous_label = (previous_status or "Not set").replace("_", " ").title()
+    status_label = mobile_status_label(payload.status)
+    previous_label = mobile_status_label(previous_status) if previous_status else "Not set"
     note_suffix = f" — {payload.note.strip()}" if payload.note and payload.note.strip() else ""
     _log_job_event(
         session,

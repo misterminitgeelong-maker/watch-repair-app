@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
+from ..auto_key_status import AUTO_KEY_AWAITING_CONFIRMATION_STATUSES, AUTO_KEY_BOOKED_STATUSES
 from ..database import get_session
 from ..limiter import limiter
 
@@ -412,7 +413,8 @@ def get_public_auto_key_booking(request: Request, token: str, session: Session =
         "tax_cents": quote.tax_cents if quote else 0,
         "currency": quote.currency if quote else "AUD",
         "line_items": line_payload,
-        "already_confirmed": job.status == "booked",
+        "already_confirmed": job.status in AUTO_KEY_BOOKED_STATUSES,
+        "awaiting_confirmation": job.status in AUTO_KEY_AWAITING_CONFIRMATION_STATUSES,
     }
 
 
@@ -432,14 +434,14 @@ def confirm_public_auto_key_booking(
     job = session.exec(select(AutoKeyJob).where(AutoKeyJob.booking_confirmation_token == token)).first()
     if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
-    if job.status == "booked":
-        return {"ok": True, "status": "booked", "message": "Booking was already confirmed."}
-    if job.status != "pending_booking":
+    if job.status in AUTO_KEY_BOOKED_STATUSES:
+        return {"ok": True, "status": "booking_confirmed", "message": "Booking was already confirmed."}
+    if job.status not in AUTO_KEY_AWAITING_CONFIRMATION_STATUSES:
         raise HTTPException(
             status_code=400,
             detail="This job is not awaiting booking confirmation.",
         )
-    job.status = "booked"
+    job.status = "booking_confirmed"
     session.add(job)
 
     quote = session.exec(
@@ -468,7 +470,7 @@ def confirm_public_auto_key_booking(
 
     session.commit()
     session.refresh(job)
-    return {"ok": True, "status": "booked", "message": "Thanks — your booking is confirmed."}
+    return {"ok": True, "status": "booking_confirmed", "message": "Thanks — your booking is confirmed."}
 
 
 @router.get("/auto-key-intake/{token}")

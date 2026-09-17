@@ -5,9 +5,12 @@ import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import {
   getApiErrorMessage,
   getToolkitCatalog,
+  getToolkitMobileCatalogue,
   getToolkitMobileNotifications,
+  patchToolkitMobileCatalogue,
   getToolkitMySelection,
   patchToolkitMobileNotifications,
+  type MobileCatalogueCategory,
   postToolkitRecommend,
   putToolkitMySelection,
   type ToolkitRecommendResponse,
@@ -36,6 +39,19 @@ export default function ToolkitPage() {
   const { data: mobileNotif, isLoading: mobLoading } = useQuery({
     queryKey: ['toolkit', 'mobile-notifications'],
     queryFn: () => getToolkitMobileNotifications().then((r) => r.data),
+  })
+
+  const canEditCatalogue = role === 'owner' || role === 'platform_admin'
+  const { data: catalogue, isLoading: catalogueLoading } = useQuery({
+    queryKey: ['toolkit', 'mobile-catalogue'],
+    queryFn: () => getToolkitMobileCatalogue().then((r) => r.data),
+  })
+  const catalogueMut = useMutation({
+    mutationFn: (enabled: MobileCatalogueCategory[]) => patchToolkitMobileCatalogue(enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['toolkit', 'mobile-catalogue'] })
+      void qc.invalidateQueries({ queryKey: ['mobile-services-pricing', 'meta'] })
+    },
   })
 
   const [dispatchPhone, setDispatchPhone] = useState('')
@@ -192,6 +208,50 @@ export default function ToolkitPage() {
               {dispatchMut.isPending ? 'Saving…' : 'Save number'}
             </Button>
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-4 sm:p-5">
+        <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+          POS catalogue
+        </p>
+        <p className="text-xs mt-1 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
+          Which price lists the POS and quote builder offer. Mobile-key technicians see vehicle keys and general
+          services by default; switch on garage door servicing only if this operation sells it. Price rows are never
+          deleted — a category you switch off is simply hidden.
+        </p>
+        <div className="mt-3 space-y-2">
+          {(catalogue?.available_categories ?? []).map((category) => {
+            const enabled = catalogue?.enabled_categories.includes(category.key) ?? false
+            const lastOne = enabled && (catalogue?.enabled_categories.length ?? 0) === 1
+            return (
+              <label key={category.key} className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={enabled}
+                  disabled={catalogueLoading || !canEditCatalogue || catalogueMut.isPending || lastOne}
+                  onChange={(e) => {
+                    if (!canEditCatalogue || !catalogue) return
+                    const next = e.target.checked
+                      ? [...catalogue.enabled_categories, category.key]
+                      : catalogue.enabled_categories.filter((key) => key !== category.key)
+                    catalogueMut.mutate(next)
+                  }}
+                />
+                <span className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                  <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{category.label}</span>
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{category.description}</span>
+                </span>
+              </label>
+            )
+          })}
+          {!canEditCatalogue && (
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Only the owner can change which catalogues this shop sells.</p>
+          )}
+          {catalogueMut.isError && (
+            <p className="text-xs" style={{ color: 'var(--ms-error)' }}>Could not save the catalogue selection.</p>
+          )}
         </div>
       </Card>
 

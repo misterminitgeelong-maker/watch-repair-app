@@ -9,10 +9,12 @@ import {
   createCustomer,
   getAutoKeyJob,
   getApiErrorMessage,
+  getMobileServicesPricingMeta,
   listAutoKeyJobs,
   updateAutoKeyJobStatus,
   type Customer,
   type CustomerAccount,
+  type MobileCatalogueCategory,
   type MobileServicesPricingSelection,
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
@@ -21,33 +23,46 @@ import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import PricingSelector from '@/components/PricingSelector'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 
-const POS_QUICK_ITEMS = [
+/**
+ * Quick-add items, tagged with the catalogue category they belong to. Garage
+ * door lines used to sit in this list untagged, so every mobile-key technician
+ * saw them; the POS now shows only the categories the shop has enabled
+ * (owner setting under Toolkit > POS catalogue). Nothing is deleted.
+ */
+export const POS_QUICK_ITEMS: readonly { label: string; desc: string; price: number; category: MobileCatalogueCategory }[] = [
   // General service (Mobile Services Suggested Pricing 2026)
-  { label: 'Callout – min charge', desc: '30km radius', price: 5000 },
-  { label: 'Callout – next 30km', desc: 'Additional distance band', price: 5000 },
-  { label: 'Gain entry', desc: 'Callout charged separately', price: 10000 },
-  { label: 'Lishi pick & decode', desc: 'Incl. callout', price: 25000 },
-  { label: 'Diagnostic fee', desc: 'Callout charged separately', price: 10000 },
-  { label: 'Transponder copy', desc: 'Callout charged separately', price: 9000 },
-  { label: 'Transponder gen/prog', desc: 'Incl. callout', price: 25000 },
-  { label: 'Cut and prog', desc: 'Customer supplied key', price: 25000 },
-  { label: 'All keys lost – TE', desc: 'TE key, no remote', price: 30000 },
-  { label: 'All keys lost – Basic', desc: 'Manual remote code chip from car', price: 38000 },
-  { label: 'All keys lost – Prox', desc: 'Proximity key', price: 48000 },
-  { label: 'Lock rekey', desc: 'Per lock', price: 15000 },
-  { label: 'Smart cable prog', desc: 'Nissan/Renault/Toyota/Chrysler, incl. callout', price: 65000 },
+  { label: 'Callout – min charge', desc: '30km radius', price: 5000, category: 'general_service' },
+  { label: 'Callout – next 30km', desc: 'Additional distance band', price: 5000, category: 'general_service' },
+  { label: 'Gain entry', desc: 'Callout charged separately', price: 10000, category: 'general_service' },
+  { label: 'Lishi pick & decode', desc: 'Incl. callout', price: 25000, category: 'vehicle_key' },
+  { label: 'Diagnostic fee', desc: 'Callout charged separately', price: 10000, category: 'general_service' },
+  { label: 'Transponder copy', desc: 'Callout charged separately', price: 9000, category: 'vehicle_key' },
+  { label: 'Transponder gen/prog', desc: 'Incl. callout', price: 25000, category: 'vehicle_key' },
+  { label: 'Cut and prog', desc: 'Customer supplied key', price: 25000, category: 'vehicle_key' },
+  { label: 'All keys lost – TE', desc: 'TE key, no remote', price: 30000, category: 'vehicle_key' },
+  { label: 'All keys lost – Basic', desc: 'Manual remote code chip from car', price: 38000, category: 'vehicle_key' },
+  { label: 'All keys lost – Prox', desc: 'Proximity key', price: 48000, category: 'vehicle_key' },
+  { label: 'Lock rekey', desc: 'Per lock', price: 15000, category: 'general_service' },
+  { label: 'Smart cable prog', desc: 'Nissan/Renault/Toyota/Chrysler, incl. callout', price: 65000, category: 'vehicle_key' },
   // Garage servicing
-  { label: 'Door service', desc: 'Lubricate and tighten fasteners', price: 22000 },
-  { label: 'Weather seal', desc: 'Replace bottom rubber weather seal', price: 40000 },
-  { label: 'Door lock', desc: 'Replace roller/tilt lock', price: 35000 },
-  { label: 'Cables', desc: 'Replace cables both sides', price: 33000 },
-  { label: 'Hinge replacement', desc: 'Replace broken hinges', price: 17500 },
-  { label: 'Spring re-tension', desc: 'Tension and balance door', price: 15000 },
-  { label: 'Wheel replacement', desc: 'Replace broken wheels', price: 17500 },
-  { label: 'Motor calibration', desc: 'Reset limits and sensitivity', price: 15000 },
-  { label: 'Spring replacement', desc: 'Replace spring assembly', price: 45000 },
-  { label: 'Motor replacement', desc: 'Swap out motor', price: 80000 },
-] as const
+  { label: 'Door service', desc: 'Lubricate and tighten fasteners', price: 22000, category: 'garage_door' },
+  { label: 'Weather seal', desc: 'Replace bottom rubber weather seal', price: 40000, category: 'garage_door' },
+  { label: 'Door lock', desc: 'Replace roller/tilt lock', price: 35000, category: 'garage_door' },
+  { label: 'Cables', desc: 'Replace cables both sides', price: 33000, category: 'garage_door' },
+  { label: 'Hinge replacement', desc: 'Replace broken hinges', price: 17500, category: 'garage_door' },
+  { label: 'Spring re-tension', desc: 'Tension and balance door', price: 15000, category: 'garage_door' },
+  { label: 'Wheel replacement', desc: 'Replace broken wheels', price: 17500, category: 'garage_door' },
+  { label: 'Motor calibration', desc: 'Reset limits and sensitivity', price: 15000, category: 'garage_door' },
+  { label: 'Spring replacement', desc: 'Replace spring assembly', price: 45000, category: 'garage_door' },
+  { label: 'Motor replacement', desc: 'Swap out motor', price: 80000, category: 'garage_door' },
+]
+
+export const DEFAULT_POS_CATEGORIES: readonly MobileCatalogueCategory[] = ['vehicle_key', 'general_service']
+
+/** Quick items for the categories a shop sells, in catalogue order. */
+export function quickItemsForCategories(enabled: readonly MobileCatalogueCategory[]) {
+  return POS_QUICK_ITEMS.filter(item => enabled.includes(item.category))
+}
 
 interface CartLine {
   id: string
@@ -66,6 +81,12 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
   const [showPricingSelector, setShowPricingSelector] = useState(false)
+  const { data: catalogueMeta } = useQuery({
+    queryKey: ['mobile-services-pricing', 'meta'],
+    queryFn: () => getMobileServicesPricingMeta().then(r => r.data),
+    staleTime: 60_000,
+  })
+  const quickItems = quickItemsForCategories(catalogueMeta?.enabled_categories ?? DEFAULT_POS_CATEGORIES)
   const { data: initialJob } = useQuery({
     queryKey: ['auto-key-job', initialJobId],
     queryFn: () => getAutoKeyJob(initialJobId!).then(r => r.data),
@@ -275,7 +296,7 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
-            {POS_QUICK_ITEMS.map(({ label, desc, price }) => (
+            {quickItems.map(({ label, desc, price }) => (
               <button
                 key={label}
                 type="button"

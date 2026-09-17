@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dependencies import get_auth_context, require_feature
+from ..mobile_catalogue import enabled_catalogue_categories
 from ..models import (
     GarageServicingPricing,
     GarageServicingPricingRow,
@@ -15,6 +16,7 @@ from ..models import (
     OemKeyPricingRow,
     ServicePricing,
     ServicePricingRow,
+    Tenant,
 )
 
 router = APIRouter(
@@ -139,14 +141,16 @@ class MobileServicesPricingMeta(BaseModel):
     oem_make_count: int
     service_row_count: int
     garage_row_count: int
+    #: Catalogue categories this shop sells (owner setting; see /v1/toolkit/mobile-catalogue).
+    enabled_categories: list[str]
 
 
 @router.get("/meta", response_model=MobileServicesPricingMeta)
 def pricing_catalogue_meta(
-    _auth=Depends(get_auth_context),
+    auth=Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
-    """Row counts for empty-state diagnostics (same DB as DATABASE_URL)."""
+    """Row counts for empty-state diagnostics (same DB as DATABASE_URL) plus the shop's enabled categories."""
     oem_rows = session.exec(
         select(func.count()).select_from(OemKeyPricing).where(_pricing_is_active(OemKeyPricing.active))
     ).one()
@@ -168,4 +172,5 @@ def pricing_catalogue_meta(
         oem_make_count=int(oem_makes or 0),
         service_row_count=int(service_rows or 0),
         garage_row_count=int(garage_rows or 0),
+        enabled_categories=enabled_catalogue_categories(session.get(Tenant, auth.tenant_id)),
     )

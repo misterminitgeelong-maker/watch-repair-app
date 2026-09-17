@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AUTO_KEY_KANBAN_COLUMNS, findColumnForStatus } from '@/components/kanban'
+import { AUTO_KEY_KANBAN_ALL_COLUMNS, AUTO_KEY_KANBAN_COLUMNS, findColumnForStatus } from '@/components/kanban'
 import {
   AUTO_KEY_CLOSED_STATUSES,
   canonicalAutoKeyStatus,
@@ -25,12 +25,25 @@ describe('Mobile Services legacy status compatibility', () => {
 
   it.each([
     ['awaiting_go_ahead', 'quote_sent'],
-    ['go_ahead', 'quote_sent'],
-    ['working_on', 'en_route'],
+    ['go_ahead', 'awaiting_booking_confirmation'],
+    ['pending_booking', 'awaiting_booking_confirmation'],
+    ['booked', 'booking_confirmed'],
+    ['working_on', 'in_field'],
     ['awaiting_parts', 'booking_on_hold'],
-    ['completed', 'booking_completed'],
-    ['collected', 'booking_completed'],
+    ['job_delayed', 'booking_on_hold'],
+    ['completed', 'work_completed'],
+    ['booking_completed', 'work_completed'],
   ])('keeps %s visible in the %s Kanban column', (status, columnKey) => {
     expect(findColumnForStatus(AUTO_KEY_KANBAN_COLUMNS, status)?.key).toBe(columnKey)
+  })
+
+  it.each([
+    ['collected', 'invoice_paid'],
+    ['invoice_paid', 'invoice_paid'],
+    ['failed_job', 'lost'],
+    ['no_go', 'lost'],
+  ])('shows closed %s in the %s column of the full board', (status, columnKey) => {
+    expect(findColumnForStatus(AUTO_KEY_KANBAN_COLUMNS, status)).toBeUndefined()
+    expect(findColumnForStatus(AUTO_KEY_KANBAN_ALL_COLUMNS, status)?.key).toBe(columnKey)
   })
 })

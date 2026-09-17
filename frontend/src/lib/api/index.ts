@@ -1940,11 +1940,14 @@ export const listMobileServicesServicePricing = () =>
 export const listGarageServicingPricing = () =>
   api.get<GarageServicingPricingRow[]>('/mobile-services-pricing/garage')
 
+export type MobileCatalogueCategory = 'vehicle_key' | 'general_service' | 'garage_door'
 export type MobileServicesPricingMeta = {
   oem_row_count: number
   oem_make_count: number
   service_row_count: number
   garage_row_count: number
+  /** Catalogue categories this shop sells (owner setting; see /toolkit/mobile-catalogue). */
+  enabled_categories: MobileCatalogueCategory[]
 }
 export const getMobileServicesPricingMeta = () =>
   api.get<MobileServicesPricingMeta>('/mobile-services-pricing/meta')
@@ -3190,6 +3193,13 @@ export const getToolkitMySelection = () =>
   api.get<{ tool_keys: string[] }>('/toolkit/my-selection')
 export const putToolkitMySelection = (tool_keys: string[]) =>
   api.put('/toolkit/my-selection', { tool_keys })
+export interface MobileCatalogueRead {
+  enabled_categories: MobileCatalogueCategory[]
+  available_categories: Array<{ key: MobileCatalogueCategory; label: string; description: string }>
+}
+export const getToolkitMobileCatalogue = () => api.get<MobileCatalogueRead>('/toolkit/mobile-catalogue')
+export const patchToolkitMobileCatalogue = (enabled_categories: MobileCatalogueCategory[]) =>
+  api.patch<MobileCatalogueRead>('/toolkit/mobile-catalogue', { enabled_categories })
 export const getToolkitMobileNotifications = () =>
   api.get<{ customer_sms_enabled: boolean; dispatch_phone: string | null }>('/toolkit/mobile-notifications')
 export const patchToolkitMobileNotifications = (payload: {
@@ -3280,6 +3290,7 @@ export interface PublicAutoKeyBooking {
   currency: string
   quote_total_cents: number
   already_confirmed?: boolean
+  awaiting_confirmation?: boolean
 }
 export const getPublicAutoKeyBooking = (token: string) =>
   axios.get<PublicAutoKeyBooking>(API_ROUTES.publicAutoKeyBooking(token))

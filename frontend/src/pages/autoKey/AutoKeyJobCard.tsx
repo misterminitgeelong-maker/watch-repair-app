@@ -17,7 +17,8 @@ import {
 } from '@/lib/api'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
 import { Badge, Button, Card, Modal, Select } from '@/components/ui'
-import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, computeSlaChip, formatCents, nextMobileStatus } from './dispatchHelpers'
 import { SlaChipBadge } from './SlaChipBadge'
@@ -65,7 +66,7 @@ export function AutoKeyJobCard({
   const latestQuote = quotes[0]
   const latestInvoice = invoices[0]
   const nextStatus = nextMobileStatus(job.status)
-  const quickStatusLabel = nextStatus ? `Mark ${STATUS_LABELS[nextStatus] ?? nextStatus.replace(/_/g, ' ')}` : null
+  const quickStatusLabel = nextStatus ? `Mark ${mobileStatusLabel(nextStatus)}` : null
 
   const statusMut = useMutation({
     mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(job.id, status),
@@ -275,7 +276,7 @@ export function AutoKeyJobCard({
             onChange={e => { void handleStatusChange(e.target.value as JobStatus) }}
             disabled={statusMut.isPending}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace(/_/g, ' ')}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{mobileStatusLabel(s)}</option>)}
           </Select>
           {!isSolo && (
           <div className="mt-2">
@@ -352,7 +353,7 @@ export function AutoKeyJobCard({
     </Card>
       {confirmStatus && (
         <Modal
-          title={`Mark as ${STATUS_LABELS[confirmStatus] ?? confirmStatus.replace(/_/g, ' ')}?`}
+          title={`Mark as ${mobileStatusLabel(confirmStatus)}?`}
           onClose={() => setConfirmStatus(null)}
         >
           <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>

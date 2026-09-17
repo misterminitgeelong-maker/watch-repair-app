@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AklComplexityPill, parseAklComplexity } from '@/components/auto-key/AklComplexityPill'
-import { STATUS_LABELS } from '@/lib/utils'
+import { mobileStatusLabel } from '@/lib/mobileStatus'
 import {
   type WeekSchedulerJob,
   weekJobVehicleSummary,
@@ -104,7 +104,7 @@ export function WeekJobChip({
               </span>
               {job.status && (
                 <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#EEE6DA', color: 'var(--ms-text-mid)' }}>
-                  {STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' ')}
+                  {mobileStatusLabel(job.status)}
                 </span>
               )}
             </div>
