@@ -12642,6 +12642,192 @@
         }
       }
     },
+    "/v1/revenue-control": {
+      "get": {
+        "tags": [
+          "revenue-control"
+        ],
+        "summary": "Get Revenue Control",
+        "operationId": "get_revenue_control_v1_revenue_control_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "quote_draft",
+                    "quote_followup",
+                    "booking_confirmation",
+                    "unscheduled",
+                    "unassigned",
+                    "blocked",
+                    "uninvoiced",
+                    "unpaid"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "due",
+                "scheduled",
+                "all"
+              ],
+              "type": "string",
+              "default": "due",
+              "title": "State"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revenue-control/{issue_key}/follow-up": {
+      "put": {
+        "tags": [
+          "revenue-control"
+        ],
+        "summary": "Save Follow Up",
+        "operationId": "save_follow_up_v1_revenue_control__issue_key__follow_up_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Issue Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/customer-accounts": {
       "get": {
         "tags": [
@@ -24070,6 +24256,55 @@
         "type": "object",
         "title": "CustomerUpdate"
       },
+      "FollowUpUpdate": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "owner_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner User Id"
+          },
+          "next_follow_up_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Follow Up At"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Note",
+            "default": ""
+          },
+          "contacted": {
+            "type": "boolean",
+            "title": "Contacted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "FollowUpUpdate"
+      },
       "GarageServicingPricingRow": {
         "properties": {
           "id": {
@@ -31588,6 +31823,282 @@
           "event_type"
         ],
         "title": "ResendNotificationRequest"
+      },
+      "RevenueBucket": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "quote_draft",
+              "quote_followup",
+              "booking_confirmation",
+              "unscheduled",
+              "unassigned",
+              "blocked",
+              "uninvoiced",
+              "unpaid"
+            ],
+            "title": "Kind"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          },
+          "due_count": {
+            "type": "integer",
+            "title": "Due Count",
+            "default": 0
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents",
+            "default": 0
+          },
+          "unknown_amount_count": {
+            "type": "integer",
+            "title": "Unknown Amount Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "RevenueBucket"
+      },
+      "RevenueItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "quote_draft",
+              "quote_followup",
+              "booking_confirmation",
+              "unscheduled",
+              "unassigned",
+              "blocked",
+              "uninvoiced",
+              "unpaid"
+            ],
+            "title": "Kind"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "job_number": {
+            "type": "string",
+            "title": "Job Number"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "owner_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner User Id"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "amount_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "deposit_cents": {
+            "type": "integer",
+            "title": "Deposit Cents"
+          },
+          "age_days": {
+            "type": "integer",
+            "title": "Age Days"
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Due At"
+          },
+          "due": {
+            "type": "boolean",
+            "title": "Due"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "normal"
+            ],
+            "title": "Priority"
+          },
+          "next_action": {
+            "type": "string",
+            "title": "Next Action"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "last_contact_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Contact At"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "job_id",
+          "job_number",
+          "title",
+          "customer_name",
+          "owner_user_id",
+          "owner_name",
+          "amount_cents",
+          "currency",
+          "deposit_cents",
+          "age_days",
+          "due_at",
+          "due",
+          "priority",
+          "next_action"
+        ],
+        "title": "RevenueItem"
+      },
+      "RevenueOwner": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "RevenueOwner"
+      },
+      "RevenueResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueBucket"
+            },
+            "type": "array",
+            "title": "Buckets"
+          },
+          "owners": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueOwner"
+            },
+            "type": "array",
+            "title": "Owners"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "buckets",
+          "owners",
+          "generated_at",
+          "timezone",
+          "warnings"
+        ],
+        "title": "RevenueResponse"
       },
       "SaveLeadBody": {
         "properties": {

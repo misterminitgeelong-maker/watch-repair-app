@@ -62,6 +62,7 @@ const ShoeServicesPage = lazy(() => import('@/pages/ShoeServicesPage'))
 const PrintWatchIntakeTicketsPage = lazy(() => import('@/pages/PrintWatchIntakeTicketsPage'))
 const PrintShoeIntakeTicketsPage = lazy(() => import('@/pages/PrintShoeIntakeTicketsPage'))
 const AutoKeyJobsPage = lazy(() => import('@/pages/AutoKeyJobsPage'))
+const RevenueControlPage = lazy(() => import('@/pages/RevenueControlPage'))
 const AutoKeyJobDetailPage = lazy(() => import('@/pages/AutoKeyJobDetailPage'))
 const CustomerAccountsPage = lazy(() => import('@/pages/CustomerAccountsPage'))
 const ParentAccountPage = lazy(() => import('@/pages/ParentAccountPage'))
@@ -197,6 +198,7 @@ export default function App() {
                 }
               >
                 <Route index element={<AutoKeyJobsPage />} />
+                <Route path="revenue" element={<RevenueControlPage />} />
                 <Route path="pool" element={<JobPoolPage />} />
                 <Route path="team" element={<MobileServicesTeamPage />} />
                 <Route path="prospects" element={<ProspectsPage />} />

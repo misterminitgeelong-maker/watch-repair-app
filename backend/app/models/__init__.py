@@ -6,4 +6,5 @@ working unchanged.
 """
 from .base import *  # noqa: F401,F403
 from .tables import *  # noqa: F401,F403
+from .revenue import *  # noqa: F401,F403
 from .schemas import *  # noqa: F401,F403

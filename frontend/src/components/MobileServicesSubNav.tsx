@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 
 const tabs = [
   { to: '/auto-key', label: 'Jobs & dispatch', end: true },
+  { to: '/auto-key/revenue', label: 'Revenue control', end: true },
   { to: '/auto-key/team', label: 'Team', end: true },
   { to: '/auto-key/prospects/inbox', label: 'Lead inbox', end: true },
   { to: '/auto-key/prospects', label: 'Prospects', end: true },
