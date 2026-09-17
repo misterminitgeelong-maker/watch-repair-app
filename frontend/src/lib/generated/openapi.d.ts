@@ -3610,6 +3610,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auto-key-jobs/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Page Auto Key Jobs
+         * @description Paginated Mobile Services directory used by the operational list.
+         *
+         *     The legacy list endpoint remains available to dispatch/calendar consumers,
+         *     while this endpoint avoids downloading and rendering hundreds of records for
+         *     ordinary directory work.
+         */
+        get: operations["page_auto_key_jobs_v1_auto_key_jobs_page_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auto-key-jobs/quote-suggestions": {
         parameters: {
             query?: never;
@@ -3679,6 +3703,23 @@ export interface paths {
         head?: never;
         /** Update Auto Key Invoice */
         patch: operations["update_auto_key_invoice_v1_auto_key_jobs_invoices__invoice_id__patch"];
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Auto Key Job Activity */
+        get: operations["list_auto_key_job_activity_v1_auto_key_jobs__job_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/auto-key-jobs/{job_id}": {
@@ -6263,6 +6304,17 @@ export interface components {
             /** Callout Inclusive */
             callout_inclusive?: boolean | null;
         };
+        /** AutoKeyJobPage */
+        AutoKeyJobPage: {
+            /** Items */
+            items: components["schemas"]["AutoKeyJobRead"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** AutoKeyJobRead */
         AutoKeyJobRead: {
             /**
@@ -6709,58 +6761,37 @@ export interface components {
         };
         /** Body_import_csv_v1_import_csv_post */
         Body_import_csv_v1_import_csv_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_customer_orders_v1_customer_orders_import_post */
         Body_import_customer_orders_v1_customer_orders_import_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_directory_export_v1_parent_accounts_me_import_directory_post */
         Body_import_directory_export_v1_parent_accounts_me_import_directory_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post */
         Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post */
         Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_stock_master_v1_stock_import_post */
         Body_import_stock_master_v1_stock_import_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_list_import_sheets_v1_customer_orders_import_sheets_post */
         Body_list_import_sheets_v1_customer_orders_import_sheets_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_send_arrival_sms_v1_auto_key_jobs__job_id__arrival_sms_post */
@@ -6785,10 +6816,7 @@ export interface components {
         };
         /** Body_upload_attachment_v1_attachments_post */
         Body_upload_attachment_v1_attachments_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_upload_vswt_files_v1_reports_vswt_upload_post */
@@ -11260,6 +11288,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** VswtAnnotationUpdate */
         VswtAnnotationUpdate: {
@@ -18380,6 +18412,42 @@ export interface operations {
             };
         };
     };
+    page_auto_key_jobs_v1_auto_key_jobs_page_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                directory?: "active" | "completed" | "all";
+                status?: string | null;
+                assigned_user_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyJobPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_quote_suggestions_v1_auto_key_jobs_quote_suggestions_get: {
         parameters: {
             query?: {
@@ -18492,6 +18560,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutoKeyInvoiceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_auto_key_job_activity_v1_auto_key_jobs__job_id__activity_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantEventLogRead"][];
                 };
             };
             /** @description Validation Error */
