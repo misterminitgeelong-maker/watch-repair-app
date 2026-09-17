@@ -6,22 +6,34 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field as PydanticField
 from fastapi.responses import StreamingResponse
-from sqlalchemy import case
+from sqlalchemy import and_, case, or_
 from sqlmodel import Session, func, select, col
 
 from ..config import settings
 from ..auto_key_status import (
+    AUTO_KEY_AWAITING_CONFIRMATION_STATUSES,
+    AUTO_KEY_COMPLETED_UNPAID_STATUSES,
     AUTO_KEY_FINAL_STATUSES,
     canonical_auto_key_status,
     mobile_status_category,
     mobile_status_label,
 )
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
+from ..dependencies import AuthContext, get_auth_context, require_manager_or_above, require_owner
+from .. import mobile_cockpit
+from ..mobile_cockpit import (
+    FOCUS_DEFINITIONS,
+    WeeklySeries,
+    as_utc,
+    focus_filter,
+    naive_utc,
+    tenant_timezone,
+)
 from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
 from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
-from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
+from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, Tenant, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
@@ -1525,6 +1537,335 @@ def get_auto_key_reports(
         ],
         "week_on_week": sorted(week_map.values(), key=lambda x: x["week_start"]),
     }
+
+
+
+# ── Mobile Services operations cockpit ───────────────────────────────────────
+class MobileWeeklyTargetUpdate(BaseModel):
+    weekly_target_cents: int | None = PydanticField(default=None, ge=0, le=100_000_000)
+
+
+def _cockpit_focus_counts(session: Session, tenant_id: UUID, now: datetime, tz) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for focus in FOCUS_DEFINITIONS:
+        stmt = (
+            select(func.count())
+            .select_from(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant_id)
+            .where(focus_filter(focus.key, tenant_id=tenant_id, now=now, tz=tz))
+        )
+        counts[focus.key] = int(session.exec(stmt).one())
+    return counts
+
+
+def _cockpit_focus_items(
+    session: Session,
+    tenant_id: UUID,
+    key: str,
+    now: datetime,
+    tz,
+    limit: int,
+) -> list[AutoKeyJob]:
+    stmt = (
+        select(AutoKeyJob)
+        .where(AutoKeyJob.tenant_id == tenant_id)
+        .where(focus_filter(key, tenant_id=tenant_id, now=now, tz=tz))
+        .order_by(AutoKeyJob.scheduled_at.is_(None), AutoKeyJob.scheduled_at, AutoKeyJob.created_at)
+        .limit(limit)
+    )
+    return list(session.exec(stmt).all())
+
+
+@router.get("/auto-key/cockpit", summary="Mobile Services operations cockpit (shop timezone)")
+def get_auto_key_cockpit(
+    as_of: str | None = Query(default=None, description="Shop-local YYYY-MM-DD; defaults to today"),
+    items: int = Query(default=6, ge=1, le=25, description="Rows returned per attention/follow-up queue"),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    tenant_id = auth.tenant_id
+    tenant = session.get(Tenant, tenant_id)
+    tz = tenant_timezone(tenant)
+    now = datetime.now(timezone.utc)
+    if as_of:
+        try:
+            as_of_date = datetime.strptime(as_of, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="as_of must use YYYY-MM-DD") from exc
+        # Evaluate "now" at the end of that shop day so late/today filters make sense historically.
+        _start, end = mobile_cockpit.day_bounds_utc(as_of_date, tz)
+        now = min(now, end - timedelta(seconds=1))
+    today = now.astimezone(tz).date()
+    week_start = mobile_cockpit.week_start(today)
+    days_elapsed = (today - week_start).days + 1
+
+    # ── Rows for the trailing six weeks (this week + 5 prior for the 4-week average) ──
+    history_start = week_start - timedelta(days=7 * 5)
+    history_start_utc = naive_utc(datetime(history_start.year, history_start.month, history_start.day, tzinfo=tz))
+    horizon_utc = naive_utc(datetime(today.year, today.month, today.day, tzinfo=tz) + timedelta(days=8))
+
+    jobs = list(
+        session.exec(
+            select(AutoKeyJob)
+            .where(AutoKeyJob.tenant_id == tenant_id)
+            .where(
+                or_(
+                    AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES),
+                    AutoKeyJob.created_at >= history_start_utc,
+                    AutoKeyJob.work_completed_at >= history_start_utc,
+                    and_(AutoKeyJob.scheduled_at >= history_start_utc, AutoKeyJob.scheduled_at < horizon_utc),
+                )
+            )
+        ).all()
+    )
+    invoices = list(
+        session.exec(
+            select(AutoKeyInvoice)
+            .where(AutoKeyInvoice.tenant_id == tenant_id)
+            .where(
+                or_(
+                    AutoKeyInvoice.status.notin_(("paid", *_EXCLUDED_INVOICE_STATUSES)),
+                    AutoKeyInvoice.created_at >= history_start_utc,
+                    AutoKeyInvoice.paid_at >= history_start_utc,
+                )
+            )
+        ).all()
+    )
+    invoice_by_job: dict[UUID, AutoKeyInvoice] = {}
+    for inv in sorted(invoices, key=lambda i: as_utc(i.created_at) or now):
+        invoice_by_job[inv.auto_key_job_id] = inv
+    job_by_id = {j.id: j for j in jobs}
+    users = list(session.exec(select(User).where(User.tenant_id == tenant_id)).all())
+    user_names = {u.id: u.full_name for u in users}
+    customer_ids = {j.customer_id for j in jobs}
+    customer_names: dict[UUID, str] = {}
+    if customer_ids:
+        customer_names = {
+            c.id: c.full_name for c in session.exec(select(Customer).where(col(Customer.id).in_(customer_ids))).all()
+        }
+
+    def summary(job: AutoKeyJob) -> dict:
+        return mobile_cockpit.job_summary(
+            job, customer_names.get(job.customer_id), user_names.get(job.assigned_user_id) if job.assigned_user_id else None
+        )
+
+    # ── Attention + follow-up queues (same SQL the list endpoint applies) ──
+    focus_counts = _cockpit_focus_counts(session, tenant_id, now, tz)
+    queues: dict[str, dict] = {}
+    for focus in FOCUS_DEFINITIONS:
+        rows = _cockpit_focus_items(session, tenant_id, focus.key, now, tz, items)
+        queues[focus.key] = {
+            "key": focus.key,
+            "label": focus.label,
+            "description": focus.description,
+            "tone": focus.tone if focus_counts[focus.key] else "neutral",
+            "count": focus_counts[focus.key],
+            "directory": focus.directory,
+            "items": [summary(j) for j in rows],
+        }
+
+    # ── Money ladder + weekly comparisons ──
+    series = mobile_cockpit.build_daily_series(jobs=jobs, invoices=invoices, invoice_by_job=invoice_by_job, tz=tz)
+    target = tenant.mobile_weekly_target_cents if tenant else None
+    metrics = [
+        mobile_cockpit.compare_metric(
+            key=key,
+            label=label,
+            unit=unit,
+            series=series[key],
+            this_week=week_start,
+            days_elapsed=days_elapsed,
+            direction=direction,
+            target=float(target) if (key == "collected" and target is not None) else None,
+            definition=definition,
+        )
+        for key, (label, unit, direction, definition) in mobile_cockpit.METRIC_DEFINITIONS.items()
+    ]
+
+    open_invoices = [
+        inv for inv in invoices if inv.status not in ("paid", *_EXCLUDED_INVOICE_STATUSES)
+    ]
+    aging = {"current": 0, "d8_30": 0, "d31_plus": 0}
+    aging_counts = {"current": 0, "d8_30": 0, "d31_plus": 0}
+    for inv in open_invoices:
+        bucket = mobile_cockpit.invoice_age_bucket(inv.created_at, now)
+        aging[bucket] += inv.total_cents
+        aging_counts[bucket] += 1
+    outstanding = {
+        "key": "outstanding",
+        "label": "Outstanding",
+        "unit": "cents",
+        "direction": "lower_is_better",
+        "definition": "Unpaid invoices as of now (not period based), excluding void/refunded.",
+        "current": sum(inv.total_cents for inv in open_invoices),
+        "count": len(open_invoices),
+        "aging_cents": aging,
+        "aging_counts": aging_counts,
+        "overdue_cents": aging["d8_30"] + aging["d31_plus"],
+    }
+
+    # ── Follow-ups with value ──
+    quote_rows = list(
+        session.exec(
+            select(AutoKeyQuote)
+            .where(AutoKeyQuote.tenant_id == tenant_id)
+            .where(AutoKeyQuote.status == "sent")
+        ).all()
+    )
+    quote_value_by_job: dict[UUID, int] = {}
+    for q in quote_rows:
+        quote_value_by_job[q.auto_key_job_id] = max(quote_value_by_job.get(q.auto_key_job_id, 0), q.total_cents)
+    follow_ups = {
+        "quotes": {
+            **queues["quote_follow_up"],
+            "value_cents": sum(quote_value_by_job.get(j.id, 0) for j in jobs if j.status in mobile_cockpit.QUOTE_SENT_STATUSES),
+            "open_count": sum(1 for j in jobs if j.status in mobile_cockpit.QUOTE_SENT_STATUSES),
+        },
+        "confirmations": {
+            **queues["confirmation_follow_up"],
+            "open_count": sum(1 for j in jobs if j.status in AUTO_KEY_AWAITING_CONFIRMATION_STATUSES),
+        },
+        "completed_unpaid": {
+            **queues["completed_unpaid"],
+            "value_cents": sum(
+                (invoice_by_job[j.id].total_cents if j.id in invoice_by_job else max(0, j.cost_cents or 0))
+                for j in jobs
+                if j.status in AUTO_KEY_COMPLETED_UNPAID_STATUSES
+            ),
+        },
+        "overdue_invoices": {
+            **queues["overdue_invoices"],
+            "value_cents": outstanding["overdue_cents"],
+            "items": [
+                {
+                    **summary(job_by_id[inv.auto_key_job_id]),
+                    "invoice_id": str(inv.id),
+                    "invoice_number": inv.invoice_number,
+                    "invoice_total_cents": inv.total_cents,
+                    "invoice_age_days": (now - as_utc(inv.created_at)).days if inv.created_at else 0,
+                }
+                for inv in sorted(open_invoices, key=lambda i: as_utc(i.created_at) or now)
+                if inv.auto_key_job_id in job_by_id
+                and mobile_cockpit.invoice_age_bucket(inv.created_at, now) != "current"
+            ][:items],
+        },
+    }
+
+    # ── Technicians ──
+    active_jobs = [j for j in jobs if j.status not in AUTO_KEY_FINAL_STATUSES]
+    today_start, today_end = mobile_cockpit.day_bounds_utc(today, tz)
+    today_jobs = [
+        j for j in active_jobs if j.scheduled_at and today_start <= as_utc(j.scheduled_at) < today_end
+    ]
+    late_ids = {
+        j.id
+        for j in today_jobs
+        if as_utc(j.scheduled_at) < now
+        and j.status not in mobile_cockpit.FIELD_STATUSES
+        and j.status not in mobile_cockpit.ON_HOLD_STATUSES
+    }
+    week_start_utc, _ = mobile_cockpit.day_bounds_utc(week_start, tz)
+    collected_by_user: dict[UUID, int] = {}
+    completed_by_user: dict[UUID, int] = {}
+    for inv in invoices:
+        job = job_by_id.get(inv.auto_key_job_id)
+        if job and job.assigned_user_id and inv.status == "paid" and inv.paid_at and as_utc(inv.paid_at) >= week_start_utc:
+            collected_by_user[job.assigned_user_id] = collected_by_user.get(job.assigned_user_id, 0) + inv.total_cents
+    for job in jobs:
+        if job.assigned_user_id and job.work_completed_at and as_utc(job.work_completed_at) >= week_start_utc:
+            completed_by_user[job.assigned_user_id] = completed_by_user.get(job.assigned_user_id, 0) + 1
+    technicians = mobile_cockpit.technician_rows(
+        users=users,
+        active_jobs=active_jobs,
+        today_jobs=today_jobs,
+        late_today_ids=late_ids,
+        week_collected_by_user=collected_by_user,
+        week_completed_by_user=completed_by_user,
+        now=now,
+    )
+    total_capacity = sum(t["capacity_minutes"] for t in technicians)
+    total_booked = sum(t["booked_minutes_today"] for t in technicians)
+
+    # ── Where the active work sits ──
+    by_category: dict[str, int] = {}
+    for job in active_jobs:
+        category = mobile_status_category(job.status) or "other"
+        by_category[category] = by_category.get(category, 0) + 1
+    category_labels = {"pipeline": "Quoting", "booking": "Booking", "field": "In the field", "completed": "Work completed", "paid": "Paid", "lost": "Lost"}
+
+    # ── Data quality ──
+    data_quality: list[dict] = [
+        {
+            "code": "assumed_duration",
+            "message": f"No estimated durations are recorded; capacity assumes {mobile_cockpit.ASSUMED_JOB_MINUTES} min per booking and a {mobile_cockpit.TECH_DAY_MINUTES // 60}-hour day.",
+            "count": None,
+        }
+    ]
+    no_address = [j for j in today_jobs if not (j.job_address or "").strip()]
+    if no_address:
+        data_quality.append({"code": "missing_address", "message": "Jobs booked today have no address, so they cannot be routed or mapped.", "count": len(no_address)})
+    unpriced = [j for j in active_jobs if j.scheduled_at and (j.cost_cents or 0) <= 0]
+    if unpriced:
+        data_quality.append({"code": "unpriced_bookings", "message": "Scheduled jobs with no price understate the Booked figure.", "count": len(unpriced)})
+    if target is None:
+        data_quality.append({"code": "no_target", "message": "No weekly cash target is set; target comparisons are hidden until an owner sets one.", "count": None})
+    if not technicians:
+        data_quality.append({"code": "no_technicians", "message": "No active technicians are configured, so capacity cannot be shown.", "count": None})
+    data_quality.append({"code": "no_geocoding", "message": "Job locations are not geocoded; travel time and clustering are not estimated.", "count": None})
+
+    return {
+        "as_of": today.isoformat(),
+        "timezone": str(tz.key),
+        "generated_at": now.isoformat(),
+        "week": {
+            "start": week_start.isoformat(),
+            "end": (week_start + timedelta(days=6)).isoformat(),
+            "days_elapsed": days_elapsed,
+            "complete": days_elapsed >= 7,
+        },
+        "attention": [queues[f.key] for f in FOCUS_DEFINITIONS if f.group == "attention"],
+        "period_drill": {f.key: {"count": queues[f.key]["count"], "directory": f.directory} for f in FOCUS_DEFINITIONS if f.group == "period"},
+        "follow_ups": follow_ups,
+        "metrics": metrics,
+        "outstanding": outstanding,
+        "technicians": technicians,
+        "capacity": {
+            "technicians": len(technicians),
+            "capacity_minutes": total_capacity,
+            "booked_minutes": total_booked,
+            "available_minutes": max(0, total_capacity - total_booked),
+            "conflicts": sum(len(t["conflicts"]) for t in technicians),
+            "unassigned_today": sum(1 for j in today_jobs if not j.assigned_user_id),
+        },
+        "active_by_category": [
+            {"category": key, "label": category_labels.get(key, key), "count": by_category.get(key, 0)}
+            for key in ("pipeline", "booking", "field")
+        ],
+        "assumptions": {
+            "assumed_job_minutes": mobile_cockpit.ASSUMED_JOB_MINUTES,
+            "tech_day_minutes": mobile_cockpit.TECH_DAY_MINUTES,
+            "quote_follow_up_days": mobile_cockpit.QUOTE_FOLLOW_UP_DAYS,
+            "confirmation_follow_up_hours": mobile_cockpit.CONFIRMATION_FOLLOW_UP_HOURS,
+            "invoice_overdue_days": mobile_cockpit.INVOICE_OVERDUE_DAYS,
+        },
+        "weekly_target_cents": target,
+        "data_quality": data_quality,
+    }
+
+
+@router.patch("/auto-key/cockpit/target", summary="Set the weekly cash-collected target (owner)")
+def set_auto_key_weekly_target(
+    body: MobileWeeklyTargetUpdate,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    tenant = session.get(Tenant, auth.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    tenant.mobile_weekly_target_cents = body.weekly_target_cents
+    session.add(tenant)
+    session.commit()
+    return {"weekly_target_cents": tenant.mobile_weekly_target_cents}
 
 
 @router.get("/auto-key/commission")

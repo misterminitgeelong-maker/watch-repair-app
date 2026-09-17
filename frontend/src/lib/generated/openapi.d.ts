@@ -1279,6 +1279,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/auto-key/cockpit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mobile Services operations cockpit (shop timezone) */
+        get: operations["get_auto_key_cockpit_v1_reports_auto_key_cockpit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/auto-key/cockpit/target": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set the weekly cash-collected target (owner) */
+        patch: operations["set_auto_key_weekly_target_v1_reports_auto_key_cockpit_target_patch"];
+        trace?: never;
+    };
     "/v1/reports/auto-key/commission": {
         parameters: {
             query?: never;
@@ -3621,6 +3655,9 @@ export interface paths {
          * Page Auto Key Jobs
          * @description Paginated Mobile Services directory used by the operational list.
          *
+         *     ``focus`` applies the exact filter a cockpit tile counted, so a drill-down
+         *     lists the same rows as the number the user clicked.
+         *
          *     The legacy list endpoint remains available to dispatch/calendar consumers,
          *     while this endpoint avoids downloading and rendering hundreds of records for
          *     ordinary directory work.
@@ -5589,7 +5626,7 @@ export interface paths {
         };
         /**
          * Pricing Catalogue Meta
-         * @description Row counts for empty-state diagnostics (same DB as DATABASE_URL).
+         * @description Row counts for empty-state diagnostics (same DB as DATABASE_URL) plus the shop's enabled categories.
          */
         get: operations["pricing_catalogue_meta_v1_mobile_services_pricing_meta_get"];
         put?: never;
@@ -5695,6 +5732,30 @@ export interface paths {
          * @description Enable or disable customer-facing SMS; optionally set dispatch phone for shop booking alerts.
          */
         patch: operations["patch_mobile_notifications_v1_toolkit_mobile_notifications_patch"];
+        trace?: never;
+    };
+    "/v1/toolkit/mobile-catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mobile Catalogue
+         * @description Which POS catalogue categories this shop sells (vehicle keys by default).
+         */
+        get: operations["get_mobile_catalogue_v1_toolkit_mobile_catalogue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Mobile Catalogue
+         * @description Owner-only: enable or disable catalogue categories. Catalogue rows are never deleted.
+         */
+        patch: operations["patch_mobile_catalogue_v1_toolkit_mobile_catalogue_patch"];
         trace?: never;
     };
     "/v1/toolkit/catalog": {
@@ -6761,58 +6822,37 @@ export interface components {
         };
         /** Body_import_csv_v1_import_csv_post */
         Body_import_csv_v1_import_csv_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_customer_orders_v1_customer_orders_import_post */
         Body_import_customer_orders_v1_customer_orders_import_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_directory_export_v1_parent_accounts_me_import_directory_post */
         Body_import_directory_export_v1_parent_accounts_me_import_directory_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post */
         Body_import_mobile_operators_from_xlsx_v1_parent_accounts_me_import_operators_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post */
         Body_import_shops_from_xlsx_v1_parent_accounts_me_import_shops_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_import_stock_master_v1_stock_import_post */
         Body_import_stock_master_v1_stock_import_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_list_import_sheets_v1_customer_orders_import_sheets_post */
         Body_list_import_sheets_v1_customer_orders_import_sheets_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_send_arrival_sms_v1_auto_key_jobs__job_id__arrival_sms_post */
@@ -6837,10 +6877,7 @@ export interface components {
         };
         /** Body_upload_attachment_v1_attachments_post */
         Body_upload_attachment_v1_attachments_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_upload_vswt_files_v1_reports_vswt_upload_post */
@@ -7993,6 +8030,27 @@ export interface components {
             /** Recent Ledger */
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
         };
+        /** MobileCatalogueCategoryRead */
+        MobileCatalogueCategoryRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+        };
+        /** MobileCataloguePatch */
+        MobileCataloguePatch: {
+            /** Enabled Categories */
+            enabled_categories: string[];
+        };
+        /** MobileCatalogueRead */
+        MobileCatalogueRead: {
+            /** Enabled Categories */
+            enabled_categories: string[];
+            /** Available Categories */
+            available_categories: components["schemas"]["MobileCatalogueCategoryRead"][];
+        };
         /** MobileKeyLeadIngestBody */
         MobileKeyLeadIngestBody: {
             /** Suburb */
@@ -8042,6 +8100,8 @@ export interface components {
             service_row_count: number;
             /** Garage Row Count */
             garage_row_count: number;
+            /** Enabled Categories */
+            enabled_categories: string[];
         };
         /** MobileSuburbRouteCreateRequest */
         MobileSuburbRouteCreateRequest: {
@@ -8094,6 +8154,11 @@ export interface components {
             total_routes: number;
             /** Operators */
             operators: components["schemas"]["MobileSuburbRouteOperatorSummary"][];
+        };
+        /** MobileWeeklyTargetUpdate */
+        MobileWeeklyTargetUpdate: {
+            /** Weekly Target Cents */
+            weekly_target_cents?: number | null;
         };
         /** MultiSiteLoginRequest */
         MultiSiteLoginRequest: {
@@ -11312,6 +11377,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** VswtAnnotationUpdate */
         VswtAnnotationUpdate: {
@@ -13993,6 +14062,73 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_auto_key_cockpit_v1_reports_auto_key_cockpit_get: {
+        parameters: {
+            query?: {
+                /** @description Shop-local YYYY-MM-DD; defaults to today */
+                as_of?: string | null;
+                /** @description Rows returned per attention/follow-up queue */
+                items?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_auto_key_weekly_target_v1_reports_auto_key_cockpit_target_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobileWeeklyTargetUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -18438,6 +18574,10 @@ export interface operations {
                 q?: string | null;
                 directory?: "active" | "completed" | "all";
                 status?: string | null;
+                /** @description Reporting category: pipeline|booking|field|completed|paid|lost */
+                category?: string | null;
+                /** @description Cockpit focus (late, unscheduled, …); overrides directory */
+                focus?: string | null;
                 assigned_user_id?: string | null;
                 limit?: number;
                 offset?: number;
@@ -22488,6 +22628,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MobileNotificationsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_catalogue_v1_toolkit_mobile_catalogue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileCatalogueRead"];
+                };
+            };
+        };
+    };
+    patch_mobile_catalogue_v1_toolkit_mobile_catalogue_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobileCataloguePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileCatalogueRead"];
                 };
             };
             /** @description Validation Error */

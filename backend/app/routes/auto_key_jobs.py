@@ -12,7 +12,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
-from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label
+from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label, statuses_in_category
+from ..mobile_cockpit import FOCUS_BY_KEY, focus_filter, tenant_timezone
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
@@ -702,6 +703,8 @@ def page_auto_key_jobs(
     q: str | None = Query(default=None, max_length=200),
     directory: Literal["active", "completed", "all"] = Query(default="active"),
     status: str | None = Query(default=None),
+    category: str | None = Query(default=None, description="Reporting category: pipeline|booking|field|completed|paid|lost"),
+    focus: str | None = Query(default=None, description="Cockpit focus (late, unscheduled, …); overrides directory"),
     assigned_user_id: UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -710,15 +713,29 @@ def page_auto_key_jobs(
 ):
     """Paginated Mobile Services directory used by the operational list.
 
+    ``focus`` applies the exact filter a cockpit tile counted, so a drill-down
+    lists the same rows as the number the user clicked.
+
     The legacy list endpoint remains available to dispatch/calendar consumers,
     while this endpoint avoids downloading and rendering hundreds of records for
     ordinary directory work.
     """
     filters = [AutoKeyJob.tenant_id == auth.tenant_id]
-    if directory == "active":
+    if focus:
+        if focus not in FOCUS_BY_KEY:
+            raise HTTPException(status_code=422, detail=f"Unknown focus: {focus}")
+        tenant = session.get(Tenant, auth.tenant_id)
+        filters.append(
+            focus_filter(focus, tenant_id=auth.tenant_id, now=datetime.now(timezone.utc), tz=tenant_timezone(tenant))
+        )
+    elif directory == "active":
         filters.append(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
     elif directory == "completed":
         filters.append(AutoKeyJob.status.in_(AUTO_KEY_FINAL_STATUSES))
+    if category:
+        if category not in ("pipeline", "booking", "field", "completed", "paid", "lost"):
+            raise HTTPException(status_code=422, detail=f"Unknown category: {category}")
+        filters.append(AutoKeyJob.status.in_(statuses_in_category(category)))
     if status:
         filters.append(AutoKeyJob.status == status)
     if assigned_user_id:

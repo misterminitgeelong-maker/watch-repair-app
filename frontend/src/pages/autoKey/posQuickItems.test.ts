@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_POS_CATEGORIES, POS_QUICK_ITEMS, quickItemsForCategories } from './POSView'
+import { DEFAULT_POS_CATEGORIES, POS_QUICK_ITEMS, quickItemsForCategories } from './posQuickItems'
 
 describe('POS quick items by catalogue category', () => {
   it('tags every quick item with a catalogue category', () => {

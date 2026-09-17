@@ -25,6 +25,8 @@ export function invalidateAutoKeyJobCollections(qc: QueryClient) {
   invalidate(qc, ['auto-key-jobs', 'customer'])
   invalidate(qc, ['auto-key-jobs', 'active'])
   invalidate(qc, ['auto-key-jobs', 'tomorrow-count'])
+  invalidate(qc, ['auto-key-jobs', 'page'])
+  invalidate(qc, ['auto-key-cockpit'])
   void qc.invalidateQueries({
     predicate: (q) => q.queryKey[0] === 'auto-key-jobs' && q.queryKey[2] === 'planner-detail',
   })

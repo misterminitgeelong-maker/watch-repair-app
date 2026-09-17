@@ -2042,6 +2042,10 @@ export const pageAutoKeyJobs = (params: {
   q?: string
   directory?: 'active' | 'completed' | 'all'
   status?: string
+  /** Reporting category from the shared vocabulary (pipeline, booking, field, completed, paid, lost). */
+  category?: MobileStatusCategoryKey
+  /** Cockpit focus (late, unscheduled, …) — applies the exact filter the cockpit tile counted. */
+  focus?: MobileCockpitFocusKey
   assigned_user_id?: string
   limit?: number
   offset?: number
@@ -2889,6 +2893,163 @@ export interface AutoKeyCommissionReport {
 
 export const getAutoKeyReports = (params?: { date_from?: string; date_to?: string }) =>
   api.get<AutoKeyReports>('/reports/auto-key', { params })
+
+// ── Mobile Services operations cockpit ─────────────────────────────────────
+export type MobileStatusCategoryKey = 'pipeline' | 'booking' | 'field' | 'completed' | 'paid' | 'lost'
+export type MobileCockpitFocusKey =
+  | 'late'
+  | 'today'
+  | 'in_field'
+  | 'unscheduled'
+  | 'unassigned'
+  | 'on_hold'
+  | 'needs_quote'
+  | 'quote_follow_up'
+  | 'confirmation_follow_up'
+  | 'completed_unpaid'
+  | 'overdue_invoices'
+  | 'unpaid_invoices'
+  | 'this_week'
+  | 'completed_this_week'
+  | 'invoiced_this_week'
+  | 'collected_this_week'
+export type MobileCockpitTone = 'bad' | 'warn' | 'good' | 'neutral'
+export type MobileCockpitDirection = 'higher_is_better' | 'lower_is_better' | 'neutral'
+
+export interface MobileCockpitJobSummary {
+  id: string
+  job_number: string
+  title: string
+  customer_name: string | null
+  status: JobStatus
+  canonical_status: JobStatus
+  category: MobileStatusCategoryKey | null
+  priority: string
+  scheduled_at: string | null
+  assigned_user_id: string | null
+  assigned_name: string | null
+  job_address: string | null
+  cost_cents: number
+  created_at: string | null
+}
+
+export interface MobileCockpitQueue {
+  key: MobileCockpitFocusKey
+  label: string
+  description: string
+  tone: MobileCockpitTone
+  count: number
+  directory: 'active' | 'completed' | 'all'
+  items: MobileCockpitJobSummary[]
+}
+
+export interface MobileCockpitDelta {
+  abs: number
+  /** null when the baseline is zero (nothing to compare against). */
+  pct: number | null
+}
+
+export interface MobileCockpitMetric {
+  key: 'booked' | 'completed' | 'invoiced' | 'collected' | 'jobs_created' | 'jobs_completed'
+  label: string
+  unit: 'cents' | 'count'
+  definition: string
+  direction: MobileCockpitDirection
+  /** True while the week is incomplete: comparisons are to the same days of prior periods. */
+  partial: boolean
+  days_elapsed: number
+  current: number
+  previous: number
+  previous_to_date: number
+  four_week_avg: number
+  four_week_avg_to_date: number
+  target: number | null
+  target_to_date: number | null
+  vs_previous: MobileCockpitDelta | null
+  vs_previous_tone: MobileCockpitTone
+  vs_four_week: MobileCockpitDelta | null
+  vs_four_week_tone: MobileCockpitTone
+  vs_target: MobileCockpitDelta | null
+  vs_target_tone: MobileCockpitTone
+}
+
+export interface MobileCockpitTechnician {
+  user_id: string
+  name: string
+  role: string
+  scheduled_today: number
+  booked_minutes_today: number
+  capacity_minutes: number
+  available_minutes: number
+  utilisation_pct: number
+  active_jobs: number
+  in_field_now: boolean
+  current_job_number: string | null
+  late_today: number
+  conflicts: Array<{ job_id: string; job_number: string; next_job_id: string; next_job_number: string; gap_minutes: number }>
+  next_job: { id: string; job_number: string; scheduled_at: string; job_address: string | null } | null
+  collected_week_cents: number
+  completed_week: number
+}
+
+export interface MobileCockpitOverdueItem extends MobileCockpitJobSummary {
+  invoice_id: string
+  invoice_number: string
+  invoice_total_cents: number
+  invoice_age_days: number
+}
+
+export interface MobileCockpit {
+  as_of: string
+  timezone: string
+  generated_at: string
+  week: { start: string; end: string; days_elapsed: number; complete: boolean }
+  attention: MobileCockpitQueue[]
+  follow_ups: {
+    quotes: MobileCockpitQueue & { value_cents: number; open_count: number }
+    confirmations: MobileCockpitQueue & { open_count: number }
+    completed_unpaid: MobileCockpitQueue & { value_cents: number }
+    overdue_invoices: Omit<MobileCockpitQueue, 'items'> & { value_cents: number; items: MobileCockpitOverdueItem[] }
+  }
+  metrics: MobileCockpitMetric[]
+  outstanding: {
+    key: 'outstanding'
+    label: string
+    unit: 'cents'
+    direction: 'lower_is_better'
+    definition: string
+    current: number
+    count: number
+    aging_cents: { current: number; d8_30: number; d31_plus: number }
+    aging_counts: { current: number; d8_30: number; d31_plus: number }
+    overdue_cents: number
+  }
+  technicians: MobileCockpitTechnician[]
+  capacity: {
+    technicians: number
+    capacity_minutes: number
+    booked_minutes: number
+    available_minutes: number
+    conflicts: number
+    unassigned_today: number
+  }
+  active_by_category: Array<{ category: MobileStatusCategoryKey; label: string; count: number }>
+  period_drill: Partial<Record<MobileCockpitFocusKey, { count: number; directory: 'active' | 'completed' | 'all' }>>
+  assumptions: {
+    assumed_job_minutes: number
+    tech_day_minutes: number
+    quote_follow_up_days: number
+    confirmation_follow_up_hours: number
+    invoice_overdue_days: number
+  }
+  weekly_target_cents: number | null
+  data_quality: Array<{ code: string; message: string; count: number | null }>
+}
+
+export const getAutoKeyCockpit = (params?: { as_of?: string; items?: number }) =>
+  api.get<MobileCockpit>('/reports/auto-key/cockpit', { params })
+export const setAutoKeyWeeklyTarget = (weekly_target_cents: number | null) =>
+  api.patch<{ weekly_target_cents: number | null }>('/reports/auto-key/cockpit/target', { weekly_target_cents })
 
 export const getAutoKeyCommissionReport = (params?: { date_from?: string; date_to?: string }) =>
   api.get<AutoKeyCommissionReport>('/reports/auto-key/commission', { params })

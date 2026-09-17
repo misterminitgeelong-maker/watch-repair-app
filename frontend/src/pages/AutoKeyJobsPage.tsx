@@ -23,6 +23,8 @@ import {
   bulkAutoKeyJobStatus,
   type AutoKeyJob,
   type JobStatus,
+  type MobileCockpitFocusKey,
+  type MobileStatusCategoryKey,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
@@ -46,7 +48,8 @@ import {
   zonedWallTimeToUtcIso,
 } from '@/lib/shopCalendarTime'
 import { formatDate } from '@/lib/utils'
-import { mobileStatusLabel } from '@/lib/mobileStatus'
+import { MOBILE_STATUS_CATEGORY_LABELS, mobileStatusLabel } from '@/lib/mobileStatus'
+import { COCKPIT_FOCUS_KEYS, COCKPIT_FOCUS_LABELS, MOBILE_CATEGORY_KEYS } from '@/lib/cockpitFocus'
 import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
 import {
@@ -83,7 +86,7 @@ import {
 } from '@/pages/autoKey/WeekGridCells'
 import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
 import { AutoKeyJobCard } from '@/pages/autoKey/AutoKeyJobCard'
-import MobileOperationsToday from '@/pages/autoKey/MobileOperationsToday'
+import MobileOperationsCockpit from '@/pages/autoKey/MobileOperationsCockpit'
 
 const MobileServicesMap = lazy(() => import('@/components/MobileServicesMap'))
 const POSView = lazy(() => import('@/pages/autoKey/POSView').then(module => ({ default: module.POSView })))
@@ -121,6 +124,12 @@ export default function AutoKeyJobsPage() {
         ? 'board'
         : 'today'
   const initialStatus = searchParams.get('status')
+  // Cockpit drill-downs: the server applies the same filter it counted with.
+  const requestedFocus = searchParams.get('focus')
+  const initialFocus: MobileCockpitFocusKey | null = requestedFocus && COCKPIT_FOCUS_KEYS.includes(requestedFocus as MobileCockpitFocusKey) ? (requestedFocus as MobileCockpitFocusKey) : null
+  const requestedCategory = searchParams.get('category')
+  const initialCategory: MobileStatusCategoryKey | null = requestedCategory && MOBILE_CATEGORY_KEYS.includes(requestedCategory as MobileStatusCategoryKey) ? (requestedCategory as MobileStatusCategoryKey) : null
+  const initialTech = searchParams.get('tech')
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialDispatchDate = isYmd(searchParams.get('dispatch_date')) ? (searchParams.get('dispatch_date') as string) : ymdLocal(new Date())
   const initialDispatchTechFilter = searchParams.get('dispatch_tech') ?? ''
@@ -194,6 +203,9 @@ export default function AutoKeyJobsPage() {
   const [listOffset, setListOffset] = useState(0)
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed' | 'all'>(initialDirectory)
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
+  const [focusFilter, setFocusFilter] = useState<MobileCockpitFocusKey | null>(initialFocus)
+  const [categoryFilter, setCategoryFilter] = useState<MobileStatusCategoryKey | null>(initialCategory)
+  const [techFilter, setTechFilter] = useState<string | null>(initialTech)
   const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
   const [jobsLayout, setJobsLayout] = useState<'today' | 'board' | 'list'>(initialJobsLayout)
 
@@ -204,7 +216,7 @@ export default function AutoKeyJobsPage() {
 
   useEffect(() => {
     setListOffset(0)
-  }, [debouncedSearch, jobDirectoryView, statusFilter])
+  }, [debouncedSearch, jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter])
 
   useEffect(() => {
     if (searchParams.toString()) return
@@ -288,11 +300,14 @@ export default function AutoKeyJobsPage() {
     isError: jobsPageError,
     error: jobsPageQueryError,
   } = useQuery({
-    queryKey: ['auto-key-jobs', 'page', jobDirectoryView, statusFilter, debouncedSearch, listOffset],
+    queryKey: ['auto-key-jobs', 'page', jobDirectoryView, statusFilter, focusFilter, categoryFilter, techFilter, debouncedSearch, listOffset],
     queryFn: () => pageAutoKeyJobs({
       q: debouncedSearch || undefined,
       directory: jobDirectoryView,
       status: statusFilter === 'all' ? undefined : statusFilter,
+      focus: focusFilter ?? undefined,
+      category: categoryFilter ?? undefined,
+      assigned_user_id: techFilter ?? undefined,
       limit: listPageSize,
       offset: listOffset,
     }).then(r => r.data),
@@ -498,6 +513,9 @@ export default function AutoKeyJobsPage() {
     const next = new URLSearchParams()
     if (view !== 'jobs') next.set('view', view)
     if (statusFilter !== 'all') next.set('status', statusFilter)
+    if (focusFilter) next.set('focus', focusFilter)
+    if (categoryFilter) next.set('category', categoryFilter)
+    if (techFilter) next.set('tech', techFilter)
     if (olderThanDays > 0) next.set('older_than_days', String(olderThanDays))
     if (view === 'dispatch' || view === 'map' || view === 'planner') {
       next.set('dispatch_date', dispatchDate)
@@ -525,6 +543,9 @@ export default function AutoKeyJobsPage() {
     posJobId,
     setSearchParams,
     statusFilter,
+    focusFilter,
+    categoryFilter,
+    techFilter,
     view,
     weekStart,
   ])
@@ -692,13 +713,7 @@ export default function AutoKeyJobsPage() {
         </Suspense>
       )}
 
-      {view === 'jobs' && jobsLayout === 'today' && (
-        isLoading ? <Spinner /> : isError ? (
-          <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
-            {getApiErrorMessage(jobsQueryError, 'Could not load today’s operation.')}
-          </p>
-        ) : <MobileOperationsToday jobs={jobs as AutoKeyJob[]} users={users} />
-      )}
+      {view === 'jobs' && jobsLayout === 'today' && <MobileOperationsCockpit />}
 
       {view === 'jobs' && jobsLayout === 'board' && (
         <>
@@ -802,12 +817,12 @@ export default function AutoKeyJobsPage() {
                 { label: mobileStatusLabel('work_completed'), dir: 'completed' as const, status: 'work_completed' },
                 { label: mobileStatusLabel('invoice_paid'), dir: 'completed' as const, status: 'invoice_paid' },
               ]).map(chip => {
-                const isActive = jobDirectoryView === chip.dir && statusFilter === chip.status
+                const isActive = !focusFilter && !categoryFilter && !techFilter && jobDirectoryView === chip.dir && statusFilter === chip.status
                 return (
                   <button
                     key={chip.label}
                     type="button"
-                    onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status) }}
+                    onClick={() => { setJobDirectoryView(chip.dir); setStatusFilter(chip.status); setFocusFilter(null); setCategoryFilter(null); setTechFilter(null) }}
                     className="rounded-full text-xs font-semibold transition-colors"
                     style={{
                       padding: '5px 13px',
@@ -833,6 +848,16 @@ export default function AutoKeyJobsPage() {
               />
             </div>
           </div>
+          {(focusFilter || categoryFilter || techFilter) && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--ms-accent-light)', border: '1px solid var(--ms-accent)', color: 'var(--ms-text)' }}>
+              <span className="font-semibold">Showing:</span>
+              {focusFilter && <span>{COCKPIT_FOCUS_LABELS[focusFilter]}</span>}
+              {categoryFilter && <span>{MOBILE_STATUS_CATEGORY_LABELS[categoryFilter]}</span>}
+              {techFilter && <span>Technician: {users.find(u => u.id === techFilter)?.full_name ?? 'selected'}</span>}
+              <span style={{ color: 'var(--ms-text-muted)' }}>· {jobsPage?.total ?? 0} job{jobsPage?.total === 1 ? '' : 's'}, same filter as the cockpit tile</span>
+              <button type="button" className="ml-auto font-semibold" style={{ color: 'var(--ms-accent)' }} onClick={() => { setFocusFilter(null); setCategoryFilter(null); setTechFilter(null) }}>Clear</button>
+            </div>
+          )}
           {jobsPageLoading ? (
             <Spinner />
           ) : jobsPageError ? (
