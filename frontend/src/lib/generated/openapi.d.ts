@@ -3997,6 +3997,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/revenue-control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Revenue Control */
+        get: operations["get_revenue_control_v1_revenue_control_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/revenue-control/{issue_key}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Follow Up */
+        put: operations["save_follow_up_v1_revenue_control__issue_key__follow_up_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customer-accounts": {
         parameters: {
             query?: never;
@@ -7541,6 +7575,25 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** FollowUpUpdate */
+        FollowUpUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Owner User Id */
+            owner_user_id?: string | null;
+            /** Next Follow Up At */
+            next_follow_up_at?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Contacted
+             * @default false
+             */
+            contacted: boolean;
+        };
         /** GarageServicingPricingRow */
         GarageServicingPricingRow: {
             /**
@@ -10096,6 +10149,127 @@ export interface components {
         ResendNotificationRequest: {
             /** Event Type */
             event_type: string;
+        };
+        /** RevenueBucket */
+        RevenueBucket: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "quote_draft" | "quote_followup" | "booking_confirmation" | "unscheduled" | "unassigned" | "blocked" | "uninvoiced" | "unpaid";
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Due Count
+             * @default 0
+             */
+            due_count: number;
+            /**
+             * Amount Cents
+             * @default 0
+             */
+            amount_cents: number;
+            /**
+             * Unknown Amount Count
+             * @default 0
+             */
+            unknown_amount_count: number;
+        };
+        /** RevenueItem */
+        RevenueItem: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "quote_draft" | "quote_followup" | "booking_confirmation" | "unscheduled" | "unassigned" | "blocked" | "uninvoiced" | "unpaid";
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Number */
+            job_number: string;
+            /** Title */
+            title: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Owner User Id */
+            owner_user_id: string | null;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Amount Cents */
+            amount_cents: number | null;
+            /** Currency */
+            currency: string;
+            /** Deposit Cents */
+            deposit_cents: number;
+            /** Age Days */
+            age_days: number;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Due */
+            due: boolean;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "high" | "normal";
+            /** Next Action */
+            next_action: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Last Contact At */
+            last_contact_at?: string | null;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+        };
+        /** RevenueOwner */
+        RevenueOwner: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** RevenueResponse */
+        RevenueResponse: {
+            /** Items */
+            items: components["schemas"]["RevenueItem"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Buckets */
+            buckets: components["schemas"]["RevenueBucket"][];
+            /** Owners */
+            owners: components["schemas"]["RevenueOwner"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Timezone */
+            timezone: string;
+            /** Warnings */
+            warnings: string[];
         };
         /** SaveLeadBody */
         SaveLeadBody: {
@@ -19362,6 +19536,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobMessageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_revenue_control_v1_revenue_control_get: {
+        parameters: {
+            query?: {
+                kind?: ("quote_draft" | "quote_followup" | "booking_confirmation" | "unscheduled" | "unassigned" | "blocked" | "uninvoiced" | "unpaid") | null;
+                state?: "due" | "scheduled" | "all";
+                owner?: string | null;
+                search?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_follow_up_v1_revenue_control__issue_key__follow_up_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowUpUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueItem"];
                 };
             };
             /** @description Validation Error */

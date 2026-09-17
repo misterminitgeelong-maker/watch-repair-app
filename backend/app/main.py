@@ -42,6 +42,7 @@ from .routes.shoe_catalogue import router as shoe_catalogue_router
 from .routes.watch_catalogue import router as watch_catalogue_router
 from .routes.shoe_repair_jobs import router as shoe_repair_jobs_router
 from .routes.auto_key_jobs import router as auto_key_jobs_router
+from .routes.revenue_control import router as revenue_control_router
 from .routes.customer_accounts import router as customer_accounts_router
 from .routes.parent_accounts import router as parent_accounts_router
 from .routes.shop_owner_invites import router as shop_owner_invites_router
@@ -478,6 +479,7 @@ app.include_router(shoe_catalogue_router)
 app.include_router(watch_catalogue_router)
 app.include_router(shoe_repair_jobs_router)
 app.include_router(auto_key_jobs_router)
+app.include_router(revenue_control_router)
 app.include_router(customer_accounts_router)
 app.include_router(parent_accounts_router)
 app.include_router(shop_owner_invites_router)
