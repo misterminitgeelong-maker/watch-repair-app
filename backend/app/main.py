@@ -533,5 +533,13 @@ if _static and _static.is_dir():
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         file_path = _static / full_path
         if full_path and file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(_static / "index.html"))
+            headers = None
+            if full_path == "sw.js":
+                headers = {
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Service-Worker-Allowed": "/",
+                }
+            elif full_path in ("manifest.json", "index.html"):
+                headers = {"Cache-Control": "no-cache"}
+            return FileResponse(str(file_path), headers=headers)
+        return FileResponse(str(_static / "index.html"), headers={"Cache-Control": "no-cache"})

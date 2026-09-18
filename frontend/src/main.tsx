@@ -11,8 +11,12 @@ stampBuildMetaTag()
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
+    // Railway's edge may cache /sw.js for several hours. A build-specific URL
+    // forces each deployment to fetch its worker immediately instead of
+    // leaving installed phones on the previous asset cache.
+    const serviceWorkerUrl = `/sw.js?v=${encodeURIComponent(import.meta.env.VITE_APP_BUILD_ID || 'production')}`
     navigator.serviceWorker
-      .register('/sw.js')
+      .register(serviceWorkerUrl)
       .then(registration => {
         // A phone can stay on one tab for days. Re-check for a new worker when
         // the app is brought back to the foreground so techs are not stuck on a

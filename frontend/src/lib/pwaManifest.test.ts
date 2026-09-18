@@ -20,6 +20,7 @@ const manifest = JSON.parse(readPublic('manifest.json')) as {
 }
 const indexHtml = readPublic('../index.html')
 const sw = readPublic('sw.js')
+const mainSource = readPublic('../src/main.tsx')
 
 describe('manifest.json', () => {
   it('declares what browsers require to offer installation', () => {
@@ -102,5 +103,12 @@ describe('sw.js', () => {
     expect(sw).toContain('clients.claim')
     // Old versioned caches are swept on activate.
     expect(sw).toContain('caches.delete')
+  })
+})
+
+describe('service worker registration', () => {
+  it('cache-busts the worker script with the deployment build id', () => {
+    expect(mainSource).toContain('VITE_APP_BUILD_ID')
+    expect(mainSource).toMatch(/`\/sw\.js\?v=\$\{encodeURIComponent/)
   })
 })
