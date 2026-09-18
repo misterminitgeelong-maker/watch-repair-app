@@ -22,6 +22,7 @@ import {
   type SalesExportDateFilter,
 } from '@/lib/api'
 import { Button, Card, PageHeader, Spinner } from '@/components/ui'
+import { PeriodChips, PeriodDateInput } from '@/components/mobile/ReportControls'
 import { formatCents } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 
@@ -383,8 +384,9 @@ export default function ReportsPage() {
                       <button
                         key={p.key}
                         type="button"
+                        aria-pressed={exportPeriod === p.key}
                         onClick={() => setExportPeriod(p.key)}
-                        className="flex-1 px-2 py-1 text-[10px] font-medium rounded-md transition-colors"
+                        className="min-h-11 flex-1 rounded-md px-2 text-xs font-medium transition-colors sm:min-h-0 sm:py-1 sm:text-[10px]"
                         style={{
                           backgroundColor: exportPeriod === p.key ? 'var(--ms-surface)' : 'transparent',
                           color: exportPeriod === p.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
@@ -396,17 +398,14 @@ export default function ReportsPage() {
                   </div>
                   <label className="block text-xs mb-2 px-1" style={{ color: 'var(--ms-text-muted)' }}>
                     Reference date
-                    <input
-                      type="date"
-                      value={exportReferenceDate}
-                      onChange={e => setExportReferenceDate(e.target.value)}
-                      className="mt-1 w-full rounded-md px-2 py-1.5 text-sm"
-                      style={{
-                        backgroundColor: 'var(--ms-bg)',
-                        border: '1px solid var(--ms-border)',
-                        color: 'var(--ms-text)',
-                      }}
-                    />
+                    <div className="mt-1">
+                      <PeriodDateInput
+                        label="Export reference date"
+                        value={exportReferenceDate}
+                        onChange={setExportReferenceDate}
+                        className="sm:w-full"
+                      />
+                    </div>
                   </label>
                   <Button
                     variant="primary"
@@ -517,61 +516,22 @@ export default function ReportsPage() {
                   style={{ borderColor: 'var(--ms-border)', borderTopColor: 'var(--ms-accent)' }}
                 />
               )}
-              <div className="flex items-center gap-2 ml-auto flex-wrap">
-                <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Range:</span>
-                <div
-                  className="inline-flex rounded-lg p-0.5"
-                  style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
-                >
-                  {SALES_RANGE_OPTIONS.map(o => (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onClick={() => setSalesRange(o.key)}
-                      className="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
-                      style={{
-                        backgroundColor: salesRange === o.key ? 'var(--ms-surface)' : 'transparent',
-                        color: salesRange === o.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
-                        boxShadow: salesRange === o.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                <span className="hidden text-xs sm:inline" style={{ color: 'var(--ms-text-muted)' }}>Range:</span>
+                <PeriodChips label="Sales range" options={SALES_RANGE_OPTIONS} value={salesRange} onChange={setSalesRange} />
                 {salesRange !== 'all' && salesRange !== 'custom' && (
-                  <input
-                    type="date"
-                    value={salesReferenceDate}
-                    onChange={e => setSalesReferenceDate(e.target.value)}
-                    className="rounded-md px-2 py-1 text-xs"
-                    style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                  />
+                  <PeriodDateInput label="Reference date" value={salesReferenceDate} onChange={setSalesReferenceDate} />
                 )}
                 {salesRange === 'custom' && (
-                  <>
-                    <input
-                      type="date"
-                      value={salesDateFrom}
-                      max={salesDateTo}
-                      onChange={e => setSalesDateFrom(e.target.value)}
-                      className="rounded-md px-2 py-1 text-xs"
-                      style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                    />
-                    <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>to</span>
-                    <input
-                      type="date"
-                      value={salesDateTo}
-                      min={salesDateFrom}
-                      onChange={e => setSalesDateTo(e.target.value)}
-                      className="rounded-md px-2 py-1 text-xs"
-                      style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                    />
-                  </>
+                  <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:gap-2">
+                    <PeriodDateInput label="Sales from" value={salesDateFrom} max={salesDateTo} onChange={setSalesDateFrom} />
+                    <PeriodDateInput label="Sales to" value={salesDateTo} min={salesDateFrom} onChange={setSalesDateTo} />
+                  </div>
                 )}
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="w-full sm:w-auto"
                   disabled={exportSalesMut.isPending}
                   onClick={() => exportSalesMut.mutate('all')}
                 >

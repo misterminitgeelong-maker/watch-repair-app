@@ -1862,15 +1862,19 @@ export default function AutoKeyJobsPage() {
                     return (
                       <div className="space-y-3">
                         {autoKeyReports.jobs_by_type.map(row => (
-                          <div key={row.job_type} className="flex items-center gap-3">
-                            <span className="text-xs w-36 shrink-0 truncate" style={{ color: 'var(--ms-text)' }}>{row.job_type}</span>
-                            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ms-bg)' }}>
+                          /* Phones put the label on its own line so the bar
+                             keeps a readable length; desktop stays one row. */
+                          <div key={row.job_type} className="sm:flex sm:items-center sm:gap-3">
+                            <div className="flex items-baseline justify-between gap-2 sm:contents">
+                              <span className="truncate text-xs sm:w-36 sm:shrink-0" style={{ color: 'var(--ms-text)' }}>{row.job_type}</span>
+                              <span className="shrink-0 text-xs font-semibold tabular-nums sm:order-last sm:w-12 sm:text-right" style={{ color: 'var(--ms-text-mid)' }}>{row.jobs} jobs</span>
+                            </div>
+                            <div className="mt-1 h-2 flex-1 overflow-hidden rounded-full sm:mt-0" style={{ backgroundColor: 'var(--ms-bg)' }}>
                               <div
                                 className="h-full rounded-full"
                                 style={{ width: `${Math.max((row.jobs / maxJobs) * 100, row.jobs > 0 ? 4 : 0)}%`, backgroundColor: 'var(--ms-accent)' }}
                               />
                             </div>
-                            <span className="text-xs font-semibold w-12 text-right" style={{ color: 'var(--ms-text-mid)' }}>{row.jobs} jobs</span>
                           </div>
                         ))}
                       </div>

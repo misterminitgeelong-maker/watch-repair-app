@@ -399,3 +399,14 @@
     display: none !important;
   }
 }
+
+/* Weekly trend bars: 13 week labels cannot all be read across a 390px card.
+   Phones keep every third label (the bars themselves are unchanged, and each
+   one still carries its full value in a title attribute); from sm: up there is
+   room for the lot. `visibility` rather than `display` so the row keeps its
+   height and the chart does not jump between breakpoints. */
+@media (max-width: 639px) {
+  .ms-sparse-labels > *:not(:nth-child(3n + 1)) .ms-bar-label {
+    visibility: hidden;
+  }
+}

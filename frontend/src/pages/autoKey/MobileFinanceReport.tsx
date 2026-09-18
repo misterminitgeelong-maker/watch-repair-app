@@ -13,6 +13,7 @@ import {
   type MobileFinancePreset,
   type MobileFinanceReport as FinanceReport,
 } from '@/lib/api'
+import { PeriodDateInput, PeriodSelect, ReportStateNote } from '@/components/mobile/ReportControls'
 import { TONE_BACKGROUNDS, TONE_COLORS, formatDelta, formatMetricValue, formatMinutes } from '@/lib/cockpitFormat'
 import { FINANCE_PRESETS, drillHref, focusHref } from '@/lib/cockpitFocus'
 import { formatCents } from '@/lib/money'
@@ -56,7 +57,9 @@ function Bars({ rows, valueKey, unit, label }: { rows: FinanceReport['trend']['w
   return (
     <div>
       <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ms-text-muted)' }}>{label}</p>
-      <div className="flex items-end gap-1" style={{ height: H + 18 }} role="img" aria-label={`${label}, weekly, last 13 weeks`}>
+      {/* 13 week labels do not fit legibly across a 390px card, so phones show
+          every third one (ms-sparse-labels); desktop keeps them all. */}
+      <div className="ms-sparse-labels flex items-end gap-1" style={{ height: H + 18 }} role="img" aria-label={`${label}, weekly, last ${rows.length} weeks`}>
         {rows.map((r, i) => {
           const v = r[valueKey]
           const h = Math.round((v / max) * H)
@@ -64,7 +67,7 @@ function Bars({ rows, valueKey, unit, label }: { rows: FinanceReport['trend']['w
           return (
             <div key={r.week_start} className="flex-1 flex flex-col items-center justify-end min-w-0" title={`Week of ${r.week_start}: ${unit === 'cents' ? formatCents(v) : v}`}>
               <div className="w-full rounded-t" style={{ height: Math.max(h, v > 0 ? 3 : 1), backgroundColor: last ? 'var(--ms-accent)' : 'var(--ms-accent-light)' }} />
-              <span className="text-[9px] mt-1 truncate w-full text-center" style={{ color: 'var(--ms-text-muted)' }}>{r.week_start.slice(5)}</span>
+              <span className="ms-bar-label text-[10px] mt-1 w-full truncate text-center" style={{ color: 'var(--ms-text-muted)' }}>{r.week_start.slice(5)}</span>
             </div>
           )
         })}
@@ -126,6 +129,8 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
   const money = data?.metrics.filter(m => ['booked', 'completed', 'invoiced', 'collected', 'outstanding'].includes(m.key)) ?? []
   const profit = data?.metrics.filter(m => ['commission', 'contribution', 'aov'].includes(m.key)) ?? []
   const activity = data?.metrics.filter(m => ['jobs_created', 'jobs_completed', 'jobs_per_working_day', 'quotes_sent'].includes(m.key)) ?? []
+  // "Zero everywhere" reads as a broken report unless it is said out loud.
+  const noActivity = !!data && [...money, ...activity].every(m => !m.current)
 
   return (
     <div className="space-y-5">
@@ -139,31 +144,41 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Report period"
+        <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+          <PeriodSelect
+            label="Report period"
             value={params.period}
-            onChange={e => onParamsChange({ ...params, period: e.target.value as MobileFinancePreset })}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+            onChange={value => onParamsChange({ ...params, period: value as MobileFinancePreset })}
           >
             {FINANCE_PRESETS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-          </select>
+          </PeriodSelect>
           {params.period === 'custom' && (
-            <>
-              <input type="date" aria-label="From" value={params.date_from ?? ''} onChange={e => onParamsChange({ ...params, date_from: e.target.value })} className="rounded-lg px-2 py-1.5 text-xs" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} />
-              <input type="date" aria-label="To" value={params.date_to ?? ''} onChange={e => onParamsChange({ ...params, date_to: e.target.value })} className="rounded-lg px-2 py-1.5 text-xs" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }} />
-            </>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+              <PeriodDateInput label="From" value={params.date_from ?? ''} onChange={value => onParamsChange({ ...params, date_from: value })} />
+              <PeriodDateInput label="To" value={params.date_to ?? ''} onChange={value => onParamsChange({ ...params, date_to: value })} />
+            </div>
           )}
           {canExport && (
-            <>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
               <Button type="button" variant="secondary" size="sm" disabled={!data || exporting != null} onClick={() => void exportCsv('summary')}><Download size={14} /> {exporting === 'summary' ? 'Exporting…' : 'Summary CSV'}</Button>
               <Button type="button" variant="secondary" size="sm" disabled={!data || exporting != null} onClick={() => void exportCsv('invoices')}><Download size={14} /> {exporting === 'invoices' ? 'Exporting…' : 'Invoices CSV'}</Button>
-            </>
+            </div>
           )}
         </div>
       </div>
-      {exportError && <p className="text-xs" style={{ color: 'var(--ms-error)' }}>{exportError}</p>}
+      {exportError && <p role="alert" className="text-xs" style={{ color: 'var(--ms-error)' }}>{exportError}</p>}
+      {data && !data.period.complete && (
+        <ReportStateNote tone="warn">
+          Partial period: {data.period.label} is still running, so these figures cover {data.period.start} → today
+          only. The previous-period comparison uses the full {data.period.previous_start} → {data.period.previous_end}.
+        </ReportStateNote>
+      )}
+      {data && noActivity && (
+        <ReportStateNote>
+          No Mobile Services activity recorded in this period — no jobs created, completed or invoiced. Try a longer
+          period from the selector above.
+        </ReportStateNote>
+      )}
 
       {!enabled && <Card className="p-4"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Pick a from and to date for the custom period.</p></Card>}
       {enabled && query.isLoading && <Spinner />}
@@ -289,7 +304,41 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
               {data.technicians.length === 0 ? (
                 <p className="px-4 py-4 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No technicians with activity in this period.</p>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                {/* Phones get one card per technician: eight comparison columns
+                    on a 390px screen would be a horizontal scroll inside a
+                    vertical scroll. The table returns from md: up. */}
+                <ul className="divide-y md:hidden" style={{ borderColor: 'var(--ms-border)' }}>
+                  {data.technicians.map(t => (
+                    <li key={t.user_id} className="px-4 py-3">
+                      <Link
+                        to={`/auto-key?view=jobs&jobs_layout=list&tech=${t.user_id}&date_field=completed&date_from=${data.period.start}&date_to=${data.period.end}`}
+                        className="flex min-h-11 items-center justify-between gap-2"
+                      >
+                        <span className="truncate text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{t.name}</span>
+                        <span className="shrink-0 text-sm font-bold tabular-nums" style={{ color: 'var(--ms-accent)' }}>
+                          {formatCents(t.collected_cents)}
+                        </span>
+                      </Link>
+                      <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        {([
+                          ['Booked', String(t.jobs_scheduled)],
+                          ['Done', String(t.jobs_completed)],
+                          ['Per job', t.revenue_per_job_cents == null ? '—' : formatCents(t.revenue_per_job_cents)],
+                          ['Commission', formatCents(t.commission_cents)],
+                          ['Utilisation', t.utilisation_pct == null ? '—' : `${t.utilisation_pct}%`],
+                          ['On site (avg)', t.on_site.avg_minutes == null ? '—' : `${formatMinutes(Math.round(t.on_site.avg_minutes))} (n=${t.on_site.count})`],
+                        ] as const).map(([label, value]) => (
+                          <div key={label} className="flex justify-between gap-2">
+                            <dt style={{ color: 'var(--ms-text-muted)' }}>{label}</dt>
+                            <dd className="tabular-nums" style={{ color: 'var(--ms-text)' }}>{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-xs min-w-[560px]">
                     <thead>
                       <tr style={{ backgroundColor: 'var(--ms-bg)' }}>
@@ -312,6 +361,7 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
               <p className="px-4 py-2 text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>Utilisation = {data.durations.estimated_minutes} min per booking against an 8-hour day × working days in the period.</p>
             </Card>
