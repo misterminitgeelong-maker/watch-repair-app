@@ -142,7 +142,7 @@ export default function CustomersPage() {
           />
         </div>
         <select
-          className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
+          className="h-11 rounded-lg px-3 text-base outline-none transition sm:h-9 sm:text-sm"
           style={{
             backgroundColor: 'var(--ms-surface)',
             border: '1px solid var(--ms-border-strong)',
@@ -156,7 +156,7 @@ export default function CustomersPage() {
           <option value="full_name">Sort: Name</option>
         </select>
         <select
-          className="rounded-lg px-3 py-2.5 text-sm outline-none transition"
+          className="h-11 rounded-lg px-3 text-base outline-none transition sm:h-9 sm:text-sm"
           style={{
             backgroundColor: 'var(--ms-surface)',
             border: '1px solid var(--ms-border-strong)',
@@ -191,7 +191,7 @@ export default function CustomersPage() {
             <div className="md:hidden divide-y" style={{ borderColor: 'var(--ms-border)' }}>
               {filtered.map((c: Customer) => (
                 <div key={c.id} className="p-4 space-y-2">
-                  <Link to={`/customers/${c.id}`} className="font-medium" style={{ color: 'var(--ms-accent)' }}>
+                  <Link to={`/customers/${c.id}`} className="inline-flex min-h-11 items-center font-medium sm:min-h-0" style={{ color: 'var(--ms-accent)' }}>
                     {c.full_name}
                   </Link>
                   <div className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>

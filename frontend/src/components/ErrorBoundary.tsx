@@ -60,14 +60,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded-lg font-medium transition-colors"
+              className="min-h-11 rounded-lg px-4 py-2 font-medium transition-colors"
               style={{ backgroundColor: 'var(--ms-accent)', color: '#FFF8EC' }}
             >
               Reload page
             </button>
             <Link
               to="/dashboard"
-              className="px-4 py-2 rounded-lg font-medium border transition-colors"
+              className="inline-flex min-h-11 items-center rounded-lg border px-4 py-2 font-medium transition-colors"
               style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
             >
               Go to dashboard

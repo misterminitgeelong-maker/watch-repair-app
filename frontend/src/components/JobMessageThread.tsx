@@ -211,8 +211,11 @@ export default function JobMessageThread({
           style={{ backgroundColor: '#fff', border: '1px solid #ddd', minHeight: 44 }}
         >
           <textarea
-            className="flex-1 resize-none bg-transparent text-sm outline-none"
-            style={{ color: '#111', minHeight: 24, maxHeight: 100, lineHeight: '1.4' }}
+            // 16px on phones: iOS Safari zooms the whole page when a field
+            // under 16px takes focus, which is jarring mid-conversation.
+            className="min-h-11 flex-1 resize-none bg-transparent py-2.5 text-base outline-none sm:min-h-0 sm:py-0 sm:text-sm"
+            style={{ color: '#111', maxHeight: 100, lineHeight: '1.4' }}
+            aria-label="Text message to customer"
             placeholder="Text message"
             rows={1}
             value={text}
@@ -224,7 +227,7 @@ export default function JobMessageThread({
         <button
           onClick={handleSend}
           disabled={!text.trim() || sendMut.isPending}
-          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all sm:h-10 sm:w-10"
           style={{
             backgroundColor: text.trim() && !sendMut.isPending ? '#1E88E5' : '#ccc',
             color: '#fff',

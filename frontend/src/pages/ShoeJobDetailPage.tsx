@@ -409,7 +409,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
         <button
           type="button"
           onClick={onAddServices}
-          className="ml-auto flex items-center gap-1 text-xs font-medium transition-colors"
+          className="ml-auto flex min-h-11 items-center gap-1 px-1 text-xs font-medium transition-colors sm:min-h-0"
           style={{ color: 'var(--ms-accent)' }}
         >
           <Plus size={13} /> Add service
@@ -447,7 +447,8 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
                 type="button"
                 onClick={() => removeMut.mutate(item.id)}
                 disabled={removeMut.isPending}
-                className="opacity-40 hover:opacity-100 transition-opacity"
+                className="flex h-11 w-11 items-center justify-center opacity-40 transition-opacity hover:opacity-100 sm:h-8 sm:w-8"
+                aria-label="Remove service"
                 title="Remove service"
               >
                 <X size={13} style={{ color: 'var(--ms-error)' }} />
@@ -512,7 +513,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
               type="button"
               onClick={() => resendMut.mutate(event)}
               disabled={resendMut.isPending}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors sm:min-h-0 sm:py-1.5"
               style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-accent)' }}
             >
               <RefreshCw size={11} className={resendMut.isPending ? 'animate-spin' : ''} />
@@ -746,7 +747,7 @@ export default function ShoeJobDetailPage() {
       <div className="mb-5">
         <Link
           to="/shoe-repairs"
-          className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium transition-colors sm:min-h-0"
           style={{ color: 'var(--ms-text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
@@ -876,7 +877,7 @@ export default function ShoeJobDetailPage() {
               type="button"
               disabled={uploading}
               onClick={() => cameraInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors sm:min-h-0 sm:py-1.5"
               style={{
                 backgroundColor: 'var(--ms-accent)',
                 border: '1px solid var(--ms-accent)',
@@ -891,7 +892,7 @@ export default function ShoeJobDetailPage() {
               type="button"
               disabled={uploading}
               onClick={() => photoInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors sm:min-h-0 sm:py-1.5"
               style={{
                 backgroundColor: 'var(--ms-surface)',
                 border: '1px dashed var(--ms-border-strong)',
@@ -952,7 +953,7 @@ export default function ShoeJobDetailPage() {
               <button
                 type="button"
                 onClick={() => setShowAddPair(true)}
-                className="flex items-center gap-1 text-xs font-medium transition-colors"
+                className="flex min-h-11 items-center gap-1 px-1 text-xs font-medium transition-colors sm:min-h-0"
                 style={{ color: 'var(--ms-accent)' }}
                 title="Add another pair"
               >
@@ -1093,7 +1094,9 @@ export default function ShoeJobDetailPage() {
                     </span>
                     <button
                       onClick={() => { setCostInput(job.cost_cents > 0 ? (job.cost_cents / 100).toFixed(2) : ''); setEditingCost(true) }}
-                      className="opacity-50 hover:opacity-100 transition-opacity" title="Edit cost"
+                      className="flex h-11 w-11 items-center justify-center opacity-50 transition-opacity hover:opacity-100 sm:h-8 sm:w-8"
+                      aria-label="Edit cost"
+                      title="Edit cost"
                     >
                       <Pencil size={12} style={{ color: 'var(--ms-text-muted)' }} />
                     </button>

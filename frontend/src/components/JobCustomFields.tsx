@@ -67,9 +67,16 @@ export default function JobCustomFields({ jobType, jobId, initialJson }: Props) 
             </Button>
           </div>
         ))}
-        <div className="flex gap-2 flex-wrap items-end pt-1">
-          <Input label="Field name" value={newKey} onChange={e => setNewKey(e.target.value)} className="flex-1 min-w-[120px]" />
-          <Input label="Value" value={newVal} onChange={e => setNewVal(e.target.value)} className="flex-1 min-w-[120px]" />
+        {/* The flex sizing belongs on Input's wrapper: passing flex-1 through to
+            the <input> put it in a column flex context, where flex-basis:0
+            overrode h-11 and collapsed the field to about 21px tall. */}
+        <div className="flex flex-wrap items-end gap-2 pt-1">
+          <div className="min-w-[120px] flex-1">
+            <Input label="Field name" value={newKey} onChange={e => setNewKey(e.target.value)} />
+          </div>
+          <div className="min-w-[120px] flex-1">
+            <Input label="Value" value={newVal} onChange={e => setNewVal(e.target.value)} />
+          </div>
           <Button
             variant="secondary"
             disabled={!newKey.trim()}

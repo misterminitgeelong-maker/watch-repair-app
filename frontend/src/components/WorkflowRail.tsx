@@ -92,6 +92,8 @@ export function WorkflowRail({ steps, currentStatus, onStepClick, disabled }: Wo
               <div className="flex flex-col items-center" style={{ minWidth: 64 }}>
                 <button
                   type="button"
+                  className="ms-rail-node"
+                  data-touch-target="44"
                   aria-label={`Set status to ${step.label}`}
                   aria-current={state === 'current' ? 'step' : undefined}
                   disabled={!clickable}

@@ -237,7 +237,7 @@ export default function CustomerDetailPage() {
       <div className="mb-5">
         <Link
           to="/customers"
-          className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium transition-colors sm:min-h-0"
           style={{ color: 'var(--ms-text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
@@ -307,7 +307,7 @@ export default function CustomerDetailPage() {
               <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: '#F3EADF' }}>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                  className="min-h-11 rounded-md px-3 text-xs font-semibold transition sm:min-h-0 sm:py-1.5"
                   style={{
                     backgroundColor: jobDirectoryView === 'active' ? 'var(--ms-surface)' : 'transparent',
                     color: jobDirectoryView === 'active' ? 'var(--ms-text)' : 'var(--ms-text-muted)',
@@ -318,7 +318,7 @@ export default function CustomerDetailPage() {
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md transition"
+                  className="min-h-11 rounded-md px-3 text-xs font-semibold transition sm:min-h-0 sm:py-1.5"
                   style={{
                     backgroundColor: jobDirectoryView === 'completed' ? 'var(--ms-surface)' : 'transparent',
                     color: jobDirectoryView === 'completed' ? 'var(--ms-text)' : 'var(--ms-text-muted)',

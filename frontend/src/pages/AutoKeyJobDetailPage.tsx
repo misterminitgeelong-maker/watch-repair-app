@@ -794,7 +794,7 @@ export default function AutoKeyJobDetailPage() {
       <div className='mb-5'>
         <Link
           to='/auto-key'
-          className='inline-flex items-center gap-1 text-sm font-medium transition-colors'
+          className='inline-flex min-h-11 items-center gap-1 text-sm font-medium transition-colors sm:min-h-0'
           style={{ color: 'var(--ms-text-muted)' }}
         >
           <ChevronLeft size={14} /> Back to Mobile Services
@@ -889,7 +889,7 @@ export default function AutoKeyJobDetailPage() {
               key={tab.key}
               type="button"
               onClick={() => setDetailTab(tab.key)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap touch-manipulation transition-all duration-150"
+              className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium touch-manipulation transition-all duration-150 sm:min-h-0"
               style={{
                 borderBottom: detailTab === tab.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
                 color: detailTab === tab.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',

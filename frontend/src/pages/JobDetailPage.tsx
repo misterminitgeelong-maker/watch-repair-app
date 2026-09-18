@@ -456,7 +456,11 @@ function InternalNotesCard({ job }: { job: RepairJob }) {
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Internal Notes</h2>
         {!editing && (
-          <button onClick={() => { setDraft(job.internal_notes ?? ''); setEditing(true) }} className="opacity-50 hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => { setDraft(job.internal_notes ?? ''); setEditing(true) }}
+            aria-label="Edit internal notes"
+            className="flex h-11 w-11 items-center justify-center opacity-50 transition-opacity hover:opacity-100 sm:h-8 sm:w-8"
+          >
             <Pencil size={13} style={{ color: 'var(--ms-text-muted)' }} />
           </button>
         )}
@@ -494,7 +498,11 @@ function PartsEtaCard({ job }: { job: RepairJob }) {
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Parts ETA</h2>
         {!editing && (
-          <button onClick={() => { setDraft(job.parts_eta ?? ''); setEditing(true) }} className="opacity-50 hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => { setDraft(job.parts_eta ?? ''); setEditing(true) }}
+            aria-label="Edit parts ETA"
+            className="flex h-11 w-11 items-center justify-center opacity-50 transition-opacity hover:opacity-100 sm:h-8 sm:w-8"
+          >
             <Pencil size={13} style={{ color: 'var(--ms-text-muted)' }} />
           </button>
         )}
@@ -713,7 +721,7 @@ export default function JobDetailPage() {
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <Link
           to="/jobs"
-          className="inline-flex items-center gap-1 text-sm font-medium transition-colors"
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium transition-colors sm:min-h-0"
           style={{ color: 'var(--ms-text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-text-muted)')}
@@ -886,7 +894,7 @@ export default function JobDetailPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-150"
+              className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:min-h-0"
               style={{
                 borderBottom: tab === t.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
                 color: tab === t.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
@@ -928,6 +936,7 @@ export default function JobDetailPage() {
                   {customer.phone && (
                     <a
                       href={`tel:${customer.phone}`}
+                      className="inline-flex min-h-11 items-center sm:min-h-0"
                       style={{ fontSize: 12, color: 'var(--ms-sidebar-text)', textDecoration: 'none' }}
                     >
                       {customer.phone}
@@ -945,8 +954,8 @@ export default function JobDetailPage() {
               {job.collection_date && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Collection</span><span style={{ color: 'var(--ms-text)' }}>{job.collection_date}</span></div>}
               {job.salesperson && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Salesperson</span><span style={{ color: 'var(--ms-text)' }}>{job.salesperson}</span></div>}
               {job.customer_name && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Customer</span><span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.customer_name}</span></div>}
-              {job.customer_phone && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Phone</span><a href={`tel:${job.customer_phone}`} className="font-medium" style={{ color: 'var(--ms-primary)' }}>{job.customer_phone}</a></div>}
-              {job.customer_email && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Email</span><a href={`mailto:${job.customer_email}`} className="font-medium" style={{ color: 'var(--ms-primary)', wordBreak: 'break-all' }}>{job.customer_email}</a></div>}
+              {job.customer_phone && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Phone</span><a href={`tel:${job.customer_phone}`} className="inline-flex min-h-11 items-center font-medium sm:min-h-0" style={{ color: 'var(--ms-primary)' }}>{job.customer_phone}</a></div>}
+              {job.customer_email && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Email</span><a href={`mailto:${job.customer_email}`} className="inline-flex min-h-11 items-center font-medium sm:min-h-0" style={{ color: 'var(--ms-primary)', wordBreak: 'break-all' }}>{job.customer_email}</a></div>}
               {job.deposit_cents > 0 && <div className="flex justify-between"><span style={{ color: 'var(--ms-text-muted)' }}>Deposit</span><span className="font-medium" style={{ color: '#3B6B42' }}>${(job.deposit_cents / 100).toFixed(2)}</span></div>}
               <div className="space-y-1">
                 <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Assigned Technician</span>
@@ -1026,7 +1035,8 @@ export default function JobDetailPage() {
                         setQuoteInput(((job.cost_cents > 0 ? job.cost_cents : job.pre_quote_cents) / 100).toFixed(2))
                         setEditingQuote(true)
                       }}
-                      className="opacity-50 hover:opacity-100 transition-opacity"
+                      className="flex h-11 w-11 items-center justify-center opacity-50 transition-opacity hover:opacity-100 sm:h-8 sm:w-8"
+                      aria-label="Edit quote"
                       title="Edit quote"
                     >
                       <Pencil size={12} style={{ color: 'var(--ms-text-muted)' }} />
@@ -1081,7 +1091,7 @@ export default function JobDetailPage() {
                 <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>Quotes</h2>
                 <div className="flex items-center gap-3">
                   <Button onClick={() => setShowCreateQuote(true)}><Plus size={14} />Create &amp; Send Quote</Button>
-                  <Link to="/quotes" className="text-xs font-medium tracking-wide uppercase transition-colors" style={{ color: 'var(--ms-accent)' }}>Manage →</Link>
+                  <Link to="/quotes" className="inline-flex min-h-11 items-center text-xs font-medium uppercase tracking-wide transition-colors sm:min-h-0" style={{ color: 'var(--ms-accent)' }}>Manage →</Link>
                 </div>
               </div>
               <div>

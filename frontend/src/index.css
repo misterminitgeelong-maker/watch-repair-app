@@ -410,3 +410,23 @@
     visibility: hidden;
   }
 }
+
+/* Workflow rail nodes are 30px discs by design, and enlarging the disc would
+   reflow the rail (and its connectors) at every breakpoint. On touch-sized
+   screens a transparent overlay gives each node a 44px hit area instead, so
+   the drawing is unchanged and the target is not. Elements using this carry
+   data-touch-target="44" so a touch-target audit can account for it. */
+@media (max-width: 767px) {
+  .ms-rail-node {
+    position: relative;
+  }
+  .ms-rail-node::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
