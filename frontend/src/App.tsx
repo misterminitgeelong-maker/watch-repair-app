@@ -5,8 +5,6 @@ import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/lib/toast'
-import AppShell from '@/components/AppShell'
-import ConnectivityBanner from '@/components/ConnectivityBanner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
@@ -27,6 +25,8 @@ const qc = new QueryClient({
 })
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const AppShell = lazy(() => import('@/components/AppShell'))
+const ConnectivityBanner = lazy(() => import('@/components/ConnectivityBanner'))
 const CustomersPage = lazy(() => import('@/pages/CustomersPage'))
 const CustomerDetailPage = lazy(() => import('@/pages/CustomerDetailPage'))
 const JobsPage = lazy(() => import('@/pages/JobsPage'))
@@ -143,7 +143,7 @@ export default function App() {
         <ThemeProvider>
         <ToastProvider>
         <AuthProvider>
-          <ConnectivityBanner />
+          <Suspense fallback={null}><ConnectivityBanner /></Suspense>
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
