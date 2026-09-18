@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_POS_CATEGORIES, POS_QUICK_ITEMS, quickItemsForCategories } from './posQuickItems'
+import { DEFAULT_POS_CATEGORIES, POS_QUICK_ITEMS, filterQuickItems, quickItemsForCategories } from './posQuickItems'
 
 describe('POS quick items by catalogue category', () => {
   it('tags every quick item with a catalogue category', () => {
@@ -26,5 +26,44 @@ describe('POS quick items by catalogue category', () => {
     expect(quickItemsForCategories(['garage_door'])).toHaveLength(10)
     expect(quickItemsForCategories([])).toHaveLength(0)
     expect(POS_QUICK_ITEMS).toHaveLength(23)
+  })
+})
+
+describe('filterQuickItems', () => {
+  const items = [
+    { label: 'All keys lost – Prox', desc: 'Proximity key' },
+    { label: 'All keys lost – TE', desc: 'TE key, no remote' },
+    { label: 'Callout – min charge', desc: '30km radius' },
+    { label: 'Transponder copy', desc: 'Callout charged separately' },
+  ]
+
+  it('returns everything for an empty query', () => {
+    expect(filterQuickItems(items, '')).toHaveLength(4)
+    expect(filterQuickItems(items, '   ')).toHaveLength(4)
+  })
+
+  it('matches on label and description, ignoring case', () => {
+    expect(filterQuickItems(items, 'prox').map(i => i.label)).toEqual(['All keys lost – Prox'])
+    expect(filterQuickItems(items, 'RADIUS').map(i => i.label)).toEqual(['Callout – min charge'])
+  })
+
+  it('requires every term to match somewhere, in any order', () => {
+    expect(filterQuickItems(items, 'keys lost').map(i => i.label)).toEqual([
+      'All keys lost – Prox',
+      'All keys lost – TE',
+    ])
+    expect(filterQuickItems(items, 'lost prox').map(i => i.label)).toEqual(['All keys lost – Prox'])
+  })
+
+  it('ignores punctuation the user is unlikely to type', () => {
+    expect(filterQuickItems(items, 'callout,').map(i => i.label)).toEqual([
+      'Callout – min charge',
+      'Transponder copy',
+    ])
+  })
+
+  it('returns an empty list when nothing matches, without mutating the source', () => {
+    expect(filterQuickItems(items, 'zzz')).toEqual([])
+    expect(items).toHaveLength(4)
   })
 })

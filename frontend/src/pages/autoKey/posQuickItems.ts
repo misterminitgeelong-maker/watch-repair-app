@@ -40,3 +40,25 @@ export const DEFAULT_POS_CATEGORIES: readonly MobileCatalogueCategory[] = ['vehi
 export function quickItemsForCategories(enabled: readonly MobileCatalogueCategory[]) {
   return POS_QUICK_ITEMS.filter(item => enabled.includes(item.category))
 }
+
+export type PosQuickItem = (typeof POS_QUICK_ITEMS)[number]
+
+/**
+ * Narrow the quick-item list by a typed query.
+ *
+ * A phone shows a handful of items per screen, so scrolling 20+ of them
+ * one-handed is slow. Matching on label and description (case- and
+ * punctuation-insensitive, every term must match somewhere) lets "akl prox"
+ * or "all keys" land on the right button in a couple of keystrokes.
+ */
+export function filterQuickItems<T extends { label: string; desc: string }>(
+  items: readonly T[],
+  query: string,
+): T[] {
+  const terms = query.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean)
+  if (terms.length === 0) return [...items]
+  return items.filter(item => {
+    const haystack = `${item.label} ${item.desc}`.toLowerCase()
+    return terms.every(term => haystack.includes(term))
+  })
+}

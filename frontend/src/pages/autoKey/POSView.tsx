@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShoppingCart, Minus, X, CreditCard } from 'lucide-react'
+import { ShoppingCart, Minus, Plus, Trash2, CreditCard, Search } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -17,11 +17,12 @@ import {
   type MobileServicesPricingSelection,
 } from '@/lib/api'
 import { Card, Button, Input, Select } from '@/components/ui'
+import MobileStickyBar, { MobileStickyBarSpacer } from '@/components/mobile/MobileStickyBar'
 import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import PricingSelector from '@/components/PricingSelector'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
-import { DEFAULT_POS_CATEGORIES, quickItemsForCategories } from './posQuickItems'
+import { DEFAULT_POS_CATEGORIES, quickItemsForCategories, filterQuickItems } from './posQuickItems'
 
 interface CartLine {
   id: string
@@ -46,6 +47,8 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
     staleTime: 60_000,
   })
   const quickItems = quickItemsForCategories(catalogueMeta?.enabled_categories ?? DEFAULT_POS_CATEGORIES)
+  const [itemQuery, setItemQuery] = useState('')
+  const visibleQuickItems = useMemo(() => filterQuickItems(quickItems, itemQuery), [quickItems, itemQuery])
   const { data: initialJob } = useQuery({
     queryKey: ['auto-key-job', initialJobId],
     queryFn: () => getAutoKeyJob(initialJobId!).then(r => r.data),
@@ -74,6 +77,7 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
   const [gstEnabled, setGstEnabled] = useState(true)
   const [gstInclusive, setGstInclusive] = useState(true)
 
+  const cartCount = cart.reduce((n, l) => n + l.quantity, 0)
   const enteredCents = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
   const { subtotalCents: subtotal, taxCents: tax, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
@@ -170,9 +174,11 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
         <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)' }}>
           Invoice created (unpaid). Send to customer via email or SMS, or record payment on the job.
         </p>
-        <div className="flex gap-2 justify-center flex-wrap">
-          <Button variant="secondary" onClick={() => setSuccessJobId(null)}>New sale</Button>
-          <Button onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>View job & record payment</Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center sm:flex-wrap">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setSuccessJobId(null)}>New sale</Button>
+          <Button className="w-full sm:w-auto" onClick={() => { setSuccessJobId(null); navigate(`/auto-key/${successJobId}`) }}>
+            View job &amp; record payment
+          </Button>
         </div>
       </Card>
     )
@@ -254,22 +260,53 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
               Price by manufacturer
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {quickItems.map(({ label, desc, price }) => (
+          <div className="relative mb-3">
+            <Search
+              size={16}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--ms-text-muted)' }}
+            />
+            <Input
+              type="search"
+              aria-label="Search items"
+              placeholder="Search items…"
+              className="pl-9"
+              value={itemQuery}
+              onChange={e => setItemQuery(e.target.value)}
+            />
+          </div>
+          {/* One tappable card per item on a phone; the desktop pill row is
+              kept from sm: up where the labels fit side by side. */}
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleQuickItems.map(({ label, desc, price }) => (
               <button
                 key={label}
                 type="button"
                 onClick={() => addToCart(desc, price)}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors"
+                className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-left transition-colors"
                 style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
-                {label} — ${(price / 100).toFixed(2)}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{label}</span>
+                  <span className="block truncate text-xs" style={{ color: 'var(--ms-text-muted)' }}>{desc}</span>
+                </span>
+                <span className="shrink-0 text-sm font-bold tabular-nums" style={{ color: 'var(--ms-accent)' }}>
+                  ${(price / 100).toFixed(2)}
+                </span>
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
+          {visibleQuickItems.length === 0 && (
+            <p className="mb-4 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              No catalogue item matches “{itemQuery}”. Add it as a custom line below.
+            </p>
+          )}
+          {/* Stacks on a phone so the description keeps full width and the
+              price field is not squeezed to a few characters. */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem_auto]">
             <Input
-              className="flex-1"
+              aria-label="Custom item description"
               placeholder="Description"
               value={customDesc}
               onChange={e => setCustomDesc(e.target.value)}
@@ -278,13 +315,15 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
               type="number"
               step="0.01"
               min="0"
+              inputMode="decimal"
+              aria-label="Custom item price"
               placeholder="Price"
-              className="w-24"
               value={customPrice}
               onChange={e => setCustomPrice(e.target.value)}
             />
             <Button
               variant="secondary"
+              className="w-full sm:w-auto"
               onClick={() => {
                 const cents = dollarsToCents(customPrice)
                 if (customDesc.trim() && cents > 0) {
@@ -300,7 +339,7 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
         </Card>
       </div>
 
-      <Card className="p-5 h-fit">
+      <Card className="p-5 h-fit" id="pos-cart">
         <h3 className="text-sm font-semibold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: 'var(--ms-text-muted)' }}>
           <ShoppingCart size={16} /> Cart
         </h3>
@@ -309,34 +348,76 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
         ) : (
           <div className="space-y-3 mb-4">
             {cart.map(line => (
-              <div key={line.id} className="flex items-center justify-between gap-2 py-2 border-b" style={{ borderColor: 'var(--ms-border)' }}>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate" style={{ color: 'var(--ms-text)' }}>{line.description}</p>
-                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}</p>
+              <div key={line.id} className="border-b py-2" style={{ borderColor: 'var(--ms-border)' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{line.description}</p>
+                    <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                      ${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold tabular-nums" style={{ color: 'var(--ms-text)' }}>
+                    ${((line.unit_price_cents * line.quantity) / 100).toFixed(2)}
+                  </p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => updateQty(line.id, line.quantity - 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}><Minus size={14} /></button>
-                  <span className="text-sm w-6 text-center" style={{ color: 'var(--ms-text)' }}>{line.quantity}</span>
-                  <button type="button" onClick={() => updateQty(line.id, line.quantity + 1)} className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>+</button>
-                  <button type="button" onClick={() => removeFromCart(line.id)} className="w-7 h-7 rounded flex items-center justify-center" style={{ color: 'var(--ms-error)' }}><X size={14} /></button>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  {/* Quantity controls grouped on the left; remove is pushed to
+                      the far edge so a mis-tap does not delete the line. */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Decrease quantity of ${line.description}`}
+                      onClick={() => updateQty(line.id, line.quantity - 1)}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg border sm:h-8 sm:w-8"
+                      style={{ backgroundColor: 'var(--ms-bg)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span
+                      className="w-9 text-center text-sm font-semibold tabular-nums"
+                      aria-label={`Quantity ${line.quantity}`}
+                      style={{ color: 'var(--ms-text)' }}
+                    >
+                      {line.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Increase quantity of ${line.description}`}
+                      onClick={() => updateQty(line.id, line.quantity + 1)}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg border sm:h-8 sm:w-8"
+                      style={{ backgroundColor: 'var(--ms-bg)', borderColor: 'var(--ms-border)', color: 'var(--ms-text)' }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${line.description}`}
+                    onClick={() => removeFromCart(line.id)}
+                    className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold sm:h-8"
+                    style={{ color: 'var(--ms-error)', backgroundColor: 'transparent' }}
+                  >
+                    <Trash2 size={15} />
+                    Remove
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
         <div className="border-t pt-4" style={{ borderColor: 'var(--ms-border)' }}>
-          <label className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ms-text)' }}>
-            <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+          <label className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0 sm:mb-2" style={{ color: 'var(--ms-text)' }}>
+            <input type="checkbox" className="h-5 w-5 sm:h-4 sm:w-4" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
             Apply GST (10%)
           </label>
           {gstEnabled && (
-            <div className="flex gap-4 pl-6 text-sm mb-2" style={{ color: 'var(--ms-text-mid)' }}>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" name="gst-mode-pos" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+            <div className="flex flex-col pl-6 text-sm sm:mb-2 sm:flex-row sm:gap-4" style={{ color: 'var(--ms-text-mid)' }}>
+              <label className="flex min-h-11 items-center gap-2 sm:min-h-0 sm:gap-1.5">
+                <input type="radio" className="h-5 w-5 sm:h-4 sm:w-4" name="gst-mode-pos" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
                 Included
               </label>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" name="gst-mode-pos" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+              <label className="flex min-h-11 items-center gap-2 sm:min-h-0 sm:gap-1.5">
+                <input type="radio" className="h-5 w-5 sm:h-4 sm:w-4" name="gst-mode-pos" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
                 Add on top
               </label>
             </div>
@@ -345,9 +426,11 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
           {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>GST</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
         </div>
-        {error && <p className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {error && <p role="alert" className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {/* Phones use the sticky checkout bar below instead, so the action is
+            never stranded at the bottom of a long page. */}
         <Button
-          className="w-full mt-4"
+          className="mt-4 hidden w-full md:inline-flex"
           onClick={() => completeMut.mutate()}
           disabled={completeMut.isPending || cart.length === 0}
         >
@@ -355,6 +438,43 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
           {completeMut.isPending ? 'Processing…' : 'Complete sale'}
         </Button>
       </Card>
+
+      <MobileStickyBarSpacer />
+
+      {/* Phone checkout: the running total and the one primary action stay in
+          reach no matter how far down the item list the user has scrolled. It
+          is a single compact row, so it never covers a form field, and it
+          steps aside entirely while the keyboard is up. */}
+      <MobileStickyBar label="Cart total and checkout">
+        {error && (
+          <p role="alert" className="mb-2 text-xs" style={{ color: 'var(--ms-error)' }}>
+            {error}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="flex min-h-11 flex-1 items-center justify-between gap-2 rounded-lg px-3 text-left"
+            style={{ backgroundColor: 'var(--ms-bg)' }}
+            onClick={() => document.getElementById('pos-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
+              {cartCount === 0 ? 'Cart empty' : `${cartCount} item${cartCount === 1 ? '' : 's'}`}
+            </span>
+            <span className="text-base font-bold tabular-nums" style={{ color: 'var(--ms-accent)' }}>
+              ${(total / 100).toFixed(2)}
+            </span>
+          </button>
+          <Button
+            className="shrink-0"
+            onClick={() => completeMut.mutate()}
+            disabled={completeMut.isPending || cart.length === 0}
+          >
+            <CreditCard size={16} />
+            {completeMut.isPending ? 'Processing…' : 'Complete sale'}
+          </Button>
+        </div>
+      </MobileStickyBar>
 
       <PricingSelector
         open={showPricingSelector}
