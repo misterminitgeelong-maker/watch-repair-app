@@ -55,3 +55,22 @@ export default function MobileStickyBar({ children, hideWhileTyping = true, labe
 export function MobileStickyBarSpacer({ height = '4.5rem' }: { height?: string }) {
   return <div aria-hidden="true" className="md:hidden" style={{ height }} />
 }
+
+/**
+ * Bottom-pinned footer for a long modal form.
+ *
+ * The modal body is the scroll container, so a sticky child keeps totals and
+ * the submit button on screen while the user scrolls a long form. From `sm:`
+ * up it returns to normal flow, where the whole form usually fits anyway.
+ */
+export function ModalStickyFooter({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      data-testid="modal-sticky-footer"
+      className={`sticky -bottom-4 z-10 -mx-4 mt-2 border-t px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:px-0 sm:py-0 ${className ?? ''}`}
+      style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}
+    >
+      {children}
+    </div>
+  )
+}

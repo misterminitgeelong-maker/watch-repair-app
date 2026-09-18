@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, Printer, Send, ExternalLink } from 'lucide-react'
 import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, retryInvoiceXeroSync, getXeroConnectionStatus, getApiErrorMessage, type Invoice } from '@/lib/api'
-import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState } from '@/components/ui'
+import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState, MobileActionMenu } from '@/components/ui'
+import MobileFilterBar, { type ActiveFilter } from '@/components/mobile/MobileFilterBar'
 import { formatCents, formatDate } from '@/lib/utils'
 import { dollarsToCents } from '@/lib/money'
 
@@ -47,17 +48,28 @@ export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatusFilter = searchParams.get('status') ?? ''
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') ?? '')
   const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data.items) })
-  const filteredInvoices = useMemo(
-    () => (invoices ?? []).filter((inv) => (statusFilter ? inv.status === statusFilter : true)),
-    [invoices, statusFilter],
-  )
+  const filteredInvoices = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    return (invoices ?? []).filter((inv) => {
+      if (statusFilter && inv.status !== statusFilter) return false
+      if (!term) return true
+      return inv.invoice_number.toLowerCase().includes(term)
+    })
+  }, [invoices, statusFilter, searchTerm])
+
+  const activeFilters: ActiveFilter[] = [
+    ...(statusFilter ? [{ key: 'status', label: `Status: ${statusFilter}`, onClear: () => setStatusFilter('') }] : []),
+    ...(searchTerm.trim() ? [{ key: 'q', label: `Search: ${searchTerm.trim()}`, onClear: () => setSearchTerm('') }] : []),
+  ]
 
   useEffect(() => {
     const next = new URLSearchParams()
     if (statusFilter) next.set('status', statusFilter)
+    if (searchTerm.trim()) next.set('q', searchTerm.trim())
     setSearchParams(next, { replace: true })
-  }, [setSearchParams, statusFilter])
+  }, [setSearchParams, statusFilter, searchTerm])
 
   return (
     <div>
@@ -66,46 +78,55 @@ export function InvoicesPage() {
 
       {isLoading ? <Spinner /> : (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('')}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-              style={{
-                backgroundColor: statusFilter === '' ? '#F3EADF' : 'var(--ms-surface)',
-                color: 'var(--ms-text)',
-                border: '1px solid var(--ms-border)',
-              }}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('unpaid')}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-              style={{
-                backgroundColor: statusFilter === 'unpaid' ? '#F3EADF' : 'var(--ms-surface)',
-                color: 'var(--ms-text)',
-                border: '1px solid var(--ms-border)',
-              }}
-            >
-              Unpaid
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('paid')}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-              style={{
-                backgroundColor: statusFilter === 'paid' ? '#F3EADF' : 'var(--ms-surface)',
-                color: 'var(--ms-text)',
-                border: '1px solid var(--ms-border)',
-              }}
-            >
-              Paid
-            </button>
-          </div>
+          <MobileFilterBar
+            search={{
+              value: searchTerm,
+              onChange: setSearchTerm,
+              label: 'Search invoices by number',
+              placeholder: 'Search invoice number…',
+            }}
+            primary={
+              <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+                {([
+                  { key: '', label: 'All' },
+                  { key: 'unpaid', label: 'Unpaid' },
+                  { key: 'paid', label: 'Paid' },
+                ] as const).map(option => (
+                  <button
+                    key={option.key || 'all'}
+                    type="button"
+                    aria-pressed={statusFilter === option.key}
+                    onClick={() => setStatusFilter(option.key)}
+                    className="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold sm:min-h-9 sm:flex-none sm:text-xs"
+                    style={{
+                      backgroundColor: statusFilter === option.key ? '#F3EADF' : 'var(--ms-surface)',
+                      color: 'var(--ms-text)',
+                      border: '1px solid var(--ms-border)',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+            activeFilters={activeFilters}
+            onClearAll={activeFilters.length > 0 ? () => { setStatusFilter(''); setSearchTerm('') } : undefined}
+            resultSummary={
+              invoices && activeFilters.length > 0
+                ? `${filteredInvoices.length} of ${invoices.length} invoices`
+                : undefined
+            }
+          />
           {filteredInvoices.length === 0 ? (
-            <Card><EmptyState message="No invoices yet. They are created automatically when a quote is approved." /></Card>
+            <Card>
+              <EmptyState
+                message={
+                  activeFilters.length > 0
+                    ? 'No invoices match these filters. Clear them to see all invoices.'
+                    : 'No invoices yet. They are created automatically when a quote is approved.'
+                }
+              />
+            </Card>
           ) : (
             <>
               {/* Mobile card list */}
@@ -114,37 +135,42 @@ export function InvoicesPage() {
                   <Card key={inv.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Link to={`/invoices/${inv.id}`} className="font-mono font-semibold text-base" style={{ color: 'var(--ms-accent)' }}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link to={`/invoices/${inv.id}`} className="font-mono text-base font-semibold" style={{ color: 'var(--ms-accent)' }}>
                             #{inv.invoice_number}
                           </Link>
                           <Badge status={inv.status} />
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-                          <span>{formatDate(inv.created_at)}</span>
-                          <Link to={`/jobs/${inv.repair_job_id}`} className="font-mono text-xs underline" style={{ color: 'var(--ms-accent)' }}>View Job</Link>
-                        </div>
-                        <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--ms-text-mid)' }}>
-                          <div className="flex gap-4">
-                            <span>Subtotal: {formatCents(inv.subtotal_cents)}</span>
-                            <span>Tax: {formatCents(inv.tax_cents)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
-                          {formatCents(inv.total_cents)}
+                        <p className="mt-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(inv.created_at)}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                          Subtotal {formatCents(inv.subtotal_cents)} · Tax {formatCents(inv.tax_cents)}
                         </p>
-                        {inv.status === 'unpaid' && (
-                          <button
-                            className="mt-2 text-xs font-semibold rounded-lg px-3 py-1.5"
-                            style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                            onClick={() => setPayInvoice(inv)}
-                          >
-                            Record Payment
-                          </button>
-                        )}
                       </div>
+                      <p className="shrink-0 text-right text-lg font-semibold tabular-nums" style={{ color: 'var(--ms-text)' }}>
+                        {formatCents(inv.total_cents)}
+                      </p>
+                    </div>
+                    {/* The next action gets a full-width 44px row; everything
+                        else lives in the overflow menu. */}
+                    <div className="mt-3 flex items-center gap-2">
+                      {inv.status === 'unpaid' ? (
+                        <Button className="flex-1" onClick={() => setPayInvoice(inv)}>
+                          <CheckCircle size={15} />Record payment
+                        </Button>
+                      ) : (
+                        <Button variant="secondary" className="flex-1" onClick={() => navigate(`/invoices/${inv.id}`)}>
+                          View invoice
+                        </Button>
+                      )}
+                      <MobileActionMenu
+                        hiddenFrom="md"
+                        label={`More actions for invoice ${inv.invoice_number}`}
+                        actions={[
+                          { label: 'Open invoice', onClick: () => navigate(`/invoices/${inv.id}`) },
+                          { label: 'Open job', onClick: () => navigate(`/jobs/${inv.repair_job_id}`) },
+                          { label: 'Print / PDF', onClick: () => navigate(`/invoices/${inv.id}/print`) },
+                        ]}
+                      />
                     </div>
                   </Card>
                 ))}

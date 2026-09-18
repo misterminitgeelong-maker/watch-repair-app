@@ -17,6 +17,7 @@ import {
   type CustomerAccountStatement,
 } from '@/lib/api'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
+import MobileFilterBar, { type ActiveFilter } from '@/components/mobile/MobileFilterBar'
 import { formatDate } from '@/lib/utils'
 
 function CreateCustomerAccountModal({ onClose }: { onClose: () => void }) {
@@ -121,6 +122,11 @@ export default function CustomerAccountsPage() {
   const [invoiceListByAccount, setInvoiceListByAccount] = useState<Record<string, CustomerAccountInvoice[]>>({})
   const [expandedInvoiceById, setExpandedInvoiceById] = useState<Record<string, boolean>>({})
   const [billingErrorByAccount, setBillingErrorByAccount] = useState<Record<string, string>>({})
+  const [searchTerm, setSearchTerm] = useState('')
+  // Phones show a summary per account; the billing panel opens on demand. From
+  // md: up every panel stays open, exactly as before.
+  const [openOnMobile, setOpenOnMobile] = useState<Record<string, boolean>>({})
+  const [customerToRemove, setCustomerToRemove] = useState<{ accountId: string; customerId: string; name: string; accountName: string } | null>(null)
 
   const { data: accounts = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['customer-accounts'],
@@ -344,6 +350,17 @@ export default function CustomerAccountsPage() {
   }
 
 
+  const term = searchTerm.trim().toLowerCase()
+  const visibleAccounts = term
+    ? accounts.filter(a =>
+        [a.name, a.account_code, a.contact_email, a.primary_contact_name]
+          .some(field => (field ?? '').toLowerCase().includes(term)),
+      )
+    : accounts
+  const activeFilters: ActiveFilter[] = term
+    ? [{ key: 'q', label: `Search: ${searchTerm.trim()}`, onClear: () => setSearchTerm('') }]
+    : []
+
   // Dashboard summary calculations
   const fleetAccounts = accounts.filter(a => a.account_type)
   const totalFleet = fleetAccounts.length
@@ -380,6 +397,46 @@ export default function CustomerAccountsPage() {
 
       {showCreate && <CreateCustomerAccountModal onClose={() => setShowCreate(false)} />}
 
+      {customerToRemove && (
+        <Modal title="Remove customer from account" onClose={() => setCustomerToRemove(null)}>
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text)' }}>
+              Remove <strong>{customerToRemove.name}</strong> from <strong>{customerToRemove.accountName}</strong>?
+              Their future jobs will no longer be billed to this account. Existing invoices are not changed.
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="secondary" onClick={() => setCustomerToRemove(null)} disabled={removeMut.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                disabled={removeMut.isPending}
+                onClick={() => {
+                  removeMut.mutate({ accountId: customerToRemove.accountId, customerId: customerToRemove.customerId })
+                  setCustomerToRemove(null)
+                }}
+              >
+                {removeMut.isPending ? 'Removing…' : 'Remove customer'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {accounts.length > 0 && (
+        <MobileFilterBar
+          search={{
+            value: searchTerm,
+            onChange: setSearchTerm,
+            label: 'Search accounts by name, code or contact',
+            placeholder: 'Search accounts…',
+          }}
+          activeFilters={activeFilters}
+          onClearAll={activeFilters.length > 0 ? () => setSearchTerm('') : undefined}
+          resultSummary={term ? `${visibleAccounts.length} of ${accounts.length} accounts` : undefined}
+        />
+      )}
+
       {isError ? (
         <div className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-error)', backgroundColor: '#FDF2F0' }}>
           <p className="text-sm font-semibold" style={{ color: 'var(--ms-error)' }}>Could not load customer accounts</p>
@@ -394,7 +451,10 @@ export default function CustomerAccountsPage() {
         <EmptyState message="No customer accounts yet." />
       ) : (
         <div className="space-y-3">
-          {accounts.map(account => {
+          {visibleAccounts.length === 0 && (
+            <EmptyState message="No accounts match this search. Clear it to see all accounts." />
+          )}
+          {visibleAccounts.map(account => {
             const selectedCustomer = selectedCustomerByAccount[account.id] ?? ''
             const periodValue = periodValueFor(account.id)
             const { year, month } = parsePeriod(periodValue)
@@ -426,6 +486,25 @@ export default function CustomerAccountsPage() {
                   </div>
                 </div>
 
+                {/* On a phone each account is a summary row with its detail one
+                    tap away; from md: up everything stays expanded as before. */}
+                <button
+                  type="button"
+                  aria-expanded={!!openOnMobile[account.id]}
+                  aria-controls={`account-detail-${account.id}`}
+                  onClick={() => setOpenOnMobile(prev => ({ ...prev, [account.id]: !prev[account.id] }))}
+                  className="mt-3 flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 text-sm font-semibold md:hidden"
+                  style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}
+                >
+                  <span>
+                    {(account.customer_ids ?? []).length} linked customer{(account.customer_ids ?? []).length === 1 ? '' : 's'}
+                    {' · '}billing
+                  </span>
+                  <span aria-hidden="true">{openOnMobile[account.id] ? '−' : '+'}</span>
+                </button>
+
+                <div id={`account-detail-${account.id}`} className={openOnMobile[account.id] ? '' : 'hidden md:block'}>
+
 
                 <div className="mt-3 rounded-lg border p-3" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
@@ -438,10 +517,15 @@ export default function CustomerAccountsPage() {
                       <span key={customerId} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs" style={{ backgroundColor: '#EFE9DF', color: '#5F4734' }}>
                         {customerName(customerId)}
                         <button
-                          onClick={() => removeMut.mutate({ accountId: account.id, customerId })}
-                          className="ml-1"
+                          onClick={() => setCustomerToRemove({
+                            accountId: account.id,
+                            customerId,
+                            name: customerName(customerId),
+                            accountName: account.name,
+                          })}
+                          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full text-base sm:h-5 sm:w-5 sm:text-sm"
                           disabled={removeMut.isPending}
-                          aria-label="Remove customer"
+                          aria-label={`Remove ${customerName(customerId)} from ${account.name}`}
                         >
                           ×
                         </button>
@@ -485,7 +569,7 @@ export default function CustomerAccountsPage() {
                       value={taxByAccount[account.id] ?? '0'}
                       onChange={e => setTaxByAccount(prev => ({ ...prev, [account.id]: e.target.value }))}
                     />
-                    <div className="flex gap-2 items-end">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                       <Button
                         variant="secondary"
                         className="flex-1"
@@ -607,6 +691,7 @@ export default function CustomerAccountsPage() {
                       </Button>
                     </div>
                   </div>
+                </div>
                 </div>
               </Card>
             )

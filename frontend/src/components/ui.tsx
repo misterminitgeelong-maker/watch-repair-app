@@ -178,7 +178,20 @@ export type MobileActionMenuItem = {
   danger?: boolean
 }
 
-export function MobileActionMenu({ actions, label = 'More actions' }: { actions: MobileActionMenuItem[]; label?: string }) {
+export function MobileActionMenu({
+  actions,
+  label = 'More actions',
+  hiddenFrom = 'sm',
+}: {
+  actions: MobileActionMenuItem[]
+  label?: string
+  /**
+   * Breakpoint at which the menu gives way to inline actions. Detail pages
+   * show their full action row from `sm:`; card lists that survive to `md:`
+   * need the menu to survive with them.
+   */
+  hiddenFrom?: 'sm' | 'md'
+}) {
   const [open, setOpen] = React.useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -192,7 +205,7 @@ export function MobileActionMenu({ actions, label = 'More actions' }: { actions:
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative sm:hidden">
+    <div ref={rootRef} className={cn('relative', hiddenFrom === 'md' ? 'md:hidden' : 'sm:hidden')}>
       <button
         type="button"
         onClick={() => setOpen(value => !value)}

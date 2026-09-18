@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computeGstAmounts } from '@/lib/money'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, MessageSquare, Copy, CheckCheck, FileText } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
@@ -15,7 +15,9 @@ import {
   type QuoteLineItemInput,
   type SortDir,
 } from '@/lib/api'
-import { Card, PageHeader, Button, Modal, Spinner, EmptyState, Badge, Select } from '@/components/ui'
+import { Card, PageHeader, Button, Modal, Spinner, EmptyState, Badge, Select, MobileActionMenu } from '@/components/ui'
+import MobileFilterBar, { type ActiveFilter } from '@/components/mobile/MobileFilterBar'
+import { ModalStickyFooter } from '@/components/mobile/MobileStickyBar'
 import { formatCents, formatDate } from '@/lib/utils'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 
@@ -28,23 +30,23 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
   onRemove: (i: number) => void
 }) {
   const typeSelect = (
-    <select className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.item_type} onChange={e => onChange(index, 'item_type', e.target.value)}>
+    <select className="h-11 w-full rounded px-2 text-base sm:h-8 sm:text-sm" style={inputStyle} value={item.item_type} onChange={e => onChange(index, 'item_type', e.target.value)} aria-label="Line item type">
       <option value="labor">Labor</option>
       <option value="part">Part</option>
       <option value="fee">Fee</option>
     </select>
   )
   const descInput = (
-    <input className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.description} onChange={e => onChange(index, 'description', e.target.value)} placeholder="Movement service…" />
+    <input className="h-11 w-full rounded px-2 text-base sm:h-8 sm:text-sm" style={inputStyle} value={item.description} onChange={e => onChange(index, 'description', e.target.value)} placeholder="Movement service…" aria-label="Line item description" />
   )
   const qtyInput = (
-    <input type="number" min="0.01" step="0.01" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.quantity} onChange={e => { const n = Number.parseFloat(e.target.value); onChange(index, 'quantity', Number.isFinite(n) ? n : 0) }} />
+    <input type="number" min="0.01" step="0.01" inputMode="decimal" aria-label="Quantity" className="h-11 w-full rounded px-2 text-base sm:h-8 sm:text-sm" style={inputStyle} value={item.quantity} onChange={e => { const n = Number.parseFloat(e.target.value); onChange(index, 'quantity', Number.isFinite(n) ? n : 0) }} />
   )
   const priceInput = (
-    <input type="number" min="0" step="1" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyle} value={item.unit_price_cents} placeholder="5000" onChange={e => { const n = Number.parseInt(e.target.value, 10); onChange(index, 'unit_price_cents', Number.isFinite(n) ? n : 0) }} />
+    <input type="number" min="0" step="1" inputMode="numeric" aria-label="Unit price in cents" className="h-11 w-full rounded px-2 text-base sm:h-8 sm:text-sm" style={inputStyle} value={item.unit_price_cents} placeholder="5000" onChange={e => { const n = Number.parseInt(e.target.value, 10); onChange(index, 'unit_price_cents', Number.isFinite(n) ? n : 0) }} />
   )
   const deleteBtn = (
-    <button onClick={() => onRemove(index)} className="p-1.5 transition-colors" style={{ color: 'var(--ms-error)' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-error)')}>
+    <button onClick={() => onRemove(index)} aria-label="Remove line item" className="flex h-11 w-11 items-center justify-center transition-colors sm:h-8 sm:w-8" style={{ color: 'var(--ms-error)' }} onMouseEnter={e => (e.currentTarget.style.color = '#9B3D2A')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ms-error)')}>
       <Trash2 size={14} />
     </button>
   )
@@ -178,46 +180,57 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
-            <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
+          <label className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0" style={{ color: 'var(--ms-text)' }}>
+            <input type="checkbox" className="h-5 w-5 sm:h-4 sm:w-4" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
             Apply GST (10%)
           </label>
           {gstEnabled && (
-            <div className="flex gap-4 pl-6 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" name="gst-mode" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
+            <div className="flex flex-col pl-6 text-sm sm:flex-row sm:gap-4" style={{ color: 'var(--ms-text-mid)' }}>
+              <label className="flex min-h-11 items-center gap-2 sm:min-h-0 sm:gap-1.5">
+                <input type="radio" className="h-5 w-5 sm:h-4 sm:w-4" name="gst-mode" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
                 Include in total (non-business)
               </label>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" name="gst-mode" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
+              <label className="flex min-h-11 items-center gap-2 sm:min-h-0 sm:gap-1.5">
+                <input type="radio" className="h-5 w-5 sm:h-4 sm:w-4" name="gst-mode" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
                 Add on top (business)
               </label>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Subtotal</label>
-            <div className="rounded-lg px-3 py-2 text-sm" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(subtotalCents)}</div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>GST</label>
-            <div className="rounded-lg px-3 py-2 text-sm" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(taxCents)}</div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Total</label>
-            <div className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>{formatCents(total)}</div>
-          </div>
-        </div>
+        {error && <p role="alert" className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
-        {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={!jobId || items.some(i => !i.description) || mut.isPending}>
-            {mut.isPending ? 'Creating…' : 'Create Quote'}
-          </Button>
-        </div>
+        {/* Totals and the submit action stay on screen while a long line-item
+            list is scrolled on a phone. */}
+        <ModalStickyFooter>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {([
+              ['Subtotal', formatCents(subtotalCents), false],
+              ['GST', formatCents(taxCents), false],
+              ['Total', formatCents(total), true],
+            ] as const).map(([label, value, strong]) => (
+              <div key={label} className="flex flex-col gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-widest sm:text-xs" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
+                <span
+                  className={`rounded-lg px-2 py-2 text-sm tabular-nums sm:px-3 ${strong ? 'font-semibold' : ''}`}
+                  style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" className="sm:w-auto" onClick={onClose}>Cancel</Button>
+            <Button
+              className="sm:w-auto"
+              onClick={() => mut.mutate()}
+              disabled={!jobId || items.some(i => !i.description) || mut.isPending}
+            >
+              {mut.isPending ? 'Creating…' : 'Create Quote'}
+            </Button>
+          </div>
+        </ModalStickyFooter>
       </div>
     </Modal>
   )
@@ -234,6 +247,7 @@ const QUOTE_STATUS_FILTERS: Array<{ value: string; label: string }> = [
 
 export default function QuotesPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatus = searchParams.get('status') ?? ''
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
@@ -274,6 +288,27 @@ export default function QuotesPage() {
   }, [olderThanDays, quotes])
   const isLoading = quotesQuery.isLoading
 
+  const SORT_LABELS: Record<typeof sortBy, string> = {
+    created_at: 'Created',
+    sent_at: 'Sent',
+    status: 'Status',
+    total_cents: 'Total',
+  }
+  const statusLabel = QUOTE_STATUS_FILTERS.find(o => o.value === statusFilter)?.label ?? statusFilter
+  const activeFilters: ActiveFilter[] = [
+    ...(statusFilter ? [{ key: 'status', label: `Status: ${statusLabel}`, onClear: () => setStatusFilter('') }] : []),
+    ...(olderThanDays > 0
+      ? [{ key: 'age', label: `Sent ${olderThanDays}+ days ago`, onClear: () => setOlderThanDays(0) }]
+      : []),
+    ...(sortBy !== 'created_at' || sortDir !== 'desc'
+      ? [{
+          key: 'sort',
+          label: `Sort: ${SORT_LABELS[sortBy]} ${sortDir === 'desc' ? '↓' : '↑'}`,
+          onClear: () => { setSortBy('created_at'); setSortDir('desc') },
+        }]
+      : []),
+  ]
+
   const sendMut = useMutation({
     mutationFn: (id: string) => sendQuote(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['quotes'] }),
@@ -304,71 +339,70 @@ export default function QuotesPage() {
       <PageHeader title="Quotes" action={<Button onClick={() => setShowCreate(true)}><Plus size={16} />New Quote</Button>} />
       {showCreate && <CreateQuoteModal onClose={() => setShowCreate(false)} />}
 
-      <div className="mb-4 flex flex-wrap gap-3 items-center">
-        <select
-          className="rounded-lg px-3 py-2 text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid var(--ms-border-strong)',
-            color: 'var(--ms-text)',
-          }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Filter by quote status"
-        >
-          {QUOTE_STATUS_FILTERS.map((o) => (
-            <option key={o.value || 'all'} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-lg px-3 py-2 text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid var(--ms-border-strong)',
-            color: 'var(--ms-text)',
-          }}
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          aria-label="Sort quotes"
-        >
-          <option value="created_at">Sort: Created</option>
-          <option value="sent_at">Sort: Sent</option>
-          <option value="status">Sort: Status</option>
-          <option value="total_cents">Sort: Total</option>
-        </select>
-        <select
-          className="rounded-lg px-3 py-2 text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid var(--ms-border-strong)',
-            color: 'var(--ms-text)',
-          }}
-          value={sortDir}
-          onChange={(e) => setSortDir(e.target.value as SortDir)}
-          aria-label="Sort direction"
-        >
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
-        </select>
-        <select
-          className="rounded-lg px-3 py-2 text-sm outline-none transition"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid var(--ms-border-strong)',
-            color: 'var(--ms-text)',
-          }}
-          value={String(olderThanDays)}
-          onChange={(e) => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
-          aria-label="Filter by quote age"
-        >
-          <option value="0">Any sent age</option>
-          <option value="7">Sent 7+ days ago</option>
-          <option value="14">Sent 14+ days ago</option>
-          <option value="21">Sent 21+ days ago</option>
-        </select>
-      </div>
+      <MobileFilterBar
+        primary={
+          <select
+            className="h-11 w-full rounded-lg border px-3 text-base outline-none transition sm:h-9 sm:w-auto sm:text-sm"
+            style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by quote status"
+          >
+            {QUOTE_STATUS_FILTERS.map((o) => (
+              <option key={o.value || 'all'} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        }
+        secondary={
+          <>
+            <select
+              className="h-11 w-full rounded-lg border px-3 text-base outline-none transition sm:h-9 sm:w-auto sm:text-sm"
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              aria-label="Sort quotes"
+            >
+              <option value="created_at">Sort: Created</option>
+              <option value="sent_at">Sort: Sent</option>
+              <option value="status">Sort: Status</option>
+              <option value="total_cents">Sort: Total</option>
+            </select>
+            <select
+              className="h-11 w-full rounded-lg border px-3 text-base outline-none transition sm:h-9 sm:w-auto sm:text-sm"
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as SortDir)}
+              aria-label="Sort direction"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+            <select
+              className="h-11 w-full rounded-lg border px-3 text-base outline-none transition sm:h-9 sm:w-auto sm:text-sm"
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
+              value={String(olderThanDays)}
+              onChange={(e) => setOlderThanDays(Number.parseInt(e.target.value, 10) || 0)}
+              aria-label="Filter by quote age"
+            >
+              <option value="0">Any sent age</option>
+              <option value="7">Sent 7+ days ago</option>
+              <option value="14">Sent 14+ days ago</option>
+              <option value="21">Sent 21+ days ago</option>
+            </select>
+          </>
+        }
+        activeFilters={activeFilters}
+        onClearAll={
+          activeFilters.length > 0
+            ? () => { setStatusFilter(''); setOlderThanDays(0); setSortBy('created_at'); setSortDir('desc') }
+            : undefined
+        }
+        resultSummary={
+          olderThanDays > 0 ? `${filteredQuotes.length} of ${quotes.length} loaded quotes` : undefined
+        }
+      />
 
       {quotesQuery.error && (
         <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(quotesQuery.error)}</p>
@@ -404,67 +438,60 @@ export default function QuotesPage() {
                   <Card key={q.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge status={q.status} />
                           {q.sent_at && (
-                            <span className="flex items-center gap-1 text-xs text-green-600">
-                              <MessageSquare size={11} /> Sent {formatDate(q.sent_at)}
+                            <span className="flex items-center gap-1 text-xs" style={{ color: '#1F6D4C' }}>
+                              <MessageSquare size={11} aria-hidden="true" /> Sent {formatDate(q.sent_at)}
                             </span>
                           )}
                         </div>
                         <p className="mt-1.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                           Created {formatDate(q.created_at)}
+                          {q.status === 'sent' ? ' · awaiting response' : ''}
                         </p>
-                        <div className="mt-2 flex items-center gap-3 flex-wrap">
-                          <Link to={`/jobs/${q.repair_job_id}`} className="text-xs font-mono underline" style={{ color: 'var(--ms-accent)' }}>View Job</Link>
-                          {q.status === 'draft' && (
-                            <button
-                              className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
-                              style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                              onClick={() => sendMut.mutate(q.id)}
-                              disabled={sendMut.isPending}
-                            >
-                              <MessageSquare size={11} /> Send SMS
-                            </button>
-                          )}
-                          {q.status === 'sent' && (
-                            <>
-                              <span className="text-xs italic" style={{ color: 'var(--ms-text-muted)' }}>Awaiting response</span>
-                              <button
-                                className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
-                                style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-                                onClick={() => resendMut.mutate(q.id)}
-                                disabled={resendMut.isPending}
-                              >
-                                <MessageSquare size={11} /> Resend
-                              </button>
-                            </>
-                          )}
-                          {q.status === 'approved' && (
-                            <button
-                              className="text-xs font-semibold flex items-center gap-1 rounded-lg px-2.5 py-1"
-                              style={{ backgroundColor: '#E8F6EE', border: '1px solid #B8DEC8', color: '#1F6D4C' }}
-                              onClick={() => invoiceMut.mutate(q.id)}
-                              disabled={invoiceMut.isPending}
-                            >
-                              <FileText size={11} /> {invoiceMut.isPending ? 'Creating…' : 'Create Invoice'}
-                            </button>
-                          )}
-                          {(q.status === 'sent' || q.status === 'draft') && (
-                            <button
-                              title="Copy approval link"
-                              onClick={() => copyApprovalLink(q.approval_token, q.id)}
-                              className="p-1 transition-colors"
-                              style={{ color: 'var(--ms-text-muted)' }}
-                            >
-                              {copiedId === q.id ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
-                            </button>
-                          )}
-                        </div>
                       </div>
-                      <p className="text-lg font-semibold shrink-0" style={{ color: 'var(--ms-text)' }}>
+                      <p className="shrink-0 text-lg font-semibold tabular-nums" style={{ color: 'var(--ms-text)' }}>
                         {formatCents(q.total_cents)}
                       </p>
+                    </div>
+                    {/* The status-appropriate next step gets the full-width
+                        row; everything else goes in the overflow menu. */}
+                    <div className="mt-3 flex items-center gap-2">
+                      {q.status === 'draft' && (
+                        <Button className="flex-1" onClick={() => sendMut.mutate(q.id)} disabled={sendMut.isPending}>
+                          <MessageSquare size={14} />{sendMut.isPending ? 'Sending…' : 'Send SMS'}
+                        </Button>
+                      )}
+                      {q.status === 'sent' && (
+                        <Button variant="secondary" className="flex-1" onClick={() => resendMut.mutate(q.id)} disabled={resendMut.isPending}>
+                          <MessageSquare size={14} />{resendMut.isPending ? 'Resending…' : 'Resend SMS'}
+                        </Button>
+                      )}
+                      {q.status === 'approved' && (
+                        <Button className="flex-1" onClick={() => invoiceMut.mutate(q.id)} disabled={invoiceMut.isPending}>
+                          <FileText size={14} />{invoiceMut.isPending ? 'Creating…' : 'Create invoice'}
+                        </Button>
+                      )}
+                      {!['draft', 'sent', 'approved'].includes(q.status) && (
+                        <Button variant="secondary" className="flex-1" onClick={() => navigate(`/jobs/${q.repair_job_id}`)}>
+                          View job
+                        </Button>
+                      )}
+                      <MobileActionMenu
+                        hiddenFrom="md"
+                        label={`More actions for this quote`}
+                        actions={[
+                          { label: 'Open job', onClick: () => navigate(`/jobs/${q.repair_job_id}`) },
+                          ...(q.status === 'sent' || q.status === 'draft'
+                            ? [{
+                                label: copiedId === q.id ? 'Approval link copied' : 'Copy approval link',
+                                icon: copiedId === q.id ? <CheckCheck size={15} /> : <Copy size={15} />,
+                                onClick: () => copyApprovalLink(q.approval_token, q.id),
+                              }]
+                            : []),
+                        ]}
+                      />
                     </div>
                   </Card>
                 ))}
