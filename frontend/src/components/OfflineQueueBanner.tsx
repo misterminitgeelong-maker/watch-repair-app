@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { listOfflineQueue, listDeadLetters, flushOfflineQueue, discardDeadLetter, type FlushError } from '@/lib/offlineQueue'
 import api from '@/lib/api/client'
 import { useToast } from '@/lib/toast'
@@ -7,7 +8,9 @@ import { useToast } from '@/lib/toast'
 export default function OfflineQueueBanner() {
   const [pending, setPending] = useState(0)
   const [dead, setDead] = useState(0)
-  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  // ConnectivityBanner owns the "you are offline" message app-wide; this banner
+  // only reports what the queue is doing about it.
+  const { online } = useOnlineStatus()
   const toast = useToast()
 
   async function refreshCount() {
@@ -18,14 +21,6 @@ export default function OfflineQueueBanner() {
 
   useEffect(() => {
     void refreshCount()
-    const onOnline = () => setOnline(true)
-    const onOffline = () => setOnline(false)
-    window.addEventListener('online', onOnline)
-    window.addEventListener('offline', onOffline)
-    return () => {
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('offline', onOffline)
-    }
   }, [])
 
   useEffect(() => {
@@ -64,16 +59,16 @@ export default function OfflineQueueBanner() {
   }, [online, pending, toast])
 
   if (!online) {
+    if (pending === 0) return null
     return (
-      <div className="text-xs text-center py-1.5 px-3" style={{ backgroundColor: 'rgba(180,120,40,0.2)', color: '#6A4A10' }}>
-        You are offline — changes will sync when connection returns.
-        {pending > 0 ? ` (${pending} pending)` : ''}
+      <div role="status" aria-live="polite" className="text-xs text-center py-1.5 px-3" style={{ backgroundColor: 'rgba(180,120,40,0.2)', color: '#6A4A10' }}>
+        {pending} change{pending === 1 ? '' : 's'} waiting to sync when the connection returns.
       </div>
     )
   }
   if (pending > 0) {
     return (
-      <div className="text-xs text-center py-1.5 px-3" style={{ backgroundColor: 'rgba(79,130,201,0.15)', color: '#1F4C6D' }}>
+      <div role="status" aria-live="polite" className="text-xs text-center py-1.5 px-3" style={{ backgroundColor: 'rgba(79,130,201,0.15)', color: '#1F4C6D' }}>
         Syncing {pending} offline change{pending === 1 ? '' : 's'}…
       </div>
     )

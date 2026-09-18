@@ -3,7 +3,7 @@
  * Static assets: cache-first. API /v1/*: network-first (no JSON cache). Navigation: network, then shell, then offline page.
  */
 // Bump when shell assets (index, offline, icons, manifest) change so deploys replace old caches.
-const CACHE_VERSION = 'mainspring-app-v10-minit-hq-session'
+const CACHE_VERSION = 'mainspring-app-v11-pwa-install'
 const STATIC_CACHE = `mainspring-static-${CACHE_VERSION}`
 
 const PRECACHE_URLS = [
@@ -13,6 +13,10 @@ const PRECACHE_URLS = [
   '/offline.html',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon.svg',
   '/mainspring-logo.png',
 ]
 
@@ -20,7 +24,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      // addAll is all-or-nothing: one 404 would leave the shell uncached, so
+      // each URL is cached independently and failures are tolerated.
+      .then((cache) => Promise.all(PRECACHE_URLS.map((url) => cache.add(url).catch(() => undefined))))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   )
@@ -37,11 +43,20 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+// Lets the page ask a waiting worker to take over instead of waiting for all
+// tabs to close (the page decides when; this only obeys).
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
 
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
+
+  // Range requests (media seeking) must not be served from the cache.
+  if (event.request.headers.has('range')) return
 
   // API: network-first; never cache JSON API responses here (fresh data when online).
   if (url.pathname.startsWith('/v1/')) {
@@ -70,10 +85,19 @@ self.addEventListener('fetch', (event) => {
           return res
         })
         .catch(async () => {
-          const shell = await caches.match('/index.html')
+          // The SPA shell boots the app, which can serve cached screens; the
+          // static offline page is the last resort.
+          const shell = (await caches.match('/index.html')) || (await caches.match('/'))
           if (shell) return shell
           const offline = await caches.match('/offline.html')
-          return offline || new Response('Offline', { status: 503, statusText: 'Offline' })
+          return (
+            offline ||
+            new Response('Offline', {
+              status: 503,
+              statusText: 'Offline',
+              headers: { 'Content-Type': 'text/plain' },
+            })
+          )
         })
     )
     return
@@ -90,7 +114,14 @@ self.addEventListener('fetch', (event) => {
           }
           return res
         })
-        .catch(() => caches.match(event.request))
+        // respondWith rejects on undefined, so always resolve to a Response.
+        .catch(async () => {
+          const cached = await caches.match(event.request)
+          return (
+            cached ||
+            new Response('', { status: 504, statusText: 'Offline', headers: { 'Content-Type': 'text/plain' } })
+          )
+        })
     )
     return
   }
@@ -100,12 +131,18 @@ self.addEventListener('fetch', (event) => {
     caches.open(STATIC_CACHE).then((cache) =>
       cache.match(event.request).then((cached) => {
         if (cached) return cached
-        return fetch(event.request).then((res) => {
-          if (res.ok && res.type === 'basic') {
-            cache.put(event.request, res.clone())
-          }
-          return res
-        })
+        return fetch(event.request)
+          .then((res) => {
+            if (res.ok && res.type === 'basic') {
+              cache.put(event.request, res.clone())
+            }
+            return res
+          })
+          .catch(async () => {
+            const fallback = await caches.match(event.request)
+            if (fallback) return fallback
+            throw new Error('offline')
+          })
       })
     )
   )

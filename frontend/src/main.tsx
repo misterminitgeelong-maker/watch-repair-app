@@ -11,7 +11,18 @@ stampBuildMetaTag()
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then(registration => {
+        // A phone can stay on one tab for days. Re-check for a new worker when
+        // the app is brought back to the foreground so techs are not stuck on a
+        // stale bundle; the worker still decides when to take over.
+        const checkForUpdate = () => {
+          if (document.visibilityState === 'visible') registration.update().catch(() => {})
+        }
+        document.addEventListener('visibilitychange', checkForUpdate)
+      })
+      .catch(() => {})
   })
 }
 

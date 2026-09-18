@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
@@ -8,7 +8,6 @@ import {
   listCustomerAccounts,
   uploadShoeAttachment,
   getApiErrorMessage,
-  getUploadErrorMessage,
   trackingSmsWarning,
   type CustomerAccount,
 } from '@/lib/api'
@@ -16,8 +15,23 @@ import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeSer
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import { STATUS_LABELS } from '@/lib/utils'
-import { preparePhotoFile, getPhotoPrepareErrorMessage, uploadFilesSequential } from '@/lib/photoUpload'
+import {
+  preparePhotoFile,
+  getPhotoPrepareErrorMessage,
+  uploadBatchWithRetry,
+  describeUploadFailures,
+  initialUploadProgress,
+  isOffline,
+  OFFLINE_UPLOAD_MESSAGE,
+  type UploadProgress,
+} from '@/lib/photoUpload'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
+import { useAuth } from '@/context/AuthContext'
+import { useIntakeDraft } from '@/hooks/useIntakeDraft'
+import { draftScope, photoMetaFromFile, type DraftPhotoMeta } from '@/lib/draftStorage'
+import DraftRestoredNotice from '@/components/DraftRestoredNotice'
+import IntakeSubmitStatus from '@/components/IntakeSubmitStatus'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 
@@ -72,6 +86,37 @@ function Steps({ current }: { current: number }) {
   )
 }
 
+// ── Draft ─────────────────────────────────────────────────────────────────────
+const DRAFT_KIND = 'shoe-intake'
+
+type ShoeIntakeDraft = {
+  step: number
+  customerMode: 'existing' | 'new'
+  selectedCustomerId: string
+  newCustomer: { full_name: string; email: string; phone: string; address: string; notes: string }
+  shoeCount: number
+  shoes: IntakeShoe[]
+  job: {
+    title: string
+    description: string
+    priority: string
+    status: string
+    salesperson: string
+    deposit_cents: string
+    collection_date: string
+  }
+  selectedCustomerAccountId: string
+  /** Photo names/sizes only — Files cannot be stored, so they are reselected. */
+  photoMeta: DraftPhotoMeta[]
+}
+
+function draftHasContent(d: ShoeIntakeDraft): boolean {
+  if (d.job.title.trim() || d.job.description.trim()) return true
+  if (d.customerMode === 'new' && d.newCustomer.full_name.trim()) return true
+  if (d.selectedCustomerId) return true
+  return d.shoes.some(s => s.shoe_type || s.brand.trim() || s.color.trim() || s.description_notes.trim() || s.services.length > 0)
+}
+
 // ── Main Modal ────────────────────────────────────────────────────────────────
 interface Props {
   onClose: () => void
@@ -82,6 +127,8 @@ interface Props {
 export default function NewShoeJobModal({ onClose, preselectedCustomer, onSuccess }: Props) {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { tenantId, activeSiteTenantId, sessionUserId } = useAuth()
+  const { online } = useOnlineStatus()
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
   // Step 1 – Customer
@@ -106,13 +153,22 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const [loading, setLoading] = useState(false)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
   const [intakeWarnings, setIntakeWarnings] = useState<string[]>([])
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
+  const [submitStage, setSubmitStage] = useState<string | null>(null)
+  const [draftPhotoCount, setDraftPhotoCount] = useState(0)
+
+  // Records created by an earlier, partly-failed submit. Reused on retry so a
+  // second attempt never creates duplicate shoes or a duplicate job.
+  const createdShoeIdsRef = useRef<string[]>([])
+  const createdJobIdRef = useRef<string | null>(null)
+  const submittingRef = useRef(false)
 
   const busy = loading || photoLoading
 
   const requestClose = useCallback(() => {
     if (busy) return
     if (step > 1 && !createdJobId) {
-      if (!window.confirm('Discard this intake? Nothing will be saved until you create the job.')) return
+      if (!window.confirm('Close this intake? Your typed details are kept as a draft, but photos must be reselected.')) return
     }
     onClose()
   }, [busy, step, createdJobId, onClose])
@@ -135,6 +191,68 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const matchingAccounts = activeCustomerId
     ? customerAccounts.filter((a: CustomerAccount) => (a.customer_ids ?? []).includes(activeCustomerId))
     : customerAccounts
+
+  // ── Draft preservation ──────────────────────────────────────────────────────
+  const scope = draftScope(activeSiteTenantId || tenantId, sessionUserId)
+  const photoMeta = useMemo(() => intakePhotos.map(p => photoMetaFromFile(p.file)), [intakePhotos])
+  const draftValue = useMemo<ShoeIntakeDraft>(
+    () => ({
+      step,
+      customerMode,
+      selectedCustomerId,
+      newCustomer,
+      shoeCount,
+      shoes,
+      job,
+      selectedCustomerAccountId,
+      photoMeta,
+    }),
+    [step, customerMode, selectedCustomerId, newCustomer, shoeCount, shoes, job, selectedCustomerAccountId, photoMeta],
+  )
+
+  const restoreDraft = useCallback((d: ShoeIntakeDraft) => {
+    if (!preselectedCustomer) {
+      setCustomerMode(d.customerMode)
+      setSelectedCustomerId(d.selectedCustomerId)
+      setNewCustomer(d.newCustomer)
+    }
+    const count = Math.max(1, Math.min(d.shoeCount || 1, 15))
+    setShoeCount(count)
+    setShoes(Array.from({ length: count }, (_, i) => ({ ...newIntakeShoe(), ...(d.shoes?.[i] ?? {}) })))
+    setJob(prev => ({ ...prev, ...d.job }))
+    setSelectedCustomerAccountId(d.selectedCustomerAccountId ?? '')
+    setDraftPhotoCount((d.photoMeta ?? []).length)
+    setStep(Math.min(Math.max(1, d.step || 1), 3))
+  }, [preselectedCustomer])
+
+  const draft = useIntakeDraft<ShoeIntakeDraft>({
+    kind: DRAFT_KIND,
+    scope,
+    value: draftValue,
+    enabled: !createdJobId && !loading,
+    hasContent: draftHasContent,
+    onRestore: restoreDraft,
+  })
+
+  function handleDiscardDraft() {
+    draft.discardDraft()
+    setDraftPhotoCount(0)
+    setIntakePhotos(prev => {
+      for (const p of prev) URL.revokeObjectURL(p.preview)
+      return []
+    })
+    setShoeCount(1)
+    setShoes([newIntakeShoe()])
+    setJob({ title: '', description: '', priority: 'normal', status: 'awaiting_go_ahead', salesperson: '', deposit_cents: '', collection_date: '' })
+    setSelectedCustomerAccountId('')
+    if (!preselectedCustomer) {
+      setCustomerMode('existing')
+      setSelectedCustomerId('')
+      setNewCustomer({ full_name: '', email: '', phone: '', address: '', notes: '' })
+    }
+    setError('')
+    setStep(preselectedCustomer ? 2 : 1)
+  }
 
   const setC = (k: keyof typeof newCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setNewCustomer(f => ({ ...f, [k]: e.target.value }))
@@ -218,13 +336,22 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   }
 
   async function submit() {
+    // Re-entrancy guard: a double tap on a slow phone must not create two jobs.
+    if (submittingRef.current) return
     setError('')
     const anyServices = shoes.some(s => s.services.length > 0)
     if (!job.title && !anyServices) {
       setError('Please add a job title or select at least one service for a pair.')
       return
     }
+    if (isOffline()) {
+      setError('You are offline. Reconnect before creating the job — your details are saved as a draft.')
+      return
+    }
+    submittingRef.current = true
     setLoading(true)
+    setUploadProgress(null)
+    setSubmitStage('Creating job…')
     const warnings: string[] = []
     try {
       let customerId = createdCustomerId || selectedCustomerId
@@ -235,8 +362,10 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
         qc.invalidateQueries({ queryKey: ['customers'] })
       }
 
-      const createdShoeIds: string[] = []
-      for (const intakeShoe of shoes) {
+      // Resume from whatever a previous failed attempt already created.
+      const createdShoeIds = createdShoeIdsRef.current
+      for (let i = createdShoeIds.length; i < shoes.length; i += 1) {
+        const intakeShoe = shoes[i]
         const { data } = await createShoe({
           customer_id: customerId,
           shoe_type: intakeShoe.shoe_type || undefined,
@@ -254,48 +383,68 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
           return names.length ? names.join(', ') : `Shoe repair (${shoes.length} pair${shoes.length === 1 ? '' : 's'})`
         })()
 
-      const firstItems = toItemPayload(shoes[0].services, 0, shoes.length)
-      const { data: jobData } = await createShoeRepairJob({
-        shoe_id: createdShoeIds[0],
-        customer_account_id: selectedCustomerAccountId || undefined,
-        title: autoTitle,
-        description: job.description || undefined,
-        priority: job.priority,
-        status: job.status,
-        salesperson: job.salesperson || undefined,
-        deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
-        collection_date: job.collection_date || undefined,
-        items: firstItems,
-      })
-
-      const smsMsg = trackingSmsWarning(jobData.tracking_sms_skipped_reason)
-      if (smsMsg) warnings.push(smsMsg)
+      let jobId = createdJobIdRef.current
+      if (!jobId) {
+        const firstItems = toItemPayload(shoes[0].services, 0, shoes.length)
+        const { data: jobData } = await createShoeRepairJob({
+          shoe_id: createdShoeIds[0],
+          customer_account_id: selectedCustomerAccountId || undefined,
+          title: autoTitle,
+          description: job.description || undefined,
+          priority: job.priority,
+          status: job.status,
+          salesperson: job.salesperson || undefined,
+          deposit_cents: job.deposit_cents ? Math.round(parseFloat(job.deposit_cents) * 100) : 0,
+          collection_date: job.collection_date || undefined,
+          items: firstItems,
+        })
+        jobId = jobData.id
+        createdJobIdRef.current = jobId
+        const smsMsg = trackingSmsWarning(jobData.tracking_sms_skipped_reason)
+        if (smsMsg) warnings.push(smsMsg)
+      }
 
       for (let i = 1; i < createdShoeIds.length; i += 1) {
-        await addShoeToJob(jobData.id, createdShoeIds[i])
+        await addShoeToJob(jobId, createdShoeIds[i])
         const itemsForPair = toItemPayload(shoes[i].services, i, shoes.length)
         if (itemsForPair.length > 0) {
-          await appendShoeRepairJobItems(jobData.id, itemsForPair)
+          await appendShoeRepairJobItems(jobId, itemsForPair)
         }
       }
 
+      // The job exists from here on; photo problems are reported, not fatal.
       if (intakePhotos.length > 0) {
-        try {
-          await uploadFilesSequential(
-            intakePhotos.map(p => p.file),
-            f => uploadShoeAttachment(f, jobData.id, 'intake'),
-          )
-        } catch (uploadErr: unknown) {
-          warnings.push(getUploadErrorMessage(uploadErr, 'Intake photos could not be uploaded. Add them from the job page.'))
-        }
+        setSubmitStage(null)
+        setUploadProgress({ ...initialUploadProgress(intakePhotos.length), phase: 'preparing', message: `Preparing ${intakePhotos.length} photo${intakePhotos.length === 1 ? '' : 's'}…` })
+        const result = await uploadBatchWithRetry(
+          intakePhotos.map((p, i) => ({ file: p.file, label: `Photo ${i + 1}` })),
+          (f: File) => uploadShoeAttachment(f, jobId, 'intake'),
+          { onProgress: setUploadProgress },
+        )
+        const failureMsg = describeUploadFailures(result.failures)
+        if (failureMsg) warnings.push(failureMsg)
       }
 
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
       setIntakeWarnings(warnings)
-      setCreatedJobId(jobData.id)
+      draft.clearSavedDraft()
+      setCreatedJobId(jobId)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to create job. Please try again.'))
+      if (createdJobIdRef.current) {
+        // The ticket exists — surface it instead of inviting a resubmit that
+        // would duplicate it.
+        setIntakeWarnings([
+          ...warnings,
+          `The job was created, but finishing it failed: ${getApiErrorMessage(err, 'please check the job page.')} Add any missing pairs, services or photos from the job page.`,
+        ])
+        draft.clearSavedDraft()
+        setCreatedJobId(createdJobIdRef.current)
+      } else {
+        setError(getApiErrorMessage(err, 'Failed to create job. Please try again.'))
+      }
     }
+    submittingRef.current = false
+    setSubmitStage(null)
     setLoading(false)
   }
 
@@ -341,6 +490,12 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
 
   return (
     <Modal title="New Shoe Repair Job" onClose={requestClose} closeDisabled={busy} mobileFullScreen>
+      <DraftRestoredNotice
+        savedAt={draft.restoredAt}
+        onDiscard={handleDiscardDraft}
+        photosNeedReselect={draftPhotoCount > 0}
+        photoCount={draftPhotoCount}
+      />
       <Steps current={step} />
 
       {error && (
@@ -547,9 +702,16 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
             ))}
           </Select>
 
+          {!online && !loading && (
+            <p className="text-sm" style={{ color: '#6A4A10' }}>
+              {OFFLINE_UPLOAD_MESSAGE} Your typed details stay saved as a draft.
+            </p>
+          )}
+          <IntakeSubmitStatus progress={uploadProgress} stageMessage={submitStage} offline={!online} />
+
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(2)} className="flex-1">Back</Button>
-            <Button onClick={submit} disabled={loading} className="flex-1">
+            <Button variant="secondary" onClick={() => setStep(2)} className="flex-1" disabled={busy}>Back</Button>
+            <Button onClick={submit} disabled={busy || !online} className="flex-1">
               {loading ? 'Creating…' : 'Create Job'}
             </Button>
           </div>

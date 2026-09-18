@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Camera, Upload, X } from 'lucide-react'
@@ -18,8 +18,25 @@ import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import WatchServicePicker, { type SelectedWatchService } from '@/components/WatchServicePicker'
 import { STATUS_LABELS } from '@/lib/utils'
 import { dollarsToCents } from '@/lib/money'
-import { preparePhotoFile, getPhotoPrepareErrorMessage, getIntakeSubmitErrorMessage, yieldToMainThread } from '@/lib/photoUpload'
+import {
+  preparePhotoFile,
+  getPhotoPrepareErrorMessage,
+  getIntakeSubmitErrorMessage,
+  yieldToMainThread,
+  uploadBatchWithRetry,
+  describeUploadFailures,
+  initialUploadProgress,
+  isOffline,
+  OFFLINE_UPLOAD_MESSAGE,
+  type UploadProgress,
+} from '@/lib/photoUpload'
 import { IntakeWarningBanner } from '@/lib/intakeWarnings'
+import { useAuth } from '@/context/AuthContext'
+import { useIntakeDraft } from '@/hooks/useIntakeDraft'
+import { draftScope, photoMetaFromFile, type DraftPhotoMeta } from '@/lib/draftStorage'
+import DraftRestoredNotice from '@/components/DraftRestoredNotice'
+import IntakeSubmitStatus from '@/components/IntakeSubmitStatus'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 
 const INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 const MAX_WATCHES = 5
@@ -99,6 +116,47 @@ function emptyWatchForm(): WatchForm {
   return { mode: 'new', selectedWatchId: '', brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '' }
 }
 
+// ── Draft ─────────────────────────────────────────────────────────────────────
+const DRAFT_KIND = 'watch-intake'
+
+type PhotoSlotMeta = { front: DraftPhotoMeta | null; back: DraftPhotoMeta | null }
+
+type WatchIntakeDraft = {
+  step: number
+  customerMode: 'existing' | 'new'
+  selectedCustomerId: string
+  newCustomer: { full_name: string; email: string; phone: string; address: string; notes: string }
+  watchCount: number
+  watchForms: WatchForm[]
+  job: {
+    title: string
+    description: string
+    priority: string
+    status: JobStatus
+    salesperson: string
+    collection_date: string
+    deposit_cents: string
+    pre_quote_cents: string
+    job_number_override: string
+  }
+  selectedRepairs: SelectedWatchService[]
+  selectedCustomerAccountId: string
+  /** Photo names/sizes only — Files cannot be stored, so they are reselected. */
+  photoMeta: PhotoSlotMeta[]
+}
+
+function draftHasContent(d: WatchIntakeDraft): boolean {
+  if (d.job.title.trim() || d.job.description.trim()) return true
+  if (d.selectedRepairs.length > 0) return true
+  if (d.customerMode === 'new' && d.newCustomer.full_name.trim()) return true
+  if (d.selectedCustomerId) return true
+  return d.watchForms.some(w => w.brand.trim() || w.model.trim() || w.serial_number.trim() || w.condition_notes.trim())
+}
+
+function countDraftPhotos(meta: PhotoSlotMeta[]): number {
+  return meta.reduce((n, slot) => n + (slot.front ? 1 : 0) + (slot.back ? 1 : 0), 0)
+}
+
 // ── NewJobModal ───────────────────────────────────────────────────────────────
 interface Props {
   onClose: () => void
@@ -109,6 +167,8 @@ interface Props {
 export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }: Props) {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { tenantId, activeSiteTenantId, sessionUserId } = useAuth()
+  const { online } = useOnlineStatus()
 
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
@@ -156,6 +216,67 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
   const [jobsCreatedCount, setJobsCreatedCount] = useState(0)
   const [intakeWarnings, setIntakeWarnings] = useState<string[]>([])
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
+  const [submitStage, setSubmitStage] = useState<string | null>(null)
+  const [draftPhotoCount, setDraftPhotoCount] = useState(0)
+
+  // Tickets already created in this submit — set before any photo upload so a
+  // retry after an upload failure can never create a second ticket.
+  const createdJobIdsRef = useRef<string[]>([])
+  const submittingRef = useRef(false)
+
+  // ── Draft preservation ──────────────────────────────────────────────────────
+  const scope = draftScope(activeSiteTenantId || tenantId, sessionUserId)
+  const photoMeta = useMemo<PhotoSlotMeta[]>(
+    () => photos.map(p => ({
+      front: p.front ? photoMetaFromFile(p.front) : null,
+      back: p.back ? photoMetaFromFile(p.back) : null,
+    })),
+    [photos],
+  )
+  const draftValue = useMemo<WatchIntakeDraft>(
+    () => ({
+      step,
+      customerMode,
+      selectedCustomerId,
+      newCustomer,
+      watchCount,
+      watchForms,
+      job,
+      selectedRepairs,
+      selectedCustomerAccountId,
+      photoMeta,
+    }),
+    [step, customerMode, selectedCustomerId, newCustomer, watchCount, watchForms, job, selectedRepairs, selectedCustomerAccountId, photoMeta],
+  )
+
+  const restoreDraft = useCallback((d: WatchIntakeDraft) => {
+    // Only restore fields the form owns; photos cannot come back (Files are
+    // never stored), so the notice tells the user to reselect them.
+    if (!preselectedCustomer) {
+      setCustomerMode(d.customerMode)
+      setSelectedCustomerId(d.selectedCustomerId)
+      setNewCustomer(d.newCustomer)
+    }
+    const count = Math.min(Math.max(1, d.watchCount || 1), MAX_WATCHES)
+    setWatchCount(count)
+    setWatchForms(Array.from({ length: count }, (_, i) => ({ ...emptyWatchForm(), ...(d.watchForms?.[i] ?? {}) })))
+    setPhotos(Array.from({ length: count }, () => ({ front: null, back: null, frontPreview: null, backPreview: null })))
+    setJob(prev => ({ ...prev, ...d.job }))
+    setSelectedRepairs(d.selectedRepairs ?? [])
+    setSelectedCustomerAccountId(d.selectedCustomerAccountId ?? '')
+    setDraftPhotoCount(countDraftPhotos(d.photoMeta ?? []))
+    setStep(Math.min(Math.max(1, d.step || 1), 4))
+  }, [preselectedCustomer])
+
+  const draft = useIntakeDraft<WatchIntakeDraft>({
+    kind: DRAFT_KIND,
+    scope,
+    value: draftValue,
+    enabled: !createdJobId && !loading,
+    hasContent: draftHasContent,
+    onRestore: restoreDraft,
+  })
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -189,10 +310,30 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   const requestClose = useCallback(() => {
     if (busy) return
     if (step > 1 && !createdJobId) {
-      if (!window.confirm('Discard this intake? Nothing will be saved until you create the job ticket.')) return
+      if (!window.confirm('Close this intake? Your typed details are kept as a draft, but photos must be reselected.')) return
     }
     onClose()
   }, [busy, step, createdJobId, onClose])
+
+  function handleDiscardDraft() {
+    draft.discardDraft()
+    setDraftPhotoCount(0)
+    releaseAllPhotoPreviews()
+    setPhotos([{ front: null, back: null, frontPreview: null, backPreview: null }])
+    setWatchCount(1)
+    setWatchForms([emptyWatchForm()])
+    setActiveWatchTab(0)
+    setJob({ title: '', description: '', priority: 'normal', status: 'awaiting_quote', salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '', job_number_override: '' })
+    setSelectedRepairs([])
+    setSelectedCustomerAccountId('')
+    if (!preselectedCustomer) {
+      setCustomerMode('existing')
+      setSelectedCustomerId('')
+      setNewCustomer({ full_name: '', email: '', phone: '', address: '', notes: '' })
+    }
+    setError('')
+    setStep(preselectedCustomer ? 2 : 1)
+  }
 
   function handleCountChange(count: number) {
     setWatchCount(count)
@@ -309,20 +450,29 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
   }
 
   async function submit() {
+    // Re-entrancy guard: a double tap on a slow phone must not create two tickets.
+    if (submittingRef.current) return
     setError('')
     if (!job.title) { setError('Job title is required.'); return }
     if (watchCount === 1 && (!photos[0].front || !photos[0].back)) {
       setError('Both front and back photos are required.')
       return
     }
+    if (isOffline()) {
+      setError('You are offline. Reconnect before creating the job ticket — your details are saved as a draft.')
+      return
+    }
+    submittingRef.current = true
     setLoading(true)
+    setUploadProgress(null)
+    setSubmitStage('Creating job ticket…')
     const photoSnapshot = photos.map(p => ({ front: p.front, back: p.back }))
     releaseAllPhotoPreviews()
     await yieldToMainThread()
 
     const warnings: string[] = []
-    let firstJobId: string | null = null
-    let createdCount = 0
+    let firstJobId: string | null = createdJobIdsRef.current[0] ?? null
+    let createdCount = createdJobIdsRef.current.length
     try {
       let customerId = createdCustomerId || selectedCustomerId
       if (customerMode === 'new' && !customerId) {
@@ -348,6 +498,10 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           watchIds.push(data.id)
         }
       }
+
+      // Photos are collected across all tickets and uploaded after every ticket
+      // exists, so an upload failure can never roll back or duplicate a ticket.
+      const pendingUploads: Array<{ file: File; label: string; jobId: string; kind: string }> = []
       for (let i = 0; i < watchCount; i++) {
         const watchId = watchIds[i]
         const jobTitle = watchCount > 1 ? `${job.title} (Watch ${i + 1} of ${watchCount})` : job.title
@@ -365,27 +519,37 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           cost_cents: 0,
           job_number_override: (watchCount === 1 && job.job_number_override.trim()) ? job.job_number_override.trim() : undefined,
         })
+        createdJobIdsRef.current.push(data.id)
         createdCount += 1
         if (!firstJobId) firstJobId = data.id
         const smsMsg = trackingSmsWarning(data.tracking_sms_skipped_reason)
         if (smsMsg) warnings.push(smsMsg)
         const p = photoSnapshot[i]
-        for (const [file, label] of [[p.front, 'watch_front'], [p.back, 'watch_back']] as const) {
-          if (!file) continue
-          try {
-            await uploadAttachment(file, data.id, label)
-            await yieldToMainThread()
-          } catch (uploadErr: unknown) {
-            warnings.push(getPhotoPrepareErrorMessage(uploadErr, 'One or more photos could not be uploaded. Open the job to add photos.'))
-          }
-        }
+        const prefix = watchCount > 1 ? `Watch ${i + 1} ` : ''
+        if (p.front) pendingUploads.push({ file: p.front, label: `${prefix}front`, jobId: data.id, kind: 'watch_front' })
+        if (p.back) pendingUploads.push({ file: p.back, label: `${prefix}back`, jobId: data.id, kind: 'watch_back' })
       }
+
+      // The ticket(s) exist from here on; photo problems are reported, not fatal.
+      if (pendingUploads.length > 0) {
+        setSubmitStage(null)
+        setUploadProgress({ ...initialUploadProgress(pendingUploads.length), phase: 'preparing', message: `Preparing ${pendingUploads.length} photo${pendingUploads.length === 1 ? '' : 's'}…` })
+        const result = await uploadBatchWithRetry(
+          pendingUploads.map(u => ({ file: u, label: u.label })),
+          async (u: typeof pendingUploads[number]) => uploadAttachment(u.file, u.jobId, u.kind),
+          { onProgress: setUploadProgress },
+        )
+        const failureMsg = describeUploadFailures(result.failures)
+        if (failureMsg) warnings.push(failureMsg)
+      }
+
       if (firstJobId) {
         if (createdCount < watchCount) {
           warnings.unshift(`Only ${createdCount} of ${watchCount} job tickets were created. Check the customer profile for missing tickets.`)
         }
         setJobsCreatedCount(createdCount)
         setIntakeWarnings(warnings)
+        draft.clearSavedDraft()
         setCreatedJobId(firstJobId)
       }
     } catch (err: unknown) {
@@ -398,12 +562,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         }
         setJobsCreatedCount(createdCount)
         setIntakeWarnings(warnings)
+        // Tickets exist — clear the draft and move on rather than inviting a
+        // resubmit that would duplicate them.
+        draft.clearSavedDraft()
         setCreatedJobId(firstJobId)
       } else {
         setError(getIntakeSubmitErrorMessage(err, getApiErrorMessage(err, 'Failed to create job.')))
       }
     } finally {
+      submittingRef.current = false
       setLoading(false)
+      setSubmitStage(null)
     }
   }
 
@@ -451,6 +620,12 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   return (
     <Modal title="New Job Ticket" onClose={requestClose} closeDisabled={busy} mobileFullScreen>
+      <DraftRestoredNotice
+        savedAt={draft.restoredAt}
+        onDiscard={handleDiscardDraft}
+        photosNeedReselect={draftPhotoCount > 0}
+        photoCount={draftPhotoCount}
+      />
       <Steps current={step} />
 
       {preselectedCustomer && (
@@ -805,11 +980,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           ))}
 
           {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+          {!online && !loading && (
+            <p className="text-sm" style={{ color: '#6A4A10' }}>
+              {OFFLINE_UPLOAD_MESSAGE} Your typed details stay saved as a draft.
+            </p>
+          )}
+          <IntakeSubmitStatus progress={uploadProgress} stageMessage={submitStage} offline={!online} />
           <div className="flex justify-between pt-2">
-            <Button variant="ghost" onClick={() => setStep(3)}>← Back</Button>
+            <Button variant="ghost" onClick={() => setStep(3)} disabled={busy}>← Back</Button>
             <Button
               onClick={submit}
-              disabled={loading || !!photoLoading || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}
+              disabled={loading || !!photoLoading || !online || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}
             >
               {loading ? 'Creating…' : photoLoading ? 'Processing photo…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
             </Button>

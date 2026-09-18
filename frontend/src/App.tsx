@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/lib/toast'
 import AppShell from '@/components/AppShell'
+import ConnectivityBanner from '@/components/ConnectivityBanner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
@@ -142,6 +143,7 @@ export default function App() {
         <ThemeProvider>
         <ToastProvider>
         <AuthProvider>
+          <ConnectivityBanner />
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>

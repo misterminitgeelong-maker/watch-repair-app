@@ -47,8 +47,10 @@ export default function MinitHqSidebar({
   const inboxCount = useInboxCount()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
-  const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt()
-  const showInstall = !isStandalone && (canInstall || isIos)
+  const { isIos, showInstallAffordance, promptInstall, dismissInstallPrompt } = useInstallPrompt()
+  // Only where the platform can actually install (beforeinstallprompt fired, or
+  // iOS Safari where the user adds it by hand) and they have not said "not now".
+  const showInstall = showInstallAffordance
 
   function linkClasses(isActive: boolean) {
     return cn(
@@ -242,10 +244,20 @@ export default function MinitHqSidebar({
             </p>
             <button
               className="mt-1 w-full rounded-xl py-2.5 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', minHeight: 44 }}
               onClick={() => setShowIosHint(false)}
             >
               Got it
+            </button>
+            <button
+              className="w-full rounded-xl py-2.5 text-sm font-medium"
+              style={{ color: 'var(--ms-text-muted)', backgroundColor: 'transparent', minHeight: 44 }}
+              onClick={() => {
+                dismissInstallPrompt()
+                setShowIosHint(false)
+              }}
+            >
+              Don&apos;t show again
             </button>
           </div>
         </div>
