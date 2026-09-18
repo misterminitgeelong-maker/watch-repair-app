@@ -987,7 +987,7 @@ export default function AppShell() {
           />
           <button
             onClick={() => setSearchOpen(true)}
-            className="p-2 rounded-lg transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
             style={{ color: 'var(--ms-text-muted)' }}
             aria-label="Search"
           >

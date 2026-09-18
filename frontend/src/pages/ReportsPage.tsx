@@ -338,26 +338,7 @@ export default function ReportsPage() {
         action={
           pageTab !== 'overview' ? undefined : (
           <div className="flex items-center gap-2">
-            <div
-              className="inline-flex rounded-lg p-0.5"
-              style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}
-            >
-              {PERIODS.map(p => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => setPeriod(p.key)}
-                  className="px-3 py-1 text-xs font-medium rounded-md transition-colors"
-                  style={{
-                    backgroundColor: period === p.key ? 'var(--ms-surface)' : 'transparent',
-                    color: period === p.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
-                    boxShadow: period === p.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <PeriodChips label="Trend period" options={PERIODS} value={period} onChange={setPeriod} />
             <div className="relative" ref={exportRef}>
               <Button
                 variant="secondary"
@@ -472,7 +453,7 @@ export default function ReportsPage() {
             <button
               key={t.key}
               onClick={() => changePageTab(t.key)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-150"
+              className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:min-h-0"
               style={{
                 borderBottom: pageTab === t.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
                 color: pageTab === t.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',

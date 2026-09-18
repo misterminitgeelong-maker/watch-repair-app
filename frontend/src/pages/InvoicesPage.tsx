@@ -136,7 +136,11 @@ export function InvoicesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Link to={`/invoices/${inv.id}`} className="font-mono text-base font-semibold" style={{ color: 'var(--ms-accent)' }}>
+                          <Link
+                            to={`/invoices/${inv.id}`}
+                            className="inline-flex min-h-11 items-center font-mono text-base font-semibold sm:min-h-0"
+                            style={{ color: 'var(--ms-accent)' }}
+                          >
                             #{inv.invoice_number}
                           </Link>
                           <Badge status={inv.status} />

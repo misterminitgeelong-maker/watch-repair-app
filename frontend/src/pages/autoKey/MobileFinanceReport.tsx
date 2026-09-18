@@ -256,7 +256,13 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
             <Card className="p-4 lg:col-span-2">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h3 className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Receivables ageing</h3>
-                <Link to={focusHref('unpaid_invoices')} className="text-xs font-semibold" style={{ color: 'var(--ms-accent)' }}>All unpaid →</Link>
+                <Link
+                  to={focusHref('unpaid_invoices')}
+                  className="inline-flex min-h-11 items-center text-xs font-semibold sm:min-h-0"
+                  style={{ color: 'var(--ms-accent)' }}
+                >
+                  All unpaid →
+                </Link>
               </div>
               <p className="text-2xl font-extrabold tabular-nums" style={{ color: data.ar_ageing.overdue_cents > 0 ? TONE_COLORS.bad : 'var(--ms-text)' }}>{formatCents(data.ar_ageing.total_cents)}</p>
               <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>{formatCents(data.ar_ageing.overdue_cents)} overdue{data.ar_ageing.overdue_pct != null ? ` (${data.ar_ageing.overdue_pct}%)` : ''} · as of now, not period based</p>
@@ -278,7 +284,11 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
               {data.ar_ageing.open_invoices.length > 0 && (
                 <div className="mt-3 pt-2 space-y-1" style={{ borderTop: '1px dashed var(--ms-border)' }}>
                   {data.ar_ageing.open_invoices.slice(0, 5).map(inv => (
-                    <Link key={inv.invoice_id} to={`/auto-key/${inv.job_id}`} className="flex items-center justify-between gap-2 text-xs">
+                    <Link
+                      key={inv.invoice_id}
+                      to={`/auto-key/${inv.job_id}`}
+                      className="flex min-h-11 items-center justify-between gap-2 text-xs sm:min-h-0"
+                    >
                       <span className="truncate" style={{ color: 'var(--ms-text)' }}><strong style={{ color: 'var(--ms-accent)' }}>#{inv.job_number}</strong> {inv.customer_name ?? inv.invoice_number}</span>
                       <span className="shrink-0 tabular-nums" style={{ color: inv.age_days > 7 ? TONE_COLORS.bad : 'var(--ms-text-muted)' }}>{inv.age_days}d · {formatCents(inv.total_cents)}</span>
                     </Link>

@@ -199,12 +199,12 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
           <div className="flex gap-2 mb-3">
             <button
               onClick={() => setCustomerMode('existing')}
-              className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'existing' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
+              className={`min-h-11 flex-1 rounded border py-2 text-sm font-medium sm:min-h-0 ${customerMode === 'existing' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
               style={customerMode === 'existing' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--ms-accent)' } : {}}
             >Existing</button>
             <button
               onClick={() => setCustomerMode('new')}
-              className={`flex-1 py-2 rounded text-sm font-medium border ${customerMode === 'new' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
+              className={`min-h-11 flex-1 rounded border py-2 text-sm font-medium sm:min-h-0 ${customerMode === 'new' ? 'bg-amber-100 border-amber-400' : 'border-gray-300'}`}
               style={customerMode === 'new' ? { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'var(--ms-accent)' } : {}}
             >Walk-in</button>
           </div>
