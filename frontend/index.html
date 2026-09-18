@@ -7,15 +7,20 @@
     <!-- PNG fallback for older browsers -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0A0A0A" />
+    <!-- Matches manifest theme_color/background_color so the installed app,
+         splash screen and browser chrome agree. -->
+    <meta name="theme-color" content="#1E1410" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- cache-bust: minit-hq-sidebar-v3 -->
     <meta name="app-build" content="dev" />
+    <meta name="description" content="Mainspring — watch repairs, shoe repairs, and mobile services." />
+    <!-- Standard name first; the apple- prefixed one stays for older iOS. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mainspring" />
     <!-- iOS home screen icon (180x180 square spring icon) -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
     <title>Mainspring</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

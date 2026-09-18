@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus } from 'lucide-react'
 import {
@@ -28,20 +28,15 @@ import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, formatCents } from './dispatchHelpers'
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
+import { useIntakeDraft } from '@/hooks/useIntakeDraft'
+import { draftScope } from '@/lib/draftStorage'
+import DraftRestoredNotice from '@/components/DraftRestoredNotice'
+import IntakeSubmitStatus from '@/components/IntakeSubmitStatus'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { isOffline } from '@/lib/photoUpload'
 
-export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
-  const qc = useQueryClient()
-  const { hasFeature } = useAuth()
-  const [error, setError] = useState('')
-  const [step, setStep] = useState<1 | 2>(1)
-  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
-  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', notes: '' })
-  const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
-  const [sendBookingSms, setSendBookingSms] = useState(false)
-  const [showPricingSelector, setShowPricingSelector] = useState(false)
-  const [pricingSelection, setPricingSelection] = useState<MobileServicesPricingSelection | null>(null)
-  const [extraServices, setExtraServices] = useState<Array<{ preset: string; custom: string }>>([])
-  const [form, setForm] = useState({
+function emptyAutoKeyForm() {
+  return {
     customer_id: '',
     customer_account_id: '',
     assigned_user_id: '',
@@ -65,7 +60,108 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
     deposit: '',
     cost: '',
     commission_lead_source: 'shop_referred',
+  }
+}
+
+const DRAFT_KIND = 'mobile-services-intake'
+
+type AutoKeyIntakeDraft = {
+  step: 1 | 2
+  customerMode: 'existing' | 'new'
+  newCustomer: { full_name: string; email: string; phone: string; notes: string }
+  applySuggestedQuote: boolean
+  sendBookingSms: boolean
+  extraServices: Array<{ preset: string; custom: string }>
+  form: Record<string, string>
+}
+
+export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const { hasFeature, tenantId, activeSiteTenantId, sessionUserId } = useAuth()
+  const { online } = useOnlineStatus()
+  const [error, setError] = useState('')
+  const [step, setStep] = useState<1 | 2>(1)
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
+  const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', notes: '' })
+  const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
+  const [sendBookingSms, setSendBookingSms] = useState(false)
+  const [showPricingSelector, setShowPricingSelector] = useState(false)
+  const [pricingSelection, setPricingSelection] = useState<MobileServicesPricingSelection | null>(null)
+  const [extraServices, setExtraServices] = useState<Array<{ preset: string; custom: string }>>([])
+  const [form, setForm] = useState(emptyAutoKeyForm)
+
+  // ── Draft preservation ──────────────────────────────────────────────────────
+  // Records created by an earlier, partly-failed submit — reused on retry so a
+  // second attempt never creates a duplicate customer or job.
+  const createdCustomerIdRef = useRef<string | null>(null)
+  const createdJobIdRef = useRef<string | null>(null)
+  const submittingRef = useRef(false)
+  const scope = draftScope(activeSiteTenantId || tenantId, sessionUserId)
+  const draftValue = useMemo<AutoKeyIntakeDraft>(
+    () => ({
+      step,
+      customerMode,
+      newCustomer,
+      applySuggestedQuote,
+      sendBookingSms,
+      extraServices,
+      form: form as unknown as Record<string, string>,
+    }),
+    [step, customerMode, newCustomer, applySuggestedQuote, sendBookingSms, extraServices, form],
+  )
+
+  const draftHasContent = useCallback((d: AutoKeyIntakeDraft) => {
+    if (d.customerMode === 'new' && d.newCustomer.full_name.trim()) return true
+    if (d.form.customer_id) return true
+    return Boolean(
+      d.form.vehicle_make?.trim() ||
+        d.form.vehicle_model?.trim() ||
+        d.form.registration_plate?.trim() ||
+        d.form.job_address?.trim() ||
+        d.form.description?.trim() ||
+        d.form.tech_notes?.trim() ||
+        d.form.job_type,
+    )
+  }, [])
+
+  const restoreDraft = useCallback((d: AutoKeyIntakeDraft) => {
+    setCustomerMode(d.customerMode === 'new' ? 'new' : 'existing')
+    setNewCustomer(prev => ({ ...prev, ...d.newCustomer }))
+    setApplySuggestedQuote(Boolean(d.applySuggestedQuote))
+    setSendBookingSms(Boolean(d.sendBookingSms))
+    setExtraServices(Array.isArray(d.extraServices) ? d.extraServices : [])
+    setForm(f => {
+      const restored = { ...f, ...(d.form as unknown as Partial<typeof f>) }
+      // Guard against a stored value that is no longer a valid option.
+      const priorities = ['low', 'normal', 'high', 'urgent'] as const
+      if (!priorities.includes(restored.priority)) restored.priority = f.priority
+      if (!STATUSES.includes(restored.status)) restored.status = f.status
+      return restored
+    })
+    setStep(d.step === 2 ? 2 : 1)
+  }, [])
+
+  const draft = useIntakeDraft<AutoKeyIntakeDraft>({
+    kind: DRAFT_KIND,
+    scope,
+    value: draftValue,
+    enabled: createdJobIdRef.current === null,
+    hasContent: draftHasContent,
+    onRestore: restoreDraft,
   })
+
+  function handleDiscardDraft() {
+    draft.discardDraft()
+    setCustomerMode('existing')
+    setNewCustomer({ full_name: '', email: '', phone: '', notes: '' })
+    setExtraServices([])
+    setApplySuggestedQuote(true)
+    setSendBookingSms(false)
+    setPricingSelection(null)
+    setForm(emptyAutoKeyForm())
+    setError('')
+    setStep(1)
+  }
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -188,18 +284,27 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
 
   const createMut = useMutation({
     mutationFn: async () => {
+      // The job already exists from an earlier attempt — never create a second.
+      if (createdJobIdRef.current) return null
+      if (submittingRef.current) return null
+      if (isOffline()) {
+        throw new Error('You are offline. Reconnect to create this job — your details are saved as a draft.')
+      }
+      submittingRef.current = true
       if (!autoTitle.trim()) throw new Error('Job title could not be built — select or add a customer.')
       if (MOBILE_JOB_TYPES.has(form.job_type) && !form.job_address.trim()) {
         throw new Error('Address required for mobile jobs')
       }
-      let customerId = form.customer_id
-      if (customerMode === 'new') {
+      let customerId = form.customer_id || createdCustomerIdRef.current || ''
+      if (customerMode === 'new' && !createdCustomerIdRef.current) {
         if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
         // One address field in this form (job address) - it doubles as the new
         // customer's saved address, since for mobile jobs they're almost always
         // the same place.
         const { data } = await createCustomer({ ...newCustomer, address: form.job_address.trim() || undefined })
         customerId = data.id
+        // Remembered so a retry after a failed job create reuses this customer.
+        createdCustomerIdRef.current = data.id
         qc.invalidateQueries({ queryKey: ['customers'] })
       } else if (!customerId) {
         throw new Error('Please select a customer.')
@@ -257,16 +362,23 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         callout_inclusive: pricingSelection?.callout_inclusive,
       })
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      submittingRef.current = false
+      if (res?.data?.id) createdJobIdRef.current = res.data.id
+      draft.clearSavedDraft()
       invalidateAutoKeyJobCollections(qc)
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err, 'Failed to create Mobile Services job.')),
+    onError: (err) => {
+      submittingRef.current = false
+      setError(getApiErrorMessage(err, 'Failed to create Mobile Services job.'))
+    },
   })
 
   return (
     <Modal title="New Mobile Services Job" onClose={onClose} size="wide" mobileFullScreen>
       <div className="relative">
+      <DraftRestoredNotice savedAt={draft.restoredAt} onDiscard={handleDiscardDraft} />
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex items-center gap-1.5">
@@ -608,6 +720,16 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
         )}
 
         {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+        {step === 2 && !online && !createMut.isPending && (
+          <p className="text-sm" style={{ color: '#6A4A10' }}>
+            You are offline. Reconnect to create this job — your typed details stay saved as a draft.
+          </p>
+        )}
+        <IntakeSubmitStatus
+          progress={null}
+          stageMessage={createMut.isPending ? 'Creating job…' : null}
+          offline={!online}
+        />
 
         <div className="flex gap-2 pt-2">
           {step === 1 ? (
@@ -632,8 +754,8 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <>
-              <Button variant="secondary" className="flex-1" type="button" onClick={() => { setError(''); setStep(1) }}>← Back</Button>
-              <Button className="flex-1" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+              <Button variant="secondary" className="flex-1" type="button" onClick={() => { setError(''); setStep(1) }} disabled={createMut.isPending}>← Back</Button>
+              <Button className="flex-1" onClick={() => createMut.mutate()} disabled={createMut.isPending || !online}>
                 {createMut.isPending ? 'Creating…' : 'Create Job'}
               </Button>
             </>
